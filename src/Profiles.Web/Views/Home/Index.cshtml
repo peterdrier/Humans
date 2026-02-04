@@ -1,0 +1,25 @@
+@{
+    ViewData["Title"] = "Home";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to Nobodies Profiles</h1>
+    <p class="lead">Membership management for Nobodies Collective.</p>
+
+    @if (!User.Identity?.IsAuthenticated ?? true)
+    {
+        <div class="mt-4">
+            <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg">
+                Sign in with Google
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="mt-4">
+            <a asp-controller="Profile" asp-action="Index" class="btn btn-primary btn-lg">
+                View My Profile
+            </a>
+        </div>
+    }
+</div>
