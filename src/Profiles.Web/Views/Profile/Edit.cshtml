@@ -12,6 +12,19 @@
                 <form asp-action="Edit" method="post">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
+                    <div class="mb-3">
+                        <label asp-for="BurnerName" class="form-label"></label>
+                        <input asp-for="BurnerName" class="form-control" placeholder="The name you go by" />
+                        <span asp-validation-for="BurnerName" class="text-danger"></span>
+                        <div class="form-text">This is your public display name, visible to everyone.</div>
+                    </div>
+
+                    <hr />
+                    <h5>Legal Name</h5>
+                    <p class="text-muted small mb-3">
+                        Required for official documents and signing. Only visible to you and board members.
+                    </p>
+
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label asp-for="FirstName" class="form-label"></label>

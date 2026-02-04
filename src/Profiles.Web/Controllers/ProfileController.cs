@@ -64,6 +64,7 @@ public class ProfileController : Controller
             Email = user.Email ?? string.Empty,
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
+            BurnerName = profile?.BurnerName ?? string.Empty,
             FirstName = profile?.FirstName ?? string.Empty,
             LastName = profile?.LastName ?? string.Empty,
             PhoneCountryCode = profile?.PhoneCountryCode,
@@ -73,7 +74,8 @@ public class ProfileController : Controller
             Bio = profile?.Bio,
             HasPendingConsents = pendingConsents > 0,
             PendingConsentCount = pendingConsents,
-            MembershipStatus = profile != null ? ComputeStatus(profile, user.Id).ToString() : "Incomplete"
+            MembershipStatus = profile != null ? ComputeStatus(profile, user.Id).ToString() : "Incomplete",
+            CanViewLegalName = true // User viewing their own profile
         };
 
         return View(viewModel);
@@ -97,6 +99,7 @@ public class ProfileController : Controller
             Email = user.Email ?? string.Empty,
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
+            BurnerName = profile?.BurnerName ?? string.Empty,
             FirstName = profile?.FirstName ?? string.Empty,
             LastName = profile?.LastName ?? string.Empty,
             PhoneCountryCode = profile?.PhoneCountryCode,
@@ -106,7 +109,8 @@ public class ProfileController : Controller
             Latitude = profile?.Latitude,
             Longitude = profile?.Longitude,
             PlaceId = profile?.PlaceId,
-            Bio = profile?.Bio
+            Bio = profile?.Bio,
+            CanViewLegalName = true // User editing their own profile
         };
 
         ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
@@ -146,6 +150,7 @@ public class ProfileController : Controller
             _dbContext.Profiles.Add(profile);
         }
 
+        profile.BurnerName = model.BurnerName;
         profile.FirstName = model.FirstName;
         profile.LastName = model.LastName;
         profile.PhoneCountryCode = model.PhoneCountryCode;
@@ -158,8 +163,8 @@ public class ProfileController : Controller
         profile.Bio = model.Bio;
         profile.UpdatedAt = now;
 
-        // Update display name on user
-        user.DisplayName = $"{model.FirstName} {model.LastName}".Trim();
+        // Update display name on user to burner name (public-facing name)
+        user.DisplayName = model.BurnerName;
         await _userManager.UpdateAsync(user);
 
         await _dbContext.SaveChangesAsync();

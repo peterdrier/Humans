@@ -25,12 +25,20 @@ public class Profile
     public User User { get; set; } = null!;
 
     /// <summary>
-    /// Member's first name.
+    /// The name the member goes by (e.g., burner name, nickname).
+    /// This is the primary display name visible to everyone.
+    /// </summary>
+    public string BurnerName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Member's legal first name (for official documents).
+    /// Only visible to the member and board members.
     /// </summary>
     public string FirstName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Member's last name.
+    /// Member's legal last name (for official documents).
+    /// Only visible to the member and board members.
     /// </summary>
     public string LastName { get; set; } = string.Empty;
 

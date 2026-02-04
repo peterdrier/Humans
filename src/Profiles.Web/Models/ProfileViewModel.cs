@@ -11,13 +11,23 @@ public class ProfileViewModel
 
     [Required]
     [StringLength(100)]
-    [Display(Name = "First Name")]
+    [Display(Name = "Burner Name")]
+    public string BurnerName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(100)]
+    [Display(Name = "Legal First Name")]
     public string FirstName { get; set; } = string.Empty;
 
     [Required]
     [StringLength(100)]
-    [Display(Name = "Last Name")]
+    [Display(Name = "Legal Last Name")]
     public string LastName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the viewer can see legal name (own profile or board member).
+    /// </summary>
+    public bool CanViewLegalName { get; set; }
 
     [Display(Name = "Country Code")]
     [StringLength(5)]

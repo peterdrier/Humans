@@ -38,12 +38,12 @@
                         else
                         {
                             <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 100px; height: 100px; font-size: 2rem;">
-                                @(string.IsNullOrEmpty(Model.FirstName) ? "?" : Model.FirstName[0])
+                                @(string.IsNullOrEmpty(Model.BurnerName) ? "?" : Model.BurnerName[0])
                             </div>
                         }
                     </div>
                     <div class="col-md-9">
-                        <h4>@(string.IsNullOrEmpty(Model.FirstName) && string.IsNullOrEmpty(Model.LastName) ? Model.DisplayName : $"{Model.FirstName} {Model.LastName}")</h4>
+                        <h4>@(string.IsNullOrEmpty(Model.BurnerName) ? Model.DisplayName : Model.BurnerName)</h4>
                         <p class="text-muted mb-1">@Model.Email</p>
                         <span class="badge @(Model.MembershipStatus == "Active" ? "bg-success" : Model.MembershipStatus == "Suspended" ? "bg-danger" : "bg-secondary")">
                             @Model.MembershipStatus
@@ -54,6 +54,22 @@
                 <hr />
 
                 <dl class="row">
+                    @if (Model.CanViewLegalName)
+                    {
+                        <dt class="col-sm-3">Legal Name</dt>
+                        <dd class="col-sm-9">
+                            @if (!string.IsNullOrEmpty(Model.FirstName) || !string.IsNullOrEmpty(Model.LastName))
+                            {
+                                @Model.FirstName @Model.LastName
+                                <small class="text-muted">(only visible to you and board)</small>
+                            }
+                            else
+                            {
+                                <text>Not provided</text>
+                            }
+                        </dd>
+                    }
+
                     <dt class="col-sm-3">Phone</dt>
                     <dd class="col-sm-9">@(Model.FormattedPhoneNumber ?? "Not provided")</dd>
 
