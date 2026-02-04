@@ -29,12 +29,35 @@ public class ProfileViewModel
     [RegularExpression(@"^[\d\s\-]+$", ErrorMessage = "Please enter a valid phone number")]
     public string? PhoneNumber { get; set; }
 
-    [StringLength(100)]
+    [StringLength(256)]
     public string? City { get; set; }
 
     [Display(Name = "Country")]
     [StringLength(2)]
     public string? CountryCode { get; set; }
+
+    /// <summary>
+    /// Latitude coordinate from Google Places.
+    /// </summary>
+    public double? Latitude { get; set; }
+
+    /// <summary>
+    /// Longitude coordinate from Google Places.
+    /// </summary>
+    public double? Longitude { get; set; }
+
+    /// <summary>
+    /// Google Places ID for future reference.
+    /// </summary>
+    [StringLength(512)]
+    public string? PlaceId { get; set; }
+
+    /// <summary>
+    /// Display-friendly location string for the autocomplete input.
+    /// </summary>
+    public string? LocationDisplay => !string.IsNullOrEmpty(City) && !string.IsNullOrEmpty(CountryCode)
+        ? $"{City}, {CountryCode}"
+        : City ?? CountryCode;
 
     [StringLength(1000)]
     [DataType(DataType.MultilineText)]

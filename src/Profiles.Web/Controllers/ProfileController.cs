@@ -16,17 +16,20 @@ public class ProfileController : Controller
     private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly ILogger<ProfileController> _logger;
+    private readonly IConfiguration _configuration;
 
     public ProfileController(
         ProfilesDbContext dbContext,
         UserManager<User> userManager,
         IClock clock,
-        ILogger<ProfileController> logger)
+        ILogger<ProfileController> logger,
+        IConfiguration configuration)
     {
         _dbContext = dbContext;
         _userManager = userManager;
         _clock = clock;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<IActionResult> Index()
@@ -100,9 +103,13 @@ public class ProfileController : Controller
             PhoneNumber = profile?.PhoneNumber,
             City = profile?.City,
             CountryCode = profile?.CountryCode,
+            Latitude = profile?.Latitude,
+            Longitude = profile?.Longitude,
+            PlaceId = profile?.PlaceId,
             Bio = profile?.Bio
         };
 
+        ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
         return View(viewModel);
     }
 
@@ -112,6 +119,7 @@ public class ProfileController : Controller
     {
         if (!ModelState.IsValid)
         {
+            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
             return View(model);
         }
 
@@ -144,6 +152,9 @@ public class ProfileController : Controller
         profile.PhoneNumber = model.PhoneNumber;
         profile.City = model.City;
         profile.CountryCode = model.CountryCode;
+        profile.Latitude = model.Latitude;
+        profile.Longitude = model.Longitude;
+        profile.PlaceId = model.PlaceId;
         profile.Bio = model.Bio;
         profile.UpdatedAt = now;
 

@@ -63,38 +63,33 @@
                     <hr />
                     <h5>Location</h5>
 
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label asp-for="City" class="form-label"></label>
-                            <input asp-for="City" class="form-control" />
-                            <span asp-validation-for="City" class="text-danger"></span>
-                        </div>
-                        <div class="col-md-6">
-                            <label asp-for="CountryCode" class="form-label"></label>
-                            <select asp-for="CountryCode" class="form-select">
-                                <option value="">Select country</option>
-                                <option value="ES">Spain</option>
-                                <option value="FR">France</option>
-                                <option value="DE">Germany</option>
-                                <option value="IT">Italy</option>
-                                <option value="PT">Portugal</option>
-                                <option value="GB">United Kingdom</option>
-                                <option value="NL">Netherlands</option>
-                                <option value="BE">Belgium</option>
-                                <option value="CH">Switzerland</option>
-                                <option value="AT">Austria</option>
-                                <option value="PL">Poland</option>
-                                <option value="US">United States</option>
-                                <option value="CA">Canada</option>
-                                <option value="MX">Mexico</option>
-                                <option value="AR">Argentina</option>
-                                <option value="BR">Brazil</option>
-                                <option value="CL">Chile</option>
-                                <option value="CO">Colombia</option>
-                            </select>
-                            <span asp-validation-for="CountryCode" class="text-danger"></span>
-                        </div>
+                    <div class="mb-3">
+                        <label for="locationSearch" class="form-label">City</label>
+                        <input type="text" id="locationSearch" class="form-control"
+                               placeholder="Start typing your city..."
+                               value="@Model.LocationDisplay"
+                               autocomplete="off" />
+                        <div class="form-text">Search for your city to set your location.</div>
+
+                        <input type="hidden" asp-for="City" id="City" />
+                        <input type="hidden" asp-for="CountryCode" id="CountryCode" />
+                        <input type="hidden" asp-for="Latitude" id="Latitude" />
+                        <input type="hidden" asp-for="Longitude" id="Longitude" />
+                        <input type="hidden" asp-for="PlaceId" id="PlaceId" />
                     </div>
+
+                    @if (!string.IsNullOrEmpty(Model.City))
+                    {
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                Current location: <strong>@Model.City, @Model.CountryCode</strong>
+                                @if (Model.Latitude.HasValue && Model.Longitude.HasValue)
+                                {
+                                    <text> (@Model.Latitude.Value.ToString("F4"), @Model.Longitude.Value.ToString("F4"))</text>
+                                }
+                            </small>
+                        </div>
+                    }
 
                     <hr />
 
@@ -117,4 +112,63 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+
+    @if (!string.IsNullOrEmpty(ViewData["GoogleMapsApiKey"]?.ToString()))
+    {
+        <script>
+            (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]);for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+                key: "@ViewData["GoogleMapsApiKey"]",
+                v: "weekly"
+            });
+        </script>
+        <script>
+            async function initAutocomplete() {
+                const { Autocomplete } = await google.maps.importLibrary("places");
+
+                const input = document.getElementById("locationSearch");
+                const autocomplete = new Autocomplete(input, {
+                    types: ["(cities)"],
+                    fields: ["place_id", "geometry", "address_components", "formatted_address"]
+                });
+
+                autocomplete.addListener("place_changed", () => {
+                    const place = autocomplete.getPlace();
+
+                    if (!place.geometry) {
+                        return;
+                    }
+
+                    // Extract city and country from address components
+                    let city = "";
+                    let countryCode = "";
+
+                    for (const component of place.address_components) {
+                        if (component.types.includes("locality")) {
+                            city = component.long_name;
+                        } else if (component.types.includes("administrative_area_level_1") && !city) {
+                            city = component.long_name;
+                        }
+                        if (component.types.includes("country")) {
+                            countryCode = component.short_name;
+                        }
+                    }
+
+                    // Populate hidden fields
+                    document.getElementById("City").value = city;
+                    document.getElementById("CountryCode").value = countryCode;
+                    document.getElementById("Latitude").value = place.geometry.location.lat();
+                    document.getElementById("Longitude").value = place.geometry.location.lng();
+                    document.getElementById("PlaceId").value = place.place_id;
+                });
+            }
+
+            initAutocomplete();
+        </script>
+    }
+    else
+    {
+        <script>
+            console.warn("Google Maps API key not configured. Location autocomplete disabled.");
+        </script>
+    }
 }

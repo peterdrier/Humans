@@ -55,6 +55,21 @@ public class Profile
     public string? CountryCode { get; set; }
 
     /// <summary>
+    /// Latitude coordinate for the member's location.
+    /// </summary>
+    public double? Latitude { get; set; }
+
+    /// <summary>
+    /// Longitude coordinate for the member's location.
+    /// </summary>
+    public double? Longitude { get; set; }
+
+    /// <summary>
+    /// Google Places ID for future reference.
+    /// </summary>
+    public string? PlaceId { get; set; }
+
+    /// <summary>
     /// Optional biography or personal statement.
     /// </summary>
     public string? Bio { get; set; }

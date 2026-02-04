@@ -32,6 +32,9 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.CountryCode)
             .HasMaxLength(2);
 
+        builder.Property(p => p.PlaceId)
+            .HasMaxLength(512);
+
         builder.Property(p => p.Bio)
             .HasMaxLength(4000);
 
