@@ -134,6 +134,65 @@
                 </div>
             </div>
         }
+
+        @if (Model.Teams.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <span>Teams</span>
+                </div>
+                <div class="card-body py-2">
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var team in Model.Teams)
+                        {
+                            <a asp-controller="Teams" asp-action="Detail" asp-route-slug="@team.TeamSlug"
+                               class="btn btn-sm @(team.IsSystemTeam ? "btn-outline-secondary" : "btn-outline-primary")">
+                                @team.TeamName
+                                @if (team.IsMetalead)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1">Lead</span>
+                                }
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (Model.VolunteerHistory.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Burner CV</span>
+                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">Edit</a>
+                </div>
+                <div class="card-body py-2">
+                    @foreach (var entry in Model.VolunteerHistory)
+                    {
+                        <div class="d-flex align-items-center py-1">
+                            <span class="text-muted me-3" style="min-width: 50px; font-size: 0.85em;">@entry.FormattedDate</span>
+                            <span class="fw-medium me-3" style="min-width: 180px;">@entry.EventName</span>
+                            @if (!string.IsNullOrEmpty(entry.Description))
+                            {
+                                <span class="text-muted text-truncate" style="font-size: 0.9em;">@(entry.Description.Length > 80 ? entry.Description[..80] + "..." : entry.Description)</span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Burner CV</span>
+                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">Add</a>
+                </div>
+                <div class="card-body text-muted">
+                    No entries yet. <a asp-action="Edit">Add your first entry</a> to document your involvement.
+                </div>
+            </div>
+        }
     </div>
 
     <div class="col-md-4">

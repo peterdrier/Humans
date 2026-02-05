@@ -114,6 +114,60 @@
                 </div>
             </div>
         }
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Role Assignments</span>
+                <a asp-action="AddRole" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">Add Role</a>
+            </div>
+            @if (Model.RoleAssignments.Count > 0)
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var role in Model.RoleAssignments)
+                    {
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>@role.RoleName</strong>
+                                @if (role.IsActive)
+                                {
+                                    <span class="badge bg-success ms-2">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary ms-2">Ended</span>
+                                }
+                                <br />
+                                <small class="text-muted">
+                                    From @role.ValidFrom.ToString("d MMM yyyy")
+                                    @if (role.ValidTo.HasValue)
+                                    {
+                                        <text> to @role.ValidTo.Value.ToString("d MMM yyyy")</text>
+                                    }
+                                    @if (!string.IsNullOrEmpty(role.Notes))
+                                    {
+                                        <text> &mdash; @role.Notes</text>
+                                    }
+                                </small>
+                            </div>
+                            @if (role.IsActive)
+                            {
+                                <form asp-action="EndRole" asp-route-id="@role.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('End this role assignment?');">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">End</button>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="card-body text-muted">
+                    No role assignments.
+                </div>
+            }
+        </div>
     </div>
 
     <div class="col-md-4">

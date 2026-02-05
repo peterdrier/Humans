@@ -80,7 +80,12 @@ builder.Services.AddAuthentication()
     });
 
 // Configure Authorization
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireAdminRole", policy =>
+        policy.Requirements.Add(new Profiles.Web.Authorization.AdminRoleRequirement()));
+});
+builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, Profiles.Web.Authorization.AdminRoleHandler>();
 
 // Configure Hangfire
 builder.Services.AddHangfire(config => config
@@ -123,9 +128,10 @@ builder.Services.AddSingleton(new ActivitySource(serviceName, serviceVersion));
 builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgresql")
     .AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire")
-    .AddUrlGroup(new Uri("https://api.github.com"), name: "github-api")
     .AddCheck<ConfigurationHealthCheck>("configuration")
-    .AddCheck<SmtpHealthCheck>("smtp");
+    .AddCheck<SmtpHealthCheck>("smtp")
+    .AddCheck<GitHubHealthCheck>("github")
+    .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace");
 
 // Register Configuration
 builder.Services.Configure<GitHubSettings>(builder.Configuration.GetSection(GitHubSettings.SectionName));
@@ -136,6 +142,7 @@ builder.Services.Configure<GoogleWorkspaceSettings>(builder.Configuration.GetSec
 builder.Services.AddScoped<IConsentRecordRepository, ConsentRecordRepository>();
 builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IContactFieldService, ContactFieldService>();
+builder.Services.AddScoped<IVolunteerHistoryService, VolunteerHistoryService>();
 builder.Services.AddScoped<ILegalDocumentSyncService, LegalDocumentSyncService>();
 // Use real Google Workspace service if credentials configured, otherwise use stub
 var googleWorkspaceConfig = builder.Configuration.GetSection(GoogleWorkspaceSettings.SectionName);

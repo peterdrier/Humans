@@ -84,12 +84,16 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
         {
-            credential = GoogleCredential.FromJson(_settings.ServiceAccountKeyJson);
+            // Use CredentialFactory for secure credential loading
+            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(_settings.ServiceAccountKeyJson));
+            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, CancellationToken.None)
+                .ConfigureAwait(false)).ToGoogleCredential();
         }
         else if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
         {
             await using var stream = File.OpenRead(_settings.ServiceAccountKeyPath);
-            credential = await GoogleCredential.FromStreamAsync(stream, CancellationToken.None);
+            credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, CancellationToken.None)
+                .ConfigureAwait(false)).ToGoogleCredential();
         }
         else
         {

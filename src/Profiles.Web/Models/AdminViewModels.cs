@@ -59,6 +59,7 @@ public class AdminMemberDetailViewModel
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
     public List<AdminMemberApplicationViewModel> Applications { get; set; } = [];
+    public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
 }
 
 public class AdminMemberApplicationViewModel
@@ -112,5 +113,47 @@ public class AdminApplicationActionModel
 {
     public Guid ApplicationId { get; set; }
     public string Action { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+}
+
+public class AdminRoleAssignmentListViewModel
+{
+    public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
+    public string? RoleFilter { get; set; }
+    public bool ShowInactive { get; set; }
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 50;
+}
+
+public class AdminRoleAssignmentViewModel
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string UserEmail { get; set; } = string.Empty;
+    public string UserDisplayName { get; set; } = string.Empty;
+    public string RoleName { get; set; } = string.Empty;
+    public DateTime ValidFrom { get; set; }
+    public DateTime? ValidTo { get; set; }
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; }
+    public string? CreatedByName { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateRoleAssignmentViewModel
+{
+    public Guid UserId { get; set; }
+    public string UserDisplayName { get; set; } = string.Empty;
+    public string RoleName { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+    public List<string> AvailableRoles { get; set; } = [];
+}
+
+public class EndRoleAssignmentViewModel
+{
+    public Guid Id { get; set; }
+    public string UserDisplayName { get; set; } = string.Empty;
+    public string RoleName { get; set; } = string.Empty;
     public string? Notes { get; set; }
 }

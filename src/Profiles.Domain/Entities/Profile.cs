@@ -151,4 +151,9 @@ public class Profile
     /// Contact fields with visibility controls.
     /// </summary>
     public ICollection<ContactField> ContactFields { get; } = new List<ContactField>();
+
+    /// <summary>
+    /// Volunteer history entries documenting involvement in events, roles, and camps.
+    /// </summary>
+    public ICollection<VolunteerHistoryEntry> VolunteerHistory { get; } = new List<VolunteerHistoryEntry>();
 }

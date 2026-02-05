@@ -4,16 +4,18 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Profiles.Application.Interfaces;
+using Profiles.Domain.Constants;
 using Profiles.Domain.Entities;
 using Profiles.Domain.Enums;
 using Profiles.Infrastructure.Data;
+using Profiles.Infrastructure.Jobs;
 using Profiles.Web.Extensions;
 using Profiles.Web.Models;
 using MemberApplication = Profiles.Domain.Entities.Application;
 
 namespace Profiles.Web.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Policy = "RequireAdminRole")]
 [Route("Admin")]
 public class AdminController : Controller
 {
@@ -22,19 +24,22 @@ public class AdminController : Controller
     private readonly ITeamService _teamService;
     private readonly IClock _clock;
     private readonly ILogger<AdminController> _logger;
+    private readonly SystemTeamSyncJob _systemTeamSyncJob;
 
     public AdminController(
         ProfilesDbContext dbContext,
         UserManager<User> userManager,
         ITeamService teamService,
         IClock clock,
-        ILogger<AdminController> logger)
+        ILogger<AdminController> logger,
+        SystemTeamSyncJob systemTeamSyncJob)
     {
         _dbContext = dbContext;
         _userManager = userManager;
         _teamService = teamService;
         _clock = clock;
         _logger = logger;
+        _systemTeamSyncJob = systemTeamSyncJob;
     }
 
     [HttpGet("")]
@@ -114,6 +119,13 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        var now = _clock.GetCurrentInstant();
+        var roleAssignments = await _dbContext.RoleAssignments
+            .Include(ra => ra.CreatedByUser)
+            .Where(ra => ra.UserId == id)
+            .OrderByDescending(ra => ra.ValidFrom)
+            .ToListAsync();
+
         var viewModel = new AdminMemberDetailViewModel
         {
             UserId = user.Id,
@@ -139,7 +151,19 @@ public class AdminController : Controller
                     Id = a.Id,
                     Status = a.Status.ToString(),
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc()
-                }).ToList()
+                }).ToList(),
+            RoleAssignments = roleAssignments.Select(ra => new AdminRoleAssignmentViewModel
+            {
+                Id = ra.Id,
+                UserId = ra.UserId,
+                RoleName = ra.RoleName,
+                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
+                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
+                Notes = ra.Notes,
+                IsActive = ra.IsActive(now),
+                CreatedByName = ra.CreatedByUser?.DisplayName,
+                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+            }).ToList()
         };
 
         return View(viewModel);
@@ -522,5 +546,192 @@ public class AdminController : Controller
         }
 
         return RedirectToAction(nameof(Teams));
+    }
+
+    [HttpGet("Roles")]
+    public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
+    {
+        var pageSize = 50;
+        var now = _clock.GetCurrentInstant();
+
+        var query = _dbContext.RoleAssignments
+            .Include(ra => ra.User)
+            .Include(ra => ra.CreatedByUser)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            query = query.Where(ra => ra.RoleName == role);
+        }
+
+        if (!showInactive)
+        {
+            query = query.Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var assignments = await query
+            .OrderBy(ra => ra.RoleName)
+            .ThenByDescending(ra => ra.ValidFrom)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var viewModel = new AdminRoleAssignmentListViewModel
+        {
+            RoleAssignments = assignments.Select(ra => new AdminRoleAssignmentViewModel
+            {
+                Id = ra.Id,
+                UserId = ra.UserId,
+                UserEmail = ra.User.Email ?? string.Empty,
+                UserDisplayName = ra.User.DisplayName,
+                RoleName = ra.RoleName,
+                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
+                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
+                Notes = ra.Notes,
+                IsActive = ra.IsActive(now),
+                CreatedByName = ra.CreatedByUser?.DisplayName,
+                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+            }).ToList(),
+            RoleFilter = role,
+            ShowInactive = showInactive,
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpGet("Members/{id}/Roles/Add")]
+    public async Task<IActionResult> AddRole(Guid id)
+    {
+        var user = await _dbContext.Users.FindAsync(id);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var viewModel = new CreateRoleAssignmentViewModel
+        {
+            UserId = id,
+            UserDisplayName = user.DisplayName,
+            AvailableRoles = [RoleNames.Admin, RoleNames.Board, RoleNames.Metalead]
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost("Members/{id}/Roles/Add")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
+    {
+        var user = await _dbContext.Users.FindAsync(id);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        if (string.IsNullOrWhiteSpace(model.RoleName))
+        {
+            ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
+            model.UserId = id;
+            model.UserDisplayName = user.DisplayName;
+            model.AvailableRoles = [RoleNames.Admin, RoleNames.Board, RoleNames.Metalead];
+            return View(model);
+        }
+
+        var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser == null)
+        {
+            return Unauthorized();
+        }
+
+        var now = _clock.GetCurrentInstant();
+
+        // Check if user already has an active assignment for this role
+        var existingActive = await _dbContext.RoleAssignments
+            .AnyAsync(ra => ra.UserId == id
+                && ra.RoleName == model.RoleName
+                && ra.ValidFrom <= now
+                && (ra.ValidTo == null || ra.ValidTo > now));
+
+        if (existingActive)
+        {
+            TempData["ErrorMessage"] = $"User already has an active {model.RoleName} role.";
+            return RedirectToAction(nameof(MemberDetail), new { id });
+        }
+
+        var roleAssignment = new RoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            UserId = id,
+            RoleName = model.RoleName,
+            ValidFrom = now,
+            Notes = model.Notes,
+            CreatedAt = now,
+            CreatedByUserId = currentUser.Id
+        };
+
+        _dbContext.RoleAssignments.Add(roleAssignment);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Admin {AdminId} assigned role {Role} to user {UserId}",
+            currentUser.Id, model.RoleName, id);
+
+        // Trigger sync for Board role changes
+        if (string.Equals(model.RoleName, RoleNames.Board, StringComparison.Ordinal))
+        {
+            await _systemTeamSyncJob.SyncBoardTeamAsync();
+        }
+
+        TempData["SuccessMessage"] = $"Role '{model.RoleName}' assigned successfully.";
+        return RedirectToAction(nameof(MemberDetail), new { id });
+    }
+
+    [HttpPost("Roles/{id}/End")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EndRole(Guid id, string? notes)
+    {
+        var roleAssignment = await _dbContext.RoleAssignments
+            .Include(ra => ra.User)
+            .FirstOrDefaultAsync(ra => ra.Id == id);
+
+        if (roleAssignment == null)
+        {
+            return NotFound();
+        }
+
+        var now = _clock.GetCurrentInstant();
+
+        if (!roleAssignment.IsActive(now))
+        {
+            TempData["ErrorMessage"] = "This role assignment is not currently active.";
+            return RedirectToAction(nameof(MemberDetail), new { id = roleAssignment.UserId });
+        }
+
+        roleAssignment.ValidTo = now;
+        if (!string.IsNullOrWhiteSpace(notes))
+        {
+            roleAssignment.Notes = string.IsNullOrEmpty(roleAssignment.Notes)
+                ? $"Ended: {notes}"
+                : $"{roleAssignment.Notes} | Ended: {notes}";
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        var currentUser = await _userManager.GetUserAsync(User);
+        _logger.LogInformation("Admin {AdminId} ended role {Role} for user {UserId}",
+            currentUser?.Id, roleAssignment.RoleName, roleAssignment.UserId);
+
+        // Trigger sync for Board role changes
+        if (string.Equals(roleAssignment.RoleName, RoleNames.Board, StringComparison.Ordinal))
+        {
+            await _systemTeamSyncJob.SyncBoardTeamAsync();
+        }
+
+        TempData["SuccessMessage"] = $"Role '{roleAssignment.RoleName}' ended for {roleAssignment.User.DisplayName}.";
+        return RedirectToAction(nameof(MemberDetail), new { id = roleAssignment.UserId });
     }
 }

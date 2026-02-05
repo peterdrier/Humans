@@ -22,17 +22,17 @@
     <!-- State Machine -->
     <PackageVersion Include="Stateless" Version="5.20.0" />
     <!-- Background Jobs -->
-    <PackageVersion Include="Hangfire.Core" Version="1.8.22" />
-    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.22" />
+    <PackageVersion Include="Hangfire.Core" Version="1.8.23" />
+    <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.23" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.20.13" />
     <!-- Email -->
     <PackageVersion Include="MailKit" Version="4.14.1" />
     <!-- GitHub API -->
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <!-- Google Workspace APIs -->
-    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.69.0.3700" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.69.0.3674" />
-    <PackageVersion Include="Google.Apis.Auth" Version="1.69.0" />
+    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.73.0.4030" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.73.0.4045" />
+    <PackageVersion Include="Google.Apis.Auth" Version="1.73.0" />
     <!-- Resilience -->
     <PackageVersion Include="Polly" Version="8.6.5" />
     <!-- Observability -->
@@ -52,7 +52,7 @@
     <PackageVersion Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
     <!-- Analyzers -->
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.295" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.298" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
     <!-- Testing -->
     <PackageVersion Include="FluentAssertions" Version="8.8.0" />

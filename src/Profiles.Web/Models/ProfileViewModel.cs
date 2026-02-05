@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using NodaTime;
 using Profiles.Domain.Enums;
 
 namespace Profiles.Web.Models;
@@ -95,6 +96,33 @@ public class ProfileViewModel
     /// Contact fields for editing (owner only).
     /// </summary>
     public List<ContactFieldEditViewModel> EditableContactFields { get; set; } = [];
+
+    /// <summary>
+    /// Volunteer history entries for display.
+    /// </summary>
+    public IReadOnlyList<VolunteerHistoryEntryViewModel> VolunteerHistory { get; set; } = [];
+
+    /// <summary>
+    /// Volunteer history entries for editing (owner only).
+    /// </summary>
+    public List<VolunteerHistoryEntryEditViewModel> EditableVolunteerHistory { get; set; } = [];
+
+    /// <summary>
+    /// Teams the user is a member of (excluding Volunteers system team).
+    /// </summary>
+    public IReadOnlyList<TeamMembershipViewModel> Teams { get; set; } = [];
+}
+
+/// <summary>
+/// Team membership for display purposes.
+/// </summary>
+public class TeamMembershipViewModel
+{
+    public Guid TeamId { get; set; }
+    public string TeamName { get; set; } = string.Empty;
+    public string TeamSlug { get; set; } = string.Empty;
+    public bool IsMetalead { get; set; }
+    public bool IsSystemTeam { get; set; }
 }
 
 /// <summary>
@@ -168,6 +196,80 @@ public class ContactFieldEditViewModel
     public ContactFieldVisibility Visibility { get; set; } = ContactFieldVisibility.AllActiveProfiles;
 
     public int DisplayOrder { get; set; }
+}
+
+/// <summary>
+/// Volunteer history entry for display purposes.
+/// </summary>
+public class VolunteerHistoryEntryViewModel
+{
+    public Guid Id { get; set; }
+    public LocalDate Date { get; set; }
+    public string EventName { get; set; } = string.Empty;
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Gets the date formatted as "Mon'YY" (e.g., "Mar'25").
+    /// </summary>
+    public string FormattedDate
+    {
+        get
+        {
+            var pattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("MMM");
+            var yearPattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("yy");
+            return $"{pattern.Format(Date)}'{yearPattern.Format(Date)}";
+        }
+    }
+}
+
+/// <summary>
+/// Volunteer history entry for editing purposes.
+/// </summary>
+public class VolunteerHistoryEntryEditViewModel
+{
+    public Guid? Id { get; set; }
+
+    [Required]
+    [Display(Name = "Date")]
+    public string DateString { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(256)]
+    [Display(Name = "Event Name")]
+    public string EventName { get; set; } = string.Empty;
+
+    [StringLength(2000)]
+    [DataType(DataType.MultilineText)]
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Parses DateString to LocalDate. Returns null if invalid.
+    /// </summary>
+    public LocalDate? ParsedDate
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(DateString))
+                return null;
+
+            // Try parsing as yyyy-MM-dd (HTML date input format)
+            var pattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("yyyy-MM-dd");
+            var parseResult = pattern.Parse(DateString);
+            if (parseResult.Success)
+                return parseResult.Value;
+
+            // Try parsing as yyyy-MM (month input format) - use first of month
+            if (DateString.Length == 7)
+            {
+                var monthPattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("yyyy-MM-dd");
+                var monthResult = monthPattern.Parse(DateString + "-01");
+                if (monthResult.Success)
+                    return monthResult.Value;
+            }
+
+            return null;
+        }
+    }
 }
 
 /// <summary>

@@ -163,10 +163,16 @@ public class ContactFieldService : IContactFieldService
             return ContactFieldVisibility.LeadsAndBoard;
         }
 
-        // Check if viewer shares any team with owner
+        // Check if viewer shares any team with owner (excluding Volunteers since everyone is in it)
         var ownerTeams = await _teamService.GetUserTeamsAsync(ownerUserId, cancellationToken);
-        var viewerTeamIds = viewerTeams.Select(tm => tm.TeamId).ToHashSet();
-        var ownerTeamIds = ownerTeams.Select(tm => tm.TeamId).ToHashSet();
+        var viewerTeamIds = viewerTeams
+            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(tm => tm.TeamId)
+            .ToHashSet();
+        var ownerTeamIds = ownerTeams
+            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(tm => tm.TeamId)
+            .ToHashSet();
         var sharesTeam = viewerTeamIds.Intersect(ownerTeamIds).Any();
         if (sharesTeam)
         {

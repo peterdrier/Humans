@@ -4,7 +4,7 @@
 }
 
 <div class="row">
-    <div class="col-md-8">
+    <div class="col-12" style="max-width: 900px;">
         <h1>Edit Profile</h1>
 
         <div class="card">
@@ -173,6 +173,50 @@
 
                     <button type="button" id="addContactField" class="btn btn-outline-secondary btn-sm mb-3">
                         <i class="fa-solid fa-plus me-1"></i> Add Contact Field
+                    </button>
+
+                    <hr />
+                    <h5>Burner CV</h5>
+                    <p class="text-muted small mb-3">
+                        Document your involvement in events, roles, and camps. Entries are sorted by date (newest first).
+                    </p>
+
+                    <div id="volunteerHistoryContainer">
+                        @for (var i = 0; i < Model.EditableVolunteerHistory.Count; i++)
+                        {
+                            <div class="volunteer-history-row card mb-2" data-index="@i">
+                                <div class="card-body py-2">
+                                    <div class="row g-2 align-items-start">
+                                        <input type="hidden" name="EditableVolunteerHistory[@i].Id" value="@Model.EditableVolunteerHistory[i].Id" />
+
+                                        <div class="col-md-2">
+                                            <label class="form-label small">Date</label>
+                                            <input type="date" name="EditableVolunteerHistory[@i].DateString" value="@Model.EditableVolunteerHistory[i].DateString" class="form-control form-control-sm" required />
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Event Name</label>
+                                            <input type="text" name="EditableVolunteerHistory[@i].EventName" value="@Model.EditableVolunteerHistory[i].EventName" class="form-control form-control-sm" required placeholder="e.g., Burning Man 2024, Gate Lead" maxlength="256" />
+                                        </div>
+
+                                        <div class="col-md-5">
+                                            <label class="form-label small">Description</label>
+                                            <input type="text" name="EditableVolunteerHistory[@i].Description" value="@Model.EditableVolunteerHistory[i].Description" class="form-control form-control-sm" placeholder="Optional details" maxlength="2000" />
+                                        </div>
+
+                                        <div class="col-md-1 text-end" style="padding-top: 1.5rem;">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-volunteer-history">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <button type="button" id="addVolunteerHistory" class="btn btn-outline-secondary btn-sm mb-3">
+                        <i class="fa-solid fa-plus me-1"></i> Add Entry
                     </button>
 
                     <hr />
@@ -401,6 +445,86 @@
                 container.appendChild(row);
                 setupRow(row);
                 row.querySelector('input[type="text"]').focus();
+            });
+        })();
+
+        // Volunteer History Management
+        (function() {
+            const container = document.getElementById('volunteerHistoryContainer');
+            const addButton = document.getElementById('addVolunteerHistory');
+
+            function getNextIndex() {
+                const rows = container.querySelectorAll('.volunteer-history-row');
+                if (rows.length === 0) return 0;
+                const indices = Array.from(rows).map(r => parseInt(r.dataset.index) || 0);
+                return Math.max(...indices) + 1;
+            }
+
+            function createVolunteerHistoryRow(index) {
+                const html = `
+                    <div class="volunteer-history-row card mb-2" data-index="${index}">
+                        <div class="card-body py-2">
+                            <div class="row g-2 align-items-start">
+                                <input type="hidden" name="EditableVolunteerHistory[${index}].Id" value="" />
+
+                                <div class="col-md-2">
+                                    <label class="form-label small">Date</label>
+                                    <input type="date" name="EditableVolunteerHistory[${index}].DateString" class="form-control form-control-sm" required />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small">Event Name</label>
+                                    <input type="text" name="EditableVolunteerHistory[${index}].EventName" class="form-control form-control-sm" required placeholder="e.g., Burning Man 2024, Gate Lead" maxlength="256" />
+                                </div>
+
+                                <div class="col-md-5">
+                                    <label class="form-label small">Description</label>
+                                    <input type="text" name="EditableVolunteerHistory[${index}].Description" class="form-control form-control-sm" placeholder="Optional details" maxlength="2000" />
+                                </div>
+
+                                <div class="col-md-1 text-end" style="padding-top: 1.5rem;">
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-volunteer-history">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const template = document.createElement('template');
+                template.innerHTML = html.trim();
+                return template.content.firstChild;
+            }
+
+            function setupHistoryRow(row) {
+                const removeBtn = row.querySelector('.remove-volunteer-history');
+
+                removeBtn.addEventListener('click', function() {
+                    row.remove();
+                    reindexHistoryRows();
+                });
+            }
+
+            function reindexHistoryRows() {
+                const rows = container.querySelectorAll('.volunteer-history-row');
+                rows.forEach((row, idx) => {
+                    row.dataset.index = idx;
+                    row.querySelectorAll('[name]').forEach(input => {
+                        input.name = input.name.replace(/\[\d+\]/, `[${idx}]`);
+                    });
+                });
+            }
+
+            // Setup existing rows
+            container.querySelectorAll('.volunteer-history-row').forEach(setupHistoryRow);
+
+            // Add new row
+            addButton.addEventListener('click', function() {
+                const index = getNextIndex();
+                const row = createVolunteerHistoryRow(index);
+                container.appendChild(row);
+                setupHistoryRow(row);
+                row.querySelector('input[type="date"]').focus();
             });
         })();
     </script>

@@ -8,6 +8,7 @@ using NodaTime;
 using Profiles.Application.DTOs;
 using Profiles.Application.Interfaces;
 using Profiles.Domain.Entities;
+using Profiles.Domain.Enums;
 using Profiles.Infrastructure.Data;
 using Profiles.Web.Models;
 
@@ -22,7 +23,9 @@ public class ProfileController : Controller
     private readonly ILogger<ProfileController> _logger;
     private readonly IConfiguration _configuration;
     private readonly IContactFieldService _contactFieldService;
+    private readonly IVolunteerHistoryService _volunteerHistoryService;
     private readonly IEmailService _emailService;
+    private readonly ITeamService _teamService;
 
     private const string EmailVerificationTokenPurpose = "PreferredEmailVerification";
     private const int VerificationCooldownMinutes = 5;
@@ -34,7 +37,9 @@ public class ProfileController : Controller
         ILogger<ProfileController> logger,
         IConfiguration configuration,
         IContactFieldService contactFieldService,
-        IEmailService emailService)
+        IVolunteerHistoryService volunteerHistoryService,
+        IEmailService emailService,
+        ITeamService teamService)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -42,7 +47,9 @@ public class ProfileController : Controller
         _logger = logger;
         _configuration = configuration;
         _contactFieldService = contactFieldService;
+        _volunteerHistoryService = volunteerHistoryService;
         _emailService = emailService;
+        _teamService = teamService;
     }
 
     public async Task<IActionResult> Index()
@@ -76,6 +83,26 @@ public class ProfileController : Controller
             ? await _contactFieldService.GetVisibleContactFieldsAsync(profile.Id, user.Id)
             : [];
 
+        // Get volunteer history entries
+        var volunteerHistory = profile != null
+            ? await _volunteerHistoryService.GetAllAsync(profile.Id)
+            : [];
+
+        // Get user's teams (excluding Volunteers system team)
+        var userTeams = await _teamService.GetUserTeamsAsync(user.Id);
+        var displayableTeams = userTeams
+            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
+            .OrderBy(tm => tm.Team.Name, StringComparer.Ordinal)
+            .Select(tm => new TeamMembershipViewModel
+            {
+                TeamId = tm.TeamId,
+                TeamName = tm.Team.Name,
+                TeamSlug = tm.Team.Slug,
+                IsMetalead = tm.Role == TeamMemberRole.Metalead,
+                IsSystemTeam = tm.Team.IsSystemTeam
+            })
+            .ToList();
+
         var viewModel = new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
@@ -101,7 +128,15 @@ public class ProfileController : Controller
                 Label = cf.Label,
                 Value = cf.Value,
                 Visibility = cf.Visibility
-            }).ToList()
+            }).ToList(),
+            VolunteerHistory = volunteerHistory.Select(vh => new VolunteerHistoryEntryViewModel
+            {
+                Id = vh.Id,
+                Date = vh.Date,
+                EventName = vh.EventName,
+                Description = vh.Description
+            }).ToList(),
+            Teams = displayableTeams
         };
 
         return View(viewModel);
@@ -122,6 +157,11 @@ public class ProfileController : Controller
         // Get all contact fields for editing
         var contactFields = profile != null
             ? await _contactFieldService.GetAllContactFieldsAsync(profile.Id)
+            : [];
+
+        // Get all volunteer history entries for editing
+        var volunteerHistory = profile != null
+            ? await _volunteerHistoryService.GetAllAsync(profile.Id)
             : [];
 
         var viewModel = new ProfileViewModel
@@ -150,6 +190,13 @@ public class ProfileController : Controller
                 Value = cf.Value,
                 Visibility = cf.Visibility,
                 DisplayOrder = cf.DisplayOrder
+            }).ToList(),
+            EditableVolunteerHistory = volunteerHistory.Select(vh => new VolunteerHistoryEntryEditViewModel
+            {
+                Id = vh.Id,
+                DateString = vh.Date.ToString("yyyy-MM-dd", null),
+                EventName = vh.EventName,
+                Description = vh.Description
             }).ToList()
         };
 
@@ -224,6 +271,19 @@ public class ProfileController : Controller
             .ToList();
 
         await _contactFieldService.SaveContactFieldsAsync(profile.Id, contactFieldDtos);
+
+        // Save volunteer history entries
+        var volunteerHistoryDtos = model.EditableVolunteerHistory
+            .Where(vh => !string.IsNullOrWhiteSpace(vh.EventName) && vh.ParsedDate.HasValue)
+            .Select(vh => new VolunteerHistoryEntryEditDto(
+                vh.Id,
+                vh.ParsedDate!.Value,
+                vh.EventName,
+                vh.Description
+            ))
+            .ToList();
+
+        await _volunteerHistoryService.SaveAsync(profile.Id, volunteerHistoryDtos);
 
         _logger.LogInformation("User {UserId} updated their profile", user.Id);
 

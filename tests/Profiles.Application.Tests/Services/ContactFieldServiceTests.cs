@@ -132,6 +132,62 @@ public class ContactFieldServiceTests : IDisposable
         result.Should().Be(ContactFieldVisibility.AllActiveProfiles);
     }
 
+    [Fact]
+    public async Task GetViewerAccessLevel_WhenOnlySharesVolunteersTeam_ReturnsAllActiveProfiles()
+    {
+        // Volunteers team is excluded from "shared team" visibility
+        var ownerId = Guid.NewGuid();
+        var viewerId = Guid.NewGuid();
+        var volunteersTeamId = Guid.NewGuid();
+
+        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
+            .Returns(new List<TeamMember>
+            {
+                CreateTeamMember(viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers)
+            });
+        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
+            .Returns(new List<TeamMember>
+            {
+                CreateTeamMember(ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers)
+            });
+
+        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
+
+        // Should NOT return MyTeams since Volunteers doesn't count
+        result.Should().Be(ContactFieldVisibility.AllActiveProfiles);
+    }
+
+    [Fact]
+    public async Task GetViewerAccessLevel_WhenSharesNonVolunteersTeam_ReturnsMyTeams()
+    {
+        // Sharing a non-Volunteers team should grant MyTeams visibility
+        var ownerId = Guid.NewGuid();
+        var viewerId = Guid.NewGuid();
+        var sharedTeamId = Guid.NewGuid();
+        var volunteersTeamId = Guid.NewGuid();
+
+        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
+            .Returns(new List<TeamMember>
+            {
+                CreateTeamMember(viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
+                CreateTeamMember(viewerId, TeamMemberRole.Member, sharedTeamId)
+            });
+        _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
+            .Returns(new List<TeamMember>
+            {
+                CreateTeamMember(ownerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
+                CreateTeamMember(ownerId, TeamMemberRole.Member, sharedTeamId)
+            });
+
+        var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
+
+        result.Should().Be(ContactFieldVisibility.MyTeams);
+    }
+
     #endregion
 
     #region GetVisibleContactFieldsAsync Tests
@@ -273,15 +329,25 @@ public class ContactFieldServiceTests : IDisposable
 
     #region Helper Methods
 
-    private TeamMember CreateTeamMember(Guid userId, TeamMemberRole role, Guid? teamId = null)
+    private TeamMember CreateTeamMember(Guid userId, TeamMemberRole role, Guid? teamId = null, SystemTeamType systemTeamType = SystemTeamType.None)
     {
+        var actualTeamId = teamId ?? Guid.NewGuid();
         return new TeamMember
         {
             Id = Guid.NewGuid(),
-            TeamId = teamId ?? Guid.NewGuid(),
+            TeamId = actualTeamId,
             UserId = userId,
             Role = role,
-            JoinedAt = _clock.GetCurrentInstant()
+            JoinedAt = _clock.GetCurrentInstant(),
+            Team = new Team
+            {
+                Id = actualTeamId,
+                Name = "Test Team",
+                Slug = "test-team",
+                SystemTeamType = systemTeamType,
+                CreatedAt = _clock.GetCurrentInstant(),
+                UpdatedAt = _clock.GetCurrentInstant()
+            }
         };
     }
 

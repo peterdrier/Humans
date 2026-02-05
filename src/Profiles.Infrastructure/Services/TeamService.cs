@@ -301,6 +301,7 @@ public partial class TeamService : ITeamService
         CancellationToken cancellationToken = default)
     {
         var request = await _dbContext.TeamJoinRequests
+            .Include(r => r.StateHistory)
             .FirstOrDefaultAsync(r => r.Id == requestId && r.UserId == userId, cancellationToken)
             ?? throw new InvalidOperationException("Join request not found");
 
@@ -310,6 +311,11 @@ public partial class TeamService : ITeamService
         }
 
         request.Withdraw(_clock);
+
+        // Explicitly mark the request as modified to ensure EF Core detects changes
+        // made by the Stateless state machine through private setters
+        _dbContext.Entry(request).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("User {UserId} withdrew join request {RequestId}", userId, requestId);
@@ -323,6 +329,7 @@ public partial class TeamService : ITeamService
     {
         var request = await _dbContext.TeamJoinRequests
             .Include(r => r.Team)
+            .Include(r => r.StateHistory)
             .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken)
             ?? throw new InvalidOperationException("Join request not found");
 
@@ -339,6 +346,10 @@ public partial class TeamService : ITeamService
         }
 
         request.Approve(approverUserId, notes, _clock);
+
+        // Explicitly mark the request as modified to ensure EF Core detects changes
+        // made by the Stateless state machine through private setters
+        _dbContext.Entry(request).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
 
         // Add as team member
         var member = new TeamMember
@@ -369,6 +380,7 @@ public partial class TeamService : ITeamService
         CancellationToken cancellationToken = default)
     {
         var request = await _dbContext.TeamJoinRequests
+            .Include(r => r.StateHistory)
             .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken)
             ?? throw new InvalidOperationException("Join request not found");
 
@@ -385,6 +397,11 @@ public partial class TeamService : ITeamService
         }
 
         request.Reject(approverUserId, reason, _clock);
+
+        // Explicitly mark the request as modified to ensure EF Core detects changes
+        // made by the Stateless state machine through private setters
+        _dbContext.Entry(request).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Approver {ApproverId} rejected join request {RequestId}", approverUserId, requestId);
