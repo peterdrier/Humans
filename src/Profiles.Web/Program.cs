@@ -124,10 +124,12 @@ builder.Services.AddHealthChecks()
     .AddNpgSql(connectionString, name: "postgresql")
     .AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire")
     .AddUrlGroup(new Uri("https://api.github.com"), name: "github-api")
-    .AddCheck<ConfigurationHealthCheck>("configuration");
+    .AddCheck<ConfigurationHealthCheck>("configuration")
+    .AddCheck<SmtpHealthCheck>("smtp");
 
 // Register Configuration
 builder.Services.Configure<GitHubSettings>(builder.Configuration.GetSection(GitHubSettings.SectionName));
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName));
 
 // Register Application Services
 builder.Services.AddScoped<IConsentRecordRepository, ConsentRecordRepository>();
@@ -135,7 +137,7 @@ builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IContactFieldService, ContactFieldService>();
 builder.Services.AddScoped<ILegalDocumentSyncService, LegalDocumentSyncService>();
 builder.Services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
-builder.Services.AddScoped<IEmailService, StubEmailService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IMembershipCalculator, MembershipCalculator>();
 builder.Services.AddScoped<SystemTeamSyncJob>();
 builder.Services.AddScoped<SyncLegalDocumentsJob>();

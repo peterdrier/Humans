@@ -323,23 +323,21 @@ Syncs legal documents from configurable GitHub repository:
 
 ---
 
-### Issue 24: Integration - Implement Real EmailService :x: TODO
+### Issue 24: Integration - Implement Real EmailService :white_check_mark: DONE
 
-**Status:** Stubbed - logs to console instead of sending emails
+**Status:** Implemented with Gmail SMTP relay via MailKit
 
-**Priority:** MEDIUM - App runs but users won't receive notifications.
+Features:
+- All 11 email types implemented with HTML templates
+- Plain text fallback for each email
+- Configurable SMTP settings (host, port, credentials)
+- Professional email templates with consistent branding
 
-Current `StubEmailService` needs to be replaced with real email provider.
+**Configuration:** `appsettings.json` Email section + user secrets for credentials
 
-**11 email types need implementation:**
-- Application submitted/approved/rejected
-- Welcome email
-- Re-consent required/reminder
-- Access suspended
-- Email verification
-- Account deletion requested/completed
-
-**Suggested providers:** SendGrid, Mailgun, or SMTP relay
+**Files:**
+- `Infrastructure/Configuration/EmailSettings.cs`
+- `Infrastructure/Services/SmtpEmailService.cs`
 
 ---
 
@@ -366,11 +364,11 @@ Current `StubGoogleSyncService` needs Google Workspace Admin SDK integration.
 |----------|-------|------|------|-------------|
 | CRITICAL | 5 | 5 | 0 | 0 |
 | HIGH | 6 | 5 | 0 | 1 |
-| MEDIUM | 9 | 8 | 1 | 0 |
+| MEDIUM | 9 | 9 | 0 | 0 |
 | LOW | 5 | 3 | 2 | 0 |
-| **TOTAL** | **25** | **21** | **3** | **1** |
+| **TOTAL** | **25** | **22** | **2** | **1** |
 
-### Completed (21)
+### Completed (22)
 - #1 HTTP Security Headers
 - #2 GDPR Data Deletion (30-day grace period, anonymization)
 - #3 GDPR Data Export (JSON format)
@@ -392,10 +390,10 @@ Current `StubGoogleSyncService` needs Google Workspace Admin SDK integration.
 - #20 Null Reference Review (no change needed)
 - #22 Pagination for List Views
 - #23 LegalDocumentSyncService (GitHub/Octokit integration)
+- #24 EmailService (Gmail SMTP relay via MailKit)
 
-### Remaining Todo (3)
+### Remaining Todo (2)
 - #21 AllowedHosts (needs production domain names)
-- #24 EmailService (stubbed - logs only)
 - #25 GoogleSyncService (stubbed - logs only)
 
 ### Needs Business Input (1)
@@ -403,4 +401,4 @@ Current `StubGoogleSyncService` needs Google Workspace Admin SDK integration.
 
 ---
 
-*Last updated: 2026-02-05 by Claude (LegalDocumentSyncService implemented)*
+*Last updated: 2026-02-05 by Claude (EmailService implemented)*
