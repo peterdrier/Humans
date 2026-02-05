@@ -16,6 +16,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Profiles.Application.Interfaces;
 using Profiles.Domain.Entities;
+using Profiles.Infrastructure.Configuration;
 using Profiles.Infrastructure.Data;
 using Profiles.Infrastructure.Jobs;
 using Profiles.Infrastructure.Repositories;
@@ -125,14 +126,19 @@ builder.Services.AddHealthChecks()
     .AddUrlGroup(new Uri("https://api.github.com"), name: "github-api")
     .AddCheck<ConfigurationHealthCheck>("configuration");
 
+// Register Configuration
+builder.Services.Configure<GitHubSettings>(builder.Configuration.GetSection(GitHubSettings.SectionName));
+
 // Register Application Services
 builder.Services.AddScoped<IConsentRecordRepository, ConsentRecordRepository>();
 builder.Services.AddScoped<ITeamService, TeamService>();
 builder.Services.AddScoped<IContactFieldService, ContactFieldService>();
+builder.Services.AddScoped<ILegalDocumentSyncService, LegalDocumentSyncService>();
 builder.Services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
 builder.Services.AddScoped<IEmailService, StubEmailService>();
 builder.Services.AddScoped<IMembershipCalculator, MembershipCalculator>();
 builder.Services.AddScoped<SystemTeamSyncJob>();
+builder.Services.AddScoped<SyncLegalDocumentsJob>();
 
 // Configure Response Compression
 builder.Services.AddResponseCompression(options =>

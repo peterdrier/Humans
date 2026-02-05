@@ -302,23 +302,24 @@ All views use consistent pagination UI pattern with page number links.
 
 ## Service Implementations (Stubbed)
 
-### Issue 23: Integration - Implement LegalDocumentSyncService :x: TODO (BLOCKING)
+### Issue 23: Integration - Implement LegalDocumentSyncService :white_check_mark: DONE
 
-**Status:** Not started - **NO IMPLEMENTATION EXISTS**
+**Status:** Implemented with GitHub API integration (Octokit)
 
-**Priority:** CRITICAL - App will crash at runtime because service isn't registered in DI.
+Syncs legal documents from configurable GitHub repository:
+- Fetches Spanish (canonical) and English (translation) versions
+- Tracks commit SHAs to detect content changes
+- Creates new `DocumentVersion` records when content updates
+- Supports all document types: Statutes, PrivacyPolicy, TermsAndConditions, CodeOfConduct
 
-The `ILegalDocumentSyncService` interface exists but has no implementation. Jobs that depend on it (`SyncLegalDocumentsJob`, `SendReConsentReminderJob`) will fail.
+**Configuration:** `appsettings.json` GitHub section with:
+- Owner/Repository/Branch
+- Optional AccessToken for private repos
+- Document path mappings per type
 
-**Required functionality:**
-- Sync legal documents from GitHub repository (`nobodies-collective/legal`)
-- Compare commit SHAs to detect updates
-- Create new `DocumentVersion` records when content changes
-- Get active documents and required versions for consent checks
-
-**Options:**
-1. Create stub implementation (minimum to run)
-2. Implement real GitHub API integration
+**Files:**
+- `Infrastructure/Configuration/GitHubSettings.cs`
+- `Infrastructure/Services/LegalDocumentSyncService.cs`
 
 ---
 
@@ -363,13 +364,13 @@ Current `StubGoogleSyncService` needs Google Workspace Admin SDK integration.
 
 | Priority | Total | Done | Todo | Needs Input |
 |----------|-------|------|------|-------------|
-| CRITICAL | 5 | 4 | 1 | 0 |
+| CRITICAL | 5 | 5 | 0 | 0 |
 | HIGH | 6 | 5 | 0 | 1 |
 | MEDIUM | 9 | 8 | 1 | 0 |
 | LOW | 5 | 3 | 2 | 0 |
-| **TOTAL** | **25** | **20** | **4** | **1** |
+| **TOTAL** | **25** | **21** | **3** | **1** |
 
-### Completed (20)
+### Completed (21)
 - #1 HTTP Security Headers
 - #2 GDPR Data Deletion (30-day grace period, anonymization)
 - #3 GDPR Data Export (JSON format)
@@ -390,10 +391,10 @@ Current `StubGoogleSyncService` needs Google Workspace Admin SDK integration.
 - #19 Re-consent Notifications
 - #20 Null Reference Review (no change needed)
 - #22 Pagination for List Views
+- #23 LegalDocumentSyncService (GitHub/Octokit integration)
 
-### Remaining Todo (4)
+### Remaining Todo (3)
 - #21 AllowedHosts (needs production domain names)
-- #23 LegalDocumentSyncService (**BLOCKING** - no implementation exists)
 - #24 EmailService (stubbed - logs only)
 - #25 GoogleSyncService (stubbed - logs only)
 
@@ -402,4 +403,4 @@ Current `StubGoogleSyncService` needs Google Workspace Admin SDK integration.
 
 ---
 
-*Last updated: 2026-02-05 by Claude (added stubbed service issues)*
+*Last updated: 2026-02-05 by Claude (LegalDocumentSyncService implemented)*
