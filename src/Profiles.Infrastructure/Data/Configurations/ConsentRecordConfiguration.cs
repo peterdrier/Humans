@@ -42,5 +42,6 @@ public class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord
         builder.HasIndex(cr => cr.UserId);
         builder.HasIndex(cr => cr.DocumentVersionId);
         builder.HasIndex(cr => cr.ConsentedAt);
+        builder.HasIndex(cr => new { cr.UserId, cr.ExplicitConsent, cr.ConsentedAt });
     }
 }

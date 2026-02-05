@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Profiles.Domain.Enums;
 using Profiles.Infrastructure.Data;
+using Profiles.Web.Extensions;
 using Profiles.Web.Models;
 using MemberApplication = Profiles.Domain.Entities.Application;
 
@@ -56,7 +57,7 @@ public class ApplicationController : Controller
                 Status = a.Status.ToString(),
                 SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
                 ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
-                StatusBadgeClass = GetStatusBadgeClass(a.Status)
+                StatusBadgeClass = a.Status.GetBadgeClass()
             }).ToList(),
             CanSubmitNew = !hasPendingApplication
         };
@@ -220,16 +221,4 @@ public class ApplicationController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private static string GetStatusBadgeClass(ApplicationStatus status)
-    {
-        return status switch
-        {
-            ApplicationStatus.Submitted => "bg-primary",
-            ApplicationStatus.UnderReview => "bg-info",
-            ApplicationStatus.Approved => "bg-success",
-            ApplicationStatus.Rejected => "bg-danger",
-            ApplicationStatus.Withdrawn => "bg-secondary",
-            _ => "bg-secondary"
-        };
-    }
 }

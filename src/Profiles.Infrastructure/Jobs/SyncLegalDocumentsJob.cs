@@ -1,6 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Profiles.Application.Interfaces;
+using Profiles.Infrastructure.Data;
 
 namespace Profiles.Infrastructure.Jobs;
 
@@ -11,17 +13,23 @@ public class SyncLegalDocumentsJob
 {
     private readonly ILegalDocumentSyncService _syncService;
     private readonly IEmailService _emailService;
+    private readonly IMembershipCalculator _membershipCalculator;
+    private readonly ProfilesDbContext _dbContext;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
     private readonly IClock _clock;
 
     public SyncLegalDocumentsJob(
         ILegalDocumentSyncService syncService,
         IEmailService emailService,
+        IMembershipCalculator membershipCalculator,
+        ProfilesDbContext dbContext,
         ILogger<SyncLegalDocumentsJob> logger,
         IClock clock)
     {
         _syncService = syncService;
         _emailService = emailService;
+        _membershipCalculator = membershipCalculator;
+        _dbContext = dbContext;
         _logger = logger;
         _clock = clock;
     }
@@ -44,7 +52,8 @@ public class SyncLegalDocumentsJob
                     updatedDocs.Count,
                     string.Join(", ", updatedDocs.Select(d => d.Name)));
 
-                // TODO: Trigger re-consent notifications for members
+                // Send re-consent notifications to affected members
+                await SendReConsentNotificationsAsync(updatedDocs, cancellationToken);
             }
             else
             {
@@ -56,5 +65,55 @@ public class SyncLegalDocumentsJob
             _logger.LogError(ex, "Error syncing legal documents");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Sends re-consent notifications to members who need to consent to updated documents.
+    /// </summary>
+    private async Task SendReConsentNotificationsAsync(
+        IReadOnlyList<Domain.Entities.LegalDocument> updatedDocs,
+        CancellationToken cancellationToken)
+    {
+        // Get users who need to re-consent
+        var usersNeedingReConsent = await _membershipCalculator
+            .GetUsersRequiringStatusUpdateAsync(cancellationToken);
+
+        if (usersNeedingReConsent.Count == 0)
+        {
+            _logger.LogInformation("No users require re-consent notifications");
+            return;
+        }
+
+        var documentNames = string.Join(", ", updatedDocs.Select(d => d.Name));
+        var notificationCount = 0;
+
+        foreach (var userId in usersNeedingReConsent)
+        {
+            var user = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+            var effectiveEmail = user?.GetEffectiveEmail();
+            if (effectiveEmail == null)
+            {
+                continue;
+            }
+
+            // Send notification for each updated document that requires re-consent
+            foreach (var doc in updatedDocs.Where(d => d.IsRequired))
+            {
+                await _emailService.SendReConsentRequiredAsync(
+                    effectiveEmail,
+                    user!.DisplayName,
+                    doc.Name,
+                    cancellationToken);
+            }
+
+            notificationCount++;
+        }
+
+        _logger.LogInformation(
+            "Sent re-consent notifications to {Count} users for documents: {Documents}",
+            notificationCount, documentNames);
     }
 }

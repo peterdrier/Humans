@@ -45,6 +45,7 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplicati
         builder.HasIndex(a => a.UserId);
         builder.HasIndex(a => a.Status);
         builder.HasIndex(a => a.SubmittedAt);
+        builder.HasIndex(a => new { a.UserId, a.Status });
 
         // Ignore the state machine property
         builder.Ignore(a => a.StateMachine);

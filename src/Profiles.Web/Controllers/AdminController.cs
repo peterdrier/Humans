@@ -7,6 +7,7 @@ using Profiles.Application.Interfaces;
 using Profiles.Domain.Entities;
 using Profiles.Domain.Enums;
 using Profiles.Infrastructure.Data;
+using Profiles.Web.Extensions;
 using Profiles.Web.Models;
 using MemberApplication = Profiles.Domain.Entities.Application;
 
@@ -173,7 +174,7 @@ public class AdminController : Controller
                 UserEmail = a.User.Email ?? string.Empty,
                 UserDisplayName = a.User.DisplayName,
                 Status = a.Status.ToString(),
-                StatusBadgeClass = GetStatusBadgeClass(a.Status),
+                StatusBadgeClass = a.Status.GetBadgeClass(),
                 SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
                 MotivationPreview = a.Motivation.Length > 100 ? a.Motivation.Substring(0, 100) + "..." : a.Motivation
             })
@@ -371,19 +372,6 @@ public class AdminController : Controller
 
         TempData["SuccessMessage"] = "Member unsuspended.";
         return RedirectToAction(nameof(MemberDetail), new { id });
-    }
-
-    private static string GetStatusBadgeClass(ApplicationStatus status)
-    {
-        return status switch
-        {
-            ApplicationStatus.Submitted => "bg-primary",
-            ApplicationStatus.UnderReview => "bg-info",
-            ApplicationStatus.Approved => "bg-success",
-            ApplicationStatus.Rejected => "bg-danger",
-            ApplicationStatus.Withdrawn => "bg-secondary",
-            _ => "bg-secondary"
-        };
     }
 
     [HttpGet("Teams")]

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Profiles.Application.Interfaces;
+using Profiles.Domain.Constants;
 using Profiles.Domain.Entities;
 using Profiles.Domain.Enums;
 using Profiles.Infrastructure.Data;
@@ -477,7 +478,7 @@ public partial class TeamService : ITeamService
         return await _dbContext.RoleAssignments
             .AnyAsync(ra =>
                 ra.UserId == userId &&
-                ra.RoleName == "Board" &&
+                ra.RoleName == RoleNames.Board &&
                 ra.ValidFrom <= now &&
                 (ra.ValidTo == null || ra.ValidTo > now),
                 cancellationToken);

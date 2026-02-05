@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Profiles.Application.Interfaces;
+using Profiles.Domain.Constants;
 using Profiles.Domain.Entities;
 using Profiles.Domain.Enums;
 using Profiles.Infrastructure.Data;
@@ -138,7 +139,7 @@ public class SystemTeamSyncJob
         // Get all users with active Board role assignment
         var boardMemberIds = await _dbContext.RoleAssignments
             .Where(ra =>
-                ra.RoleName == "Board" &&
+                ra.RoleName == RoleNames.Board &&
                 ra.ValidFrom <= now &&
                 (ra.ValidTo == null || ra.ValidTo > now))
             .Select(ra => ra.UserId)

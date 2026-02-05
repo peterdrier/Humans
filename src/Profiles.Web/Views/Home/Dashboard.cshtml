@@ -18,7 +18,7 @@
             }
             <div>
                 <h1 class="mb-0">Welcome, @Model.DisplayName</h1>
-                <span class="badge @GetStatusBadgeClass(Model.MembershipStatus) fs-6">@Model.MembershipStatus</span>
+                <span class="badge @StatusBadgeExtensions.GetMembershipStatusBadgeClass(Model.MembershipStatus) fs-6">@Model.MembershipStatus</span>
             </div>
         </div>
     </div>
@@ -99,7 +99,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <strong>Latest Application:</strong>
-                            <span class="badge @GetApplicationBadgeClass(Model.LatestApplicationStatus)">@Model.LatestApplicationStatus</span>
+                            <span class="badge @StatusBadgeExtensions.GetApplicationStatusBadgeClass(Model.LatestApplicationStatus)">@Model.LatestApplicationStatus</span>
                         </div>
                         <small class="text-muted">@Model.LatestApplicationDate?.ToString("d MMM yyyy")</small>
                     </div>
@@ -123,7 +123,7 @@
                 <dl class="row mb-0">
                     <dt class="col-6">Status</dt>
                     <dd class="col-6">
-                        <span class="badge @GetStatusBadgeClass(Model.MembershipStatus)">@Model.MembershipStatus</span>
+                        <span class="badge @StatusBadgeExtensions.GetMembershipStatusBadgeClass(Model.MembershipStatus)">@Model.MembershipStatus</span>
                     </dd>
                     <dt class="col-6">Member Since</dt>
                     <dd class="col-6">@Model.MemberSince.ToString("MMM yyyy")</dd>
@@ -154,28 +154,3 @@
     </div>
 </div>
 
-@functions {
-    string GetStatusBadgeClass(string status)
-    {
-        return status switch
-        {
-            "Active" => "bg-success",
-            "Inactive" => "bg-warning text-dark",
-            "Suspended" => "bg-danger",
-            _ => "bg-secondary"
-        };
-    }
-
-    string GetApplicationBadgeClass(string? status)
-    {
-        return status switch
-        {
-            "Submitted" => "bg-primary",
-            "UnderReview" => "bg-info",
-            "Approved" => "bg-success",
-            "Rejected" => "bg-danger",
-            "Withdrawn" => "bg-secondary",
-            _ => "bg-secondary"
-        };
-    }
-}
