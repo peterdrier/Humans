@@ -45,4 +45,15 @@ public interface IMembershipCalculator
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of user IDs that should be marked inactive.</returns>
     Task<IReadOnlyList<Guid>> GetUsersRequiringStatusUpdateAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Filters a set of user IDs to only those who have all required consents.
+    /// This is a batch operation that avoids N+1 queries.
+    /// </summary>
+    /// <param name="userIds">The user IDs to filter.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>User IDs that have all required consents.</returns>
+    Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default);
 }

@@ -73,20 +73,14 @@ public class SystemTeamSyncJob
 
         // Get all users with profiles
         var allUserIds = await _dbContext.Profiles
+            .AsNoTracking()
             .Where(p => !p.IsSuspended)
             .Select(p => p.UserId)
             .ToListAsync(cancellationToken);
 
-        // Filter to those with all required consents
-        var eligibleUserIds = new List<Guid>();
-        foreach (var userId in allUserIds)
-        {
-            var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsAsync(userId, cancellationToken);
-            if (hasAllConsents)
-            {
-                eligibleUserIds.Add(userId);
-            }
-        }
+        // Filter to those with all required consents using batch method to avoid N+1
+        var eligibleUserIdSet = await _membershipCalculator.GetUsersWithAllRequiredConsentsAsync(allUserIds, cancellationToken);
+        var eligibleUserIds = eligibleUserIdSet.ToList();
 
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken);
     }
@@ -108,6 +102,7 @@ public class SystemTeamSyncJob
 
         // Get all current metaleads (excluding the Metaleads system team itself)
         var metaleadUserIds = await _dbContext.TeamMembers
+            .AsNoTracking()
             .Where(tm =>
                 tm.LeftAt == null &&
                 tm.Role == TeamMemberRole.Metalead &&
@@ -138,6 +133,7 @@ public class SystemTeamSyncJob
 
         // Get all users with active Board role assignment
         var boardMemberIds = await _dbContext.RoleAssignments
+            .AsNoTracking()
             .Where(ra =>
                 ra.RoleName == RoleNames.Board &&
                 ra.ValidFrom <= now &&

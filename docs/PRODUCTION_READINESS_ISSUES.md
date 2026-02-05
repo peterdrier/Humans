@@ -54,17 +54,20 @@ Added middleware for:
 
 ---
 
-### Issue 4: Performance - Fix N+1 Query Problems :x: TODO
+### Issue 4: Performance - Fix N+1 Query Problems :white_check_mark: DONE
 
-**Status:** Not started
+**Status:** Implemented
 
-**Affected Locations:**
-- `SystemTeamSyncJob.cs` - loops calling `HasAllRequiredConsentsAsync`
-- `SuspendNonCompliantMembersJob.cs` - loops with multiple queries
-- `TeamController.MyTeams` - loops calling `GetPendingRequestsForTeamAsync`
-- `MembershipCalculator.GetUsersRequiringStatusUpdateAsync`
+Added batch query methods to eliminate N+1 patterns:
+- `IConsentRecordRepository.GetConsentedVersionIdsByUsersAsync` - batch load consents for multiple users
+- `IMembershipCalculator.GetUsersWithAllRequiredConsentsAsync` - batch check consent compliance
+- `ITeamService.GetPendingRequestCountsByTeamIdsAsync` - batch load pending request counts
 
-**Requires:** Refactoring to batch query patterns
+Updated callers:
+- `SystemTeamSyncJob.SyncVolunteersTeamAsync` - uses batch consent check
+- `MembershipCalculator.GetUsersRequiringStatusUpdateAsync` - uses batch consent check
+- `SuspendNonCompliantMembersJob.ExecuteAsync` - batch loads users with profiles
+- `TeamController.MyTeams` - uses batch pending request counts
 
 ---
 
@@ -145,11 +148,17 @@ Configured ForwardedHeaders for X-Forwarded-For and X-Forwarded-Proto.
 
 ---
 
-### Issue 12: Performance - Add AsNoTracking to Read-Only Queries :x: TODO
+### Issue 12: Performance - Add AsNoTracking to Read-Only Queries :white_check_mark: DONE
 
-**Status:** Not started
+**Status:** Implemented
 
-Requires audit of all queries to identify read-only operations.
+Added `AsNoTracking()` to read-only queries in:
+- `TeamService.cs` - GetTeamBySlugAsync, GetTeamByIdAsync, GetAllTeamsAsync, GetUserCreatedTeamsAsync, GetUserTeamsAsync, GetPendingRequestsForApproverAsync, GetPendingRequestsForTeamAsync, GetUserPendingRequestAsync, GetTeamMembersAsync
+- `MembershipCalculator.cs` - GetUsersRequiringStatusUpdateAsync
+- `SystemTeamSyncJob.cs` - profile/member/role assignment queries
+- `SuspendNonCompliantMembersJob.cs` - user batch load query
+
+Note: `ContactFieldService.cs` and `ConsentRecordRepository.cs` already had proper AsNoTracking usage.
 
 ---
 
@@ -260,18 +269,20 @@ Lower priority - can be addressed when data volumes increase.
 
 | Priority | Total | Done | Todo | Needs Input |
 |----------|-------|------|------|-------------|
-| CRITICAL | 4 | 1 | 1 | 2 |
+| CRITICAL | 4 | 2 | 0 | 2 |
 | HIGH | 6 | 4 | 0 | 2 |
-| MEDIUM | 8 | 6 | 1 | 1 |
+| MEDIUM | 8 | 7 | 0 | 1 |
 | LOW | 4 | 2 | 2 | 0 |
-| **TOTAL** | **22** | **13** | **4** | **5** |
+| **TOTAL** | **22** | **15** | **2** | **5** |
 
-### Completed (13)
+### Completed (15)
 - #1 HTTP Security Headers
+- #4 N+1 Query Fixes
 - #6 Rate Limiting
 - #7 DTO Validation
 - #9 Database Indexes
 - #10 ForwardedHeaders
+- #12 AsNoTracking for Read-Only Queries
 - #13 GetStatusBadgeClass Extraction
 - #14 Constants for Magic Strings
 - #15 CSRF on ExternalLogin
@@ -280,9 +291,7 @@ Lower priority - can be addressed when data volumes increase.
 - #19 Re-consent Notifications
 - #20 Null Reference Review (no change needed)
 
-### Remaining Todo (4)
-- #4 N+1 Query Fixes (requires refactoring)
-- #12 AsNoTracking (requires query audit)
+### Remaining Todo (2)
 - #21 AllowedHosts (needs domain names)
 - #22 Pagination (lower priority)
 
@@ -296,4 +305,4 @@ Lower priority - can be addressed when data volumes increase.
 
 ---
 
-*Last updated: 2026-02-05 by Claude*
+*Last updated: 2026-02-05 by Claude (N+1 and AsNoTracking fixes)*

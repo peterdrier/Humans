@@ -88,4 +88,32 @@ public class ConsentRecordRepository : IConsentRecordRepository
             .Select(u => u.Id)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentedVersionIdsByUsersAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        var userIdList = userIds.ToList();
+        if (userIdList.Count == 0)
+        {
+            return new Dictionary<Guid, IReadOnlySet<Guid>>();
+        }
+
+        var consents = await _context.ConsentRecords
+            .AsNoTracking()
+            .Where(cr => userIdList.Contains(cr.UserId) && cr.ExplicitConsent)
+            .Select(cr => new { cr.UserId, cr.DocumentVersionId })
+            .ToListAsync(cancellationToken);
+
+        var result = userIdList.ToDictionary(
+            id => id,
+            _ => (IReadOnlySet<Guid>)new HashSet<Guid>());
+
+        foreach (var consent in consents)
+        {
+            ((HashSet<Guid>)result[consent.UserId]).Add(consent.DocumentVersionId);
+        }
+
+        return result;
+    }
 }

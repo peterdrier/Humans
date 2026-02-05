@@ -56,4 +56,14 @@ public interface IConsentRecordRepository
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of user IDs without consent.</returns>
     Task<IReadOnlyList<Guid>> GetUsersWithoutConsentAsync(Guid documentVersionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets consented version IDs for multiple users in a single query.
+    /// </summary>
+    /// <param name="userIds">The user IDs to check.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Dictionary mapping user ID to set of consented version IDs.</returns>
+    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentedVersionIdsByUsersAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default);
 }

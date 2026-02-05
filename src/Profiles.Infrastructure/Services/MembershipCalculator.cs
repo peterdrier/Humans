@@ -110,22 +110,61 @@ public class MembershipCalculator : IMembershipCalculator
         var now = _clock.GetCurrentInstant();
 
         var usersWithActiveRoles = await _dbContext.RoleAssignments
+            .AsNoTracking()
             .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
             .Select(ra => ra.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        var usersNeedingUpdate = new List<Guid>();
+        // Use batch method to avoid N+1 queries
+        var usersWithAllConsents = await GetUsersWithAllRequiredConsentsAsync(usersWithActiveRoles, cancellationToken);
 
-        foreach (var userId in usersWithActiveRoles)
+        return usersWithActiveRoles
+            .Where(userId => !usersWithAllConsents.Contains(userId))
+            .ToList();
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        var userIdList = userIds.ToList();
+        if (userIdList.Count == 0)
         {
-            var hasAllConsents = await HasAllRequiredConsentsAsync(userId, cancellationToken);
-            if (!hasAllConsents)
+            return new HashSet<Guid>();
+        }
+
+        // Get current versions of all required documents
+        var requiredVersionIds = await _dbContext.LegalDocuments
+            .AsNoTracking()
+            .Where(d => d.IsRequired && d.IsActive)
+            .SelectMany(d => d.Versions)
+            .Where(v => v.EffectiveFrom <= _clock.GetCurrentInstant())
+            .GroupBy(v => v.LegalDocumentId)
+            .Select(g => g.OrderByDescending(v => v.EffectiveFrom).First().Id)
+            .ToListAsync(cancellationToken);
+
+        if (requiredVersionIds.Count == 0)
+        {
+            // No required documents, all users have "all" consents
+            return userIdList.ToHashSet();
+        }
+
+        // Get consented version IDs for all users in batch
+        var consentsByUser = await _consentRepository.GetConsentedVersionIdsByUsersAsync(userIdList, cancellationToken);
+
+        var requiredSet = requiredVersionIds.ToHashSet();
+        var result = new HashSet<Guid>();
+
+        foreach (var userId in userIdList)
+        {
+            if (consentsByUser.TryGetValue(userId, out var consented) &&
+                requiredSet.All(consented.Contains))
             {
-                usersNeedingUpdate.Add(userId);
+                result.Add(userId);
             }
         }
 
-        return usersNeedingUpdate;
+        return result;
     }
 }

@@ -139,30 +139,29 @@ public class TeamController : Controller
         var memberships = await _teamService.GetUserTeamsAsync(user.Id);
         var isBoardMember = await _teamService.IsUserBoardMemberAsync(user.Id);
 
-        var membershipVMs = new List<MyTeamMembershipViewModel>();
-        foreach (var m in memberships)
-        {
-            var canManage = m.Role == TeamMemberRole.Metalead || isBoardMember;
-            var pendingCount = 0;
-            if (canManage && !m.Team.IsSystemTeam)
-            {
-                var requests = await _teamService.GetPendingRequestsForTeamAsync(m.TeamId);
-                pendingCount = requests.Count;
-            }
+        // Get team IDs where user can manage and team is not a system team
+        var manageableTeamIds = memberships
+            .Where(m => (m.Role == TeamMemberRole.Metalead || isBoardMember) && !m.Team.IsSystemTeam)
+            .Select(m => m.TeamId)
+            .ToList();
 
-            membershipVMs.Add(new MyTeamMembershipViewModel
-            {
-                TeamId = m.TeamId,
-                TeamName = m.Team.Name,
-                TeamSlug = m.Team.Slug,
-                IsSystemTeam = m.Team.IsSystemTeam,
-                Role = m.Role.ToString(),
-                IsMetalead = m.Role == TeamMemberRole.Metalead,
-                JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-                CanLeave = !m.Team.IsSystemTeam,
-                PendingRequestCount = pendingCount
-            });
-        }
+        // Batch load pending request counts to avoid N+1
+        var pendingCounts = manageableTeamIds.Count > 0
+            ? await _teamService.GetPendingRequestCountsByTeamIdsAsync(manageableTeamIds)
+            : new Dictionary<Guid, int>();
+
+        var membershipVMs = memberships.Select(m => new MyTeamMembershipViewModel
+        {
+            TeamId = m.TeamId,
+            TeamName = m.Team.Name,
+            TeamSlug = m.Team.Slug,
+            IsSystemTeam = m.Team.IsSystemTeam,
+            Role = m.Role.ToString(),
+            IsMetalead = m.Role == TeamMemberRole.Metalead,
+            JoinedAt = m.JoinedAt.ToDateTimeUtc(),
+            CanLeave = !m.Team.IsSystemTeam,
+            PendingRequestCount = pendingCounts.GetValueOrDefault(m.TeamId, 0)
+        }).ToList();
 
         // Get pending join requests for this user
         // Note: We'd need a method to get user's pending requests, for now just skip

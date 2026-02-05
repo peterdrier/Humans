@@ -43,36 +43,50 @@ public class SuspendNonCompliantMembersJob
 
         try
         {
+            // GetUsersRequiringStatusUpdateAsync already identifies users missing consents
+            // who have active roles - these users will have Inactive status
             var usersToUpdate = await _membershipCalculator
                 .GetUsersRequiringStatusUpdateAsync(cancellationToken);
 
+            if (usersToUpdate.Count == 0)
+            {
+                _logger.LogInformation("Completed non-compliant member check, no users require update");
+                return;
+            }
+
+            // Batch load all users with profiles to avoid N+1
+            var users = await _dbContext.Users
+                .AsNoTracking()
+                .Include(u => u.Profile)
+                .Where(u => usersToUpdate.Contains(u.Id))
+                .ToListAsync(cancellationToken);
+
+            var userLookup = users.ToDictionary(u => u.Id);
             var suspendedCount = 0;
 
             foreach (var userId in usersToUpdate)
             {
-                var status = await _membershipCalculator.ComputeStatusAsync(userId, cancellationToken);
-
-                if (status == MembershipStatus.Inactive)
+                // GetUsersRequiringStatusUpdateAsync already verified these users are missing consents
+                // and have active roles, so they will compute as Inactive
+                if (!userLookup.TryGetValue(userId, out var user))
                 {
-                    var user = await _dbContext.Users
-                        .Include(u => u.Profile)
-                        .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+                    continue;
+                }
 
-                    var effectiveEmail = user?.GetEffectiveEmail();
-                    if (effectiveEmail != null)
-                    {
-                        await _emailService.SendAccessSuspendedAsync(
-                            effectiveEmail,
-                            user!.DisplayName,
-                            "Missing required document consent",
-                            cancellationToken);
+                var effectiveEmail = user.GetEffectiveEmail();
+                if (effectiveEmail != null)
+                {
+                    await _emailService.SendAccessSuspendedAsync(
+                        effectiveEmail,
+                        user.DisplayName,
+                        "Missing required document consent",
+                        cancellationToken);
 
-                        _logger.LogWarning(
-                            "User {UserId} ({Email}) access suspended due to missing consent",
-                            userId, effectiveEmail);
+                    _logger.LogWarning(
+                        "User {UserId} ({Email}) access suspended due to missing consent",
+                        userId, effectiveEmail);
 
-                        suspendedCount++;
-                    }
+                    suspendedCount++;
                 }
             }
 

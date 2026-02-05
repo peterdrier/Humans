@@ -72,6 +72,7 @@ public partial class TeamService : ITeamService
     public async Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Teams
+            .AsNoTracking()
             .Include(t => t.Members.Where(m => m.LeftAt == null))
                 .ThenInclude(m => m.User)
             .FirstOrDefaultAsync(t => t.Slug == slug, cancellationToken);
@@ -80,6 +81,7 @@ public partial class TeamService : ITeamService
     public async Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Teams
+            .AsNoTracking()
             .Include(t => t.Members.Where(m => m.LeftAt == null))
                 .ThenInclude(m => m.User)
             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
@@ -88,6 +90,7 @@ public partial class TeamService : ITeamService
     public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.Teams
+            .AsNoTracking()
             .Where(t => t.IsActive)
             .OrderBy(t => t.Name)
             .Include(t => t.Members.Where(m => m.LeftAt == null))
@@ -97,6 +100,7 @@ public partial class TeamService : ITeamService
     public async Task<IReadOnlyList<Team>> GetUserCreatedTeamsAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.Teams
+            .AsNoTracking()
             .Where(t => t.IsActive && t.SystemTeamType == SystemTeamType.None)
             .OrderBy(t => t.Name)
             .Include(t => t.Members.Where(m => m.LeftAt == null))
@@ -106,6 +110,7 @@ public partial class TeamService : ITeamService
     public async Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.TeamMembers
+            .AsNoTracking()
             .Where(tm => tm.UserId == userId && tm.LeftAt == null)
             .Include(tm => tm.Team)
             .OrderBy(tm => tm.Team.Name)
@@ -180,6 +185,7 @@ public partial class TeamService : ITeamService
 
         // Check for existing pending request
         var existingRequest = await _dbContext.TeamJoinRequests
+            .AsNoTracking()
             .FirstOrDefaultAsync(r => r.TeamId == teamId && r.UserId == userId && r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
 
         if (existingRequest != null)
@@ -231,6 +237,7 @@ public partial class TeamService : ITeamService
 
         // Check if already a member
         var existingMember = await _dbContext.TeamMembers
+            .AsNoTracking()
             .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId && tm.LeftAt == null, cancellationToken);
 
         if (existingMember != null)
@@ -391,11 +398,13 @@ public partial class TeamService : ITeamService
 
         // Get teams where user is metalead
         var metaleadTeamIds = await _dbContext.TeamMembers
+            .AsNoTracking()
             .Where(tm => tm.UserId == approverUserId && tm.LeftAt == null && tm.Role == TeamMemberRole.Metalead)
             .Select(tm => tm.TeamId)
             .ToListAsync(cancellationToken);
 
         IQueryable<TeamJoinRequest> query = _dbContext.TeamJoinRequests
+            .AsNoTracking()
             .Include(r => r.Team)
             .Include(r => r.User)
             .Where(r => r.Status == TeamJoinRequestStatus.Pending);
@@ -423,6 +432,7 @@ public partial class TeamService : ITeamService
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.TeamJoinRequests
+            .AsNoTracking()
             .Include(r => r.User)
             .Where(r => r.TeamId == teamId && r.Status == TeamJoinRequestStatus.Pending)
             .OrderBy(r => r.RequestedAt)
@@ -435,6 +445,7 @@ public partial class TeamService : ITeamService
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.TeamJoinRequests
+            .AsNoTracking()
             .FirstOrDefaultAsync(r => r.TeamId == teamId && r.UserId == userId && r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
     }
 
@@ -556,6 +567,7 @@ public partial class TeamService : ITeamService
         CancellationToken cancellationToken = default)
     {
         return await _dbContext.TeamMembers
+            .AsNoTracking()
             .Include(tm => tm.User)
             .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
             .OrderBy(tm => tm.Role)
@@ -577,4 +589,29 @@ public partial class TeamService : ITeamService
 
     [GeneratedRegex(@"-+", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex MultipleHyphensRegex();
+
+    public async Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
+        IEnumerable<Guid> teamIds,
+        CancellationToken cancellationToken = default)
+    {
+        var teamIdList = teamIds.ToList();
+        if (teamIdList.Count == 0)
+        {
+            return new Dictionary<Guid, int>();
+        }
+
+        var counts = await _dbContext.TeamJoinRequests
+            .Where(r => teamIdList.Contains(r.TeamId) && r.Status == TeamJoinRequestStatus.Pending)
+            .GroupBy(r => r.TeamId)
+            .Select(g => new { TeamId = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var result = teamIdList.ToDictionary(id => id, _ => 0);
+        foreach (var item in counts)
+        {
+            result[item.TeamId] = item.Count;
+        }
+
+        return result;
+    }
 }

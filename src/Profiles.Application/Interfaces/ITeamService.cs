@@ -185,4 +185,14 @@ public interface ITeamService
     Task<IReadOnlyList<TeamMember>> GetTeamMembersAsync(
         Guid teamId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets pending request counts for multiple teams in a single query.
+    /// </summary>
+    /// <param name="teamIds">The team IDs to check.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Dictionary mapping team ID to pending request count.</returns>
+    Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
+        IEnumerable<Guid> teamIds,
+        CancellationToken cancellationToken = default);
 }
