@@ -10,6 +10,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.2" />
     <!-- Database -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">

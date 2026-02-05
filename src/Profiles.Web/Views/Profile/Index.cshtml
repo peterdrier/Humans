@@ -95,6 +95,45 @@
                 </dl>
             </div>
         </div>
+
+        @if (Model.ContactFields.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Contact Information</span>
+                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">Edit</a>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        @foreach (var field in Model.ContactFields)
+                        {
+                            <dt class="col-sm-3">
+                                <i class="fa-solid @field.IconClass me-1"></i>
+                                @field.Label
+                            </dt>
+                            <dd class="col-sm-9">
+                                @field.Value
+                                <i class="fa-solid @field.VisibilityIconClass text-muted ms-2"
+                                   title="@field.VisibilityTooltip"
+                                   data-bs-toggle="tooltip"></i>
+                            </dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Contact Information</span>
+                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">Add</a>
+                </div>
+                <div class="card-body text-muted">
+                    No contact information added yet. <a asp-action="Edit">Add some</a> to let other members reach you.
+                </div>
+            </div>
+        }
     </div>
 
     <div class="col-md-4">

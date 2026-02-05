@@ -28,6 +28,7 @@ public class ProfilesDbContext : IdentityDbContext<User, IdentityRole<Guid>, Gui
     public DbSet<TeamJoinRequest> TeamJoinRequests => Set<TeamJoinRequest>();
     public DbSet<TeamJoinRequestStateHistory> TeamJoinRequestStateHistories => Set<TeamJoinRequestStateHistory>();
     public DbSet<GoogleResource> GoogleResources => Set<GoogleResource>();
+    public DbSet<ContactField> ContactFields => Set<ContactField>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

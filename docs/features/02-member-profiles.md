@@ -159,4 +159,5 @@ Profile includes a computed `MembershipStatus` property:
 
 - [Authentication](01-authentication.md) - Profile created after first login
 - [Membership Status](05-membership-status.md) - Computed from profile + roles + consents
+- [Contact Fields](10-contact-fields.md) - Granular contact info visibility
 - [Administration](09-administration.md) - Admin member management

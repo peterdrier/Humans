@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Profiles.Application.DTOs;
+using Profiles.Application.Interfaces;
 using Profiles.Domain.Entities;
 using Profiles.Infrastructure.Data;
 using Profiles.Web.Models;
@@ -17,19 +19,22 @@ public class ProfileController : Controller
     private readonly IClock _clock;
     private readonly ILogger<ProfileController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IContactFieldService _contactFieldService;
 
     public ProfileController(
         ProfilesDbContext dbContext,
         UserManager<User> userManager,
         IClock clock,
         ILogger<ProfileController> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IContactFieldService contactFieldService)
     {
         _dbContext = dbContext;
         _userManager = userManager;
         _clock = clock;
         _logger = logger;
         _configuration = configuration;
+        _contactFieldService = contactFieldService;
     }
 
     public async Task<IActionResult> Index()
@@ -58,6 +63,11 @@ public class ProfileController : Controller
 
         var pendingConsents = requiredVersions.Except(userConsents).Count();
 
+        // Get contact fields (user viewing their own profile sees all)
+        var contactFields = profile != null
+            ? await _contactFieldService.GetVisibleContactFieldsAsync(profile.Id, user.Id)
+            : [];
+
         var viewModel = new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
@@ -75,7 +85,15 @@ public class ProfileController : Controller
             HasPendingConsents = pendingConsents > 0,
             PendingConsentCount = pendingConsents,
             MembershipStatus = profile != null ? ComputeStatus(profile, user.Id).ToString() : "Incomplete",
-            CanViewLegalName = true // User viewing their own profile
+            CanViewLegalName = true, // User viewing their own profile
+            ContactFields = contactFields.Select(cf => new ContactFieldViewModel
+            {
+                Id = cf.Id,
+                FieldType = cf.FieldType,
+                Label = cf.Label,
+                Value = cf.Value,
+                Visibility = cf.Visibility
+            }).ToList()
         };
 
         return View(viewModel);
@@ -92,6 +110,11 @@ public class ProfileController : Controller
 
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == user.Id);
+
+        // Get all contact fields for editing
+        var contactFields = profile != null
+            ? await _contactFieldService.GetAllContactFieldsAsync(profile.Id)
+            : [];
 
         var viewModel = new ProfileViewModel
         {
@@ -110,7 +133,16 @@ public class ProfileController : Controller
             Longitude = profile?.Longitude,
             PlaceId = profile?.PlaceId,
             Bio = profile?.Bio,
-            CanViewLegalName = true // User editing their own profile
+            CanViewLegalName = true, // User editing their own profile
+            EditableContactFields = contactFields.Select(cf => new ContactFieldEditViewModel
+            {
+                Id = cf.Id,
+                FieldType = cf.FieldType,
+                CustomLabel = cf.CustomLabel,
+                Value = cf.Value,
+                Visibility = cf.Visibility,
+                DisplayOrder = cf.DisplayOrder
+            }).ToList()
         };
 
         ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
@@ -148,6 +180,7 @@ public class ProfileController : Controller
                 UpdatedAt = now
             };
             _dbContext.Profiles.Add(profile);
+            await _dbContext.SaveChangesAsync(); // Save to get the profile ID for contact fields
         }
 
         profile.BurnerName = model.BurnerName;
@@ -168,6 +201,21 @@ public class ProfileController : Controller
         await _userManager.UpdateAsync(user);
 
         await _dbContext.SaveChangesAsync();
+
+        // Save contact fields
+        var contactFieldDtos = model.EditableContactFields
+            .Where(cf => !string.IsNullOrWhiteSpace(cf.Value))
+            .Select((cf, index) => new ContactFieldEditDto(
+                cf.Id,
+                cf.FieldType,
+                cf.CustomLabel,
+                cf.Value,
+                cf.Visibility,
+                index
+            ))
+            .ToList();
+
+        await _contactFieldService.SaveContactFieldsAsync(profile.Id, contactFieldDtos);
 
         _logger.LogInformation("User {UserId} updated their profile", user.Id);
 

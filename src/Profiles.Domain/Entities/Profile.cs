@@ -146,4 +146,9 @@ public class Profile
     /// Gets the full name of the member.
     /// </summary>
     public string FullName => $"{FirstName} {LastName}".Trim();
+
+    /// <summary>
+    /// Contact fields with visibility controls.
+    /// </summary>
+    public ICollection<ContactField> ContactFields { get; } = new List<ContactField>();
 }

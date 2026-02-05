@@ -113,6 +113,70 @@
                         <div class="form-text">Tell us a bit about yourself.</div>
                     </div>
 
+                    <hr />
+                    <h5>Contact Information</h5>
+                    <p class="text-muted small mb-3">
+                        Add ways for other members to reach you. Control who can see each piece of information.
+                    </p>
+
+                    <div id="contactFieldsContainer">
+                        @for (var i = 0; i < Model.EditableContactFields.Count; i++)
+                        {
+                            <div class="contact-field-row card mb-2" data-index="@i">
+                                <div class="card-body py-2">
+                                    <div class="row g-2 align-items-end">
+                                        <input type="hidden" name="EditableContactFields[@i].Id" value="@Model.EditableContactFields[i].Id" />
+                                        <input type="hidden" name="EditableContactFields[@i].DisplayOrder" value="@i" class="display-order" />
+
+                                        <div class="col-md-2">
+                                            <label class="form-label small">Type</label>
+                                            <select name="EditableContactFields[@i].FieldType" class="form-select form-select-sm field-type-select">
+                                                <option value="Email" selected="@(Model.EditableContactFields[i].FieldType == Profiles.Domain.Enums.ContactFieldType.Email)">Email</option>
+                                                <option value="Phone" selected="@(Model.EditableContactFields[i].FieldType == Profiles.Domain.Enums.ContactFieldType.Phone)">Phone</option>
+                                                <option value="Signal" selected="@(Model.EditableContactFields[i].FieldType == Profiles.Domain.Enums.ContactFieldType.Signal)">Signal</option>
+                                                <option value="Telegram" selected="@(Model.EditableContactFields[i].FieldType == Profiles.Domain.Enums.ContactFieldType.Telegram)">Telegram</option>
+                                                <option value="WhatsApp" selected="@(Model.EditableContactFields[i].FieldType == Profiles.Domain.Enums.ContactFieldType.WhatsApp)">WhatsApp</option>
+                                                <option value="Other" selected="@(Model.EditableContactFields[i].FieldType == Profiles.Domain.Enums.ContactFieldType.Other)">Other</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-2 custom-label-col" style="display: @(Model.EditableContactFields[i].FieldType == Profiles.Domain.Enums.ContactFieldType.Other ? "block" : "none");">
+                                            <label class="form-label small">Label</label>
+                                            <input type="text" name="EditableContactFields[@i].CustomLabel" value="@Model.EditableContactFields[i].CustomLabel" class="form-control form-control-sm custom-label-input" placeholder="e.g., Discord" />
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <label class="form-label small">Value</label>
+                                            <input type="text" name="EditableContactFields[@i].Value" value="@Model.EditableContactFields[i].Value" class="form-control form-control-sm" required placeholder="Enter contact info" />
+                                        </div>
+
+                                        <div class="col-md-3">
+                                            <label class="form-label small">Visibility</label>
+                                            <select name="EditableContactFields[@i].Visibility" class="form-select form-select-sm">
+                                                <option value="AllActiveProfiles" selected="@(Model.EditableContactFields[i].Visibility == Profiles.Domain.Enums.ContactFieldVisibility.AllActiveProfiles)">All active members</option>
+                                                <option value="MyTeams" selected="@(Model.EditableContactFields[i].Visibility == Profiles.Domain.Enums.ContactFieldVisibility.MyTeams)">My teams</option>
+                                                <option value="LeadsAndBoard" selected="@(Model.EditableContactFields[i].Visibility == Profiles.Domain.Enums.ContactFieldVisibility.LeadsAndBoard)">Leads + Board</option>
+                                                <option value="BoardOnly" selected="@(Model.EditableContactFields[i].Visibility == Profiles.Domain.Enums.ContactFieldVisibility.BoardOnly)">Board only</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-2 text-end">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-contact-field">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <button type="button" id="addContactField" class="btn btn-outline-secondary btn-sm mb-3">
+                        <i class="fa-solid fa-plus me-1"></i> Add Contact Field
+                    </button>
+
+                    <hr />
+
                     <div class="d-flex justify-content-between">
                         <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -223,4 +287,111 @@
             console.warn("Google Maps API key not configured. Location autocomplete disabled.");
         </script>
     }
+
+    <script>
+        (function() {
+            const container = document.getElementById('contactFieldsContainer');
+            const addButton = document.getElementById('addContactField');
+
+            function getNextIndex() {
+                const rows = container.querySelectorAll('.contact-field-row');
+                if (rows.length === 0) return 0;
+                const indices = Array.from(rows).map(r => parseInt(r.dataset.index) || 0);
+                return Math.max(...indices) + 1;
+            }
+
+            function createContactFieldRow(index) {
+                const html = `
+                    <div class="contact-field-row card mb-2" data-index="${index}">
+                        <div class="card-body py-2">
+                            <div class="row g-2 align-items-end">
+                                <input type="hidden" name="EditableContactFields[${index}].Id" value="" />
+                                <input type="hidden" name="EditableContactFields[${index}].DisplayOrder" value="${index}" class="display-order" />
+
+                                <div class="col-md-2">
+                                    <label class="form-label small">Type</label>
+                                    <select name="EditableContactFields[${index}].FieldType" class="form-select form-select-sm field-type-select">
+                                        <option value="Email">Email</option>
+                                        <option value="Phone">Phone</option>
+                                        <option value="Signal">Signal</option>
+                                        <option value="Telegram">Telegram</option>
+                                        <option value="WhatsApp">WhatsApp</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-2 custom-label-col" style="display: none;">
+                                    <label class="form-label small">Label</label>
+                                    <input type="text" name="EditableContactFields[${index}].CustomLabel" class="form-control form-control-sm custom-label-input" placeholder="e.g., Discord" />
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label small">Value</label>
+                                    <input type="text" name="EditableContactFields[${index}].Value" class="form-control form-control-sm" placeholder="Enter contact info" />
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="form-label small">Visibility</label>
+                                    <select name="EditableContactFields[${index}].Visibility" class="form-select form-select-sm">
+                                        <option value="AllActiveProfiles" selected>All active members</option>
+                                        <option value="MyTeams">My teams</option>
+                                        <option value="LeadsAndBoard">Leads + Board</option>
+                                        <option value="BoardOnly">Board only</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-2 text-end">
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-contact-field">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const template = document.createElement('template');
+                template.innerHTML = html.trim();
+                return template.content.firstChild;
+            }
+
+            function setupRow(row) {
+                const typeSelect = row.querySelector('.field-type-select');
+                const customLabelCol = row.querySelector('.custom-label-col');
+                const removeBtn = row.querySelector('.remove-contact-field');
+
+                typeSelect.addEventListener('change', function() {
+                    customLabelCol.style.display = this.value === 'Other' ? 'block' : 'none';
+                });
+
+                removeBtn.addEventListener('click', function() {
+                    row.remove();
+                    reindexRows();
+                });
+            }
+
+            function reindexRows() {
+                const rows = container.querySelectorAll('.contact-field-row');
+                rows.forEach((row, idx) => {
+                    row.dataset.index = idx;
+                    row.querySelectorAll('[name]').forEach(input => {
+                        input.name = input.name.replace(/\[\d+\]/, `[${idx}]`);
+                    });
+                    const displayOrder = row.querySelector('.display-order');
+                    if (displayOrder) displayOrder.value = idx;
+                });
+            }
+
+            // Setup existing rows
+            container.querySelectorAll('.contact-field-row').forEach(setupRow);
+
+            // Add new row
+            addButton.addEventListener('click', function() {
+                const index = getNextIndex();
+                const row = createContactFieldRow(index);
+                container.appendChild(row);
+                setupRow(row);
+                row.querySelector('input[type="text"]').focus();
+            });
+        })();
+    </script>
 }

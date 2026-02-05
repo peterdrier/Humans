@@ -35,6 +35,7 @@ Clean Architecture with 4 layers:
 |--------|---------|
 | `User` | Custom IdentityUser with Google OAuth |
 | `Profile` | Member profile with computed MembershipStatus |
+| `ContactField` | Contact info with per-field visibility controls |
 | `Application` | Membership application with Stateless state machine |
 | `RoleAssignment` | Temporal role memberships (ValidFrom/ValidTo) |
 | `LegalDocument` / `DocumentVersion` | Legal docs synced from GitHub |
@@ -79,3 +80,13 @@ dotnet run --project src/Profiles.Web
 | Data model | `.claude/DATA_MODEL.md` |
 | Analyzers/ReSharper | `.claude/CODE_ANALYSIS.md` |
 | NuGet updates | `.claude/NUGET_UPDATE_CHECK.md` |
+| **Feature specs** | **`docs/features/`** |
+
+## Feature Documentation
+
+**Important:** When implementing new features, create or update the corresponding feature spec in `docs/features/`. Each feature doc should include:
+- Business context
+- User stories with acceptance criteria
+- Data model
+- Workflows/state machines (if applicable)
+- Related features

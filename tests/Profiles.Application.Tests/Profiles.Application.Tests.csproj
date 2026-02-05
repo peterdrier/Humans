@@ -2,6 +2,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Profiles.Application\Profiles.Application.csproj" />
+    <ProjectReference Include="..\..\src\Profiles.Infrastructure\Profiles.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="NodaTime.Testing" />
   </ItemGroup>
 
 </Project>
