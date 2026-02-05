@@ -27,8 +27,9 @@ public class TeamAdminController : Controller
     }
 
     [HttpGet("Requests")]
-    public async Task<IActionResult> Requests(string slug)
+    public async Task<IActionResult> Requests(string slug, int page = 1)
     {
+        var pageSize = 20;
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
         {
@@ -47,13 +48,13 @@ public class TeamAdminController : Controller
             return Forbid();
         }
 
-        var requests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+        var allRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+        var totalCount = allRequests.Count;
 
-        var viewModel = new PendingRequestsViewModel
-        {
-            TeamIdFilter = team.Id,
-            TeamNameFilter = team.Name,
-            Requests = requests.Select(r => new TeamJoinRequestViewModel
+        var requests = allRequests
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(r => new TeamJoinRequestViewModel
             {
                 Id = r.Id,
                 TeamId = r.TeamId,
@@ -65,7 +66,16 @@ public class TeamAdminController : Controller
                 Status = r.Status.ToString(),
                 Message = r.Message,
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
-            }).ToList()
+            }).ToList();
+
+        var viewModel = new PendingRequestsViewModel
+        {
+            TeamIdFilter = team.Id,
+            TeamNameFilter = team.Name,
+            Requests = requests,
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
         };
 
         ViewData["TeamSlug"] = slug;
@@ -150,8 +160,9 @@ public class TeamAdminController : Controller
     }
 
     [HttpGet("Members")]
-    public async Task<IActionResult> Members(string slug)
+    public async Task<IActionResult> Members(string slug, int page = 1)
     {
+        var pageSize = 20;
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
         {
@@ -170,16 +181,13 @@ public class TeamAdminController : Controller
             return Forbid();
         }
 
-        var members = await _teamService.GetTeamMembersAsync(team.Id);
+        var allMembers = await _teamService.GetTeamMembersAsync(team.Id);
+        var totalCount = allMembers.Count;
 
-        var viewModel = new TeamMembersViewModel
-        {
-            TeamId = team.Id,
-            TeamName = team.Name,
-            TeamSlug = team.Slug,
-            IsSystemTeam = team.IsSystemTeam,
-            CanManageRoles = !team.IsSystemTeam,
-            Members = members.Select(m => new TeamMemberViewModel
+        var members = allMembers
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(m => new TeamMemberViewModel
             {
                 UserId = m.UserId,
                 DisplayName = m.User?.DisplayName ?? "Unknown",
@@ -188,7 +196,19 @@ public class TeamAdminController : Controller
                 Role = m.Role.ToString(),
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 IsMetalead = m.Role == TeamMemberRole.Metalead
-            }).ToList()
+            }).ToList();
+
+        var viewModel = new TeamMembersViewModel
+        {
+            TeamId = team.Id,
+            TeamName = team.Name,
+            TeamSlug = team.Slug,
+            IsSystemTeam = team.IsSystemTeam,
+            CanManageRoles = !team.IsSystemTeam,
+            Members = members,
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
         };
 
         return View(viewModel);

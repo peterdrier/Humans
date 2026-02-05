@@ -257,11 +257,18 @@ Requires knowing production domain names.
 
 ---
 
-### Issue 22: Performance - Add Pagination to List Views :x: TODO
+### Issue 22: Performance - Add Pagination to List Views :white_check_mark: DONE
 
-**Status:** Not started
+**Status:** Implemented
 
-Lower priority - can be addressed when data volumes increase.
+Added pagination (20 items/page) to:
+- Admin/Applications (with status filter preservation)
+- Admin/Teams
+- Team/Index (12 items/page for card grid)
+- TeamAdmin/Members
+- TeamAdmin/Requests
+
+All views use consistent pagination UI pattern with page number links.
 
 ---
 
@@ -272,10 +279,10 @@ Lower priority - can be addressed when data volumes increase.
 | CRITICAL | 4 | 2 | 0 | 2 |
 | HIGH | 6 | 4 | 0 | 2 |
 | MEDIUM | 8 | 7 | 0 | 1 |
-| LOW | 4 | 2 | 2 | 0 |
-| **TOTAL** | **22** | **15** | **2** | **5** |
+| LOW | 4 | 3 | 1 | 0 |
+| **TOTAL** | **22** | **16** | **1** | **5** |
 
-### Completed (15)
+### Completed (16)
 - #1 HTTP Security Headers
 - #4 N+1 Query Fixes
 - #6 Rate Limiting
@@ -290,10 +297,10 @@ Lower priority - can be addressed when data volumes increase.
 - #17 Response Compression
 - #19 Re-consent Notifications
 - #20 Null Reference Review (no change needed)
+- #22 Pagination for List Views
 
-### Remaining Todo (2)
+### Remaining Todo (1)
 - #21 AllowedHosts (needs domain names)
-- #22 Pagination (lower priority)
 
 ### Needs Business Input (5)
 - #2 GDPR Data Deletion
@@ -305,4 +312,4 @@ Lower priority - can be addressed when data volumes increase.
 
 ---
 
-*Last updated: 2026-02-05 by Claude (N+1 and AsNoTracking fixes)*
+*Last updated: 2026-02-05 by Claude (pagination added)*

@@ -5,7 +5,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Applications</h1>
-    <span class="text-muted">@Model.TotalCount shown</span>
+    <span class="text-muted">@Model.TotalCount total</span>
 </div>
 
 <div class="card mb-4">
@@ -72,3 +72,18 @@
         }
     </div>
 </div>
+
+@if (Model.TotalCount > Model.PageSize)
+{
+    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize);
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            @for (var i = 1; i <= totalPages && i <= 10; i++)
+            {
+                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" asp-action="Applications" asp-route-page="@i" asp-route-status="@Model.StatusFilter">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

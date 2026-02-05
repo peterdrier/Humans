@@ -27,24 +27,27 @@ public class TeamController : Controller
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(int page = 1)
     {
+        var pageSize = 12;
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
         {
             return NotFound();
         }
 
-        var teams = await _teamService.GetAllTeamsAsync();
+        var allTeams = await _teamService.GetAllTeamsAsync();
         var userTeams = await _teamService.GetUserTeamsAsync(user.Id);
         var userTeamIds = userTeams.Select(ut => ut.TeamId).ToHashSet();
         var userMetaleadTeamIds = userTeams.Where(ut => ut.Role == TeamMemberRole.Metalead).Select(ut => ut.TeamId).ToHashSet();
 
         var isBoardMember = await _teamService.IsUserBoardMemberAsync(user.Id);
 
-        var viewModel = new TeamIndexViewModel
-        {
-            Teams = teams.Select(t => new TeamSummaryViewModel
+        var totalCount = allTeams.Count;
+        var teams = allTeams
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(t => new TeamSummaryViewModel
             {
                 Id = t.Id,
                 Name = t.Name,
@@ -55,8 +58,15 @@ public class TeamController : Controller
                 RequiresApproval = t.RequiresApproval,
                 IsCurrentUserMember = userTeamIds.Contains(t.Id),
                 IsCurrentUserMetalead = userMetaleadTeamIds.Contains(t.Id)
-            }).ToList(),
-            CanCreateTeam = isBoardMember
+            }).ToList();
+
+        var viewModel = new TeamIndexViewModel
+        {
+            Teams = teams,
+            CanCreateTeam = isBoardMember,
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
         };
 
         return View(viewModel);

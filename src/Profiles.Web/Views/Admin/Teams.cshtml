@@ -113,3 +113,18 @@
         No teams have been created yet.
     </div>
 }
+
+@if (Model.TotalCount > Model.PageSize)
+{
+    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize);
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            @for (var i = 1; i <= totalPages && i <= 10; i++)
+            {
+                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" asp-action="Teams" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

@@ -146,8 +146,9 @@ public class AdminController : Controller
     }
 
     [HttpGet("Applications")]
-    public async Task<IActionResult> Applications(string? status)
+    public async Task<IActionResult> Applications(string? status, int page = 1)
     {
+        var pageSize = 20;
         var query = _dbContext.Applications
             .Include(a => a.User)
             .AsQueryable();
@@ -164,9 +165,12 @@ public class AdminController : Controller
                 a.Status == ApplicationStatus.UnderReview);
         }
 
+        var totalCount = await query.CountAsync();
+
         var applications = await query
             .OrderBy(a => a.SubmittedAt)
-            .Take(100)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(a => new AdminApplicationViewModel
             {
                 Id = a.Id,
@@ -184,7 +188,9 @@ public class AdminController : Controller
         {
             Applications = applications,
             StatusFilter = status,
-            TotalCount = applications.Count
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
         };
 
         return View(viewModel);
@@ -375,13 +381,20 @@ public class AdminController : Controller
     }
 
     [HttpGet("Teams")]
-    public async Task<IActionResult> Teams()
+    public async Task<IActionResult> Teams(int page = 1)
     {
-        var teams = await _dbContext.Teams
+        var pageSize = 20;
+        var query = _dbContext.Teams
             .Include(t => t.Members.Where(m => m.LeftAt == null))
             .Include(t => t.JoinRequests.Where(r => r.Status == TeamJoinRequestStatus.Pending))
             .OrderBy(t => t.SystemTeamType)
-            .ThenBy(t => t.Name)
+            .ThenBy(t => t.Name);
+
+        var totalCount = await query.CountAsync();
+
+        var teams = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         var viewModel = new AdminTeamListViewModel
@@ -398,7 +411,10 @@ public class AdminController : Controller
                 MemberCount = t.Members.Count,
                 PendingRequestCount = t.JoinRequests.Count,
                 CreatedAt = t.CreatedAt.ToDateTimeUtc()
-            }).ToList()
+            }).ToList(),
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
         };
 
         return View(viewModel);

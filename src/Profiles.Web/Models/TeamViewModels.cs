@@ -7,6 +7,9 @@ public class TeamIndexViewModel
 {
     public List<TeamSummaryViewModel> Teams { get; set; } = [];
     public bool CanCreateTeam { get; set; }
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 12;
 }
 
 public class TeamSummaryViewModel
@@ -119,6 +122,9 @@ public class PendingRequestsViewModel
     public List<TeamJoinRequestViewModel> Requests { get; set; } = [];
     public Guid? TeamIdFilter { get; set; }
     public string? TeamNameFilter { get; set; }
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
 }
 
 public class CreateTeamViewModel
@@ -157,6 +163,9 @@ public class TeamMembersViewModel
     public bool IsSystemTeam { get; set; }
     public List<TeamMemberViewModel> Members { get; set; } = [];
     public bool CanManageRoles { get; set; }
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
 }
 
 public class SetMemberRoleModel
@@ -175,6 +184,9 @@ public class ApproveRejectRequestModel
 public class AdminTeamListViewModel
 {
     public List<AdminTeamViewModel> Teams { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int PageNumber { get; set; } = 1;
+    public int PageSize { get; set; } = 20;
 }
 
 public class AdminTeamViewModel
