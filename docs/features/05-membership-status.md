@@ -46,7 +46,7 @@ public enum MembershipStatus
 {
     None = 0,       // No active role assignments
     Active = 1,     // Has roles + all required consents
-    Inactive = 2,   // Has roles but missing consents
+    Inactive = 2,   // Has roles but missing consents (and grace period expired)
     Suspended = 3   // Admin-suspended
 }
 ```
@@ -79,11 +79,13 @@ public enum MembershipStatus
                         ┌─No───┴──Yes──┐
                         │              │
                    [None]       ┌──────▼──────┐
-                                │ All Required│
-                                │ Consents?   │
+                                │ Missing     │
+                                │ Consents    │
+                                │ > Grace     │
+                                │ Period?     │
                                 └──────┬──────┘
                                        │
-                                ┌─No───┴──Yes──┐
+                                ┌─Yes──┴──No───┐
                                 │              │
                           [Inactive]      [Active]
 ```
@@ -104,11 +106,15 @@ public MembershipStatus ComputeStatus(Guid userId)
 
     if (!hasActiveRoles) return MembershipStatus.None;
 
-    var hasAllConsents = HasAllRequiredConsents(userId);
+    // Grace Period Logic:
+    // Members only become Inactive if they have missing consents 
+    // AND the grace period (e.g. 7 days) since the document update has expired.
+    var hasExpiredConsents = GetMissingConsents(userId)
+        .Any(v => v.EffectiveFrom + GracePeriod < now);
 
-    return hasAllConsents
-        ? MembershipStatus.Active
-        : MembershipStatus.Inactive;
+    return hasExpiredConsents
+        ? MembershipStatus.Inactive
+        : MembershipStatus.Active;
 }
 ```
 
@@ -116,8 +122,8 @@ public MembershipStatus ComputeStatus(Guid userId)
 
 | Status | Badge | Color | Description |
 |--------|-------|-------|-------------|
-| Active | `bg-success` | Green | Full member in good standing |
-| Inactive | `bg-warning` | Yellow | Missing required consents |
+| Active | `bg-success` | Green | Full member (within grace period if updates exist) |
+| Inactive | `bg-warning` | Yellow | Missing required consents past grace period |
 | Suspended | `bg-danger` | Red | Admin-suspended |
 | None | `bg-secondary` | Gray | No active role assignments |
 
@@ -136,6 +142,7 @@ RoleAssignment
 For status = Active, user must have consent for:
 ├── All LegalDocuments where IsRequired = true AND IsActive = true
 └── Specifically the latest DocumentVersion where EffectiveFrom <= now
+└── Note: Users remain Active during the Grace Period following an update.
 ```
 
 ## Status Transitions
@@ -155,9 +162,8 @@ Triggered by:
 [Active] ──────▶ [Inactive]
 
 Triggered by:
-  - New document version requires re-consent
-  - New required document added
-  - Role still active, but missing consent
+  - New document version requires re-consent AND grace period has expired
+  - New required document added AND grace period has expired
 ```
 
 ### Becoming Suspended
@@ -181,50 +187,50 @@ Triggered by:
 
 ## Impact on Features
 
-| Status | Can Access | Team Membership | Application |
+| Status | Can Access | Team Resources (Drive/Groups) | Application |
 |--------|------------|-----------------|-------------|
-| Active | Full access | Can join teams | N/A |
-| Inactive | Limited | Existing only | Can submit |
-| Suspended | Read-only | Removed from system teams | Cannot submit |
-| None | Basic | Cannot join | Can submit |
+| Active | Full access | Full access | N/A |
+| Inactive | Limited | Access Revoked | Can submit |
+| Suspended | Read-only | Access Revoked | Cannot submit |
+| None | Basic | No access | Can submit |
 
 ## Compliance Automation
 
-### Inactive → Suspension Flow
+### Inactive → Access Revocation Flow
 ```
 ┌─────────────────────┐
-│ Member becomes      │
-│ Inactive            │
+│ Document Updated    │
+│ (Grace Period Start)│
 └──────────┬──────────┘
            │
     Day 0  │
            ▼
 ┌─────────────────────┐
-│ Send initial        │
-│ reminder email      │
+│ Send consolidated   │
+│ notification email  │
+└──────────┬──────────┘
+           │
+  Day 1-6  │ (Reminders if configured)
+           ▼
+┌─────────────────────┐
+│ Grace Period Ends   │
 └──────────┬──────────┘
            │
     Day 7  │
            ▼
 ┌─────────────────────┐
-│ Send warning        │
-│ email               │
-└──────────┬──────────┘
-           │
-    Day 14 │
-           ▼
-┌─────────────────────┐
-│ Send final          │
-│ notice              │
-└──────────┬──────────┘
-           │
-    Day 30 │
-           ▼
-┌─────────────────────┐
-│ Auto-suspend        │
-│ (if configured)     │
+│ Status -> Inactive  │
+│ Revoke Google Acc.  │
+│ Notify User         │
 └─────────────────────┘
 ```
+
+### Restoration Flow
+When a user with `Inactive` status signs the required documents:
+1. Status is immediately re-computed as `Active`.
+2. System automatically triggers `RestoreUserToAllTeamsAsync`.
+3. Google Drive permissions and Group memberships are restored.
+4. User receives immediate access back to all team resources.
 
 ## Monitoring & Reporting
 

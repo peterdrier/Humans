@@ -105,4 +105,12 @@ public interface IGoogleSyncService
     /// <param name="teamId">The team ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task SyncTeamGroupMembersAsync(Guid teamId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Restores a user to all their team-related Google resources.
+    /// Used when a user returns to Active status (e.g., after signing documents).
+    /// </summary>
+    /// <param name="userId">The user ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
 }

@@ -168,7 +168,7 @@ Statutes
 ```
 ┌──────────────────┐
 │ Scheduled Job    │
-│ (Hourly)         │
+│ (Daily @ 4 AM)   │
 └────────┬─────────┘
          │
 ┌────────▼─────────┐
@@ -196,10 +196,25 @@ Statutes
          └────┬────────┘
               │
          ┌────▼────────┐
-         │ If Requires │
-         │ ReConsent:  │
-         │ Queue Emails│
-         └─────────────┘
+         │ If Updates: │
+         │ Batch-Load  │
+         │ Affected    │
+         │ Members     │
+         └────┬────────┘
+              │
+         ┌────▼───────────┐
+         │ Consolidated   │
+         │ Notification   │
+         │ (1 email per   │
+         │ user for all   │
+         │ updates)       │
+         └────┬───────────┘
+              │
+         ┌────▼───────────┐
+         │ Grace Period   │
+         │ Starts (e.g.   │
+         │ 7 days)        │
+         └────────────────┘
 ```
 
 ## GDPR Compliance

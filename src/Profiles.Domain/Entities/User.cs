@@ -11,17 +11,20 @@ public class User : IdentityUser<Guid>
     /// <summary>
     /// Display name for the user.
     /// </summary>
+    [PersonalData]
     public string DisplayName { get; set; } = string.Empty;
 
     /// <summary>
     /// Preferred language code (e.g., "en", "es").
     /// Defaults to English.
     /// </summary>
+    [PersonalData]
     public string PreferredLanguage { get; set; } = "en";
 
     /// <summary>
     /// Google profile picture URL.
     /// </summary>
+    [PersonalData]
     public string? ProfilePictureUrl { get; set; }
 
     /// <summary>
@@ -63,11 +66,13 @@ public class User : IdentityUser<Guid>
     /// User-specified preferred email address for system notifications.
     /// Must be verified before use.
     /// </summary>
+    [PersonalData]
     public string? PreferredEmail { get; set; }
 
     /// <summary>
     /// Whether the preferred email has been verified.
     /// </summary>
+    [PersonalData]
     public bool PreferredEmailVerified { get; set; }
 
     /// <summary>

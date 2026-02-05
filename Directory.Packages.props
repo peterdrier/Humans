@@ -2,8 +2,7 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
-    <!-- Suppress vulnerable package warnings for transitive dependencies we can't control -->
-    <NoWarn>$(NoWarn);NU1903;NU1902</NoWarn>
+    <!-- Suppress warnings we can't control -->
   </PropertyGroup>
   <ItemGroup>
     <!-- Core Framework -->

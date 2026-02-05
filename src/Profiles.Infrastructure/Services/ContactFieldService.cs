@@ -17,6 +17,11 @@ public class ContactFieldService : IContactFieldService
     private readonly ITeamService _teamService;
     private readonly IClock _clock;
 
+    // Request-scoped cache for viewer permissions to avoid N+1 queries during listing
+    private bool? _cachedIsBoardMember;
+    private bool? _cachedIsAnyMetalead;
+    private HashSet<Guid>? _cachedViewerTeamIds;
+
     public ContactFieldService(
         ProfilesDbContext dbContext,
         ITeamService teamService,
@@ -149,31 +154,36 @@ public class ContactFieldService : IContactFieldService
         }
 
         // Board member - can see everything
-        var isBoardMember = await _teamService.IsUserBoardMemberAsync(viewerUserId, cancellationToken);
-        if (isBoardMember)
+        _cachedIsBoardMember ??= await _teamService.IsUserBoardMemberAsync(viewerUserId, cancellationToken);
+        if (_cachedIsBoardMember.Value)
         {
             return ContactFieldVisibility.BoardOnly;
         }
 
         // Check if viewer is a metalead of any team
-        var viewerTeams = await _teamService.GetUserTeamsAsync(viewerUserId, cancellationToken);
-        var isAnyMetalead = viewerTeams.Any(tm => tm.Role == TeamMemberRole.Metalead);
-        if (isAnyMetalead)
+        if (_cachedViewerTeamIds == null)
+        {
+            var viewerTeams = await _teamService.GetUserTeamsAsync(viewerUserId, cancellationToken);
+            _cachedIsAnyMetalead = viewerTeams.Any(tm => tm.Role == TeamMemberRole.Metalead);
+            _cachedViewerTeamIds = viewerTeams
+                .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
+                .Select(tm => tm.TeamId)
+                .ToHashSet();
+        }
+
+        if (_cachedIsAnyMetalead!.Value)
         {
             return ContactFieldVisibility.LeadsAndBoard;
         }
 
         // Check if viewer shares any team with owner (excluding Volunteers since everyone is in it)
         var ownerTeams = await _teamService.GetUserTeamsAsync(ownerUserId, cancellationToken);
-        var viewerTeamIds = viewerTeams
-            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(tm => tm.TeamId)
-            .ToHashSet();
         var ownerTeamIds = ownerTeams
             .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
             .Select(tm => tm.TeamId)
             .ToHashSet();
-        var sharesTeam = viewerTeamIds.Intersect(ownerTeamIds).Any();
+        
+        var sharesTeam = _cachedViewerTeamIds.Intersect(ownerTeamIds).Any();
         if (sharesTeam)
         {
             return ContactFieldVisibility.MyTeams;

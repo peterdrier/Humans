@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using NodaTime;
 using Profiles.Domain.Enums;
 
@@ -28,58 +29,69 @@ public class Profile
     /// The name the member goes by (e.g., burner name, nickname).
     /// This is the primary display name visible to everyone.
     /// </summary>
+    [PersonalData]
     public string BurnerName { get; set; } = string.Empty;
 
     /// <summary>
     /// Member's legal first name (for official documents).
     /// Only visible to the member and board members.
     /// </summary>
+    [PersonalData]
     public string FirstName { get; set; } = string.Empty;
 
     /// <summary>
     /// Member's legal last name (for official documents).
     /// Only visible to the member and board members.
     /// </summary>
+    [PersonalData]
     public string LastName { get; set; } = string.Empty;
 
     /// <summary>
     /// Phone country code (e.g., "+34" for Spain, "+1" for US).
     /// </summary>
+    [PersonalData]
     public string? PhoneCountryCode { get; set; }
 
     /// <summary>
     /// Member's phone number (without country code).
     /// </summary>
+    [PersonalData]
     public string? PhoneNumber { get; set; }
 
     /// <summary>
     /// Member's city.
     /// </summary>
+    [PersonalData]
     public string? City { get; set; }
 
     /// <summary>
     /// Member's country code (ISO 3166-1 alpha-2).
     /// </summary>
+    [PersonalData]
     public string? CountryCode { get; set; }
 
     /// <summary>
     /// Latitude coordinate for the member's location.
     /// </summary>
+    [PersonalData]
     public double? Latitude { get; set; }
 
     /// <summary>
     /// Longitude coordinate for the member's location.
     /// </summary>
+    [PersonalData]
     public double? Longitude { get; set; }
 
     /// <summary>
     /// Google Places ID for future reference.
     /// </summary>
+    [PersonalData]
     public string? PlaceId { get; set; }
 
     /// <summary>
     /// Optional biography or personal statement.
     /// </summary>
+    [PersonalData]
     public string? Bio { get; set; }
 
     /// <summary>

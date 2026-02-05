@@ -62,6 +62,18 @@ public class StubEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendReConsentsRequiredAsync(
+        string userEmail,
+        string userName,
+        IEnumerable<string> documentNames,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send re-consent required email to {Email} ({UserName}) for documents: {DocumentNames}",
+            userEmail, userName, string.Join(", ", documentNames));
+        return Task.CompletedTask;
+    }
+
     public Task SendReConsentReminderAsync(
         string userEmail,
         string userName,

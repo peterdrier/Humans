@@ -131,4 +131,10 @@ public class StubGoogleSyncService : IGoogleSyncService
         _logger.LogInformation("[STUB] Would sync all members for team {TeamId} Google Group", teamId);
         return Task.CompletedTask;
     }
+
+    public Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would restore user {UserId} to all team Google resources", userId);
+        return Task.CompletedTask;
+    }
 }

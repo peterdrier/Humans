@@ -74,46 +74,76 @@ public class SyncLegalDocumentsJob
         IReadOnlyList<Domain.Entities.LegalDocument> updatedDocs,
         CancellationToken cancellationToken)
     {
-        // Get users who need to re-consent
-        var usersNeedingReConsent = await _membershipCalculator
-            .GetUsersRequiringStatusUpdateAsync(cancellationToken);
+        // Get all users who currently have active roles (potential members)
+        var now = _clock.GetCurrentInstant();
+        var activeUserIds = await _dbContext.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
+            .Select(ra => ra.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
 
-        if (usersNeedingReConsent.Count == 0)
+        if (activeUserIds.Count == 0)
         {
-            _logger.LogInformation("No users require re-consent notifications");
+            _logger.LogInformation("No active users to notify for re-consent");
             return;
         }
 
-        var documentNames = string.Join(", ", updatedDocs.Select(d => d.Name));
+        // Filter to users who actually need to sign THESE updated documents
+        // We check if they have consented to the LATEST version of each updated doc
+        var updatedDocVersionIds = updatedDocs
+            .Select(d => d.Versions.OrderByDescending(v => v.EffectiveFrom).First().Id)
+            .ToList();
+
+        var consentsByUser = await _dbContext.ConsentRecords
+            .AsNoTracking()
+            .Where(cr => activeUserIds.Contains(cr.UserId) && updatedDocVersionIds.Contains(cr.DocumentVersionId))
+            .Select(cr => new { cr.UserId, cr.DocumentVersionId })
+            .ToListAsync(cancellationToken);
+
+        var userConsents = consentsByUser
+            .GroupBy(c => c.UserId)
+            .ToDictionary(g => g.Key, g => g.Select(c => c.DocumentVersionId).ToHashSet());
+
+        var usersToNotify = activeUserIds
+            .Where(userId => !userConsents.TryGetValue(userId, out var consented) || 
+                             !updatedDocVersionIds.All(id => consented.Contains(id)))
+            .ToList();
+
+        if (usersToNotify.Count == 0)
+        {
+            _logger.LogInformation("No users require notifications for these updates");
+            return;
+        }
+
+        // Batch load user entities for display names and emails
+        var users = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => usersToNotify.Contains(u.Id))
+            .ToListAsync(cancellationToken);
+
+        var documentNames = updatedDocs.Where(d => d.IsRequired).Select(d => d.Name).ToList();
         var notificationCount = 0;
 
-        foreach (var userId in usersNeedingReConsent)
+        foreach (var user in users)
         {
-            var user = await _dbContext.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
-
-            var effectiveEmail = user?.GetEffectiveEmail();
+            var effectiveEmail = user.GetEffectiveEmail();
             if (effectiveEmail == null)
             {
                 continue;
             }
 
-            // Send notification for each updated document that requires re-consent
-            foreach (var doc in updatedDocs.Where(d => d.IsRequired))
-            {
-                await _emailService.SendReConsentRequiredAsync(
-                    effectiveEmail,
-                    user!.DisplayName,
-                    doc.Name,
-                    cancellationToken);
-            }
+            await _emailService.SendReConsentsRequiredAsync(
+                effectiveEmail,
+                user.DisplayName,
+                documentNames,
+                cancellationToken);
 
             notificationCount++;
         }
 
         _logger.LogInformation(
-            "Sent re-consent notifications to {Count} users for documents: {Documents}",
-            notificationCount, documentNames);
+            "Sent consolidated re-consent notifications to {Count} users for documents: {Documents}",
+            notificationCount, string.Join(", ", documentNames));
     }
 }

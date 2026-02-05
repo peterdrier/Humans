@@ -54,6 +54,19 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends a notification for multiple legal document updates requiring re-consent.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's name.</param>
+    /// <param name="documentNames">The names of updated documents.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendReConsentsRequiredAsync(
+        string userEmail,
+        string userName,
+        IEnumerable<string> documentNames,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a re-consent reminder before access is suspended.
     /// </summary>
     /// <param name="userEmail">The user's email.</param>

@@ -18,6 +18,8 @@ public class ConsentController : Controller
     private readonly ProfilesDbContext _dbContext;
     private readonly UserManager<User> _userManager;
     private readonly IConsentRecordRepository _consentRepository;
+    private readonly IMembershipCalculator _membershipCalculator;
+    private readonly IGoogleSyncService _googleSyncService;
     private readonly IClock _clock;
     private readonly ILogger<ConsentController> _logger;
 
@@ -25,12 +27,16 @@ public class ConsentController : Controller
         ProfilesDbContext dbContext,
         UserManager<User> userManager,
         IConsentRecordRepository consentRepository,
+        IMembershipCalculator membershipCalculator,
+        IGoogleSyncService googleSyncService,
         IClock clock,
         ILogger<ConsentController> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
         _consentRepository = consentRepository;
+        _membershipCalculator = membershipCalculator;
+        _googleSyncService = googleSyncService;
         _clock = clock;
         _logger = logger;
     }
@@ -195,6 +201,15 @@ public class ConsentController : Controller
         _logger.LogInformation(
             "User {UserId} consented to document {DocumentName} version {Version}",
             user.Id, version.LegalDocument.Name, version.VersionNumber);
+
+        // Check if status is now Active (restores access if previously suspended)
+        var newStatus = await _membershipCalculator.ComputeStatusAsync(user.Id);
+        if (newStatus == Domain.Enums.MembershipStatus.Active)
+        {
+            // Restore access to Google resources
+            await _googleSyncService.RestoreUserToAllTeamsAsync(user.Id);
+            _logger.LogInformation("Restored resource access for user {UserId} after compliance", user.Id);
+        }
 
         TempData["SuccessMessage"] = $"Thank you for consenting to {version.LegalDocument.Name}.";
         return RedirectToAction(nameof(Index));

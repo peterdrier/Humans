@@ -8,13 +8,15 @@ using Profiles.Infrastructure.Data;
 namespace Profiles.Infrastructure.Jobs;
 
 /// <summary>
-/// Background job that suspends members who haven't re-consented to required documents.
+/// Background job that suspends members who haven't re-consented to required documents
+/// after the grace period has expired.
 /// </summary>
 public class SuspendNonCompliantMembersJob
 {
     private readonly ProfilesDbContext _dbContext;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
+    private readonly IGoogleSyncService _googleSyncService;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
     private readonly IClock _clock;
 
@@ -22,72 +24,86 @@ public class SuspendNonCompliantMembersJob
         ProfilesDbContext dbContext,
         IMembershipCalculator membershipCalculator,
         IEmailService emailService,
+        IGoogleSyncService googleSyncService,
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
     {
         _dbContext = dbContext;
         _membershipCalculator = membershipCalculator;
         _emailService = emailService;
+        _googleSyncService = googleSyncService;
         _logger = logger;
         _clock = clock;
     }
 
     /// <summary>
-    /// Checks and updates membership status for users missing required consents.
+    /// Checks and updates membership status for users missing required consents past grace period.
     /// </summary>
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "Starting non-compliant member check at {Time}",
+            "Starting non-compliant member suspension check at {Time}",
             _clock.GetCurrentInstant());
 
         try
         {
-            // GetUsersRequiringStatusUpdateAsync already identifies users missing consents
-            // who have active roles - these users will have Inactive status
-            var usersToUpdate = await _membershipCalculator
+            // Get users who are now Inactive (missing consents + grace period expired)
+            var usersToSuspend = await _membershipCalculator
                 .GetUsersRequiringStatusUpdateAsync(cancellationToken);
 
-            if (usersToUpdate.Count == 0)
+            if (usersToSuspend.Count == 0)
             {
-                _logger.LogInformation("Completed non-compliant member check, no users require update");
+                _logger.LogInformation("Completed suspension check, no users require suspension");
                 return;
             }
 
-            // Batch load all users with profiles to avoid N+1
+            // Batch load all users with profiles and their team memberships
             var users = await _dbContext.Users
                 .AsNoTracking()
                 .Include(u => u.Profile)
-                .Where(u => usersToUpdate.Contains(u.Id))
+                .Include(u => u.TeamMemberships.Where(tm => tm.LeftAt == null))
+                .Where(u => usersToSuspend.Contains(u.Id))
                 .ToListAsync(cancellationToken);
 
-            var userLookup = users.ToDictionary(u => u.Id);
             var suspendedCount = 0;
 
-            foreach (var userId in usersToUpdate)
+            foreach (var user in users)
             {
-                // GetUsersRequiringStatusUpdateAsync already verified these users are missing consents
-                // and have active roles, so they will compute as Inactive
-                if (!userLookup.TryGetValue(userId, out var user))
+                var effectiveEmail = user.GetEffectiveEmail();
+                if (effectiveEmail == null)
                 {
                     continue;
                 }
 
-                var effectiveEmail = user.GetEffectiveEmail();
-                if (effectiveEmail != null)
+                // 1. Send notification
+                await _emailService.SendAccessSuspendedAsync(
+                    effectiveEmail,
+                    user.DisplayName,
+                    "Missing required document consent (grace period expired)",
+                    cancellationToken);
+
+                // 2. Remove from all team resources (Google Drive/Groups)
+                foreach (var membership in user.TeamMemberships)
                 {
-                    await _emailService.SendAccessSuspendedAsync(
-                        effectiveEmail,
-                        user.DisplayName,
-                        "Missing required document consent",
-                        cancellationToken);
-
-                    _logger.LogWarning(
-                        "User {UserId} ({Email}) access suspended due to missing consent",
-                        userId, effectiveEmail);
-
-                    suspendedCount++;
+                    try
+                    {
+                        await _googleSyncService.RemoveUserFromTeamResourcesAsync(
+                            membership.TeamId,
+                            user.Id,
+                            cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to remove user {UserId} from team {TeamId} resources during suspension",
+                            user.Id, membership.TeamId);
+                    }
                 }
+
+                _logger.LogWarning(
+                    "User {UserId} ({Email}) access suspended and removed from {Count} teams",
+                    user.Id, effectiveEmail, user.TeamMemberships.Count);
+
+                suspendedCount++;
             }
 
             _logger.LogInformation(

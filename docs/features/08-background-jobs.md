@@ -20,7 +20,7 @@ Several system operations need to run automatically without user interaction: sy
 
 **Purpose**: Keep legal documents synchronized with the canonical GitHub repository.
 
-**Schedule**: Every hour
+**Schedule**: Daily at 4:00 AM
 
 **Process**:
 ```
@@ -32,19 +32,22 @@ Several system operations need to run automatically without user interaction: sy
       - Parse document content (ES/EN)
       - Create new DocumentVersion
       - Update LegalDocument.CurrentCommitSha
-      - If RequiresReConsent, queue notifications
-3. Log sync summary
+3. If any documents were updated:
+   a. Identify all active users missing new required consents
+   b. Send ONE consolidated "Action Required" email per user
+   c. Log summary of updates and notifications
 ```
 
 **Triggers**:
 - New document versions requiring re-consent
-- Email notifications to affected members
+- Email notifications to affected members (consolidated)
 - Status changes for non-compliant members
 
 **Error Handling**:
 - GitHub API failures: Retry with backoff
 - Parse failures: Log and skip, alert admin
 - Partial sync: Continue with remaining docs
+- N+1 Protection: Users loaded in batches for notification loop
 
 ---
 
@@ -86,19 +89,19 @@ Day 30: Suspension (handled by SuspendJob)
 
 ### SuspendNonCompliantMembersJob
 
-**Purpose**: Automatically set members to Inactive status when they exceed the consent grace period.
+**Purpose**: Automatically set members to Inactive status and revoke access when they exceed the consent grace period.
 
-**Schedule**: Daily at 8:00 AM
+**Schedule**: Daily at 4:30 AM
 
 **Process**:
 ```
 1. Get all users with:
    - Active role assignments
    - Missing required consents
-   - Grace period exceeded (>30 days)
+   - Grace period exceeded (e.g. >7 days since update)
 2. For each user:
-   a. Set MembershipStatus = Inactive
-   b. Send suspension notice email
+   a. Send suspension notice email
+   b. Explicitly revoke access to all Google Drive folders and Groups
    c. Log action with reason
 3. Generate compliance report
 ```
@@ -107,7 +110,7 @@ Day 30: Suspension (handled by SuspendJob)
 - Only affects users with active roles (not already None)
 - Never automatically sets IsSuspended (admin-only)
 - Logs all actions for audit
-- Can be reversed when consent provided
+- Access automatically restored by ConsentController when signed
 
 ---
 

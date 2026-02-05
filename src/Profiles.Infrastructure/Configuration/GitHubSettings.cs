@@ -32,6 +32,12 @@ public class GitHubSettings
     public string Branch { get; set; } = "main";
 
     /// <summary>
+    /// Grace period (in days) before membership becomes inactive due to missing re-consent.
+    /// Defaults to 7 days.
+    /// </summary>
+    public int ReConsentGracePeriodDays { get; set; } = 7;
+
+    /// <summary>
     /// Document path mappings. Key is DocumentType, value contains paths.
     /// </summary>
     public Dictionary<string, DocumentPathConfig> Documents { get; set; } = new(StringComparer.Ordinal);

@@ -288,6 +288,16 @@ RecurringJob.AddOrUpdate<ProcessAccountDeletionsJob>(
     job => job.ExecuteAsync(CancellationToken.None),
     Cron.Daily);
 
+RecurringJob.AddOrUpdate<SyncLegalDocumentsJob>(
+    "legal-document-sync",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "0 4 * * *");
+
+RecurringJob.AddOrUpdate<SuspendNonCompliantMembersJob>(
+    "suspend-non-compliant-members",
+    job => job.ExecuteAsync(CancellationToken.None),
+    "30 4 * * *");
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

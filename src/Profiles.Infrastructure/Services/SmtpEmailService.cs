@@ -99,12 +99,29 @@ public class SmtpEmailService : IEmailService
         string documentName,
         CancellationToken cancellationToken = default)
     {
-        var subject = $"Action Required: Updated {documentName}";
+        await SendReConsentsRequiredAsync(userEmail, userName, new[] { documentName }, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task SendReConsentsRequiredAsync(
+        string userEmail,
+        string userName,
+        IEnumerable<string> documentNames,
+        CancellationToken cancellationToken = default)
+    {
+        var docs = documentNames.ToList();
+        var subject = docs.Count == 1 
+            ? $"Action Required: Updated {docs[0]}" 
+            : "Action Required: Multiple Legal Documents Updated";
+
         var body = $"""
             <h2>Legal Document Update</h2>
             <p>Dear {HtmlEncode(userName)},</p>
-            <p>We have updated our <strong>{HtmlEncode(documentName)}</strong>.
-            As a member, you need to review and accept the updated document to maintain your active membership status.</p>
+            <p>We have updated the following required documents:</p>
+            <ul>
+                {string.Join("\n", docs.Select(d => $"<li><strong>{HtmlEncode(d)}</strong></li>"))}
+            </ul>
+            <p>As a member, you need to review and accept these updated documents to maintain your active membership status.</p>
             <p><a href="{_settings.BaseUrl}/Consent">Review and Accept</a></p>
             <p>If you have any questions about the changes, please contact us.</p>
             <p>Thank you,<br/>The Nobodies Collective Team</p>

@@ -73,7 +73,7 @@
                                 {
                                     <form asp-action="Leave" asp-route-slug="@membership.TeamSlug" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to leave @membership.TeamName?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to leave @System.Web.HttpUtility.JavaScriptStringEncode(membership.TeamName)?')">
                                             Leave
                                         </button>
                                     </form>

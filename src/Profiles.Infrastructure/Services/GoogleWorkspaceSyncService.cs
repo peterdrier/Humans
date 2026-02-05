@@ -569,4 +569,33 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             }
         }
     }
+
+    /// <inheritdoc />
+    public async Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Restoring Google resource access for user {UserId}", userId);
+
+        var user = await _dbContext.Users
+            .Include(u => u.TeamMemberships.Where(tm => tm.LeftAt == null))
+            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+        if (user == null)
+        {
+            _logger.LogWarning("User {UserId} not found for access restoration", userId);
+            return;
+        }
+
+        foreach (var membership in user.TeamMemberships)
+        {
+            try
+            {
+                await AddUserToTeamResourcesAsync(membership.TeamId, userId, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error restoring access for user {UserId} to team {TeamId}",
+                    userId, membership.TeamId);
+            }
+        }
+    }
 }
