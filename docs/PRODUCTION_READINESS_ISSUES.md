@@ -300,15 +300,74 @@ All views use consistent pagination UI pattern with page number links.
 
 ---
 
+## Service Implementations (Stubbed)
+
+### Issue 23: Integration - Implement LegalDocumentSyncService :x: TODO (BLOCKING)
+
+**Status:** Not started - **NO IMPLEMENTATION EXISTS**
+
+**Priority:** CRITICAL - App will crash at runtime because service isn't registered in DI.
+
+The `ILegalDocumentSyncService` interface exists but has no implementation. Jobs that depend on it (`SyncLegalDocumentsJob`, `SendReConsentReminderJob`) will fail.
+
+**Required functionality:**
+- Sync legal documents from GitHub repository (`nobodies-collective/legal`)
+- Compare commit SHAs to detect updates
+- Create new `DocumentVersion` records when content changes
+- Get active documents and required versions for consent checks
+
+**Options:**
+1. Create stub implementation (minimum to run)
+2. Implement real GitHub API integration
+
+---
+
+### Issue 24: Integration - Implement Real EmailService :x: TODO
+
+**Status:** Stubbed - logs to console instead of sending emails
+
+**Priority:** MEDIUM - App runs but users won't receive notifications.
+
+Current `StubEmailService` needs to be replaced with real email provider.
+
+**11 email types need implementation:**
+- Application submitted/approved/rejected
+- Welcome email
+- Re-consent required/reminder
+- Access suspended
+- Email verification
+- Account deletion requested/completed
+
+**Suggested providers:** SendGrid, Mailgun, or SMTP relay
+
+---
+
+### Issue 25: Integration - Implement Real GoogleSyncService :x: TODO
+
+**Status:** Stubbed - logs to console instead of calling Google APIs
+
+**Priority:** LOW - App runs but Google Drive provisioning won't work.
+
+Current `StubGoogleSyncService` needs Google Workspace Admin SDK integration.
+
+**Functions to implement:**
+- Provision team/user Google Drive folders
+- Sync resource permissions
+- Add/remove users from team resources
+
+**Requires:** Google Cloud service account with domain-wide delegation
+
+---
+
 ## Summary
 
 | Priority | Total | Done | Todo | Needs Input |
 |----------|-------|------|------|-------------|
-| CRITICAL | 4 | 4 | 0 | 0 |
+| CRITICAL | 5 | 4 | 1 | 0 |
 | HIGH | 6 | 5 | 0 | 1 |
-| MEDIUM | 8 | 8 | 0 | 0 |
-| LOW | 4 | 3 | 1 | 0 |
-| **TOTAL** | **22** | **20** | **1** | **1** |
+| MEDIUM | 9 | 8 | 1 | 0 |
+| LOW | 5 | 3 | 2 | 0 |
+| **TOTAL** | **25** | **20** | **4** | **1** |
 
 ### Completed (20)
 - #1 HTTP Security Headers
@@ -332,12 +391,15 @@ All views use consistent pagination UI pattern with page number links.
 - #20 Null Reference Review (no change needed)
 - #22 Pagination for List Views
 
-### Remaining Todo (1)
+### Remaining Todo (4)
 - #21 AllowedHosts (needs production domain names)
+- #23 LegalDocumentSyncService (**BLOCKING** - no implementation exists)
+- #24 EmailService (stubbed - logs only)
+- #25 GoogleSyncService (stubbed - logs only)
 
 ### Needs Business Input (1)
 - #8 Caching Strategy (optional - can implement later if needed)
 
 ---
 
-*Last updated: 2026-02-05 by Claude (GDPR items completed)*
+*Last updated: 2026-02-05 by Claude (added stubbed service issues)*
