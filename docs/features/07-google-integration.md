@@ -2,7 +2,7 @@
 
 ## Business Context
 
-Nobodies Collective uses Google Workspace for collaboration. The system integrates with Google Drive to automatically provision shared folders for teams and manage access permissions based on team membership.
+Nobodies Collective uses Google Workspace for collaboration. The system integrates with Google Drive and Google Groups to manage shared resources for teams. Resources can be either provisioned automatically or linked manually by admins when pre-shared with the service account.
 
 ## User Stories
 
@@ -50,6 +50,51 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Lists provisioned resources
 - Manual resync option
 
+### US-7.5: Link Existing Drive Folder
+**As a** Board member or authorized Metalead
+**I want to** link an existing Google Drive folder to a team
+**So that** team members automatically get access to the shared folder
+
+**Acceptance Criteria:**
+- Admin pastes a Google Drive folder URL
+- System validates the service account has access to the folder
+- If access denied, shows clear instructions with service account email to share with
+- Folder metadata (name, URL) fetched and saved as GoogleResource
+- Duplicate links prevented (same folder + team)
+- Supports multiple URL formats (direct, u/0, open?id=)
+
+### US-7.6: Link Existing Google Group
+**As a** Board member or authorized Metalead
+**I want to** link an existing Google Group to a team
+**So that** team membership automatically syncs with group membership
+
+**Acceptance Criteria:**
+- Admin enters a Google Group email address
+- System validates the service account has access to the group
+- If access denied, shows clear instructions with service account email
+- Group metadata (name, ID) fetched and saved as GoogleResource
+- Duplicate links prevented (same group + team)
+
+### US-7.7: Unlink Resource
+**As a** Board member or authorized Metalead
+**I want to** unlink a Google resource from a team
+**So that** the association is removed without deleting the resource
+
+**Acceptance Criteria:**
+- Soft unlink: sets IsActive = false (preserves audit trail)
+- Resource disappears from active list
+- Google permissions are NOT automatically revoked (manual cleanup)
+
+### US-7.8: Metalead Resource Management
+**As an** admin
+**I want to** control whether Metaleads can manage team resources
+**So that** I can delegate resource management when appropriate
+
+**Acceptance Criteria:**
+- Controlled by `TeamResourceManagement:AllowMetaleadsToManageResources` config setting
+- Default: false (only Board members can manage)
+- When enabled, Metaleads can link/unlink/sync resources for their teams
+
 ## Data Model
 
 ### GoogleResource Entity
@@ -70,10 +115,9 @@ GoogleResource
 
 ### GoogleResourceType Enum
 ```
-Folder      // Google Drive folder
-Document    // Google Docs document (future)
-Spreadsheet // Google Sheets (future)
-Group       // Google Groups (future)
+DriveFolder  = 0  // Google Drive folder
+SharedDrive  = 1  // Shared Drive (future)
+Group        = 2  // Google Group
 ```
 
 ## Service Interface
@@ -163,33 +207,89 @@ public interface IGoogleSyncService
 └────────────────────────┘
 ```
 
-## Current Implementation
+## Resource Linking (Pre-Shared Access Model)
 
-### StubGoogleSyncService
+Instead of creating resources with domain-wide delegation, admins can link existing Google resources that have been pre-shared with the service account.
 
-The current implementation is a **stub** that logs all operations without making actual Google API calls. This allows the team workflow to be developed and tested independently.
+### Access Model
+- **Drive folders**: Admin shares the folder with the service account email as "Editor"
+- **Google Groups**: Admin adds the service account as a Group Manager
+- The service account authenticates as itself (no impersonation) for validation/linking
 
+### ITeamResourceService
+Separate interface from IGoogleSyncService for linking/validation (not provisioning):
 ```csharp
-public class StubGoogleSyncService : IGoogleSyncService
+public interface ITeamResourceService
 {
-    public Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, ...)
-    {
-        _logger.LogInformation(
-            "[STUB] Would add user {UserId} to team {TeamId} resources",
-            userId, teamId);
-        return Task.CompletedTask;
-    }
-    // ... similar for other methods
+    Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, ...);
+    Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, ...);
+    Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, ...);
+    Task UnlinkResourceAsync(Guid resourceId, ...);
+    Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, ...);
+    Task<string> GetServiceAccountEmailAsync(...);
 }
 ```
 
-### Future Implementation
+### Resource Linking Flow
+```
+┌────────────────────────┐
+│ Admin pastes URL/email │
+└────────┬───────────────┘
+         │
+         ▼
+┌────────────────────────┐
+│ Parse & validate input │
+│ (URL → folder ID)      │
+└────────┬───────────────┘
+         │
+         ▼
+┌──────────────────────────┐
+│ Google API (as service   │
+│ account, no impersonation│
+│ - Files.Get / Groups.Get │
+└────────┬─────────────────┘
+         │
+    ┌────┴─────┐
+    │          │
+ Success    Failure
+    │          │
+    ▼          ▼
+┌────────┐ ┌─────────────────────┐
+│ Save   │ │ Show error +        │
+│ record │ │ service account     │
+│        │ │ email for sharing   │
+└────────┘ └─────────────────────┘
+```
 
-Real implementation will require:
-1. Google Workspace Admin SDK credentials
-2. Service account with domain-wide delegation
-3. OAuth scopes: `drive.file`, `admin.directory.group`
-4. Organization's shared drive ID
+### Drive Folder URL Parsing
+Supports multiple Google Drive URL formats:
+- `https://drive.google.com/drive/folders/{id}`
+- `https://drive.google.com/drive/u/0/folders/{id}`
+- `https://drive.google.com/open?id={id}`
+- `https://drive.google.com/drive/folders/{id}?usp=sharing`
+- Direct folder ID
+
+### Authorization
+- Board members: can manage resources for any team
+- Metaleads: controlled by `TeamResourceManagement:AllowMetaleadsToManageResources` (default: false)
+
+### Route: `/Teams/{slug}/Admin/Resources`
+Actions:
+| Route | Method | Action |
+|-------|--------|--------|
+| `Resources` | GET | View linked resources + link forms |
+| `Resources/LinkDrive` | POST | Link a Drive folder by URL |
+| `Resources/LinkGroup` | POST | Link a Google Group by email |
+| `Resources/{id}/Unlink` | POST | Soft-unlink (IsActive = false) |
+| `Resources/{id}/Sync` | POST | Trigger permission sync |
+
+## Stub Implementations
+
+Both `IGoogleSyncService` and `ITeamResourceService` have stub implementations for development without Google credentials:
+- `StubGoogleSyncService`: logs provisioning/sync actions
+- `StubTeamResourceService`: performs real DB operations but simulates Google API validation
+
+Stub vs. real implementation is selected automatically based on whether `GoogleWorkspace:ServiceAccountKeyPath` or `GoogleWorkspace:ServiceAccountKeyJson` is configured.
 
 ## Error Handling
 
@@ -238,13 +338,30 @@ When system teams are synced, Google permissions are also updated:
 
 ## Configuration
 
+### GoogleWorkspace Settings
 ```json
 {
-  "Google": {
+  "GoogleWorkspace": {
     "ServiceAccountKeyPath": "/secrets/google-sa.json",
-    "DomainName": "nobodies.es",
-    "SharedDriveId": "0ABC123...",
-    "TeamsFolderName": "Working Groups"
+    "ServiceAccountKeyJson": "",
+    "ImpersonateUser": "admin@nobodies.team",
+    "Domain": "nobodies.team",
+    "TeamFoldersParentId": "",
+    "UseSharedDrives": false,
+    "Groups": {
+      "WhoCanViewMembership": "ALL_MEMBERS_CAN_VIEW",
+      "WhoCanPostMessage": "ANYONE_CAN_POST",
+      "AllowExternalMembers": true
+    }
+  }
+}
+```
+
+### TeamResourceManagement Settings
+```json
+{
+  "TeamResourceManagement": {
+    "AllowMetaleadsToManageResources": false
   }
 }
 ```

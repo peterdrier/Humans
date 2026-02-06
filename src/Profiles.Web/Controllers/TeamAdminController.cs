@@ -13,15 +13,21 @@ namespace Profiles.Web.Controllers;
 public class TeamAdminController : Controller
 {
     private readonly ITeamService _teamService;
+    private readonly ITeamResourceService _teamResourceService;
+    private readonly IGoogleSyncService _googleSyncService;
     private readonly UserManager<User> _userManager;
     private readonly ILogger<TeamAdminController> _logger;
 
     public TeamAdminController(
         ITeamService teamService,
+        ITeamResourceService teamResourceService,
+        IGoogleSyncService googleSyncService,
         UserManager<User> userManager,
         ILogger<TeamAdminController> logger)
     {
         _teamService = teamService;
+        _teamResourceService = teamResourceService;
+        _googleSyncService = googleSyncService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -282,5 +288,216 @@ public class TeamAdminController : Controller
         }
 
         return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [HttpGet("Resources")]
+    public async Task<IActionResult> Resources(string slug)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        var resources = await _teamResourceService.GetTeamResourcesAsync(team.Id);
+        var serviceAccountEmail = await _teamResourceService.GetServiceAccountEmailAsync();
+
+        var viewModel = new TeamResourcesViewModel
+        {
+            TeamId = team.Id,
+            TeamName = team.Name,
+            TeamSlug = team.Slug,
+            ServiceAccountEmail = serviceAccountEmail,
+            Resources = resources.Select(r => new GoogleResourceViewModel
+            {
+                Id = r.Id,
+                ResourceType = r.ResourceType switch
+                {
+                    GoogleResourceType.DriveFolder => "Drive Folder",
+                    GoogleResourceType.SharedDrive => "Shared Drive",
+                    GoogleResourceType.Group => "Google Group",
+                    _ => r.ResourceType.ToString()
+                },
+                Name = r.Name,
+                Url = r.Url,
+                GoogleId = r.GoogleId,
+                ProvisionedAt = r.ProvisionedAt.ToDateTimeUtc(),
+                LastSyncedAt = r.LastSyncedAt?.ToDateTimeUtc(),
+                IsActive = r.IsActive,
+                ErrorMessage = r.ErrorMessage
+            }).ToList()
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost("Resources/LinkDrive")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkDriveFolder(string slug, LinkDriveFolderModel model)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["ErrorMessage"] = "Please enter a valid Google Drive folder URL.";
+            return RedirectToAction(nameof(Resources), new { slug });
+        }
+
+        var result = await _teamResourceService.LinkDriveFolderAsync(team.Id, model.FolderUrl);
+
+        if (result.Success)
+        {
+            TempData["SuccessMessage"] = $"Drive folder \"{result.Resource!.Name}\" linked successfully.";
+        }
+        else
+        {
+            var errorMessage = result.ErrorMessage ?? "Failed to link Drive folder.";
+            if (result.ServiceAccountEmail != null)
+            {
+                errorMessage += $" Service account: {result.ServiceAccountEmail}";
+            }
+            TempData["ErrorMessage"] = errorMessage;
+        }
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/LinkGroup")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkGroup(string slug, LinkGroupModel model)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            TempData["ErrorMessage"] = "Please enter a valid Google Group email address.";
+            return RedirectToAction(nameof(Resources), new { slug });
+        }
+
+        var result = await _teamResourceService.LinkGroupAsync(team.Id, model.GroupEmail);
+
+        if (result.Success)
+        {
+            TempData["SuccessMessage"] = $"Google Group \"{result.Resource!.Name}\" linked successfully.";
+        }
+        else
+        {
+            var errorMessage = result.ErrorMessage ?? "Failed to link Google Group.";
+            if (result.ServiceAccountEmail != null)
+            {
+                errorMessage += $" Service account: {result.ServiceAccountEmail}";
+            }
+            TempData["ErrorMessage"] = errorMessage;
+        }
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/{resourceId}/Unlink")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnlinkResource(string slug, Guid resourceId)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        await _teamResourceService.UnlinkResourceAsync(resourceId);
+        TempData["SuccessMessage"] = "Resource unlinked from team.";
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/{resourceId}/Sync")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncResource(string slug, Guid resourceId)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await _googleSyncService.SyncResourcePermissionsAsync(resourceId);
+            TempData["SuccessMessage"] = "Resource permissions synced successfully.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing resource {ResourceId}", resourceId);
+            TempData["ErrorMessage"] = $"Failed to sync resource permissions: {ex.Message}";
+        }
+
+        return RedirectToAction(nameof(Resources), new { slug });
     }
 }

@@ -38,8 +38,7 @@ public class GoogleResourceConfiguration : IEntityTypeConfiguration<GoogleResour
             .HasForeignKey(gr => gr.UserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(gr => gr.GoogleId)
-            .IsUnique();
+        builder.HasIndex(gr => gr.GoogleId);
 
         builder.HasIndex(gr => gr.TeamId);
         builder.HasIndex(gr => gr.UserId);

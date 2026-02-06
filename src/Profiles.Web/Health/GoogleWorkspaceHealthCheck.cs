@@ -8,8 +8,8 @@ using Profiles.Infrastructure.Configuration;
 namespace Profiles.Web.Health;
 
 /// <summary>
-/// Health check that validates Google Workspace API connectivity and authentication.
-/// Verifies service account credentials and domain-wide delegation are properly configured.
+/// Health check that validates Google service account credentials and API access.
+/// Verifies the service account can authenticate and access the Admin SDK.
 /// </summary>
 public class GoogleWorkspaceHealthCheck : IHealthCheck
 {
@@ -35,11 +35,6 @@ public class GoogleWorkspaceHealthCheck : IHealthCheck
             return HealthCheckResult.Degraded("Google Workspace not configured");
         }
 
-        if (string.IsNullOrEmpty(_settings.ImpersonateUser))
-        {
-            return HealthCheckResult.Unhealthy("ImpersonateUser not configured");
-        }
-
         try
         {
             var credential = await GetCredentialAsync(cancellationToken);
@@ -49,25 +44,24 @@ public class GoogleWorkspaceHealthCheck : IHealthCheck
                 ApplicationName = "Nobodies Profiles Health Check"
             });
 
-            // Make a simple API call to verify authentication and delegation
-            // List groups with max 1 result - minimal API call that validates everything
+            // List groups with max 1 result — validates credential + Admin SDK access
             var request = directoryService.Groups.List();
             request.Domain = _settings.Domain;
             request.MaxResults = 1;
             await request.ExecuteAsync(cancellationToken);
 
-            return HealthCheckResult.Healthy("Google Workspace API authentication successful");
+            return HealthCheckResult.Healthy("Google service account authentication successful");
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403)
         {
-            _logger.LogWarning(ex, "Google Workspace authorization failed - check domain-wide delegation");
+            _logger.LogWarning(ex, "Google API authorization failed - check service account admin role");
             return HealthCheckResult.Unhealthy(
-                "Authorization failed - verify domain-wide delegation is configured for the service account",
+                "Authorization failed - assign the Groups Admin role to the service account in Google Workspace Admin Console",
                 ex);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 401)
         {
-            _logger.LogWarning(ex, "Google Workspace authentication failed");
+            _logger.LogWarning(ex, "Google API authentication failed");
             return HealthCheckResult.Unhealthy(
                 "Authentication failed - check service account credentials",
                 ex);
@@ -83,7 +77,7 @@ public class GoogleWorkspaceHealthCheck : IHealthCheck
         {
             _logger.LogWarning(ex, "Google Workspace health check failed");
             return HealthCheckResult.Unhealthy(
-                $"Google Workspace connection failed: {ex.Message}",
+                $"Google service account check failed: {ex.Message}",
                 ex);
         }
     }
@@ -94,7 +88,6 @@ public class GoogleWorkspaceHealthCheck : IHealthCheck
 
         if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
         {
-            // Use CredentialFactory for secure credential loading
             using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(_settings.ServiceAccountKeyJson));
             credential = (await CredentialFactory.FromStreamAsync<ServiceAccountCredential>(stream, cancellationToken)
                 .ConfigureAwait(false)).ToGoogleCredential();
@@ -106,8 +99,6 @@ public class GoogleWorkspaceHealthCheck : IHealthCheck
                 .ConfigureAwait(false)).ToGoogleCredential();
         }
 
-        return credential
-            .CreateScoped(DirectoryService.Scope.AdminDirectoryGroupReadonly)
-            .CreateWithUser(_settings.ImpersonateUser);
+        return credential.CreateScoped(DirectoryService.Scope.AdminDirectoryGroupReadonly);
     }
 }

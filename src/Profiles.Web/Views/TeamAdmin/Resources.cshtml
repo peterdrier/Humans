@@ -1,0 +1,178 @@
+@model Profiles.Web.Models.TeamResourcesViewModel
+@{
+    ViewData["Title"] = "Manage Resources - " + Model.TeamName;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">Teams</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Resources</li>
+    </ol>
+</nav>
+
+<h1>Manage Resources</h1>
+<p class="text-muted">Team: @Model.TeamName</p>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header">Service Account</div>
+    <div class="card-body">
+        <p class="mb-2">To link a Google resource, you must first share it with the service account:</p>
+        <div class="input-group mb-3" style="max-width: 600px;">
+            <input type="text" class="form-control" value="@Model.ServiceAccountEmail" readonly id="serviceAccountEmail">
+            <button class="btn btn-outline-secondary" type="button" onclick="navigator.clipboard.writeText(document.getElementById('serviceAccountEmail').value)">Copy</button>
+        </div>
+        <ul class="mb-0 text-muted small">
+            <li><strong>Drive folders:</strong> Share the folder with this email as <em>Editor</em></li>
+            <li><strong>Google Groups:</strong> Add this email as a <em>Manager</em> of the group</li>
+        </ul>
+    </div>
+</div>
+
+@if (Model.Resources.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">Linked Resources</div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Last Synced</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var resource in Model.Resources)
+                    {
+                        <tr>
+                            <td>
+                                @if (!string.IsNullOrEmpty(resource.Url))
+                                {
+                                    <a href="@resource.Url" target="_blank" rel="noopener noreferrer">@resource.Name</a>
+                                }
+                                else
+                                {
+                                    @resource.Name
+                                }
+                            </td>
+                            <td>
+                                @if (string.Equals(resource.ResourceType, "Drive Folder", StringComparison.Ordinal))
+                                {
+                                    <span class="badge bg-info">Drive Folder</span>
+                                }
+                                else if (string.Equals(resource.ResourceType, "Google Group", StringComparison.Ordinal))
+                                {
+                                    <span class="badge bg-primary">Google Group</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@resource.ResourceType</span>
+                                }
+                            </td>
+                            <td>
+                                @if (resource.LastSyncedAt.HasValue)
+                                {
+                                    @resource.LastSyncedAt.Value.ToString("MMM d, yyyy HH:mm")
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Never</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(resource.ErrorMessage))
+                                {
+                                    <span class="badge bg-danger" title="@resource.ErrorMessage">Error</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <form asp-action="SyncResource" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@resource.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Sync</button>
+                                    </form>
+                                    <form asp-action="UnlinkResource" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@resource.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to unlink this resource?">Unlink</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info mb-4">
+        No resources linked to this team yet. Use the forms below to link a Google Drive folder or Google Group.
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Link Drive Folder</div>
+            <div class="card-body">
+                <form asp-action="LinkDriveFolder" asp-route-slug="@Model.TeamSlug" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label for="folderUrl" class="form-label">Folder URL</label>
+                        <input type="url" class="form-control" id="folderUrl" name="FolderUrl"
+                               placeholder="https://drive.google.com/drive/folders/..." required>
+                        <div class="form-text">Paste the Google Drive folder URL. The folder must be shared with the service account.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Link Folder</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Link Google Group</div>
+            <div class="card-body">
+                <form asp-action="LinkGroup" asp-route-slug="@Model.TeamSlug" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="mb-3">
+                        <label for="groupEmail" class="form-label">Group Email</label>
+                        <input type="email" class="form-control" id="groupEmail" name="GroupEmail"
+                               placeholder="team@nobodies.team" required>
+                        <div class="form-text">Enter the Google Group email address. The service account must be a Manager of the group.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Link Group</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">Back to Team</a>
+    <a asp-action="Members" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-primary">Manage Members</a>
+    <a asp-action="Requests" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-primary">View Pending Requests</a>
+</div>

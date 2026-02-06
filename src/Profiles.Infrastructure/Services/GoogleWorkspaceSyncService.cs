@@ -101,9 +101,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 "Google Workspace credentials not configured. Set ServiceAccountKeyPath or ServiceAccountKeyJson.");
         }
 
-        return credential
-            .CreateScoped(scopes)
-            .CreateWithUser(_settings.ImpersonateUser);
+        return credential.CreateScoped(scopes);
     }
 
     /// <inheritdoc />
@@ -142,6 +140,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var request = drive.Files.Create(fileMetadata);
         request.Fields = "id, name, webViewLink";
+        request.SupportsAllDrives = true;
         var folder = await request.ExecuteAsync(cancellationToken);
 
         var resource = new GoogleResource
@@ -183,6 +182,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var request = drive.Files.Create(fileMetadata);
         request.Fields = "id, name, webViewLink";
+        request.SupportsAllDrives = true;
         var folder = await request.ExecuteAsync(cancellationToken);
 
         var resource = new GoogleResource
@@ -436,8 +436,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     EmailAddress = member.User.Email
                 };
 
-                await drive.Permissions.Create(permission, resource.GoogleId)
-                    .ExecuteAsync(cancellationToken);
+                var createReq = drive.Permissions.Create(permission, resource.GoogleId);
+                createReq.SupportsAllDrives = true;
+                await createReq.ExecuteAsync(cancellationToken);
             }
             catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400)
             {
@@ -522,8 +523,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
                 try
                 {
-                    await drive.Permissions.Create(permission, resource.GoogleId)
-                        .ExecuteAsync(cancellationToken);
+                    var createReq = drive.Permissions.Create(permission, resource.GoogleId);
+                    createReq.SupportsAllDrives = true;
+                    await createReq.ExecuteAsync(cancellationToken);
                 }
                 catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400)
                 {
@@ -563,14 +565,17 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
                 try
                 {
-                    var permissions = await drive.Permissions.List(resource.GoogleId).ExecuteAsync(cancellationToken);
+                    var listReq = drive.Permissions.List(resource.GoogleId);
+                    listReq.SupportsAllDrives = true;
+                    var permissions = await listReq.ExecuteAsync(cancellationToken);
                     var userPermission = permissions.Permissions?
                         .FirstOrDefault(p => string.Equals(p.EmailAddress, user.Email, StringComparison.OrdinalIgnoreCase));
 
                     if (userPermission != null)
                     {
-                        await drive.Permissions.Delete(resource.GoogleId, userPermission.Id)
-                            .ExecuteAsync(cancellationToken);
+                        var deleteReq = drive.Permissions.Delete(resource.GoogleId, userPermission.Id);
+                        deleteReq.SupportsAllDrives = true;
+                        await deleteReq.ExecuteAsync(cancellationToken);
                     }
                 }
                 catch (Google.GoogleApiException ex)

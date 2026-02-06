@@ -2,6 +2,10 @@
 
 Membership management system for Nobodies Collective (Spanish nonprofit).
 
+## Purpose
+
+Manage the full membership lifecycle for Nobodies Collective: volunteer applications are reviewed and approved by the Board, accepted members are provisioned into the appropriate teams and Google Workspace resources (Drive folders, Groups), and governance roles (Board, Metaleads, Admin) are tracked with temporal assignments. The system provides a way to organize teams logically and visually, gives Board and Admin visibility into what happens automatically on members' behalf through audit trails, and maintains GDPR compliance through consent tracking, data export, and right-to-deletion support.
+
 ## Critical: Coding Rules
 
 **See [`.claude/CODING_RULES.md`](.claude/CODING_RULES.md) for critical rules:**
@@ -90,3 +94,7 @@ dotnet run --project src/Profiles.Web
 - Data model
 - Workflows/state machines (if applicable)
 - Related features
+
+## Post-Fix Documentation Check
+
+**After completing a fix or feature but before committing**, check the relevant BRDs in `docs/features/` and update them if the change affects documented behavior, authorization rules, workflows, data model, or routes. This reduces churn from separate doc-only commits.

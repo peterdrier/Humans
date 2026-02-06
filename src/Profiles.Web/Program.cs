@@ -134,6 +134,7 @@ builder.Services.AddHealthChecks()
 builder.Services.Configure<GitHubSettings>(builder.Configuration.GetSection(GitHubSettings.SectionName));
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName));
 builder.Services.Configure<GoogleWorkspaceSettings>(builder.Configuration.GetSection(GoogleWorkspaceSettings.SectionName));
+builder.Services.Configure<TeamResourceManagementSettings>(builder.Configuration.GetSection(TeamResourceManagementSettings.SectionName));
 
 // Register Application Services
 builder.Services.AddScoped<IConsentRecordRepository, ConsentRecordRepository>();
@@ -147,10 +148,12 @@ if (!string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||
     !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyJson"]))
 {
     builder.Services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();
+    builder.Services.AddScoped<ITeamResourceService, TeamResourceService>();
 }
 else
 {
     builder.Services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
+    builder.Services.AddScoped<ITeamResourceService, StubTeamResourceService>();
 }
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IMembershipCalculator, MembershipCalculator>();

@@ -112,3 +112,6 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+.gemini/
+gha-creds-*.json
