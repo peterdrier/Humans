@@ -57,32 +57,39 @@ public class SuspendNonCompliantMembersJob
                 return;
             }
 
-            // Batch load all users with profiles and their team memberships
+            // Batch load all users with profiles and their team memberships (tracked for persistence)
             var users = await _dbContext.Users
-                .AsNoTracking()
                 .Include(u => u.Profile)
                 .Include(u => u.TeamMemberships.Where(tm => tm.LeftAt == null))
                 .Where(u => usersToSuspend.Contains(u.Id))
                 .ToListAsync(cancellationToken);
 
+            var now = _clock.GetCurrentInstant();
             var suspendedCount = 0;
 
             foreach (var user in users)
             {
-                var effectiveEmail = user.GetEffectiveEmail();
-                if (effectiveEmail == null)
+                if (user.Profile == null)
                 {
                     continue;
                 }
 
-                // 1. Send notification
-                await _emailService.SendAccessSuspendedAsync(
-                    effectiveEmail,
-                    user.DisplayName,
-                    "Missing required document consent (grace period expired)",
-                    cancellationToken);
+                // 1. Set suspended flag on profile
+                user.Profile.IsSuspended = true;
+                user.Profile.UpdatedAt = now;
 
-                // 2. Remove from all team resources (Google Drive/Groups)
+                // 2. Send notification
+                var effectiveEmail = user.GetEffectiveEmail();
+                if (effectiveEmail != null)
+                {
+                    await _emailService.SendAccessSuspendedAsync(
+                        effectiveEmail,
+                        user.DisplayName,
+                        "Missing required document consent (grace period expired)",
+                        cancellationToken);
+                }
+
+                // 3. Remove from all team resources (Google Drive/Groups)
                 foreach (var membership in user.TeamMemberships)
                 {
                     try
@@ -100,10 +107,15 @@ public class SuspendNonCompliantMembersJob
                 }
 
                 _logger.LogWarning(
-                    "User {UserId} ({Email}) access suspended and removed from {Count} teams",
+                    "User {UserId} ({Email}) suspended and removed from {Count} teams",
                     user.Id, effectiveEmail, user.TeamMemberships.Count);
 
                 suspendedCount++;
+            }
+
+            if (suspendedCount > 0)
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
             _logger.LogInformation(
