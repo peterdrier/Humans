@@ -58,13 +58,23 @@ public class SendReConsentReminderJob
 
             var userIds = usersNeedingReminder.ToList();
             var users = await _dbContext.Users
-                .AsNoTracking()
                 .Where(u => userIds.Contains(u.Id))
                 .ToDictionaryAsync(u => u.Id, cancellationToken);
+
+            var now = _clock.GetCurrentInstant();
+            var cooldown = Duration.FromDays(7);
+            var sentCount = 0;
 
             foreach (var userId in userIds)
             {
                 if (!users.TryGetValue(userId, out var user))
+                {
+                    continue;
+                }
+
+                // Skip if a reminder was sent recently
+                if (user.LastConsentReminderSentAt != null &&
+                    now - user.LastConsentReminderSentAt.Value < cooldown)
                 {
                     continue;
                 }
@@ -79,15 +89,20 @@ public class SendReConsentReminderJob
                         daysBeforeSuspension,
                         cancellationToken);
 
+                    user.LastConsentReminderSentAt = now;
+                    sentCount++;
+
                     _logger.LogInformation(
                         "Sent re-consent reminder to user {UserId} ({Email})",
                         userId, effectiveEmail);
                 }
             }
 
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             _logger.LogInformation(
-                "Completed re-consent reminder job, sent {Count} reminders",
-                usersNeedingReminder.Count);
+                "Completed re-consent reminder job, sent {Count} reminders ({Skipped} skipped due to cooldown)",
+                sentCount, userIds.Count - sentCount);
         }
         catch (Exception ex)
         {

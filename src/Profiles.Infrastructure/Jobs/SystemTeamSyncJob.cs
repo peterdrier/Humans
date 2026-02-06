@@ -43,6 +43,9 @@ public class SystemTeamSyncJob
 
         try
         {
+            // These run sequentially because they share the same DbContext instance,
+            // which is not thread-safe. Parallelizing with Task.WhenAll would require
+            // IServiceScopeFactory to create separate DbContext instances per task.
             await SyncVolunteersTeamAsync(cancellationToken);
             await SyncMetaleadsTeamAsync(cancellationToken);
             await SyncBoardTeamAsync(cancellationToken);

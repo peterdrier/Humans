@@ -343,19 +343,31 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         try
         {
-            var membersRequest = directory.Members.List(groupResource.GoogleId);
-            var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
-
-            if (membersResponse.MembersValue != null)
+            string? pageToken = null;
+            do
             {
-                foreach (var member in membersResponse.MembersValue)
+                var membersRequest = directory.Members.List(groupResource.GoogleId);
+                membersRequest.MaxResults = 200;
+                if (pageToken != null)
                 {
-                    if (!string.IsNullOrEmpty(member.Email))
+                    membersRequest.PageToken = pageToken;
+                }
+
+                var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
+
+                if (membersResponse.MembersValue != null)
+                {
+                    foreach (var member in membersResponse.MembersValue)
                     {
-                        currentGroupMembers.Add(member.Email);
+                        if (!string.IsNullOrEmpty(member.Email))
+                        {
+                            currentGroupMembers.Add(member.Email);
+                        }
                     }
                 }
-            }
+
+                pageToken = membersResponse.NextPageToken;
+            } while (!string.IsNullOrEmpty(pageToken));
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
         {
@@ -565,11 +577,25 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
                 try
                 {
-                    var listReq = drive.Permissions.List(resource.GoogleId);
-                    listReq.SupportsAllDrives = true;
-                    var permissions = await listReq.ExecuteAsync(cancellationToken);
-                    var userPermission = permissions.Permissions?
-                        .FirstOrDefault(p => string.Equals(p.EmailAddress, user.Email, StringComparison.OrdinalIgnoreCase));
+                    // Paginate through all permissions to find the user's
+                    Google.Apis.Drive.v3.Data.Permission? userPermission = null;
+                    string? permPageToken = null;
+                    do
+                    {
+                        var listReq = drive.Permissions.List(resource.GoogleId);
+                        listReq.SupportsAllDrives = true;
+                        listReq.Fields = "nextPageToken, permissions(id, emailAddress)";
+                        if (permPageToken != null)
+                        {
+                            listReq.PageToken = permPageToken;
+                        }
+
+                        var permissions = await listReq.ExecuteAsync(cancellationToken);
+                        userPermission = permissions.Permissions?
+                            .FirstOrDefault(p => string.Equals(p.EmailAddress, user.Email, StringComparison.OrdinalIgnoreCase));
+
+                        permPageToken = permissions.NextPageToken;
+                    } while (userPermission == null && !string.IsNullOrEmpty(permPageToken));
 
                     if (userPermission != null)
                     {

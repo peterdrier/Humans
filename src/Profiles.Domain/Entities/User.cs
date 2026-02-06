@@ -90,6 +90,11 @@ public class User : IdentityUser<Guid>
             : Email;
 
     /// <summary>
+    /// When the last re-consent reminder email was sent (for rate limiting).
+    /// </summary>
+    public Instant? LastConsentReminderSentAt { get; set; }
+
+    /// <summary>
     /// When the user requested account deletion.
     /// Null if no deletion is pending.
     /// </summary>

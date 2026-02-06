@@ -68,6 +68,13 @@ Due to namespace collision, use `MemberApplication` alias when referencing `Prof
 using MemberApplication = Profiles.Domain.Entities.Application;
 ```
 
+## Scale and Deployment Context
+
+- **Target scale: ~500 users total.** This is a small nonprofit membership system, not a high-traffic service.
+- **Single server deployment** — no distributed coordination, no multi-instance concerns. Database concurrency conflicts (e.g., DbContext thread safety) are irrelevant for parallelization decisions since there's only one process.
+- **Prefer in-memory caching over query optimization.** At this scale, loading entire datasets into RAM (e.g., all teams, all members) is cheaper and simpler than optimizing individual DB queries. Use `IMemoryCache` freely.
+- **Don't over-engineer for scale.** Pagination, batching, and query optimization matter less when the total dataset fits comfortably in memory. Simple, correct code beats performant-but-complex code.
+
 ## Build Commands
 
 ```bash
