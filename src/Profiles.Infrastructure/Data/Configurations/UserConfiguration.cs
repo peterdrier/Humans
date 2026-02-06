@@ -35,7 +35,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasMany(u => u.ConsentRecords)
             .WithOne(cr => cr.User)
             .HasForeignKey(cr => cr.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasMany(u => u.Applications)
             .WithOne(a => a.User)
