@@ -1,0 +1,29 @@
+@{
+    ViewData["Title"] = "Email Verification";
+    var success = ViewData["Success"] as bool? ?? false;
+    var message = ViewData["Message"] as string;
+}
+
+<h1>Email Verification</h1>
+
+@if (success)
+{
+    <div class="alert alert-success" role="alert">
+        @message
+    </div>
+}
+else
+{
+    <div class="alert alert-danger" role="alert">
+        @message
+    </div>
+}
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <a asp-action="PreferredEmail" class="btn btn-primary">Go to Preferred Email Settings</a>
+}
+else
+{
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Go to Home Page</a>
+}

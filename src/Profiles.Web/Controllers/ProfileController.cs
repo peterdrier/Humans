@@ -390,21 +390,18 @@ public class ProfileController : Controller
     {
         if (string.IsNullOrEmpty(token))
         {
-            TempData["ErrorMessage"] = "Invalid verification link.";
-            return RedirectToAction(nameof(Index));
+            return VerifyEmailError("Invalid verification link.");
         }
 
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user == null)
         {
-            TempData["ErrorMessage"] = "Invalid verification link.";
-            return RedirectToAction(nameof(Index));
+            return VerifyEmailError("Invalid verification link.");
         }
 
         if (string.IsNullOrEmpty(user.PreferredEmail))
         {
-            TempData["ErrorMessage"] = "No email pending verification.";
-            return RedirectToAction(nameof(PreferredEmail));
+            return VerifyEmailError("No email pending verification.");
         }
 
         // Verify the token
@@ -417,8 +414,7 @@ public class ProfileController : Controller
 
         if (!isValid)
         {
-            TempData["ErrorMessage"] = "The verification link is invalid or has expired.";
-            return RedirectToAction(nameof(PreferredEmail));
+            return VerifyEmailError("The verification link is invalid or has expired.");
         }
 
         // Re-check uniqueness (guard against race conditions, case-insensitive)
@@ -430,11 +426,10 @@ public class ProfileController : Controller
 
         if (emailInUse)
         {
-            TempData["ErrorMessage"] = "This email address has been claimed by another account.";
             user.PreferredEmail = null;
             user.PreferredEmailVerified = false;
             await _userManager.UpdateAsync(user);
-            return RedirectToAction(nameof(PreferredEmail));
+            return VerifyEmailError("This email address has been claimed by another account.");
         }
 
         // Mark as verified
@@ -445,8 +440,16 @@ public class ProfileController : Controller
             "User {UserId} verified preferred email {Email}",
             user.Id, user.PreferredEmail);
 
-        TempData["SuccessMessage"] = $"Email address {user.PreferredEmail} has been verified.";
-        return RedirectToAction(nameof(PreferredEmail));
+        ViewData["Success"] = true;
+        ViewData["Message"] = $"Email address {user.PreferredEmail} has been verified.";
+        return View("VerifyEmailResult");
+    }
+
+    private IActionResult VerifyEmailError(string message)
+    {
+        ViewData["Success"] = false;
+        ViewData["Message"] = message;
+        return View("VerifyEmailResult");
     }
 
     [HttpPost]
