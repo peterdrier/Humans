@@ -226,17 +226,39 @@ public class AdminDashboardViewModel
 
 ## Authorization
 
-### Role Requirements
+### Role Separation: Board vs Admin
+
+The admin area uses two distinct roles with different responsibilities:
+
+| Role | Purpose | Can Access Admin Area | Can Access Hangfire | Can Assign Roles |
+|------|---------|----------------------|--------------------|--------------------|
+| **Board** | Governance (members, applications, teams) | Yes | No | Board, Metalead |
+| **Admin** | Tech ops (Hangfire, health, metrics) | Yes | Yes | Admin, Board, Metalead |
+
+A user can hold both roles simultaneously. Admin is a superset for role assignment purposes.
+
+### How It Works
+
+Role claims are synced from the `RoleAssignment` table to Identity claims via `RoleAssignmentClaimsTransformation` (an `IClaimsTransformation`). This makes `User.IsInRole()` and `[Authorize(Roles = "...")]` work correctly based on temporal role assignments.
+
 ```csharp
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Board,Admin")]
 [Route("Admin")]
 public class AdminController : Controller
 ```
 
-### Admin Role Assignment
-- Configured via RoleAssignment with RoleName = "Admin"
-- Temporal: Can have validity period
-- Created by existing admin or system bootstrap
+### Role Assignment Authorization
+- **Admin** can assign/end any role: Admin, Board, Metalead
+- **Board** (non-Admin) can assign/end: Board, Metalead only
+- Attempting to assign a role outside your permissions returns 403 Forbidden
+
+### Hangfire Dashboard
+- Restricted to **Admin** role only via `HangfireAuthorizationFilter`
+
+### Role Assignment
+- Configured via `RoleAssignment` with temporal validity (ValidFrom/ValidTo)
+- Created by existing Admin or Board member (within their permissions)
+- Bootstrap: First Admin must be created directly in the database
 
 ## Audit Logging
 

@@ -21,6 +21,7 @@ using Profiles.Infrastructure.Data;
 using Profiles.Infrastructure.Jobs;
 using Profiles.Infrastructure.Repositories;
 using Profiles.Infrastructure.Services;
+using Profiles.Web.Authorization;
 using Profiles.Web.Health;
 using Serilog;
 
@@ -80,12 +81,8 @@ builder.Services.AddAuthentication()
     });
 
 // Configure Authorization
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("RequireAdminRole", policy =>
-        policy.Requirements.Add(new Profiles.Web.Authorization.AdminRoleRequirement()));
-});
-builder.Services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, Profiles.Web.Authorization.AdminRoleHandler>();
+builder.Services.AddAuthorization();
+builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
 // Configure Hangfire
 builder.Services.AddHangfire(config => config

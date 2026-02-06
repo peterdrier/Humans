@@ -15,7 +15,7 @@ using MemberApplication = Profiles.Domain.Entities.Application;
 
 namespace Profiles.Web.Controllers;
 
-[Authorize(Policy = "RequireAdminRole")]
+[Authorize(Roles = "Board,Admin")]
 [Route("Admin")]
 public class AdminController : Controller
 {
@@ -617,7 +617,9 @@ public class AdminController : Controller
         {
             UserId = id,
             UserDisplayName = user.DisplayName,
-            AvailableRoles = [RoleNames.Admin, RoleNames.Board, RoleNames.Metalead]
+            AvailableRoles = User.IsInRole(RoleNames.Admin)
+                ? [RoleNames.Admin, RoleNames.Board, RoleNames.Metalead]
+                : [RoleNames.Board, RoleNames.Metalead]
         };
 
         return View(viewModel);
@@ -638,8 +640,16 @@ public class AdminController : Controller
             ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
             model.UserId = id;
             model.UserDisplayName = user.DisplayName;
-            model.AvailableRoles = [RoleNames.Admin, RoleNames.Board, RoleNames.Metalead];
+            model.AvailableRoles = User.IsInRole(RoleNames.Admin)
+                ? [RoleNames.Admin, RoleNames.Board, RoleNames.Metalead]
+                : [RoleNames.Board, RoleNames.Metalead];
             return View(model);
+        }
+
+        // Enforce role assignment authorization
+        if (!CanManageRole(model.RoleName))
+        {
+            return Forbid();
         }
 
         var currentUser = await _userManager.GetUserAsync(User);
@@ -703,6 +713,12 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        // Enforce role assignment authorization
+        if (!CanManageRole(roleAssignment.RoleName))
+        {
+            return Forbid();
+        }
+
         var now = _clock.GetCurrentInstant();
 
         if (!roleAssignment.IsActive(now))
@@ -733,5 +749,26 @@ public class AdminController : Controller
 
         TempData["SuccessMessage"] = $"Role '{roleAssignment.RoleName}' ended for {roleAssignment.User.DisplayName}.";
         return RedirectToAction(nameof(MemberDetail), new { id = roleAssignment.UserId });
+    }
+
+    /// <summary>
+    /// Checks whether the current user can assign/end the specified role.
+    /// Admin can manage any role. Board can manage Board and Metalead only.
+    /// </summary>
+    private bool CanManageRole(string roleName)
+    {
+        if (User.IsInRole(RoleNames.Admin))
+        {
+            return true;
+        }
+
+        // Board members can manage Board and Metalead roles
+        if (User.IsInRole(RoleNames.Board))
+        {
+            return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal)
+                || string.Equals(roleName, RoleNames.Metalead, StringComparison.Ordinal);
+        }
+
+        return false;
     }
 }
