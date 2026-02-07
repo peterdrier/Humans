@@ -78,7 +78,7 @@
                             </td>
                             <td>@request.RequestedAt.ToString("MMM d, yyyy HH:mm")</td>
                             <td>
-                                <div class="btn-group" role="group">
+                                <div class="d-flex gap-1">
                                     <form asp-action="ApproveRequest" asp-route-slug="@teamSlug" asp-route-requestId="@request.Id" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-success" data-confirm="Approve this request?">Approve</button>

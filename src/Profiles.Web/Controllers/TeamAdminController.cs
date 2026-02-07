@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Profiles.Application.Interfaces;
 using Profiles.Domain.Entities;
 using Profiles.Domain.Enums;
@@ -116,7 +117,7 @@ public class TeamAdminController : Controller
             await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
             TempData["SuccessMessage"] = "Request approved. The user is now a team member.";
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
         {
             TempData["ErrorMessage"] = ex.Message;
         }

@@ -235,6 +235,7 @@ public partial class TeamResourceService : ITeamResourceService
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
         {
+            _logger.LogWarning(ex, "Google Group not found when linking {GroupEmail} to team {TeamId}", groupEmail, teamId);
             var serviceAccountEmail = await GetServiceAccountEmailAsync(ct);
             return new LinkResourceResult(false,
                 ErrorMessage: "The Google Group was not found or the service account does not have access. " +
@@ -243,6 +244,7 @@ public partial class TeamResourceService : ITeamResourceService
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403)
         {
+            _logger.LogWarning(ex, "Permission denied when linking Google Group {GroupEmail} to team {TeamId}", groupEmail, teamId);
             var serviceAccountEmail = await GetServiceAccountEmailAsync(ct);
             return new LinkResourceResult(false,
                 ErrorMessage: "The service account does not have permission to access this group. " +
@@ -349,9 +351,9 @@ public partial class TeamResourceService : ITeamResourceService
                     var driveInfo = await drive.Drives.Get(driveId).ExecuteAsync(ct);
                     segments.Add(driveInfo.Name);
                 }
-                catch (Google.GoogleApiException)
+                catch (Google.GoogleApiException ex)
                 {
-                    // Service account may not have access to the drive metadata — skip
+                    _logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", driveId);
                 }
                 break;
             }
@@ -366,9 +368,9 @@ public partial class TeamResourceService : ITeamResourceService
                 segments.Add(parent.Name);
                 currentParents = parent.Parents;
             }
-            catch (Google.GoogleApiException)
+            catch (Google.GoogleApiException ex)
             {
-                // Can't access this parent — stop walking
+                _logger.LogDebug(ex, "Cannot access parent folder {ParentId} — stopping path walk", parentId);
                 break;
             }
         }

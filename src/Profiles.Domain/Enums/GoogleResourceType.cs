@@ -6,12 +6,12 @@ namespace Profiles.Domain.Enums;
 public enum GoogleResourceType
 {
     /// <summary>
-    /// Google Drive folder.
+    /// Folder within a Shared Drive.
     /// </summary>
     DriveFolder = 0,
 
     /// <summary>
-    /// Google Drive shared drive.
+    /// Shared Drive (reserved for future use).
     /// </summary>
     SharedDrive = 1,
 

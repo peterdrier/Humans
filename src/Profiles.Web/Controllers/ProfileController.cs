@@ -163,7 +163,7 @@ public class ProfileController : Controller
             Email = user.Email ?? string.Empty,
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
-            BurnerName = profile?.BurnerName ?? string.Empty,
+            BurnerName = profile?.BurnerName ?? user.DisplayName,
             FirstName = profile?.FirstName ?? string.Empty,
             LastName = profile?.LastName ?? string.Empty,
             PhoneCountryCode = profile?.PhoneCountryCode,

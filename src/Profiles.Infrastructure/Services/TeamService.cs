@@ -67,9 +67,10 @@ public partial class TeamService : ITeamService
                 _logger.LogInformation("Created team {TeamName} with slug {Slug}", name, slug);
                 return team;
             }
-            catch (DbUpdateException) when (attempt < 9)
+            catch (DbUpdateException ex) when (attempt < 9)
             {
                 // Slug collision — detach and retry with next suffix
+                _logger.LogDebug(ex, "Slug collision for '{Slug}', retrying (attempt {Attempt})", slug, attempt + 1);
                 _dbContext.Entry(team).State = EntityState.Detached;
             }
         }
@@ -268,9 +269,16 @@ public partial class TeamService : ITeamService
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
-            throw new InvalidOperationException("User is already a member of this team");
+            _logger.LogError(ex, "Failed to add user {UserId} to team {TeamId} directly", userId, teamId);
+
+            if (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+            {
+                throw new InvalidOperationException("User is already a member of this team");
+            }
+
+            throw;
         }
 
         // Sync Google resources
@@ -383,9 +391,18 @@ public partial class TeamService : ITeamService
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
-            throw new InvalidOperationException("User is already a member of this team");
+            _logger.LogError(ex, "Failed to approve join request {RequestId} for user {UserId} to team {TeamId}",
+                requestId, request.UserId, request.TeamId);
+
+            // Check for unique constraint violation (PostgreSQL error code 23505)
+            if (ex.InnerException is Npgsql.PostgresException { SqlState: "23505" })
+            {
+                throw new InvalidOperationException("User is already a member of this team");
+            }
+
+            throw;
         }
 
         // Sync Google resources

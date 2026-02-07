@@ -425,7 +425,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        // For Drive folders, sync permissions (add missing + remove stale)
+        // For Shared Drive folders, sync direct permissions (add missing + remove stale)
         if (resource.Team == null)
         {
             return;
@@ -441,10 +441,16 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         // Get current Drive permissions
         var currentPermissions = await ListDrivePermissionsAsync(drive, resource.GoogleId, cancellationToken);
 
+        // Filter to direct (non-inherited) permissions we manage
+        var directPermissions = currentPermissions.Where(IsDirectManagedPermission).ToList();
+        var currentEmails = directPermissions
+            .Select(p => p.EmailAddress!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         // Add missing permissions
         foreach (var email in expectedEmails)
         {
-            if (!currentPermissions.Any(p => string.Equals(p.EmailAddress, email, StringComparison.OrdinalIgnoreCase)))
+            if (!currentEmails.Contains(email))
             {
                 try
                 {
@@ -466,19 +472,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             }
         }
 
-        // Remove stale permissions (only type=user, skip owner role and service account)
-        foreach (var perm in currentPermissions)
+        // Remove stale direct permissions
+        foreach (var perm in directPermissions)
         {
-            if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (string.IsNullOrEmpty(perm.EmailAddress))
-                continue;
-            if (perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            if (!expectedEmails.Contains(perm.EmailAddress))
+            if (!expectedEmails.Contains(perm.EmailAddress!))
             {
                 try
                 {
@@ -758,21 +755,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var drive = await GetDriveServiceAsync();
         var permissions = await ListDrivePermissionsAsync(drive, resource.GoogleId, cancellationToken);
 
-        // Filter to user-type permissions, excluding owner role and service accounts
-        var actualEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var perm in permissions)
-        {
-            if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
-                continue;
-            if (string.IsNullOrEmpty(perm.EmailAddress))
-                continue;
-            if (perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            actualEmails.Add(perm.EmailAddress);
-        }
+        // Filter to direct (non-inherited) user permissions we manage
+        var actualEmails = permissions
+            .Where(IsDirectManagedPermission)
+            .Select(p => p.EmailAddress!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return new ResourceSyncDiff
         {
@@ -787,6 +774,33 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         };
     }
 
+    /// <summary>
+    /// Returns true if this is a direct (non-inherited) user permission that we manage.
+    /// Excludes inherited permissions (from Shared Drive), owner role, service accounts,
+    /// and non-user permission types (domain, group, anyone).
+    /// </summary>
+    private static bool IsDirectManagedPermission(Google.Apis.Drive.v3.Data.Permission perm)
+    {
+        if (!string.Equals(perm.Type, "user", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (string.Equals(perm.Role, "owner", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (string.IsNullOrEmpty(perm.EmailAddress))
+            return false;
+        if (perm.EmailAddress.EndsWith(".iam.gserviceaccount.com", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // On Shared Drives, permissionDetails contains inheritance info.
+        // A permission is inherited if ALL its detail entries are inherited.
+        if (perm.PermissionDetails != null && perm.PermissionDetails.Count > 0)
+        {
+            if (perm.PermissionDetails.All(d => d.Inherited == true))
+                return false;
+        }
+
+        return true;
+    }
+
     private static async Task<List<Google.Apis.Drive.v3.Data.Permission>> ListDrivePermissionsAsync(
         DriveService drive, string fileId, CancellationToken cancellationToken)
     {
@@ -797,7 +811,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             var listReq = drive.Permissions.List(fileId);
             listReq.SupportsAllDrives = true;
-            listReq.Fields = "nextPageToken, permissions(id, emailAddress, role, type)";
+            listReq.Fields = "nextPageToken, permissions(id, emailAddress, role, type, permissionDetails)";
             if (pageToken != null)
             {
                 listReq.PageToken = pageToken;

@@ -233,11 +233,11 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
     context.Response.Headers.Append("Content-Security-Policy",
         "default-src 'self'; " +
-        "script-src 'self' https://maps.googleapis.com https://maps.gstatic.com; " +
-        "style-src 'self' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
+        "script-src 'self' 'unsafe-inline' https://maps.googleapis.com https://maps.gstatic.com; " +
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
         "img-src 'self' https: data:; " +
-        "connect-src 'self' https://maps.googleapis.com; " +
+        "connect-src 'self' https://maps.googleapis.com https://places.googleapis.com; " +
         "frame-ancestors 'none'");
     await next();
 });
@@ -281,20 +281,25 @@ app.MapHangfireDashboard("/hangfire", new DashboardOptions
 });
 
 // Schedule recurring jobs
-RecurringJob.AddOrUpdate<SystemTeamSyncJob>(
-    "system-team-sync",
-    job => job.ExecuteAsync(CancellationToken.None),
-    Cron.Hourly);
+//
+// DISABLED: These jobs modify Google permissions (add/remove members).
+// Keep disabled until the system is ready for automated sync.
+// Use the manual "Sync Now" button at /Admin/GoogleSync instead.
+//
+// RecurringJob.AddOrUpdate<SystemTeamSyncJob>(
+//     "system-team-sync",
+//     job => job.ExecuteAsync(CancellationToken.None),
+//     Cron.Hourly);
+//
+// RecurringJob.AddOrUpdate<GoogleResourceReconciliationJob>(
+//     "google-resource-reconciliation",
+//     job => job.ExecuteAsync(CancellationToken.None),
+//     "0 3 * * *");
 
 RecurringJob.AddOrUpdate<ProcessAccountDeletionsJob>(
     "process-account-deletions",
     job => job.ExecuteAsync(CancellationToken.None),
     Cron.Daily);
-
-RecurringJob.AddOrUpdate<GoogleResourceReconciliationJob>(
-    "google-resource-reconciliation",
-    job => job.ExecuteAsync(CancellationToken.None),
-    "0 3 * * *");
 
 RecurringJob.AddOrUpdate<SyncLegalDocumentsJob>(
     "legal-document-sync",

@@ -13,7 +13,7 @@ public partial class AddLastConsentReminderSentAt : Migration
     {
         migrationBuilder.AddColumn<Instant>(
             name: "LastConsentReminderSentAt",
-            table: "AspNetUsers",
+            table: "users",
             type: "timestamp with time zone",
             nullable: true);
     }
@@ -23,6 +23,6 @@ public partial class AddLastConsentReminderSentAt : Migration
     {
         migrationBuilder.DropColumn(
             name: "LastConsentReminderSentAt",
-            table: "AspNetUsers");
+            table: "users");
     }
 }

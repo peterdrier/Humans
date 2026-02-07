@@ -45,7 +45,13 @@ Clean Architecture with 4 layers:
 | `LegalDocument` / `DocumentVersion` | Legal docs synced from GitHub |
 | `ConsentRecord` | **APPEND-ONLY** consent audit trail |
 | `Team` / `TeamMember` | Working groups |
-| `GoogleResource` | Drive folder provisioning |
+| `GoogleResource` | Shared Drive folder + Group provisioning |
+
+## Important: Shared Drives Only
+
+**All Google Drive resources are on Shared Drives.** This system does NOT use regular (My Drive) folders. All Drive API calls must use `SupportsAllDrives = true`, and permission listing must include `permissionDetails` to distinguish inherited from direct permissions. Only direct permissions are managed by the system — inherited Shared Drive permissions are excluded from drift detection and sync.
+
+**Google permission-modifying jobs are currently DISABLED** (`SystemTeamSyncJob`, `GoogleResourceReconciliationJob`). Use the manual "Sync Now" button at `/Admin/GoogleSync` until automated sync is validated.
 
 ## Important: ConsentRecord is Immutable
 

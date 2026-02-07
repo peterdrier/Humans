@@ -5,9 +5,9 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Google Sync Status</h1>
-    <form asp-action="GoogleSyncApply" method="post" class="d-inline">
+    <form asp-action="GoogleSyncApply" method="post" class="d-inline" id="syncForm">
         @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-primary" onclick="return confirm('This will sync all Google resources now. Continue?')">
+        <button type="submit" class="btn btn-primary" id="syncBtn">
             Sync Now
         </button>
     </form>
@@ -161,3 +161,17 @@ else
 <div class="mt-3">
     <a asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>
 </div>
+
+@section Scripts {
+<script>
+    document.getElementById('syncForm').addEventListener('submit', function (e) {
+        if (!confirm('This will sync all Google resources now. Continue?')) {
+            e.preventDefault();
+            return;
+        }
+        var btn = document.getElementById('syncBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Syncing\u2026';
+    });
+</script>
+}

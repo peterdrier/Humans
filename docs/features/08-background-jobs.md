@@ -8,11 +8,14 @@ Several system operations need to run automatically without user interaction: sy
 
 | Job | Schedule | Purpose |
 |-----|----------|---------|
-| SyncLegalDocumentsJob | Hourly | Sync docs from GitHub |
+| SyncLegalDocumentsJob | Daily 4 AM | Sync docs from GitHub |
 | SendReConsentReminderJob | Daily | Remind about missing consents |
-| SuspendNonCompliantMembersJob | Daily | Enforce compliance deadlines |
-| SystemTeamSyncJob | Hourly | Sync system team membership |
-| GoogleResourceProvisionJob | On demand | Provision/sync Google resources |
+| SuspendNonCompliantMembersJob | Daily 4:30 AM | Enforce compliance deadlines |
+| ProcessAccountDeletionsJob | Daily | Process account deletion requests |
+| SystemTeamSyncJob | **DISABLED** | Sync system team membership + Google permissions |
+| GoogleResourceReconciliationJob | **DISABLED** | Full Google resource reconciliation |
+
+> **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` are currently disabled because they modify Google Shared Drive and Group permissions. Use the manual "Sync Now" button at `/Admin/GoogleSync` until automated sync is validated.
 
 ## Job Details
 
@@ -116,9 +119,9 @@ Day 30: Suspension (handled by SuspendJob)
 
 ### SystemTeamSyncJob
 
-**Purpose**: Maintain automatic membership for the three system teams based on eligibility criteria.
+**Purpose**: Maintain automatic membership for the three system teams based on eligibility criteria. Also syncs Google Shared Drive and Group permissions for each membership change.
 
-**Schedule**: Every hour
+**Schedule**: Hourly (**CURRENTLY DISABLED** — modifies Google permissions)
 
 **Process**:
 ```
@@ -151,29 +154,24 @@ Day 30: Suspension (handled by SuspendJob)
 
 ---
 
-### GoogleResourceProvisionJob
+### GoogleResourceReconciliationJob
 
-**Purpose**: Ensure all teams have provisioned Google resources and permissions are in sync.
+**Purpose**: Full reconciliation of all Google resources (Shared Drive folders + Groups) with the expected state from the database.
 
-**Schedule**: On demand (or daily if configured)
+**Schedule**: Daily at 3:00 AM (**CURRENTLY DISABLED**)
 
 **Process**:
 ```
-1. Find teams without GoogleResource records
-2. For each:
-   - Call ProvisionTeamFolderAsync()
-   - Create GoogleResource record
-
-3. For all existing resources:
-   - Get current team members
-   - Get current Google permissions
-   - Reconcile differences:
-     - Add missing permissions
-     - Remove stale permissions
-   - Update LastSyncedAt
-
-4. Report any errors
+1. Call SyncAllResourcesAsync()
+   - For each active GoogleResource:
+     a. Groups: paginate members from Google, diff with DB, add/remove
+     b. Shared Drive folders: paginate direct permissions (excluding inherited),
+        diff with DB, add/remove
+   - Per-resource error handling (log + store ErrorMessage, continue)
+2. Update LastSyncedAt on each resource
 ```
+
+> **Currently disabled** in Program.cs. Use manual "Sync Now" at `/Admin/GoogleSync` instead.
 
 ## Hangfire Configuration
 
