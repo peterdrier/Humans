@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Profiles.Application.Interfaces;
+using Profiles.Domain.Enums;
 using Profiles.Infrastructure.Data;
 
 namespace Profiles.Infrastructure.Jobs;
@@ -14,17 +15,20 @@ public class ProcessAccountDeletionsJob
 {
     private readonly ProfilesDbContext _dbContext;
     private readonly IEmailService _emailService;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<ProcessAccountDeletionsJob> _logger;
     private readonly IClock _clock;
 
     public ProcessAccountDeletionsJob(
         ProfilesDbContext dbContext,
         IEmailService emailService,
+        IAuditLogService auditLogService,
         ILogger<ProcessAccountDeletionsJob> logger,
         IClock clock)
     {
         _dbContext = dbContext;
         _emailService = emailService;
+        _auditLogService = auditLogService;
         _logger = logger;
         _clock = clock;
     }
@@ -68,6 +72,11 @@ public class ProcessAccountDeletionsJob
                     var originalName = user.DisplayName;
 
                     await AnonymizeUserAsync(user, now, cancellationToken);
+
+                    await _auditLogService.LogAsync(
+                        AuditAction.AccountAnonymized, "User", user.Id,
+                        $"Account anonymized (was {originalName})",
+                        nameof(ProcessAccountDeletionsJob));
 
                     // Send confirmation to original email if we have it
                     if (!string.IsNullOrEmpty(originalEmail))

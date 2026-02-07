@@ -157,6 +157,7 @@ else
 }
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IMembershipCalculator, MembershipCalculator>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<SystemTeamSyncJob>();
 builder.Services.AddScoped<SyncLegalDocumentsJob>();
 builder.Services.AddScoped<ProcessAccountDeletionsJob>();

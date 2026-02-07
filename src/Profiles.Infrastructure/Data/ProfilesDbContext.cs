@@ -30,6 +30,7 @@ public class ProfilesDbContext : IdentityDbContext<User, IdentityRole<Guid>, Gui
     public DbSet<GoogleResource> GoogleResources => Set<GoogleResource>();
     public DbSet<ContactField> ContactFields => Set<ContactField>();
     public DbSet<VolunteerHistoryEntry> VolunteerHistoryEntries => Set<VolunteerHistoryEntry>();
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

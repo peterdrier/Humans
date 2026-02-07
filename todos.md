@@ -1,6 +1,6 @@
 # Release TODOs
 
-Audit date: 2026-02-05 | Reorganized: 2026-02-06 | Updated: 2026-02-06
+Audit date: 2026-02-05 | Reorganized: 2026-02-06 | Updated: 2026-02-07
 
 ---
 
@@ -79,36 +79,15 @@ Added existence check in `ProvisionTeamFolderAsync` and partial unique index on 
 
 Added team resource management GUI with link/unlink/sync for Drive folders and Google Groups. Service account authenticates as itself (no impersonation — removed all `CreateWithUser` from codebase). Supports Shared Drives (`SupportsAllDrives`), hierarchical folder path display, inactive record reactivation on re-link. Dropped global unique constraint on `GoogleId` (replaced with non-unique index). Includes stub service for development, health check for Google Workspace connectivity, and service account setup docs. Committed `d9bf5c1`.
 
+### ~~F-04: Audit log for automatic user and resource changes~~ DONE (Phase 1)
+
+Added `AuditLogEntry` entity (append-only, immutability trigger), `IAuditLogService` with job and admin overloads, wired into `SystemTeamSyncJob` (TeamMemberAdded/Removed), `SuspendNonCompliantMembersJob` (MemberSuspended), `ProcessAccountDeletionsJob` (AccountAnonymized), and `AdminController` (MemberSuspended/Unsuspended, VolunteerApproved, RoleAssigned/Ended). Per-user audit view on MemberDetail page shows 50 most recent entries. Phase 2 will wire TeamService and GoogleWorkspaceSyncService. Feature spec: `docs/features/12-audit-log.md`.
+
 ---
 
 ## 1. Missing Features (toward overall goal)
 
 These are prioritized by how critical they are to the core purpose: managing the membership lifecycle, organizing teams, and giving Board visibility into automatic actions.
-
-### F-04: Audit log for automatic user and resource changes
-
-**Priority: HIGH — Board needs visibility into what the system does on members' behalf.**
-
-**Tracked in GitHub:** [Issue #12](https://github.com/peterdrier/profiles.net/issues/12)
-**Also related:** [Issue #11](https://github.com/peterdrier/profiles.net/issues/11) (Drive Activity API monitoring for anomalous permissions)
-
-Background jobs and sync processes make changes on behalf of users (team enrollment, Google Drive/Group access grants and removals, suspensions) but none of this is visible anywhere except Serilog text logs. Need a structured, queryable audit log that tracks these automatic actions.
-
-**Two views of the same data:**
-
-1. **Per-user audit history** (on the admin member detail page): shows everything that happened to/for a user in chronological order.
-2. **Per-resource audit history** (on the team/resource admin page): shows all access changes for a specific Google resource.
-
-**Requirements:**
-- Visible to Admin and Board only
-- Covers: team membership changes, Google resource access grants/removals, role assignments, suspensions, account anonymization
-- Records: who/what was affected, what changed, when, triggered by whom or which job
-- Append-only (like consent records — no UPDATE/DELETE)
-- Background jobs and sync services write to this log as they perform actions
-
-**Related:** F-03 (resource admin UI), P2-09 (PII logging policy)
-
----
 
 ### F-01: Profile pictures with team photo gallery
 

@@ -17,6 +17,7 @@ public class SuspendNonCompliantMembersJob
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
     private readonly IClock _clock;
 
@@ -25,6 +26,7 @@ public class SuspendNonCompliantMembersJob
         IMembershipCalculator membershipCalculator,
         IEmailService emailService,
         IGoogleSyncService googleSyncService,
+        IAuditLogService auditLogService,
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
     {
@@ -32,6 +34,7 @@ public class SuspendNonCompliantMembersJob
         _membershipCalculator = membershipCalculator;
         _emailService = emailService;
         _googleSyncService = googleSyncService;
+        _auditLogService = auditLogService;
         _logger = logger;
         _clock = clock;
     }
@@ -105,6 +108,11 @@ public class SuspendNonCompliantMembersJob
                             user.Id, membership.TeamId);
                     }
                 }
+
+                await _auditLogService.LogAsync(
+                    AuditAction.MemberSuspended, "User", user.Id,
+                    $"{user.DisplayName} suspended for missing required document consent (grace period expired)",
+                    nameof(SuspendNonCompliantMembersJob));
 
                 _logger.LogWarning(
                     "User {UserId} ({Email}) suspended and removed from {Count} teams",

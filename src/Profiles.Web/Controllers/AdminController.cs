@@ -23,6 +23,7 @@ public class AdminController : Controller
     private readonly UserManager<User> _userManager;
     private readonly ITeamService _teamService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
     private readonly ILogger<AdminController> _logger;
     private readonly SystemTeamSyncJob _systemTeamSyncJob;
@@ -32,6 +33,7 @@ public class AdminController : Controller
         UserManager<User> userManager,
         ITeamService teamService,
         IGoogleSyncService googleSyncService,
+        IAuditLogService auditLogService,
         IClock clock,
         ILogger<AdminController> logger,
         SystemTeamSyncJob systemTeamSyncJob)
@@ -40,6 +42,7 @@ public class AdminController : Controller
         _userManager = userManager;
         _teamService = teamService;
         _googleSyncService = googleSyncService;
+        _auditLogService = auditLogService;
         _clock = clock;
         _logger = logger;
         _systemTeamSyncJob = systemTeamSyncJob;
@@ -140,6 +143,24 @@ public class AdminController : Controller
             .OrderByDescending(ra => ra.ValidFrom)
             .ToListAsync();
 
+        // Query audit entries where the user is either the primary or related entity
+        var auditEntries = await _dbContext.AuditLogEntries
+            .AsNoTracking()
+            .Where(e =>
+                (e.EntityType == "User" && e.EntityId == id) ||
+                (e.RelatedEntityId == id))
+            .OrderByDescending(e => e.OccurredAt)
+            .Take(50)
+            .Select(e => new AuditLogEntryViewModel
+            {
+                Action = e.Action.ToString(),
+                Description = e.Description,
+                OccurredAt = e.OccurredAt.ToDateTimeUtc(),
+                ActorName = e.ActorName,
+                IsSystemAction = e.ActorUserId == null
+            })
+            .ToListAsync();
+
         var viewModel = new AdminMemberDetailViewModel
         {
             UserId = user.Id,
@@ -179,7 +200,8 @@ public class AdminController : Controller
                 IsActive = ra.IsActive(now),
                 CreatedByName = ra.CreatedByUser?.DisplayName,
                 CreatedAt = ra.CreatedAt.ToDateTimeUtc()
-            }).ToList()
+            }).ToList(),
+            AuditLog = auditEntries
         };
 
         return View(viewModel);
@@ -382,13 +404,22 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        var currentUser = await _userManager.GetUserAsync(User);
+
         user.Profile.IsSuspended = true;
         user.Profile.AdminNotes = notes;
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
+        if (currentUser != null)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.MemberSuspended, "User", id,
+                $"{user.DisplayName} suspended by admin{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
+                currentUser.Id, currentUser.DisplayName);
+        }
+
         await _dbContext.SaveChangesAsync();
 
-        var currentUser = await _userManager.GetUserAsync(User);
         _logger.LogInformation("Admin {AdminId} suspended member {MemberId}", currentUser?.Id, id);
 
         TempData["SuccessMessage"] = "Member suspended.";
@@ -408,12 +439,21 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        var currentUser = await _userManager.GetUserAsync(User);
+
         user.Profile.IsSuspended = false;
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
+        if (currentUser != null)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.MemberUnsuspended, "User", id,
+                $"{user.DisplayName} unsuspended by admin",
+                currentUser.Id, currentUser.DisplayName);
+        }
+
         await _dbContext.SaveChangesAsync();
 
-        var currentUser = await _userManager.GetUserAsync(User);
         _logger.LogInformation("Admin {AdminId} unsuspended member {MemberId}", currentUser?.Id, id);
 
         TempData["SuccessMessage"] = "Member unsuspended.";
@@ -433,12 +473,21 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        var currentUser = await _userManager.GetUserAsync(User);
+
         user.Profile.IsApproved = true;
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
+        if (currentUser != null)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.VolunteerApproved, "User", id,
+                $"{user.DisplayName} approved as volunteer by admin",
+                currentUser.Id, currentUser.DisplayName);
+        }
+
         await _dbContext.SaveChangesAsync();
 
-        var currentUser = await _userManager.GetUserAsync(User);
         _logger.LogInformation("Admin {AdminId} approved volunteer {MemberId}", currentUser?.Id, id);
 
         TempData["SuccessMessage"] = "Volunteer approved.";
@@ -726,6 +775,12 @@ public class AdminController : Controller
         };
 
         _dbContext.RoleAssignments.Add(roleAssignment);
+
+        await _auditLogService.LogAsync(
+            AuditAction.RoleAssigned, "User", id,
+            $"Role '{model.RoleName}' assigned to {user.DisplayName}",
+            currentUser.Id, currentUser.DisplayName);
+
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Admin {AdminId} assigned role {Role} to user {UserId}",
@@ -768,6 +823,8 @@ public class AdminController : Controller
             return RedirectToAction(nameof(MemberDetail), new { id = roleAssignment.UserId });
         }
 
+        var currentUser = await _userManager.GetUserAsync(User);
+
         roleAssignment.ValidTo = now;
         if (!string.IsNullOrWhiteSpace(notes))
         {
@@ -776,9 +833,16 @@ public class AdminController : Controller
                 : $"{roleAssignment.Notes} | Ended: {notes}";
         }
 
+        if (currentUser != null)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.RoleEnded, "User", roleAssignment.UserId,
+                $"Role '{roleAssignment.RoleName}' ended for {roleAssignment.User.DisplayName}",
+                currentUser.Id, currentUser.DisplayName);
+        }
+
         await _dbContext.SaveChangesAsync();
 
-        var currentUser = await _userManager.GetUserAsync(User);
         _logger.LogInformation("Admin {AdminId} ended role {Role} for user {UserId}",
             currentUser?.Id, roleAssignment.RoleName, roleAssignment.UserId);
 

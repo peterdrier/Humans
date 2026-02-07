@@ -17,6 +17,7 @@ public class SystemTeamSyncJob
     private readonly ProfilesDbContext _dbContext;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly IAuditLogService _auditLogService;
     private readonly ILogger<SystemTeamSyncJob> _logger;
     private readonly IClock _clock;
 
@@ -24,12 +25,14 @@ public class SystemTeamSyncJob
         ProfilesDbContext dbContext,
         IMembershipCalculator membershipCalculator,
         IGoogleSyncService googleSyncService,
+        IAuditLogService auditLogService,
         ILogger<SystemTeamSyncJob> logger,
         IClock clock)
     {
         _dbContext = dbContext;
         _membershipCalculator = membershipCalculator;
         _googleSyncService = googleSyncService;
+        _auditLogService = auditLogService;
         _logger = logger;
         _clock = clock;
     }
@@ -172,6 +175,15 @@ public class SystemTeamSyncJob
 
         var now = _clock.GetCurrentInstant();
 
+        // Batch-load display names for affected users (single query)
+        var affectedUserIds = toAdd.Concat(toRemove).ToList();
+        var userNames = affectedUserIds.Count > 0
+            ? await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => affectedUserIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.DisplayName, cancellationToken)
+            : new Dictionary<Guid, string>();
+
         // Add new members
         foreach (var userId in toAdd)
         {
@@ -185,6 +197,13 @@ public class SystemTeamSyncJob
             };
             _dbContext.TeamMembers.Add(member);
 
+            var userName = userNames.GetValueOrDefault(userId, userId.ToString());
+            await _auditLogService.LogAsync(
+                AuditAction.TeamMemberAdded, "Team", team.Id,
+                $"{userName} added to {team.Name} by system sync",
+                nameof(SystemTeamSyncJob),
+                relatedEntityId: userId, relatedEntityType: "User");
+
             await _googleSyncService.AddUserToTeamResourcesAsync(team.Id, userId, cancellationToken);
         }
 
@@ -195,6 +214,14 @@ public class SystemTeamSyncJob
             if (member != null)
             {
                 member.LeftAt = now;
+
+                var userName = userNames.GetValueOrDefault(userId, userId.ToString());
+                await _auditLogService.LogAsync(
+                    AuditAction.TeamMemberRemoved, "Team", team.Id,
+                    $"{userName} removed from {team.Name} by system sync",
+                    nameof(SystemTeamSyncJob),
+                    relatedEntityId: userId, relatedEntityType: "User");
+
                 await _googleSyncService.RemoveUserFromTeamResourcesAsync(team.Id, userId, cancellationToken);
             }
         }

@@ -64,6 +64,7 @@ public class AdminMemberDetailViewModel
     public int ConsentCount { get; set; }
     public List<AdminMemberApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
+    public List<AuditLogEntryViewModel> AuditLog { get; set; } = [];
 }
 
 public class AdminMemberApplicationViewModel
@@ -160,4 +161,13 @@ public class EndRoleAssignmentViewModel
     public string UserDisplayName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public string? Notes { get; set; }
+}
+
+public class AuditLogEntryViewModel
+{
+    public string Action { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public DateTime OccurredAt { get; set; }
+    public string ActorName { get; set; } = string.Empty;
+    public bool IsSystemAction { get; set; }
 }
