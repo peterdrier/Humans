@@ -100,6 +100,56 @@ These are prioritized by how critical they are to the core purpose: managing the
 
 ---
 
+### F-05: Localization / PreferredLanguage support
+
+**Priority: LOW — field exists but zero infrastructure behind it.**
+
+**Where:** `src/Profiles.Domain/Entities/User.cs:22`, `docs/features/04-legal-documents-consent.md:26,29`
+
+**What happens today:** `User.PreferredLanguage` is stored in the DB (defaults to `"en"`) but is never read anywhere. The consent review page hardcodes "Spanish (Legal)" / "English (Translation)" tabs instead of defaulting to the user's preference. Email notifications are English-only.
+
+**Feature spec says:** "View document in preferred language (Spanish/English)" and "Can switch between language versions" — neither is implemented.
+
+**Scope:** Decide whether to implement i18n (consent language default, email templates, UI strings) or remove the field to avoid implying capability that doesn't exist.
+
+---
+
+### F-06: Email template system
+
+**Priority: LOW — functional but brittle.**
+
+**Where:** `src/Profiles.Infrastructure/Services/SmtpEmailService.cs`
+
+**What happens today:** All 11 email types are constructed as inline HTML with `$"""..."""` string interpolation. English-only. No template engine, no admin customization, no localization.
+
+**Fix:** Consider a lightweight template engine (Liquid, Scriban, or Razor views). Would also enable F-05 (localized emails by PreferredLanguage).
+
+---
+
+### F-07: Admin dashboard RecentActivity widget
+
+**Priority: LOW — easy win now that audit log exists.**
+
+**Where:** `src/Profiles.Web/Controllers/AdminController.cs:67`, `src/Profiles.Web/Models/AdminViewModels.cs:10`
+
+**What happens today:** `RecentActivity = []` — always empty. The `RecentActivityViewModel` class exists but is never populated.
+
+**Fix:** Query the most recent 10-20 `AuditLogEntry` records and map to `RecentActivityViewModel`. The audit log (F-04) now provides the data source.
+
+---
+
+### F-08: Admin dashboard PendingConsents metric
+
+**Priority: LOW — invisible placeholder.**
+
+**Where:** `src/Profiles.Web/Controllers/AdminController.cs:66`
+
+**What happens today:** `PendingConsents = 0, // Would calculate from consent requirements` — hardcoded to 0. The admin dashboard view does not currently display this metric, so it's invisible.
+
+**Fix:** Calculate using `IMembershipCalculator` (count users missing required consents). Wire into dashboard view if the metric is wanted.
+
+---
+
 ## 2. Bugs & Issues — P0 (Critical)
 
 All P0 items completed. See Completed section above.
@@ -107,6 +157,36 @@ All P0 items completed. See Completed section above.
 ---
 
 ## 3. Bugs & Issues — P1 (High)
+
+### P1-14: Hangfire dashboard link returns 404
+
+**Where:** `src/Profiles.Web/Views/Admin/Index.cshtml:76`
+
+**What happens today:** The admin dashboard has a "Background Jobs" link using `asp-controller="Hangfire" asp-action="Index"`, but Hangfire is mounted as middleware at `/hangfire`, not as an MVC controller. Clicking the link returns 404.
+
+**Fix:** Replace `asp-controller`/`asp-action` with a direct `href="/hangfire"` link.
+
+---
+
+### P1-15: Team Join view passes GUID where slug is expected
+
+**Where:** `src/Profiles.Web/Views/Team/Join.cshtml:9,41,57`
+
+**What happens today:** Breadcrumb and Cancel links use `asp-route-slug="@Model.TeamId"` but `TeamController.Details(string slug)` expects a slug string, not a GUID. These navigation links will break.
+
+**Fix:** Add a `TeamSlug` property to `JoinTeamViewModel` and pass it from the controller, then use `asp-route-slug="@Model.TeamSlug"` in the view.
+
+---
+
+### P1-16: Stubs silently activate in production if Google credentials are missing
+
+**Where:** `src/Profiles.Web/Program.cs:146-157`
+
+**What happens today:** `StubGoogleSyncService` and `StubTeamResourceService` activate when `ServiceAccountKeyPath`/`ServiceAccountKeyJson` are not configured. `StubTeamResourceService` creates **real DB records** with fake Google IDs — orphaned data that will confuse reconciliation. No startup warning or health check failure for this case.
+
+**Fix:** Either fail fast on startup when Google credentials are missing in production, or add a health check that reports degraded/unhealthy when stubs are active. At minimum, log a warning at startup.
+
+---
 
 ### P1-06: Domain restriction decision for Google login
 
@@ -358,6 +438,16 @@ Or validate overlapping intervals in code before insert.
 **Why it matters:** `/health/ready` can report healthy even when critical config is missing. App starts but features fail at runtime.
 
 **Fix:** Expand `RequiredKeys` to include auth, email, and sync config. Optionally degrade gracefully by feature flag rather than hard-failing.
+
+---
+
+### P2-10: Feature spec lists fields not in Profile entity (DateOfBirth, AddressLine)
+
+**Where:** `docs/features/02-member-profiles.md:62-66` vs `src/Profiles.Domain/Entities/Profile.cs`
+
+**What happens today:** The member profiles feature spec data model lists `DateOfBirth: LocalDate?`, `AddressLine1: string? (512)`, and `AddressLine2: string? (512)`, but these fields do not exist in the `Profile` entity or anywhere in the codebase.
+
+**Fix:** Either add the fields to the entity (if they're wanted) or update the feature spec to remove them. This is documentation drift — the spec describes a data model that doesn't match implementation.
 
 ---
 
