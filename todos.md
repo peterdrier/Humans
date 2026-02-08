@@ -1,6 +1,6 @@
 # Release TODOs
 
-Audit date: 2026-02-05 | Reorganized: 2026-02-06 | Updated: 2026-02-07
+Audit date: 2026-02-05 | Reorganized: 2026-02-06 | Updated: 2026-02-08
 
 ---
 
@@ -83,6 +83,18 @@ Added team resource management GUI with link/unlink/sync for Drive folders and G
 
 Added `AuditLogEntry` entity (append-only, immutability trigger), `IAuditLogService` with job and admin overloads, wired into `SystemTeamSyncJob` (TeamMemberAdded/Removed), `SuspendNonCompliantMembersJob` (MemberSuspended), `ProcessAccountDeletionsJob` (AccountAnonymized), and `AdminController` (MemberSuspended/Unsuspended, VolunteerApproved, RoleAssigned/Ended). Per-user audit view on MemberDetail page shows 50 most recent entries. Phase 2 will wire TeamService and GoogleWorkspaceSyncService. Feature spec: `docs/features/12-audit-log.md`.
 
+### ~~F-05: Localization / PreferredLanguage support~~ DONE
+
+Added full i18n infrastructure using `IStringLocalizer` with `.resx` resource files. 557 resource keys extracted from all views, controllers, and email subjects. Five languages: EN (default), ES (primary — Castilian, formal usted), DE (formal Sie), IT (formal Lei), FR (formal vous). Language chooser dropdown in navbar. `User.PreferredLanguage` wired to custom `RequestCultureProvider` for authenticated users, cookie fallback for anonymous. `LanguageController` persists preference to DB + cookie. Localization startup diagnostic in development. Fixed pre-existing CSP bug blocking Bootstrap JS from cdn.jsdelivr.net. Privacy policy legal text left as English (needs legal review per language). Committed `4189f8d`. Closes GitHub #7.
+
+### ~~F-06: Email template system~~ PARTIALLY DONE
+
+Email subjects localized via `IStringLocalizerFactory` in `SmtpEmailService` (13 subjects). Email body content remains inline HTML with string interpolation — a full template engine (Razor views, Scriban, etc.) is still a future improvement for body localization and admin customization.
+
+### ~~P0-11 (addendum): CSP blocking Bootstrap JS~~ FIXED
+
+Added `https://cdn.jsdelivr.net` to `script-src` CSP directive. Bootstrap JS was silently blocked, breaking all interactive components (dropdowns, modals, collapse). Committed with `4189f8d`.
+
 ---
 
 ## 1. Missing Features (toward overall goal)
@@ -97,32 +109,6 @@ These are prioritized by how critical they are to the core purpose: managing the
 - Enforce reasonable size/dimension limits (e.g., max 2MB, resize to ~256x256 or similar)
 - Team detail view should show a photo gallery of members, with meta leads displayed at the top
 - Consider storage approach (local filesystem, blob storage, database)
-
----
-
-### F-05: Localization / PreferredLanguage support
-
-**Priority: LOW — field exists but zero infrastructure behind it.**
-
-**Where:** `src/Profiles.Domain/Entities/User.cs:22`, `docs/features/04-legal-documents-consent.md:26,29`
-
-**What happens today:** `User.PreferredLanguage` is stored in the DB (defaults to `"en"`) but is never read anywhere. The consent review page hardcodes "Spanish (Legal)" / "English (Translation)" tabs instead of defaulting to the user's preference. Email notifications are English-only.
-
-**Feature spec says:** "View document in preferred language (Spanish/English)" and "Can switch between language versions" — neither is implemented.
-
-**Scope:** Decide whether to implement i18n (consent language default, email templates, UI strings) or remove the field to avoid implying capability that doesn't exist.
-
----
-
-### F-06: Email template system
-
-**Priority: LOW — functional but brittle.**
-
-**Where:** `src/Profiles.Infrastructure/Services/SmtpEmailService.cs`
-
-**What happens today:** All 11 email types are constructed as inline HTML with `$"""..."""` string interpolation. English-only. No template engine, no admin customization, no localization.
-
-**Fix:** Consider a lightweight template engine (Liquid, Scriban, or Razor views). Would also enable F-05 (localized emails by PreferredLanguage).
 
 ---
 
