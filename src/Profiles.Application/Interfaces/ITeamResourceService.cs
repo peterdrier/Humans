@@ -28,6 +28,12 @@ public interface ITeamResourceService
     Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, CancellationToken ct = default);
 
     /// <summary>
+    /// Links a Google Drive resource (folder or file) to a team by URL.
+    /// Automatically detects the resource type from the URL and routes accordingly.
+    /// </summary>
+    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default);
+
+    /// <summary>
     /// Links an existing Google Group to a team by email address.
     /// The service account must be added as a Group Manager.
     /// </summary>

@@ -24,16 +24,10 @@ public class GoogleResourceViewModel
     public string? ErrorMessage { get; set; }
 }
 
-public class LinkDriveFolderModel
+public class LinkDriveResourceModel
 {
-    [Required(ErrorMessage = "Please enter a Google Drive folder URL.")]
-    public string FolderUrl { get; set; } = string.Empty;
-}
-
-public class LinkDriveFileModel
-{
-    [Required(ErrorMessage = "Please enter a Google Drive file URL.")]
-    public string FileUrl { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Please enter a Google Drive URL.")]
+    public string ResourceUrl { get; set; } = string.Empty;
 }
 
 public class LinkGroupModel

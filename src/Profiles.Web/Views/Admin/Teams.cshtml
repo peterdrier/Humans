@@ -84,7 +84,7 @@
                         <td>
                             @if (!team.IsSystemTeam)
                             {
-                                <div class="btn-group" role="group">
+                                <div class="d-flex gap-1" role="group">
                                     <a asp-action="EditTeam" asp-route-id="@team.Id" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
                                     @if (team.IsActive)
                                     {

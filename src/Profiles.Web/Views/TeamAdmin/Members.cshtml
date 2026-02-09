@@ -90,7 +90,7 @@
                             @if (Model.CanManageRoles)
                             {
                                 <td>
-                                    <div class="btn-group" role="group">
+                                    <div class="d-flex gap-1" role="group">
                                         @if (member.IsMetalead)
                                         {
                                             <form asp-action="SetRole" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.UserId" method="post" class="d-inline">

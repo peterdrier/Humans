@@ -351,7 +351,7 @@ public class TeamAdminController : Controller
 
     [HttpPost("Resources/LinkDrive")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> LinkDriveFolder(string slug, LinkDriveFolderModel model)
+    public async Task<IActionResult> LinkDriveResource(string slug, LinkDriveResourceModel model)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
@@ -377,65 +377,18 @@ public class TeamAdminController : Controller
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        var result = await _teamResourceService.LinkDriveFolderAsync(team.Id, model.FolderUrl);
+        var result = await _teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl);
 
         if (result.Success)
         {
-            TempData["SuccessMessage"] = string.Format(_localizer["TeamAdmin_DriveFolderLinked"].Value, result.Resource!.Name);
+            TempData["SuccessMessage"] = $"Drive resource '{result.Resource!.Name}' linked successfully.";
         }
         else
         {
-            var errorMessage = result.ErrorMessage ?? _localizer["TeamAdmin_DriveFolderLinkFailed"].Value;
+            var errorMessage = result.ErrorMessage ?? "Failed to link Drive resource.";
             if (result.ServiceAccountEmail != null)
             {
                 errorMessage += $" {string.Format(_localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
-            }
-            TempData["ErrorMessage"] = errorMessage;
-        }
-
-        return RedirectToAction(nameof(Resources), new { slug });
-    }
-
-    [HttpPost("Resources/LinkFile")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> LinkDriveFile(string slug, LinkDriveFileModel model)
-    {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
-        {
-            return NotFound();
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
-        }
-
-        if (!ModelState.IsValid)
-        {
-            TempData["ErrorMessage"] = "Please enter a valid Google Drive file URL.";
-            return RedirectToAction(nameof(Resources), new { slug });
-        }
-
-        var result = await _teamResourceService.LinkDriveFileAsync(team.Id, model.FileUrl);
-
-        if (result.Success)
-        {
-            TempData["SuccessMessage"] = $"Drive file '{result.Resource!.Name}' linked successfully.";
-        }
-        else
-        {
-            var errorMessage = result.ErrorMessage ?? "Failed to link Drive file.";
-            if (result.ServiceAccountEmail != null)
-            {
-                errorMessage += $" Service account: {result.ServiceAccountEmail}";
             }
             TempData["ErrorMessage"] = errorMessage;
         }

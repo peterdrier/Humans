@@ -72,7 +72,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             {
                 var anomalies = await CheckResourceActivityAsync(
                     activityService, resource.GoogleId, resource.Id, resource.Name,
-                    serviceAccountEmail, filterTime, cancellationToken);
+                    serviceAccountEmail, filterTime, lookbackTime, cancellationToken);
                 anomalyCount += anomalies;
             }
             catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
@@ -109,6 +109,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         string resourceName,
         string serviceAccountEmail,
         string filterTime,
+        Instant lookbackInstant,
         CancellationToken cancellationToken)
     {
         var anomalyCount = 0;
@@ -135,6 +136,20 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
                         !IsInitiatedByServiceAccount(activity, serviceAccountEmail))
                     {
                         var description = BuildAnomalyDescription(activity, resourceName);
+
+                        // Skip if this exact anomaly was already logged within the lookback window
+                        var alreadyLogged = await _dbContext.AuditLogEntries
+                            .AsNoTracking()
+                            .AnyAsync(e => e.Action == AuditAction.AnomalousPermissionDetected
+                                && e.EntityId == resourceId
+                                && e.Description == description
+                                && e.OccurredAt >= lookbackInstant, cancellationToken);
+
+                        if (alreadyLogged)
+                        {
+                            continue;
+                        }
+
                         var actorEmail = GetActorEmail(activity);
 
                         _logger.LogWarning(

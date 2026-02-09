@@ -185,16 +185,17 @@ public partial class TeamResourceService : ITeamResourceService
         {
             var drive = await GetDriveServiceAsync(ct);
             var request = drive.Files.Get(fileId);
-            request.Fields = "id, name, webViewLink, mimeType, driveId";
+            request.Fields = "id, name, webViewLink, mimeType, parents, driveId";
             request.SupportsAllDrives = true;
             var file = await request.ExecuteAsync(ct);
 
             if (string.Equals(file.MimeType, "application/vnd.google-apps.folder", StringComparison.Ordinal))
             {
                 return new LinkResourceResult(false,
-                    ErrorMessage: "The provided URL points to a folder, not a file. Please use the 'Link Drive Folder' form instead.");
+                    ErrorMessage: "The provided URL points to a folder, not a file. Please use the 'Link Drive Resource' form instead.");
             }
 
+            var filePath = await BuildFolderPathAsync(drive, file, ct);
             var now = _clock.GetCurrentInstant();
 
             // Check for an inactive record to reactivate
@@ -207,7 +208,7 @@ public partial class TeamResourceService : ITeamResourceService
             GoogleResource resource;
             if (inactive != null)
             {
-                inactive.Name = file.Name;
+                inactive.Name = filePath;
                 inactive.Url = file.WebViewLink;
                 inactive.LastSyncedAt = now;
                 inactive.IsActive = true;
@@ -222,7 +223,7 @@ public partial class TeamResourceService : ITeamResourceService
                     TeamId = teamId,
                     ResourceType = GoogleResourceType.DriveFile,
                     GoogleId = file.Id,
-                    Name = file.Name,
+                    Name = filePath,
                     Url = file.WebViewLink,
                     ProvisionedAt = now,
                     LastSyncedAt = now,
@@ -253,6 +254,26 @@ public partial class TeamResourceService : ITeamResourceService
                 ErrorMessage: $"{hint} The file must be on a Shared Drive accessible to the service account.",
                 ServiceAccountEmail: serviceAccountEmail);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default)
+    {
+        // Try folder URL first, then file URL
+        var folderId = ParseDriveFolderId(url);
+        if (folderId != null)
+        {
+            return await LinkDriveFolderAsync(teamId, url, ct);
+        }
+
+        var fileId = ParseDriveFileId(url);
+        if (fileId != null)
+        {
+            return await LinkDriveFileAsync(teamId, url, ct);
+        }
+
+        return new LinkResourceResult(false,
+            ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...).");
     }
 
     /// <inheritdoc />

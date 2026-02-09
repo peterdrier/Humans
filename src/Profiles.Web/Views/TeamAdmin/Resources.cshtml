@@ -114,14 +114,10 @@
                                 }
                             </td>
                             <td>
-                                <div class="btn-group" role="group">
-                                    <form asp-action="SyncResource" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@resource.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-primary">@Localizer["TeamAdmin_Sync"]</button>
-                                    </form>
+                                <div class="d-flex gap-1" role="group">
                                     <form asp-action="UnlinkResource" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@resource.Id" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["TeamAdmin_UnlinkConfirm"].Value">@Localizer["TeamAdmin_Unlink"]</button>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Are you sure you want to deactivate this resource?">Deactivate</button>
                                     </form>
                                 </div>
                             </td>
@@ -140,41 +136,24 @@ else
 }
 
 <div class="row">
-    <div class="col-md-4">
+    <div class="col-md-6">
         <div class="card mb-4">
-            <div class="card-header">@Localizer["TeamAdmin_LinkDriveFolder"]</div>
+            <div class="card-header">Link Google Drive Resource</div>
             <div class="card-body">
-                <form asp-action="LinkDriveFolder" asp-route-slug="@Model.TeamSlug" method="post">
+                <form asp-action="LinkDriveResource" asp-route-slug="@Model.TeamSlug" method="post">
                     @Html.AntiForgeryToken()
                     <div class="mb-3">
-                        <label for="folderUrl" class="form-label">@Localizer["TeamAdmin_FolderUrl"]</label>
-                        <input type="url" class="form-control" id="folderUrl" name="FolderUrl"
-                               placeholder="https://drive.google.com/drive/folders/..." required>
-                        <div class="form-text">@Localizer["TeamAdmin_FolderUrlHelp"]</div>
+                        <label for="resourceUrl" class="form-label">Drive URL</label>
+                        <input type="url" class="form-control" id="resourceUrl" name="ResourceUrl"
+                               placeholder="https://drive.google.com/drive/folders/... or https://docs.google.com/spreadsheets/d/..." required>
+                        <div class="form-text">Paste a Google Drive folder, Sheets, Docs, Slides, or other file URL.</div>
                     </div>
-                    <button type="submit" class="btn btn-primary">@Localizer["TeamAdmin_LinkFolder"]</button>
+                    <button type="submit" class="btn btn-primary">Link Resource</button>
                 </form>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">Link Drive File</div>
-            <div class="card-body">
-                <form asp-action="LinkDriveFile" asp-route-slug="@Model.TeamSlug" method="post">
-                    @Html.AntiForgeryToken()
-                    <div class="mb-3">
-                        <label for="fileUrl" class="form-label">File URL</label>
-                        <input type="url" class="form-control" id="fileUrl" name="FileUrl"
-                               placeholder="https://docs.google.com/spreadsheets/d/..." required>
-                        <div class="form-text">Paste a Google Sheets, Docs, Slides, or Drive file URL.</div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Link File</button>
-                </form>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
+    <div class="col-md-6">
         <div class="card mb-4">
             <div class="card-header">@Localizer["TeamAdmin_LinkGoogleGroup"]</div>
             <div class="card-body">

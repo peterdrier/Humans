@@ -112,6 +112,26 @@ public class StubTeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
+    public Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default)
+    {
+        // Try folder URL first, then file URL
+        var folderId = TeamResourceService.ParseDriveFolderId(url);
+        if (folderId != null)
+        {
+            return LinkDriveFolderAsync(teamId, url, ct);
+        }
+
+        var fileId = TeamResourceService.ParseDriveFileId(url);
+        if (fileId != null)
+        {
+            return LinkDriveFileAsync(teamId, url, ct);
+        }
+
+        return Task.FromResult(new LinkResourceResult(false,
+            ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...)."));
+    }
+
+    /// <inheritdoc />
     public Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, CancellationToken ct = default)
     {
         _logger.LogInformation("[STUB] Would link Google Group '{GroupEmail}' to team {TeamId}", groupEmail, teamId);
