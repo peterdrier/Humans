@@ -71,7 +71,9 @@
                                         </div>
                                     }
                                     <div>
-                                        <strong>@member.DisplayName</strong><br>
+                                        <a asp-controller="Human" asp-action="View" asp-route-id="@member.UserId" class="text-decoration-none">
+                                            <strong>@member.DisplayName</strong>
+                                        </a><br>
                                         <small class="text-muted">@member.Email</small>
                                     </div>
                                 </div>

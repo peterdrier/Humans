@@ -1,13 +1,13 @@
 @model Profiles.Web.Models.ProfileViewModel
 @{
-    ViewData["Title"] = Localizer["Profile_Title"].Value;
+    ViewData["Title"] = Model.IsOwnProfile ? Localizer["Profile_Title"].Value : Model.DisplayName;
 }
 
 <div class="row">
-    <div class="col-md-8">
-        <h1>@Localizer["Profile_Title"]</h1>
+    <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
+        <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
 
-        @if (TempData["SuccessMessage"] != null)
+        @if (Model.IsOwnProfile && TempData["SuccessMessage"] != null)
         {
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 @TempData["SuccessMessage"]
@@ -15,7 +15,7 @@
             </div>
         }
 
-        @if (Model.HasPendingConsents)
+        @if (Model.IsOwnProfile && Model.HasPendingConsents)
         {
             <div class="alert alert-warning" role="alert">
                 <strong>@Localizer["Profile_ActionRequired"]</strong> @string.Format(Localizer["Profile_PendingConsents"].Value, Model.PendingConsentCount)
@@ -23,7 +23,7 @@
             </div>
         }
 
-        @if (!Model.IsApproved)
+        @if (Model.IsOwnProfile && !Model.IsApproved)
         {
             <div class="alert alert-info" role="alert">
                 <strong>@Localizer["Profile_PendingApproval"]</strong> @Localizer["Profile_PendingApprovalDescription"]
@@ -33,7 +33,10 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>@Localizer["Profile_Information"]</span>
-                <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                @if (Model.IsOwnProfile)
+                {
+                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                }
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -51,7 +54,10 @@
                     </div>
                     <div class="col-md-9">
                         <h4>@(string.IsNullOrEmpty(Model.BurnerName) ? Model.DisplayName : Model.BurnerName)</h4>
-                        <p class="text-muted mb-1">@Model.Email</p>
+                        @if (Model.IsOwnProfile)
+                        {
+                            <p class="text-muted mb-1">@Model.Email</p>
+                        }
                         <span class="badge @(Model.MembershipStatus == "Active" ? "bg-success" : Model.MembershipStatus == "Suspended" ? "bg-danger" : "bg-secondary")">
                             @Model.MembershipStatus
                         </span>
@@ -77,8 +83,11 @@
                         </dd>
                     }
 
-                    <dt class="col-sm-3">@Localizer["Profile_Phone"]</dt>
-                    <dd class="col-sm-9">@(Model.FormattedPhoneNumber ?? Localizer["Common_NotProvided"].Value)</dd>
+                    @if (Model.CanViewLegalName)
+                    {
+                        <dt class="col-sm-3">@Localizer["Profile_Phone"]</dt>
+                        <dd class="col-sm-9">@(Model.FormattedPhoneNumber ?? Localizer["Common_NotProvided"].Value)</dd>
+                    }
 
                     <dt class="col-sm-3">@Localizer["Profile_Location"]</dt>
                     <dd class="col-sm-9">
@@ -100,18 +109,21 @@
                     <dt class="col-sm-3">@Localizer["Profile_Bio"]</dt>
                     <dd class="col-sm-9">@(Model.Bio ?? Localizer["Common_NotProvided"].Value)</dd>
 
-                    <dt class="col-sm-3">@Localizer["Profile_DateOfBirth"]</dt>
-                    <dd class="col-sm-9">
-                        @if (!string.IsNullOrEmpty(Model.FormattedDateOfBirth))
-                        {
-                            @Model.FormattedDateOfBirth
-                            <small class="text-muted">(@Localizer["Profile_OnlyVisibleToYouAndBoard"])</small>
-                        }
-                        else
-                        {
-                            <text>@Localizer["Common_NotProvided"]</text>
-                        }
-                    </dd>
+                    @if (Model.CanViewLegalName)
+                    {
+                        <dt class="col-sm-3">@Localizer["Profile_DateOfBirth"]</dt>
+                        <dd class="col-sm-9">
+                            @if (!string.IsNullOrEmpty(Model.FormattedDateOfBirth))
+                            {
+                                @Model.FormattedDateOfBirth
+                                <small class="text-muted">(@Localizer["Profile_OnlyVisibleToYouAndBoard"])</small>
+                            }
+                            else
+                            {
+                                <text>@Localizer["Common_NotProvided"]</text>
+                            }
+                        </dd>
+                    }
                 </dl>
             </div>
         </div>
@@ -121,7 +133,10 @@
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>@Localizer["Profile_ContactInformation"]</span>
-                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                    @if (Model.IsOwnProfile)
+                    {
+                        <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                    }
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
@@ -133,16 +148,19 @@
                             </dt>
                             <dd class="col-sm-9">
                                 @field.Value
-                                <i class="@field.VisibilityIconClass text-muted ms-2"
-                                   title="@field.VisibilityTooltip"
-                                   data-bs-toggle="tooltip"></i>
+                                @if (Model.IsOwnProfile)
+                                {
+                                    <i class="@field.VisibilityIconClass text-muted ms-2"
+                                       title="@field.VisibilityTooltip"
+                                       data-bs-toggle="tooltip"></i>
+                                }
                             </dd>
                         }
                     </dl>
                 </div>
             </div>
         }
-        else
+        else if (Model.IsOwnProfile)
         {
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -184,7 +202,10 @@
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>@Localizer["Profile_BurnerCV"]</span>
-                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                    @if (Model.IsOwnProfile)
+                    {
+                        <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                    }
                 </div>
                 <div class="card-body py-2">
                     @foreach (var entry in Model.VolunteerHistory)
@@ -201,7 +222,7 @@
                 </div>
             </div>
         }
-        else
+        else if (Model.IsOwnProfile)
         {
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -215,20 +236,23 @@
         }
     </div>
 
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">@Localizer["Profile_QuickActions"]</div>
-            <div class="list-group list-group-flush">
-                <a asp-action="Edit" class="list-group-item list-group-item-action">@Localizer["Common_EditProfile"]</a>
-                <a asp-controller="Consent" asp-action="Index" class="list-group-item list-group-item-action">
-                    @Localizer["Dashboard_ManageConsents"]
-                    @if (Model.HasPendingConsents)
-                    {
-                        <span class="badge bg-warning text-dark float-end">@Model.PendingConsentCount</span>
-                    }
-                </a>
-                <a asp-controller="Application" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Nav_Governance"]</a>
+    @if (Model.IsOwnProfile)
+    {
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">@Localizer["Profile_QuickActions"]</div>
+                <div class="list-group list-group-flush">
+                    <a asp-action="Edit" class="list-group-item list-group-item-action">@Localizer["Common_EditProfile"]</a>
+                    <a asp-controller="Consent" asp-action="Index" class="list-group-item list-group-item-action">
+                        @Localizer["Dashboard_ManageConsents"]
+                        @if (Model.HasPendingConsents)
+                        {
+                            <span class="badge bg-warning text-dark float-end">@Model.PendingConsentCount</span>
+                        }
+                    </a>
+                    <a asp-controller="Application" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Nav_Governance"]</a>
+                </div>
             </div>
         </div>
-    </div>
+    }
 </div>

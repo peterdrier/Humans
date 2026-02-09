@@ -1,0 +1,124 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Profiles.Application.Interfaces;
+using Profiles.Domain.Entities;
+using Profiles.Domain.Enums;
+using Profiles.Infrastructure.Data;
+using Profiles.Web.Models;
+
+namespace Profiles.Web.Controllers;
+
+[Authorize]
+[Route("Human")]
+public class HumanController : Controller
+{
+    private readonly ProfilesDbContext _dbContext;
+    private readonly UserManager<User> _userManager;
+    private readonly IContactFieldService _contactFieldService;
+    private readonly IVolunteerHistoryService _volunteerHistoryService;
+    private readonly ITeamService _teamService;
+    private readonly IMembershipCalculator _membershipCalculator;
+
+    public HumanController(
+        ProfilesDbContext dbContext,
+        UserManager<User> userManager,
+        IContactFieldService contactFieldService,
+        IVolunteerHistoryService volunteerHistoryService,
+        ITeamService teamService,
+        IMembershipCalculator membershipCalculator)
+    {
+        _dbContext = dbContext;
+        _userManager = userManager;
+        _contactFieldService = contactFieldService;
+        _volunteerHistoryService = volunteerHistoryService;
+        _teamService = teamService;
+        _membershipCalculator = membershipCalculator;
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> View(Guid id)
+    {
+        var profile = await _dbContext.Profiles
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.UserId == id);
+
+        if (profile == null || profile.IsSuspended)
+        {
+            return NotFound();
+        }
+
+        var viewer = await _userManager.GetUserAsync(User);
+        if (viewer == null)
+        {
+            return NotFound();
+        }
+
+        var isOwnProfile = viewer.Id == id;
+        var isBoardMember = await _teamService.IsUserBoardMemberAsync(viewer.Id);
+        var canViewLegalName = isOwnProfile || isBoardMember;
+
+        var contactFields = await _contactFieldService.GetVisibleContactFieldsAsync(profile.Id, viewer.Id);
+
+        var volunteerHistory = await _volunteerHistoryService.GetAllAsync(profile.Id);
+
+        var userTeams = await _teamService.GetUserTeamsAsync(id);
+        var displayableTeams = userTeams
+            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
+            .OrderBy(tm => tm.Team.Name, StringComparer.Ordinal)
+            .Select(tm => new TeamMembershipViewModel
+            {
+                TeamId = tm.TeamId,
+                TeamName = tm.Team.Name,
+                TeamSlug = tm.Team.Slug,
+                IsMetalead = tm.Role == TeamMemberRole.Metalead,
+                IsSystemTeam = tm.Team.IsSystemTeam
+            })
+            .ToList();
+
+        var hasCustomPicture = profile.HasCustomProfilePicture;
+
+        var viewModel = new ProfileViewModel
+        {
+            Id = profile.Id,
+            Email = profile.User!.Email ?? string.Empty,
+            DisplayName = profile.User.DisplayName,
+            ProfilePictureUrl = profile.User.ProfilePictureUrl,
+            HasCustomProfilePicture = hasCustomPicture,
+            CustomProfilePictureUrl = hasCustomPicture
+                ? Url.Action("Picture", "Profile", new { id = profile.Id })
+                : null,
+            BurnerName = profile.BurnerName ?? string.Empty,
+            FirstName = profile.FirstName ?? string.Empty,
+            LastName = profile.LastName ?? string.Empty,
+            PhoneCountryCode = profile.PhoneCountryCode,
+            PhoneNumber = profile.PhoneNumber,
+            City = profile.City,
+            CountryCode = profile.CountryCode,
+            Bio = profile.Bio,
+            DateOfBirthString = profile.DateOfBirth?.ToString("yyyy-MM-dd", null),
+            MembershipStatus = (await _membershipCalculator.ComputeStatusAsync(id)).ToString(),
+            IsOwnProfile = isOwnProfile,
+            CanViewLegalName = canViewLegalName,
+            ContactFields = contactFields.Select(cf => new ContactFieldViewModel
+            {
+                Id = cf.Id,
+                FieldType = cf.FieldType,
+                Label = cf.Label,
+                Value = cf.Value,
+                Visibility = cf.Visibility
+            }).ToList(),
+            VolunteerHistory = volunteerHistory.Select(vh => new VolunteerHistoryEntryViewModel
+            {
+                Id = vh.Id,
+                Date = vh.Date,
+                EventName = vh.EventName,
+                Description = vh.Description
+            }).ToList(),
+            Teams = displayableTeams
+        };
+
+        return View("~/Views/Profile/Index.cshtml", viewModel);
+    }
+}

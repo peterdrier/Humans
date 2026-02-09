@@ -132,6 +132,7 @@ public class ProfileController : Controller
             PendingConsentCount = pendingConsents,
             IsApproved = profile?.IsApproved ?? false,
             MembershipStatus = (await _membershipCalculator.ComputeStatusAsync(user.Id)).ToString(),
+            IsOwnProfile = true,
             CanViewLegalName = true, // User viewing their own profile
             ContactFields = contactFields.Select(cf => new ContactFieldViewModel
             {

@@ -42,6 +42,12 @@ public class ProfileViewModel
     /// </summary>
     public bool CanViewLegalName { get; set; }
 
+    /// <summary>
+    /// Whether the viewer is looking at their own profile.
+    /// Controls visibility of edit buttons, quick actions, and owner-only UI.
+    /// </summary>
+    public bool IsOwnProfile { get; set; }
+
     [Display(Name = "Country Code")]
     [StringLength(5)]
     [RegularExpression(@"^\+\d{1,4}$", ErrorMessage = "Please enter a valid country code (e.g., +34, +1)")]
