@@ -1,9 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Edit",
-      "Write",
-      "NotebookEdit",
       "Bash(tree:*)",
       "Bash(wc:*)",
       "Bash(xargs cat:*)",
@@ -50,7 +47,13 @@
       "Bash(dotnet tool list:*)",
       "Bash(dotnet list:*)",
       "Bash(findstr:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "WebFetch(domain:www.nuget.org)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet ef:*)",
+      "Bash(powershell:*)",
+      "Bash(echo:*)",
+      "Bash(cmd /c echo %USERPROFILE%)"
     ]
   },
   "enableAllProjectMcpServers": true,
