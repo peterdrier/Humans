@@ -17,7 +17,7 @@ Background jobs and admin actions make changes on members' behalf (team enrollme
 | Description | string | Human-readable text |
 | OccurredAt | Instant | When |
 | ActorUserId | Guid? | Human actor (null for jobs) |
-| ActorName | string | "SystemTeamSyncJob" or "Admin: Jane Doe" |
+| ActorName | string | "SystemTeamSyncJob" (for jobs) or "Jane Doe" (for admins) |
 | RelatedEntityId | Guid? | Secondary entity |
 | RelatedEntityType | string? | "User", "Team", etc. |
 | ResourceId | Guid? | FK to GoogleResource (Google sync only) |
@@ -157,8 +157,8 @@ Displays the 50 most recent audit entries affecting a user, queried by:
 
 Each entry shows:
 - Description (bold)
-- Badge: "System" (info) or "Admin" (secondary)
-- Actor name
+- Badge: "System" (info) for job-generated entries, "Admin" (secondary) for human-initiated entries
+- Actor name: the actual person's display name (e.g. "Peter D"), not a generic label
 - Timestamp (right-aligned)
 
 ## Authorization
@@ -167,7 +167,7 @@ Audit log is visible only to Board and Admin roles (inherits from AdminControlle
 
 ## Related Features
 
-- [F-05: Membership Status](05-membership-status.md) — Suspension triggers audit entries
+- [F-05: Volunteer Status](05-volunteer-status.md) — Suspension triggers audit entries
 - [F-08: Background Jobs](08-background-jobs.md) — Jobs are primary audit producers
 - [F-09: Administration](09-administration.md) — Admin actions produce audit entries
 - [F-06: Teams](06-teams.md) — Team sync produces audit entries

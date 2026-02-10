@@ -103,19 +103,30 @@ RoleAssignment
 
 | Role | Description | Capabilities |
 |------|-------------|--------------|
-| **Admin** | System administrator | Full platform access, manage all features |
-| **Board** | Board member | Approve team joins, view legal names, system oversight |
+| **Admin** | System administrator | Full platform access, manage all features, Hangfire |
+| **Board** | Board member | Approve volunteers, approve team joins, view legal names, system oversight |
 | **Member** | Regular member | Access own profile, join teams, submit applications |
+
+### ActiveMember Claim
+
+In addition to governance roles (Admin, Board), `RoleAssignmentClaimsTransformation` adds an `ActiveMember` claim when the user is a member of the Volunteers team. This claim is the primary authorization gate for most application features.
+
+- **Granted when**: User is in the Volunteers team (approved + all consents signed)
+- **Checked by**: `MembershipRequiredFilter` (global action filter) and `_Layout.cshtml` (nav visibility)
+- **Effect**: Without this claim, users can only access onboarding pages (Home, Profile, Consent, Account, Application)
+
+See [Volunteer Status](05-volunteer-status.md) for the full onboarding pipeline and gating details.
 
 ## Security Considerations
 
 1. **OAuth Security**: No passwords stored; relies on Google's security
 2. **Session Management**: ASP.NET Core Identity handles session tokens
 3. **Role Validation**: Temporal roles checked against current timestamp
-4. **Audit Trail**: RoleAssignment tracks who assigned roles and when
+4. **Membership Gating**: Global action filter restricts non-volunteers to onboarding pages
+5. **Audit Trail**: RoleAssignment tracks who assigned roles and when
 
 ## Related Features
 
-- [Member Profiles](02-member-profiles.md) - Created after authentication
-- [Membership Status](05-membership-status.md) - Computed from active roles
+- [Profiles](02-profiles.md) - Created after authentication
+- [Volunteer Status](05-volunteer-status.md) - Computed from active roles
 - [Teams](06-teams.md) - Board role enables team management

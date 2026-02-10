@@ -208,6 +208,6 @@ CREATE INDEX IX_contact_fields_ProfileId_Visibility ON contact_fields("ProfileId
 
 ## Related Features
 
-- [Member Profiles](02-member-profiles.md) - Contact fields extend the profile
+- [Profiles](02-profiles.md) - Contact fields extend the profile
 - [Teams](06-teams.md) - Team membership affects visibility access
 - [Administration](09-administration.md) - Board members have full visibility

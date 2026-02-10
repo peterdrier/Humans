@@ -151,5 +151,5 @@ Task SendEmailVerificationAsync(
 ## Related Features
 
 - [Authentication](01-authentication.md) - OAuth provides primary email
-- [Member Profiles](02-member-profiles.md) - Preferred email is a profile setting
+- [Profiles](02-profiles.md) - Preferred email is a profile setting
 - [Background Jobs](08-background-jobs.md) - Jobs send to effective email

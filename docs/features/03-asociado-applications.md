@@ -1,15 +1,15 @@
-# Membership Applications
+# Asociado Applications
 
 ## Business Context
 
-Nobodies Collective requires a formal application process for new members. Applications include a motivation statement and go through a review workflow managed by administrators. The process maintains a complete audit trail for governance compliance.
+Volunteers who want to become **Asociados** (voting members with governance rights) submit a formal application. This is an optional upgrade for ~20% of volunteers — it is not part of the standard volunteer onboarding. Applications include a motivation statement and go through a review workflow managed by Board members. The process maintains a complete audit trail for governance compliance.
 
 ## User Stories
 
-### US-3.1: Submit Membership Application
-**As a** prospective member
-**I want to** submit a membership application
-**So that** I can join the organization
+### US-3.1: Submit Asociado Application
+**As a** volunteer
+**I want to** apply to become an Asociado (voting member)
+**So that** I can participate in governance, assemblies, and elections
 
 **Acceptance Criteria:**
 - Can submit application with motivation statement
@@ -39,10 +39,10 @@ Nobodies Collective requires a formal application process for new members. Appli
 - Withdrawal is recorded in state history
 - Can submit new application after withdrawal
 
-### US-3.4: Review Applications (Admin)
-**As an** administrator
-**I want to** review and process membership applications
-**So that** qualified applicants can join the organization
+### US-3.4: Review Applications (Board)
+**As a** Board member
+**I want to** review and process Asociado applications
+**So that** qualified volunteers can become voting members
 
 **Acceptance Criteria:**
 - View list of pending applications
@@ -62,6 +62,7 @@ Application
 ├── Status: ApplicationStatus [enum]
 ├── Motivation: string (4000) [required]
 ├── AdditionalInfo: string? (4000)
+├── Language: string? (10) [ISO 639-1 code, e.g. "es", "en"]
 ├── SubmittedAt: Instant
 ├── UpdatedAt: Instant
 ├── ReviewStartedAt: Instant?
@@ -70,6 +71,8 @@ Application
 ├── ReviewNotes: string? (4000)
 └── Navigation: StateHistory
 ```
+
+The `Language` field records the applicant's UI language at the time of submission. This is displayed to reviewers on the application detail page (shown as the native language name, e.g. "Castellano", "Deutsch") to help them understand which language the applicant was working in.
 
 ### ApplicationStateHistory Entity
 ```
@@ -123,10 +126,10 @@ Withdrawn = 4    // Applicant cancelled
 
 | Trigger | From | To | Actor | Notes Required |
 |---------|------|-----|-------|----------------|
-| StartReview | Submitted | UnderReview | Admin | No |
-| Approve | UnderReview | Approved | Admin | Optional |
-| Reject | UnderReview | Rejected | Admin | Yes |
-| RequestMoreInfo | UnderReview | Submitted | Admin | Yes |
+| StartReview | Submitted | UnderReview | Board/Admin | No |
+| Approve | UnderReview | Approved | Board/Admin | Optional |
+| Reject | UnderReview | Rejected | Board/Admin | Yes |
+| RequestMoreInfo | UnderReview | Submitted | Board/Admin | Yes |
 | Withdraw | Submitted, UnderReview | Withdrawn | Applicant | No |
 
 ## Application Workflow
@@ -196,12 +199,13 @@ Withdrawn = 4    // Applicant cancelled
 
 ## Business Rules
 
-1. **Single Pending Application**: User cannot have multiple pending applications
-2. **Motivation Required**: Must provide non-empty motivation statement
-3. **Accuracy Confirmation**: Must explicitly confirm information accuracy
-4. **Rejection Reason**: Admin must provide reason when rejecting
-5. **Info Request Notes**: Admin must specify what information is needed
-6. **Audit Trail**: All state changes recorded with timestamp and actor
+1. **Volunteers Only**: Only active volunteers (in Volunteers team) can apply
+2. **Single Pending Application**: User cannot have multiple pending applications
+3. **Motivation Required**: Must provide non-empty motivation statement
+4. **Accuracy Confirmation**: Must explicitly confirm information accuracy
+5. **Rejection Reason**: Board must provide reason when rejecting
+6. **Info Request Notes**: Board must specify what information is needed
+7. **Audit Trail**: All state changes recorded with timestamp and actor
 
 ## Status Badge Styling
 
@@ -234,5 +238,5 @@ The Application view explicitly states: "This is optional. Most volunteers don't
 ## Related Features
 
 - [Authentication](01-authentication.md) - Must be logged in to apply
-- [Member Profiles](02-member-profiles.md) - Profile data used in review
+- [Profiles](02-profiles.md) - Profile data used in review
 - [Administration](09-administration.md) - Admin application management

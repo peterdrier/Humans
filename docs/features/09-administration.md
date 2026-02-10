@@ -45,7 +45,7 @@ System administrators need comprehensive tools to manage members, review applica
 
 ### US-9.4: Review Applications
 **As an** administrator
-**I want to** review and process membership applications
+**I want to** review and process Asociado applications
 **So that** qualified applicants can join
 
 **Acceptance Criteria:**
@@ -91,10 +91,10 @@ New User Signs In
 Creates Profile (IsApproved = false)
     │
     ▼
-Signs Required Consents
+Signs Required Consents (can happen before or after approval)
     │
     ▼
-Sees "Pending Approval" alert
+Sees "Pending Approval" on dashboard
     │                                    Board sees pending count
     │                                    on Admin Dashboard
     ▼                                         │
@@ -104,14 +104,16 @@ Sees "Pending Approval" alert
 IsApproved = true
     │
     ▼
-Next SystemTeamSyncJob run
+SyncVolunteersMembershipForUserAsync (immediate, not waiting for scheduled job)
     │
     ▼
-Enrolled in Volunteers team
+If approved + all consents signed → Enrolled in Volunteers team
     │
     ▼
-Google Workspace access granted
+ActiveMember claim granted → full app access + Google Workspace
 ```
+
+Approval and consent completion both trigger `SyncVolunteersMembershipForUserAsync`. Whichever happens last causes the user to be added to the Volunteers team immediately — there is no waiting for the hourly `SystemTeamSyncJob`.
 
 ### Data Model
 - `Profile.IsApproved` (bool, default false): Must be true for `SystemTeamSyncJob` to enroll the user in Volunteers team
@@ -133,6 +135,12 @@ Google Workspace access granted
 | `/Admin/Teams/Create` | CreateTeam | New team form |
 | `/Admin/Teams/{id}/Edit` | EditTeam | Edit team form |
 | `/Admin/Teams/{id}/Delete` | DeleteTeam | POST: Deactivate team |
+| `/Admin/Roles` | Roles | Role assignment management |
+| `/Admin/LegalDocuments` | LegalDocuments | Legal document management |
+| `/Admin/GoogleSync` | GoogleSync | Google resource sync status |
+| `/Admin/AuditLog` | AuditLog | Global audit log |
+| `/Admin/Configuration` | Configuration | Configuration status page |
+| `/Admin/SyncSystemTeams` | SyncSystemTeams | POST: Trigger system team sync |
 
 ## Dashboard Metrics
 
@@ -334,8 +342,13 @@ _logger.LogInformation(
 | Review Pending Volunteers | `/Admin/Members?filter=pending` | Pending count |
 | Review Applications | `/Admin/Applications` | Pending count |
 | Manage Members | `/Admin/Members` | - |
-| Background Jobs | `/hangfire` | - |
 | Manage Teams | `/Admin/Teams` | - |
+| Manage Roles | `/Admin/Roles` | - |
+| Legal Documents | `/Admin/LegalDocuments` | - |
+| Google Sync Status | `/Admin/GoogleSync` | - |
+| Audit Log | `/Admin/AuditLog` | - |
+| Configuration Status | `/Admin/Configuration` | - |
+| Background Jobs | `/hangfire` | - |
 
 ## System Health
 
@@ -343,6 +356,7 @@ _logger.LogInformation(
 - **Database Connection**: Green if responsive
 - **Background Jobs**: Green if Hangfire server active
 - **Health Check URL**: `/health/ready`
+- **Sync System Teams**: Button to manually trigger `SystemTeamSyncJob.ExecuteAsync()`, which recalculates membership for Volunteers, Metaleads, and Board teams. Useful for fixing users who were approved before the immediate sync was implemented.
 
 ### Prometheus Metrics
 - Available at `/metrics`
@@ -351,6 +365,6 @@ _logger.LogInformation(
 ## Related Features
 
 - [Authentication](01-authentication.md) - Admin role authorization
-- [Membership Applications](03-membership-applications.md) - Application review
+- [Asociado Applications](03-asociado-applications.md) - Voting member application review
 - [Teams](06-teams.md) - Team management
 - [Background Jobs](08-background-jobs.md) - Hangfire dashboard

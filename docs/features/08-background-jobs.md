@@ -122,22 +122,28 @@ Day 30: Suspension (handled by SuspendJob)
 
 **Purpose**: Maintain automatic membership for the three system teams based on eligibility criteria. Also syncs Google Shared Drive and Group permissions for each membership change.
 
-**Schedule**: Hourly (**CURRENTLY DISABLED** — modifies Google permissions)
+**Schedule**: Hourly (**CURRENTLY DISABLED** for scheduled runs — modifies Google permissions). Can be triggered manually from Admin dashboard via "Sync System Teams" button.
+
+**Inline Triggers**: In addition to the scheduled job, single-user sync is triggered immediately by:
+- `AdminController.ApproveVolunteer` — after setting `IsApproved = true`
+- `ConsentController.Submit` — after recording a consent
+
+Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a single user without affecting other members.
 
 **Process**:
 ```
 1. SyncVolunteersTeamAsync()
-   - Eligible: All users with all required consents
+   - Eligible: Approved (IsApproved), non-suspended, with all required Volunteers-team consents
    - Add: New eligible users
    - Remove: Users who lost eligibility
 
 2. SyncMetaleadsTeamAsync()
-   - Eligible: Users who are Metalead of any user-created team
+   - Eligible: Users who are Metalead of any user-created team + Metaleads-team consents
    - Add: New metaleads
    - Remove: Users who are no longer metalead anywhere
 
 3. SyncBoardTeamAsync()
-   - Eligible: Users with active "Board" RoleAssignment
+   - Eligible: Users with active "Board" RoleAssignment + Board-team consents
    - Add: New board members
    - Remove: Users whose assignment expired
 
@@ -149,9 +155,11 @@ Day 30: Suspension (handled by SuspendJob)
 **System Teams**:
 | Team | Eligibility Criteria |
 |------|---------------------|
-| Volunteers | HasAllRequiredConsents = true |
-| Metaleads | TeamMember.Role = Metalead (non-system teams) |
-| Board | RoleAssignment.RoleName = "Board" AND active |
+| Volunteers | IsApproved AND !IsSuspended AND HasAllRequiredConsentsForTeam(Volunteers) |
+| Metaleads | TeamMember.Role = Metalead (non-system teams) AND HasAllRequiredConsentsForTeam(Metaleads) |
+| Board | RoleAssignment.RoleName = "Board" AND active AND HasAllRequiredConsentsForTeam(Board) |
+
+**Single-User Sync**: `SyncVolunteersMembershipForUserAsync(userId)` evaluates one user against the Volunteers team criteria and adds or removes them without affecting other members. This is the mechanism that makes volunteer onboarding feel immediate rather than waiting for a scheduled job.
 
 ---
 
@@ -309,7 +317,7 @@ BackgroundJob.Enqueue<SystemTeamSyncJob>(
 ## Related Features
 
 - [Legal Documents & Consent](04-legal-documents-consent.md) - Document sync job
-- [Membership Status](05-membership-status.md) - Compliance jobs
+- [Volunteer Status](05-volunteer-status.md) - Compliance jobs
 - [Teams](06-teams.md) - System team sync
 - [Google Integration](07-google-integration.md) - Resource provisioning job
 - [Drive Activity Monitoring](13-drive-activity-monitoring.md) - Anomalous permission detection

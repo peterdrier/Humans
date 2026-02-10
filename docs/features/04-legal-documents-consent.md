@@ -33,6 +33,8 @@ As a nonprofit operating in Spain and the EU, Nobodies Collective must comply wi
 
 **Acceptance Criteria:**
 - Dynamic language tabs based on available translations in Content dictionary
+- Tab ordering: Castellano (Spanish) always first, then alphabetical by native language name
+- Active tab defaults to user's browser language
 - Spanish tab marked with "(Legal)" suffix as canonical version
 - Non-canonical language tabs show translation disclaimer
 - Version number and effective date displayed
@@ -161,7 +163,10 @@ Create ConsentRecord
   - Content Hash (SHA-256 of Spanish/canonical)
   - ExplicitConsent = true
     |
-Update Member Status (restore access if all team consents complete)
+Trigger SyncVolunteersMembershipForUserAsync
+  - Checks if user now has all required consents + is approved
+  - If eligible, immediately adds to Volunteers team
+  - Grants ActiveMember claim → full app access
 ```
 
 ## Document Sync Process
@@ -253,6 +258,6 @@ When a new version is published with `RequiresReConsent = true`:
 
 ## Related Features
 
-- [Membership Status](05-membership-status.md) - Status depends on consent completion
+- [Volunteer Status](05-volunteer-status.md) - Status depends on consent completion
 - [Background Jobs](08-background-jobs.md) - Document sync and reminder jobs
-- [Member Profiles](02-member-profiles.md) - Consent status shown on profile
+- [Profiles](02-profiles.md) - Consent status shown on profile

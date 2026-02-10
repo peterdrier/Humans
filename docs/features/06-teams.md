@@ -167,9 +167,11 @@ TeamJoinRequestStatus:
 
 | Team | Auto-Add Trigger | Auto-Remove Trigger |
 |------|------------------|---------------------|
-| **Volunteers** | All required docs signed | Missing consent or suspended |
-| **Metaleads** | Become Metalead of any team | No longer Metalead anywhere |
-| **Board** | Active "Board" RoleAssignment | RoleAssignment expires |
+| **Volunteers** | Approved + all required consents signed | Missing consent, suspended, or approval revoked |
+| **Metaleads** | Become Metalead of any team + team consents | No longer Metalead anywhere |
+| **Board** | Active "Board" RoleAssignment + team consents | RoleAssignment expires |
+
+Volunteers team membership is the source of truth for "active volunteer" status. Both approval (`AdminController.ApproveVolunteer`) and consent completion (`ConsentController.Submit`) trigger an immediate single-user sync via `SyncVolunteersMembershipForUserAsync` — the user doesn't wait for the scheduled job.
 
 ### System Team Properties
 - `RequiresApproval = false` (auto-managed)
@@ -179,21 +181,32 @@ TeamJoinRequestStatus:
 
 ### Sync Job
 ```
-SystemTeamSyncJob runs hourly:
+SystemTeamSyncJob (scheduled hourly, currently disabled; also triggered inline):
+
   1. SyncVolunteersTeamAsync()
-     - Get all users with hasAllRequiredConsents = true
+     - Get all users where IsApproved = true AND !IsSuspended
+     - Filter to those with all required Volunteers-team consents
      - Add missing members, remove ineligible
 
   2. SyncMetaleadsTeamAsync()
-     - Get all users with TeamMember.Role = Metalead
-     - In non-system teams only
+     - Get all users with TeamMember.Role = Metalead (non-system teams)
+     - Filter by Metaleads-team consents
      - Add missing members, remove ineligible
 
   3. SyncBoardTeamAsync()
      - Get all users with active Board RoleAssignment
      - Where ValidFrom <= now AND (ValidTo == null OR ValidTo > now)
+     - Filter by Board-team consents
      - Add missing members, remove ineligible
+
+  Single-user variant: SyncVolunteersMembershipForUserAsync(userId)
+     - Called by AdminController (after approval) and ConsentController (after consent)
+     - Evaluates one user without affecting others
 ```
+
+### Access Gating
+
+Volunteers team membership controls app access. Non-volunteers can only access Home, Profile, Consent, Account, and Application pages. Teams, Governance, and other member features require the `ActiveMember` claim, which is granted when the user is in the Volunteers team.
 
 ## Join Request State Machine
 
@@ -344,6 +357,6 @@ Real implementation will manage Google Drive folder permissions.
 ## Related Features
 
 - [Authentication](01-authentication.md) - Board role enables team creation
-- [Membership Status](05-membership-status.md) - Determines Volunteers team membership
+- [Volunteer Status](05-volunteer-status.md) - Determines Volunteers team membership
 - [Google Integration](07-google-integration.md) - Team resource provisioning
 - [Background Jobs](08-background-jobs.md) - System team sync job

@@ -138,6 +138,6 @@ All UI strings are localized in 5 languages: EN, ES, DE, FR, IT. Keys include:
 
 ## Related Features
 
-- [Member Profiles](02-member-profiles.md) - Profile entity and edit flow
+- [Profiles](02-profiles.md) - Profile entity and edit flow
 - [Teams](06-teams.md) - Team detail page and membership
 - [Contact Fields](10-contact-fields.md) - Other profile visibility controls
