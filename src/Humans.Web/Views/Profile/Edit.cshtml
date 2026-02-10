@@ -632,4 +632,44 @@
             });
         })();
     </script>
+    <script>
+        // Unsaved-changes guard
+        (function () {
+            const form = document.querySelector('form[action*="Edit"]');
+            if (!form) return;
+
+            let dirty = false;
+            const markDirty = () => { dirty = true; };
+
+            // Standard input changes (text, select, date, textarea, checkbox, file)
+            form.addEventListener('input', markDirty);
+            form.addEventListener('change', markDirty);
+
+            // Google Places autocomplete sets hidden fields programmatically;
+            // .value = ... doesn't fire input/change, so watch the gmp-select event.
+            const locationSearch = document.getElementById('locationSearch');
+            if (locationSearch) {
+                locationSearch.addEventListener('gmp-select', markDirty);
+            }
+
+            // Dynamic row add/remove (contact fields + volunteer history)
+            const observer = new MutationObserver(markDirty);
+            const opts = { childList: true };
+            const cf = document.getElementById('contactFieldsContainer');
+            const vh = document.getElementById('volunteerHistoryContainer');
+            if (cf) observer.observe(cf, opts);
+            if (vh) observer.observe(vh, opts);
+
+            // Clear on submit so saving doesn't trigger warning
+            form.addEventListener('submit', () => { dirty = false; });
+
+            // Browser-native "unsaved changes" dialog
+            window.addEventListener('beforeunload', (e) => {
+                if (dirty) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+        })();
+    </script>
 }
