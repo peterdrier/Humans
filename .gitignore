@@ -115,3 +115,4 @@ docker-compose.override.yml
 
 .gemini/
 gha-creds-*.json
+service-account-key.json

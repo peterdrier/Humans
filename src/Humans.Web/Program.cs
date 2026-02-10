@@ -417,8 +417,7 @@ app.MapControllerRoute(
 
 app.MapRazorPages();
 
-// Run database migrations in development
-if (app.Environment.IsDevelopment())
+// Run database migrations on startup
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
