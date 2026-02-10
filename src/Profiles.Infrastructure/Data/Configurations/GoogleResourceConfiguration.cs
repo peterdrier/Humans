@@ -43,5 +43,10 @@ public class GoogleResourceConfiguration : IEntityTypeConfiguration<GoogleResour
         builder.HasIndex(gr => gr.TeamId);
         builder.HasIndex(gr => gr.UserId);
         builder.HasIndex(gr => gr.IsActive);
+
+        // Filtered unique index: one active resource per (Team, GoogleId)
+        builder.HasIndex(gr => new { gr.TeamId, gr.GoogleId })
+            .HasFilter("\"IsActive\" = true AND \"TeamId\" IS NOT NULL")
+            .IsUnique();
     }
 }

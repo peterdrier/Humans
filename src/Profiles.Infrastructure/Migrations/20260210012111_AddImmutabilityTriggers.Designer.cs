@@ -13,8 +13,8 @@ using Profiles.Infrastructure.Data;
 namespace Profiles.Infrastructure.Migrations
 {
     [DbContext(typeof(ProfilesDbContext))]
-    [Migration("20260204220143_Initial")]
-    partial class Initial
+    [Migration("20260210012111_AddImmutabilityTriggers")]
+    partial class AddImmutabilityTriggers
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -207,6 +207,8 @@ namespace Profiles.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("UserId", "Status");
+
                     b.ToTable("applications", (string)null);
                 });
 
@@ -242,6 +244,87 @@ namespace Profiles.Infrastructure.Migrations
                     b.HasIndex("ChangedByUserId");
 
                     b.ToTable("application_state_history", (string)null);
+                });
+
+            modelBuilder.Entity("Profiles.Domain.Entities.AuditLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Instant>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RelatedEntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RelatedEntityType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("ResourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Role")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool?>("Success")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SyncSource")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("UserEmail")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Action");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("ResourceId");
+
+                    b.HasIndex("EntityType", "EntityId");
+
+                    b.HasIndex("RelatedEntityType", "RelatedEntityId");
+
+                    b.ToTable("audit_log", (string)null);
                 });
 
             modelBuilder.Entity("Profiles.Domain.Entities.ConsentRecord", b =>
@@ -288,7 +371,55 @@ namespace Profiles.Infrastructure.Migrations
                     b.HasIndex("UserId", "DocumentVersionId")
                         .IsUnique();
 
+                    b.HasIndex("UserId", "ExplicitConsent", "ConsentedAt");
+
                     b.ToTable("consent_records", (string)null);
+                });
+
+            modelBuilder.Entity("Profiles.Domain.Entities.ContactField", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomLabel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FieldType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId");
+
+                    b.HasIndex("ProfileId", "Visibility");
+
+                    b.ToTable("contact_fields", (string)null);
                 });
 
             modelBuilder.Entity("Profiles.Domain.Entities.DocumentVersion", b =>
@@ -387,14 +518,17 @@ namespace Profiles.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GoogleId")
-                        .IsUnique();
+                    b.HasIndex("GoogleId");
 
                     b.HasIndex("IsActive");
 
                     b.HasIndex("TeamId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("TeamId", "GoogleId")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" = true AND \"TeamId\" IS NOT NULL");
 
                     b.ToTable("google_resources", (string)null);
                 });
@@ -451,14 +585,6 @@ namespace Profiles.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AddressLine1")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<string>("AddressLine2")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
                     b.Property<string>("AdminNotes")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -466,6 +592,11 @@ namespace Profiles.Infrastructure.Migrations
                     b.Property<string>("Bio")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("BurnerName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("City")
                         .HasMaxLength(256)
@@ -486,6 +617,11 @@ namespace Profiles.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<bool>("IsApproved")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<bool>("IsSuspended")
                         .HasColumnType("boolean");
 
@@ -494,13 +630,30 @@ namespace Profiles.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("PhoneCountryCode")
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)");
+
                     b.Property<string>("PhoneNumber")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<string>("PostalCode")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<string>("PlaceId")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("ProfilePictureContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<byte[]>("ProfilePictureData")
+                        .HasColumnType("bytea");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -554,6 +707,9 @@ namespace Profiles.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("UserId", "RoleName")
+                        .HasFilter("\"ValidTo\" IS NULL");
+
                     b.HasIndex("UserId", "RoleName", "ValidFrom");
 
                     b.ToTable("role_assignments", (string)null);
@@ -580,10 +736,20 @@ namespace Profiles.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<bool>("RequiresApproval")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("SystemTeamType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -595,7 +761,131 @@ namespace Profiles.Infrastructure.Migrations
                     b.HasIndex("Slug")
                         .IsUnique();
 
+                    b.HasIndex("SystemTeamType");
+
                     b.ToTable("teams", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0001-000000000001"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
+                            Description = "All active volunteers with signed required documents",
+                            IsActive = true,
+                            Name = "Volunteers",
+                            RequiresApproval = false,
+                            Slug = "volunteers",
+                            SystemTeamType = "Volunteers",
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0001-000000000002"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
+                            Description = "All team metaleads",
+                            IsActive = true,
+                            Name = "Metaleads",
+                            RequiresApproval = false,
+                            Slug = "metaleads",
+                            SystemTeamType = "Metaleads",
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0001-000000000003"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
+                            Description = "Board members with active role assignments",
+                            IsActive = true,
+                            Name = "Board",
+                            RequiresApproval = false,
+                            Slug = "board",
+                            SystemTeamType = "Board",
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
+                        });
+                });
+
+            modelBuilder.Entity("Profiles.Domain.Entities.TeamJoinRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Instant>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("TeamId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReviewedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TeamId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TeamId", "UserId", "Status");
+
+                    b.ToTable("team_join_requests", (string)null);
+                });
+
+            modelBuilder.Entity("Profiles.Domain.Entities.TeamJoinRequestStateHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("ChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("TeamJoinRequestId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangedAt");
+
+                    b.HasIndex("ChangedByUserId");
+
+                    b.HasIndex("TeamJoinRequestId");
+
+                    b.ToTable("team_join_request_state_history", (string)null);
                 });
 
             modelBuilder.Entity("Profiles.Domain.Entities.TeamMember", b =>
@@ -623,9 +913,14 @@ namespace Profiles.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Role");
+
                     b.HasIndex("UserId");
 
-                    b.HasIndex("TeamId", "UserId");
+                    b.HasIndex("TeamId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_team_members_active_unique")
+                        .HasFilter("\"LeftAt\" IS NULL");
 
                     b.ToTable("team_members", (string)null);
                 });
@@ -646,6 +941,12 @@ namespace Profiles.Infrastructure.Migrations
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Instant?>("DeletionRequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("DeletionScheduledFor")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -657,6 +958,9 @@ namespace Profiles.Infrastructure.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
+
+                    b.Property<Instant?>("LastConsentReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone");
@@ -682,6 +986,16 @@ namespace Profiles.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PreferredEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Instant?>("PreferredEmailVerificationSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("PreferredEmailVerified")
                         .HasColumnType("boolean");
 
                     b.Property<string>("PreferredLanguage")
@@ -716,7 +1030,45 @@ namespace Profiles.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
+                    b.HasIndex("PreferredEmail")
+                        .IsUnique()
+                        .HasFilter("\"PreferredEmailVerified\" = true AND \"PreferredEmail\" IS NOT NULL");
+
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Profiles.Domain.Entities.VolunteerHistoryEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<LocalDate>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("EventName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("ProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfileId");
+
+                    b.ToTable("volunteer_history_entries", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -807,6 +1159,23 @@ namespace Profiles.Infrastructure.Migrations
                     b.Navigation("ChangedByUser");
                 });
 
+            modelBuilder.Entity("Profiles.Domain.Entities.AuditLogEntry", b =>
+                {
+                    b.HasOne("Profiles.Domain.Entities.User", "ActorUser")
+                        .WithMany()
+                        .HasForeignKey("ActorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Profiles.Domain.Entities.GoogleResource", "Resource")
+                        .WithMany()
+                        .HasForeignKey("ResourceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("ActorUser");
+
+                    b.Navigation("Resource");
+                });
+
             modelBuilder.Entity("Profiles.Domain.Entities.ConsentRecord", b =>
                 {
                     b.HasOne("Profiles.Domain.Entities.DocumentVersion", "DocumentVersion")
@@ -818,12 +1187,23 @@ namespace Profiles.Infrastructure.Migrations
                     b.HasOne("Profiles.Domain.Entities.User", "User")
                         .WithMany("ConsentRecords")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("DocumentVersion");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Profiles.Domain.Entities.ContactField", b =>
+                {
+                    b.HasOne("Profiles.Domain.Entities.Profile", "Profile")
+                        .WithMany("ContactFields")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Profiles.Domain.Entities.DocumentVersion", b =>
@@ -884,6 +1264,51 @@ namespace Profiles.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Profiles.Domain.Entities.TeamJoinRequest", b =>
+                {
+                    b.HasOne("Profiles.Domain.Entities.User", "ReviewedByUser")
+                        .WithMany()
+                        .HasForeignKey("ReviewedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Profiles.Domain.Entities.Team", "Team")
+                        .WithMany("JoinRequests")
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Profiles.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReviewedByUser");
+
+                    b.Navigation("Team");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Profiles.Domain.Entities.TeamJoinRequestStateHistory", b =>
+                {
+                    b.HasOne("Profiles.Domain.Entities.User", "ChangedByUser")
+                        .WithMany()
+                        .HasForeignKey("ChangedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Profiles.Domain.Entities.TeamJoinRequest", "TeamJoinRequest")
+                        .WithMany("StateHistory")
+                        .HasForeignKey("TeamJoinRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ChangedByUser");
+
+                    b.Navigation("TeamJoinRequest");
+                });
+
             modelBuilder.Entity("Profiles.Domain.Entities.TeamMember", b =>
                 {
                     b.HasOne("Profiles.Domain.Entities.Team", "Team")
@@ -903,6 +1328,17 @@ namespace Profiles.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Profiles.Domain.Entities.VolunteerHistoryEntry", b =>
+                {
+                    b.HasOne("Profiles.Domain.Entities.Profile", "Profile")
+                        .WithMany("VolunteerHistory")
+                        .HasForeignKey("ProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Profile");
+                });
+
             modelBuilder.Entity("Profiles.Domain.Entities.Application", b =>
                 {
                     b.Navigation("StateHistory");
@@ -918,11 +1354,25 @@ namespace Profiles.Infrastructure.Migrations
                     b.Navigation("Versions");
                 });
 
+            modelBuilder.Entity("Profiles.Domain.Entities.Profile", b =>
+                {
+                    b.Navigation("ContactFields");
+
+                    b.Navigation("VolunteerHistory");
+                });
+
             modelBuilder.Entity("Profiles.Domain.Entities.Team", b =>
                 {
                     b.Navigation("GoogleResources");
 
+                    b.Navigation("JoinRequests");
+
                     b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("Profiles.Domain.Entities.TeamJoinRequest", b =>
+                {
+                    b.Navigation("StateHistory");
                 });
 
             modelBuilder.Entity("Profiles.Domain.Entities.User", b =>

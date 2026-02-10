@@ -1,11 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using NodaTime;
 using Profiles.Domain.Entities;
+using Profiles.Domain.Enums;
 
 namespace Profiles.Infrastructure.Data.Configurations;
 
 public class TeamConfiguration : IEntityTypeConfiguration<Team>
 {
+    // Fixed seed timestamp so migrations are deterministic
+    private static readonly Instant SeedTimestamp = Instant.FromUtc(2026, 2, 4, 23, 52, 37);
+
     public void Configure(EntityTypeBuilder<Team> builder)
     {
         builder.ToTable("teams");
@@ -62,5 +67,44 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
 
         // Ignore computed property
         builder.Ignore(t => t.IsSystemTeam);
+
+        // Seed system teams
+        builder.HasData(
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0001-000000000001"),
+                Name = "Volunteers",
+                Description = "All active volunteers with signed required documents",
+                Slug = "volunteers",
+                IsActive = true,
+                RequiresApproval = false,
+                SystemTeamType = SystemTeamType.Volunteers,
+                CreatedAt = SeedTimestamp,
+                UpdatedAt = SeedTimestamp
+            },
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0001-000000000002"),
+                Name = "Metaleads",
+                Description = "All team metaleads",
+                Slug = "metaleads",
+                IsActive = true,
+                RequiresApproval = false,
+                SystemTeamType = SystemTeamType.Metaleads,
+                CreatedAt = SeedTimestamp,
+                UpdatedAt = SeedTimestamp
+            },
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0001-000000000003"),
+                Name = "Board",
+                Description = "Board members with active role assignments",
+                Slug = "board",
+                IsActive = true,
+                RequiresApproval = false,
+                SystemTeamType = SystemTeamType.Board,
+                CreatedAt = SeedTimestamp,
+                UpdatedAt = SeedTimestamp
+            });
     }
 }

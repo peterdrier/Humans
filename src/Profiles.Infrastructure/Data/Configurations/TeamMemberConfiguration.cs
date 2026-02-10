@@ -29,6 +29,12 @@ public class TeamMemberConfiguration : IEntityTypeConfiguration<TeamMember>
         builder.HasIndex(tm => tm.UserId);
         builder.HasIndex(tm => tm.Role);
 
+        // Filtered unique index: one active membership per (Team, User)
+        builder.HasIndex(tm => new { tm.TeamId, tm.UserId })
+            .HasFilter("\"LeftAt\" IS NULL")
+            .IsUnique()
+            .HasDatabaseName("IX_team_members_active_unique");
+
         // Ignore computed property
         builder.Ignore(tm => tm.IsActive);
     }

@@ -523,6 +523,10 @@ namespace Profiles.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("TeamId", "GoogleId")
+                        .IsUnique()
+                        .HasFilter("\"IsActive\" = true AND \"TeamId\" IS NOT NULL");
+
                     b.ToTable("google_resources", (string)null);
                 });
 
@@ -757,6 +761,44 @@ namespace Profiles.Infrastructure.Migrations
                     b.HasIndex("SystemTeamType");
 
                     b.ToTable("teams", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0001-000000000001"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
+                            Description = "All active volunteers with signed required documents",
+                            IsActive = true,
+                            Name = "Volunteers",
+                            RequiresApproval = false,
+                            Slug = "volunteers",
+                            SystemTeamType = "Volunteers",
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0001-000000000002"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
+                            Description = "All team metaleads",
+                            IsActive = true,
+                            Name = "Metaleads",
+                            RequiresApproval = false,
+                            Slug = "metaleads",
+                            SystemTeamType = "Metaleads",
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0001-000000000003"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
+                            Description = "Board members with active role assignments",
+                            IsActive = true,
+                            Name = "Board",
+                            RequiresApproval = false,
+                            Slug = "board",
+                            SystemTeamType = "Board",
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
+                        });
                 });
 
             modelBuilder.Entity("Profiles.Domain.Entities.TeamJoinRequest", b =>
@@ -872,7 +914,10 @@ namespace Profiles.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.HasIndex("TeamId", "UserId");
+                    b.HasIndex("TeamId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_team_members_active_unique")
+                        .HasFilter("\"LeftAt\" IS NULL");
 
                     b.ToTable("team_members", (string)null);
                 });
