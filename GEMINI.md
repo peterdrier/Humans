@@ -21,10 +21,10 @@ Profiles.net is a full-stack ASP.NET Core web application built on .NET 10. It m
 
 The project follows a clean architecture pattern, organized into the following layers:
 
-*   `Profiles.Domain`: Contains core business entities, value objects, and enums. It has no external dependencies.
-*   `Profiles.Application`: Implements application logic and use cases. It defines interfaces for infrastructure concerns (like repositories and external services) and depends on the Domain layer.
-*   `Profiles.Infrastructure`: Provides concrete implementations for the interfaces defined in the Application layer, including the EF Core `DbContext`, repositories, and services for interacting with external systems (Google Workspace, SMTP, etc.).
-*   `Profiles.Web`: The main ASP.NET Core web application, containing controllers, views, and the application's entry point (`Program.cs`). It depends on all other layers.
+*   `Humans.Domain`: Contains core business entities, value objects, and enums. It has no external dependencies.
+*   `Humans.Application`: Implements application logic and use cases. It defines interfaces for infrastructure concerns (like repositories and external services) and depends on the Domain layer.
+*   `Humans.Infrastructure`: Provides concrete implementations for the interfaces defined in the Application layer, including the EF Core `DbContext`, repositories, and services for interacting with external systems (Google Workspace, SMTP, etc.).
+*   `Humans.Web`: The main ASP.NET Core web application, containing controllers, views, and the application's entry point (`Program.cs`). It depends on all other layers.
 *   `tests`: Contains unit and integration tests for the solution.
 
 ## Building and Running
@@ -39,8 +39,8 @@ The project follows a clean architecture pattern, organized into the following l
 
 1.  **Configure Environment**: Copy `.env.example` to `.env` and fill in the required variables, especially `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 2.  **Start Database**: `docker-compose up -d db`
-3.  **Restore & Build**: `dotnet build Profiles.slnx`
-4.  **Run Application**: `dotnet run --project src/Profiles.Web/Profiles.Web.csproj`
+3.  **Restore & Build**: `dotnet build Humans.slnx`
+4.  **Run Application**: `dotnet run --project src/Humans.Web/Humans.Web.csproj`
     *   The application will be available at `https://localhost:5001` or `http://localhost:5000`.
     *   Database migrations are automatically applied on startup in the `Development` environment.
 
@@ -64,19 +64,19 @@ The continuous integration pipeline (`.github/workflows/build.yml`) defines the 
 
 *   **Restore Dependencies**:
     ```bash
-    dotnet restore Profiles.slnx
+    dotnet restore Humans.slnx
     ```
 *   **Build Solution (Release)**:
     ```bash
-    dotnet build Profiles.slnx --no-restore --configuration Release
+    dotnet build Humans.slnx --no-restore --configuration Release
     ```
 *   **Run Tests**:
     ```bash
-    dotnet test Profiles.slnx --no-build --configuration Release
+    dotnet test Humans.slnx --no-build --configuration Release
     ```
 *   **Check Code Formatting**:
     ```bash
-    dotnet format Profiles.slnx --verify-no-changes
+    dotnet format Humans.slnx --verify-no-changes
     ```
 
 ## Development Conventions
@@ -84,7 +84,7 @@ The continuous integration pipeline (`.github/workflows/build.yml`) defines the 
 *   **Coding Style**: The project uses the standard C# coding conventions enforced by the `.editorconfig` file. Use the `dotnet format` command to check and apply formatting.
 *   **Database Migrations**: Migrations are managed with EF Core. To add a new migration, use the following command from the project root:
     ```bash
-    dotnet ef migrations add <MigrationName> --project src/Profiles.Infrastructure --startup-project src/Profiles.Web
+    dotnet ef migrations add <MigrationName> --project src/Humans.Infrastructure --startup-project src/Humans.Web
     ```
 *   **Secrets**: User secrets are used for local development. Google OAuth credentials should be stored in your user secrets, not in `appsettings.json`. The `.env` file is used for Docker Compose configuration.
 *   **Observability**: The application is instrumented with OpenTelemetry. When running locally or via Docker Compose, traces are sent to an OpenTelemetry Collector, and metrics are exposed on the `/metrics` endpoint for Prometheus to scrape.

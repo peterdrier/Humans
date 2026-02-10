@@ -21,7 +21,7 @@ This document tracks production readiness issues identified during code review.
 
 ### Issue 1: Security - Add HTTP Security Headers Middleware :white_check_mark: DONE
 
-**Status:** Implemented in `src/Profiles.Web/Program.cs`
+**Status:** Implemented in `src/Humans.Web/Program.cs`
 
 Added middleware for:
 - Content-Security-Policy (CSP)
@@ -100,7 +100,7 @@ Files modified:
 
 ### Issue 6: Security - Add Rate Limiting :white_check_mark: DONE
 
-**Status:** Implemented in `src/Profiles.Web/Program.cs`
+**Status:** Implemented in `src/Humans.Web/Program.cs`
 
 Added global rate limiter: 100 requests per minute per user/IP.
 
@@ -143,7 +143,7 @@ Note: `document_versions(LegalDocumentId)` and `team_join_requests(TeamId, Statu
 
 ### Issue 10: Security - Add ForwardedHeaders Middleware :white_check_mark: DONE
 
-**Status:** Implemented in `src/Profiles.Web/Program.cs`
+**Status:** Implemented in `src/Humans.Web/Program.cs`
 
 Configured ForwardedHeaders for X-Forwarded-For and X-Forwarded-Proto.
 
@@ -184,7 +184,7 @@ Note: `ContactFieldService.cs` and `ConsentRecordRepository.cs` already had prop
 
 **Status:** Implemented
 
-Created `src/Profiles.Web/Extensions/StatusBadgeExtensions.cs` with:
+Created `src/Humans.Web/Extensions/StatusBadgeExtensions.cs` with:
 - `GetBadgeClass(this ApplicationStatus)` - extension method
 - `GetApplicationStatusBadgeClass(string)` - for views
 - `GetMembershipStatusBadgeClass(string)` - for membership status
@@ -198,8 +198,8 @@ Updated controllers and views to use shared extension.
 **Status:** Implemented
 
 Created:
-- `src/Profiles.Domain/Constants/RoleNames.cs` - Admin, Board, Metalead
-- `src/Profiles.Application/Constants/PaginationDefaults.cs` - PageSize, MaxMotivationPreview, etc.
+- `src/Humans.Domain/Constants/RoleNames.cs` - Admin, Board, Metalead
+- `src/Humans.Application/Constants/PaginationDefaults.cs` - PageSize, MaxMotivationPreview, etc.
 
 Updated `TeamService.cs` and `SystemTeamSyncJob.cs` to use constants.
 
@@ -207,7 +207,7 @@ Updated `TeamService.cs` and `SystemTeamSyncJob.cs` to use constants.
 
 ### Issue 15: Security - Add CSRF Token to OAuth ExternalLogin Endpoint :white_check_mark: DONE
 
-**Status:** Implemented in `src/Profiles.Web/Controllers/AccountController.cs`
+**Status:** Implemented in `src/Humans.Web/Controllers/AccountController.cs`
 
 Added `[ValidateAntiForgeryToken]` attribute to ExternalLogin.
 
@@ -226,7 +226,7 @@ Added `[ValidateAntiForgeryToken]` attribute to ExternalLogin.
 
 ### Issue 17: Performance - Add Response Compression :white_check_mark: DONE
 
-**Status:** Implemented in `src/Profiles.Web/Program.cs`
+**Status:** Implemented in `src/Humans.Web/Program.cs`
 
 Added Brotli and Gzip compression with `EnableForHttps = true`.
 
@@ -258,7 +258,7 @@ Files modified:
 
 ### Issue 19: Code Quality - Complete TODO for Re-consent Notifications :white_check_mark: DONE
 
-**Status:** Implemented in `src/Profiles.Infrastructure/Jobs/SyncLegalDocumentsJob.cs`
+**Status:** Implemented in `src/Humans.Infrastructure/Jobs/SyncLegalDocumentsJob.cs`
 
 Added `SendReConsentNotificationsAsync` method that:
 - Gets users requiring re-consent via `IMembershipCalculator`

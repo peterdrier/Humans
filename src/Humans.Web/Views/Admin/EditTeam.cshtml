@@ -1,0 +1,72 @@
+@model Humans.Web.Models.EditTeamViewModel
+@{
+    ViewData["Title"] = Localizer["AdminEditTeam_Title"].Value;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_Admin"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Teams">@Localizer["AdminTeams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminEditTeam_Title"]</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">@Localizer["AdminEditTeam_Title"]</h4>
+            </div>
+            <div class="card-body">
+                @if (Model.IsSystemTeam)
+                {
+                    <div class="alert alert-warning">
+                        @Localizer["AdminEditTeam_SystemTeamWarning"]
+                    </div>
+                }
+
+                <form asp-action="EditTeam" asp-route-id="@Model.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="IsSystemTeam" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
+                        <input asp-for="Name" class="form-control" disabled="@Model.IsSystemTeam" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label">@Localizer["AdminTeams_DescriptionOptional"]</label>
+                        <textarea asp-for="Description" class="form-control" rows="4" disabled="@Model.IsSystemTeam"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="RequiresApproval" type="checkbox" class="form-check-input" disabled="@Model.IsSystemTeam" />
+                        <label asp-for="RequiresApproval" class="form-check-label">@Localizer["AdminTeams_RequireApproval"]</label>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="IsActive" type="checkbox" class="form-check-input" disabled="@Model.IsSystemTeam" />
+                        <label asp-for="IsActive" class="form-check-label">@Localizer["AdminEditTeam_TeamIsActive"]</label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        @if (!Model.IsSystemTeam)
+                        {
+                            <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
+                        }
+                        <a asp-action="Teams" class="btn btn-outline-secondary">@(Model.IsSystemTeam ? Localizer["Common_Back"].Value : Localizer["Common_Cancel"].Value)</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

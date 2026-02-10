@@ -1,0 +1,149 @@
+@model Humans.Web.Models.DashboardViewModel
+@{
+    ViewData["Title"] = Localizer["Dashboard_Title"].Value;
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <div class="d-flex align-items-center">
+            @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
+            {
+                <img src="@Model.ProfilePictureUrl" alt="" class="rounded-circle me-3" style="width: 64px; height: 64px;">
+            }
+            else
+            {
+                <div class="bg-secondary rounded-circle me-3 d-flex align-items-center justify-content-center text-white" style="width: 64px; height: 64px; font-size: 1.5rem;">
+                    @(string.IsNullOrEmpty(Model.DisplayName) ? "?" : Model.DisplayName[0])
+                </div>
+            }
+            <div>
+                <h1 class="mb-0">@Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Model.DisplayName))</h1>
+                <span class="badge @StatusBadgeExtensions.GetMembershipStatusBadgeClass(Model.MembershipStatus) fs-6">@Model.MembershipStatus</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.PendingConsents > 0)
+{
+    <div class="alert alert-warning" role="alert">
+        @Html.Raw(string.Format(Localizer["Dashboard_PendingConsentsAlert"].Value, Model.PendingConsents))
+    </div>
+}
+
+@if (!Model.HasProfile || !Model.ProfileComplete)
+{
+    <div class="alert alert-info" role="alert">
+        @Html.Raw(Localizer["Dashboard_IncompleteProfileAlert"].Value)
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@Localizer["Dashboard_ProfileCard"]</h5>
+                        @if (Model.ProfileComplete)
+                        {
+                            <p class="card-text text-success mb-3">@Localizer["Dashboard_ProfileComplete"]</p>
+                        }
+                        else
+                        {
+                            <p class="card-text text-muted mb-3">@Localizer["Dashboard_ProfileIncomplete"]</p>
+                        }
+                        <a asp-controller="Profile" asp-action="Index" class="btn btn-outline-primary">@Localizer["Dashboard_ViewProfile"]</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">@Localizer["Dashboard_ConsentsCard"]</h5>
+                        @if (Model.PendingConsents > 0)
+                        {
+                            <p class="card-text text-warning mb-3">
+                                @Html.Raw(string.Format(Localizer["Dashboard_ConsentsNeeded"].Value, Model.PendingConsents, Model.TotalRequiredConsents))
+                            </p>
+                            <a asp-controller="Consent" asp-action="Index" class="btn btn-warning">@Localizer["Dashboard_ReviewConsents"]</a>
+                        }
+                        else if (Model.TotalRequiredConsents > 0)
+                        {
+                            <p class="card-text text-success mb-3">@Localizer["Dashboard_ConsentsUpToDate"]</p>
+                            <a asp-controller="Consent" asp-action="Index" class="btn btn-outline-primary">@Localizer["Dashboard_ViewConsents"]</a>
+                        }
+                        else
+                        {
+                            <p class="card-text text-muted mb-3">@Localizer["Dashboard_NoConsentsRequired"]</p>
+                            <a asp-controller="Consent" asp-action="Index" class="btn btn-outline-primary">@Localizer["Dashboard_ViewConsents"]</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">@Localizer["Nav_Governance"]</div>
+            <div class="card-body">
+                @if (Model.LatestApplicationStatus != null)
+                {
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>@Localizer["Dashboard_LatestApplication"]</strong>
+                            <span class="badge @StatusBadgeExtensions.GetApplicationStatusBadgeClass(Model.LatestApplicationStatus)">@Model.LatestApplicationStatus</span>
+                        </div>
+                        <small class="text-muted">@Model.LatestApplicationDate?.ToString("d MMM yyyy")</small>
+                    </div>
+                    <div class="mt-2">
+                        <a asp-controller="Application" asp-action="Index">@Localizer["Dashboard_ViewApplicationHistory"]</a>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-2">@Localizer["Dashboard_GovernanceDescription"]</p>
+                    <p class="text-muted mb-3"><small>@Localizer["Dashboard_GovernanceOptional"]</small></p>
+                    <a asp-controller="Application" asp-action="Index" class="btn btn-sm btn-outline-secondary">@Localizer["Dashboard_LearnMore"]</a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">@Localizer["Dashboard_YourMembership"]</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-6">@Localizer["Common_Status"]</dt>
+                    <dd class="col-6">
+                        <span class="badge @StatusBadgeExtensions.GetMembershipStatusBadgeClass(Model.MembershipStatus)">@Model.MembershipStatus</span>
+                    </dd>
+                    <dt class="col-6">@Localizer["Dashboard_MemberSince"]</dt>
+                    <dd class="col-6">@Model.MemberSince.ToString("MMM yyyy")</dd>
+                    @if (Model.LastLogin.HasValue)
+                    {
+                        <dt class="col-6">@Localizer["Dashboard_LastLogin"]</dt>
+                        <dd class="col-6">@Model.LastLogin.Value.ToString("d MMM")</dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">@Localizer["Dashboard_QuickLinks"]</div>
+            <div class="list-group list-group-flush">
+                <a asp-controller="Profile" asp-action="Edit" class="list-group-item list-group-item-action">@Localizer["Common_EditProfile"]</a>
+                <a asp-controller="Consent" asp-action="Index" class="list-group-item list-group-item-action">
+                    @Localizer["Dashboard_ManageConsents"]
+                    @if (Model.PendingConsents > 0)
+                    {
+                        <span class="badge bg-warning float-end">@Model.PendingConsents</span>
+                    }
+                </a>
+                <a asp-controller="Application" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Nav_Governance"]</a>
+                <a asp-controller="Home" asp-action="Privacy" class="list-group-item list-group-item-action">@Localizer["Nav_Privacy"]</a>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -14,13 +14,13 @@ The audit is complete. While the application is using the modern .NET 10 stack, 
 
 ### 1. Build Environment & Security Configuration
 
-*   [x] **1.1 Fix Web Project Configuration:** Add `<TargetFramework>net10.0</TargetFramework>` to `src/Profiles.Web/Profiles.Web.csproj`. (CANCELLED - TargetFramework is correctly managed in Directory.Build.props)
+*   [x] **1.1 Fix Web Project Configuration:** Add `<TargetFramework>net10.0</TargetFramework>` to `src/Humans.Web/Humans.Web.csproj`. (CANCELLED - TargetFramework is correctly managed in Directory.Build.props)
 *   [x] **1.2 Review and Resolve Suppressed Vulnerabilities:** Remove `NU1903` and `NU1902` from the `<NoWarn>` section in `Directory.Packages.props`. Investigate the actual vulnerabilities and update the affected packages instead of suppressing the warnings. (COMPLETED)
 
 ### 2. GDPR & Data Privacy Liabilities
 
 *   [ ] **2.1 Address `AdminNotes` Field:** Remove or redesign the hidden `AdminNotes` field in `Profile.cs`. Under GDPR, users must have access to all data stored about them; a "hidden" notes field is a major compliance liability.
-    *   **Files:** `src/Profiles.Domain/Entities/Profile.cs`
+    *   **Files:** `src/Humans.Domain/Entities/Profile.cs`
 *   [x] **2.2 Mark PII with `[PersonalData]`:** Add the `[PersonalData]` attribute to all PII fields to ensure they are handled correctly by the framework's identity and privacy features (e.g., during account deletion). (COMPLETED)
     *   **Affected Fields:** `FirstName`, `LastName`, `PhoneNumber`, `Latitude`, `Longitude`, `DisplayName`, `PreferredEmail`.
 

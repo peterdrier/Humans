@@ -1,0 +1,126 @@
+@model Humans.Web.Models.ConsentIndexViewModel
+@{
+    ViewData["Title"] = Localizer["ConsentIndex_Title"].Value;
+    var pendingCount = Model.RequiredDocuments.Count(d => !d.HasConsented);
+}
+
+<h1>@Localizer["ConsentIndex_Title"]</h1>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["InfoMessage"] != null)
+{
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+        @TempData["InfoMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                @Localizer["Consent_RequiredDocuments"]
+            </div>
+            <div class="card-body">
+                @if (Model.RequiredDocuments.Count == 0)
+                {
+                    <p class="text-muted">@Localizer["Consent_NoDocumentsRequired"]</p>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var doc in Model.RequiredDocuments)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-start">
+                                <div class="ms-2 me-auto">
+                                    <div class="fw-bold">
+                                        @doc.DocumentName
+                                        <span class="badge bg-secondary ms-2">@doc.DocumentType</span>
+                                    </div>
+                                    <small class="text-muted">
+                                        @Localizer["Consent_Version"] @doc.VersionNumber - @Localizer["Consent_EffectiveFrom"] @doc.EffectiveFrom.ToString("d MMM yyyy")
+                                    </small>
+                                    @if (!string.IsNullOrEmpty(doc.ChangesSummary))
+                                    {
+                                        <br />
+                                        <small class="text-info">@doc.ChangesSummary</small>
+                                    }
+                                </div>
+                                <div class="text-end">
+                                    @if (doc.HasConsented)
+                                    {
+                                        <span class="badge bg-success mb-2">@Localizer["Consent_Consented"]</span>
+                                        <br />
+                                        <small class="text-muted">@doc.ConsentedAt?.ToString("d MMM yyyy")</small>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="Review" asp-route-id="@doc.DocumentVersionId" class="btn btn-warning btn-sm">
+                                            @Localizer["Consent_ReviewAndConsent"]
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @if (pendingCount > 0)
+                    {
+                        <div class="alert alert-warning mt-3 mb-0">
+                            @string.Format(Localizer["Consent_PendingCount"].Value, pendingCount)
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-success mt-3 mb-0">
+                            @Localizer["Consent_AllConsented"]
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                @Localizer["Consent_History"]
+            </div>
+            <div class="card-body">
+                @if (Model.ConsentHistory.Count == 0)
+                {
+                    <p class="text-muted">@Localizer["Consent_NoRecords"]</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var history in Model.ConsentHistory)
+                        {
+                            <li class="mb-2">
+                                <strong>@history.DocumentName</strong> (v@history.VersionNumber)
+                                <br />
+                                <small class="text-muted">@history.ConsentedAt.ToString("d MMM yyyy HH:mm")</small>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title">@Localizer["Consent_AboutTitle"]</h6>
+                <p class="card-text small text-muted">
+                    @Localizer["Consent_AboutDescription"]
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,4 +1,4 @@
-# Nobodies Profiles
+# Nobodies Humans
 
 Membership management system for Nobodies Collective, a Spanish nonprofit organization.
 
@@ -42,7 +42,7 @@ docker-compose up -d db
 4. Apply migrations and run:
 
 ```bash
-dotnet run --project src/Profiles.Web
+dotnet run --project src/Humans.Web
 ```
 
 ### Full Stack with Docker
@@ -64,14 +64,14 @@ This starts:
 ```
 profiles.net/
 ├── src/
-│   ├── Profiles.Domain/           # Entities, enums, value objects
-│   ├── Profiles.Application/      # Use cases, DTOs, interfaces
-│   ├── Profiles.Infrastructure/   # EF Core, external services
-│   └── Profiles.Web/              # ASP.NET Core, controllers, views
+│   ├── Humans.Domain/           # Entities, enums, value objects
+│   ├── Humans.Application/      # Use cases, DTOs, interfaces
+│   ├── Humans.Infrastructure/   # EF Core, external services
+│   └── Humans.Web/              # ASP.NET Core, controllers, views
 ├── tests/
-│   ├── Profiles.Domain.Tests/
-│   ├── Profiles.Application.Tests/
-│   └── Profiles.Integration.Tests/
+│   ├── Humans.Domain.Tests/
+│   ├── Humans.Application.Tests/
+│   └── Humans.Integration.Tests/
 └── docker-compose.yml
 ```
 

@@ -1,0 +1,129 @@
+@model Humans.Web.Models.AdminRoleAssignmentListViewModel
+@{
+    ViewData["Title"] = Localizer["AdminRoles_Title"].Value;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@Localizer["AdminRoles_Title"]</h1>
+    <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body d-flex justify-content-between align-items-center">
+        <div class="btn-group" role="group">
+            <a asp-action="Roles" asp-route-showInactive="@Model.ShowInactive"
+               class="btn @(string.IsNullOrEmpty(Model.RoleFilter) ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminRoles_All"]
+            </a>
+            <a asp-action="Roles" asp-route-role="Admin" asp-route-showInactive="@Model.ShowInactive"
+               class="btn @(Model.RoleFilter == "Admin" ? "btn-primary" : "btn-outline-primary")">
+                Admin
+            </a>
+            <a asp-action="Roles" asp-route-role="Board" asp-route-showInactive="@Model.ShowInactive"
+               class="btn @(Model.RoleFilter == "Board" ? "btn-primary" : "btn-outline-primary")">
+                Board
+            </a>
+            <a asp-action="Roles" asp-route-role="Metalead" asp-route-showInactive="@Model.ShowInactive"
+               class="btn @(Model.RoleFilter == "Metalead" ? "btn-primary" : "btn-outline-primary")">
+                Metalead
+            </a>
+        </div>
+        <div>
+            @if (Model.ShowInactive)
+            {
+                <a asp-action="Roles" asp-route-role="@Model.RoleFilter" asp-route-showInactive="false" class="btn btn-outline-secondary btn-sm">
+                    @Localizer["AdminRoles_HideInactive"]
+                </a>
+            }
+            else
+            {
+                <a asp-action="Roles" asp-route-role="@Model.RoleFilter" asp-route-showInactive="true" class="btn btn-outline-secondary btn-sm">
+                    @Localizer["AdminRoles_ShowInactive"]
+                </a>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (Model.RoleAssignments.Count == 0)
+        {
+            <p class="text-muted text-center py-4 mb-0">@Localizer["AdminMember_NoRoleAssignments"]</p>
+        }
+        else
+        {
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>@Localizer["AdminRoles_User"]</th>
+                        <th>@Localizer["MyTeams_Role"]</th>
+                        <th>@Localizer["AdminRoles_ValidFrom"]</th>
+                        <th>@Localizer["AdminRoles_ValidTo"]</th>
+                        <th>@Localizer["Common_Status"]</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ra in Model.RoleAssignments)
+                    {
+                        <tr class="@(ra.IsActive ? "" : "table-secondary")">
+                            <td>
+                                <a asp-action="MemberDetail" asp-route-id="@ra.UserId">@ra.UserDisplayName</a>
+                                <br />
+                                <small class="text-muted">@ra.UserEmail</small>
+                            </td>
+                            <td><strong>@ra.RoleName</strong></td>
+                            <td>@ra.ValidFrom.ToString("d MMM yyyy")</td>
+                            <td>
+                                @if (ra.ValidTo.HasValue)
+                                {
+                                    @ra.ValidTo.Value.ToString("d MMM yyyy")
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                            <td>
+                                @if (ra.IsActive)
+                                {
+                                    <span class="badge bg-success">@Localizer["AdminMember_Active"]</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@Localizer["AdminMember_Ended"]</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (ra.IsActive)
+                                {
+                                    <form asp-action="EndRole" asp-route-id="@ra.Id" method="post" class="d-inline"
+                                          data-confirm="@Localizer["AdminMember_EndRoleConfirm"].Value">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminMember_End"]</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@if (Model.TotalCount > Model.PageSize)
+{
+    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize);
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            @for (var i = 1; i <= totalPages && i <= 10; i++)
+            {
+                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" asp-action="Roles" asp-route-page="@i" asp-route-role="@Model.RoleFilter" asp-route-showInactive="@Model.ShowInactive">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

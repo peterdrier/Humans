@@ -139,7 +139,7 @@ All P0 items completed. See Completed section above.
 
 ### P1-14: Hangfire dashboard link returns 404
 
-**Where:** `src/Profiles.Web/Views/Admin/Index.cshtml:76`
+**Where:** `src/Humans.Web/Views/Admin/Index.cshtml:76`
 
 **What happens today:** The admin dashboard has a "Background Jobs" link using `asp-controller="Hangfire" asp-action="Index"`, but Hangfire is mounted as middleware at `/hangfire`, not as an MVC controller. Clicking the link returns 404.
 
@@ -149,7 +149,7 @@ All P0 items completed. See Completed section above.
 
 ### P1-15: Team Join view passes GUID where slug is expected
 
-**Where:** `src/Profiles.Web/Views/Team/Join.cshtml:9,41,57`
+**Where:** `src/Humans.Web/Views/Team/Join.cshtml:9,41,57`
 
 **What happens today:** Breadcrumb and Cancel links use `asp-route-slug="@Model.TeamId"` but `TeamController.Details(string slug)` expects a slug string, not a GUID. These navigation links will break.
 
@@ -159,7 +159,7 @@ All P0 items completed. See Completed section above.
 
 ### P1-16: Stubs silently activate in production if Google credentials are missing
 
-**Where:** `src/Profiles.Web/Program.cs:146-157`
+**Where:** `src/Humans.Web/Program.cs:146-157`
 
 **What happens today:** `StubGoogleSyncService` and `StubTeamResourceService` activate when `ServiceAccountKeyPath`/`ServiceAccountKeyJson` are not configured. `StubTeamResourceService` creates **real DB records** with fake Google IDs — orphaned data that will confuse reconciliation. No startup warning or health check failure for this case.
 
@@ -169,7 +169,7 @@ All P0 items completed. See Completed section above.
 
 ### P1-06: Domain restriction decision for Google login
 
-**Where:** `src/Profiles.Web/Controllers/AccountController.cs:91` and `Program.cs:71-81`
+**Where:** `src/Humans.Web/Controllers/AccountController.cs:91` and `Program.cs:71-81`
 
 **What happens today:** Any Google account (gmail.com, yahoo.com, any domain) can auto-create a user. No `HostedDomain` restriction, no approval gate.
 
@@ -184,7 +184,7 @@ All P0 items completed. See Completed section above.
 
 ### P1-07: Add transactional consistency for Google sync
 
-**Where:** `src/Profiles.Infrastructure/Services/TeamService.cs:258,261` and `:574,577`
+**Where:** `src/Humans.Infrastructure/Services/TeamService.cs:258,261` and `:574,577`
 
 **What happens today:** In `JoinTeamDirectlyAsync` and `RemoveMemberAsync`, the database transaction commits first, then the Google API call happens. If Google fails (network error, quota, permissions), the DB is committed but Google resources are out of sync.
 
@@ -196,7 +196,7 @@ All P0 items completed. See Completed section above.
 
 ### P1-09: Enforce uniqueness for active role assignments
 
-**Where:** `src/Profiles.Infrastructure/Data/Configurations/RoleAssignmentConfiguration.cs:39` and `AdminController.cs:663-674`
+**Where:** `src/Humans.Infrastructure/Data/Configurations/RoleAssignmentConfiguration.cs:39` and `AdminController.cs:663-674`
 
 **What happens today:** Partial unique index filters on `ValidTo IS NULL` only. Controller checks for overlap with current time but not future-dated assignments. Two concurrent requests can both pass the check.
 
@@ -212,7 +212,7 @@ Or validate overlapping intervals in code before insert.
 
 ### P1-12: Google group sync misses paginated results
 
-**Where:** `src/Profiles.Infrastructure/Services/GoogleWorkspaceSyncService.cs:334,554`
+**Where:** `src/Humans.Infrastructure/Services/GoogleWorkspaceSyncService.cs:334,554`
 
 **What happens today:** `Members.List()` and `Permissions.List()` are called once without handling `NextPageToken`. Only the first page of results is processed.
 
@@ -224,7 +224,7 @@ Or validate overlapping intervals in code before insert.
 
 ### P1-13: Apply configured Google group settings during provisioning
 
-**Where:** `src/Profiles.Infrastructure/Configuration/GoogleWorkspaceSettings.cs:49-78` and `GoogleWorkspaceSyncService.cs:208-215`
+**Where:** `src/Humans.Infrastructure/Configuration/GoogleWorkspaceSettings.cs:49-78` and `GoogleWorkspaceSyncService.cs:208-215`
 
 **What happens today:** `GoogleWorkspaceSettings.GroupSettings` defines configurable properties (WhoCanViewMembership, WhoCanPostMessage, AllowExternalMembers), but group provisioning ignores them entirely. Groups are created with Google's defaults.
 
@@ -238,7 +238,7 @@ Or validate overlapping intervals in code before insert.
 
 ### G-01: AdminNotes GDPR exposure decision
 
-**Where:** `src/Profiles.Domain/Entities/Profile.cs:110`
+**Where:** `src/Humans.Domain/Entities/Profile.cs:110`
 
 **What happens today:** `AdminNotes` is a hidden field on profiles. Admins can write notes about members. The GDPR data export (`ProfileController.ExportData`) does **not** include this field — it exports FirstName, LastName, Phone, City, etc. but silently omits AdminNotes.
 
@@ -253,7 +253,7 @@ Or validate overlapping intervals in code before insert.
 
 ### G-03: N+1 queries in GoogleWorkspaceSyncService
 
-**Where:** `src/Profiles.Infrastructure/Services/GoogleWorkspaceSyncService.cs` (multiple locations)
+**Where:** `src/Humans.Infrastructure/Services/GoogleWorkspaceSyncService.cs` (multiple locations)
 
 **What happens today:** Several methods load resources, then call helper methods that re-query the same resources from the database. For example, `AddUserToTeamResourcesAsync` loads all resources for a team, then calls `AddUserToGroupAsync` which queries the resource again by ID. Similarly, `SyncResourcePermissionsAsync` loads resources with members, then makes individual Google API calls per member.
 
@@ -265,7 +265,7 @@ Or validate overlapping intervals in code before insert.
 
 ### G-05: No reminder frequency tracking (spam risk)
 
-**Where:** `src/Profiles.Infrastructure/Jobs/SendReConsentReminderJob.cs`
+**Where:** `src/Humans.Infrastructure/Jobs/SendReConsentReminderJob.cs`
 
 **What happens today:** The job sends re-consent reminders to all eligible users on every execution with no cooldown. No `LastConsentReminderSentAt` field or equivalent exists. If the job runs daily, users get emailed every day until they consent.
 
@@ -277,7 +277,7 @@ Or validate overlapping intervals in code before insert.
 
 ### G-06: SystemTeamSyncJob runs sequentially
 
-**Where:** `src/Profiles.Infrastructure/Jobs/SystemTeamSyncJob.cs:40-57`
+**Where:** `src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs:40-57`
 
 **What happens today:** `ExecuteAsync` awaits three independent sync operations sequentially: `SyncVolunteersTeamAsync`, `SyncMetaleadsTeamAsync`, `SyncBoardTeamAsync`. Each waits for the previous to complete.
 
@@ -289,7 +289,7 @@ Or validate overlapping intervals in code before insert.
 
 ### G-07: AdminController over-fetches data
 
-**Where:** `src/Profiles.Web/Controllers/AdminController.cs` (MemberDetail, Members list)
+**Where:** `src/Humans.Web/Controllers/AdminController.cs` (MemberDetail, Members list)
 
 **What happens today:**
 - `MemberDetail` (line 111) loads ALL applications and ALL consent records via `Include`, even though it only displays the 5 most recent applications and a count. A user with 1000 consent records loads all 1000 rows.
@@ -303,9 +303,9 @@ Or validate overlapping intervals in code before insert.
 
 ### G-08: Centralize admin business logic into services
 
-**Where:** `src/Profiles.Web/Controllers/AdminController.cs` (throughout)
+**Where:** `src/Humans.Web/Controllers/AdminController.cs` (throughout)
 
-**What happens today:** The controller directly uses `ProfilesDbContext` for dashboard metrics, member suspension/unsuspension, role assignment/removal, and member detail loading. All business logic lives in the controller.
+**What happens today:** The controller directly uses `HumansDbContext` for dashboard metrics, member suspension/unsuspension, role assignment/removal, and member detail loading. All business logic lives in the controller.
 
 **Why it matters:**
 - Violates Clean Architecture (controller should only handle HTTP concerns)
@@ -320,7 +320,7 @@ Or validate overlapping intervals in code before insert.
 
 ### G-09: Team membership caching
 
-**Where:** `src/Profiles.Infrastructure/Services/TeamService.cs`
+**Where:** `src/Humans.Infrastructure/Services/TeamService.cs`
 
 **What happens today:** Every call to `GetAllTeamsAsync`, `GetUserTeamsAsync`, `GetTeamBySlugAsync` hits the database directly. No caching. Profile page loads trigger `GetUserTeamsAsync` on every view.
 
@@ -336,7 +336,7 @@ Or validate overlapping intervals in code before insert.
 
 ### P1-04: Enforce export throttling
 
-**Where:** `src/Profiles.Web/Controllers/ProfileController.cs:739`
+**Where:** `src/Humans.Web/Controllers/ProfileController.cs:739`
 
 **What happens today:** Comment says "implement rate limiting if needed" but no throttling exists. Any user can call DownloadData unlimited times.
 
@@ -348,7 +348,7 @@ Or validate overlapping intervals in code before insert.
 
 ### P1-11: Implement real pagination at query layer
 
-**Where:** `src/Profiles.Web/Controllers/TeamController.cs:39` and `TeamAdminController.cs:51,184`
+**Where:** `src/Humans.Web/Controllers/TeamController.cs:39` and `TeamAdminController.cs:51,184`
 
 **What happens today:** `GetAllTeamsAsync()` and `GetPendingRequestsForTeamAsync()` load all records into memory, then `Skip/Take` is applied in LINQ-to-Objects.
 
@@ -386,7 +386,7 @@ Or validate overlapping intervals in code before insert.
 
 ### P2-06: Schedule orphaned SendReConsentReminderJob
 
-**Where:** `src/Profiles.Infrastructure/Jobs/SendReConsentReminderJob.cs` (exists but not scheduled)
+**Where:** `src/Humans.Infrastructure/Jobs/SendReConsentReminderJob.cs` (exists but not scheduled)
 
 **What happens today:** The job class exists and is implemented, but it's not registered in DI and not scheduled in `Program.cs`.
 
@@ -398,7 +398,7 @@ Or validate overlapping intervals in code before insert.
 
 ### P2-07: Add integration tests for critical paths
 
-**Where:** `tests/Profiles.Integration.Tests/` — project exists with TestContainers setup but contains 0 test files.
+**Where:** `tests/Humans.Integration.Tests/` — project exists with TestContainers setup but contains 0 test files.
 
 **What happens today:** Unit tests cover domain and application logic (42 tests). No integration tests exercise auth, consent submission, admin role enforcement, or account deletion flows end-to-end.
 
@@ -410,7 +410,7 @@ Or validate overlapping intervals in code before insert.
 
 ### P2-08: Expand configuration health checks
 
-**Where:** `src/Profiles.Web/Health/ConfigurationHealthCheck.cs:15`
+**Where:** `src/Humans.Web/Health/ConfigurationHealthCheck.cs:15`
 
 **What happens today:** Only validates `GoogleMaps:ApiKey`. Does not check Google OAuth credentials, SMTP settings, GitHub token, or Google Workspace service account config.
 
@@ -422,7 +422,7 @@ Or validate overlapping intervals in code before insert.
 
 ### P2-10: Feature spec lists fields not in Profile entity (DateOfBirth, AddressLine)
 
-**Where:** `docs/features/02-member-profiles.md:62-66` vs `src/Profiles.Domain/Entities/Profile.cs`
+**Where:** `docs/features/02-member-profiles.md:62-66` vs `src/Humans.Domain/Entities/Profile.cs`
 
 **What happens today:** The member profiles feature spec data model lists `DateOfBirth: LocalDate?`, `AddressLine1: string? (512)`, and `AddressLine2: string? (512)`, but these fields do not exist in the `Profile` entity or anywhere in the codebase.
 
@@ -450,7 +450,7 @@ These items require knowing the production domain, IP ranges, deployment model, 
 
 **Blocked on:** Production reverse proxy IP ranges / cloud load balancer config.
 
-**Where:** `src/Profiles.Web/Program.cs:192-193`
+**Where:** `src/Humans.Web/Program.cs:192-193`
 
 **What happens today:** `ForwardedHeadersOptions` clears both `KnownIPNetworks` and `KnownProxies`, trusting `X-Forwarded-For` from any source. Enables IP spoofing, rate limiter bypass, and audit log poisoning.
 
@@ -462,7 +462,7 @@ These items require knowing the production domain, IP ranges, deployment model, 
 
 **Blocked on:** Deployment model decision (R-03) — network-level restriction vs auth-level.
 
-**Where:** `src/Profiles.Web/Program.cs:254-270`
+**Where:** `src/Humans.Web/Program.cs:254-270`
 
 **What happens today:** `/health`, `/health/ready`, and `/metrics` are publicly accessible without authentication. Exposes infrastructure details (DB status, latencies, dependency health).
 
@@ -474,7 +474,7 @@ These items require knowing the production domain, IP ranges, deployment model, 
 
 **Blocked on:** Production domain name.
 
-**Where:** `src/Profiles.Web/appsettings.json:90` — `"AllowedHosts": "*"`
+**Where:** `src/Humans.Web/appsettings.json:90` — `"AllowedHosts": "*"`
 
 **What happens today:** Accepts any Host header. Enables cache poisoning and email link hijacking.
 
@@ -510,7 +510,7 @@ These items require knowing the production domain, IP ranges, deployment model, 
 
 **Blocked on:** Production deployment model (where to persist — Redis, DB, filesystem, Azure Key Vault).
 
-**Where:** `src/Profiles.Web/Program.cs` — no `AddDataProtection()` call.
+**Where:** `src/Humans.Web/Program.cs` — no `AddDataProtection()` call.
 
 **What happens today:** Keys stored in-memory, lost on restart. All sessions invalidated on deploy.
 
@@ -522,7 +522,7 @@ These items require knowing the production domain, IP ranges, deployment model, 
 
 **Blocked on:** Production HTTPS setup (SecurePolicy.Always requires HTTPS).
 
-**Where:** `src/Profiles.Web/Program.cs` — no `ConfigureApplicationCookie()` call.
+**Where:** `src/Humans.Web/Program.cs` — no `ConfigureApplicationCookie()` call.
 
 **What happens today:** Relies on ASP.NET Identity defaults.
 
@@ -534,7 +534,7 @@ These items require knowing the production domain, IP ranges, deployment model, 
 
 **Blocked on:** P0-01 (proxy trust) — IP accuracy is meaningless until proxy headers are trusted correctly.
 
-**Where:** `src/Profiles.Web/Controllers/ConsentController.cs:194` and `ConsentRecordConfiguration.cs:28`
+**Where:** `src/Humans.Web/Controllers/ConsentController.cs:194` and `ConsentRecordConfiguration.cs:28`
 
 **What happens today:** User-Agent truncated at 500 vs DB column of 1024. IP accuracy depends on proxy trust.
 

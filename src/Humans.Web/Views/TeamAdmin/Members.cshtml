@@ -1,0 +1,158 @@
+@model Humans.Web.Models.TeamMembersViewModel
+@using Humans.Domain.Enums
+@{
+    ViewData["Title"] = string.Format(Localizer["TeamAdminMembers_Title"].Value, Model.TeamName);
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@Localizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug">@Model.TeamName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["TeamAdmin_ManageMembers"]</li>
+    </ol>
+</nav>
+
+<h1>@Localizer["TeamAdmin_ManageMembers"]</h1>
+<p class="text-muted">@Localizer["MyTeams_Team"]: @Model.TeamName @(Model.IsSystemTeam ? string.Format("({0})", Localizer["TeamAdmin_SystemTeam"].Value) : "")</p>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (Model.IsSystemTeam)
+{
+    <div class="alert alert-info">
+        @Localizer["TeamAdmin_SystemTeamRolesInfo"]
+    </div>
+}
+
+@if (Model.Members.Any())
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>@Localizer["Teams_Member"]</th>
+                        <th>@Localizer["MyTeams_Role"]</th>
+                        <th>@Localizer["MyTeams_Joined"]</th>
+                        @if (Model.CanManageRoles)
+                        {
+                            <th>@Localizer["MyTeams_Actions"]</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var member in Model.Members)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    @if (!string.IsNullOrEmpty(member.ProfilePictureUrl))
+                                    {
+                                        <img src="@member.ProfilePictureUrl" alt="" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
+                                            <span class="text-white">@member.DisplayName[0]</span>
+                                        </div>
+                                    }
+                                    <div>
+                                        <a asp-controller="Human" asp-action="View" asp-route-id="@member.UserId" class="text-decoration-none">
+                                            <strong>@member.DisplayName</strong>
+                                        </a><br>
+                                        <small class="text-muted">@member.Email</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (member.IsMetalead)
+                                {
+                                    <span class="badge bg-primary">Metalead</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@Localizer["Teams_Member"]</span>
+                                }
+                            </td>
+                            <td>@member.JoinedAt.ToString("MMM d, yyyy")</td>
+                            @if (Model.CanManageRoles)
+                            {
+                                <td>
+                                    <div class="d-flex gap-1" role="group">
+                                        @if (member.IsMetalead)
+                                        {
+                                            <form asp-action="SetRole" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.UserId" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="Role" value="@TeamMemberRole.Member" />
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm="@Localizer["TeamAdmin_DemoteConfirm"].Value">
+                                                    @Localizer["TeamAdmin_DemoteToMember"]
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="SetRole" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.UserId" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="Role" value="@TeamMemberRole.Metalead" />
+                                                <button type="submit" class="btn btn-sm btn-outline-primary" data-confirm="@Localizer["TeamAdmin_PromoteConfirm"].Value">
+                                                    @Localizer["TeamAdmin_PromoteToMetalead"]
+                                                </button>
+                                            </form>
+                                        }
+                                        <form asp-action="RemoveMember" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.UserId" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["TeamAdmin_RemoveConfirm"].Value">
+                                                @Localizer["TeamAdmin_Remove"]
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        @Localizer["TeamAdmin_NoMembers"]
+    </div>
+}
+
+@if (Model.TotalCount > Model.PageSize)
+{
+    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize);
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            @for (var i = 1; i <= totalPages && i <= 10; i++)
+            {
+                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" asp-action="Members" asp-route-slug="@Model.TeamSlug" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
+
+<div class="mt-3">
+    <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["TeamAdmin_BackToTeam"]</a>
+    <a asp-action="Requests" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-primary">@Localizer["TeamAdmin_ViewPendingRequests"]</a>
+    <a asp-action="Resources" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-info">@Localizer["TeamAdmin_ManageResources"]</a>
+</div>

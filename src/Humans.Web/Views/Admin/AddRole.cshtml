@@ -1,0 +1,62 @@
+@model Humans.Web.Models.CreateRoleAssignmentViewModel
+@{
+    ViewData["Title"] = Localizer["AdminAddRole_Title"].Value;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_Admin"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Members">@Localizer["AdminMembers_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="MemberDetail" asp-route-id="@Model.UserId">@Model.UserDisplayName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminAddRole_Title"]</li>
+    </ol>
+</nav>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">@string.Format(Localizer["AdminAddRole_Heading"].Value, Model.UserDisplayName)</h4>
+            </div>
+            <div class="card-body">
+                <form asp-action="AddRole" asp-route-id="@Model.UserId" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                    <div class="mb-3">
+                        <label asp-for="RoleName" class="form-label">@Localizer["MyTeams_Role"]</label>
+                        <select asp-for="RoleName" class="form-select">
+                            <option value="">@Localizer["AdminAddRole_SelectRole"]</option>
+                            @foreach (var role in Model.AvailableRoles)
+                            {
+                                <option value="@role">@role</option>
+                            }
+                        </select>
+                        <span asp-validation-for="RoleName" class="text-danger"></span>
+                        <div class="form-text">
+                            <strong>Admin:</strong> @Localizer["AdminAddRole_AdminDesc"]<br />
+                            <strong>Board:</strong> @Localizer["AdminAddRole_BoardDesc"]<br />
+                            <strong>Metalead:</strong> @Localizer["AdminAddRole_MetaleadDesc"]
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Notes" class="form-label">@Localizer["AdminAddRole_NotesLabel"]</label>
+                        <textarea asp-for="Notes" class="form-control" rows="2" placeholder="@Localizer["AdminAddRole_NotesPlaceholder"].Value"></textarea>
+                        <span asp-validation-for="Notes" class="text-danger"></span>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">@Localizer["AdminMember_AddRole"]</button>
+                        <a asp-action="MemberDetail" asp-route-id="@Model.UserId" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

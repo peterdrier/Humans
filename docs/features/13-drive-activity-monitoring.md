@@ -69,7 +69,7 @@ Follows the same conditional pattern as other Google services:
 
 ### NuGet Package
 
-`Google.Apis.DriveActivity.v2` added to `Directory.Packages.props` and `Profiles.Infrastructure.csproj`.
+`Google.Apis.DriveActivity.v2` added to `Directory.Packages.props` and `Humans.Infrastructure.csproj`.
 
 ## Drive Activity API Integration
 

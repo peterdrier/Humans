@@ -1,4 +1,4 @@
-# Nobodies Profiles
+# Nobodies Humans
 
 Membership management system for Nobodies Collective (Spanish nonprofit).
 
@@ -27,10 +27,10 @@ Clean Architecture with 4 layers:
 
 | File | Purpose |
 |------|---------|
-| `src/Profiles.Web/Program.cs` | Startup, DI, middleware configuration |
-| `src/Profiles.Domain/Entities/` | Core domain entities |
-| `src/Profiles.Infrastructure/Data/ProfilesDbContext.cs` | EF Core DbContext |
-| `src/Profiles.Infrastructure/Jobs/` | Hangfire background jobs |
+| `src/Humans.Web/Program.cs` | Startup, DI, middleware configuration |
+| `src/Humans.Domain/Entities/` | Core domain entities |
+| `src/Humans.Infrastructure/Data/HumansDbContext.cs` | EF Core DbContext |
+| `src/Humans.Infrastructure/Jobs/` | Hangfire background jobs |
 | `Directory.Packages.props` | Centralized NuGet package versions |
 
 ## Domain Entities
@@ -68,10 +68,10 @@ Triggers: `StartReview`, `Approve`, `Reject`, `Withdraw`, `RequestMoreInfo`
 
 ## Namespace Alias
 
-Due to namespace collision, use `MemberApplication` alias when referencing `Profiles.Domain.Entities.Application`:
+Due to namespace collision, use `MemberApplication` alias when referencing `Humans.Domain.Entities.Application`:
 
 ```csharp
-using MemberApplication = Profiles.Domain.Entities.Application;
+using MemberApplication = Humans.Domain.Entities.Application;
 ```
 
 ## Scale and Deployment Context
@@ -84,9 +84,9 @@ using MemberApplication = Profiles.Domain.Entities.Application;
 ## Build Commands
 
 ```bash
-dotnet build Profiles.slnx
-dotnet test Profiles.slnx
-dotnet run --project src/Profiles.Web
+dotnet build Humans.slnx
+dotnet test Humans.slnx
+dotnet run --project src/Humans.Web
 ```
 
 ## Extended Docs
