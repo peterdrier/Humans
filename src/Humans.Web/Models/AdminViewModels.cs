@@ -205,3 +205,17 @@ public class GoogleSyncAuditListViewModel
     public string? BackUrl { get; set; }
     public string? BackLabel { get; set; }
 }
+
+public class ConfigurationItemViewModel
+{
+    public string Section { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
+    public bool IsSet { get; set; }
+    public string? Preview { get; set; }
+    public bool IsRequired { get; set; }
+}
+
+public class AdminConfigurationViewModel
+{
+    public List<ConfigurationItemViewModel> Items { get; set; } = [];
+}

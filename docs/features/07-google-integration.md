@@ -417,7 +417,6 @@ On Google API error:
   "GoogleWorkspace": {
     "ServiceAccountKeyPath": "/secrets/google-sa.json",
     "ServiceAccountKeyJson": "",
-    "ImpersonateUser": "admin@nobodies.team",
     "Domain": "nobodies.team",
     "TeamFoldersParentId": "",
     "UseSharedDrives": true,

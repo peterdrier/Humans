@@ -22,12 +22,6 @@ public class GoogleWorkspaceSettings
     public string? ServiceAccountKeyJson { get; set; }
 
     /// <summary>
-    /// The email address of a Workspace admin to impersonate.
-    /// Required for domain-wide delegation.
-    /// </summary>
-    public string ImpersonateUser { get; set; } = string.Empty;
-
-    /// <summary>
     /// The Google Workspace domain (e.g., nobodies.team).
     /// </summary>
     public string Domain { get; set; } = "nobodies.team";

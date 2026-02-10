@@ -1,0 +1,79 @@
+@model Humans.Web.Models.AdminConfigurationViewModel
+@{
+    ViewData["Title"] = "Configuration Status";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Configuration Status</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+@{
+    var sections = Model.Items.GroupBy(i => i.Section);
+    var missingRequired = Model.Items.Count(i => i.IsRequired && !i.IsSet);
+}
+
+@if (missingRequired > 0)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>@missingRequired required configuration value(s) missing.</strong> The application may not function correctly.
+    </div>
+}
+
+@foreach (var group in sections)
+{
+    var sectionMissing = group.Count(i => i.IsRequired && !i.IsSet);
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>@group.Key</strong>
+            @if (sectionMissing > 0)
+            {
+                <span class="badge bg-danger">@sectionMissing missing</span>
+            }
+            else
+            {
+                <span class="badge bg-success">All set</span>
+            }
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Status</th>
+                        <th>Preview</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in group)
+                    {
+                        <tr>
+                            <td>
+                                <code>@item.Key</code>
+                                @if (!item.IsRequired)
+                                {
+                                    <span class="text-muted small">(optional)</span>
+                                }
+                            </td>
+                            <td>
+                                @if (item.IsSet)
+                                {
+                                    <span class="badge bg-success">Set</span>
+                                }
+                                else if (item.IsRequired)
+                                {
+                                    <span class="badge bg-danger">Missing</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Not set</span>
+                                }
+                            </td>
+                            <td><code>@item.Preview</code></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

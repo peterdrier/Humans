@@ -1079,6 +1079,52 @@ public class AdminController : Controller
         return View("GoogleSyncAudit", viewModel);
     }
 
+    [HttpGet("Configuration")]
+    public IActionResult Configuration([FromServices] IConfiguration configuration)
+    {
+        var keys = new (string Section, string Key, bool Required)[]
+        {
+            ("Authentication", "Authentication:Google:ClientId", true),
+            ("Authentication", "Authentication:Google:ClientSecret", true),
+            ("Database", "ConnectionStrings:DefaultConnection", true),
+            ("Email", "Email:SmtpHost", true),
+            ("Email", "Email:Username", true),
+            ("Email", "Email:Password", true),
+            ("Email", "Email:FromAddress", true),
+            ("Email", "Email:BaseUrl", true),
+            ("Google Workspace", "GoogleWorkspace:ServiceAccountKeyPath", false),
+            ("Google Workspace", "GoogleWorkspace:ServiceAccountKeyJson", false),
+            ("Google Workspace", "GoogleWorkspace:Domain", false),
+            ("GitHub", "GitHub:Owner", true),
+            ("GitHub", "GitHub:Repository", true),
+            ("GitHub", "GitHub:AccessToken", true),
+            ("Google Maps", "GoogleMaps:ApiKey", true),
+            ("OpenTelemetry", "OpenTelemetry:OtlpEndpoint", false),
+        };
+
+        var items = keys.Select(k =>
+        {
+            var value = configuration[k.Key];
+            var isSet = !string.IsNullOrEmpty(value);
+            string preview = "(not set)";
+            if (isSet)
+            {
+                preview = value![..Math.Min(3, value!.Length)] + "...";
+            }
+
+            return new ConfigurationItemViewModel
+            {
+                Section = k.Section,
+                Key = k.Key,
+                IsSet = isSet,
+                Preview = preview,
+                IsRequired = k.Required,
+            };
+        }).ToList();
+
+        return View(new AdminConfigurationViewModel { Items = items });
+    }
+
     /// <summary>
     /// Checks whether the current user can assign/end the specified role.
     /// Admin can manage any role. Board can manage Board and Metalead only.
