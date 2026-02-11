@@ -770,4 +770,13 @@
   <data name="Birthdays_None" xml:space="preserve"><value>No birthdays in {0}.</value></data>
   <data name="Birthdays_Privacy" xml:space="preserve"><value>Only members who have set their date of birth are shown. Date of birth is only visible to the member and board.</value></data>
 
+  <!-- ======================== -->
+  <!-- Volunteer Map            -->
+  <!-- ======================== -->
+  <data name="Nav_Map" xml:space="preserve"><value>Map</value></data>
+  <data name="Map_Title" xml:space="preserve"><value>Volunteer Map</value></data>
+  <data name="Map_Count" xml:space="preserve"><value>{0} volunteers with location</value></data>
+  <data name="Map_None" xml:space="preserve"><value>No volunteers have set their location yet.</value></data>
+  <data name="Map_Privacy" xml:space="preserve"><value>Only members who have set their location are shown. Location is approximate and based on city.</value></data>
+
 </root>

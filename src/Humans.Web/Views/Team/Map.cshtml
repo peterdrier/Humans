@@ -1,0 +1,103 @@
+@model Humans.Web.Models.MapViewModel
+@{
+    ViewData["Title"] = Localizer["Map_Title"].Value;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Map_Title"]</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">@Localizer["Map_Title"]</h1>
+
+@if (Model.Markers.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            @string.Format(Localizer["Map_Count"].Value, Model.Markers.Count)
+        </div>
+        <div class="card-body p-0">
+            <div id="map" style="height: 600px; width: 100%;"></div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center text-muted py-5">
+            @Localizer["Map_None"]
+        </div>
+    </div>
+}
+
+<div class="mt-3">
+    <p class="text-muted small">@Localizer["Map_Privacy"]</p>
+</div>
+
+@section Scripts {
+    @if (Model.Markers.Count > 0 && !string.IsNullOrEmpty(ViewData["GoogleMapsApiKey"]?.ToString()))
+    {
+        <script>
+            (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+                key: "@ViewData["GoogleMapsApiKey"]",
+                v: "weekly"
+            });
+        </script>
+        <script src="https://unpkg.com/@@googlemaps/markerclusterer/dist/index.min.js"></script>
+        <script>
+            const markers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Markers, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+            async function initMap() {
+                const { Map, InfoWindow } = await google.maps.importLibrary("maps");
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+                const map = new Map(document.getElementById("map"), {
+                    zoom: 3,
+                    center: { lat: 40, lng: -3 },
+                    mapId: "volunteer-map"
+                });
+
+                const infoWindow = new InfoWindow();
+                const mapMarkers = [];
+
+                for (const m of markers) {
+                    const marker = new AdvancedMarkerElement({
+                        position: { lat: m.latitude, lng: m.longitude },
+                        map: map,
+                        title: m.displayName
+                    });
+
+                    const location = [m.city, m.countryCode].filter(Boolean).join(", ");
+                    const content = `<div style="padding: 4px 0;"><strong>${m.displayName}</strong>${location ? `<br><span style="color: #666;">${location}</span>` : ''}</div>`;
+
+                    marker.addEventListener("gmp-click", () => {
+                        infoWindow.setContent(content);
+                        infoWindow.open({ anchor: marker, map });
+                    });
+
+                    mapMarkers.push(marker);
+                }
+
+                if (typeof markerClusterer !== 'undefined') {
+                    new markerClusterer.MarkerClusterer({ markers: mapMarkers, map });
+                }
+
+                // Fit bounds to show all markers
+                if (mapMarkers.length > 1) {
+                    const bounds = new google.maps.LatLngBounds();
+                    for (const m of markers) {
+                        bounds.extend({ lat: m.latitude, lng: m.longitude });
+                    }
+                    map.fitBounds(bounds);
+                } else if (mapMarkers.length === 1) {
+                    map.setCenter({ lat: markers[0].latitude, lng: markers[0].longitude });
+                    map.setZoom(10);
+                }
+            }
+
+            initMap();
+        </script>
+    }
+}

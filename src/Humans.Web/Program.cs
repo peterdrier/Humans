@@ -337,11 +337,11 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
     context.Response.Headers.Append("Content-Security-Policy",
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://maps.googleapis.com https://maps.gstatic.com; " +
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com; " +
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
         "img-src 'self' https: data:; " +
-        "connect-src 'self' https://maps.googleapis.com https://places.googleapis.com; " +
+        "connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://maps.googleapis.com https://maps.gstatic.com https://places.googleapis.com; " +
         "frame-ancestors 'none'");
     await next();
 });

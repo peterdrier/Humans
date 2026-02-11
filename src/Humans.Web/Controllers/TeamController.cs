@@ -21,19 +21,22 @@ public class TeamController : Controller
     private readonly HumansDbContext _dbContext;
     private readonly ILogger<TeamController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly IConfiguration _configuration;
 
     public TeamController(
         ITeamService teamService,
         UserManager<User> userManager,
         HumansDbContext dbContext,
         ILogger<TeamController> logger,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        IConfiguration configuration)
     {
         _teamService = teamService;
         _userManager = userManager;
         _dbContext = dbContext;
         _logger = logger;
         _localizer = localizer;
+        _configuration = configuration;
     }
 
     [HttpGet("")]
@@ -228,6 +231,28 @@ public class TeamController : Controller
         };
 
         return View(viewModel);
+    }
+
+    [HttpGet("Map")]
+    public async Task<IActionResult> Map()
+    {
+        var markers = await _dbContext.Profiles
+            .AsNoTracking()
+            .Include(p => p.User)
+            .Where(p => p.Latitude != null && p.Longitude != null && !p.IsSuspended)
+            .Select(p => new MapMarkerViewModel
+            {
+                DisplayName = p.User!.DisplayName,
+                Latitude = p.Latitude!.Value,
+                Longitude = p.Longitude!.Value,
+                City = p.City,
+                CountryCode = p.CountryCode
+            })
+            .ToListAsync();
+
+        ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+
+        return View(new MapViewModel { Markers = markers });
     }
 
     [HttpGet("My")]

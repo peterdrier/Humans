@@ -773,4 +773,13 @@
   <data name="Birthdays_None" xml:space="preserve"><value>Nessun compleanno in {0}.</value></data>
   <data name="Birthdays_Privacy" xml:space="preserve"><value>Vengono mostrati solo i membri che hanno impostato la propria data di nascita. La data di nascita &#xE8; visibile solo al membro e al consiglio.</value></data>
 
+  <!-- ======================== -->
+  <!-- Volunteer Map            -->
+  <!-- ======================== -->
+  <data name="Nav_Map" xml:space="preserve"><value>Mappa</value></data>
+  <data name="Map_Title" xml:space="preserve"><value>Mappa dei volontari</value></data>
+  <data name="Map_Count" xml:space="preserve"><value>{0} volontari con posizione</value></data>
+  <data name="Map_None" xml:space="preserve"><value>Nessun volontario ha ancora impostato la propria posizione.</value></data>
+  <data name="Map_Privacy" xml:space="preserve"><value>Vengono mostrati solo i membri che hanno impostato la propria posizione. La posizione &#xE8; approssimativa e basata sulla citt&#xE0;.</value></data>
+
 </root>

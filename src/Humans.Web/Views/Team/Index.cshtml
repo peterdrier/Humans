@@ -7,6 +7,7 @@
     <h1>@Localizer["Teams_Title"]</h1>
     <div class="d-flex gap-2">
         <a asp-action="Birthdays" class="btn btn-outline-secondary">@Localizer["Birthdays_Title"]</a>
+        <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Map_Title"]</a>
         @if (Model.CanCreateTeam)
         {
             <a asp-controller="Admin" asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
