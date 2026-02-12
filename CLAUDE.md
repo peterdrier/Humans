@@ -35,17 +35,7 @@ Clean Architecture with 4 layers:
 
 ## Domain Entities
 
-| Entity | Purpose |
-|--------|---------|
-| `User` | Custom IdentityUser with Google OAuth |
-| `Profile` | Member profile with computed MembershipStatus |
-| `ContactField` | Contact info with per-field visibility controls |
-| `Application` | Membership application with Stateless state machine |
-| `RoleAssignment` | Temporal role memberships (ValidFrom/ValidTo) |
-| `LegalDocument` / `DocumentVersion` | Legal docs synced from GitHub |
-| `ConsentRecord` | **APPEND-ONLY** consent audit trail |
-| `Team` / `TeamMember` | Working groups |
-| `GoogleResource` | Shared Drive folder + Group provisioning |
+See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relationships, and serialization notes. Key entities: `User`, `Profile`, `ContactField`, `Application` (Asociado only), `RoleAssignment`, `LegalDocument`/`DocumentVersion`, `ConsentRecord` (append-only), `Team`/`TeamMember`, `GoogleResource`.
 
 ## Important: Shared Drives Only
 
@@ -112,7 +102,6 @@ dotnet run --project src/Humans.Web
 | **Coding rules** | **`.claude/CODING_RULES.md`** |
 | Data model | `.claude/DATA_MODEL.md` |
 | Analyzers/ReSharper | `.claude/CODE_ANALYSIS.md` |
-| NuGet updates | `.claude/NUGET_UPDATE_CHECK.md` |
 | **Feature specs** | **`docs/features/`** |
 
 ## Feature Documentation

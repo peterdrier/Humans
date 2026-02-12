@@ -1,15 +1,5 @@
 # Coding Rules
 
-## Critical: Keep It Simple
-
-Do not over-engineer. Build the simplest thing that works. Avoid unnecessary abstractions, extra configuration options, migration steps for existing data that doesn't need fixing, or defensive code for scenarios that won't happen. When in doubt, do less.
-
-## Critical: Answer Questions First, Wait for Approval
-
-When the user asks a question, answer the question and stop. Do not infer what work should be done from the question. Wait for explicit approval before making any code changes.
-
-**Rule:** Questions are for information only. Wait for explicit instruction before coding.
-
 ## Critical: Do Not Remove "Unused" Properties
 
 Properties/methods appearing "unused" may be used dynamically via reflection:
@@ -98,19 +88,3 @@ if (string.Equals(status, "submitted", StringComparison.Ordinal))
 ## Localization (i18n)
 
 **Admin pages do not require localization.** Existing localized strings in admin views can stay, but do not add new `@Localizer[...]` calls or resource keys for admin-side views (`/Admin/*`, `/TeamAdmin/*`) until further notice. Only public/user-facing views require localization.
-
-## Git Branch Naming
-
-**Rule:** Always use `main` as the default branch name, never `master`.
-
-When initializing a new repository:
-```bash
-git init
-git branch -m master main  # Rename if needed
-```
-
-## Build Commands
-
-- Build: `dotnet build`
-- Test: `dotnet test`
-- Run: `dotnet run`

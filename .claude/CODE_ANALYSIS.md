@@ -32,7 +32,3 @@ Full analysis using existing `.DotSettings`:
 
 Results: `inspectcode-results.*` (gitignored)
 First run auto-installs `JetBrains.ReSharper.GlobalTools`.
-
-## CI Setup
-
-See `.claude/plans/resharper-ci-setup-guide.md` for adding ReSharper analysis to GitHub Actions.

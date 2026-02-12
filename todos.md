@@ -22,9 +22,6 @@ Audit date: 2026-02-05 | Last updated: 2026-02-12
 #### P2-06: Schedule orphaned SendReConsentReminderJob
 The job class exists but isn't registered in DI or scheduled. Volunteers get suspended without warning because no reminders are sent.
 
-#### #3: Full Lead rename (domain, DB, code) COMPLETED
-Renamed all internal "Lead" references across domain, application, infrastructure, web, tests, migrations, resources, and documentation. Committed `pending`.
-
 ---
 
 ### Priority 2: User-Facing Features & Improvements
@@ -134,103 +131,45 @@ These need production domain, IP ranges, deployment model, or infrastructure dec
 
 ## Completed
 
-### P1-06: Domain restriction decision for Google login RESOLVED
-Allow any Google account — volunteer approval gate (`IsApproved`) is sufficient access control. No domain restriction needed. (Decision R-01.)
+### #3: Full Lead rename (domain, DB, code) DONE
+Renamed all internal "Lead" references across domain, application, infrastructure, web, tests, migrations, resources, and documentation.
 
-### Issue #15: Redesign legal document management DONE
-Team-scoped, multi-language legal documents with admin CRUD, folder-based GitHub sync, consent UI grouped by team with dynamic language tabs, per-document grace periods. Committed `b73982c`, `dbc6676`.
-
-### Membership gating, volunteer sync, application language tracking DONE
-Added MembershipRequiredFilter (gates app access on Volunteers team), ActiveMember claim, consolidated volunteer team sync into SyncVolunteersMembershipForUserAsync (triggered on both approval and consent), application language tracking, dashboard status fix, audit actor name fix, admin Sync System Teams button, consent tab ordering (Castellano first). Committed `28a2e8b`.
-
-### G-06: SystemTeamSyncJob runs sequentially RESOLVED BY DESIGN
-Sequential execution is intentional — the three sync methods share a single DbContext instance which is not thread-safe. Documented in code comment. Parallelizing would require IServiceScopeFactory to create separate scopes.
-
-### P0-05: Fix admin authorization inconsistency DONE
-Committed `f10a6b9`.
-
-### F-02: Volunteer acceptance gate before system access DONE
-Committed `4364b5d`.
-
-### P0-06: Register all Hangfire jobs in DI DONE
-Committed `502ed59`.
-
-### P0-10: Suspend job does not actually suspend anyone DONE
-Committed `97aec59`.
-
-### P0-07: Consent immutability trigger is not applied by migrations DONE
-Committed `ff7acc8`.
-
-### P0-08: Prevent consent history deletion via user cascade DONE
-Committed `e449e91`.
-
-### P0-09: GDPR wording mismatch on account deletion DONE
-Committed `f3200c2`.
-
-### P0-02: Remove external token persistence unless needed DONE
-Committed `2cde1dc`.
-
-### P0-14: Fix privacy contact email inconsistency DONE
-Committed `cba4767`.
-
-### P0-11: Harden CSP (remove unsafe-inline) DONE
-Committed `9dee750`. Addendum: added `cdn.jsdelivr.net` to script-src (`4189f8d`).
-
-### P1-01: Correct membership status logic on profile page DONE
-### P1-02: Correct pending consent calculation on profile page DONE
-Committed `c7b127f`.
-
-### P1-05: Fix anonymous email verification redirect DONE
-Committed `3319eec`.
-
-### P1-08: Enforce uniqueness for active team membership DONE
-Committed `44330ec`.
-
-### P1-10: Fix slug generation race conditions DONE
-Committed `1c5bfc0`.
-
-### P1-03: Add anti-caching headers to data export endpoints DONE
-Committed `6287976`.
-
-### G-02: N+1 query in SendReConsentReminderJob DONE
-Committed `3966e79`.
-
-### G-04: Google Drive provisioning not idempotent DONE
-Committed `4243ca7`.
-
-### F-03: Admin UI for managing team Google resources DONE
-Committed `d9bf5c1`.
-
-### F-04: Audit log for automatic user and resource changes DONE
-Feature spec: `docs/features/12-audit-log.md`.
-
-### F-05: Localization / PreferredLanguage support DONE
-Committed `4189f8d`. Closes GitHub #7.
-
-### F-01: Profile pictures with team photo gallery DONE
-Committed `f04c8cf`.
-
-### F-07: Admin dashboard RecentActivity widget DONE
-### F-08: Admin dashboard PendingConsents metric DONE
-### P1-14: Hangfire dashboard link returns 404 FIXED
-### P1-15: Team Join view passes GUID where slug expected FIXED
-### Drive Activity API monitoring DONE
-Committed `f04c8cf`. Closes GitHub #11.
-
-### Codebase simplification: remove dead code and unnecessary abstractions DONE
-Deleted unimplemented `IApplicationService`, unused `ProfileUpdateRequest` DTO, `IConsentRecordRepository` + `ConsentRecordRepository` (inlined into `MembershipCalculator`), and `IVolunteerHistoryService` interface (concrete class registered directly). Fixed duplicate Debug sink in appsettings.Development.json. Improved disabled sync jobs comment. Committed `251da28`.
+### #20: Add volunteer location map showing shared city/country DONE
+Google Maps page with volunteer pins. Committed `2664c46`.
 
 ### #19: Fix profile edit data lost when navigating to Preferred Email DONE
 Added beforeunload guard to profile edit form. Committed `3cf905a`.
 
-### #16: Consolidate phone and contact fields, add validation DONE
-Consolidated emails, removed standalone phone, birthday as month-day. Committed `352c79a`.
+### #18: Burner CV: separate position/role from event name DONE
+Updated placeholder text to separate event from role. Committed `b424f9b`, `352c79a`.
 
 ### #17: Add Discord as a contact type DONE
 Added Discord as contact field type. Committed `352c79a`.
 
-### #18: Burner CV: separate position/role from event name DONE
-Updated placeholder text to separate event from role. Committed `b424f9b`, `352c79a`.
+### #16: Consolidate phone and contact fields, add validation DONE
+Consolidated emails, removed standalone phone, birthday as month-day. Committed `352c79a`.
 
-### #20: Add volunteer location map showing shared city/country DONE
-Google Maps page with volunteer pins. Committed `2664c46`.
+### Codebase simplification: remove dead code and unnecessary abstractions DONE
+Committed `251da28`.
+
+### Earlier completed items (condensed)
+- F-01: Profile pictures with team photo gallery (`f04c8cf`)
+- F-02: Volunteer acceptance gate before system access (`4364b5d`)
+- F-03: Admin UI for managing team Google resources (`d9bf5c1`)
+- F-04: Audit log for automatic user and resource changes
+- F-05: Localization / PreferredLanguage support (`4189f8d`, closes #7)
+- F-07/F-08: Admin dashboard RecentActivity + PendingConsents (`f04c8cf`)
+- Drive Activity API monitoring (`f04c8cf`, closes #11)
+- Issue #15: Redesign legal document management (`b73982c`, `dbc6676`)
+- Membership gating, volunteer sync, application language tracking (`28a2e8b`)
+- P0-02 through P0-14: Security hardening (CSP, token persistence, consent cascade, GDPR wording, email consistency)
+- P1-01/P1-02: Profile page membership status + pending consent fix (`c7b127f`)
+- P1-03: Anti-caching headers on data export (`6287976`)
+- P1-05: Anonymous email verification redirect (`3319eec`)
+- P1-06: Domain restriction decision (R-01)
+- P1-08: Active team membership uniqueness (`44330ec`)
+- P1-10: Slug generation race conditions (`1c5bfc0`)
+- P1-14/P1-15: Hangfire dashboard 404 + Team Join slug fix
+- G-02: N+1 query in SendReConsentReminderJob (`3966e79`)
+- G-04: Google Drive provisioning idempotency (`4243ca7`)
+- G-06: SystemTeamSyncJob sequential execution (resolved by design)
