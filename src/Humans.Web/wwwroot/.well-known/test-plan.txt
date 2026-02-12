@@ -1,0 +1,85 @@
+# Humans — Browser Test Plan
+#
+# This file is served at /.well-known/test-plan.txt and read by the
+# /test-site Claude Code skill before running browser tests.
+# Update this file to add scenarios, flag known issues, or skip tests.
+#
+# Format: plain text, read by an LLM — no strict schema required.
+# Just write clear instructions.
+
+## Site Info
+
+- App name: Humans (membership management for Nobodies Collective)
+- Default dev URL: http://localhost:5000
+- Auth: Google OAuth (must be logged in for most pages)
+- Admin role required for /Admin/* pages
+- Hangfire dashboard at /hangfire (no auth in dev mode)
+
+## Known Issues / Skip List
+
+# Add items here when a test should be temporarily skipped:
+# - SKIP consent/step-5: Checkbox validation rework in progress
+# (Remove items once the issue is fixed)
+
+## Test Credentials
+
+# In development, log in with any Google account.
+# To get Admin access, insert a role_assignment via:
+#   docker exec humans-db-1 psql -U humans -d humans -c \
+#     "INSERT INTO role_assignments (\"Id\", \"UserId\", \"RoleName\", \"ValidFrom\", \"ValidTo\", \"Notes\", \"CreatedAt\", \"CreatedByUserId\") \
+#      VALUES (gen_random_uuid(), '<user-id>', 'Admin', now(), NULL, 'Dev setup', now(), '<user-id>');"
+# Then log out and back in.
+
+## Critical Paths (test these first)
+
+1. Authentication: Can log in and see dashboard
+2. Profile: Can view and edit profile, changes persist
+3. Consent: Can view documents, checkbox validation is localized
+4. Teams: Can browse teams, view details, see members
+5. Admin: Dashboard loads, member list works, audit log shows entries
+
+## Localization Checks
+
+Supported languages: en, es, fr, de, it
+
+When testing i18n:
+- The consent checkbox validation popup must show in the selected language, NOT the browser default
+- Resource keys (like "Profile_SomeKey") must never appear as visible text
+- The language selector should be in the navbar or footer
+
+## Regression Watchlist
+
+These are areas that have had recent bugs. Pay extra attention:
+
+- Consent checkbox validation: must show localized message, not browser default "Please check this box..."
+- Team detail page: Google resources list must not crash (was a StringComparer LINQ translation bug)
+- Hangfire: jobs must be registered without lock timeout errors (startup ordering issue)
+- Profile edit: beforeunload guard should warn about unsaved changes
+
+## Page-Specific Notes
+
+### /Profile/Edit
+- Birthday field is month + day only (no year)
+- Contact fields have per-field visibility (None, LeadsOnly, TeamOnly, Public)
+- Profile picture accepts JPG, PNG, WebP up to 20MB
+- There's a beforeunload guard — navigating away with unsaved changes should prompt
+
+### /Consent/Review/{id}
+- Spanish (Castellano) tab is always first (it's the legally binding version)
+- Other language tabs are alphabetical
+- The consent checkbox uses setCustomValidity for localized validation
+- The "Already Consented" state shows who consented and when
+
+### /Admin/Members/{id}
+- Shows full audit trail for the member
+- Role assignments show ValidFrom/ValidTo (temporal)
+- "Approve" button only appears for unapproved volunteers
+
+### /Teams/{slug}
+- System teams (Volunteers, Leads, Board, Asociados) exist but may not all be visible
+- Google resources section shows linked Drive folders and Groups
+- Join button behavior depends on team's RequireApproval setting
+
+### /Teams/Map
+- Requires Google Maps API key — will show error without it (this is expected in dev)
+- Only shows members who have shared their city/country
