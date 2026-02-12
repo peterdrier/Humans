@@ -96,6 +96,10 @@ appsettings.*.json
 *.snk
 secrets.json
 
+# Claude Code local settings
+.claude/settings.local.json
+.mcp.json
+
 # Environment
 .env
 .env.*
