@@ -179,6 +179,8 @@
   <data name="Profile_ContactInformation" xml:space="preserve"><value>Contact Information</value></data>
   <data name="Profile_NoContactInfo" xml:space="preserve"><value>No contact information added yet.</value></data>
   <data name="Profile_AddSome" xml:space="preserve"><value>Add some</value></data>
+  <data name="Profile_NotificationTarget" xml:space="preserve"><value>System notifications are sent to this address</value></data>
+  <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notifications</value></data>
   <data name="Profile_Teams" xml:space="preserve"><value>Teams</value></data>
   <data name="Profile_Lead" xml:space="preserve"><value>Lead</value></data>
   <data name="Profile_BurnerCV" xml:space="preserve"><value>Burner CV</value></data>
@@ -475,7 +477,7 @@
   <!-- Admin                    -->
   <!-- ======================== -->
   <data name="AdminDashboard_Title" xml:space="preserve"><value>Admin Dashboard</value></data>
-  <data name="AdminMembers_Title" xml:space="preserve"><value>Members</value></data>
+  <data name="AdminMembers_Title" xml:space="preserve"><value>Humans</value></data>
   <data name="AdminMemberDetail_Title" xml:space="preserve"><value>Member: {0}</value><comment>{0} = display name</comment></data>
   <data name="AdminApplications_Title" xml:space="preserve"><value>Applications</value></data>
   <data name="AdminApplicationDetail_Title" xml:space="preserve"><value>Review Application</value></data>
@@ -550,15 +552,15 @@
   <!-- ======================== -->
   <!-- Admin Dashboard View     -->
   <!-- ======================== -->
-  <data name="Admin_TotalMembers" xml:space="preserve"><value>Total Members</value></data>
-  <data name="Admin_ActiveMembers" xml:space="preserve"><value>Active Members</value></data>
+  <data name="Admin_TotalMembers" xml:space="preserve"><value>Total Humans</value></data>
+  <data name="Admin_ActiveMembers" xml:space="preserve"><value>Active Humans</value></data>
   <data name="Admin_PendingVolunteers" xml:space="preserve"><value>Pending Volunteers</value></data>
   <data name="Admin_PendingApplications" xml:space="preserve"><value>Pending Applications</value></data>
   <data name="Admin_PendingConsents" xml:space="preserve"><value>Pending Consents</value></data>
   <data name="Admin_QuickActions" xml:space="preserve"><value>Quick Actions</value></data>
   <data name="Admin_ReviewPendingVolunteers" xml:space="preserve"><value>Review Pending Volunteers</value></data>
   <data name="Admin_ReviewApplications" xml:space="preserve"><value>Review Applications</value></data>
-  <data name="Admin_ManageMembers" xml:space="preserve"><value>Manage Members</value></data>
+  <data name="Admin_ManageMembers" xml:space="preserve"><value>Manage Humans</value></data>
   <data name="Admin_ManageTeams" xml:space="preserve"><value>Manage Teams</value></data>
   <data name="Admin_ManageRoles" xml:space="preserve"><value>Manage Roles</value></data>
   <data name="Admin_GoogleSyncStatus" xml:space="preserve"><value>Google Sync Status</value></data>
@@ -576,7 +578,7 @@
   <data name="Admin_SearchPlaceholder" xml:space="preserve"><value>Search by email or name...</value></data>
   <data name="Admin_Search" xml:space="preserve"><value>Search</value></data>
   <data name="Admin_Clear" xml:space="preserve"><value>Clear</value></data>
-  <data name="Admin_NoMembersFound" xml:space="preserve"><value>No members found.</value></data>
+  <data name="Admin_NoMembersFound" xml:space="preserve"><value>No humans found.</value></data>
   <data name="Admin_Joined" xml:space="preserve"><value>Joined</value></data>
   <data name="Admin_LastLogin" xml:space="preserve"><value>Last Login</value></data>
   <data name="Admin_Never" xml:space="preserve"><value>Never</value></data>

@@ -179,6 +179,8 @@
   <data name="Profile_ContactInformation" xml:space="preserve"><value>Informaci&#xF3;n de contacto</value></data>
   <data name="Profile_NoContactInfo" xml:space="preserve"><value>A&#xFA;n no se ha a&#xF1;adido informaci&#xF3;n de contacto.</value></data>
   <data name="Profile_AddSome" xml:space="preserve"><value>A&#xF1;adir informaci&#xF3;n</value></data>
+  <data name="Profile_NotificationTarget" xml:space="preserve"><value>Las notificaciones del sistema se env&#xED;an a esta direcci&#xF3;n</value></data>
+  <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notificaciones</value></data>
   <data name="Profile_Teams" xml:space="preserve"><value>Equipos</value></data>
   <data name="Profile_Lead" xml:space="preserve"><value>L&#xED;der</value></data>
   <data name="Profile_BurnerCV" xml:space="preserve"><value>Burner CV</value></data>
@@ -487,7 +489,7 @@
   <!-- Admin                    -->
   <!-- ======================== -->
   <data name="AdminDashboard_Title" xml:space="preserve"><value>Panel de administraci&#xF3;n</value></data>
-  <data name="AdminMembers_Title" xml:space="preserve"><value>Miembros</value></data>
+  <data name="AdminMembers_Title" xml:space="preserve"><value>Humans</value></data>
   <data name="AdminMemberDetail_Title" xml:space="preserve"><value>Miembro: {0}</value><comment>{0} = display name</comment></data>
   <data name="AdminApplications_Title" xml:space="preserve"><value>Solicitudes</value></data>
   <data name="AdminApplicationDetail_Title" xml:space="preserve"><value>Revisar solicitud</value></data>
@@ -562,15 +564,15 @@
   <!-- ======================== -->
   <!-- Admin Dashboard View     -->
   <!-- ======================== -->
-  <data name="Admin_TotalMembers" xml:space="preserve"><value>Miembros totales</value></data>
-  <data name="Admin_ActiveMembers" xml:space="preserve"><value>Miembros activos</value></data>
+  <data name="Admin_TotalMembers" xml:space="preserve"><value>Humans en total</value></data>
+  <data name="Admin_ActiveMembers" xml:space="preserve"><value>Humans activos</value></data>
   <data name="Admin_PendingVolunteers" xml:space="preserve"><value>Voluntarios pendientes</value></data>
   <data name="Admin_PendingApplications" xml:space="preserve"><value>Solicitudes pendientes</value></data>
   <data name="Admin_PendingConsents" xml:space="preserve"><value>Consentimientos pendientes</value></data>
   <data name="Admin_QuickActions" xml:space="preserve"><value>Acciones r&#xE1;pidas</value></data>
   <data name="Admin_ReviewPendingVolunteers" xml:space="preserve"><value>Revisar voluntarios pendientes</value></data>
   <data name="Admin_ReviewApplications" xml:space="preserve"><value>Revisar solicitudes</value></data>
-  <data name="Admin_ManageMembers" xml:space="preserve"><value>Gestionar miembros</value></data>
+  <data name="Admin_ManageMembers" xml:space="preserve"><value>Gestionar Humans</value></data>
   <data name="Admin_ManageTeams" xml:space="preserve"><value>Gestionar equipos</value></data>
   <data name="Admin_ManageRoles" xml:space="preserve"><value>Gestionar roles</value></data>
   <data name="Admin_GoogleSyncStatus" xml:space="preserve"><value>Estado de sincronizaci&#xF3;n con Google</value></data>
@@ -588,7 +590,7 @@
   <data name="Admin_SearchPlaceholder" xml:space="preserve"><value>Buscar por correo o nombre...</value></data>
   <data name="Admin_Search" xml:space="preserve"><value>Buscar</value></data>
   <data name="Admin_Clear" xml:space="preserve"><value>Limpiar</value></data>
-  <data name="Admin_NoMembersFound" xml:space="preserve"><value>No se encontraron miembros.</value></data>
+  <data name="Admin_NoMembersFound" xml:space="preserve"><value>No se encontraron humans.</value></data>
   <data name="Admin_Joined" xml:space="preserve"><value>Incorporaci&#xF3;n</value></data>
   <data name="Admin_LastLogin" xml:space="preserve"><value>&#xDA;ltimo acceso</value></data>
   <data name="Admin_Never" xml:space="preserve"><value>Nunca</value></data>

@@ -484,7 +484,7 @@
   <!-- Admin                    -->
   <!-- ======================== -->
   <data name="AdminDashboard_Title" xml:space="preserve"><value>Dashboard Admin</value></data>
-  <data name="AdminMembers_Title" xml:space="preserve"><value>Membri</value></data>
+  <data name="AdminMembers_Title" xml:space="preserve"><value>Humans</value></data>
   <data name="AdminMemberDetail_Title" xml:space="preserve"><value>Membro: {0}</value><comment>{0} = display name</comment></data>
   <data name="AdminApplications_Title" xml:space="preserve"><value>Domande</value></data>
   <data name="AdminApplicationDetail_Title" xml:space="preserve"><value>Esamina domanda</value></data>
@@ -559,15 +559,15 @@
   <!-- ======================== -->
   <!-- Admin Dashboard View     -->
   <!-- ======================== -->
-  <data name="Admin_TotalMembers" xml:space="preserve"><value>Membri totali</value></data>
-  <data name="Admin_ActiveMembers" xml:space="preserve"><value>Membri attivi</value></data>
+  <data name="Admin_TotalMembers" xml:space="preserve"><value>Humans in totale</value></data>
+  <data name="Admin_ActiveMembers" xml:space="preserve"><value>Humans attivi</value></data>
   <data name="Admin_PendingVolunteers" xml:space="preserve"><value>Volontari in sospeso</value></data>
   <data name="Admin_PendingApplications" xml:space="preserve"><value>Domande in sospeso</value></data>
   <data name="Admin_PendingConsents" xml:space="preserve"><value>Consensi in sospeso</value></data>
   <data name="Admin_QuickActions" xml:space="preserve"><value>Azioni rapide</value></data>
   <data name="Admin_ReviewPendingVolunteers" xml:space="preserve"><value>Esamina volontari in sospeso</value></data>
   <data name="Admin_ReviewApplications" xml:space="preserve"><value>Esamina domande</value></data>
-  <data name="Admin_ManageMembers" xml:space="preserve"><value>Gestisci membri</value></data>
+  <data name="Admin_ManageMembers" xml:space="preserve"><value>Gestisci Humans</value></data>
   <data name="Admin_ManageTeams" xml:space="preserve"><value>Gestisci team</value></data>
   <data name="Admin_ManageRoles" xml:space="preserve"><value>Gestisci ruoli</value></data>
   <data name="Admin_GoogleSyncStatus" xml:space="preserve"><value>Stato sincronizzazione Google</value></data>
@@ -585,7 +585,7 @@
   <data name="Admin_SearchPlaceholder" xml:space="preserve"><value>Cerca per email o nome...</value></data>
   <data name="Admin_Search" xml:space="preserve"><value>Cerca</value></data>
   <data name="Admin_Clear" xml:space="preserve"><value>Cancella</value></data>
-  <data name="Admin_NoMembersFound" xml:space="preserve"><value>Nessun membro trovato.</value></data>
+  <data name="Admin_NoMembersFound" xml:space="preserve"><value>Nessun human trovato.</value></data>
   <data name="Admin_Joined" xml:space="preserve"><value>Iscritto</value></data>
   <data name="Admin_LastLogin" xml:space="preserve"><value>Ultimo accesso</value></data>
   <data name="Admin_Never" xml:space="preserve"><value>Mai</value></data>

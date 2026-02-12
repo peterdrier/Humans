@@ -153,13 +153,16 @@
 
                                         <div class="col-md-2">
                                             <label class="form-label small">Type</label>
+                                            @{
+                                                var fieldType = Model.EditableContactFields[i].FieldType;
+                                            }
                                             <select name="EditableContactFields[@i].FieldType" class="form-select form-select-sm field-type-select">
-                                                <option value="Phone" selected="@(Model.EditableContactFields[i].FieldType == Humans.Domain.Enums.ContactFieldType.Phone)">Phone</option>
-                                                <option value="Signal" selected="@(Model.EditableContactFields[i].FieldType == Humans.Domain.Enums.ContactFieldType.Signal)">Signal</option>
-                                                <option value="Telegram" selected="@(Model.EditableContactFields[i].FieldType == Humans.Domain.Enums.ContactFieldType.Telegram)">Telegram</option>
-                                                <option value="WhatsApp" selected="@(Model.EditableContactFields[i].FieldType == Humans.Domain.Enums.ContactFieldType.WhatsApp)">WhatsApp</option>
-                                                <option value="Discord" selected="@(Model.EditableContactFields[i].FieldType == Humans.Domain.Enums.ContactFieldType.Discord)">Discord</option>
-                                                <option value="Other" selected="@(Model.EditableContactFields[i].FieldType == Humans.Domain.Enums.ContactFieldType.Other)">Other</option>
+                                                <option value="Phone" selected="@(fieldType == Humans.Domain.Enums.ContactFieldType.Phone ? "selected" : null)">Phone</option>
+                                                <option value="Signal" selected="@(fieldType == Humans.Domain.Enums.ContactFieldType.Signal ? "selected" : null)">Signal</option>
+                                                <option value="Telegram" selected="@(fieldType == Humans.Domain.Enums.ContactFieldType.Telegram ? "selected" : null)">Telegram</option>
+                                                <option value="WhatsApp" selected="@(fieldType == Humans.Domain.Enums.ContactFieldType.WhatsApp ? "selected" : null)">WhatsApp</option>
+                                                <option value="Discord" selected="@(fieldType == Humans.Domain.Enums.ContactFieldType.Discord ? "selected" : null)">Discord</option>
+                                                <option value="Other" selected="@(fieldType == Humans.Domain.Enums.ContactFieldType.Other ? "selected" : null)">Other</option>
                                             </select>
                                         </div>
 
@@ -176,11 +179,14 @@
 
                                         <div class="col-md-3">
                                             <label class="form-label small">Visibility</label>
+                                            @{
+                                                var visibility = Model.EditableContactFields[i].Visibility;
+                                            }
                                             <select name="EditableContactFields[@i].Visibility" class="form-select form-select-sm">
-                                                <option value="AllActiveProfiles" selected="@(Model.EditableContactFields[i].Visibility == Humans.Domain.Enums.ContactFieldVisibility.AllActiveProfiles)">All active members</option>
-                                                <option value="MyTeams" selected="@(Model.EditableContactFields[i].Visibility == Humans.Domain.Enums.ContactFieldVisibility.MyTeams)">My teams</option>
-                                                <option value="LeadsAndBoard" selected="@(Model.EditableContactFields[i].Visibility == Humans.Domain.Enums.ContactFieldVisibility.LeadsAndBoard)">Leads + Board</option>
-                                                <option value="BoardOnly" selected="@(Model.EditableContactFields[i].Visibility == Humans.Domain.Enums.ContactFieldVisibility.BoardOnly)">Board only</option>
+                                                <option value="AllActiveProfiles" selected="@(visibility == Humans.Domain.Enums.ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">All active members</option>
+                                                <option value="MyTeams" selected="@(visibility == Humans.Domain.Enums.ContactFieldVisibility.MyTeams ? "selected" : null)">My teams (+ leads & board)</option>
+                                                <option value="LeadsAndBoard" selected="@(visibility == Humans.Domain.Enums.ContactFieldVisibility.LeadsAndBoard ? "selected" : null)">Leads + Board</option>
+                                                <option value="BoardOnly" selected="@(visibility == Humans.Domain.Enums.ContactFieldVisibility.BoardOnly ? "selected" : null)">Board only</option>
                                             </select>
                                         </div>
 
@@ -423,7 +429,7 @@
                                     <label class="form-label small">Visibility</label>
                                     <select name="EditableContactFields[${index}].Visibility" class="form-select form-select-sm">
                                         <option value="AllActiveProfiles" selected>All active members</option>
-                                        <option value="MyTeams">My teams</option>
+                                        <option value="MyTeams">My teams (+ leads & board)</option>
                                         <option value="LeadsAndBoard">Leads + Board</option>
                                         <option value="BoardOnly">Board only</option>
                                     </select>

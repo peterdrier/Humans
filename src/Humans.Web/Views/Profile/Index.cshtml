@@ -54,10 +54,6 @@
                     </div>
                     <div class="col-md-9">
                         <h4>@(string.IsNullOrEmpty(Model.BurnerName) ? Model.DisplayName : Model.BurnerName)</h4>
-                        @if (Model.IsOwnProfile)
-                        {
-                            <p class="text-muted mb-1">@Model.Email</p>
-                        }
                         <span class="badge @(Model.MembershipStatus == "Active" ? "bg-success" : Model.MembershipStatus == "Suspended" ? "bg-danger" : "bg-secondary")">
                             @Model.MembershipStatus
                         </span>
@@ -140,10 +136,10 @@
                                 Email
                             </dt>
                             <dd class="col-sm-9">
-                                @email.Email
+                                <a href="mailto:@email.Email">@email.Email</a>
                                 @if (email.IsNotificationTarget)
                                 {
-                                    <span class="badge bg-primary ms-1" title="Notification target"><i class="fa-solid fa-bell"></i></span>
+                                    <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
                                 }
                             </dd>
                         }
@@ -154,7 +150,14 @@
                                 @field.Label
                             </dt>
                             <dd class="col-sm-9">
-                                @field.Value
+                                @if (!string.IsNullOrEmpty(field.LinkUrl))
+                                {
+                                    <a href="@field.LinkUrl" target="_blank" rel="noopener noreferrer">@field.Value</a>
+                                }
+                                else
+                                {
+                                    @field.Value
+                                }
                                 @if (Model.IsOwnProfile)
                                 {
                                     <i class="@field.VisibilityIconClass text-muted ms-2"
@@ -190,7 +193,7 @@
                     <div class="d-flex flex-wrap gap-2">
                         @foreach (var team in Model.Teams)
                         {
-                            <a asp-controller="Teams" asp-action="Detail" asp-route-slug="@team.TeamSlug"
+                            <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.TeamSlug"
                                class="btn btn-sm @(team.IsSystemTeam ? "btn-outline-secondary" : "btn-outline-primary")">
                                 @team.TeamName
                                 @if (team.IsMetalead)

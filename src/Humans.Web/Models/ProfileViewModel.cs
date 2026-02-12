@@ -227,6 +227,20 @@ public class ContactFieldViewModel
     };
 
     /// <summary>
+    /// Gets a clickable URL for this contact field, or null if not linkable.
+    /// </summary>
+    public string? LinkUrl => FieldType switch
+    {
+#pragma warning disable CS0618 // Obsolete ContactFieldType.Email kept for display of legacy data
+        ContactFieldType.Email => $"mailto:{Value}",
+#pragma warning restore CS0618
+        ContactFieldType.Phone => $"tel:{Value}",
+        ContactFieldType.WhatsApp => $"https://wa.me/{new string(Value.Where(char.IsDigit).ToArray())}",
+        ContactFieldType.Telegram => Value.StartsWith('@') ? $"https://t.me/{Value[1..]}" : $"https://t.me/{Value}",
+        _ => null
+    };
+
+    /// <summary>
     /// Gets a visibility icon class.
     /// </summary>
     public string VisibilityIconClass => Visibility switch
@@ -245,7 +259,7 @@ public class ContactFieldViewModel
     {
         ContactFieldVisibility.BoardOnly => "Visible to board members only",
         ContactFieldVisibility.LeadsAndBoard => "Visible to team leads and board",
-        ContactFieldVisibility.MyTeams => "Visible to members of your teams",
+        ContactFieldVisibility.MyTeams => "Visible to your teammates, leads, and board",
         ContactFieldVisibility.AllActiveProfiles => "Visible to all active members",
         _ => "Visibility unknown"
     };
