@@ -1,3 +1,4 @@
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using NodaTime;
 
@@ -6,7 +7,7 @@ using NodaTime;
 namespace Humans.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class AddGoogleSyncOutbox : Migration
+    public partial class AddPreProdIntegrityAndGoogleSyncOutbox : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -30,6 +31,16 @@ namespace Humans.Infrastructure.Migrations
                     table.PrimaryKey("PK_google_sync_outbox", x => x.Id);
                 });
 
+            migrationBuilder.AddCheckConstraint(
+                name: "CK_role_assignments_valid_window",
+                table: "role_assignments",
+                sql: "\"ValidTo\" IS NULL OR \"ValidTo\" > \"ValidFrom\"");
+
+            migrationBuilder.AddCheckConstraint(
+                name: "CK_google_resources_exactly_one_owner",
+                table: "google_resources",
+                sql: "(\"TeamId\" IS NOT NULL AND \"UserId\" IS NULL) OR (\"TeamId\" IS NULL AND \"UserId\" IS NOT NULL)");
+
             migrationBuilder.CreateIndex(
                 name: "IX_google_sync_outbox_DeduplicationKey",
                 table: "google_sync_outbox",
@@ -52,6 +63,14 @@ namespace Humans.Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "google_sync_outbox");
+
+            migrationBuilder.DropCheckConstraint(
+                name: "CK_role_assignments_valid_window",
+                table: "role_assignments");
+
+            migrationBuilder.DropCheckConstraint(
+                name: "CK_google_resources_exactly_one_owner",
+                table: "google_resources");
         }
     }
 }

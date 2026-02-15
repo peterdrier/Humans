@@ -15,6 +15,7 @@ Execution log for `docs/2026-02-15-codex-plan.md` with checkpoint-based iteratio
 ## Decisions
 - 2026-02-15: Do **not** add DB exclusion/non-overlap constraint for role windows in Phase 1.
 - 2026-02-15: Enforce role overlap prevention in application logic instead.
+- 2026-02-15: Do not use "fast repair" shortcuts; use project-consistent, debt-free fixes only.
 
 ## Work Log
 - 2026-02-15: Created consolidated plan doc `docs/2026-02-15-codex-plan.md`.
@@ -103,6 +104,15 @@ Execution log for `docs/2026-02-15-codex-plan.md` with checkpoint-based iteratio
   - `dotnet build Humans.slnx --no-restore` remains blocked by `NU1301` (NuGet signature endpoint unreachable in this sandbox).
 - 2026-02-15: Removed regenerated local build artifact folder `.dotnet/` from workspace.
 - 2026-02-15: Checkpoint commit created: `bd10d27` (`refactor(startup): move infra and recurring jobs to extensions`).
+- 2026-02-15: Reworked migration packaging to match project conventions.
+  - Removed hand-authored pending migrations that lacked generated designer metadata:
+    - `20260215150500_AddIntegrityCheckConstraints.cs`
+    - `20260215193000_AddGoogleSyncOutbox.cs`
+  - Regenerated a single EF migration with standard `.cs + .Designer.cs + snapshot`:
+    - `20260215182339_AddPreProdIntegrityAndGoogleSyncOutbox`
+  - Verified with EF tooling:
+    - migration is discovered as pending,
+    - no pending model changes.
 
 ## Next Step
-- Validate and run migrations/tests in a network-enabled environment, then smoke-test admin legal-doc and team membership sync flows.
+- Apply `20260215182339_AddPreProdIntegrityAndGoogleSyncOutbox` in deployed environments, then smoke-test admin legal-doc and team membership sync flows.
