@@ -58,7 +58,7 @@
   <data name="Nav_Governance" xml:space="preserve"><value>Gouvernance</value></data>
   <data name="Nav_Privacy" xml:space="preserve"><value>Confidentialit&#xE9;</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
-  <data name="Footer_Copyright" xml:space="preserve"><value>Humans &amp;mdash; Sous licence &lt;a href="https://creativecommons.org/licenses/by-sa/4.0/"&gt;CC BY-SA 4.0&lt;/a&gt;</value></data>
+
 
   <!-- ======================== -->
   <!-- Cookie Banner (_Layout)  -->

@@ -1,0 +1,414 @@
+@{
+    ViewData["Title"] = "About";
+}
+
+<div class="text-center my-5">
+    <h1 class="display-4">About Humans</h1>
+    <p class="lead mt-3">
+        Made by Peter with love for the Nobodies Community.
+    </p>
+    <p class="text-muted" style="max-width: 640px; margin: 0 auto;">
+        Humans is the membership system that keeps Nobodies Collective running — volunteer onboarding,
+        team provisioning, governance tracking, and all the plumbing that lets a Spanish nonprofit
+        operate with the organisational memory of something ten times its size.
+        Built with care, maintained with stubbornness, and deployed with crossed fingers.
+    </p>
+    <p class="mt-3 mb-0">
+        Need help? <a href="mailto:humans@nobodies.team">humans@nobodies.team</a>
+    </p>
+</div>
+
+<div class="card border-primary mb-5" style="max-width: 720px; margin: 0 auto;">
+    <div class="card-body">
+        <h5 class="card-title"><i class="fa-solid fa-section me-2"></i>License</h5>
+        <p class="mb-2">
+            Humans is free software, released under the
+            <strong>GNU Affero General Public License v3.0</strong> (AGPL-3.0).
+        </p>
+        <p class="mb-2 small text-muted">
+            You may use, study, modify, and redistribute this software. If you run a modified version
+            and let others interact with it over a network, you must make your modified source available
+            under the same license.
+        </p>
+        <p class="mb-0 small">
+            Full license text: <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank">gnu.org/licenses/agpl-3.0</a>
+            &middot; Source code: <a href="https://github.com/peterdrier/Humans" target="_blank">github.com/peterdrier/Humans</a>
+        </p>
+    </div>
+</div>
+
+<hr />
+
+<section class="my-5">
+    <h2><i class="fa-solid fa-flask-vial me-2"></i>The Ingredients</h2>
+    <p>
+        Every workshop needs its materials. Here is what Humans is built from:
+    </p>
+    <div class="row g-4 mt-2">
+        <div class="col-md-4">
+            <h5><i class="fa-brands fa-microsoft me-1"></i>.NET 10</h5>
+            <p class="text-muted small mb-0">
+                ASP.NET Core MVC with Razor views, Identity, and the whole Microsoft stack.
+                The frame that holds everything together.
+            </p>
+        </div>
+        <div class="col-md-4">
+            <h5><i class="fa-solid fa-database me-1"></i>PostgreSQL + EF Core</h5>
+            <p class="text-muted small mb-0">
+                Relational data with Entity Framework Core and Npgsql.
+                NodaTime types all the way down — no <code>DateTime</code> in sight.
+            </p>
+        </div>
+        <div class="col-md-4">
+            <h5><i class="fa-brands fa-google me-1"></i>Google Workspace APIs</h5>
+            <p class="text-muted small mb-0">
+                Admin Directory, Drive, and Groups — provisioning Shared Drives,
+                folders, and mailing lists so nobody has to do it by hand.
+            </p>
+        </div>
+        <div class="col-md-4">
+            <h5><i class="fa-solid fa-clock me-1"></i>Hangfire</h5>
+            <p class="text-muted small mb-0">
+                Background jobs for sync, reconciliation, and anything that shouldn't
+                block an HTTP request. PostgreSQL-backed, dashboard included.
+            </p>
+        </div>
+        <div class="col-md-4">
+            <h5><i class="fa-solid fa-chart-line me-1"></i>OpenTelemetry + Serilog</h5>
+            <p class="text-muted small mb-0">
+                Structured logging, distributed traces, and Prometheus metrics.
+                Because "it works on my machine" isn't a monitoring strategy.
+            </p>
+        </div>
+        <div class="col-md-4">
+            <h5><i class="fa-solid fa-envelope me-1"></i>MailKit</h5>
+            <p class="text-muted small mb-0">
+                Transactional email for notifications and onboarding.
+                The one library that makes SMTP feel almost pleasant.
+            </p>
+        </div>
+    </div>
+</section>
+
+<hr />
+
+<section class="my-5">
+    <h2><i class="fa-solid fa-scale-balanced me-2"></i>Open Source Licenses</h2>
+    <p>
+        Humans is built on the shoulders of open-source projects.
+        The table below lists every production dependency, its version, and license.
+    </p>
+
+    <h4 class="mt-4">NuGet Packages</h4>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Category</th>
+                    <th>Package</th>
+                    <th>Version</th>
+                    <th>License</th>
+                </tr>
+            </thead>
+            <tbody>
+                @* — Framework — *@
+                <tr>
+                    <td>Framework</td>
+                    <td><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.Identity.EntityFrameworkCore" target="_blank">Microsoft.AspNetCore.Identity.EntityFrameworkCore</a></td>
+                    <td>10.0.3</td>
+                    <td>MIT</td>
+                </tr>
+                <tr>
+                    <td>Framework</td>
+                    <td><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.Google" target="_blank">Microsoft.AspNetCore.Authentication.Google</a></td>
+                    <td>10.0.3</td>
+                    <td>MIT</td>
+                </tr>
+                <tr>
+                    <td>Framework</td>
+                    <td><a href="https://www.nuget.org/packages/Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" target="_blank">Microsoft.AspNetCore.DataProtection.EntityFrameworkCore</a></td>
+                    <td>10.0.3</td>
+                    <td>MIT</td>
+                </tr>
+                <tr>
+                    <td>Framework</td>
+                    <td><a href="https://www.nuget.org/packages/Microsoft.EntityFrameworkCore" target="_blank">Microsoft.EntityFrameworkCore</a></td>
+                    <td>10.0.3</td>
+                    <td>MIT</td>
+                </tr>
+                <tr>
+                    <td>Framework</td>
+                    <td><a href="https://www.nuget.org/packages/Microsoft.Extensions.Localization" target="_blank">Microsoft.Extensions.Localization</a></td>
+                    <td>10.0.3</td>
+                    <td>MIT</td>
+                </tr>
+
+                @* — Database — *@
+                <tr>
+                    <td>Database</td>
+                    <td><a href="https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL" target="_blank">Npgsql.EntityFrameworkCore.PostgreSQL</a></td>
+                    <td>10.0.0</td>
+                    <td>PostgreSQL</td>
+                </tr>
+                <tr>
+                    <td>Database</td>
+                    <td><a href="https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" target="_blank">Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime</a></td>
+                    <td>10.0.0</td>
+                    <td>PostgreSQL</td>
+                </tr>
+
+                @* — Date/Time — *@
+                <tr>
+                    <td>Date/Time</td>
+                    <td><a href="https://www.nuget.org/packages/NodaTime" target="_blank">NodaTime</a></td>
+                    <td>3.3.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Date/Time</td>
+                    <td><a href="https://www.nuget.org/packages/NodaTime.Serialization.SystemTextJson" target="_blank">NodaTime.Serialization.SystemTextJson</a></td>
+                    <td>1.3.1</td>
+                    <td>Apache-2.0</td>
+                </tr>
+
+                @* — State Machine — *@
+                <tr>
+                    <td>State Machine</td>
+                    <td><a href="https://www.nuget.org/packages/Stateless" target="_blank">Stateless</a></td>
+                    <td>5.20.1</td>
+                    <td>Apache-2.0</td>
+                </tr>
+
+                @* — Background Jobs — *@
+                <tr>
+                    <td>Background Jobs</td>
+                    <td><a href="https://www.nuget.org/packages/Hangfire.Core" target="_blank">Hangfire.Core</a></td>
+                    <td>1.8.23</td>
+                    <td>LGPL-3.0</td>
+                </tr>
+                <tr>
+                    <td>Background Jobs</td>
+                    <td><a href="https://www.nuget.org/packages/Hangfire.AspNetCore" target="_blank">Hangfire.AspNetCore</a></td>
+                    <td>1.8.23</td>
+                    <td>LGPL-3.0</td>
+                </tr>
+                <tr>
+                    <td>Background Jobs</td>
+                    <td><a href="https://www.nuget.org/packages/Hangfire.PostgreSql" target="_blank">Hangfire.PostgreSql</a></td>
+                    <td>1.21.1</td>
+                    <td>LGPL-3.0</td>
+                </tr>
+
+                @* — Email — *@
+                <tr>
+                    <td>Email</td>
+                    <td><a href="https://www.nuget.org/packages/MailKit" target="_blank">MailKit</a></td>
+                    <td>4.15.0</td>
+                    <td>MIT</td>
+                </tr>
+
+                @* — GitHub API — *@
+                <tr>
+                    <td>GitHub API</td>
+                    <td><a href="https://www.nuget.org/packages/Octokit" target="_blank">Octokit</a></td>
+                    <td>14.0.0</td>
+                    <td>MIT</td>
+                </tr>
+
+                @* — Google APIs — *@
+                <tr>
+                    <td>Google APIs</td>
+                    <td><a href="https://www.nuget.org/packages/Google.Apis.Admin.Directory.directory_v1" target="_blank">Google.Apis.Admin.Directory.directory_v1</a></td>
+                    <td>1.73.0.4030</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Google APIs</td>
+                    <td><a href="https://www.nuget.org/packages/Google.Apis.Drive.v3" target="_blank">Google.Apis.Drive.v3</a></td>
+                    <td>1.73.0.4045</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Google APIs</td>
+                    <td><a href="https://www.nuget.org/packages/Google.Apis.DriveActivity.v2" target="_blank">Google.Apis.DriveActivity.v2</a></td>
+                    <td>1.70.0.3880</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Google APIs</td>
+                    <td><a href="https://www.nuget.org/packages/Google.Apis.Auth" target="_blank">Google.Apis.Auth</a></td>
+                    <td>1.73.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+
+                @* — Resilience — *@
+                <tr>
+                    <td>Resilience</td>
+                    <td><a href="https://www.nuget.org/packages/Polly" target="_blank">Polly</a></td>
+                    <td>8.6.5</td>
+                    <td>BSD-3-Clause</td>
+                </tr>
+
+                @* — Observability — *@
+                <tr>
+                    <td>Observability</td>
+                    <td><a href="https://www.nuget.org/packages/OpenTelemetry.Exporter.OpenTelemetryProtocol" target="_blank">OpenTelemetry.Exporter.OpenTelemetryProtocol</a></td>
+                    <td>1.15.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Observability</td>
+                    <td><a href="https://www.nuget.org/packages/OpenTelemetry.Exporter.Prometheus.AspNetCore" target="_blank">OpenTelemetry.Exporter.Prometheus.AspNetCore</a></td>
+                    <td>1.10.0-beta.1</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Observability</td>
+                    <td><a href="https://www.nuget.org/packages/OpenTelemetry.Extensions.Hosting" target="_blank">OpenTelemetry.Extensions.Hosting</a></td>
+                    <td>1.15.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Observability</td>
+                    <td><a href="https://www.nuget.org/packages/OpenTelemetry.Instrumentation.AspNetCore" target="_blank">OpenTelemetry.Instrumentation.AspNetCore</a></td>
+                    <td>1.15.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Observability</td>
+                    <td><a href="https://www.nuget.org/packages/OpenTelemetry.Instrumentation.EntityFrameworkCore" target="_blank">OpenTelemetry.Instrumentation.EntityFrameworkCore</a></td>
+                    <td>1.0.0-beta.12</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Observability</td>
+                    <td><a href="https://www.nuget.org/packages/OpenTelemetry.Instrumentation.Http" target="_blank">OpenTelemetry.Instrumentation.Http</a></td>
+                    <td>1.15.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Observability</td>
+                    <td><a href="https://www.nuget.org/packages/OpenTelemetry.Instrumentation.Runtime" target="_blank">OpenTelemetry.Instrumentation.Runtime</a></td>
+                    <td>1.15.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+
+                @* — Logging — *@
+                <tr>
+                    <td>Logging</td>
+                    <td><a href="https://www.nuget.org/packages/Serilog.AspNetCore" target="_blank">Serilog.AspNetCore</a></td>
+                    <td>10.0.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Logging</td>
+                    <td><a href="https://www.nuget.org/packages/Serilog.Sinks.Debug" target="_blank">Serilog.Sinks.Debug</a></td>
+                    <td>3.0.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Logging</td>
+                    <td><a href="https://www.nuget.org/packages/Serilog.Sinks.OpenTelemetry" target="_blank">Serilog.Sinks.OpenTelemetry</a></td>
+                    <td>4.2.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+
+                @* — Image Processing — *@
+                <tr>
+                    <td>Image Processing</td>
+                    <td><a href="https://www.nuget.org/packages/SkiaSharp" target="_blank">SkiaSharp</a></td>
+                    <td>3.119.2</td>
+                    <td>MIT</td>
+                </tr>
+                <tr>
+                    <td>Image Processing</td>
+                    <td><a href="https://www.nuget.org/packages/SkiaSharp.NativeAssets.Linux" target="_blank">SkiaSharp.NativeAssets.Linux</a></td>
+                    <td>3.119.2</td>
+                    <td>MIT</td>
+                </tr>
+
+                @* — Markdown — *@
+                <tr>
+                    <td>Markdown</td>
+                    <td><a href="https://www.nuget.org/packages/Markdig" target="_blank">Markdig</a></td>
+                    <td>0.45.0</td>
+                    <td>BSD-2-Clause</td>
+                </tr>
+
+                @* — Health Checks — *@
+                <tr>
+                    <td>Health Checks</td>
+                    <td><a href="https://www.nuget.org/packages/AspNetCore.HealthChecks.NpgSql" target="_blank">AspNetCore.HealthChecks.NpgSql</a></td>
+                    <td>9.0.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Health Checks</td>
+                    <td><a href="https://www.nuget.org/packages/AspNetCore.HealthChecks.Hangfire" target="_blank">AspNetCore.HealthChecks.Hangfire</a></td>
+                    <td>9.0.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+                <tr>
+                    <td>Health Checks</td>
+                    <td><a href="https://www.nuget.org/packages/AspNetCore.HealthChecks.Uris" target="_blank">AspNetCore.HealthChecks.Uris</a></td>
+                    <td>9.0.0</td>
+                    <td>Apache-2.0</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h4 class="mt-4">Frontend / CDN Dependencies</h4>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Library</th>
+                    <th>Version</th>
+                    <th>License</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><a href="https://getbootstrap.com/" target="_blank">Bootstrap</a></td>
+                    <td>5.3.3</td>
+                    <td>MIT</td>
+                </tr>
+                <tr>
+                    <td><a href="https://fontawesome.com/" target="_blank">Font Awesome</a></td>
+                    <td>6.5.1</td>
+                    <td>Fonts: SIL OFL 1.1 &middot; Code: MIT</td>
+                </tr>
+                <tr>
+                    <td><a href="https://fonts.google.com/specimen/Cormorant+Garamond" target="_blank">Cormorant Garamond</a></td>
+                    <td>&mdash;</td>
+                    <td>SIL OFL 1.1</td>
+                </tr>
+                <tr>
+                    <td><a href="https://fonts.google.com/specimen/Source+Sans+3" target="_blank">Source Sans 3</a></td>
+                    <td>&mdash;</td>
+                    <td>SIL OFL 1.1</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h4 class="mt-4">License Compliance Summary</h4>
+    <div class="card">
+        <div class="card-body">
+            <p class="mb-2"><strong>All production dependencies use permissive or weak-copyleft licenses. No violations found.</strong></p>
+            <ul class="mb-0 small">
+                <li><strong>MIT</strong> &mdash; requires copyright notice; this page satisfies that obligation.</li>
+                <li><strong>Apache-2.0</strong> &mdash; requires copyright notice, license copy, and statement of changes if modified. All packages are used unmodified.</li>
+                <li><strong>BSD-2-Clause / BSD-3-Clause</strong> &mdash; requires copyright notice in documentation.</li>
+                <li><strong>PostgreSQL License</strong> &mdash; permissive, MIT-like; copyright notice required.</li>
+                <li>
+                    <strong>LGPL-3.0</strong> (Hangfire) &mdash; the library must be replaceable by the end user. Hangfire is consumed as
+                    unmodified NuGet packages (dynamically linked), satisfying LGPL obligations.
+                    Source available at <a href="https://github.com/HangfireIO/Hangfire" target="_blank">github.com/HangfireIO/Hangfire</a>.
+                </li>
+                <li><strong>SIL OFL 1.1</strong> (fonts) &mdash; free to use and redistribute; fonts cannot be sold standalone.</li>
+            </ul>
+        </div>
+    </div>
+</section>

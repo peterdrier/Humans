@@ -80,9 +80,9 @@
         </main>
     </div>
 
-    <footer class="border-top py-3 text-muted">
+    <footer class="border-top py-3 text-muted text-center">
         <div class="container">
-            @Html.Raw(string.Format(Localizer["Footer_Copyright"].Value, DateTime.UtcNow.Year))
+            <a asp-controller="Home" asp-action="About" class="text-muted small">About</a>
         </div>
     </footer>
 

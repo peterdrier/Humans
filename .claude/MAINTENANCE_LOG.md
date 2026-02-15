@@ -16,4 +16,5 @@ Tracks when recurring maintenance processes were last run.
 | GDPR audit | — | — | Quarterly | Exports, consent, PII logging |
 | Migration squash check | — | — | Monthly | Check `/Admin/DbVersion` on prod, QA (humans.n.burn.camp), and local dev. Oldest `lastApplied` across all three is the safe squash boundary. |
 | NuGet full update | 2026-02-15 | 2026-03-15 | Monthly | Non-security package updates |
+| About page package sync | 2026-02-15 | 2026-03-15 | Monthly | Update `About.cshtml` package versions after NuGet updates |
 | GitHub issue triage | — | — | Weekly | Sync issues vs todos.md |
