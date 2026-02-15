@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -15,6 +16,7 @@ public class SyncLegalDocumentsJob
     private readonly IEmailService _emailService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly HumansDbContext _dbContext;
+    private readonly HumansMetricsService _metrics;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
     private readonly IClock _clock;
 
@@ -23,6 +25,7 @@ public class SyncLegalDocumentsJob
         IEmailService emailService,
         IMembershipCalculator membershipCalculator,
         HumansDbContext dbContext,
+        HumansMetricsService metrics,
         ILogger<SyncLegalDocumentsJob> logger,
         IClock clock)
     {
@@ -30,6 +33,7 @@ public class SyncLegalDocumentsJob
         _emailService = emailService;
         _membershipCalculator = membershipCalculator;
         _dbContext = dbContext;
+        _metrics = metrics;
         _logger = logger;
         _clock = clock;
     }
@@ -59,9 +63,12 @@ public class SyncLegalDocumentsJob
             {
                 _logger.LogInformation("No legal document updates found");
             }
+
+            _metrics.RecordJobRun("sync_legal_documents", "success");
         }
         catch (Exception ex)
         {
+            _metrics.RecordJobRun("sync_legal_documents", "failure");
             _logger.LogError(ex, "Error syncing legal documents");
             throw;
         }

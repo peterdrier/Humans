@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -18,6 +19,7 @@ public class SuspendNonCompliantMembersJob
     private readonly IEmailService _emailService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
+    private readonly HumansMetricsService _metrics;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
     private readonly IClock _clock;
 
@@ -27,6 +29,7 @@ public class SuspendNonCompliantMembersJob
         IEmailService emailService,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
+        HumansMetricsService metrics,
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
     {
@@ -35,6 +38,7 @@ public class SuspendNonCompliantMembersJob
         _emailService = emailService;
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
+        _metrics = metrics;
         _logger = logger;
         _clock = clock;
     }
@@ -119,6 +123,7 @@ public class SuspendNonCompliantMembersJob
                     "User {UserId} ({Email}) suspended and removed from {Count} teams",
                     user.Id, effectiveEmail, user.TeamMemberships.Count);
 
+                _metrics.RecordMemberSuspended("job");
                 suspendedCount++;
             }
 
@@ -127,12 +132,14 @@ public class SuspendNonCompliantMembersJob
                 await _dbContext.SaveChangesAsync(cancellationToken);
             }
 
+            _metrics.RecordJobRun("suspend_noncompliant_members", "success");
             _logger.LogInformation(
                 "Completed non-compliant member check, suspended {Count} members",
                 suspendedCount);
         }
         catch (Exception ex)
         {
+            _metrics.RecordJobRun("suspend_noncompliant_members", "failure");
             _logger.LogError(ex, "Error checking non-compliant members");
             throw;
         }

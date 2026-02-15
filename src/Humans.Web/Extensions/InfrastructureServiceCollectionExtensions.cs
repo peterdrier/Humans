@@ -17,6 +17,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
         services.Configure<TeamResourceManagementSettings>(configuration.GetSection(TeamResourceManagementSettings.SectionName));
 
+        services.AddSingleton<HumansMetricsService>();
+
         services.AddScoped<ITeamService, TeamService>();
         services.AddScoped<IContactFieldService, ContactFieldService>();
         services.AddScoped<IUserEmailService, UserEmailService>();

@@ -10,6 +10,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -22,6 +23,7 @@ public class ConsentController : Controller
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly SystemTeamSyncJob _systemTeamSyncJob;
+    private readonly HumansMetricsService _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ConsentController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -32,6 +34,7 @@ public class ConsentController : Controller
         IMembershipCalculator membershipCalculator,
         IGoogleSyncService googleSyncService,
         SystemTeamSyncJob systemTeamSyncJob,
+        HumansMetricsService metrics,
         IClock clock,
         ILogger<ConsentController> logger,
         IStringLocalizer<SharedResource> localizer)
@@ -41,6 +44,7 @@ public class ConsentController : Controller
         _membershipCalculator = membershipCalculator;
         _googleSyncService = googleSyncService;
         _systemTeamSyncJob = systemTeamSyncJob;
+        _metrics = metrics;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
@@ -241,6 +245,7 @@ public class ConsentController : Controller
 
         _dbContext.ConsentRecords.Add(consentRecord);
         await _dbContext.SaveChangesAsync();
+        _metrics.RecordConsentGiven();
 
         _logger.LogInformation(
             "User {UserId} consented to document {DocumentName} version {Version}",

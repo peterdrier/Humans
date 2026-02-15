@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -16,6 +17,7 @@ public class ProcessAccountDeletionsJob
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
+    private readonly HumansMetricsService _metrics;
     private readonly ILogger<ProcessAccountDeletionsJob> _logger;
     private readonly IClock _clock;
 
@@ -23,12 +25,14 @@ public class ProcessAccountDeletionsJob
         HumansDbContext dbContext,
         IEmailService emailService,
         IAuditLogService auditLogService,
+        HumansMetricsService metrics,
         ILogger<ProcessAccountDeletionsJob> logger,
         IClock clock)
     {
         _dbContext = dbContext;
         _emailService = emailService;
         _auditLogService = auditLogService;
+        _metrics = metrics;
         _logger = logger;
         _clock = clock;
     }
@@ -56,6 +60,7 @@ public class ProcessAccountDeletionsJob
 
             if (usersToDelete.Count == 0)
             {
+                _metrics.RecordJobRun("process_account_deletions", "success");
                 _logger.LogInformation("No accounts scheduled for deletion");
                 return;
             }
@@ -103,12 +108,14 @@ public class ProcessAccountDeletionsJob
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 
+            _metrics.RecordJobRun("process_account_deletions", "success");
             _logger.LogInformation(
                 "Completed account deletion processing, processed {Count} accounts",
                 usersToDelete.Count);
         }
         catch (Exception ex)
         {
+            _metrics.RecordJobRun("process_account_deletions", "failure");
             _logger.LogError(ex, "Error processing account deletions");
             throw;
         }

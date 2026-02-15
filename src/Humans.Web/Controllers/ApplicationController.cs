@@ -7,6 +7,7 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Services;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using MemberApplication = Humans.Domain.Entities.Application;
@@ -18,6 +19,7 @@ public class ApplicationController : Controller
 {
     private readonly HumansDbContext _dbContext;
     private readonly UserManager<Domain.Entities.User> _userManager;
+    private readonly HumansMetricsService _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ApplicationController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -25,12 +27,14 @@ public class ApplicationController : Controller
     public ApplicationController(
         HumansDbContext dbContext,
         UserManager<Domain.Entities.User> userManager,
+        HumansMetricsService metrics,
         IClock clock,
         ILogger<ApplicationController> logger,
         IStringLocalizer<SharedResource> localizer)
     {
         _dbContext = dbContext;
         _userManager = userManager;
+        _metrics = metrics;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
@@ -220,6 +224,7 @@ public class ApplicationController : Controller
 
         application.Withdraw(_clock);
         await _dbContext.SaveChangesAsync();
+        _metrics.RecordApplicationProcessed("withdrawn");
 
         _logger.LogInformation("User {UserId} withdrew application {ApplicationId}", user.Id, application.Id);
 

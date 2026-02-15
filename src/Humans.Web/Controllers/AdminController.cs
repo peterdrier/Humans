@@ -11,6 +11,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Options;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -32,6 +33,7 @@ public class AdminController : Controller
     private readonly IClock _clock;
     private readonly ILogger<AdminController> _logger;
     private readonly SystemTeamSyncJob _systemTeamSyncJob;
+    private readonly HumansMetricsService _metrics;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public AdminController(
@@ -45,6 +47,7 @@ public class AdminController : Controller
         IClock clock,
         ILogger<AdminController> logger,
         SystemTeamSyncJob systemTeamSyncJob,
+        HumansMetricsService metrics,
         IStringLocalizer<SharedResource> localizer)
     {
         _dbContext = dbContext;
@@ -57,6 +60,7 @@ public class AdminController : Controller
         _clock = clock;
         _logger = logger;
         _systemTeamSyncJob = systemTeamSyncJob;
+        _metrics = metrics;
         _localizer = localizer;
     }
 
@@ -375,6 +379,7 @@ public class AdminController : Controller
                     break;
                 }
                 application.Approve(currentUser.Id, model.Notes, _clock);
+                _metrics.RecordApplicationProcessed("approved");
                 _logger.LogInformation("Admin {AdminId} approved application {ApplicationId}",
                     currentUser.Id, application.Id);
                 TempData["SuccessMessage"] = _localizer["Admin_ApplicationApproved"].Value;
@@ -392,6 +397,7 @@ public class AdminController : Controller
                     break;
                 }
                 application.Reject(currentUser.Id, model.Notes, _clock);
+                _metrics.RecordApplicationProcessed("rejected");
                 _logger.LogInformation("Admin {AdminId} rejected application {ApplicationId}",
                     currentUser.Id, application.Id);
                 TempData["SuccessMessage"] = _localizer["Admin_ApplicationRejected"].Value;
@@ -452,6 +458,7 @@ public class AdminController : Controller
 
         await _dbContext.SaveChangesAsync();
 
+        _metrics.RecordMemberSuspended("admin");
         _logger.LogInformation("Admin {AdminId} suspended member {MemberId}", currentUser?.Id, id);
 
         TempData["SuccessMessage"] = _localizer["Admin_MemberSuspended"].Value;
@@ -524,6 +531,7 @@ public class AdminController : Controller
         // Sync Volunteers team membership (adds user if they also have all required consents)
         await _systemTeamSyncJob.SyncVolunteersMembershipForUserAsync(id);
 
+        _metrics.RecordVolunteerApproved();
         _logger.LogInformation("Admin {AdminId} approved volunteer {MemberId}", currentUser?.Id, id);
 
         TempData["SuccessMessage"] = _localizer["Admin_VolunteerApproved"].Value;

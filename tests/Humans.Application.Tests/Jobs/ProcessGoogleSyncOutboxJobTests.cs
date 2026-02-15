@@ -9,6 +9,8 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using Humans.Infrastructure.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Humans.Application.Tests.Jobs;
@@ -18,6 +20,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly FakeClock _clock;
+    private readonly HumansMetricsService _metrics;
     private readonly ProcessGoogleSyncOutboxJob _job;
 
     public ProcessGoogleSyncOutboxJobTests()
@@ -29,14 +32,18 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
+        _metrics = new HumansMetricsService(
+            Substitute.For<IServiceScopeFactory>(),
+            Substitute.For<ILogger<HumansMetricsService>>());
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
 
-        _job = new ProcessGoogleSyncOutboxJob(_dbContext, _googleSyncService, _clock, logger);
+        _job = new ProcessGoogleSyncOutboxJob(_dbContext, _googleSyncService, _metrics, _clock, logger);
     }
 
     public void Dispose()
     {
         _dbContext.Dispose();
+        _metrics.Dispose();
         GC.SuppressFinalize(this);
     }
 

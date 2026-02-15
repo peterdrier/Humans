@@ -4,6 +4,7 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -17,17 +18,20 @@ public class ProcessGoogleSyncOutboxJob
 
     private readonly HumansDbContext _dbContext;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly HumansMetricsService _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ProcessGoogleSyncOutboxJob> _logger;
 
     public ProcessGoogleSyncOutboxJob(
         HumansDbContext dbContext,
         IGoogleSyncService googleSyncService,
+        HumansMetricsService metrics,
         IClock clock,
         ILogger<ProcessGoogleSyncOutboxJob> logger)
     {
         _dbContext = dbContext;
         _googleSyncService = googleSyncService;
+        _metrics = metrics;
         _clock = clock;
         _logger = logger;
     }
@@ -71,9 +75,11 @@ public class ProcessGoogleSyncOutboxJob
 
                 outboxEvent.ProcessedAt = _clock.GetCurrentInstant();
                 outboxEvent.LastError = null;
+                _metrics.RecordSyncOperation("success");
             }
             catch (Exception ex)
             {
+                _metrics.RecordSyncOperation("failure");
                 outboxEvent.RetryCount += 1;
                 outboxEvent.LastError = ex.Message.Length > 4000
                     ? ex.Message[..4000]
@@ -89,5 +95,6 @@ public class ProcessGoogleSyncOutboxJob
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _metrics.RecordJobRun("process_google_sync_outbox", "success");
     }
 }

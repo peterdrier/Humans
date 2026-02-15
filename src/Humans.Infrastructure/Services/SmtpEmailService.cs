@@ -16,15 +16,18 @@ namespace Humans.Infrastructure.Services;
 public class SmtpEmailService : IEmailService
 {
     private readonly EmailSettings _settings;
+    private readonly HumansMetricsService _metrics;
     private readonly ILogger<SmtpEmailService> _logger;
     private readonly IStringLocalizer _localizer;
 
     public SmtpEmailService(
         IOptions<EmailSettings> settings,
+        HumansMetricsService metrics,
         ILogger<SmtpEmailService> logger,
         IStringLocalizerFactory localizerFactory)
     {
         _settings = settings.Value;
+        _metrics = metrics;
         _logger = logger;
         _localizer = localizerFactory.Create("SharedResource", "Humans.Web");
     }
@@ -47,6 +50,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(_settings.AdminAddress, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("application_submitted");
     }
 
     /// <inheritdoc />
@@ -72,6 +76,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("application_approved");
     }
 
     /// <inheritdoc />
@@ -94,6 +99,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("application_rejected");
     }
 
     /// <inheritdoc />
@@ -132,6 +138,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("reconsents_required");
     }
 
     /// <inheritdoc />
@@ -158,6 +165,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("reconsent_reminder");
     }
 
     /// <inheritdoc />
@@ -182,6 +190,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("welcome");
     }
 
     /// <inheritdoc />
@@ -207,6 +216,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("access_suspended");
     }
 
     /// <inheritdoc />
@@ -229,6 +239,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(toEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("email_verification");
     }
 
     /// <inheritdoc />
@@ -252,6 +263,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("deletion_requested");
     }
 
     /// <inheritdoc />
@@ -272,6 +284,7 @@ public class SmtpEmailService : IEmailService
             """;
 
         await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("account_deleted");
     }
 
     private async Task SendEmailAsync(

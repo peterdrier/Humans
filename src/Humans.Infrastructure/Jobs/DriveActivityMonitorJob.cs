@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -11,15 +12,18 @@ namespace Humans.Infrastructure.Jobs;
 public class DriveActivityMonitorJob
 {
     private readonly IDriveActivityMonitorService _monitorService;
+    private readonly HumansMetricsService _metrics;
     private readonly ILogger<DriveActivityMonitorJob> _logger;
     private readonly IClock _clock;
 
     public DriveActivityMonitorJob(
         IDriveActivityMonitorService monitorService,
+        HumansMetricsService metrics,
         ILogger<DriveActivityMonitorJob> logger,
         IClock clock)
     {
         _monitorService = monitorService;
+        _metrics = metrics;
         _logger = logger;
         _clock = clock;
     }
@@ -41,9 +45,12 @@ public class DriveActivityMonitorJob
             {
                 _logger.LogInformation("Drive activity monitor completed: no anomalies detected");
             }
+
+            _metrics.RecordJobRun("drive_activity_monitor", "success");
         }
         catch (Exception ex)
         {
+            _metrics.RecordJobRun("drive_activity_monitor", "failure");
             _logger.LogError(ex, "Error during Drive activity monitor check");
             throw;
         }
