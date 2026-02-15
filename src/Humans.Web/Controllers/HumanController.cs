@@ -84,6 +84,7 @@ public class HumanController : Controller
             })
             .ToList();
 
+        var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(id);
         var hasCustomPicture = profile.HasCustomProfilePicture;
 
         var viewModel = new ProfileViewModel
@@ -105,7 +106,7 @@ public class HumanController : Controller
             Pronouns = profile.Pronouns,
             BirthdayMonth = profile.DateOfBirth?.Month,
             BirthdayDay = profile.DateOfBirth?.Day,
-            MembershipStatus = (await _membershipCalculator.ComputeStatusAsync(id)).ToString(),
+            MembershipStatus = membershipSnapshot.Status.ToString(),
             IsOwnProfile = isOwnProfile,
             CanViewLegalName = canViewLegalName,
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel

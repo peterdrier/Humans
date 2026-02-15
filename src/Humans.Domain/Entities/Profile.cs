@@ -167,6 +167,11 @@ public class Profile
             return MembershipStatus.Suspended;
         }
 
+        if (!IsApproved)
+        {
+            return MembershipStatus.Pending;
+        }
+
         var activeRoles = currentRoleAssignments
             .Where(ra => ra.IsActive(SystemClock.Instance.GetCurrentInstant()))
             .ToList();

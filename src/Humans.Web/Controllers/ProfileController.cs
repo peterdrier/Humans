@@ -84,9 +84,9 @@ public class ProfileController : Controller
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == user.Id);
 
-        // Get consent status using canonical membership calculator logic
-        var missingConsentVersions = await _membershipCalculator.GetMissingConsentVersionsAsync(user.Id);
-        var pendingConsents = missingConsentVersions.Count;
+        // Get canonical membership + consent status in one call.
+        var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(user.Id);
+        var pendingConsents = membershipSnapshot.PendingConsentCount;
 
         // Get contact fields (user viewing their own profile sees all)
         var contactFields = profile != null
@@ -142,7 +142,7 @@ public class ProfileController : Controller
             HasPendingConsents = pendingConsents > 0,
             PendingConsentCount = pendingConsents,
             IsApproved = profile?.IsApproved ?? false,
-            MembershipStatus = (await _membershipCalculator.ComputeStatusAsync(user.Id)).ToString(),
+            MembershipStatus = membershipSnapshot.Status.ToString(),
             IsOwnProfile = true,
             CanViewLegalName = true, // User viewing their own profile
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel

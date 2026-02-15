@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using NodaTime;
-using Humans.Domain.Constants;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -14,21 +13,18 @@ public class HomeController : Controller
 {
     private readonly HumansDbContext _dbContext;
     private readonly UserManager<User> _userManager;
-    private readonly IClock _clock;
-    private readonly ILogger<HomeController> _logger;
+    private readonly IMembershipCalculator _membershipCalculator;
     private readonly IConfiguration _configuration;
 
     public HomeController(
         HumansDbContext dbContext,
         UserManager<User> userManager,
-        IClock clock,
-        ILogger<HomeController> logger,
+        IMembershipCalculator membershipCalculator,
         IConfiguration configuration)
     {
         _dbContext = dbContext;
         _userManager = userManager;
-        _clock = clock;
-        _logger = logger;
+        _membershipCalculator = membershipCalculator;
         _configuration = configuration;
     }
 
@@ -49,37 +45,7 @@ public class HomeController : Controller
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == user.Id);
 
-        var now = _clock.GetCurrentInstant();
-
-        // Get user's team memberships (active)
-        var userTeamIds = await _dbContext.TeamMembers
-            .Where(tm => tm.UserId == user.Id && !tm.LeftAt.HasValue)
-            .Select(tm => tm.TeamId)
-            .ToListAsync();
-
-        var isVolunteerMember = userTeamIds.Contains(SystemTeamIds.Volunteers);
-
-        // Always include Volunteers team for consent checks (global docs)
-        if (!isVolunteerMember)
-        {
-            userTeamIds.Add(SystemTeamIds.Volunteers);
-        }
-
-        // Get required document versions across all user's teams
-        var requiredVersionIds = await _dbContext.LegalDocuments
-            .Where(d => d.IsActive && d.IsRequired && userTeamIds.Contains(d.TeamId))
-            .SelectMany(d => d.Versions)
-            .Where(v => v.EffectiveFrom <= now)
-            .GroupBy(v => v.LegalDocumentId)
-            .Select(g => g.OrderByDescending(v => v.EffectiveFrom).First().Id)
-            .ToListAsync();
-
-        var userConsentedVersionIds = await _dbContext.ConsentRecords
-            .Where(c => c.UserId == user.Id)
-            .Select(c => c.DocumentVersionId)
-            .ToListAsync();
-
-        var pendingConsents = requiredVersionIds.Except(userConsentedVersionIds).Count();
+        var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(user.Id);
 
         // Get latest application
         var latestApplication = await _dbContext.Applications
@@ -95,12 +61,12 @@ public class HomeController : Controller
         {
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
-            MembershipStatus = GetMembershipStatus(profile, isVolunteerMember, pendingConsents),
+            MembershipStatus = membershipSnapshot.Status.ToString(),
             HasProfile = profile != null,
             ProfileComplete = profile != null && !string.IsNullOrEmpty(profile.FirstName),
-            PendingConsents = pendingConsents,
-            TotalRequiredConsents = requiredVersionIds.Count,
-            IsVolunteerMember = isVolunteerMember,
+            PendingConsents = membershipSnapshot.PendingConsentCount,
+            TotalRequiredConsents = membershipSnapshot.RequiredConsentCount,
+            IsVolunteerMember = membershipSnapshot.IsVolunteerMember,
             HasPendingApplication = hasPendingApp,
             LatestApplicationStatus = latestApplication?.Status.ToString(),
             LatestApplicationDate = latestApplication?.SubmittedAt.ToDateTimeUtc(),
@@ -127,25 +93,5 @@ public class HomeController : Controller
         }
 
         return View();
-    }
-
-    private static string GetMembershipStatus(Profile? profile, bool isVolunteerMember, int pendingConsents)
-    {
-        if (profile?.IsSuspended == true)
-        {
-            return "Suspended";
-        }
-
-        if (!isVolunteerMember)
-        {
-            return "Pending";
-        }
-
-        if (pendingConsents > 0)
-        {
-            return "Inactive";
-        }
-
-        return "Active";
     }
 }

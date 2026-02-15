@@ -68,6 +68,20 @@ public class ProfileTests
     }
 
     [Fact]
+    public void ComputeMembershipStatus_WhenNotApproved_ShouldReturnPending()
+    {
+        var profile = CreateProfile();
+        profile.IsApproved = false;
+
+        var status = profile.ComputeMembershipStatus(
+            CreateActiveRoleAssignments(),
+            [Guid.NewGuid()],
+            [Guid.NewGuid()]);
+
+        status.Should().Be(MembershipStatus.Pending);
+    }
+
+    [Fact]
     public void ComputeMembershipStatus_WithMissingConsent_ShouldReturnInactive()
     {
         var profile = CreateProfile();
@@ -119,6 +133,7 @@ public class ProfileTests
             UserId = Guid.NewGuid(),
             FirstName = "Test",
             LastName = "User",
+            IsApproved = true,
             CreatedAt = SystemClock.Instance.GetCurrentInstant(),
             UpdatedAt = SystemClock.Instance.GetCurrentInstant()
         };

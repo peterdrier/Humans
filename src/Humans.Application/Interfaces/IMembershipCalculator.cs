@@ -1,4 +1,5 @@
 using Humans.Domain.Enums;
+using Humans.Application.DTOs;
 
 namespace Humans.Application.Interfaces;
 
@@ -73,4 +74,11 @@ public interface IMembershipCalculator
     /// Uses per-document GracePeriodDays.
     /// </summary>
     Task<bool> HasAnyExpiredConsentsForTeamAsync(Guid userId, Guid teamId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a consolidated membership/consent snapshot for UI and policy checks.
+    /// </summary>
+    Task<MembershipSnapshot> GetMembershipSnapshotAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
 }

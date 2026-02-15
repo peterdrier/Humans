@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -41,6 +42,11 @@ public class MembershipCalculator : IMembershipCalculator
             return MembershipStatus.Suspended;
         }
 
+        if (!profile.IsApproved)
+        {
+            return MembershipStatus.Pending;
+        }
+
         var hasActiveRoles = await HasActiveRolesAsync(userId, cancellationToken);
         if (!hasActiveRoles)
         {
@@ -54,6 +60,37 @@ public class MembershipCalculator : IMembershipCalculator
         }
 
         return MembershipStatus.Active;
+    }
+
+    public async Task<MembershipSnapshot> GetMembershipSnapshotAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var status = await ComputeStatusAsync(userId, cancellationToken);
+
+        var requiredVersions = await GetRequiredDocumentVersionsForTeamAsync(
+            SystemTeamIds.Volunteers, cancellationToken);
+        var requiredVersionIds = requiredVersions.Select(v => v.Id).ToList();
+
+        var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, cancellationToken);
+        var missingVersionIds = requiredVersionIds
+            .Where(id => !consentedVersionIds.Contains(id))
+            .ToList();
+
+        var isVolunteerMember = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .AnyAsync(tm =>
+                tm.UserId == userId &&
+                tm.TeamId == SystemTeamIds.Volunteers &&
+                tm.LeftAt == null,
+                cancellationToken);
+
+        return new MembershipSnapshot(
+            status,
+            isVolunteerMember,
+            requiredVersionIds.Count,
+            missingVersionIds.Count,
+            missingVersionIds);
     }
 
     public async Task<bool> HasAllRequiredConsentsAsync(

@@ -37,6 +37,20 @@ Execution log for `docs/2026-02-15-codex-plan.md` with checkpoint-based iteratio
     - `RoleAssignmentService`
   - Wired overlap guard into admin role assignment flow (`AdminController.AddRole`).
   - Added tests for overlap behavior: `RoleAssignmentServiceTests`.
+- 2026-02-15: Phase 2 implementation (in progress).
+  - Added consolidated snapshot DTO: `MembershipSnapshot`.
+  - Extended `IMembershipCalculator` with `GetMembershipSnapshotAsync`.
+  - Implemented snapshot aggregation in `MembershipCalculator`.
+  - Added explicit `IsApproved` gate to membership status computation:
+    - `MembershipCalculator.ComputeStatusAsync`
+    - `Profile.ComputeMembershipStatus`
+  - Updated web consumers to use consolidated snapshot:
+    - `HomeController`
+    - `ProfileController`
+    - `HumanController`
+  - Added tests:
+    - `MembershipCalculatorTests` (approval gate + snapshot behavior)
+    - `ProfileTests` updated with Pending/not-approved coverage.
 
 ## Next Step
-- Validate code shape via targeted static checks, then checkpoint commit for Phase 1 changes.
+- Run a static validation pass for Phase 2 edits and checkpoint commit.
