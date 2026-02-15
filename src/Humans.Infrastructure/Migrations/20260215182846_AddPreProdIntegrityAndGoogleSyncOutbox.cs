@@ -29,6 +29,18 @@ namespace Humans.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_google_sync_outbox", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_google_sync_outbox_teams_TeamId",
+                        column: x => x.TeamId,
+                        principalTable: "teams",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_google_sync_outbox_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.AddCheckConstraint(
@@ -56,6 +68,11 @@ namespace Humans.Infrastructure.Migrations
                 name: "IX_google_sync_outbox_TeamId_UserId_ProcessedAt",
                 table: "google_sync_outbox",
                 columns: new[] { "TeamId", "UserId", "ProcessedAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_google_sync_outbox_UserId",
+                table: "google_sync_outbox",
+                column: "UserId");
         }
 
         /// <inheritdoc />

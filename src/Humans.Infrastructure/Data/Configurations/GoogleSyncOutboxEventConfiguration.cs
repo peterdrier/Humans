@@ -30,6 +30,16 @@ public class GoogleSyncOutboxEventConfiguration : IEntityTypeConfiguration<Googl
         builder.Property(e => e.OccurredAt)
             .IsRequired();
 
+        builder.HasOne<Team>()
+            .WithMany()
+            .HasForeignKey(e => e.TeamId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(e => new { e.ProcessedAt, e.OccurredAt });
         builder.HasIndex(e => new { e.TeamId, e.UserId, e.ProcessedAt });
         builder.HasIndex(e => e.DeduplicationKey)

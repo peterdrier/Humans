@@ -447,6 +447,8 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("DeduplicationKey")
                         .IsUnique();
 
+                    b.HasIndex("UserId");
+
                     b.HasIndex("ProcessedAt", "OccurredAt");
 
                     b.HasIndex("TeamId", "UserId", "ProcessedAt");
@@ -1294,6 +1296,21 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Team");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.GoogleSyncOutboxEvent", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.Team", null)
+                        .WithMany()
+                        .HasForeignKey("TeamId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
