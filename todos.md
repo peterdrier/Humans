@@ -18,6 +18,9 @@ Audit date: 2026-02-05 | Last updated: 2026-02-16
 #### #14: Drive Activity Monitor: resolve people/ IDs to email addresses
 Drive Activity API returns `people/` IDs instead of email addresses. Need to resolve these via the People API for meaningful audit display.
 
+#### #27: Revoke team memberships immediately on deletion request
+Currently users keep full access during the 30-day deletion grace period. Should immediately remove from all teams and end role assignments on request. Returning users must re-consent and rejoin. Google deprovisioning via normal sync job.
+
 ---
 
 ### Priority 3: Data Integrity & Security
