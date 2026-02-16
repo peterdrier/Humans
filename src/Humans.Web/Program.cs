@@ -200,14 +200,10 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 });
 
-// Configure Forwarded Headers for reverse proxy
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
-{
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-    options.KnownIPNetworks.Clear();
-    options.KnownProxies.Clear();
-    options.KnownProxies.Add(System.Net.IPAddress.Parse("46.225.30.76"));
-});
+// Forwarded headers (X-Forwarded-For, X-Forwarded-Proto) are enabled via
+// ASPNETCORE_FORWARDEDHEADERS_ENABLED=true in the deployment environment.
+// No explicit config needed — the app is only reachable through Traefik/Coolify
+// on internal Docker networks, so trusting any proxy is safe.
 
 // Configure Localization
 builder.Services.AddLocalization();
