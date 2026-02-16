@@ -53,7 +53,7 @@ public class EmailSettings
     /// <summary>
     /// Base URL for links in emails.
     /// </summary>
-    public string BaseUrl { get; set; } = "https://profiles.nobodies.team";
+    public string BaseUrl { get; set; } = "https://humans.nobodies.team";
 
     /// <summary>
     /// Days before suspension to start sending re-consent reminders.
