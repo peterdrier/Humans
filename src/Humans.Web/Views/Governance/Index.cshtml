@@ -164,12 +164,15 @@
 </div>
 
 @functions {
+    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
+
     string ConvertMarkdownToHtml(string content)
     {
         if (string.IsNullOrEmpty(content))
             return string.Empty;
 
-        return Markdig.Markdown.ToHtml(content);
+        var html = Markdig.Markdown.ToHtml(content);
+        return Sanitizer.Sanitize(html);
     }
 }
 

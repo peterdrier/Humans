@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Core Framework -->
+    <PackageVersion Include="HtmlSanitizer" Version="9.0.892" />
     <PackageVersion Include="Markdig" Version="0.45.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.3" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.3" />
