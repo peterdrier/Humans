@@ -90,8 +90,20 @@
     </div>
 
     <footer class="border-top py-3 text-muted text-center">
-        <div class="container">
+        <div class="container d-flex justify-content-between align-items-center">
             <a asp-controller="Home" asp-action="About" class="text-muted small">About</a>
+            @{
+                var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
+                var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
+                    System.Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+                var informationalVersion = attr?.InformationalVersion ?? "";
+                var plusIndex = informationalVersion.IndexOf('+');
+                var commitHash = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : null;
+            }
+            @if (commitHash != null)
+            {
+                <a href="https://github.com/nobodies-collective/Humans/commit/@commitHash" target="_blank" rel="noopener noreferrer" class="text-muted small font-monospace">@commitHash</a>
+            }
         </div>
     </footer>
 

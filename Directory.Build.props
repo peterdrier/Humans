@@ -30,6 +30,13 @@
     <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200</NoWarn>
   </PropertyGroup>
 
+  <!-- Embed git commit hash into InformationalVersion at build time -->
+  <Target Name="SetSourceRevisionId" BeforeTargets="InitializeSourceControlInformation">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="SourceRevisionId" />
+    </Exec>
+  </Target>
+
   <!-- Analyzers -->
   <ItemGroup>
     <PackageReference Include="Roslynator.Analyzers">
