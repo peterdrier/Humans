@@ -298,7 +298,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var teamMembers = await _dbContext.TeamMembers
             .Include(tm => tm.User)
             .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
-            .Select(tm => tm.User!.Email)
+            .Select(tm => tm.User.Email)
             .Where(email => email != null)
             .ToListAsync(cancellationToken);
 
@@ -381,8 +381,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var drive = await GetDriveServiceAsync();
 
         var expectedEmails = resource.Team.Members
-            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User?.Email))
-            .Select(m => m.User!.Email!)
+            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User.Email))
+            .Select(m => m.User.Email!)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Get current Drive permissions
@@ -587,9 +587,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         GoogleResource resource, CancellationToken cancellationToken)
     {
         var expectedEmails = resource.Team.Members
-            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User?.Email))
-            .Select(m => m.User!.Email!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User.Email))
+            .Select(m => m.User.Email!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Get actual members from Google
         var directory = await GetDirectoryServiceAsync();
@@ -639,9 +639,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         GoogleResource resource, CancellationToken cancellationToken)
     {
         var expectedEmails = resource.Team.Members
-            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User?.Email))
-            .Select(m => m.User!.Email!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User.Email))
+            .Select(m => m.User.Email!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var drive = await GetDriveServiceAsync();
         var permissions = await ListDrivePermissionsAsync(drive, resource.GoogleId, cancellationToken);

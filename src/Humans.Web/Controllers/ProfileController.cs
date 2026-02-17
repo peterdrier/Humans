@@ -859,7 +859,7 @@ public class ProfileController : Controller
                 profile.EmergencyContactName,
                 profile.EmergencyContactPhone,
                 profile.EmergencyContactRelationship,
-                HasCustomProfilePicture = profile.HasCustomProfilePicture,
+                profile.HasCustomProfilePicture,
                 CreatedAt = profile.CreatedAt.ToString(null, CultureInfo.InvariantCulture),
                 UpdatedAt = profile.UpdatedAt.ToString(null, CultureInfo.InvariantCulture)
             } : null,
@@ -881,8 +881,8 @@ public class ProfileController : Controller
             }),
             Consents = consents.Select(c => new
             {
-                DocumentName = c.DocumentVersion?.LegalDocument?.Name,
-                DocumentVersion = c.DocumentVersion?.VersionNumber,
+                DocumentName = c.DocumentVersion.LegalDocument.Name,
+                DocumentVersion = c.DocumentVersion.VersionNumber,
                 c.ExplicitConsent,
                 ConsentedAt = c.ConsentedAt.ToString(null, CultureInfo.InvariantCulture),
                 c.IpAddress,
@@ -890,7 +890,7 @@ public class ProfileController : Controller
             }),
             TeamMemberships = teamMemberships.Select(tm => new
             {
-                TeamName = tm.Team?.Name,
+                TeamName = tm.Team.Name,
                 tm.Role,
                 JoinedAt = tm.JoinedAt.ToString(null, CultureInfo.InvariantCulture),
                 LeftAt = tm.LeftAt?.ToString(null, CultureInfo.InvariantCulture)

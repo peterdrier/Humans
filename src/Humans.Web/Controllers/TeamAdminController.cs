@@ -75,9 +75,9 @@ public class TeamAdminController : Controller
                 TeamId = r.TeamId,
                 TeamName = team.Name,
                 UserId = r.UserId,
-                UserDisplayName = r.User?.DisplayName ?? "Unknown",
-                UserEmail = r.User?.Email ?? "",
-                UserProfilePictureUrl = r.User?.ProfilePictureUrl,
+                UserDisplayName = r.User.DisplayName,
+                UserEmail = r.User.Email ?? "",
+                UserProfilePictureUrl = r.User.ProfilePictureUrl,
                 Status = r.Status.ToString(),
                 Message = r.Message,
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
@@ -205,9 +205,9 @@ public class TeamAdminController : Controller
             .Select(m => new TeamMemberViewModel
             {
                 UserId = m.UserId,
-                DisplayName = m.User?.DisplayName ?? "Unknown",
-                Email = m.User?.Email ?? "",
-                ProfilePictureUrl = m.User?.ProfilePictureUrl,
+                DisplayName = m.User.DisplayName,
+                Email = m.User.Email ?? "",
+                ProfilePictureUrl = m.User.ProfilePictureUrl,
                 Role = m.Role.ToString(),
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 IsLead = m.Role == TeamMemberRole.Lead

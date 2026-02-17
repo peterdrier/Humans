@@ -6,7 +6,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-action="LegalDocuments">Legal Documents</a></li>
+        <li class="breadcrumb-item"><a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments">Legal Documents</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
     </ol>
 </nav>
@@ -34,7 +34,7 @@
                 <h4 class="mb-0">Edit Legal Document</h4>
             </div>
             <div class="card-body">
-                <form asp-action="EditLegalDocument" asp-route-id="@Model.Id" method="post">
+                <form asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@Model.Id" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" asp-for="Id" />
 
@@ -85,7 +85,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">Save Changes</button>
-                        <a asp-action="LegalDocuments" class="btn btn-outline-secondary">Cancel</a>
+                        <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>
@@ -111,7 +111,7 @@
             <div class="card-header">GitHub Sync</div>
             <div class="card-body">
                 <p class="small text-muted">Trigger a manual sync from the GitHub repository to fetch the latest content.</p>
-                <form asp-action="SyncLegalDocument" asp-route-id="@Model.Id" method="post">
+                <form asp-controller="AdminLegalDocuments" asp-action="SyncLegalDocument" asp-route-id="@Model.Id" method="post">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-outline-primary btn-sm w-100">Sync Now</button>
                 </form>
@@ -157,7 +157,7 @@
                             </td>
                             <td>@version.EffectiveFrom.ToString("d MMM yyyy HH:mm")</td>
                             <td colspan="2">
-                                <form asp-action="UpdateVersionSummary" asp-route-id="@Model.Id" asp-route-versionId="@version.Id" method="post" class="d-flex gap-2">
+                                <form asp-controller="AdminLegalDocuments" asp-action="UpdateVersionSummary" asp-route-id="@Model.Id" asp-route-versionId="@version.Id" method="post" class="d-flex gap-2">
                                     @Html.AntiForgeryToken()
                                     <input type="text" name="changesSummary" value="@version.ChangesSummary" class="form-control form-control-sm" placeholder="Describe changes..." />
                                     <button type="submit" class="btn btn-outline-secondary btn-sm">Save</button>

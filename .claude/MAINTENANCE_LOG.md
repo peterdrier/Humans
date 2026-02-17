@@ -7,7 +7,7 @@ Tracks when recurring maintenance processes were last run.
 | NuGet vulnerability check | 2026-02-15 | 2026-02-22 | Weekly | `dotnet list package --vulnerable` |
 | Todo audit | 2026-02-12 | 2026-02-19 | Weekly | Stale items, completed moves |
 | Code simplification | — | — | After features | Dead code, unused abstractions |
-| Static analysis | — | — | After features | ReSharper/Roslyn warnings |
+| ReSharper InspectCode | 2026-02-17 | 2026-02-24 | Weekly | `/resharper` — fix Tier 1+2 warnings |
 | Context cleanup | 2026-02-12 | 2026-03-12 | Monthly | CLAUDE.md, .claude/, todos.md |
 | Feature spec sync | 2026-02-12 | 2026-03-12 | Monthly | docs/features/ vs implementation |
 | i18n audit | — | — | Monthly | Missing translations |

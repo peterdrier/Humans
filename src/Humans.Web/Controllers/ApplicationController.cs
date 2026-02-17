@@ -188,7 +188,7 @@ public class ApplicationController : Controller
                 {
                     Status = h.Status.ToString(),
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByUser?.DisplayName ?? "System",
+                    ChangedBy = h.ChangedByUser.DisplayName,
                     Notes = h.Notes
                 }).ToList()
         };

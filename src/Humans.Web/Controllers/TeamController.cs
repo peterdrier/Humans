@@ -167,9 +167,9 @@ public class TeamController : Controller
                 .Select(m => new TeamMemberViewModel
                 {
                     UserId = m.UserId,
-                    DisplayName = m.User?.DisplayName ?? "Unknown",
-                    Email = m.User?.Email ?? "",
-                    ProfilePictureUrl = m.User?.ProfilePictureUrl,
+                    DisplayName = m.User.DisplayName,
+                    Email = m.User.Email ?? "",
+                    ProfilePictureUrl = m.User.ProfilePictureUrl,
                     HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
                     CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
                     Role = m.Role.ToString(),
@@ -211,12 +211,12 @@ public class TeamController : Controller
             .Select(p => new
             {
                 p.UserId,
-                DisplayName = p.User!.DisplayName,
-                ProfilePictureUrl = p.User.ProfilePictureUrl,
+                p.User.DisplayName,
+                p.User.ProfilePictureUrl,
                 HasCustomPicture = p.ProfilePictureData != null,
                 ProfileId = p.Id,
-                Day = p.DateOfBirth!.Value.Day,
-                Month = p.DateOfBirth!.Value.Month
+                p.DateOfBirth!.Value.Day,
+                p.DateOfBirth!.Value.Month
             })
             .ToListAsync();
 
@@ -265,7 +265,7 @@ public class TeamController : Controller
             .Where(p => p.Latitude != null && p.Longitude != null && !p.IsSuspended)
             .Select(p => new MapMarkerViewModel
             {
-                DisplayName = p.User!.DisplayName,
+                DisplayName = p.User.DisplayName,
                 Latitude = p.Latitude!.Value,
                 Longitude = p.Longitude!.Value,
                 City = p.City,

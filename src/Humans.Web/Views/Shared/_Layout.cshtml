@@ -95,7 +95,7 @@
             @{
                 var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
                 var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
-                    System.Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+                    Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
                 var informationalVersion = attr?.InformationalVersion ?? "";
                 var plusIndex = informationalVersion.IndexOf('+');
                 var commitHash = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : null;

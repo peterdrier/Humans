@@ -298,7 +298,6 @@ public class UserEmailService : IUserEmailService
             ContactFieldVisibility.BoardOnly => [ContactFieldVisibility.BoardOnly, ContactFieldVisibility.LeadsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
             ContactFieldVisibility.LeadsAndBoard => [ContactFieldVisibility.LeadsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
             ContactFieldVisibility.MyTeams => [ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
-            ContactFieldVisibility.AllActiveProfiles => [ContactFieldVisibility.AllActiveProfiles],
             _ => [ContactFieldVisibility.AllActiveProfiles]
         };
 }

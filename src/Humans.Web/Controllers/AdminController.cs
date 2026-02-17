@@ -15,7 +15,6 @@ using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Options;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Web.Controllers;
 
@@ -85,7 +84,7 @@ public class AdminController : Controller
             .ToListAsync();
         var leadsWithAllConsents = leadUserIds.Count > 0
             ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(leadUserIds, SystemTeamIds.Leads)
-            : (IReadOnlySet<Guid>)new HashSet<Guid>();
+            : new HashSet<Guid>();
 
         // A user has pending consents if missing any Volunteers doc OR (if they're a Lead) any Leads doc
         var pendingConsents = allUserIds.Count(id =>
@@ -345,7 +344,7 @@ public class AdminController : Controller
                 {
                     Status = h.Status.ToString(),
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByUser?.DisplayName ?? "System",
+                    ChangedBy = h.ChangedByUser.DisplayName,
                     Notes = h.Notes
                 }).ToList()
         };
@@ -1051,7 +1050,7 @@ public class AdminController : Controller
             TempData["ErrorMessage"] = "Drive activity check failed. Check logs for details.";
         }
 
-        return RedirectToAction(nameof(AuditLog), new { action = nameof(AuditAction.AnomalousPermissionDetected) });
+        return RedirectToAction(nameof(AuditLog), new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
     }
 
     [HttpGet("GoogleSync/Resource/{id}/Audit")]

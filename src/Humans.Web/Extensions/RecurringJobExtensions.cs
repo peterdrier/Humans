@@ -1,6 +1,5 @@
 using Hangfire;
 using Humans.Infrastructure.Jobs;
-using Microsoft.AspNetCore.Builder;
 
 namespace Humans.Web.Extensions;
 

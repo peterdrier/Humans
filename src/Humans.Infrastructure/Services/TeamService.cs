@@ -394,7 +394,7 @@ public partial class TeamService : ITeamService
         var approver = await _dbContext.Users.FindAsync([approverUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamJoinRequestApproved, "Team", request.TeamId,
-            $"Join request for {request.Team?.Name ?? request.TeamId.ToString()} approved",
+            $"Join request for {request.Team.Name} approved",
             approverUserId, approver?.DisplayName ?? approverUserId.ToString(),
             relatedEntityId: request.UserId, relatedEntityType: "User");
         EnqueueGoogleSyncOutboxEvent(

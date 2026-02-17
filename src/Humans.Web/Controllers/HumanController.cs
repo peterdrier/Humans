@@ -90,16 +90,16 @@ public class HumanController : Controller
         var viewModel = new ProfileViewModel
         {
             Id = profile.Id,
-            Email = profile.User!.Email ?? string.Empty,
+            Email = profile.User.Email ?? string.Empty,
             DisplayName = profile.User.DisplayName,
             ProfilePictureUrl = profile.User.ProfilePictureUrl,
             HasCustomProfilePicture = hasCustomPicture,
             CustomProfilePictureUrl = hasCustomPicture
                 ? Url.Action("Picture", "Profile", new { id = profile.Id })
                 : null,
-            BurnerName = profile.BurnerName ?? string.Empty,
-            FirstName = profile.FirstName ?? string.Empty,
-            LastName = profile.LastName ?? string.Empty,
+            BurnerName = profile.BurnerName,
+            FirstName = profile.FirstName,
+            LastName = profile.LastName,
             City = profile.City,
             CountryCode = profile.CountryCode,
             Bio = profile.Bio,

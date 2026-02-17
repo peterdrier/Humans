@@ -101,10 +101,10 @@
                                                 <input type="hidden" name="emailId" value="@email.Id" />
                                                 <select name="visibility" class="form-select form-select-sm" style="width: auto; display: inline-block;" onchange="this.form.submit()">
                                                     <option value="" selected="@(email.Visibility == null)">Hidden</option>
-                                                    <option value="AllActiveProfiles" selected="@(email.Visibility == Humans.Domain.Enums.ContactFieldVisibility.AllActiveProfiles)">All members</option>
-                                                    <option value="MyTeams" selected="@(email.Visibility == Humans.Domain.Enums.ContactFieldVisibility.MyTeams)">My teams</option>
-                                                    <option value="LeadsAndBoard" selected="@(email.Visibility == Humans.Domain.Enums.ContactFieldVisibility.LeadsAndBoard)">Leads + Board</option>
-                                                    <option value="BoardOnly" selected="@(email.Visibility == Humans.Domain.Enums.ContactFieldVisibility.BoardOnly)">Board only</option>
+                                                    <option value="AllActiveProfiles" selected="@(email.Visibility == ContactFieldVisibility.AllActiveProfiles)">All members</option>
+                                                    <option value="MyTeams" selected="@(email.Visibility == ContactFieldVisibility.MyTeams)">My teams</option>
+                                                    <option value="LeadsAndBoard" selected="@(email.Visibility == ContactFieldVisibility.LeadsAndBoard)">Leads + Board</option>
+                                                    <option value="BoardOnly" selected="@(email.Visibility == ContactFieldVisibility.BoardOnly)">Board only</option>
                                                 </select>
                                             </form>
                                         }

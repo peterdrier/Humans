@@ -32,7 +32,7 @@
             }
         </select>
     </form>
-    <a asp-action="CreateLegalDocument" asp-route-teamId="@Model.FilterTeamId" class="btn btn-primary btn-sm">Create Document</a>
+    <a asp-controller="AdminLegalDocuments" asp-action="CreateLegalDocument" asp-route-teamId="@Model.FilterTeamId" class="btn btn-primary btn-sm">Create Document</a>
 </div>
 
 <div class="card">
@@ -61,7 +61,7 @@
                 {
                     <tr class="@(!doc.IsActive ? "table-secondary" : "")">
                         <td>
-                            <a asp-action="EditLegalDocument" asp-route-id="@doc.Id">@doc.Name</a>
+                            <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@doc.Id">@doc.Name</a>
                         </td>
                         <td>@doc.TeamName</td>
                         <td>
@@ -88,10 +88,10 @@
                         <td>@(doc.CurrentVersion ?? "No versions")</td>
                         <td>@(doc.LastSyncedAt?.ToString("d MMM yyyy HH:mm") ?? "Never")</td>
                         <td>
-                            <a asp-action="EditLegalDocument" asp-route-id="@doc.Id" class="btn btn-outline-primary btn-sm">Edit</a>
+                            <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@doc.Id" class="btn btn-outline-primary btn-sm">Edit</a>
                                 @if (doc.IsActive)
                                 {
-                                    <form asp-action="ArchiveLegalDocument" asp-route-id="@doc.Id" method="post" class="d-inline">
+                                    <form asp-controller="AdminLegalDocuments" asp-action="ArchiveLegalDocument" asp-route-id="@doc.Id" method="post" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-outline-danger btn-sm"
                                                 onclick="return confirm('Archive this document? It will no longer be required for consent.')">Archive</button>

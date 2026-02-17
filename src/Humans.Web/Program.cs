@@ -5,7 +5,6 @@ using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc.Razor;
@@ -42,7 +41,7 @@ if (Debugger.IsAttached)
     Directory.CreateDirectory(logDir);
     logConfig.WriteTo.File(
         Path.Combine(logDir, "humans-.log"),
-        rollingInterval: Serilog.RollingInterval.Day);
+        rollingInterval: RollingInterval.Day);
 }
 
 Log.Logger = logConfig.CreateLogger();
@@ -225,7 +224,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
     options.AddSupportedUICultures(supportedCultures);
     options.AddInitialRequestCultureProvider(new CustomRequestCultureProvider(async context =>
     {
-        if (context.User?.Identity?.IsAuthenticated == true)
+        if (context.User.Identity?.IsAuthenticated == true)
         {
             var userManager = context.RequestServices.GetRequiredService<UserManager<User>>();
             var user = await userManager.GetUserAsync(context.User);

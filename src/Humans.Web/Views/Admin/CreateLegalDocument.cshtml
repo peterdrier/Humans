@@ -6,7 +6,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">Admin</a></li>
-        <li class="breadcrumb-item"><a asp-action="LegalDocuments">Legal Documents</a></li>
+        <li class="breadcrumb-item"><a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments">Legal Documents</a></li>
         <li class="breadcrumb-item active" aria-current="page">Create</li>
     </ol>
 </nav>
@@ -18,7 +18,7 @@
                 <h4 class="mb-0">Create Legal Document</h4>
             </div>
             <div class="card-body">
-                <form asp-action="CreateLegalDocument" method="post">
+                <form asp-controller="AdminLegalDocuments" asp-action="CreateLegalDocument" method="post">
                     @Html.AntiForgeryToken()
 
                     <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
@@ -70,7 +70,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">Create Document</button>
-                        <a asp-action="LegalDocuments" class="btn btn-outline-secondary">Cancel</a>
+                        <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>

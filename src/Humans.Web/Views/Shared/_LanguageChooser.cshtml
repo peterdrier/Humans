@@ -20,14 +20,14 @@
         @currentLanguageName
     </button>
     <ul class="dropdown-menu dropdown-menu-end">
-        @foreach (var (code, name) in languages)
+        @foreach (var (culture, name) in languages)
         {
             <li>
                 <form asp-controller="Language" asp-action="SetLanguage" method="post">
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="culture" value="@code" />
+                    <input type="hidden" name="culture" value="@culture" />
                     <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
-                    <button type="submit" class="dropdown-item @(string.Equals(code, currentCulture, StringComparison.Ordinal) ? "active" : "")">
+                    <button type="submit" class="dropdown-item @(string.Equals(culture, currentCulture, StringComparison.Ordinal) ? "active" : "")">
                         @name
                     </button>
                 </form>

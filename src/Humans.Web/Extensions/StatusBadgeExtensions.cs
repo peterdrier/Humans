@@ -18,7 +18,6 @@ public static class StatusBadgeExtensions
             ApplicationStatus.UnderReview => "bg-info",
             ApplicationStatus.Approved => "bg-success",
             ApplicationStatus.Rejected => "bg-danger",
-            ApplicationStatus.Withdrawn => "bg-secondary",
             _ => "bg-secondary"
         };
     }
@@ -34,7 +33,6 @@ public static class StatusBadgeExtensions
             "UnderReview" => "bg-info",
             "Approved" => "bg-success",
             "Rejected" => "bg-danger",
-            "Withdrawn" => "bg-secondary",
             _ => "bg-secondary"
         };
     }
