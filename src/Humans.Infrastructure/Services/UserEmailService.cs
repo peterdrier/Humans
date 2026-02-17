@@ -58,12 +58,17 @@ public class UserEmailService : IUserEmailService
         ContactFieldVisibility accessLevel,
         CancellationToken cancellationToken = default)
     {
-        var emails = await _dbContext.UserEmails
+        // Load verified emails from DB, then filter by visibility in memory.
+        // Visibility is stored as string in DB, so enum comparisons don't translate correctly to SQL.
+        var allowed = GetAllowedVisibilities(accessLevel);
+        var emails = (await _dbContext.UserEmails
             .AsNoTracking()
-            .Where(e => e.UserId == userId && e.IsVerified && e.Visibility != null && e.Visibility >= accessLevel)
+            .Where(e => e.UserId == userId && e.IsVerified && e.Visibility != null)
             .OrderBy(e => e.DisplayOrder)
             .ThenBy(e => e.CreatedAt)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Where(e => allowed.Contains(e.Visibility!.Value))
+            .ToList();
 
         return emails.Select(e => new UserEmailDto(
             e.Id,
@@ -282,4 +287,18 @@ public class UserEmailService : IUserEmailService
         _dbContext.UserEmails.RemoveRange(emails);
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Returns the set of visibility levels a viewer with the given access level can see.
+    /// Visibility is stored as string in DB, so >= comparison doesn't work correctly.
+    /// </summary>
+    private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
+        accessLevel switch
+        {
+            ContactFieldVisibility.BoardOnly => [ContactFieldVisibility.BoardOnly, ContactFieldVisibility.LeadsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
+            ContactFieldVisibility.LeadsAndBoard => [ContactFieldVisibility.LeadsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
+            ContactFieldVisibility.MyTeams => [ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
+            ContactFieldVisibility.AllActiveProfiles => [ContactFieldVisibility.AllActiveProfiles],
+            _ => [ContactFieldVisibility.AllActiveProfiles]
+        };
 }

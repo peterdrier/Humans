@@ -104,15 +104,21 @@ public class HumanController : Controller
             CountryCode = profile.CountryCode,
             Bio = profile.Bio,
             Pronouns = profile.Pronouns,
+            ContributionInterests = profile.ContributionInterests,
+            BoardNotes = canViewLegalName ? profile.BoardNotes : null,
             BirthdayMonth = profile.DateOfBirth?.Month,
             BirthdayDay = profile.DateOfBirth?.Day,
+            EmergencyContactName = canViewLegalName ? profile.EmergencyContactName : null,
+            EmergencyContactPhone = canViewLegalName ? profile.EmergencyContactPhone : null,
+            EmergencyContactRelationship = canViewLegalName ? profile.EmergencyContactRelationship : null,
             MembershipStatus = membershipSnapshot.Status.ToString(),
             IsOwnProfile = isOwnProfile,
             CanViewLegalName = canViewLegalName,
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel
             {
                 Email = e.Email,
-                IsNotificationTarget = e.IsNotificationTarget
+                IsNotificationTarget = e.IsNotificationTarget,
+                Visibility = e.Visibility
             }).ToList(),
             ContactFields = contactFields.Select(cf => new ContactFieldViewModel
             {

@@ -3,7 +3,7 @@
     ViewData["Title"] = Model.IsOwnProfile ? Localizer["Profile_Title"].Value : Model.DisplayName;
 }
 
-<div class="row">
+<div class="row align-items-start">
     <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
         <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
 
@@ -30,6 +30,7 @@
             </div>
         }
 
+        @* === Card 1: Public Profile === *@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>@Localizer["Profile_Information"]</span>
@@ -39,11 +40,12 @@
                 }
             </div>
             <div class="card-body">
+                @* Photo + Name + Pronouns + Status + Teams *@
                 <div class="row mb-3">
-                    <div class="col-md-3">
+                    <div class="col-auto">
                         @if (!string.IsNullOrEmpty(Model.EffectiveProfilePictureUrl))
                         {
-                            <img src="@Model.EffectiveProfilePictureUrl" alt="Profile" class="rounded-circle img-fluid" style="width: 160px; height: 160px; object-fit: cover;" />
+                            <img src="@Model.EffectiveProfilePictureUrl" alt="Profile" class="rounded-circle" style="width: 160px; height: 160px; object-fit: cover;" />
                         }
                         else
                         {
@@ -52,7 +54,7 @@
                             </div>
                         }
                     </div>
-                    <div class="col-md-9">
+                    <div class="col">
                         <h4>@(string.IsNullOrEmpty(Model.BurnerName) ? Model.DisplayName : Model.BurnerName)</h4>
                         @if (!string.IsNullOrEmpty(Model.Pronouns))
                         {
@@ -61,30 +63,30 @@
                         <span class="badge @(Model.MembershipStatus == "Active" ? "bg-success" : Model.MembershipStatus == "Suspended" ? "bg-danger" : "bg-secondary")">
                             @Model.MembershipStatus
                         </span>
+                        @if (Model.Teams.Count > 0)
+                        {
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @foreach (var team in Model.Teams)
+                                {
+                                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.TeamSlug"
+                                       class="btn btn-sm @(team.IsSystemTeam ? "btn-outline-secondary" : "btn-outline-primary")">
+                                        @team.TeamName
+                                        @if (team.IsLead)
+                                        {
+                                            <span class="badge bg-warning text-dark ms-1">@Localizer["Profile_Lead"]</span>
+                                        }
+                                    </a>
+                                }
+                            </div>
+                        }
                     </div>
                 </div>
 
                 <hr />
-
-                <dl class="row">
-                    @if (Model.CanViewLegalName)
-                    {
-                        <dt class="col-sm-3">@Localizer["Profile_LegalName"]</dt>
-                        <dd class="col-sm-9">
-                            @if (!string.IsNullOrEmpty(Model.FirstName) || !string.IsNullOrEmpty(Model.LastName))
-                            {
-                                @($"{Model.FirstName} {Model.LastName}")
-                                <small class="text-muted">(@Localizer["Profile_OnlyVisibleToYouAndBoard"])</small>
-                            }
-                            else
-                            {
-                                <text>@Localizer["Common_NotProvided"]</text>
-                            }
-                        </dd>
-                    }
-
-                    <dt class="col-sm-3">@Localizer["Profile_Location"]</dt>
-                    <dd class="col-sm-9">
+                <dl class="row mb-0">
+                    @* Location *@
+                    <dt class="col-3">@Localizer["Profile_Location"]</dt>
+                    <dd class="col-9">
                         @if (!string.IsNullOrEmpty(Model.City) || !string.IsNullOrEmpty(Model.CountryCode))
                         {
                             @Model.City
@@ -100,66 +102,33 @@
                         }
                     </dd>
 
-                    <dt class="col-sm-3">@Localizer["Profile_Bio"]</dt>
-                    <dd class="col-sm-9">@(Model.Bio ?? Localizer["Common_NotProvided"].Value)</dd>
-
-                    @if (Model.CanViewLegalName)
-                    {
-                        <dt class="col-sm-3">@Localizer["Profile_DateOfBirth"]</dt>
-                        <dd class="col-sm-9">
-                            @if (!string.IsNullOrEmpty(Model.FormattedBirthday))
-                            {
-                                @Model.FormattedBirthday
-                            }
-                            else
-                            {
-                                <text>@Localizer["Common_NotProvided"]</text>
-                            }
-                        </dd>
-                    }
-
-                    @if (Model.IsOwnProfile && (!string.IsNullOrEmpty(Model.EmergencyContactName) || !string.IsNullOrEmpty(Model.EmergencyContactPhone)))
-                    {
-                        <dt class="col-sm-3">@Localizer["Profile_EmergencyContact"]</dt>
-                        <dd class="col-sm-9">
-                            @if (!string.IsNullOrEmpty(Model.EmergencyContactName))
-                            {
-                                @Model.EmergencyContactName
-                            }
-                            @if (!string.IsNullOrEmpty(Model.EmergencyContactRelationship))
-                            {
-                                <text> (@Model.EmergencyContactRelationship)</text>
-                            }
-                            @if (!string.IsNullOrEmpty(Model.EmergencyContactPhone))
-                            {
-                                <br /><a href="tel:@Model.EmergencyContactPhone">@Model.EmergencyContactPhone</a>
-                            }
-                            <br /><small class="text-muted">@Localizer["Profile_EmergencyContactBoardOnly"]</small>
-                        </dd>
-                    }
-                </dl>
-            </div>
-        </div>
-
-        @if (Model.UserEmails.Count > 0 || Model.ContactFields.Count > 0)
-        {
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>@Localizer["Profile_ContactInformation"]</span>
-                    @if (Model.IsOwnProfile)
-                    {
-                        <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
-                    }
-                </div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        @foreach (var email in Model.UserEmails)
+                    @* Birthday (public) *@
+                    <dt class="col-3">@Localizer["Profile_DateOfBirth"]</dt>
+                    <dd class="col-9">
+                        @if (!string.IsNullOrEmpty(Model.FormattedBirthday))
                         {
-                            <dt class="col-sm-3">
+                            @Model.FormattedBirthday
+                        }
+                        else
+                        {
+                            <text>@Localizer["Common_NotProvided"]</text>
+                        }
+                    </dd>
+                </dl>
+
+                @* Contact Information (non-BoardOnly emails + contact fields) *@
+                @if (Model.PublicUserEmails.Count > 0 || Model.ContactFields.Count > 0)
+                {
+                    <hr />
+                    <h6 class="text-muted mb-2">@Localizer["Profile_ContactInformation"]</h6>
+                    <dl class="row mb-0">
+                        @foreach (var email in Model.PublicUserEmails)
+                        {
+                            <dt class="col-3">
                                 <i class="fa-solid fa-envelope me-1"></i>
                                 Email
                             </dt>
-                            <dd class="col-sm-9">
+                            <dd class="col-9">
                                 <a href="mailto:@email.Email">@email.Email</a>
                                 @if (email.IsNotificationTarget)
                                 {
@@ -169,11 +138,11 @@
                         }
                         @foreach (var field in Model.ContactFields)
                         {
-                            <dt class="col-sm-3">
+                            <dt class="col-3">
                                 <i class="@field.IconClass me-1"></i>
                                 @field.Label
                             </dt>
-                            <dd class="col-sm-9">
+                            <dd class="col-9">
                                 @if (!string.IsNullOrEmpty(field.LinkUrl))
                                 {
                                     <a href="@field.LinkUrl" target="_blank" rel="noopener noreferrer">@field.Value</a>
@@ -191,61 +160,36 @@
                             </dd>
                         }
                     </dl>
-                </div>
-            </div>
-        }
-        else if (Model.IsOwnProfile)
-        {
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>@Localizer["Profile_ContactInformation"]</span>
-                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Add"]</a>
-                </div>
-                <div class="card-body text-muted">
-                    @Localizer["Profile_NoContactInfo"] <a asp-action="Edit">@Localizer["Profile_AddSome"]</a>
-                </div>
-            </div>
-        }
+                }
+                else if (Model.IsOwnProfile)
+                {
+                    <hr />
+                    <p class="text-muted mb-0">
+                        @Localizer["Profile_NoContactInfo"] <a asp-action="Edit">@Localizer["Profile_AddSome"]</a>
+                    </p>
+                }
 
-        @if (Model.Teams.Count > 0)
-        {
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>@Localizer["Profile_Teams"]</span>
-                    @if (Model.IsOwnProfile)
-                    {
-                        <a asp-controller="Team" asp-action="My" class="btn btn-sm btn-outline-primary">@Localizer["Teams_Manage"]</a>
-                    }
-                </div>
-                <div class="card-body py-2">
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach (var team in Model.Teams)
-                        {
-                            <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.TeamSlug"
-                               class="btn btn-sm @(team.IsSystemTeam ? "btn-outline-secondary" : "btn-outline-primary")">
-                                @team.TeamName
-                                @if (team.IsLead)
-                                {
-                                    <span class="badge bg-warning text-dark ms-1">@Localizer["Profile_Lead"]</span>
-                                }
-                            </a>
-                        }
-                    </div>
-                </div>
-            </div>
-        }
+                @* Bio *@
+                @if (!string.IsNullOrEmpty(Model.Bio))
+                {
+                    <hr />
+                    <h6 class="text-muted mb-2">@Localizer["Profile_Bio"]</h6>
+                    <p class="mb-0" style="white-space: pre-line">@Model.Bio</p>
+                }
 
-        @if (Model.VolunteerHistory.Count > 0)
-        {
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>@Localizer["Profile_BurnerCV"]</span>
-                    @if (Model.IsOwnProfile)
-                    {
-                        <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
-                    }
-                </div>
-                <div class="card-body py-2">
+                @* Contribution Interests *@
+                @if (!string.IsNullOrEmpty(Model.ContributionInterests))
+                {
+                    <hr />
+                    <h6 class="text-muted mb-2">@Localizer["Profile_ContributionInterests"]</h6>
+                    <p class="mb-0" style="white-space: pre-line">@Model.ContributionInterests</p>
+                }
+
+                @* Burner CV *@
+                @if (Model.VolunteerHistory.Count > 0)
+                {
+                    <hr />
+                    <h6 class="text-muted mb-2">@Localizer["Profile_BurnerCV"]</h6>
                     @foreach (var entry in Model.VolunteerHistory)
                     {
                         <div class="d-flex align-items-center py-1">
@@ -257,18 +201,91 @@
                             }
                         </div>
                     }
-                </div>
+                }
+                else if (Model.IsOwnProfile)
+                {
+                    <hr />
+                    <p class="text-muted mb-0">
+                        @Localizer["Profile_NoCVEntries"] <a asp-action="Edit">@Localizer["Profile_AddFirstEntry"]</a>
+                    </p>
+                }
             </div>
-        }
-        else if (Model.IsOwnProfile)
+        </div>
+
+        @* === Card 2: Board & Private Information (self or board only) === *@
+        @if (Model.CanViewLegalName)
         {
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>@Localizer["Profile_BurnerCV"]</span>
-                    <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Add"]</a>
+                    <span>
+                        <i class="fa-solid fa-lock me-1"></i>
+                        @Localizer["Profile_BoardInformation"]
+                    </span>
+                    @if (Model.IsOwnProfile)
+                    {
+                        <a asp-action="Edit" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                    }
                 </div>
-                <div class="card-body text-muted">
-                    @Localizer["Profile_NoCVEntries"] <a asp-action="Edit">@Localizer["Profile_AddFirstEntry"]</a>
+                <div class="card-body">
+                    <small class="text-muted d-block mb-3">@Localizer["Profile_OnlyVisibleToYouAndBoard"]</small>
+
+                    <dl class="row mb-0">
+                        @* Legal Name *@
+                        <dt class="col-3">@Localizer["Profile_LegalName"]</dt>
+                        <dd class="col-9">
+                            @if (!string.IsNullOrEmpty(Model.FirstName) || !string.IsNullOrEmpty(Model.LastName))
+                            {
+                                @($"{Model.FirstName} {Model.LastName}")
+                            }
+                            else
+                            {
+                                <text>@Localizer["Common_NotProvided"]</text>
+                            }
+                        </dd>
+
+                        @* Emergency Contact *@
+                        @if (!string.IsNullOrEmpty(Model.EmergencyContactName) || !string.IsNullOrEmpty(Model.EmergencyContactPhone))
+                        {
+                            <dt class="col-3">@Localizer["Profile_EmergencyContact"]</dt>
+                            <dd class="col-9">
+                                @if (!string.IsNullOrEmpty(Model.EmergencyContactName))
+                                {
+                                    @Model.EmergencyContactName
+                                }
+                                @if (!string.IsNullOrEmpty(Model.EmergencyContactRelationship))
+                                {
+                                    <text> (@Model.EmergencyContactRelationship)</text>
+                                }
+                                @if (!string.IsNullOrEmpty(Model.EmergencyContactPhone))
+                                {
+                                    <text> — </text><a href="tel:@Model.EmergencyContactPhone">@Model.EmergencyContactPhone</a>
+                                }
+                            </dd>
+                        }
+
+                        @* Board-only emails *@
+                        @foreach (var email in Model.BoardOnlyUserEmails)
+                        {
+                            <dt class="col-3">
+                                <i class="fa-solid fa-envelope me-1"></i>
+                                Email
+                            </dt>
+                            <dd class="col-9">
+                                <a href="mailto:@email.Email">@email.Email</a>
+                                @if (email.IsNotificationTarget)
+                                {
+                                    <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
+                                }
+                            </dd>
+                        }
+
+                        @* Board Notes (from the member) *@
+                        @if (!string.IsNullOrEmpty(Model.BoardNotes))
+                        {
+                            <dt class="col-3">@Localizer["Profile_BoardNotes"]</dt>
+                            <dd class="col-9" style="white-space: pre-line">@Model.BoardNotes</dd>
+                        }
+                    </dl>
                 </div>
             </div>
         }

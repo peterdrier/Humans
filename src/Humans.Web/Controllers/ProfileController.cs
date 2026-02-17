@@ -134,6 +134,8 @@ public class ProfileController : Controller
             CountryCode = profile?.CountryCode,
             Bio = profile?.Bio,
             Pronouns = profile?.Pronouns,
+            ContributionInterests = profile?.ContributionInterests,
+            BoardNotes = profile?.BoardNotes,
             BirthdayMonth = profile?.DateOfBirth?.Month,
             BirthdayDay = profile?.DateOfBirth?.Day,
             EmergencyContactName = profile?.EmergencyContactName,
@@ -148,7 +150,8 @@ public class ProfileController : Controller
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel
             {
                 Email = e.Email,
-                IsNotificationTarget = e.IsNotificationTarget
+                IsNotificationTarget = e.IsNotificationTarget,
+                Visibility = e.Visibility
             }).ToList(),
             ContactFields = contactFields.Select(cf => new ContactFieldViewModel
             {
@@ -213,6 +216,8 @@ public class ProfileController : Controller
             PlaceId = profile?.PlaceId,
             Bio = profile?.Bio,
             Pronouns = profile?.Pronouns,
+            ContributionInterests = profile?.ContributionInterests,
+            BoardNotes = profile?.BoardNotes,
             BirthdayMonth = profile?.DateOfBirth?.Month,
             BirthdayDay = profile?.DateOfBirth?.Day,
             EmergencyContactName = profile?.EmergencyContactName,
@@ -283,8 +288,10 @@ public class ProfileController : Controller
         profile.Latitude = model.Latitude;
         profile.Longitude = model.Longitude;
         profile.PlaceId = model.PlaceId;
-        profile.Bio = model.Bio;
+        profile.Bio = model.Bio?.TrimEnd();
         profile.Pronouns = model.Pronouns;
+        profile.ContributionInterests = model.ContributionInterests?.TrimEnd();
+        profile.BoardNotes = model.BoardNotes?.TrimEnd();
         profile.DateOfBirth = model.ParsedBirthday;
         profile.EmergencyContactName = model.EmergencyContactName;
         profile.EmergencyContactPhone = model.EmergencyContactPhone;
@@ -374,8 +381,7 @@ public class ProfileController : Controller
     }
 
     [HttpGet]
-    [AllowAnonymous]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any)]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id)
     {
         var profile = await _dbContext.Profiles
@@ -812,6 +818,8 @@ public class ProfileController : Controller
                 profile.CountryCode,
                 profile.Bio,
                 profile.Pronouns,
+                profile.ContributionInterests,
+                profile.BoardNotes,
                 profile.IsSuspended,
                 profile.EmergencyContactName,
                 profile.EmergencyContactPhone,

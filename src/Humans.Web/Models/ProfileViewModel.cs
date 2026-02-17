@@ -86,6 +86,16 @@ public class ProfileViewModel
     [Display(Name = "Pronouns")]
     public string? Pronouns { get; set; }
 
+    [StringLength(2000)]
+    [DataType(DataType.MultilineText)]
+    [Display(Name = "How I'd Like to Contribute")]
+    public string? ContributionInterests { get; set; }
+
+    [StringLength(2000)]
+    [DataType(DataType.MultilineText)]
+    [Display(Name = "Notes for the Board")]
+    public string? BoardNotes { get; set; }
+
     /// <summary>
     /// Birthday month (1-12) for the edit form.
     /// </summary>
@@ -176,6 +186,18 @@ public class ProfileViewModel
     /// User email addresses visible on the profile (for display).
     /// </summary>
     public IReadOnlyList<UserEmailDisplayViewModel> UserEmails { get; set; } = [];
+
+    /// <summary>
+    /// Non-BoardOnly emails for the public contact info section.
+    /// </summary>
+    public IReadOnlyList<UserEmailDisplayViewModel> PublicUserEmails =>
+        UserEmails.Where(e => e.Visibility != ContactFieldVisibility.BoardOnly).ToList();
+
+    /// <summary>
+    /// BoardOnly emails for the board/private section.
+    /// </summary>
+    public IReadOnlyList<UserEmailDisplayViewModel> BoardOnlyUserEmails =>
+        UserEmails.Where(e => e.Visibility == ContactFieldVisibility.BoardOnly).ToList();
 
     /// <summary>
     /// Contact fields visible to the current viewer (for display).
@@ -386,6 +408,7 @@ public class UserEmailDisplayViewModel
 {
     public string Email { get; set; } = string.Empty;
     public bool IsNotificationTarget { get; set; }
+    public ContactFieldVisibility? Visibility { get; set; }
 }
 
 /// <summary>

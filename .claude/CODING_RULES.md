@@ -85,6 +85,34 @@ if (status == "submitted")
 if (string.Equals(status, "submitted", StringComparison.Ordinal))
 ```
 
+## Critical: No Enum Comparison Operators in EF Core Queries
+
+Enums stored with `HasConversion<string>()` are persisted as their string names in the database. Comparison operators (`>`, `>=`, `<`, `<=`) translate to **lexicographic string comparison** in SQL, which does NOT match the numeric enum ordering. For example, `'AllActiveProfiles' >= 'BoardOnly'` is FALSE in SQL (because `'A' < 'B'`), even though the enum value 3 >= 0.
+
+**Rule:** Never use `>`, `>=`, `<`, `<=` on enum properties in EF Core LINQ queries. Use explicit `Contains()` checks with a list of allowed values instead.
+
+**Example:**
+```csharp
+// WRONG — string comparison breaks enum ordering
+.Where(e => e.Visibility >= accessLevel)
+
+// CORRECT — explicit list of allowed values
+var allowed = GetAllowedVisibilities(accessLevel);
+.Where(e => allowed.Contains(e.Visibility.Value))
+
+private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
+    accessLevel switch
+    {
+        ContactFieldVisibility.BoardOnly => [ContactFieldVisibility.BoardOnly, ContactFieldVisibility.LeadsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
+        ContactFieldVisibility.LeadsAndBoard => [ContactFieldVisibility.LeadsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
+        ContactFieldVisibility.MyTeams => [ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
+        ContactFieldVisibility.AllActiveProfiles => [ContactFieldVisibility.AllActiveProfiles],
+        _ => [ContactFieldVisibility.AllActiveProfiles]
+    };
+```
+
+**This applies to any enum with `HasConversion<string>()`**, not just `ContactFieldVisibility`. The `ContactFieldService` and `UserEmailService` both use the `GetAllowedVisibilities` helper pattern.
+
 ## Localization (i18n)
 
 **Admin pages do not require localization.** Existing localized strings in admin views can stay, but do not add new `@Localizer[...]` calls or resource keys for admin-side views (`/Admin/*`, `/TeamAdmin/*`) until further notice. Only public/user-facing views require localization.
