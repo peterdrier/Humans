@@ -102,18 +102,12 @@
                         }
                     </dd>
 
-                    @* Birthday (public) *@
-                    <dt class="col-3">@Localizer["Profile_DateOfBirth"]</dt>
-                    <dd class="col-9">
-                        @if (!string.IsNullOrEmpty(Model.FormattedBirthday))
-                        {
-                            @Model.FormattedBirthday
-                        }
-                        else
-                        {
-                            <text>@Localizer["Common_NotProvided"]</text>
-                        }
-                    </dd>
+                    @* Birthday (public) — only shown if provided *@
+                    @if (!string.IsNullOrEmpty(Model.FormattedBirthday))
+                    {
+                        <dt class="col-3">@Localizer["Profile_DateOfBirth"]</dt>
+                        <dd class="col-9">@Model.FormattedBirthday</dd>
+                    }
                 </dl>
 
                 @* Contact Information (non-BoardOnly emails + contact fields) *@
