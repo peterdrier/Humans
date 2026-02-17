@@ -89,6 +89,18 @@ The `csharp-ls` LSP is active via the `csharp-lsp` Claude Code plugin. It provid
 
 **After editing any `.cs` file, re-read it before moving on.** Diagnostics appear on `Read`, not on `Edit`. This catches errors immediately without waiting for a full `dotnet build`. Always fix LSP-reported errors in the current file before editing the next one.
 
+## Git Workflow
+
+Two-remote workflow with QA gating:
+
+- **`origin`** = `peterdrier/Humans` (QA environment)
+- **`upstream`** = `nobodies-collective/Humans` (production)
+
+**Default flow:** Push to `origin` (QA) first. Batch changes, test in QA, then PR from `origin` to `upstream` for production. Never push directly to `upstream` without QA validation.
+
+- `git push origin main` — deploy to QA
+- `gh pr create -R nobodies-collective/Humans --head peterdrier:main` — PR to production
+
 ## Build Commands
 
 ```bash

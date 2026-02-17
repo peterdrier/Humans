@@ -1,7 +1,7 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-02-17T23:58
+Last synced: 2026-02-17T15:20
 
 ---
 
@@ -30,6 +30,15 @@ Consolidate 4 profile cards into 2 (public profile + board-only), reorder fields
 
 #### #31: Send email notification when user is added to a team
 Notify users when they're added to a team (volunteer approval, join request, manual add). Email lists the team, its Google resources, and links to the team page. Fallback to account email if no notification target set.
+
+#### #33: Add Discord integration to sync team/role-based server roles via API
+Discord bot integration to automatically assign/remove Discord server roles based on Humans team memberships and role assignments. Configurable team→Discord role mappings, drift detection, audit logging, and manual sync UI at `/Admin/DiscordSync`.
+
+#### #32: Fix Lead role — remove standalone RoleAssignment, derive from TeamMemberRole.Lead only
+`RoleNames.Lead` exists as an assignable governance role in Admin → Roles, but Lead should be derived solely from `TeamMemberRole.Lead` on user-created teams. Remove Lead from assignable roles, clean up orphaned RoleAssignment records, keep existing `SystemTeamSyncJob` derivation logic.
+
+#### #34: Add environment banner for non-production deployments
+Red banner at top of every page in non-production environments (QA/Staging, Development) so users don't mistake QA for production. No banner in production. Uses `Environment` tag helper in `_Layout.cshtml`.
 
 #### #27: Revoke team memberships immediately on deletion request
 Currently users keep full access during the 30-day deletion grace period. Should immediately remove from all teams and end role assignments on request. Returning users must re-consent and rejoin. Google deprovisioning via normal sync job.
@@ -96,6 +105,9 @@ Two OpenTelemetry packages pinned to beta versions. Check for stable releases or
 
 #### #25 / F-06: Localize email content and fix background job culture context
 Email subjects are localized but body content is still inline HTML with string interpolation. Additionally, background jobs (`SendReConsentReminderJob`, `SuspendNonCompliantMembersJob`, `ProcessAccountDeletionsJob`) don't set `CurrentUICulture` to each user's `PreferredLanguage` before calling `IEmailService`, so even subjects come out English-only for job-triggered emails.
+
+#### #35: Refactor email previews to use live templates instead of static HTML
+Admin email previews (`/Admin/EmailPreview`) use duplicated static HTML in `AdminController.GenerateEmailPreviews()` — separate from the real `SmtpEmailService` templates. Replace with calls through the actual email rendering path using stub data (Volunteers team for team-related emails). This picks up the real CSS, environment banner, and localization. **Batch with #25.**
 
 ---
 
