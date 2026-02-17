@@ -241,6 +241,7 @@ public class TeamController : Controller
             CurrentMonthName = monthName,
             Birthdays = profilesWithBirthdays.Select(p => new BirthdayEntryViewModel
             {
+                UserId = p.UserId,
                 DisplayName = p.DisplayName,
                 EffectiveProfilePictureUrl = p.HasCustomPicture
                     ? Url.Action("Picture", "Profile", new { id = p.ProfileId })

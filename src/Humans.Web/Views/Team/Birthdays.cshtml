@@ -35,27 +35,30 @@
         <ul class="list-group list-group-flush">
             @foreach (var birthday in Model.Birthdays)
             {
-                <li class="list-group-item d-flex align-items-center py-3">
-                    <div class="me-3 text-center" style="min-width: 40px;">
-                        <span class="fs-4 fw-bold text-primary">@birthday.DayOfMonth</span>
-                    </div>
-                    @if (!string.IsNullOrEmpty(birthday.EffectiveProfilePictureUrl))
-                    {
-                        <img src="@birthday.EffectiveProfilePictureUrl" alt="@birthday.DisplayName" class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;" />
-                    }
-                    else
-                    {
-                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white me-3" style="width: 48px; height: 48px; font-size: 1.1rem;">
-                            @birthday.DisplayName[0]
+                <li class="list-group-item py-3">
+                    <a asp-controller="Human" asp-action="View" asp-route-id="@birthday.UserId"
+                       class="d-flex align-items-center text-decoration-none text-reset">
+                        <div class="me-3 text-center" style="min-width: 40px;">
+                            <span class="fs-4 fw-bold text-primary">@birthday.DayOfMonth</span>
                         </div>
-                    }
-                    <div>
-                        <div class="fw-semibold">@birthday.DisplayName</div>
-                        @if (birthday.TeamNames.Count > 0)
+                        @if (!string.IsNullOrEmpty(birthday.EffectiveProfilePictureUrl))
                         {
-                            <small class="text-muted">@string.Join(", ", birthday.TeamNames)</small>
+                            <img src="@birthday.EffectiveProfilePictureUrl" alt="@birthday.DisplayName" class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;" />
                         }
-                    </div>
+                        else
+                        {
+                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white me-3" style="width: 48px; height: 48px; font-size: 1.1rem;">
+                                @birthday.DisplayName[0]
+                            </div>
+                        }
+                        <div>
+                            <div class="fw-semibold">@birthday.DisplayName</div>
+                            @if (birthday.TeamNames.Count > 0)
+                            {
+                                <small class="text-muted">@string.Join(", ", birthday.TeamNames)</small>
+                            }
+                        </div>
+                    </a>
                 </li>
             }
         </ul>

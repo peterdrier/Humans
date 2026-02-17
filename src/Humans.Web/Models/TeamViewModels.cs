@@ -195,6 +195,7 @@ public class BirthdayCalendarViewModel
 
 public class BirthdayEntryViewModel
 {
+    public Guid UserId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string? EffectiveProfilePictureUrl { get; set; }
     public int DayOfMonth { get; set; }
