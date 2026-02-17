@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using NodaTime;
 using NodaTime.Testing;
 using Humans.Domain.Entities;

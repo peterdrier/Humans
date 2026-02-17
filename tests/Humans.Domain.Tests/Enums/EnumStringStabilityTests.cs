@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using Humans.Domain.Enums;
 using Xunit;
 
