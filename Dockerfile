@@ -12,12 +12,14 @@ COPY src/Humans.Web/Humans.Web.csproj src/Humans.Web/
 # Restore packages
 RUN dotnet restore src/Humans.Web/Humans.Web.csproj
 
-# Copy source code and .git (for commit hash in footer; discarded after build stage)
-COPY .git .git
+# Copy source code
 COPY src/ src/
 
-# Build and publish
-RUN dotnet publish src/Humans.Web/Humans.Web.csproj -c Release -o /app/publish --no-restore -p:TreatWarningsAsErrors=false
+# Coolify passes SOURCE_COMMIT as a build arg; fall back to git rev-parse for local builds
+ARG SOURCE_COMMIT=""
+RUN dotnet publish src/Humans.Web/Humans.Web.csproj -c Release -o /app/publish --no-restore \
+    -p:TreatWarningsAsErrors=false \
+    -p:SourceRevisionId="${SOURCE_COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || true)}"
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
