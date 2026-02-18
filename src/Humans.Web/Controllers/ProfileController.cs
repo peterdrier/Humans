@@ -15,6 +15,7 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using SkiaSharp;
 using Humans.Web.Models;
+using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Web.Controllers;
 
@@ -135,6 +136,26 @@ public class ProfileController : Controller
 
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
 
+        // Initial setup = no profile or not yet approved (onboarding)
+        var isInitialSetup = profile == null || !profile.IsApproved;
+
+        // Check if tier is locked (has active/pending application)
+        var hasPendingOrApprovedApplication = profile != null && await _dbContext.Applications
+            .AnyAsync(a => a.UserId == user.Id &&
+                (a.Status == ApplicationStatus.Submitted ||
+                 a.Status == ApplicationStatus.UnderReview ||
+                 a.Status == ApplicationStatus.Approved));
+
+        // Load existing pending application for inline display during initial setup
+        MemberApplication? pendingApplication = null;
+        if (isInitialSetup)
+        {
+            pendingApplication = await _dbContext.Applications
+                .Where(a => a.UserId == user.Id &&
+                    (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview))
+                .FirstOrDefaultAsync();
+        }
+
         var viewModel = new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
@@ -161,6 +182,11 @@ public class ProfileController : Controller
             EmergencyContactPhone = profile?.EmergencyContactPhone,
             EmergencyContactRelationship = profile?.EmergencyContactRelationship,
             CanViewLegalName = true, // User editing their own profile
+            IsInitialSetup = isInitialSetup,
+            SelectedTier = profile?.MembershipTier ?? MembershipTier.Volunteer,
+            IsTierLocked = hasPendingOrApprovedApplication,
+            ApplicationMotivation = pendingApplication?.Motivation,
+            ApplicationAdditionalInfo = pendingApplication?.AdditionalInfo,
             EditableContactFields = contactFields.Select(cf => new ContactFieldEditViewModel
             {
                 Id = cf.Id,
@@ -266,6 +292,68 @@ public class ProfileController : Controller
             var (resizedData, contentType) = ResizeProfilePicture(uploadStream.ToArray());
             profile.ProfilePictureData = resizedData;
             profile.ProfilePictureContentType = contentType;
+        }
+
+        // Handle tier selection during initial setup
+        var isInitialSetup = !profile.IsApproved;
+        if (isInitialSetup)
+        {
+            // Server-side enforcement: don't allow tier changes if application exists
+            var hasPendingOrApprovedApp = await _dbContext.Applications
+                .AnyAsync(a => a.UserId == user.Id &&
+                    (a.Status == ApplicationStatus.Submitted ||
+                     a.Status == ApplicationStatus.UnderReview ||
+                     a.Status == ApplicationStatus.Approved));
+            if (hasPendingOrApprovedApp)
+            {
+                model.SelectedTier = profile.MembershipTier;
+            }
+
+            profile.MembershipTier = model.SelectedTier;
+
+            // Validate motivation is required for Colaborador/Asociado
+            if (model.SelectedTier != MembershipTier.Volunteer &&
+                string.IsNullOrWhiteSpace(model.ApplicationMotivation))
+            {
+                ModelState.AddModelError(nameof(model.ApplicationMotivation),
+                    _localizer["Profile_MotivationRequired"].Value);
+                model.IsInitialSetup = true;
+                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                return View(model);
+            }
+
+            // Auto-create or update inline application for Colaborador/Asociado
+            if (model.SelectedTier != MembershipTier.Volunteer)
+            {
+                var existingApp = await _dbContext.Applications
+                    .FirstOrDefaultAsync(a => a.UserId == user.Id &&
+                        (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview));
+
+                if (existingApp != null)
+                {
+                    // Update existing pending application
+                    existingApp.Motivation = model.ApplicationMotivation!;
+                    existingApp.AdditionalInfo = model.ApplicationAdditionalInfo;
+                    existingApp.MembershipTier = model.SelectedTier;
+                    existingApp.UpdatedAt = now;
+                }
+                else
+                {
+                    // Create new application
+                    var application = new MemberApplication
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = user.Id,
+                        MembershipTier = model.SelectedTier,
+                        Motivation = model.ApplicationMotivation!,
+                        AdditionalInfo = model.ApplicationAdditionalInfo,
+                        Language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,
+                        SubmittedAt = now,
+                        UpdatedAt = now
+                    };
+                    _dbContext.Applications.Add(application);
+                }
+            }
         }
 
         // Update display name on user to burner name (public-facing name)

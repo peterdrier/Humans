@@ -9,7 +9,7 @@
     var displayName = currentUser?.DisplayName ?? User.Identity?.Name;
     <li class="nav-item">
         <a class="nav-link" asp-area="" asp-controller="Profile" asp-action="Index">
-            @Html.Raw(string.Format(Localizer["Login_Hello"].Value, displayName))
+            @Html.Raw(string.Format(Localizer["Login_Hello"].Value, Html.Encode(displayName)))
         </a>
     </li>
     <li class="nav-item">

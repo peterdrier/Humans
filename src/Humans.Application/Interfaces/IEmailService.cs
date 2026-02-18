@@ -158,4 +158,33 @@ public interface IEmailService
         string teamSlug,
         IEnumerable<(string Name, string? Url)> resources,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a signup rejection notification to the user.
+    /// This is for rejecting a human's signup/profile (not an Asociado application).
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's display name.</param>
+    /// <param name="reason">The reason for rejection.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendSignupRejectedAsync(
+        string userEmail,
+        string userName,
+        string? reason,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a term renewal reminder to a Colaborador or Asociado whose term is expiring soon.
+    /// </summary>
+    /// <param name="userEmail">The user's email.</param>
+    /// <param name="userName">The user's display name.</param>
+    /// <param name="tierName">The membership tier name (e.g. "Colaborador", "Asociado").</param>
+    /// <param name="expiresAt">The term expiry date.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SendTermRenewalReminderAsync(
+        string userEmail,
+        string userName,
+        string tierName,
+        string expiresAt,
+        CancellationToken cancellationToken = default);
 }

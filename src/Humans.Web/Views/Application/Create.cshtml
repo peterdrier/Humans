@@ -21,6 +21,15 @@
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
                     <div class="mb-4">
+                        <label asp-for="MembershipTier" class="form-label">@Localizer["Profile_MembershipTier"]</label>
+                        <select asp-for="MembershipTier" class="form-select">
+                            <option value="Colaborador">Colaborador</option>
+                            <option value="Asociado">Asociado</option>
+                        </select>
+                        <span asp-validation-for="MembershipTier" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-4">
                         <label asp-for="Motivation" class="form-label"></label>
                         <textarea asp-for="Motivation" class="form-control" rows="6"
                             placeholder="@Localizer["GovernanceCreate_MotivationPlaceholder"].Value"></textarea>
@@ -46,11 +55,9 @@
                         <span asp-validation-for="ConfirmAccuracy" class="text-danger d-block"></span>
                     </div>
 
-                    <p class="text-danger fw-semibold mb-3">Asociado applications will be available soon.</p>
-
                     <div class="d-flex justify-content-between">
                         <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
-                        <button type="submit" class="btn btn-primary" disabled>@Localizer["GovernanceCreate_SubmitApplication"]</button>
+                        <button type="submit" class="btn btn-primary">@Localizer["GovernanceCreate_SubmitApplication"]</button>
                     </div>
                 </form>
             </div>

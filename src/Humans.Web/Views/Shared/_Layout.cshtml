@@ -56,6 +56,18 @@
                                 </li>
                             }
                         }
+                        @if (User.IsInRole("ConsentCoordinator") || User.IsInRole("VolunteerCoordinator") || User.IsInRole("Admin") || User.IsInRole("Board"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_OnboardingReview"]</a>
+                            </li>
+                        }
+                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_BoardVoting"]</a>
+                            </li>
+                        }
                         @if (User.IsInRole("Admin") || User.IsInRole("Board"))
                         {
                             <li class="nav-item">

@@ -5,7 +5,10 @@ using Stateless;
 namespace Humans.Domain.Entities;
 
 /// <summary>
-/// Membership application entity with state machine workflow.
+/// Tier application entity with state machine workflow.
+/// Used for Colaborador and Asociado applications (never Volunteer).
+/// During initial signup, created inline alongside the profile.
+/// After onboarding, created via the dedicated Application route.
 /// </summary>
 public class Application
 {
@@ -25,6 +28,11 @@ public class Application
     /// Navigation property to the applicant.
     /// </summary>
     public User User { get; set; } = null!;
+
+    /// <summary>
+    /// The membership tier being applied for (Colaborador or Asociado — never Volunteer).
+    /// </summary>
+    public MembershipTier MembershipTier { get; set; }
 
     /// <summary>
     /// Current status of the application.
@@ -82,9 +90,38 @@ public class Application
     public string? ReviewNotes { get; private set; }
 
     /// <summary>
+    /// When the membership term expires. Set on approval: Dec 31 of the appropriate odd year.
+    /// Null until approved. Only applies to Colaborador/Asociado.
+    /// </summary>
+    public LocalDate? TermExpiresAt { get; set; }
+
+    /// <summary>
+    /// Date of the Board meeting where the decision was made.
+    /// Required when finalizing a Board vote.
+    /// </summary>
+    public LocalDate? BoardMeetingDate { get; set; }
+
+    /// <summary>
+    /// Board's collective decision note. Required for rejection, optional for approval.
+    /// This is the only record of the Board's reasoning — individual votes are deleted (GDPR).
+    /// </summary>
+    public string? DecisionNote { get; set; }
+
+    /// <summary>
+    /// When the renewal reminder email was last sent for this application's term.
+    /// Used to prevent sending duplicate reminders.
+    /// </summary>
+    public Instant? RenewalReminderSentAt { get; set; }
+
+    /// <summary>
     /// Navigation property to state history.
     /// </summary>
     public ICollection<ApplicationStateHistory> StateHistory { get; } = new List<ApplicationStateHistory>();
+
+    /// <summary>
+    /// Navigation property to Board votes (transient — deleted on finalization).
+    /// </summary>
+    public ICollection<BoardVote> BoardVotes { get; } = new List<BoardVote>();
 
     /// <summary>
     /// Gets the state machine for this application.

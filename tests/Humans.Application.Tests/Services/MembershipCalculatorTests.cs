@@ -8,6 +8,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Xunit;
+using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Tests.Services;
 
@@ -364,6 +365,39 @@ public class MembershipCalculatorTests : IDisposable
         snapshot.RequiredConsentCount.Should().Be(1);
         snapshot.PendingConsentCount.Should().Be(1);
         snapshot.MissingConsentVersionIds.Should().ContainSingle().Which.Should().Be(volVersionId);
+    }
+
+    // --- GetRequiredTeamIdsForUserAsync: Colaboradors team ---
+
+    [Fact]
+    public async Task GetRequiredTeamIdsForUserAsync_IncludesColaboradors_WhenUserIsColaborador()
+    {
+        var userId = Guid.NewGuid();
+        SeedTeam("Volunteers", SystemTeamType.Volunteers, SystemTeamIds.Volunteers);
+        SeedTeam("Colaboradors", SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors);
+        SeedTeamMember(SystemTeamIds.Volunteers, userId, TeamMemberRole.Member);
+        SeedTeamMember(SystemTeamIds.Colaboradors, userId, TeamMemberRole.Member);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+
+        result.Should().Contain(SystemTeamIds.Volunteers);
+        result.Should().Contain(SystemTeamIds.Colaboradors);
+    }
+
+    [Fact]
+    public async Task GetRequiredTeamIdsForUserAsync_ExcludesColaboradors_WhenUserIsNotColaborador()
+    {
+        var userId = Guid.NewGuid();
+        SeedTeam("Volunteers", SystemTeamType.Volunteers, SystemTeamIds.Volunteers);
+        SeedTeam("Colaboradors", SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors);
+        SeedTeamMember(SystemTeamIds.Volunteers, userId, TeamMemberRole.Member);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
+
+        result.Should().Contain(SystemTeamIds.Volunteers);
+        result.Should().NotContain(SystemTeamIds.Colaboradors);
     }
 
     // --- Helpers ---

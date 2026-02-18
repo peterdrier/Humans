@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
@@ -45,6 +46,20 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.IsApproved)
             .HasDefaultValue(false);
 
+        builder.Property(p => p.MembershipTier)
+            .IsRequired()
+            .HasDefaultValue(MembershipTier.Volunteer)
+            .HasConversion<string>();
+
+        builder.Property(p => p.ConsentCheckStatus)
+            .HasConversion<string>();
+
+        builder.Property(p => p.ConsentCheckNotes)
+            .HasMaxLength(4000);
+
+        builder.Property(p => p.RejectionReason)
+            .HasMaxLength(4000);
+
         builder.Property(p => p.DateOfBirth);
 
         builder.Property(p => p.EmergencyContactName)
@@ -67,6 +82,8 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
 
         builder.HasIndex(p => p.UserId)
             .IsUnique();
+
+        builder.HasIndex(p => p.ConsentCheckStatus);
 
         // Ignore computed properties
         builder.Ignore(p => p.FullName);

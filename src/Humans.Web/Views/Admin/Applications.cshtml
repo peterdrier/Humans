@@ -9,19 +9,30 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-body">
+    <div class="card-body d-flex flex-wrap gap-3 align-items-center">
         <div class="btn-group" role="group">
-            <a asp-action="Applications" class="btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-primary" : "btn-outline-primary")">
+            <a asp-action="Applications" asp-route-tier="@Model.TierFilter" class="btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminApp_Pending"]
             </a>
-            <a asp-action="Applications" asp-route-status="Approved" class="btn @(Model.StatusFilter == "Approved" ? "btn-primary" : "btn-outline-primary")">
+            <a asp-action="Applications" asp-route-status="Approved" asp-route-tier="@Model.TierFilter" class="btn @(Model.StatusFilter == "Approved" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHuman_Approved"]
             </a>
-            <a asp-action="Applications" asp-route-status="Rejected" class="btn @(Model.StatusFilter == "Rejected" ? "btn-primary" : "btn-outline-primary")">
+            <a asp-action="Applications" asp-route-status="Rejected" asp-route-tier="@Model.TierFilter" class="btn @(Model.StatusFilter == "Rejected" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminApp_Rejected"]
             </a>
-            <a asp-action="Applications" asp-route-status="Withdrawn" class="btn @(Model.StatusFilter == "Withdrawn" ? "btn-primary" : "btn-outline-primary")">
+            <a asp-action="Applications" asp-route-status="Withdrawn" asp-route-tier="@Model.TierFilter" class="btn @(Model.StatusFilter == "Withdrawn" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminApp_Withdrawn"]
+            </a>
+        </div>
+        <div class="btn-group" role="group">
+            <a asp-action="Applications" asp-route-status="@Model.StatusFilter" class="btn @(string.IsNullOrEmpty(Model.TierFilter) ? "btn-secondary" : "btn-outline-secondary") btn-sm">
+                All Tiers
+            </a>
+            <a asp-action="Applications" asp-route-status="@Model.StatusFilter" asp-route-tier="Colaborador" class="btn @(Model.TierFilter == "Colaborador" ? "btn-secondary" : "btn-outline-secondary") btn-sm">
+                Colaborador
+            </a>
+            <a asp-action="Applications" asp-route-status="@Model.StatusFilter" asp-route-tier="Asociado" class="btn @(Model.TierFilter == "Asociado" ? "btn-secondary" : "btn-outline-secondary") btn-sm">
+                Asociado
             </a>
         </div>
     </div>
@@ -39,6 +50,7 @@
                 <thead>
                     <tr>
                         <th>@Localizer["AdminApp_Applicant"]</th>
+                        <th>@Localizer["BoardVoting_Tier"]</th>
                         <th>@Localizer["Governance_Submitted"]</th>
                         <th>@Localizer["Common_Status"]</th>
                         <th>@Localizer["AdminApp_Preview"]</th>
@@ -53,6 +65,7 @@
                                 <div>@app.UserDisplayName</div>
                                 <small class="text-muted">@app.UserEmail</small>
                             </td>
+                            <td><span class="badge bg-info">@app.MembershipTier</span></td>
                             <td>@app.SubmittedAt.ToString("d MMM yyyy")</td>
                             <td>
                                 <span class="badge @app.StatusBadgeClass">@app.Status</span>
@@ -81,7 +94,7 @@
             @for (var i = 1; i <= totalPages && i <= 10; i++)
             {
                 <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="Applications" asp-route-page="@i" asp-route-status="@Model.StatusFilter">@i</a>
+                    <a class="page-link" asp-action="Applications" asp-route-page="@i" asp-route-status="@Model.StatusFilter" asp-route-tier="@Model.TierFilter">@i</a>
                 </li>
             }
         </ul>

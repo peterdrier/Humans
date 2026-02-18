@@ -51,7 +51,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(SystemTeamType),
-            new[] { "None", "Volunteers", "Leads", "Board", "Asociados" }
+            new[] { "None", "Volunteers", "Leads", "Board", "Asociados", "Colaboradors" }
         },
         {
             typeof(GoogleResourceType),
@@ -73,12 +73,26 @@ public class EnumStringStabilityTests
                 "AccountAnonymized", "RoleAssigned", "RoleEnded", "VolunteerApproved",
                 "GoogleResourceAccessGranted", "GoogleResourceAccessRevoked", "GoogleResourceProvisioned",
                 "TeamJoinedDirectly", "TeamLeft", "TeamJoinRequestApproved", "TeamJoinRequestRejected",
-                "TeamMemberRoleChanged", "AnomalousPermissionDetected"
+                "TeamMemberRoleChanged", "AnomalousPermissionDetected",
+                "MembershipsRevokedOnDeletionRequest", "ConsentCheckCleared", "ConsentCheckFlagged",
+                "SignupRejected", "TierApplicationApproved", "TierApplicationRejected", "TierDowngraded"
             }
         },
         {
             typeof(ApplicationStatus),
             new[] { "Submitted", "UnderReview", "Approved", "Rejected", "Withdrawn" }
+        },
+        {
+            typeof(MembershipTier),
+            new[] { "Volunteer", "Colaborador", "Asociado" }
+        },
+        {
+            typeof(ConsentCheckStatus),
+            new[] { "Pending", "Cleared", "Flagged" }
+        },
+        {
+            typeof(VoteChoice),
+            new[] { "Yay", "Maybe", "No", "Abstain" }
         }
     };
 }

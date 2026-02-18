@@ -1,7 +1,7 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-02-18T12:15
+Last synced: 2026-02-18T13:30
 
 ---
 
@@ -11,50 +11,53 @@ Last synced: 2026-02-18T12:15
 
 ---
 
-### Priority 2: User-Facing Features & Improvements
+### Priority 2: Quick Fixes (do now, standalone)
 
-#### #14: Drive Activity Monitor: resolve people/ IDs to email addresses
-Drive Activity API returns `people/` IDs instead of email addresses. Need to resolve these via the People API for meaningful audit display.
 
-#### #28: Finish asociado application workflow for launch
-Localization gaps (English remains in some views), verify `Application.Language` tracking, test all state machine transitions, add feature gate to open/close applications.
+---
 
-#### #44: Fix consent checkbox translation and add Spanish-is-binding notice site-wide
-Consent Review checkbox text not translating to user's language despite `.resx` translations existing. Also: add a site-wide "Spanish is the legally binding text" notice (e.g., in `_Layout.cshtml` footer) visible on every page.
-
-#### Rename "Legal First Name" to "Legal First Name(s)" to allow plural
-Spanish naming convention uses multiple given names (e.g., "María del Carmen"). Update label in `ProfileViewModel.cs` `[Display]` attribute, `Profile_LegalName` localization key across all 5 `.resx` files, and the `Profile.FirstName` XML doc comment. The DB column and property name stay as-is.
-
-#### #45: Show board-private fields first on initial profile setup
-First time editing profile (legal name + emergency contact empty), put the board-private section at the top of the form so new humans don't miss it. On subsequent edits (fields populated), keep the current layout with board info at the bottom.
-
-#### #46: Add reject signup action and fix volunteer/member terminology to "human"
-No way to reject a pending signup — only approve or leave pending. Add reject action with optional reason, email notification, and audit log. Also fix "Approve Volunteer" / "Suspend Member" / "Unsuspend Member" button labels to use "Human" across all 5 locales.
-
-#### #47: Require Burner CV or "burn virgin" checkbox on profile
-Empty Burner CV is ambiguous (forgot vs. never been). Require at least one entry OR a "no prior burn experience" checkbox. New `NoPriorBurnExperience` bool on `Profile`, client + server validation, existing empty profiles grandfathered.
+### Priority 3: Profile Edit Redesign (#49)
 
 #### #49: Reorganize profile edit into three named sections
-Three distinct sections: 1) General Information (picture, burner name, pronouns, location, birthday, contacts, bio), 2) Contributor Information (Burner CV, contribution interests, board-approval note), 3) Private Information (legal name, emergency contact, board notes). Supersedes #48. Related: #45, #47.
+Three distinct sections: 1) General Information, 2) Contributor Information (with board-approval note), 3) Private Information. Includes:
+- **#45** (folded): Show Private section first on initial setup when fields are empty
+- **#47** (folded): Require Burner CV or "no prior burn experience" checkbox in Contributor section
+- Rename "Legal First Name" to "Legal First Name(s)" in all locales
+
+---
+
+### Priority 4: Onboarding Redesign Epic (#52)
+
+**Design must be finalized before implementation. Open questions need answers from Ben.**
+
+#### #52: Redesign onboarding with three membership tiers (EPIC)
+Three tiers: Volunteer (auto-accepted after consent check), Colaborador (board vote), Asociado (board vote + TBD questions from Ben). Tier selection at signup, profile requirements vary by tier. Supersedes #28, #51.
+
+#### #54: Add Consent and Volunteer Coordinator roles with onboarding gate
+Two new board-appointed roles with board-level data visibility. Consent Coordinator vets incoming humans for known issues (safety gate before admission). Volunteer Coordinator facilitates onboarding and team placement (not a gate).
+
+#### #53: Add board voting system for application reviews
+Board members vote Yay/Maybe/No/Abstain on each application. Spreadsheet-style dashboard with per-board-member columns, separate Colaborador/Asociado views. Final approve/deny records board meeting date + decision note.
+
+#### #46 Part 2: Add reject signup action
+New `RejectSignup` endpoint, reject button on HumanDetail for pending users, optional reason, email notification, audit log. Part of the Colaborador/Asociado review workflow.
+
+---
+
+### Priority 5: UI/Navigation Improvements
 
 #### #50: Split teams page into "my teams" and "other teams" sections
 Reorganize Teams Index into two sections: user's teams at top, other teams below. May consolidate with MyTeams page.
 
-#### #52: Redesign onboarding with three membership tiers
-Three tiers: Volunteer (auto-accepted, basic profile), Colaborador (board vote, fuller profile), Asociado (board vote, full profile + TBD questions from Ben). Tier selection at signup, profile requirements vary by tier, users can upgrade later. Supersedes #51. Related: #46, #47, #49.
-
-#### #53: Add board voting system for application reviews
-Board members vote Yay/Maybe/No/Abstain on each application. Spreadsheet-style dashboard with per-board-member columns, separate Colaborador/Asociado views. Final approve/deny records board meeting date + decision note. Related: #52, #46, #28.
-
-#### #54: Add Consent and Volunteer Coordinator roles with onboarding gate
-Two new board-appointed roles with board-level data visibility. Consent Coordinator vets incoming humans for known issues (safety gate — must clear before admission). Volunteer Coordinator facilitates onboarding and team placement (not a gate). Related: #52, #53.
+#### #14: Drive Activity Monitor: resolve people/ IDs to email addresses
+Drive Activity API returns `people/` IDs instead of email addresses. Need to resolve these via the People API for meaningful audit display.
 
 #### #33: Add Discord integration to sync team/role-based server roles via API
 Discord bot integration to automatically assign/remove Discord server roles based on Humans team memberships and role assignments. Configurable team→Discord role mappings, drift detection, audit logging, and manual sync UI at `/Admin/DiscordSync`.
 
 ---
 
-### Priority 3: Data Integrity & Security
+### Priority 6: Data Integrity & Security
 
 #### P1-09: Enforce uniqueness for active role assignments (DB-level)
 App-layer overlap guard added (`RoleAssignmentService.HasOverlappingAssignmentAsync`), but DB-level exclusion constraint on `tsrange(valid_from, valid_to)` is still deferred. Low urgency since admin UI validates before insert.
@@ -72,12 +75,12 @@ App-layer overlap guard added (`RoleAssignmentService.HasOverlappingAssignmentAs
 
 ---
 
-### Priority 4: Quality & Compliance
+### Priority 7: Quality & Compliance
 
 
 ---
 
-### Priority 5: Technical Debt (Low Priority)
+### Priority 8: Technical Debt (Low Priority)
 
 #### G-03: N+1 queries in GoogleWorkspaceSyncService
 Helper methods re-query resources already loaded by parent methods. Redundant DB round-trips.
@@ -257,3 +260,6 @@ Committed 2026-02-18 in 3 commits:
 **Security hardening** (`dbdcf58`): CSP nonce middleware + NonceTagHelper replace `unsafe-inline` in script-src (P1-23). Inline onclick/onchange handlers converted to addEventListener in LegalDocuments, Resources, Emails. PII redaction Serilog enricher masks emails and PII in structured logs (P2-09). P2-03 was already resolved (NU1902/NU1903 not suppressed).
 
 **Integration tests** (`b6c43c1`): WebApplicationFactory with TestContainers PostgreSQL, 16 tests across health endpoints, anonymous access controls, and security headers (P2-07).
+
+### #44 + #46 Part 1: Consent tab language + admin terminology DONE
+Committed `a53696d`. #44: Consent review checkbox text now follows the active document tab via JS tab-switch handler with per-language translations from ResourceManager. Non-Spanish tabs show bilingual legal note (tab language + Spanish italic). #46 Part 1: Replaced "Volunteer"/"Member" with "Human" in 7 admin button/message keys across all 5 locales (EN/ES/DE/FR/IT) + 3 log messages in AdminController.

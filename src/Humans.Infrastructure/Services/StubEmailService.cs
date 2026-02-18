@@ -158,4 +158,29 @@ public class StubEmailService : IEmailService
             userEmail, userName, teamName);
         return Task.CompletedTask;
     }
+
+    public Task SendSignupRejectedAsync(
+        string userEmail,
+        string userName,
+        string? reason,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send signup rejected email to {Email} ({UserName}). Reason: {Reason}",
+            userEmail, userName, reason);
+        return Task.CompletedTask;
+    }
+
+    public Task SendTermRenewalReminderAsync(
+        string userEmail,
+        string userName,
+        string tierName,
+        string expiresAt,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send term renewal reminder to {Email} ({UserName}) for {Tier} expiring {ExpiresAt}",
+            userEmail, userName, tierName, expiresAt);
+        return Task.CompletedTask;
+    }
 }

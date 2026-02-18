@@ -64,6 +64,7 @@ public class ApplicationController : Controller
             {
                 Id = a.Id,
                 Status = a.Status.ToString(),
+                MembershipTier = a.MembershipTier,
                 SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
                 ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
                 StatusBadgeClass = a.Status.GetBadgeClass()
@@ -130,10 +131,18 @@ public class ApplicationController : Controller
 
         var now = _clock.GetCurrentInstant();
 
+        // Validate tier is not Volunteer (applications are for Colaborador/Asociado only)
+        if (model.MembershipTier == MembershipTier.Volunteer)
+        {
+            ModelState.AddModelError(nameof(model.MembershipTier), _localizer["Application_InvalidTier"].Value);
+            return View(model);
+        }
+
         var application = new MemberApplication
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
+            MembershipTier = model.MembershipTier,
             Motivation = model.Motivation,
             AdditionalInfo = model.AdditionalInfo,
             Language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,

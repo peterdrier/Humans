@@ -325,6 +325,52 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("added_to_team");
     }
 
+    /// <inheritdoc />
+    public async Task SendSignupRejectedAsync(
+        string userEmail,
+        string userName,
+        string? reason,
+        CancellationToken cancellationToken = default)
+    {
+        var subject = _localizer["Email_SignupRejected_Subject"].Value;
+        var body = $"""
+            <h2>Signup Update</h2>
+            <p>Dear {HtmlEncode(userName)},</p>
+            <p>Thank you for your interest in joining us. After careful review,
+            we regret to inform you that we are unable to approve your signup at this time.</p>
+            {(string.IsNullOrEmpty(reason) ? "" : $"<p><strong>Reason:</strong> {HtmlEncode(reason)}</p>")}
+            <p>If you have any questions or would like to discuss this decision,
+            please contact us at <a href="mailto:{_settings.AdminAddress}">{_settings.AdminAddress}</a>.</p>
+            <p>Best regards,<br/>The Humans Team</p>
+            """;
+
+        await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("signup_rejected");
+    }
+
+    /// <inheritdoc />
+    public async Task SendTermRenewalReminderAsync(
+        string userEmail,
+        string userName,
+        string tierName,
+        string expiresAt,
+        CancellationToken cancellationToken = default)
+    {
+        var subject = string.Format(CultureInfo.CurrentCulture, _localizer["Email_TermRenewalReminder_Subject"].Value, tierName);
+        var body = $"""
+            <h2>Membership Term Renewal</h2>
+            <p>Dear {HtmlEncode(userName)},</p>
+            <p>Your <strong>{HtmlEncode(tierName)}</strong> membership term is expiring on <strong>{HtmlEncode(expiresAt)}</strong>.</p>
+            <p>If you would like to continue as a {HtmlEncode(tierName)}, please submit a renewal application before your term ends.</p>
+            <p><a href="{_settings.BaseUrl}/Application/Create">Submit Renewal Application</a></p>
+            <p>If you do not renew, you will remain an active volunteer but will no longer have {HtmlEncode(tierName)}-level access.</p>
+            <p>Thank you for your continued involvement!<br/>The Humans Team</p>
+            """;
+
+        await SendEmailAsync(userEmail, subject, body, cancellationToken);
+        _metrics.RecordEmailSent("term_renewal_reminder");
+    }
+
     private async Task SendEmailAsync(
         string toAddress,
         string subject,

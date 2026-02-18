@@ -21,7 +21,8 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Profile",     // Set up profile during onboarding
         "Admin",       // Has its own Roles = "Board,Admin" gate
         "Human",       // Public profile viewing
-        "Language",    // Language switching
+        "Language",         // Language switching
+        "OnboardingReview", // Has its own coordinator/Board role gate
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -34,8 +35,9 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        // Admin/Board bypass — they always have access
-        if (user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board))
+        // Admin/Board/Coordinator bypass — they always have access
+        if (user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board) ||
+            user.IsInRole(RoleNames.ConsentCoordinator) || user.IsInRole(RoleNames.VolunteerCoordinator))
         {
             return next();
         }

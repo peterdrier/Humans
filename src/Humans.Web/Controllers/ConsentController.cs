@@ -7,7 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
@@ -241,6 +243,21 @@ public class ConsentController : Controller
         _logger.LogInformation(
             "User {UserId} consented to document {DocumentName} version {Version}",
             user.Id, version.LegalDocument.Name, version.VersionNumber);
+
+        // Check if user now has all required consents and needs consent check
+        var profile = await _dbContext.Profiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
+        if (profile != null && !profile.IsApproved && profile.ConsentCheckStatus == null)
+        {
+            var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
+                user.Id, SystemTeamIds.Volunteers);
+            if (hasAllConsents)
+            {
+                profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
+                profile.UpdatedAt = _clock.GetCurrentInstant();
+                await _dbContext.SaveChangesAsync();
+                _logger.LogInformation("User {UserId} has all consents signed, consent check set to Pending", user.Id);
+            }
+        }
 
         // Sync system team memberships (adds user if eligible + all consents done)
         await _systemTeamSyncJob.SyncVolunteersMembershipForUserAsync(user.Id);

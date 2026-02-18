@@ -207,6 +207,84 @@
                         <div class="form-text">@Localizer["ProfileEdit_ContributionInterestsHelp"]</div>
                     </div>
 
+                    @if (Model.IsInitialSetup)
+                    {
+                        <hr />
+                        <h5>@Localizer["Profile_MembershipTier"]</h5>
+                        <p class="text-muted small mb-3">@Localizer["ProfileEdit_TierDescription"]</p>
+
+                        var isVolunteer = Model.SelectedTier == Humans.Domain.Enums.MembershipTier.Volunteer;
+                        var isColaborador = Model.SelectedTier == Humans.Domain.Enums.MembershipTier.Colaborador;
+                        var isAsociado = Model.SelectedTier == Humans.Domain.Enums.MembershipTier.Asociado;
+                        <div class="mb-3">
+                            <div class="form-check mb-2">
+                                @if (Model.IsTierLocked)
+                                {
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@isVolunteer" disabled />
+                                }
+                                else
+                                {
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@isVolunteer" />
+                                }
+                                <label class="form-check-label" for="tierVolunteer">
+                                    <strong>Volunteer</strong> — @Localizer["ProfileEdit_TierVolunteerDesc"]
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                @if (Model.IsTierLocked)
+                                {
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@isColaborador" disabled />
+                                }
+                                else
+                                {
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@isColaborador" />
+                                }
+                                <label class="form-check-label" for="tierColaborador">
+                                    <strong>Colaborador</strong> — @Localizer["ProfileEdit_TierColaboradorDesc"]
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                @if (Model.IsTierLocked)
+                                {
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@isAsociado" disabled />
+                                }
+                                else
+                                {
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@isAsociado" />
+                                }
+                                <label class="form-check-label" for="tierAsociado">
+                                    <strong>Asociado</strong> — @Localizer["ProfileEdit_TierAsociadoDesc"]
+                                </label>
+                            </div>
+                            @if (Model.IsTierLocked)
+                            {
+                                <div class="form-text text-warning">@Localizer["ProfileEdit_TierLocked"]</div>
+                            }
+                        </div>
+
+                        <div id="applicationSection" style="display: @(Model.SelectedTier != Humans.Domain.Enums.MembershipTier.Volunteer ? "block" : "none");">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h6>@Localizer["ProfileEdit_ApplicationSection"]</h6>
+                                    <p class="text-muted small mb-3">@Localizer["ProfileEdit_ApplicationDescription"]</p>
+
+                                    <div class="mb-3">
+                                        <label asp-for="ApplicationMotivation" class="form-label">@Localizer["Profile_Motivation"]</label>
+                                        <textarea asp-for="ApplicationMotivation" class="form-control" rows="4" placeholder="@Localizer["ProfileEdit_MotivationPlaceholder"].Value"></textarea>
+                                        <span asp-validation-for="ApplicationMotivation" class="text-danger"></span>
+                                        <div class="form-text">@Localizer["ProfileEdit_MotivationHelp"]</div>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label asp-for="ApplicationAdditionalInfo" class="form-label">@Localizer["Profile_AdditionalInfo"]</label>
+                                        <textarea asp-for="ApplicationAdditionalInfo" class="form-control" rows="3"></textarea>
+                                        <span asp-validation-for="ApplicationAdditionalInfo" class="text-danger"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
                     <hr />
                     <h5>@Localizer["Profile_BurnerCV"]</h5>
                     <p class="text-muted small mb-3">
@@ -615,6 +693,20 @@
                 container.appendChild(row);
                 setupHistoryRow(row);
                 row.querySelector('input[type="date"]').focus();
+            });
+        })();
+    </script>
+    <script>
+        // Tier selection show/hide for application section
+        (function() {
+            const tierRadios = document.querySelectorAll('input[name="SelectedTier"]');
+            const appSection = document.getElementById('applicationSection');
+            if (!appSection || tierRadios.length === 0) return;
+
+            tierRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    appSection.style.display = this.value === 'Volunteer' ? 'none' : 'block';
+                });
             });
         })();
     </script>

@@ -1,0 +1,109 @@
+@model Humans.Web.Models.BoardVotingDashboardViewModel
+@{
+    ViewData["Title"] = Localizer["BoardVoting_Title"].Value;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@Localizer["BoardVoting_Title"]</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i> @Localizer["OnboardingReview_Title"]
+    </a>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (Model.Applications.Count == 0)
+{
+    <div class="alert alert-success">
+        @Localizer["BoardVoting_NoApplications"]
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>@Localizer["BoardVoting_Applicant"]</th>
+                            <th>@Localizer["BoardVoting_Tier"]</th>
+                            <th>@Localizer["Governance_Submitted"]</th>
+                            @foreach (var member in Model.BoardMembers)
+                            {
+                                <th class="text-center" style="min-width: 80px;">
+                                    <small>@member.DisplayName</small>
+                                </th>
+                            }
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            MembershipTier? lastTier = null;
+                        }
+                        @foreach (var app in Model.Applications)
+                        {
+                            if (lastTier != app.MembershipTier)
+                            {
+                                lastTier = app.MembershipTier;
+                                <tr class="table-secondary">
+                                    <td colspan="@(Model.BoardMembers.Count + 4)">
+                                        <strong>@app.MembershipTier</strong>
+                                    </td>
+                                </tr>
+                            }
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <vc:user-avatar profile-picture-url="@app.ProfilePictureUrl"
+                                                        display-name="@app.DisplayName"
+                                                        size="32"
+                                                        css-class="me-2" />
+                                        <span>@app.DisplayName</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge @(app.MembershipTier == MembershipTier.Asociado ? "bg-purple" : "bg-info")">
+                                        @app.MembershipTier
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>@app.SubmittedAt.ToString("d MMM yyyy")</small>
+                                </td>
+                                @foreach (var member in Model.BoardMembers)
+                                {
+                                    var hasVote = app.VotesByBoardMember.TryGetValue(member.UserId, out var cell);
+                                    <td class="text-center">
+                                        @if (hasVote && cell?.Vote != null)
+                                        {
+                                            var badgeClass = cell.Vote switch
+                                            {
+                                                VoteChoice.Yay => "bg-success",
+                                                VoteChoice.Maybe => "bg-warning text-dark",
+                                                VoteChoice.No => "bg-danger",
+                                                VoteChoice.Abstain => "bg-secondary",
+                                                _ => "bg-secondary"
+                                            };
+                                            <span class="badge @badgeClass" title="@cell.Note">@cell.Vote</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">&mdash;</span>
+                                        }
+                                    </td>
+                                }
+                                <td class="text-end">
+                                    <a asp-action="BoardVotingDetail" asp-route-applicationId="@app.ApplicationId"
+                                       class="btn btn-sm btn-outline-primary">
+                                        @Localizer["BoardVoting_Details"]
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

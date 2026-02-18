@@ -29,6 +29,13 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplicati
         builder.Property(a => a.ReviewNotes)
             .HasMaxLength(4000);
 
+        builder.Property(a => a.MembershipTier)
+            .IsRequired()
+            .HasConversion<string>();
+
+        builder.Property(a => a.DecisionNote)
+            .HasMaxLength(4000);
+
         builder.Property(a => a.SubmittedAt)
             .IsRequired();
 
@@ -45,10 +52,16 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplicati
             .HasForeignKey(sh => sh.ApplicationId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(a => a.BoardVotes)
+            .WithOne(bv => bv.Application)
+            .HasForeignKey(bv => bv.ApplicationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(a => a.UserId);
         builder.HasIndex(a => a.Status);
         builder.HasIndex(a => a.SubmittedAt);
         builder.HasIndex(a => new { a.UserId, a.Status });
+        builder.HasIndex(a => a.MembershipTier);
 
         // Ignore the state machine property
         builder.Ignore(a => a.StateMachine);

@@ -32,5 +32,11 @@ public enum SystemTeamType
     /// Asociados (voting members) with approved applications.
     /// Auto-synced based on Application status.
     /// </summary>
-    Asociados = 4
+    Asociados = 4,
+
+    /// <summary>
+    /// Colaboradors (active contributors) with approved applications.
+    /// Auto-synced based on Application status.
+    /// </summary>
+    Colaboradors = 5
 }

@@ -56,5 +56,12 @@ public static class RecurringJobExtensions
             "drive-activity-monitor",
             job => job.ExecuteAsync(CancellationToken.None),
             Cron.Hourly);
+
+        // Send term renewal reminders to Colaboradors/Asociados whose terms expire within 90 days.
+        // Runs weekly on Mondays at 05:00.
+        RecurringJob.AddOrUpdate<TermRenewalReminderJob>(
+            "term-renewal-reminder",
+            job => job.ExecuteAsync(CancellationToken.None),
+            "0 5 * * 1");
     }
 }

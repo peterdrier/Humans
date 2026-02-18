@@ -158,10 +158,53 @@ public class Profile
     public bool IsSuspended { get; set; }
 
     /// <summary>
-    /// Whether the member has been approved by the Board for volunteer enrollment.
-    /// New profiles default to false; Board must approve before SystemTeamSyncJob enrolls them.
+    /// Whether the member has been approved for volunteer enrollment.
+    /// Set automatically when consent check is cleared. New profiles default to false.
     /// </summary>
     public bool IsApproved { get; set; }
+
+    /// <summary>
+    /// The member's current membership tier. Tracked on Profile, not as a RoleAssignment.
+    /// Default is Volunteer; updated to Colaborador/Asociado when a tier Application is approved.
+    /// </summary>
+    public MembershipTier MembershipTier { get; set; }
+
+    /// <summary>
+    /// Status of the consent check performed by a Consent Coordinator.
+    /// Null until all required consents are signed (then auto-set to Pending).
+    /// Cleared triggers auto-approve as Volunteer. Independent of tier applications.
+    /// </summary>
+    public ConsentCheckStatus? ConsentCheckStatus { get; set; }
+
+    /// <summary>
+    /// When the consent check was performed (cleared or flagged).
+    /// </summary>
+    public Instant? ConsentCheckAt { get; set; }
+
+    /// <summary>
+    /// ID of the Consent Coordinator who performed the consent check.
+    /// </summary>
+    public Guid? ConsentCheckedByUserId { get; set; }
+
+    /// <summary>
+    /// Notes from the Consent Coordinator (especially when flagging).
+    /// </summary>
+    public string? ConsentCheckNotes { get; set; }
+
+    /// <summary>
+    /// Reason for rejection (when an Admin rejects a flagged consent check).
+    /// </summary>
+    public string? RejectionReason { get; set; }
+
+    /// <summary>
+    /// When the profile was rejected.
+    /// </summary>
+    public Instant? RejectedAt { get; set; }
+
+    /// <summary>
+    /// ID of the Admin who rejected the profile.
+    /// </summary>
+    public Guid? RejectedByUserId { get; set; }
 
     /// <summary>
     /// Computes the current membership status based on role assignments and consent records.

@@ -58,6 +58,7 @@
   <data name="Nav_Governance" xml:space="preserve"><value>Governance</value></data>
   <data name="Nav_Privacy" xml:space="preserve"><value>Privacy</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
+  <data name="Nav_OnboardingReview" xml:space="preserve"><value>Coda di revisione</value></data>
 
 
   <!-- ======================== -->
@@ -142,11 +143,18 @@
   <data name="Dashboard_Step_Profile" xml:space="preserve"><value>Completa il tuo profilo</value></data>
   <data name="Dashboard_Step_Consents" xml:space="preserve"><value>Rivedi e accetta i documenti richiesti</value></data>
   <data name="Dashboard_Step_Approval" xml:space="preserve"><value>Il consiglio esamina e approva il tuo account</value></data>
+  <data name="Dashboard_Step_ConsentCheck" xml:space="preserve"><value>Un coordinatore verifica e approva i tuoi documenti</value></data>
+  <data name="Dashboard_MembershipTier" xml:space="preserve"><value>Livello di adesione</value></data>
+  <data name="Dashboard_TierApplicationPending" xml:space="preserve"><value>La tua domanda di livello &#xE8; in attesa di esame da parte del Consiglio.</value></data>
+  <data name="Dashboard_TierActive" xml:space="preserve"><value>Il tuo livello di adesione &#xE8; attivo.</value></data>
   <data name="Dashboard_YourMembership" xml:space="preserve"><value>Il Suo stato di volontario</value></data>
   <data name="Dashboard_MemberSince" xml:space="preserve"><value>Membro dal</value></data>
   <data name="Dashboard_LastLogin" xml:space="preserve"><value>Ultimo accesso</value></data>
   <data name="Dashboard_QuickLinks" xml:space="preserve"><value>Link rapidi</value></data>
   <data name="Dashboard_ManageConsents" xml:space="preserve"><value>Esamina accordi</value></data>
+  <data name="Dashboard_RejectedTitle" xml:space="preserve"><value>Registrazione rifiutata</value></data>
+  <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>La Sua registrazione &#xE8; stata esaminata e non &#xE8; stata approvata. Per domande, contatti il team di amministrazione.</value></data>
+  <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motivo</value></data>
 
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
@@ -181,6 +189,19 @@
   <data name="Profile_AddSome" xml:space="preserve"><value>Aggiungi</value></data>
   <data name="Profile_Teams" xml:space="preserve"><value>Team</value></data>
   <data name="Profile_Lead" xml:space="preserve"><value>Responsabile del team</value></data>
+  <data name="Profile_MembershipTier" xml:space="preserve"><value>Livello di adesione</value></data>
+  <data name="Profile_Motivation" xml:space="preserve"><value>Motivazione</value></data>
+  <data name="Profile_AdditionalInfo" xml:space="preserve"><value>Informazioni aggiuntive (facoltativo)</value></data>
+  <data name="Profile_MotivationRequired" xml:space="preserve"><value>Una dichiarazione di motivazione &#xE8; richiesta per le domande di Colaborador e Asociado.</value></data>
+  <data name="ProfileEdit_TierDescription" xml:space="preserve"><value>Scegli come vuoi partecipare. I volontari hanno pieno accesso a tutte le risorse della comunit&#xE0;. Colaboradors e Asociados assumono responsabilit&#xE0; di governance aggiuntive e richiedono l'approvazione del Consiglio.</value></data>
+  <data name="ProfileEdit_TierVolunteerDesc" xml:space="preserve"><value>Accesso completo alla comunit&#xE0;, ai team e agli eventi</value></data>
+  <data name="ProfileEdit_TierColaboradorDesc" xml:space="preserve"><value>Contributore attivo con mandato di 2 anni (approvazione del Consiglio richiesta)</value></data>
+  <data name="ProfileEdit_TierAsociadoDesc" xml:space="preserve"><value>Membro votante con diritti di governance e mandato di 2 anni (approvazione del Consiglio richiesta)</value></data>
+  <data name="ProfileEdit_TierLocked" xml:space="preserve"><value>Il tuo livello &#xE8; bloccato perch&#xE9; hai una domanda attiva o in sospeso.</value></data>
+  <data name="ProfileEdit_ApplicationSection" xml:space="preserve"><value>Domanda</value></data>
+  <data name="ProfileEdit_ApplicationDescription" xml:space="preserve"><value>Raccontaci della tua motivazione. Questo verr&#xE0; esaminato dal Consiglio insieme al tuo profilo.</value></data>
+  <data name="ProfileEdit_MotivationPlaceholder" xml:space="preserve"><value>Perch&#xE9; vuoi diventare Colaborador/Asociado? Cosa speri di contribuire?</value></data>
+  <data name="ProfileEdit_MotivationHelp" xml:space="preserve"><value>Minimo 50 caratteri. Questo aiuta il Consiglio a comprendere i tuoi obiettivi.</value></data>
   <data name="Profile_BurnerCV" xml:space="preserve"><value>Burner CV</value></data>
   <data name="Profile_NoCVEntries" xml:space="preserve"><value>Nessuna voce presente.</value></data>
   <data name="Profile_AddFirstEntry" xml:space="preserve"><value>Aggiungi la prima voce</value></data>
@@ -346,6 +367,7 @@
 
   <!-- Application Controller TempData -->
   <data name="Application_AlreadyPending" xml:space="preserve"><value>Ha già una domanda in sospeso.</value></data>
+  <data name="Application_InvalidTier" xml:space="preserve"><value>Selezionare Colaborador o Asociado per la domanda.</value></data>
   <data name="Application_ConfirmAccuracy" xml:space="preserve"><value>Deve confermare l'accuratezza delle Sue informazioni.</value></data>
   <data name="Application_Submitted" xml:space="preserve"><value>La Sua domanda è stata inviata con successo!</value></data>
   <data name="Application_CannotWithdraw" xml:space="preserve"><value>Questa domanda non può essere ritirata.</value></data>
@@ -533,6 +555,7 @@
   <data name="Email_ApplicationApproved_Subject" xml:space="preserve"><value>Benvenuto/a su Humans!</value></data>
   <data name="Email_ApplicationApproved_Heading" xml:space="preserve"><value>La Sua domanda è stata approvata!</value></data>
   <data name="Email_ApplicationRejected_Subject" xml:space="preserve"><value>Riguardo la Sua domanda di iscrizione</value></data>
+  <data name="Email_SignupRejected_Subject" xml:space="preserve"><value>Riguardo la Sua registrazione</value></data>
   <data name="Email_ReConsentRequired_Subject_Single" xml:space="preserve"><value>Azione richiesta: {0} aggiornato</value><comment>{0} = document name</comment></data>
   <data name="Email_ReConsentRequired_Subject_Multiple" xml:space="preserve"><value>Azione richiesta: Aggiornamento di più documenti legali</value></data>
   <data name="Email_ReConsentReminder_Subject" xml:space="preserve"><value>Promemoria: {0} giorni per esaminare i documenti aggiornati</value><comment>{0} = days remaining</comment></data>
@@ -604,6 +627,9 @@
   <data name="AdminHuman_Suspended" xml:space="preserve"><value>Sospeso</value></data>
   <data name="AdminHuman_PendingApproval" xml:space="preserve"><value>In attesa di approvazione</value></data>
   <data name="AdminHuman_Approved" xml:space="preserve"><value>Approvato</value></data>
+  <data name="AdminHuman_MembershipTier" xml:space="preserve"><value>Livello di adesione</value></data>
+  <data name="AdminHuman_ConsentCheck" xml:space="preserve"><value>Verifica del consenso</value></data>
+  <data name="AdminHuman_NotStarted" xml:space="preserve"><value>Non avviato</value></data>
   <data name="AdminHuman_UserId" xml:space="preserve"><value>ID utente</value></data>
   <data name="AdminHuman_FullName" xml:space="preserve"><value>Nome completo</value></data>
   <data name="AdminHuman_AdminNotes" xml:space="preserve"><value>Note del consiglio</value></data>
@@ -805,5 +831,72 @@
   <data name="Profile_BoardNotes" xml:space="preserve"><value>Note per il Consiglio</value></data>
   <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve"><value>Note private per il Consiglio. Visibili solo a te e ai membri del Consiglio.</value></data>
   <data name="Profile_BoardInformation" xml:space="preserve"><value>Consiglio &amp; informazioni private</value></data>
+
+  <!-- Onboarding Review -->
+  <data name="OnboardingReview_Title" xml:space="preserve"><value>Coda di revisione onboarding</value></data>
+  <data name="OnboardingReview_DetailTitle" xml:space="preserve"><value>Revisione: {0}</value></data>
+  <data name="OnboardingReview_NoPending" xml:space="preserve"><value>Nessun human in attesa di verifica del consenso.</value></data>
+  <data name="OnboardingReview_PendingSection" xml:space="preserve"><value>In attesa di revisione</value></data>
+  <data name="OnboardingReview_FlaggedSection" xml:space="preserve"><value>Segnalato per approfondimento</value></data>
+  <data name="OnboardingReview_Pending" xml:space="preserve"><value>In attesa</value></data>
+  <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Segnalato</value></data>
+  <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>Riepilogo del profilo</value></data>
+  <data name="OnboardingReview_LegalName" xml:space="preserve"><value>Nome legale</value></data>
+  <data name="OnboardingReview_HasApplication" xml:space="preserve"><value>Ha una domanda</value></data>
+  <data name="OnboardingReview_Consents" xml:space="preserve"><value>Consensi</value></data>
+  <data name="OnboardingReview_Signed" xml:space="preserve"><value>firmato/i</value></data>
+  <data name="OnboardingReview_ApplicationMotivation" xml:space="preserve"><value>Motivazione della domanda</value></data>
+  <data name="OnboardingReview_PreviousNotes" xml:space="preserve"><value>Note di revisione precedenti</value></data>
+  <data name="OnboardingReview_Actions" xml:space="preserve"><value>Azioni</value></data>
+  <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve"><value>Note facoltative...</value></data>
+  <data name="OnboardingReview_ClearButton" xml:space="preserve"><value>Approva &amp; Conferma</value></data>
+  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>L'approvazione confermer&#xE0; automaticamente questo human come volontario.</value></data>
+  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>Questo human verr&#xE0; approvato come volontario. Continuare?</value></data>
+  <data name="OnboardingReview_FlagButton" xml:space="preserve"><value>Segnala per revisione</value></data>
+  <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve"><value>Motivo della segnalazione...</value></data>
+  <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Questo human verr&#xE0; segnalato per ulteriore revisione. Continuare?</value></data>
+  <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Questo human &#xE8; gi&#xE0; stato approvato.</value></data>
+  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Verifica del consenso completata. Human approvato come volontario.</value></data>
+  <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human segnalato per ulteriore revisione.</value></data>
+  <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Rifiuta registrazione</value></data>
+  <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motivo del rifiuto...</value></data>
+  <data name="OnboardingReview_RejectConfirm" xml:space="preserve"><value>Sei sicuro di voler rifiutare la registrazione di questo human? Questa azione non pu&#xF2; essere annullata.</value></data>
+  <data name="OnboardingReview_RejectHelp" xml:space="preserve"><value>Il rifiuto negher&#xE0; permanentemente la registrazione di questo human e invierà un'email di notifica.</value></data>
+  <data name="OnboardingReview_Rejected" xml:space="preserve"><value>La registrazione &#xE8; stata rifiutata.</value></data>
+  <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>Questo human &#xE8; gi&#xE0; stato rifiutato.</value></data>
+
+  <!-- Board Voting -->
+  <data name="Nav_BoardVoting" xml:space="preserve"><value>Voto del Consiglio</value></data>
+  <data name="BoardVoting_Title" xml:space="preserve"><value>Pannello votazioni del Consiglio</value></data>
+  <data name="BoardVoting_DetailTitle" xml:space="preserve"><value>Votazione: {0}</value></data>
+  <data name="BoardVoting_NoApplications" xml:space="preserve"><value>Nessuna domanda in attesa di votazione.</value></data>
+  <data name="BoardVoting_Applicant" xml:space="preserve"><value>Candidato</value></data>
+  <data name="BoardVoting_Tier" xml:space="preserve"><value>Livello</value></data>
+  <data name="BoardVoting_Details" xml:space="preserve"><value>Dettagli</value></data>
+  <data name="BoardVoting_Vote" xml:space="preserve"><value>Voto</value></data>
+  <data name="BoardVoting_Note" xml:space="preserve"><value>Nota</value></data>
+  <data name="BoardVoting_CastVote" xml:space="preserve"><value>Esprimi il tuo voto</value></data>
+  <data name="BoardVoting_YourVote" xml:space="preserve"><value>Il tuo voto</value></data>
+  <data name="BoardVoting_VotesSoFar" xml:space="preserve"><value>Voti finora</value></data>
+  <data name="BoardVoting_BoardMember" xml:space="preserve"><value>Membro del Consiglio</value></data>
+  <data name="BoardVoting_VoteSaved" xml:space="preserve"><value>Il tuo voto &#xE8; stato registrato.</value></data>
+  <data name="BoardVoting_FinalizeDecision" xml:space="preserve"><value>Finalizza la decisione</value></data>
+  <data name="BoardVoting_MeetingDate" xml:space="preserve"><value>Data della riunione</value></data>
+  <data name="BoardVoting_DecisionNote" xml:space="preserve"><value>Nota di decisione</value></data>
+  <data name="BoardVoting_DecisionNotePlaceholder" xml:space="preserve"><value>Riepilogo della decisione del Consiglio...</value></data>
+  <data name="BoardVoting_Approve" xml:space="preserve"><value>Approva</value></data>
+  <data name="BoardVoting_Reject" xml:space="preserve"><value>Rifiuta</value></data>
+  <data name="BoardVoting_ApproveConfirm" xml:space="preserve"><value>Questo approver&#xE0; la domanda e conceder&#xE0; il livello di appartenenza. Continuare?</value></data>
+  <data name="BoardVoting_RejectConfirm" xml:space="preserve"><value>Questo rifiuter&#xE0; la domanda. Continuare?</value></data>
+  <data name="BoardVoting_Finalized" xml:space="preserve"><value>La decisione sulla domanda &#xE8; stata finalizzata.</value></data>
+  <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve"><value>Questa domanda non &#xE8; pi&#xF9; aperta al voto.</value></data>
+  <data name="BoardVoting_AdditionalInfo" xml:space="preserve"><value>Informazioni aggiuntive</value></data>
+
+  <!-- Term Renewal -->
+  <data name="Dashboard_TermExpires" xml:space="preserve"><value>Il mandato scade: {0}</value><comment>{0} = formatted date</comment></data>
+  <data name="Dashboard_TermExpiresSoon" xml:space="preserve"><value>Il tuo mandato scade il {0}. Invia una domanda di rinnovo per continuare.</value><comment>{0} = formatted date</comment></data>
+  <data name="Dashboard_TermExpired" xml:space="preserve"><value>Il tuo mandato &#xE8; scaduto. Invia una domanda di rinnovo per ripristinare il tuo livello.</value></data>
+  <data name="Dashboard_RenewNow" xml:space="preserve"><value>Rinnova ora</value></data>
+  <data name="Email_TermRenewalReminder_Subject" xml:space="preserve"><value>Il tuo mandato di {0} sta per scadere</value><comment>{0} = tier name</comment></data>
 
 </root>

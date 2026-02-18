@@ -44,9 +44,51 @@
                     </div>
                 </div>
 
+                @if (Model.IsRejected)
+                {
+                    <div class="alert alert-danger mt-3 mb-0">
+                        <strong><i class="fa-solid fa-ban me-1"></i> Rejected</strong>
+                        @if (!string.IsNullOrEmpty(Model.RejectionReason))
+                        {
+                            <p class="mb-1 mt-1" style="white-space: pre-wrap;">@Model.RejectionReason</p>
+                        }
+                        <small class="text-muted">
+                            @if (Model.RejectedAt.HasValue)
+                            {
+                                @Model.RejectedAt.Value.ToString("d MMMM yyyy HH:mm")
+                            }
+                            @if (!string.IsNullOrEmpty(Model.RejectedByName))
+                            {
+                                <text> by @Model.RejectedByName</text>
+                            }
+                        </small>
+                    </div>
+                }
+
                 <hr />
 
                 <dl class="row mb-0">
+                    <dt class="col-sm-3">@Localizer["AdminHuman_MembershipTier"]</dt>
+                    <dd class="col-sm-9">@Model.MembershipTier</dd>
+
+                    <dt class="col-sm-3">@Localizer["AdminHuman_ConsentCheck"]</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.ConsentCheckStatus.HasValue)
+                        {
+                            var badgeClass = Model.ConsentCheckStatus.Value switch
+                            {
+                                Humans.Domain.Enums.ConsentCheckStatus.Cleared => "bg-success",
+                                Humans.Domain.Enums.ConsentCheckStatus.Flagged => "bg-danger",
+                                _ => "bg-warning"
+                            };
+                            <span class="badge @badgeClass">@Model.ConsentCheckStatus.Value</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted">@Localizer["AdminHuman_NotStarted"]</span>
+                        }
+                    </dd>
+
                     <dt class="col-sm-3">@Localizer["AdminHuman_UserId"]</dt>
                     <dd class="col-sm-9"><code>@Model.UserId</code></dd>
 
@@ -242,6 +284,20 @@
                             <small class="form-text text-muted">@Localizer["AdminHuman_AdminNotesGdprHint"]</small>
                         </div>
                         <button type="submit" class="btn btn-danger w-100">@Localizer["AdminHuman_SuspendMember"]</button>
+                    </form>
+                }
+                @if (Model.HasProfile && !Model.IsRejected)
+                {
+                    <hr />
+                    <form asp-action="RejectSignup" asp-route-id="@Model.UserId" method="post"
+                          data-confirm="Are you sure you want to reject this human's signup? This cannot be undone.">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-2">
+                            <textarea name="reason" class="form-control" rows="2" placeholder="Reason for rejection..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i class="fa-solid fa-ban me-1"></i> Reject Signup
+                        </button>
                     </form>
                 }
             </div>

@@ -117,6 +117,18 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 SystemTeamType = SystemTeamType.Asociados,
                 CreatedAt = SeedTimestamp,
                 UpdatedAt = SeedTimestamp
+            },
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0001-000000000005"),
+                Name = "Colaboradors",
+                Description = "Active contributors with approved colaborador applications",
+                Slug = "colaboradors",
+                IsActive = true,
+                RequiresApproval = false,
+                SystemTeamType = SystemTeamType.Colaboradors,
+                CreatedAt = SeedTimestamp,
+                UpdatedAt = SeedTimestamp
             });
     }
 }

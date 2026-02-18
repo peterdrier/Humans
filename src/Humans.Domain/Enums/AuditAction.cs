@@ -24,4 +24,10 @@ public enum AuditAction
     TeamMemberRoleChanged,
     AnomalousPermissionDetected,
     MembershipsRevokedOnDeletionRequest,
+    ConsentCheckCleared,
+    ConsentCheckFlagged,
+    SignupRejected,
+    TierApplicationApproved,
+    TierApplicationRejected,
+    TierDowngraded,
 }

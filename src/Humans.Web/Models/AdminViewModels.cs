@@ -1,3 +1,5 @@
+using Humans.Domain.Enums;
+
 namespace Humans.Web.Models;
 
 public class AdminDashboardViewModel
@@ -57,9 +59,17 @@ public class AdminHumanDetailViewModel
     public bool IsApproved { get; set; }
     public bool HasProfile { get; set; }
     public string? AdminNotes { get; set; }
+    public MembershipTier MembershipTier { get; set; }
+    public ConsentCheckStatus? ConsentCheckStatus { get; set; }
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public string? EmergencyContactRelationship { get; set; }
+
+    // Rejection
+    public bool IsRejected { get; set; }
+    public string? RejectionReason { get; set; }
+    public DateTime? RejectedAt { get; set; }
+    public string? RejectedByName { get; set; }
 
     // Stats
     public int ApplicationCount { get; set; }
@@ -80,6 +90,7 @@ public class AdminApplicationListViewModel
 {
     public List<AdminApplicationViewModel> Applications { get; set; } = [];
     public string? StatusFilter { get; set; }
+    public string? TierFilter { get; set; }
     public int TotalCount { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
@@ -95,6 +106,7 @@ public class AdminApplicationViewModel
     public string StatusBadgeClass { get; set; } = "bg-secondary";
     public DateTime SubmittedAt { get; set; }
     public string MotivationPreview { get; set; } = string.Empty;
+    public string MembershipTier { get; set; } = string.Empty;
 }
 
 public class AdminApplicationDetailViewModel

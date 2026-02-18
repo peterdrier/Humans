@@ -37,7 +37,7 @@ Clean Architecture with 4 layers:
 
 ## Domain Entities
 
-See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relationships, and serialization notes. Key entities: `User`, `Profile`, `ContactField`, `Application` (Asociado only), `RoleAssignment`, `LegalDocument`/`DocumentVersion`, `ConsentRecord` (append-only), `Team`/`TeamMember`, `GoogleResource`.
+See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relationships, and serialization notes. Key entities: `User`, `Profile`, `ContactField`, `Application` (Colaborador/Asociado tier applications), `BoardVote` (transient), `RoleAssignment`, `LegalDocument`/`DocumentVersion`, `ConsentRecord` (append-only), `Team`/`TeamMember`, `GoogleResource`.
 
 ## Important: Shared Drives Only
 
@@ -49,17 +49,19 @@ See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relati
 
 The `consent_records` table has database triggers that prevent UPDATE and DELETE operations. Only INSERT is allowed to maintain GDPR audit trail integrity.
 
-## Important: Volunteer vs Asociado — Two Separate Concepts
+## Important: Volunteer vs Tier Applications — Separate Concepts
 
-**Volunteer** = the standard member. ~100% of users. Onboarding: sign up, complete profile, consent to legal docs, board approves → added to Volunteers team. This is NOT done through the Application entity.
+**Volunteer** = the standard member. ~100% of users. Onboarding: sign up, complete profile, consent to legal docs, Consent Coordinator clears → auto-approved → added to Volunteers team. This is NOT done through the Application entity.
 
-**Asociado** = optional governance upgrade for ~20% of volunteers. Asociados are voting members who participate in assemblies and elections. This IS the Application entity (Governance section). Applying to become an Asociado is completely optional and has no effect on volunteer access, team membership, or resources.
+**Colaborador** = active contributor with project/event responsibilities. Requires application + Board vote. 2-year term.
 
-**NEVER conflate these two flows.** The Application/Governance workflow is NOT part of volunteer onboarding. It is a separate, optional path for long-term committed volunteers who want voting rights.
+**Asociado** = voting member with governance rights (assemblies, elections). Requires application + Board vote. 2-year term.
+
+**NEVER conflate Volunteer access with tier applications.** The Application/Board Voting workflow is NOT part of volunteer onboarding. It is a separate, optional path for volunteers who want Colaborador or Asociado status. Volunteer access proceeds in parallel and is never blocked by tier applications.
 
 ## Application Workflow State Machine
 
-The Application entity is for **Asociado applications only** (optional governance membership), NOT for becoming a volunteer.
+The Application entity is for **Colaborador and Asociado tier applications only**, NOT for becoming a volunteer.
 
 ```
 Submitted → UnderReview → Approved/Rejected

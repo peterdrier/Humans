@@ -33,14 +33,28 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<LocalDate?>("BoardMeetingDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<string>("Language")
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
+
+                    b.Property<string>("MembershipTier")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Motivation")
                         .IsRequired()
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
+
+                    b.Property<Instant?>("RenewalReminderSentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Instant?>("ResolvedAt")
                         .HasColumnType("timestamp with time zone");
@@ -62,6 +76,9 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Instant>("SubmittedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<LocalDate?>("TermExpiresAt")
+                        .HasColumnType("date");
+
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -69,6 +86,8 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MembershipTier");
 
                     b.HasIndex("ReviewedByUserId");
 
@@ -196,6 +215,44 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("RelatedEntityType", "RelatedEntityId");
 
                     b.ToTable("audit_log", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.BoardVote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ApplicationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BoardMemberUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Instant?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Vote")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Instant>("VotedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationId");
+
+                    b.HasIndex("BoardMemberUserId");
+
+                    b.HasIndex("ApplicationId", "BoardMemberUserId")
+                        .IsUnique();
+
+                    b.ToTable("board_votes", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ConsentRecord", b =>
@@ -523,6 +580,19 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<Instant?>("ConsentCheckAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConsentCheckNotes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("ConsentCheckStatus")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ConsentCheckedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ContributionInterests")
                         .HasColumnType("text");
 
@@ -572,6 +642,12 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<double?>("Longitude")
                         .HasColumnType("double precision");
 
+                    b.Property<string>("MembershipTier")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("Volunteer");
+
                     b.Property<string>("PlaceId")
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
@@ -587,6 +663,16 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Instant?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RejectedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -594,6 +680,8 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ConsentCheckStatus");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -747,6 +835,18 @@ namespace Humans.Infrastructure.Migrations
                             RequiresApproval = false,
                             Slug = "asociados",
                             SystemTeamType = "Asociados",
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0001-000000000005"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
+                            Description = "Active contributors with approved colaborador applications",
+                            IsActive = true,
+                            Name = "Colaboradors",
+                            RequiresApproval = false,
+                            Slug = "colaboradors",
+                            SystemTeamType = "Colaboradors",
                             UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
                         });
                 });
@@ -1257,6 +1357,25 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Resource");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.BoardVote", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.Application", "Application")
+                        .WithMany("BoardVotes")
+                        .HasForeignKey("ApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.User", "BoardMemberUser")
+                        .WithMany()
+                        .HasForeignKey("BoardMemberUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Application");
+
+                    b.Navigation("BoardMemberUser");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.ConsentRecord", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.DocumentVersion", "DocumentVersion")
@@ -1504,6 +1623,8 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.Application", b =>
                 {
+                    b.Navigation("BoardVotes");
+
                     b.Navigation("StateHistory");
                 });
 

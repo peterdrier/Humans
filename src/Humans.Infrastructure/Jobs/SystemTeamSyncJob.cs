@@ -60,6 +60,7 @@ public class SystemTeamSyncJob
             await SyncLeadsTeamAsync(cancellationToken);
             await SyncBoardTeamAsync(cancellationToken);
             await SyncAsociadosTeamAsync(cancellationToken);
+            await SyncColaboradorsTeamAsync(cancellationToken);
 
             _metrics.RecordJobRun("system_team_sync", "success");
             _logger.LogInformation("Completed system team sync");
@@ -174,28 +175,41 @@ public class SystemTeamSyncJob
     /// Syncs the Asociados team membership based on approved applications.
     /// Members: All users with an approved Asociado application.
     /// </summary>
-    public async Task SyncAsociadosTeamAsync(CancellationToken cancellationToken = default)
-    {
-        _logger.LogDebug("Syncing Asociados team");
+    public Task SyncAsociadosTeamAsync(CancellationToken cancellationToken = default) =>
+        SyncTierTeamAsync(MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken);
 
-        var team = await GetSystemTeamAsync(SystemTeamType.Asociados, cancellationToken);
+    /// <summary>
+    /// Syncs the Colaboradors team membership based on approved Colaborador applications.
+    /// Members: All users with an approved Colaborador application who are also in the Volunteers team.
+    /// </summary>
+    public Task SyncColaboradorsTeamAsync(CancellationToken cancellationToken = default) =>
+        SyncTierTeamAsync(MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken);
+
+    private async Task SyncTierTeamAsync(MembershipTier tier, SystemTeamType teamType, Guid teamId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogDebug("Syncing {TeamType} team", teamType);
+
+        var team = await GetSystemTeamAsync(teamType, cancellationToken);
         if (team == null)
         {
-            _logger.LogWarning("Asociados system team not found");
+            _logger.LogWarning("{TeamType} system team not found", teamType);
             return;
         }
 
-        // Get all users with approved Asociado applications
-        var asociadoUserIds = await _dbContext.Applications
+        var today = _clock.GetCurrentInstant().InUtc().Date;
+
+        var userIds = await _dbContext.Applications
             .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Approved)
+            .Where(a => a.Status == ApplicationStatus.Approved
+                && a.MembershipTier == tier
+                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
             .Select(a => a.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        // Additionally filter by Asociados-team-required consents
         var eligibleSet = await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
-            asociadoUserIds, SystemTeamIds.Asociados, cancellationToken);
+            userIds, teamId, cancellationToken);
 
         await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken);
     }
@@ -250,6 +264,49 @@ public class SystemTeamSyncJob
 
         var isEligible = isLeadAnywhere
             && await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Leads, cancellationToken);
+
+        var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
+        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
+    }
+
+    /// <summary>
+    /// Syncs Colaboradors team membership for a single user. Call this after approving
+    /// a Colaborador application or after a user's Colaborador status changes.
+    /// </summary>
+    public Task SyncColaboradorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        SyncTierMembershipForUserAsync(userId, MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken);
+
+    public Task SyncAsociadosMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        SyncTierMembershipForUserAsync(userId, MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken);
+
+    private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
+        SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
+    {
+        var team = await GetSystemTeamAsync(teamType, cancellationToken);
+        if (team == null)
+        {
+            _logger.LogWarning("{TeamType} system team not found", teamType);
+            return;
+        }
+
+        var today = _clock.GetCurrentInstant().InUtc().Date;
+
+        var hasApprovedApp = await _dbContext.Applications
+            .AsNoTracking()
+            .AnyAsync(a =>
+                a.UserId == userId &&
+                a.Status == ApplicationStatus.Approved &&
+                a.MembershipTier == tier &&
+                (a.TermExpiresAt == null || a.TermExpiresAt >= today),
+                cancellationToken);
+
+        var profile = await _dbContext.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+
+        var isEligible = hasApprovedApp
+            && profile is { IsApproved: true, IsSuspended: false }
+            && await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);

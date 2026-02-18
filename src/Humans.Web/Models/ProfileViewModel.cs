@@ -160,6 +160,40 @@ public class ProfileViewModel
     public int PendingConsentCount { get; set; }
 
     /// <summary>
+    /// Whether this is the user's initial profile setup (no profile yet or not approved).
+    /// Controls visibility of tier selection and inline application sections.
+    /// </summary>
+    public bool IsInitialSetup { get; set; }
+
+    /// <summary>
+    /// Selected membership tier. During initial setup, the user can choose Colaborador/Asociado.
+    /// Defaults to Volunteer if not specified.
+    /// </summary>
+    public MembershipTier SelectedTier { get; set; } = MembershipTier.Volunteer;
+
+    /// <summary>
+    /// Whether the tier has been locked (approved or has active application).
+    /// </summary>
+    public bool IsTierLocked { get; set; }
+
+    // Inline application fields (only used during initial setup for Colaborador/Asociado)
+
+    /// <summary>
+    /// Motivation statement for Colaborador/Asociado application.
+    /// Required when SelectedTier is not Volunteer during initial setup.
+    /// </summary>
+    [StringLength(2000)]
+    [DataType(DataType.MultilineText)]
+    public string? ApplicationMotivation { get; set; }
+
+    /// <summary>
+    /// Additional information for the application.
+    /// </summary>
+    [StringLength(1000)]
+    [DataType(DataType.MultilineText)]
+    public string? ApplicationAdditionalInfo { get; set; }
+
+    /// <summary>
     /// The effective profile picture URL (custom upload takes priority over Google avatar).
     /// </summary>
     public string? EffectiveProfilePictureUrl => HasCustomProfilePicture

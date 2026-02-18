@@ -14,4 +14,16 @@ public static class RoleNames
     /// Board member role with elevated permissions.
     /// </summary>
     public const string Board = "Board";
+
+    /// <summary>
+    /// Consent Coordinator — performs safety checks on new humans during onboarding.
+    /// Can clear or flag consent checks. Bypasses MembershipRequiredFilter.
+    /// </summary>
+    public const string ConsentCoordinator = "ConsentCoordinator";
+
+    /// <summary>
+    /// Volunteer Coordinator — facilitation contact for onboarding humans.
+    /// Read-only access to onboarding review queue. Bypasses MembershipRequiredFilter.
+    /// </summary>
+    public const string VolunteerCoordinator = "VolunteerCoordinator";
 }

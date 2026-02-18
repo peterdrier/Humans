@@ -2,40 +2,49 @@
 
 ## Business Context
 
-A user's volunteer status is determined by their presence in the **Volunteers team** — the system-managed team that all active volunteers belong to. Joining this team requires both Board approval (`Profile.IsApproved`) and completion of all required legal document consents. The status is displayed on the dashboard and controls access to most application features.
+A human's volunteer status is determined by their presence in the **Volunteers team** — the system-managed team that all active volunteers belong to. Joining this team requires **consent check clearance** (which auto-sets `IsApproved`) and completion of all required legal document consents. The status is displayed on the dashboard and controls access to most application features.
 
-This is about being a **volunteer** (~100% of users). It has nothing to do with becoming an Asociado (voting member), which is a separate, optional process. See [Asociado Applications](03-asociado-applications.md).
+Volunteer access is the **universal baseline** for all membership tiers. Whether a human selects Volunteer, Colaborador, or Asociado tier, they all become Volunteers first. Tier applications (Colaborador/Asociado) proceed in parallel through the Board voting queue and do not block Volunteer access. See [Membership Tiers](15-membership-tiers.md) and [Onboarding Pipeline](16-onboarding-pipeline.md).
+
+The consent check is purely a **Volunteer-level safety gate** performed by a Consent Coordinator. It is independent of any tier application.
 
 ## User Stories
 
 ### US-5.1: View My Status
-**As a** user
-**I want to** see my current volunteer status on my dashboard
+
+**As a** human
+**I want to** see my current status on my dashboard
 **So that** I understand my standing in the organization
 
 **Acceptance Criteria:**
-- Status displayed prominently on dashboard with colored badge
+- Status displayed on dashboard
 - Onboarding checklist shown to non-volunteers explaining next steps
 - Quick links to Teams and Governance only visible to active volunteers
+- Colaborador/Asociado badge shown if applicable (no badge for Volunteer — that's everyone)
 
 ### US-5.2: Understand Status Requirements
-**As a** new user
-**I want to** see what steps I need to complete to become an active volunteer
+
+**As a** new human
+**I want to** see what steps I need to complete to become active
 **So that** I can take action
 
 **Acceptance Criteria:**
-- Dashboard shows "Getting Started" checklist: profile, consents, board approval
+- Dashboard shows "Getting Started" checklist:
+  1. Complete profile
+  2. Sign required consents
+  3. Safety check (Pending / Cleared)
 - Each step shows completion state
-- Links to relevant pages for each step
+- Links to relevant pages
 
 ### US-5.3: Track Status Changes
+
 **As an** administrator
-**I want to** monitor volunteers whose status has changed
+**I want to** monitor humans whose status has changed
 **So that** I can follow up with those at risk
 
 **Acceptance Criteria:**
-- Dashboard shows pending volunteer count
-- Filter volunteer list by pending/active/suspended
+- Dashboard shows pending count (consent check pending)
+- Filter human list by pending/active/suspended
 - Audit trail records status-changing events
 
 ## Dashboard Status
@@ -54,20 +63,27 @@ Status is computed on the dashboard based on Volunteers team presence and profil
         ┌─Yes──┴──No───┐
         │              │
    [Suspended]  ┌──────▼──────────┐
-                │ In Volunteers   │
-                │ Team?           │
+                │ Rejected?       │
+                │ (RejectedAt set)│
                 └──────┬──────────┘
                        │
-                ┌─No───┴──Yes──┐
+                ┌─Yes──┴──No───┐
                 │              │
-           [Pending]    ┌──────▼──────┐
-                        │ Missing     │
-                        │ Consents?   │
-                        └──────┬──────┘
+           [Rejected]   ┌──────▼──────────┐
+                        │ In Volunteers   │
+                        │ Team?           │
+                        └──────┬──────────┘
                                │
-                        ┌─Yes──┴──No───┐
+                        ┌─No───┴──Yes──┐
                         │              │
-                   [Inactive]     [Active]
+                   [Pending]    ┌──────▼──────┐
+                                │ Missing     │
+                                │ Consents?   │
+                                └──────┬──────┘
+                                       │
+                                ┌─Yes──┴──No───┐
+                                │              │
+                           [Inactive]     [Active]
 ```
 
 ## Status Display
@@ -75,9 +91,10 @@ Status is computed on the dashboard based on Volunteers team presence and profil
 | Status | Badge | Color | Meaning |
 |--------|-------|-------|---------|
 | Active | `bg-success` | Green | In Volunteers team, all consents current |
-| Pending | `bg-info` | Blue | Not yet in Volunteers team (awaiting approval and/or consents) |
+| Pending | `bg-info` | Blue | Not yet in Volunteers team (awaiting consent check) |
 | Inactive | `bg-warning` | Yellow | In Volunteers team but missing re-consent on updated docs |
 | Suspended | `bg-danger` | Red | Admin-suspended |
+| Rejected | `bg-danger` | Red | Consent check rejected by Admin |
 
 ## Volunteer Gating (MembershipRequiredFilter)
 
@@ -90,6 +107,14 @@ Non-volunteers are restricted from accessing most of the application. A global a
 3. `MembershipRequiredFilter` (registered globally) checks for this claim
 4. Users without the claim are redirected to the Home dashboard
 
+### Bypass Roles
+
+These roles bypass the MembershipRequiredFilter (have system access regardless of Volunteer status):
+- **Board**
+- **Admin**
+- **ConsentCoordinator**
+- **VolunteerCoordinator**
+
 ### Exempt Controllers
 
 These controllers are accessible to all authenticated users regardless of volunteer status:
@@ -97,13 +122,14 @@ These controllers are accessible to all authenticated users regardless of volunt
 - **Account** — account settings
 - **Profile** — profile creation/editing (needed during onboarding)
 - **Consent** — legal document consent (needed during onboarding)
-- **Application** — Asociado application (optional, but accessible)
+- **Application** — tier application status view
+- **OnboardingReview** — has its own role-based authorization
 - **Admin** — has its own Board/Admin role gate
 - **Human** — public member directory
 
 ### Navigation Gating
 
-The main navigation hides Teams and Governance links for non-volunteers. These are only shown when the user has the `ActiveMember` claim or holds an Admin/Board role.
+The main navigation hides Teams and Governance links for non-volunteers. These are only shown when the user has the `ActiveMember` claim or holds a bypass role.
 
 ## Volunteer Onboarding Pipeline
 
@@ -113,30 +139,40 @@ The path to becoming an active volunteer:
 Sign Up (Google OAuth)
     │
     ▼
-Complete Profile
+Complete Profile (optional: select tier + application inline)
     │
     ▼
 Sign Required Legal Documents (Volunteers team docs)
     │
     ▼
-Wait for Board Approval (Profile.IsApproved = true)
+[Auto] ConsentCheckStatus → Pending
     │
     ▼
-System adds to Volunteers team (immediate, via SyncVolunteersMembershipForUserAsync)
+Consent Coordinator reviews → Cleared
+    │
+    ▼
+[Auto] IsApproved = true → Volunteers team (immediate)
     │
     ▼
 ActiveMember claim granted → full app access
 ```
 
-Both approval and consent completion trigger an immediate check via `SystemTeamSyncJob.SyncVolunteersMembershipForUserAsync()`. Whichever happens last causes the user to be added to the Volunteers team. There is no waiting for a scheduled job.
+Consent check clearance triggers `SyncVolunteersMembershipForUserAsync()`, which immediately adds the user to the Volunteers team if all consents are signed. There is no waiting for a scheduled job.
+
+The consent check is a Volunteer safety gate only — it does not evaluate tier applications.
+
+## Migration: Existing Users
+
+Existing approved users (`IsApproved = true`) are **grandfathered in** — they receive `ConsentCheckStatus = Cleared` in the migration and are not required to go through the consent check process. The new consent check gate only applies to humans who sign up after the feature is deployed.
 
 ## Status Dependencies
 
-### Volunteers Team Eligibility (What Makes a Volunteer)
+### Volunteers Team Eligibility
 ```
 To be in the Volunteers team, a user must have ALL of:
-├── Profile.IsApproved = true (Board has approved them)
+├── Profile.IsApproved = true (set automatically by consent check clearance)
 ├── Profile.IsSuspended = false
+├── Profile.RejectedAt = null (not rejected)
 └── All required consents for the Volunteers team signed
     └── Latest DocumentVersion where EffectiveFrom <= now for each required doc
 ```
@@ -154,10 +190,10 @@ For each team the user belongs to:
 ### Becoming Active (Pending → Active)
 ```
 Triggered by:
-  - Board approves volunteer (sets IsApproved = true)
+  - Consent Coordinator clears consent check (sets IsApproved = true)
     AND all required Volunteers team consents are signed
   - OR: User signs final required consent
-    AND Profile.IsApproved is already true
+    AND consent check is already Cleared
   - Whichever happens last triggers immediate Volunteers team sync
 ```
 
@@ -175,6 +211,14 @@ Triggered by:
   - Admin sets IsSuspended = true
   - Overrides all other status considerations
   - Removed from Volunteers team by system sync
+```
+
+### Becoming Rejected (Pending → Rejected)
+```
+Triggered by:
+  - Admin rejects a flagged consent check
+  - Profile.RejectionReason set, RejectedAt set
+  - Human is notified, cannot become Volunteer unless rejection is reversed
 ```
 
 ## Compliance Automation
@@ -204,8 +248,11 @@ When a user signs the missing documents:
 
 ## Related Features
 
-- [Authentication](01-authentication.md) - ActiveMember claim, role claims
-- [Legal Documents & Consent](04-legal-documents-consent.md) - Consent completion triggers team sync
-- [Teams](06-teams.md) - Volunteers team is the source of truth for active status
-- [Background Jobs](08-background-jobs.md) - SystemTeamSyncJob handles team membership
-- [Administration](09-administration.md) - Volunteer approval, Sync System Teams action
+- [Membership Tiers](15-membership-tiers.md) — Tier definitions (Volunteer is baseline)
+- [Onboarding Pipeline](16-onboarding-pipeline.md) — Full onboarding flow
+- [Coordinator Roles](17-coordinator-roles.md) — Consent Coordinator performs safety checks
+- [Authentication](01-authentication.md) — ActiveMember claim, role claims
+- [Legal Documents & Consent](04-legal-documents-consent.md) — Consent completion triggers team sync
+- [Teams](06-teams.md) — Volunteers team is the source of truth for active status
+- [Background Jobs](08-background-jobs.md) — SystemTeamSyncJob handles team membership
+- [Administration](09-administration.md) — Admin human management

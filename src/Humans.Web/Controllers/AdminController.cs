@@ -29,6 +29,7 @@ public class AdminController : Controller
     private readonly IAuditLogService _auditLogService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IEmailService _emailService;
     private readonly IClock _clock;
     private readonly ILogger<AdminController> _logger;
     private readonly SystemTeamSyncJob _systemTeamSyncJob;
@@ -43,6 +44,7 @@ public class AdminController : Controller
         IAuditLogService auditLogService,
         IMembershipCalculator membershipCalculator,
         IRoleAssignmentService roleAssignmentService,
+        IEmailService emailService,
         IClock clock,
         ILogger<AdminController> logger,
         SystemTeamSyncJob systemTeamSyncJob,
@@ -56,6 +58,7 @@ public class AdminController : Controller
         _auditLogService = auditLogService;
         _membershipCalculator = membershipCalculator;
         _roleAssignmentService = roleAssignmentService;
+        _emailService = emailService;
         _clock = clock;
         _logger = logger;
         _systemTeamSyncJob = systemTeamSyncJob;
@@ -207,6 +210,16 @@ public class AdminController : Controller
             })
             .ToListAsync();
 
+        // Load rejected-by user name if present
+        string? rejectedByName = null;
+        if (user.Profile?.RejectedByUserId != null)
+        {
+            var rejectedByUser = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == user.Profile.RejectedByUserId.Value);
+            rejectedByName = rejectedByUser?.DisplayName;
+        }
+
         var viewModel = new AdminHumanDetailViewModel
         {
             UserId = user.Id,
@@ -219,6 +232,12 @@ public class AdminController : Controller
             IsApproved = user.Profile?.IsApproved ?? false,
             HasProfile = user.Profile != null,
             AdminNotes = user.Profile?.AdminNotes,
+            MembershipTier = user.Profile?.MembershipTier ?? MembershipTier.Volunteer,
+            ConsentCheckStatus = user.Profile?.ConsentCheckStatus,
+            IsRejected = user.Profile?.RejectedAt != null,
+            RejectionReason = user.Profile?.RejectionReason,
+            RejectedAt = user.Profile?.RejectedAt?.ToDateTimeUtc(),
+            RejectedByName = rejectedByName,
             ApplicationCount = user.Applications.Count,
             ConsentCount = user.ConsentRecords.Count,
             Applications = user.Applications
@@ -249,7 +268,7 @@ public class AdminController : Controller
     }
 
     [HttpGet("Applications")]
-    public async Task<IActionResult> Applications(string? status, int page = 1)
+    public async Task<IActionResult> Applications(string? status, string? tier, int page = 1)
     {
         var pageSize = 20;
         var query = _dbContext.Applications
@@ -268,6 +287,11 @@ public class AdminController : Controller
                 a.Status == ApplicationStatus.UnderReview);
         }
 
+        if (!string.IsNullOrWhiteSpace(tier) && Enum.TryParse<MembershipTier>(tier, out var tierEnum))
+        {
+            query = query.Where(a => a.MembershipTier == tierEnum);
+        }
+
         var totalCount = await query.CountAsync();
 
         var applications = await query
@@ -283,7 +307,8 @@ public class AdminController : Controller
                 Status = a.Status.ToString(),
                 StatusBadgeClass = a.Status.GetBadgeClass(),
                 SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
-                MotivationPreview = a.Motivation.Length > 100 ? a.Motivation.Substring(0, 100) + "..." : a.Motivation
+                MotivationPreview = a.Motivation.Length > 100 ? a.Motivation.Substring(0, 100) + "..." : a.Motivation,
+                MembershipTier = a.MembershipTier.ToString()
             })
             .ToListAsync();
 
@@ -291,6 +316,7 @@ public class AdminController : Controller
         {
             Applications = applications,
             StatusFilter = status,
+            TierFilter = tier,
             TotalCount = totalCount,
             PageNumber = page,
             PageSize = pageSize
@@ -544,6 +570,64 @@ public class AdminController : Controller
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
+    [HttpPost("Humans/{id}/Reject")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectSignup(Guid id, string? reason)
+    {
+        var user = await _dbContext.Users
+            .Include(u => u.Profile)
+            .FirstOrDefaultAsync(u => u.Id == id);
+
+        if (user?.Profile == null)
+        {
+            return NotFound();
+        }
+
+        if (user.Profile.RejectedAt != null)
+        {
+            TempData["ErrorMessage"] = "This human has already been rejected.";
+            return RedirectToAction(nameof(HumanDetail), new { id });
+        }
+
+        var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser == null)
+        {
+            return Unauthorized();
+        }
+
+        var now = _clock.GetCurrentInstant();
+
+        user.Profile.RejectionReason = reason;
+        user.Profile.RejectedAt = now;
+        user.Profile.RejectedByUserId = currentUser.Id;
+        user.Profile.IsApproved = false;
+        user.Profile.UpdatedAt = now;
+
+        await _auditLogService.LogAsync(
+            AuditAction.SignupRejected, "User", id,
+            $"{user.DisplayName} rejected by {currentUser.DisplayName}{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
+            currentUser.Id, currentUser.DisplayName);
+
+        await _dbContext.SaveChangesAsync();
+
+        try
+        {
+            await _emailService.SendSignupRejectedAsync(
+                user.Email ?? string.Empty,
+                user.DisplayName,
+                reason);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send signup rejection email to {Email}", user.Email);
+        }
+
+        _logger.LogInformation("Admin {AdminId} rejected signup for human {HumanId}", currentUser.Id, id);
+
+        TempData["SuccessMessage"] = "Signup rejected.";
+        return RedirectToAction(nameof(HumanDetail), new { id });
+    }
+
     [HttpGet("Teams")]
     public async Task<IActionResult> Teams(int page = 1)
     {
@@ -758,8 +842,8 @@ public class AdminController : Controller
             UserId = id,
             UserDisplayName = user.DisplayName,
             AvailableRoles = User.IsInRole(RoleNames.Admin)
-                ? [RoleNames.Admin, RoleNames.Board]
-                : [RoleNames.Board]
+                ? [RoleNames.Admin, RoleNames.Board, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
+                : [RoleNames.Board, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
         };
 
         return View(viewModel);
@@ -781,8 +865,8 @@ public class AdminController : Controller
             model.UserId = id;
             model.UserDisplayName = user.DisplayName;
             model.AvailableRoles = User.IsInRole(RoleNames.Admin)
-                ? [RoleNames.Admin, RoleNames.Board]
-                : [RoleNames.Board];
+                ? [RoleNames.Admin, RoleNames.Board, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
+                : [RoleNames.Board, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator];
             return View(model);
         }
 
@@ -1261,6 +1345,23 @@ public class AdminController : Controller
             },
             new()
             {
+                Id = "signup-rejected",
+                Name = "Signup Rejected",
+                Recipient = email,
+                Subject = _localizer["Email_SignupRejected_Subject"].Value,
+                Body = $"""
+                    <h2>Signup Update</h2>
+                    <p>Dear {Encode(name)},</p>
+                    <p>Thank you for your interest in joining us. After careful review,
+                    we regret to inform you that we are unable to approve your signup at this time.</p>
+                    <p><strong>Reason:</strong> Incomplete profile information</p>
+                    <p>If you have any questions or would like to discuss this decision,
+                    please contact us at <a href="mailto:{settings.AdminAddress}">{settings.AdminAddress}</a>.</p>
+                    <p>Best regards,<br/>The Humans Team</p>
+                    """
+            },
+            new()
+            {
                 Id = "reconsent-required",
                 Name = "Re-Consent Required (single doc)",
                 Recipient = email,
@@ -1449,7 +1550,7 @@ public class AdminController : Controller
 
     /// <summary>
     /// Checks whether the current user can assign/end the specified role.
-    /// Admin can manage any role. Board can manage Board and Lead only.
+    /// Admin can manage any role. Board can manage Board and coordinator roles.
     /// </summary>
     private bool CanManageRole(string roleName)
     {
@@ -1458,10 +1559,12 @@ public class AdminController : Controller
             return true;
         }
 
-        // Board members can manage the Board role
+        // Board members can manage Board and coordinator roles
         if (User.IsInRole(RoleNames.Board))
         {
-            return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal);
+            return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal);
         }
 
         return false;

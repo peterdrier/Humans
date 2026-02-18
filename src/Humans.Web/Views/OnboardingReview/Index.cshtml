@@ -1,0 +1,91 @@
+@model Humans.Web.Models.OnboardingReviewIndexViewModel
+@{
+    ViewData["Title"] = Localizer["OnboardingReview_Title"].Value;
+}
+
+<h1 class="mb-4">@Localizer["OnboardingReview_Title"]</h1>
+
+<vc:temp-data-alerts />
+
+@if (Model.PendingReviews.Count == 0 && Model.FlaggedReviews.Count == 0)
+{
+    <div class="alert alert-success">
+        @Localizer["OnboardingReview_NoPending"]
+    </div>
+}
+
+@if (Model.PendingReviews.Count > 0)
+{
+    <h4 class="mt-4 mb-3">
+        @Localizer["OnboardingReview_PendingSection"]
+        <span class="badge bg-warning">@Model.PendingReviews.Count</span>
+    </h4>
+
+    <div class="list-group mb-4">
+        @foreach (var item in Model.PendingReviews)
+        {
+            <a asp-action="Detail" asp-route-userId="@item.UserId" class="list-group-item list-group-item-action">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <vc:user-avatar profile-picture-url="@item.ProfilePictureUrl"
+                                        display-name="@item.DisplayName"
+                                        size="40"
+                                        css-class="me-3" />
+                        <div>
+                            <strong>@item.DisplayName</strong>
+                            <br />
+                            <small class="text-muted">@item.Email</small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        @if (item.MembershipTier != Humans.Domain.Enums.MembershipTier.Volunteer)
+                        {
+                            <span class="badge bg-info me-1">@item.MembershipTier</span>
+                        }
+                        <span class="badge bg-warning">@Localizer["OnboardingReview_Pending"]</span>
+                        <br />
+                        <small class="text-muted">@item.ProfileCreatedAt.ToString("d MMM yyyy")</small>
+                    </div>
+                </div>
+            </a>
+        }
+    </div>
+}
+
+@if (Model.FlaggedReviews.Count > 0)
+{
+    <h4 class="mt-4 mb-3">
+        @Localizer["OnboardingReview_FlaggedSection"]
+        <span class="badge bg-danger">@Model.FlaggedReviews.Count</span>
+    </h4>
+
+    <div class="list-group mb-4">
+        @foreach (var item in Model.FlaggedReviews)
+        {
+            <a asp-action="Detail" asp-route-userId="@item.UserId" class="list-group-item list-group-item-action list-group-item-danger">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <vc:user-avatar profile-picture-url="@item.ProfilePictureUrl"
+                                        display-name="@item.DisplayName"
+                                        size="40"
+                                        css-class="me-3" />
+                        <div>
+                            <strong>@item.DisplayName</strong>
+                            <br />
+                            <small class="text-muted">@item.Email</small>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        @if (item.MembershipTier != Humans.Domain.Enums.MembershipTier.Volunteer)
+                        {
+                            <span class="badge bg-info me-1">@item.MembershipTier</span>
+                        }
+                        <span class="badge bg-danger">@Localizer["OnboardingReview_FlaggedBadge"]</span>
+                        <br />
+                        <small class="text-muted">@item.ProfileCreatedAt.ToString("d MMM yyyy")</small>
+                    </div>
+                </div>
+            </a>
+        }
+    </div>
+}

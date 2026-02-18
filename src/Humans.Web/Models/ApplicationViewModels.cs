@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 
@@ -12,6 +13,7 @@ public class ApplicationSummaryViewModel
 {
     public Guid Id { get; set; }
     public string Status { get; set; } = string.Empty;
+    public MembershipTier MembershipTier { get; set; }
     public DateTime SubmittedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
     public string StatusBadgeClass { get; set; } = "bg-secondary";
@@ -42,6 +44,9 @@ public class ApplicationHistoryViewModel
 
 public class ApplicationCreateViewModel
 {
+    [Required]
+    public MembershipTier MembershipTier { get; set; } = MembershipTier.Colaborador;
+
     [Required]
     [StringLength(2000, MinimumLength = 50)]
     [Display(Name = "Why do you want to join?")]

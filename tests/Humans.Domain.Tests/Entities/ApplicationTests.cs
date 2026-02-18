@@ -118,6 +118,75 @@ public class ApplicationTests
         application.StateHistory.Last().Status.Should().Be(ApplicationStatus.Approved);
     }
 
+    [Fact]
+    public void NewApplication_ShouldDefaultToVolunteerTier()
+    {
+        var application = new Application
+        {
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            Motivation = "Test",
+            SubmittedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+
+        application.MembershipTier.Should().Be(MembershipTier.Volunteer);
+    }
+
+    [Theory]
+    [InlineData(MembershipTier.Colaborador)]
+    [InlineData(MembershipTier.Asociado)]
+    public void Application_CanSetMembershipTier(MembershipTier tier)
+    {
+        var application = CreateSubmittedApplication();
+        application.MembershipTier = tier;
+
+        application.MembershipTier.Should().Be(tier);
+    }
+
+    [Fact]
+    public void Application_CanSetTermExpiresAt()
+    {
+        var application = CreateSubmittedApplication();
+        var expiryDate = new LocalDate(2027, 12, 31);
+
+        application.TermExpiresAt = expiryDate;
+
+        application.TermExpiresAt.Should().Be(expiryDate);
+    }
+
+    [Fact]
+    public void Application_CanSetBoardMeetingDateAndDecisionNote()
+    {
+        var application = CreateSubmittedApplication();
+        var meetingDate = new LocalDate(2026, 3, 15);
+
+        application.BoardMeetingDate = meetingDate;
+        application.DecisionNote = "Approved unanimously";
+
+        application.BoardMeetingDate.Should().Be(meetingDate);
+        application.DecisionNote.Should().Be("Approved unanimously");
+    }
+
+    [Fact]
+    public void Application_CanSetRenewalReminderSentAt()
+    {
+        var application = CreateSubmittedApplication();
+        var sentAt = _clock.GetCurrentInstant();
+
+        application.RenewalReminderSentAt = sentAt;
+
+        application.RenewalReminderSentAt.Should().Be(sentAt);
+    }
+
+    [Fact]
+    public void Application_BoardVotes_ShouldBeEmptyByDefault()
+    {
+        var application = CreateSubmittedApplication();
+
+        application.BoardVotes.Should().BeEmpty();
+    }
+
     private Application CreateSubmittedApplication()
     {
         return new Application
