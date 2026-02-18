@@ -785,16 +785,16 @@
   <data name="Birthdays_Title" xml:space="preserve"><value>Geburtstagskalender</value></data>
   <data name="Birthdays_Count" xml:space="preserve"><value>{0} Geburtstage im {1}</value></data>
   <data name="Birthdays_None" xml:space="preserve"><value>Keine Geburtstage im {0}.</value></data>
-  <data name="Birthdays_Privacy" xml:space="preserve"><value>Nur Mitglieder, die ihr Geburtsdatum angegeben haben, werden angezeigt. Das Geburtsdatum ist nur f&#xFC;r das Mitglied und den Vorstand sichtbar.</value></data>
+  <data name="Birthdays_Privacy" xml:space="preserve"><value>Nur Humans, die ihr Geburtsdatum angegeben haben, werden angezeigt. Das Geburtsdatum ist nur f&#xFC;r den Human und den Vorstand sichtbar.</value></data>
 
   <!-- ======================== -->
   <!-- Volunteer Map            -->
   <!-- ======================== -->
   <data name="Nav_Map" xml:space="preserve"><value>Karte</value></data>
-  <data name="Map_Title" xml:space="preserve"><value>Freiwilligenkarte</value></data>
-  <data name="Map_Count" xml:space="preserve"><value>{0} Freiwillige mit Standort</value></data>
-  <data name="Map_None" xml:space="preserve"><value>Noch kein Freiwilliger hat seinen Standort angegeben.</value></data>
-  <data name="Map_Privacy" xml:space="preserve"><value>Nur Mitglieder, die ihren Standort angegeben haben, werden angezeigt. Der Standort ist ungef&#xE4;hr und basiert auf der Stadt.</value></data>
+  <data name="Map_Title" xml:space="preserve"><value>Humans-Karte</value></data>
+  <data name="Map_Count" xml:space="preserve"><value>{0} Humans mit Standort</value></data>
+  <data name="Map_None" xml:space="preserve"><value>Noch kein Human hat seinen Standort angegeben.</value></data>
+  <data name="Map_Privacy" xml:space="preserve"><value>Nur Humans, die ihren Standort angegeben haben, werden angezeigt. Der Standort ist ungef&#xE4;hr und basiert auf der Stadt.</value></data>
 
   <!-- ======================== -->
   <!-- Contribution & Board     -->

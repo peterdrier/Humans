@@ -785,16 +785,16 @@
   <data name="Birthdays_Title" xml:space="preserve"><value>Calendrier des anniversaires</value></data>
   <data name="Birthdays_Count" xml:space="preserve"><value>{0} anniversaires en {1}</value></data>
   <data name="Birthdays_None" xml:space="preserve"><value>Aucun anniversaire en {0}.</value></data>
-  <data name="Birthdays_Privacy" xml:space="preserve"><value>Seuls les membres ayant renseign&#xE9; leur date de naissance sont affich&#xE9;s. La date de naissance n'est visible que par le membre et le conseil.</value></data>
+  <data name="Birthdays_Privacy" xml:space="preserve"><value>Seuls les humans ayant renseign&#xE9; leur date de naissance sont affich&#xE9;s. La date de naissance n'est visible que par le human et le conseil.</value></data>
 
   <!-- ======================== -->
   <!-- Volunteer Map            -->
   <!-- ======================== -->
   <data name="Nav_Map" xml:space="preserve"><value>Carte</value></data>
-  <data name="Map_Title" xml:space="preserve"><value>Carte des b&#xE9;n&#xE9;voles</value></data>
-  <data name="Map_Count" xml:space="preserve"><value>{0} b&#xE9;n&#xE9;voles avec localisation</value></data>
-  <data name="Map_None" xml:space="preserve"><value>Aucun b&#xE9;n&#xE9;vole n'a encore renseign&#xE9; sa localisation.</value></data>
-  <data name="Map_Privacy" xml:space="preserve"><value>Seuls les membres ayant renseign&#xE9; leur localisation sont affich&#xE9;s. La localisation est approximative et bas&#xE9;e sur la ville.</value></data>
+  <data name="Map_Title" xml:space="preserve"><value>Carte des Humans</value></data>
+  <data name="Map_Count" xml:space="preserve"><value>{0} humans avec localisation</value></data>
+  <data name="Map_None" xml:space="preserve"><value>Aucun human n'a encore renseign&#xE9; sa localisation.</value></data>
+  <data name="Map_Privacy" xml:space="preserve"><value>Seuls les humans ayant renseign&#xE9; leur localisation sont affich&#xE9;s. La localisation est approximative et bas&#xE9;e sur la ville.</value></data>
 
   <!-- ======================== -->
   <!-- Contribution & Board     -->
