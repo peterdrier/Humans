@@ -1,7 +1,7 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-02-17T22:30
+Last synced: 2026-02-18T12:15
 
 ---
 
@@ -13,20 +13,44 @@ Last synced: 2026-02-17T22:30
 
 ### Priority 2: User-Facing Features & Improvements
 
-#### #26: Add custom Prometheus metrics to /metrics endpoint
-`Humans.Metrics` meter is registered but emits nothing. Add `ObservableGauge` callbacks for membership status, compliance risk, role distribution, team/resource health. Add counters for emails sent, admin actions, job runs. Use `IMemoryCache` for gauge queries.
-
 #### #14: Drive Activity Monitor: resolve people/ IDs to email addresses
 Drive Activity API returns `people/` IDs instead of email addresses. Need to resolve these via the People API for meaningful audit display.
 
 #### #28: Finish asociado application workflow for launch
 Localization gaps (English remains in some views), verify `Application.Language` tracking, test all state machine transitions, add feature gate to open/close applications.
 
+#### #44: Fix consent checkbox translation and add Spanish-is-binding notice site-wide
+Consent Review checkbox text not translating to user's language despite `.resx` translations existing. Also: add a site-wide "Spanish is the legally binding text" notice (e.g., in `_Layout.cshtml` footer) visible on every page.
+
+#### Rename "Legal First Name" to "Legal First Name(s)" to allow plural
+Spanish naming convention uses multiple given names (e.g., "María del Carmen"). Update label in `ProfileViewModel.cs` `[Display]` attribute, `Profile_LegalName` localization key across all 5 `.resx` files, and the `Profile.FirstName` XML doc comment. The DB column and property name stay as-is.
+
+#### #45: Show board-private fields first on initial profile setup
+First time editing profile (legal name + emergency contact empty), put the board-private section at the top of the form so new humans don't miss it. On subsequent edits (fields populated), keep the current layout with board info at the bottom.
+
+#### #46: Add reject signup action and fix volunteer/member terminology to "human"
+No way to reject a pending signup — only approve or leave pending. Add reject action with optional reason, email notification, and audit log. Also fix "Approve Volunteer" / "Suspend Member" / "Unsuspend Member" button labels to use "Human" across all 5 locales.
+
+#### #47: Require Burner CV or "burn virgin" checkbox on profile
+Empty Burner CV is ambiguous (forgot vs. never been). Require at least one entry OR a "no prior burn experience" checkbox. New `NoPriorBurnExperience` bool on `Profile`, client + server validation, existing empty profiles grandfathered.
+
+#### #49: Reorganize profile edit into three named sections
+Three distinct sections: 1) General Information (picture, burner name, pronouns, location, birthday, contacts, bio), 2) Contributor Information (Burner CV, contribution interests, board-approval note), 3) Private Information (legal name, emergency contact, board notes). Supersedes #48. Related: #45, #47.
+
+#### #50: Split teams page into "my teams" and "other teams" sections
+Reorganize Teams Index into two sections: user's teams at top, other teams below. May consolidate with MyTeams page.
+
+#### #52: Redesign onboarding with three membership tiers
+Three tiers: Volunteer (auto-accepted, basic profile), Colaborador (board vote, fuller profile), Asociado (board vote, full profile + TBD questions from Ben). Tier selection at signup, profile requirements vary by tier, users can upgrade later. Supersedes #51. Related: #46, #47, #49.
+
+#### #53: Add board voting system for application reviews
+Board members vote Yay/Maybe/No/Abstain on each application. Spreadsheet-style dashboard with per-board-member columns, separate Colaborador/Asociado views. Final approve/deny records board meeting date + decision note. Related: #52, #46, #28.
+
+#### #54: Add Consent and Volunteer Coordinator roles with onboarding gate
+Two new board-appointed roles with board-level data visibility. Consent Coordinator vets incoming humans for known issues (safety gate — must clear before admission). Volunteer Coordinator facilitates onboarding and team placement (not a gate). Related: #52, #53.
+
 #### #33: Add Discord integration to sync team/role-based server roles via API
 Discord bot integration to automatically assign/remove Discord server roles based on Humans team memberships and role assignments. Configurable team→Discord role mappings, drift detection, audit logging, and manual sync UI at `/Admin/DiscordSync`.
-
-#### #27: Revoke team memberships immediately on deletion request
-Currently users keep full access during the 30-day deletion grace period. Should immediately remove from all teams and end role assignments on request. Returning users must re-consent and rejoin. Google deprovisioning via normal sync job.
 
 ---
 
@@ -41,10 +65,6 @@ App-layer overlap guard added (`RoleAssignmentService.HasOverlappingAssignmentAs
 **Where:** `ProcessGoogleSyncOutboxJob.cs:41-52`
 **Source:** Multi-model production readiness assessment (2026-02-16), Codex unique finding
 
-#### P1-23: Tighten CSP — remove `unsafe-inline`
-`Content-Security-Policy` includes `script-src 'self' 'unsafe-inline'` which weakens XSS protection. Move to nonce-based CSP for inline scripts.
-**Where:** `Program.cs:328-330`
-**Source:** Multi-model production readiness assessment (2026-02-16), consensus Claude + Codex
 
 #### P1-13: Apply configured Google group settings during provisioning
 `GoogleWorkspaceSettings.GroupSettings` properties (WhoCanViewMembership, AllowExternalMembers, etc.) are defined but never applied. Groups get Google defaults. Per R-04, external members must be allowed.
@@ -54,14 +74,6 @@ App-layer overlap guard added (`RoleAssignmentService.HasOverlappingAssignmentAs
 
 ### Priority 4: Quality & Compliance
 
-#### P2-09: PII logging policy and redaction
-Structured logs include emails and user IDs in plaintext. No redaction or classification policy. GDPR data minimization gap.
-
-#### P2-03: Re-enable vulnerable package warning visibility
-`NU1902`/`NU1903` warnings suppressed globally in `Directory.Packages.props`. Vulnerable dependencies won't surface in builds.
-
-#### P2-07: Add integration tests for critical paths
-Integration test project exists with TestContainers but has 0 tests. Critical compliance paths (consent, auth, deletion) untested end-to-end.
 
 ---
 
@@ -70,23 +82,6 @@ Integration test project exists with TestContainers but has 0 tests. Critical co
 #### G-03: N+1 queries in GoogleWorkspaceSyncService
 Helper methods re-query resources already loaded by parent methods. Redundant DB round-trips.
 
-#### #37: Add ProfileCard ViewComponent to consolidate profile rendering
-Profile info is rendered independently in `/Profile`, `/Human/{id}`, and `/Admin/Humans/{id}` with duplicated controller logic and drifting ViewModels. Create a `ProfileCardViewComponent` that owns data fetching, permission checks, and rendering for the shared profile card. Admin-only sections (roles, audit, actions) stay outside the component.
-
-#### #38: Add TempDataAlerts ViewComponent to replace 20 duplicated alert blocks
-Same success/error/info dismissible alert banner copy-pasted across 20 views. Replace with `<vc:temp-data-alerts />` that reads TempData directly.
-
-#### #39: Add UserAvatar ViewComponent to consolidate avatar rendering
-Photo-or-initials-fallback avatar pattern duplicated in 8 views at varying sizes (32px–160px). Parameterize by size and optional bg-class.
-
-#### #40: Add RoleBadge partial to consolidate Lead/Member pills
-Lead/Member badge logic duplicated in 5 views with a color inconsistency (bg-warning vs bg-primary for Lead). Extract shared partial.
-
-#### #41: Add ApplicationHistory partial to deduplicate timeline rendering
-Application status history timeline near-identical in `Application/Details` and `Admin/ApplicationDetail`. Extract shared partial, fix localization inconsistency.
-
-#### G-06b: Wire remaining views to use StatusBadgeExtensions
-`StatusBadgeExtensions.GetMembershipStatusBadgeClass()` exists but `Profile/Index.cshtml` and `Admin/Humans.cshtml` use inline switch statements instead. Wire them to the existing extension method for consistency.
 
 #### G-07: AdminController over-fetches data
 `HumanDetail` loads ALL applications and consent records via `Include` when it only needs a few. `Humans` list relies on implicit Include behavior.
@@ -135,6 +130,12 @@ Admin email previews (`/Admin/EmailPreview`) use duplicated static HTML in `Admi
 ---
 
 ## Completed
+
+### #26: Wire up custom Prometheus metrics DONE
+Eagerly resolve HumansMetricsService at startup, add RecordJobRun to 3 uninstrumented jobs, add google_sync_outbox_pending gauge. Committed `5a99d19`.
+
+### #27: Revoke team memberships immediately on deletion request DONE
+Immediately revokes all team memberships and ends role assignments on deletion request. Returning users must re-consent and rejoin. Google deprovisioning via normal sync job. Committed `966e2a6`.
 
 ### #32: Fix Lead role — remove standalone RoleAssignment DONE
 Removed `RoleNames.Lead` from assignable roles, data migration to soft-end orphaned assignments, fixed Leads team sync on role change, consolidated consent eligibility into `GetRequiredTeamIdsForUserAsync`, fixed HumanController missing ViewModel properties, added 8 unit tests. Committed `5acfa4f`.
@@ -247,3 +248,12 @@ All three call sites (`SyncTeamGroupMembersAsync`, `PreviewGroupSyncAsync`, `Lis
 - G-02: N+1 query in SendReConsentReminderJob (`3966e79`)
 - G-04: Google Drive provisioning idempotency (`4243ca7`)
 - G-06: SystemTeamSyncJob sequential execution (resolved by design)
+
+### Batch: UI consolidation, security hardening, integration tests DONE
+Committed 2026-02-18 in 3 commits:
+
+**UI consolidation** (`3a2e444`): TempDataAlertsViewComponent replaces 19 duplicated alert blocks (#38). UserAvatarViewComponent replaces 9 avatar patterns (#39). ProfileCardViewComponent with dedicated ViewModel replaces 3 duplicated profile renderings (#37). _RoleBadge partial fixes Lead color inconsistency across 5 views (#40). _ApplicationHistory partial deduplicates timeline in 2 views (#41). StatusBadgeExtensions wired in Profile/Index + Admin/Humans, added "Pending Approval" case (G-06b). Net -150 lines across 37 files.
+
+**Security hardening** (`dbdcf58`): CSP nonce middleware + NonceTagHelper replace `unsafe-inline` in script-src (P1-23). Inline onclick/onchange handlers converted to addEventListener in LegalDocuments, Resources, Emails. PII redaction Serilog enricher masks emails and PII in structured logs (P2-09). P2-03 was already resolved (NU1902/NU1903 not suppressed).
+
+**Integration tests** (`b6c43c1`): WebApplicationFactory with TestContainers PostgreSQL, 16 tests across health endpoints, anonymous access controls, and security headers (P2-07).
