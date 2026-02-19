@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -411,9 +412,47 @@ public class AdminController : Controller
                     break;
                 }
                 application.Approve(currentUser.Id, model.Notes, _clock);
+
+                // Compute term expiry
+                var approveToday = _clock.GetCurrentInstant().InUtc().Date;
+                application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(approveToday);
+
+                // Update profile membership tier
+                var approveProfile = await _dbContext.Profiles
+                    .FirstOrDefaultAsync(p => p.UserId == application.UserId);
+                if (approveProfile != null)
+                {
+                    approveProfile.MembershipTier = application.MembershipTier;
+                    approveProfile.UpdatedAt = _clock.GetCurrentInstant();
+                }
+
+                await _auditLogService.LogAsync(
+                    AuditAction.TierApplicationApproved, "Application", application.Id,
+                    $"{application.MembershipTier} application approved by admin {currentUser.DisplayName}",
+                    currentUser.Id, currentUser.DisplayName);
+
+                // Delete individual BoardVote records (GDPR data minimization)
+                var approveVotes = await _dbContext.BoardVotes
+                    .Where(v => v.ApplicationId == application.Id)
+                    .ToListAsync();
+                _dbContext.BoardVotes.RemoveRange(approveVotes);
+
                 _metrics.RecordApplicationProcessed("approved");
                 _logger.LogInformation("Admin {AdminId} approved application {ApplicationId}",
                     currentUser.Id, application.Id);
+
+                // Save before sync — sync uses AsNoTracking and needs persisted state
+                await _dbContext.SaveChangesAsync();
+
+                // Sync team membership
+                if (application.MembershipTier == MembershipTier.Colaborador)
+                {
+                    await _systemTeamSyncJob.SyncColaboradorsMembershipForUserAsync(application.UserId, CancellationToken.None);
+                }
+                else if (application.MembershipTier == MembershipTier.Asociado)
+                {
+                    await _systemTeamSyncJob.SyncAsociadosMembershipForUserAsync(application.UserId, CancellationToken.None);
+                }
 
                 try
                 {
@@ -429,7 +468,7 @@ public class AdminController : Controller
                 }
 
                 TempData["SuccessMessage"] = _localizer["Admin_ApplicationApproved"].Value;
-                break;
+                return RedirectToAction(nameof(ApplicationDetail), new { id });
 
             case "REJECT":
                 if (application.Status != ApplicationStatus.UnderReview)
@@ -443,9 +482,23 @@ public class AdminController : Controller
                     break;
                 }
                 application.Reject(currentUser.Id, model.Notes, _clock);
+
+                await _auditLogService.LogAsync(
+                    AuditAction.TierApplicationRejected, "Application", application.Id,
+                    $"{application.MembershipTier} application rejected by admin {currentUser.DisplayName}",
+                    currentUser.Id, currentUser.DisplayName);
+
+                // Delete individual BoardVote records (GDPR data minimization)
+                var rejectVotes = await _dbContext.BoardVotes
+                    .Where(v => v.ApplicationId == application.Id)
+                    .ToListAsync();
+                _dbContext.BoardVotes.RemoveRange(rejectVotes);
+
                 _metrics.RecordApplicationProcessed("rejected");
                 _logger.LogInformation("Admin {AdminId} rejected application {ApplicationId}",
                     currentUser.Id, application.Id);
+
+                await _dbContext.SaveChangesAsync();
 
                 try
                 {
@@ -462,7 +515,7 @@ public class AdminController : Controller
                 }
 
                 TempData["SuccessMessage"] = _localizer["Admin_ApplicationRejected"].Value;
-                break;
+                return RedirectToAction(nameof(ApplicationDetail), new { id });
 
             case "REQUESTINFO":
                 if (application.Status != ApplicationStatus.UnderReview)

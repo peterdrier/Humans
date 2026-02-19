@@ -60,8 +60,9 @@ public class OnboardingReviewController : Controller
     {
         var reviewableProfiles = await _dbContext.Profiles
             .Include(p => p.User)
-            .Where(p => p.ConsentCheckStatus == ConsentCheckStatus.Pending ||
-                        p.ConsentCheckStatus == ConsentCheckStatus.Flagged)
+            .Where(p => p.RejectedAt == null &&
+                        (p.ConsentCheckStatus == ConsentCheckStatus.Pending ||
+                         p.ConsentCheckStatus == ConsentCheckStatus.Flagged))
             .OrderBy(p => p.CreatedAt)
             .ToListAsync();
 
@@ -139,6 +140,12 @@ public class OnboardingReviewController : Controller
             return NotFound();
         }
 
+        if (profile.RejectedAt != null)
+        {
+            TempData["ErrorMessage"] = _localizer["OnboardingReview_AlreadyRejected"].Value;
+            return RedirectToAction(nameof(Index));
+        }
+
         var currentUser = await _userManager.GetUserAsync(User);
         if (currentUser == null)
         {
@@ -163,15 +170,15 @@ public class OnboardingReviewController : Controller
         profile.IsApproved = true;
         profile.UpdatedAt = now;
 
-        await _dbContext.SaveChangesAsync();
-
-        // Sync Volunteers team membership (adds to team + sends welcome email)
-        await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
-
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckCleared, "Profile", userId,
             $"Consent check cleared by {currentUser.DisplayName}",
             currentUser.Id, currentUser.DisplayName);
+
+        await _dbContext.SaveChangesAsync();
+
+        // Sync Volunteers team membership (adds to team + sends welcome email)
+        await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
 
         _logger.LogInformation("Consent check cleared for user {UserId} by {ReviewerId}", userId, currentUser.Id);
 
@@ -207,14 +214,14 @@ public class OnboardingReviewController : Controller
         profile.IsApproved = false;
         profile.UpdatedAt = now;
 
-        await _dbContext.SaveChangesAsync();
-
-        await DeprovisionApprovalGatedSystemTeamsAsync(userId);
-
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckFlagged, "Profile", userId,
             $"Consent check flagged by {currentUser.DisplayName}: {notes}",
             currentUser.Id, currentUser.DisplayName);
+
+        await _dbContext.SaveChangesAsync();
+
+        await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
         _logger.LogInformation("Consent check flagged for user {UserId} by {ReviewerId}", userId, currentUser.Id);
 
@@ -256,14 +263,14 @@ public class OnboardingReviewController : Controller
         profile.IsApproved = false;
         profile.UpdatedAt = now;
 
-        await _dbContext.SaveChangesAsync();
-
-        await DeprovisionApprovalGatedSystemTeamsAsync(userId);
-
         await _auditLogService.LogAsync(
             AuditAction.SignupRejected, "Profile", userId,
             $"Signup rejected by {currentUser.DisplayName}{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             currentUser.Id, currentUser.DisplayName);
+
+        await _dbContext.SaveChangesAsync();
+
+        await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
         try
         {
@@ -502,13 +509,14 @@ public class OnboardingReviewController : Controller
             return NotFound();
         }
 
-        // Ensure the application is in UnderReview before finalizing
-        if (application.Status == ApplicationStatus.Submitted)
+        // Require at least one board vote before finalization
+        if (application.BoardVotes.Count == 0)
         {
-            application.StartReview(currentUser.Id, _clock);
+            TempData["ErrorMessage"] = _localizer["BoardVoting_NoVotes"].Value;
+            return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
-        // Parse meeting date
+        // Require a valid meeting date
         LocalDate? meetingDate = null;
         if (!string.IsNullOrWhiteSpace(model.BoardMeetingDate))
         {
@@ -518,6 +526,18 @@ public class OnboardingReviewController : Controller
             {
                 meetingDate = result.Value;
             }
+        }
+
+        if (meetingDate == null)
+        {
+            TempData["ErrorMessage"] = _localizer["BoardVoting_MeetingDateRequired"].Value;
+            return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
+        }
+
+        // Ensure the application is in UnderReview before finalizing
+        if (application.Status == ApplicationStatus.Submitted)
+        {
+            application.StartReview(currentUser.Id, _clock);
         }
 
         application.BoardMeetingDate = meetingDate;

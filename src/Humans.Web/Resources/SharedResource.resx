@@ -891,6 +891,8 @@
   <data name="BoardVoting_Finalized" xml:space="preserve"><value>Application decision has been finalized.</value></data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve"><value>This application is no longer open for voting.</value></data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve"><value>Additional Information</value></data>
+  <data name="BoardVoting_NoVotes" xml:space="preserve"><value>Cannot finalize: at least one board vote is required.</value></data>
+  <data name="BoardVoting_MeetingDateRequired" xml:space="preserve"><value>Cannot finalize: a board meeting date is required.</value></data>
 
   <!-- Term Renewal -->
   <data name="Dashboard_TermExpires" xml:space="preserve"><value>Term expires: {0}</value><comment>{0} = formatted date</comment></data>

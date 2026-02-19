@@ -892,6 +892,8 @@
   <data name="BoardVoting_Finalized" xml:space="preserve"><value>La decisione sulla domanda &#xE8; stata finalizzata.</value></data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve"><value>Questa domanda non &#xE8; pi&#xF9; aperta al voto.</value></data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve"><value>Informazioni aggiuntive</value></data>
+  <data name="BoardVoting_NoVotes" xml:space="preserve"><value>Impossibile finalizzare: &#xE8; richiesto almeno un voto del consiglio.</value></data>
+  <data name="BoardVoting_MeetingDateRequired" xml:space="preserve"><value>Impossibile finalizzare: &#xE8; richiesta una data della riunione del consiglio.</value></data>
 
   <!-- Term Renewal -->
   <data name="Dashboard_TermExpires" xml:space="preserve"><value>Il mandato scade: {0}</value><comment>{0} = formatted date</comment></data>

@@ -892,6 +892,8 @@
   <data name="BoardVoting_Finalized" xml:space="preserve"><value>Die Antragsentscheidung wurde finalisiert.</value></data>
   <data name="BoardVoting_ApplicationNotVotable" xml:space="preserve"><value>Dieser Antrag ist nicht mehr zur Abstimmung offen.</value></data>
   <data name="BoardVoting_AdditionalInfo" xml:space="preserve"><value>Zus&#xE4;tzliche Informationen</value></data>
+  <data name="BoardVoting_NoVotes" xml:space="preserve"><value>Kann nicht abgeschlossen werden: Mindestens eine Vorstandsstimme ist erforderlich.</value></data>
+  <data name="BoardVoting_MeetingDateRequired" xml:space="preserve"><value>Kann nicht abgeschlossen werden: Ein Datum der Vorstandssitzung ist erforderlich.</value></data>
 
   <!-- Term Renewal -->
   <data name="Dashboard_TermExpires" xml:space="preserve"><value>Amtszeit endet: {0}</value><comment>{0} = formatted date</comment></data>

@@ -199,13 +199,20 @@ public class SystemTeamSyncJob
 
         var today = _clock.GetCurrentInstant().InUtc().Date;
 
-        var userIds = await _dbContext.Applications
+        var applicationUserIds = await _dbContext.Applications
             .AsNoTracking()
             .Where(a => a.Status == ApplicationStatus.Approved
                 && a.MembershipTier == tier
                 && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
             .Select(a => a.UserId)
             .Distinct()
+            .ToListAsync(cancellationToken);
+
+        // Filter by profile status to match per-user sync behavior
+        var userIds = await _dbContext.Profiles
+            .AsNoTracking()
+            .Where(p => applicationUserIds.Contains(p.UserId) && p.IsApproved && !p.IsSuspended)
+            .Select(p => p.UserId)
             .ToListAsync(cancellationToken);
 
         var eligibleSet = await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
@@ -229,7 +236,7 @@ public class SystemTeamSyncJob
 
         var toDowngrade = await _dbContext.Profiles
             .Include(p => p.User)
-            .Where(p => p.MembershipTier == tier && !userIds.Contains(p.UserId))
+            .Where(p => p.MembershipTier == tier && !applicationUserIds.Contains(p.UserId))
             .ToListAsync(cancellationToken);
 
         foreach (var profile in toDowngrade)
