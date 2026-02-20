@@ -450,6 +450,10 @@
   <data name="Teams_ViewDetails" xml:space="preserve"><value>Ver detalles</value></data>
   <data name="Teams_Manage" xml:space="preserve"><value>Gestionar</value></data>
   <data name="Teams_NoTeams" xml:space="preserve"><value>A&#xFA;n no se han creado equipos.</value></data>
+  <data name="Teams_MyTeamsSection" xml:space="preserve"><value>Mis equipos</value></data>
+  <data name="Teams_OtherTeamsSection" xml:space="preserve"><value>Otros equipos</value></data>
+  <data name="Teams_NotOnAnyTeam" xml:space="preserve"><value>A&#xFA;n no se ha unido a ning&#xFA;n equipo.</value></data>
+  <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No hay otros equipos disponibles.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Sistema</value></data>
 
   <!-- Team Detail View -->

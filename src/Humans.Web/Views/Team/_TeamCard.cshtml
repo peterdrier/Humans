@@ -1,0 +1,53 @@
+@model Humans.Web.Models.TeamSummaryViewModel
+
+<div class="col">
+    <div class="card h-100">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 class="card-title mb-0">
+                    <a asp-action="Details" asp-route-slug="@Model.Slug" class="text-decoration-none">
+                        @Model.Name
+                    </a>
+                </h5>
+                @if (Model.IsSystemTeam)
+                {
+                    <span class="badge bg-secondary">System</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Description))
+            {
+                <p class="card-text text-muted small">
+                    @(Model.Description.Length > 150 ? Model.Description.Substring(0, 150) + "..." : Model.Description)
+                </p>
+            }
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                    @string.Format(Localizer["Teams_MemberCount"].Value, Model.MemberCount)
+                </small>
+                @if (Model.IsCurrentUserLead)
+                {
+                    @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Lead)
+                }
+                else if (Model.IsCurrentUserMember)
+                {
+                    @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Member)
+                }
+                else if (Model.RequiresApproval && !Model.IsSystemTeam)
+                {
+                    <span class="badge bg-info">@Localizer["Teams_RequiresApproval"]</span>
+                }
+            </div>
+        </div>
+        <div class="card-footer bg-transparent">
+            <a asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-primary">
+                @Localizer["Teams_ViewDetails"]
+            </a>
+            @if (Model.IsCurrentUserLead)
+            {
+                <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-secondary">
+                    @Localizer["Teams_Manage"]
+                </a>
+            }
+        </div>
+    </div>
+</div>

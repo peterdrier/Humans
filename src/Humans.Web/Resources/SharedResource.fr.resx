@@ -446,6 +446,10 @@
   <data name="Teams_ViewDetails" xml:space="preserve"><value>Voir les d&#xE9;tails</value></data>
   <data name="Teams_Manage" xml:space="preserve"><value>G&#xE9;rer</value></data>
   <data name="Teams_NoTeams" xml:space="preserve"><value>Aucune &#xE9;quipe n'a encore &#xE9;t&#xE9; cr&#xE9;&#xE9;e.</value></data>
+  <data name="Teams_MyTeamsSection" xml:space="preserve"><value>Mes &#xE9;quipes</value></data>
+  <data name="Teams_OtherTeamsSection" xml:space="preserve"><value>Autres &#xE9;quipes</value></data>
+  <data name="Teams_NotOnAnyTeam" xml:space="preserve"><value>Vous n'avez encore rejoint aucune &#xE9;quipe.</value></data>
+  <data name="Teams_NoOtherTeams" xml:space="preserve"><value>Aucune autre &#xE9;quipe disponible.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>Syst&#xE8;me</value></data>
 
   <!-- Team Detail View -->

@@ -438,6 +438,10 @@
   <data name="Teams_ViewDetails" xml:space="preserve"><value>View Details</value></data>
   <data name="Teams_Manage" xml:space="preserve"><value>Manage</value></data>
   <data name="Teams_NoTeams" xml:space="preserve"><value>No teams have been created yet.</value></data>
+  <data name="Teams_MyTeamsSection" xml:space="preserve"><value>My Teams</value></data>
+  <data name="Teams_OtherTeamsSection" xml:space="preserve"><value>Other Teams</value></data>
+  <data name="Teams_NotOnAnyTeam" xml:space="preserve"><value>You haven't joined any teams yet.</value></data>
+  <data name="Teams_NoOtherTeams" xml:space="preserve"><value>No other teams available.</value></data>
   <data name="Teams_System" xml:space="preserve"><value>System</value></data>
 
   <!-- Team Detail View -->

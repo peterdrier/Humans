@@ -56,25 +56,38 @@ public class TeamController : Controller
 
         var isBoardMember = await _teamService.IsUserBoardMemberAsync(user.Id);
 
-        var totalCount = allTeams.Count;
-        var teams = allTeams
+        TeamSummaryViewModel ToSummary(Domain.Entities.Team t) => new()
+        {
+            Id = t.Id,
+            Name = t.Name,
+            Description = t.Description,
+            Slug = t.Slug,
+            MemberCount = t.Members.Count(m => m.LeftAt == null),
+            IsSystemTeam = t.IsSystemTeam,
+            RequiresApproval = t.RequiresApproval,
+            IsCurrentUserMember = userTeamIds.Contains(t.Id),
+            IsCurrentUserLead = userLeadTeamIds.Contains(t.Id)
+        };
+
+        var myTeams = allTeams
+            .Where(t => userTeamIds.Contains(t.Id))
+            .Select(ToSummary)
+            .ToList();
+
+        var otherTeams = allTeams
+            .Where(t => !userTeamIds.Contains(t.Id))
+            .ToList();
+
+        var totalCount = otherTeams.Count;
+        var teams = otherTeams
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(t => new TeamSummaryViewModel
-            {
-                Id = t.Id,
-                Name = t.Name,
-                Description = t.Description,
-                Slug = t.Slug,
-                MemberCount = t.Members.Count(m => m.LeftAt == null),
-                IsSystemTeam = t.IsSystemTeam,
-                RequiresApproval = t.RequiresApproval,
-                IsCurrentUserMember = userTeamIds.Contains(t.Id),
-                IsCurrentUserLead = userLeadTeamIds.Contains(t.Id)
-            }).ToList();
+            .Select(ToSummary)
+            .ToList();
 
         var viewModel = new TeamIndexViewModel
         {
+            MyTeams = myTeams,
             Teams = teams,
             CanCreateTeam = isBoardMember,
             TotalCount = totalCount,

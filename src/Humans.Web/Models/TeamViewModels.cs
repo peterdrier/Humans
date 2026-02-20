@@ -5,6 +5,7 @@ namespace Humans.Web.Models;
 
 public class TeamIndexViewModel
 {
+    public List<TeamSummaryViewModel> MyTeams { get; set; } = [];
     public List<TeamSummaryViewModel> Teams { get; set; } = [];
     public bool CanCreateTeam { get; set; }
     public int TotalCount { get; set; }
