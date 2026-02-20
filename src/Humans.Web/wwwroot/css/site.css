@@ -688,3 +688,8 @@ hr {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* --- Clickable table rows --- */
+tr[data-href] {
+    cursor: pointer;
+}

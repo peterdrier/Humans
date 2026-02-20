@@ -1,7 +1,7 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-02-19T01:30
+Last synced: 2026-02-20T12:00
 
 ---
 
@@ -9,20 +9,17 @@ Last synced: 2026-02-19T01:30
 
 ### Priority 1: GDPR & Security (Pre-Launch Blockers)
 
+#### #56: Add site policies page for app-specific legal disclosures
+Dedicated page for app-specific operational disclosures (delegated coordinator roles + enhanced access, contact point, visibility model, automated provisioning) with multi-language privacy policy viewer below (same tabbed UX as Governance statutes). Replaces current hardcoded English-only Privacy page.
+
 ---
 
 ### Priority 2: Quick Fixes (do now, standalone)
 
+#### #58: Add hard-delete user function for dev/QA environments
+Admin-only, non-production-only hard delete to fully remove a test user and all related data. Needed for iterating on onboarding/profile/consent flows without accumulating junk accounts. Must handle RESTRICT FKs (nullify actor references), bypass consent_records/audit_log DELETE triggers, and cascade everything else. Danger-styled button on HumanDetail with confirmation modal.
 
 ---
-
-### Priority 3: Profile Edit Redesign (#49)
-
-#### #49: Reorganize profile edit into three named sections
-Three distinct sections: 1) General Information, 2) Contributor Information (with board-approval note), 3) Private Information. Includes:
-- **#45** (folded): Show Private section first on initial setup when fields are empty
-- **#47** (folded): Require Burner CV or "no prior burn experience" checkbox in Contributor section
-- Rename "Legal First Name" to "Legal First Name(s)" in all locales
 
 ---
 
@@ -45,6 +42,12 @@ Board voting dashboard implemented with Yay/Maybe/No/Abstain votes, per-board-me
 ---
 
 ### Priority 5: UI/Navigation Improvements
+
+#### #57: Add application transparency statistics for members
+Governance policy Section 8 requires aggregate application statistics (received, approved, rejected by tier/quarter) published to members, plus published criteria set. Admin report view and member-facing stats on Governance page.
+
+#### #55: Show tier application status alongside volunteer approval banner on profile
+Profile "pending approval" banner only shows volunteer status. Should also indicate pending Colaborador/Asociado application status, since these are separate tracks and omitting one can confuse users.
 
 #### #50: Split teams page into "my teams" and "other teams" sections
 Reorganize Teams Index into two sections: user's teams at top, other teams below. May consolidate with MyTeams page.
@@ -263,3 +266,6 @@ Committed 2026-02-18 in 3 commits:
 
 ### #44 + #46 Part 1: Consent tab language + admin terminology DONE
 Committed `a53696d`. #44: Consent review checkbox text now follows the active document tab via JS tab-switch handler with per-language translations from ResourceManager. Non-Spanish tabs show bilingual legal note (tab language + Spanish italic). #46 Part 1: Replaced "Volunteer"/"Member" with "Human" in 7 admin button/message keys across all 5 locales (EN/ES/DE/FR/IT) + 3 log messages in AdminController.
+
+### #49: Reorganize profile edit into four named sections DONE
+Committed `2e98cbd`. Restructured Profile Edit from a single flat card into 4 distinct cards within one form: General Information, Contributor Information, Application (initial setup only), Private Information. Folds in #45 (Private section shown first when private fields are empty) and #47 (require Burner CV or "no prior burn experience" checkbox). Renamed "Legal First Name" → "Legal First Name(s)" in all 5 locales. Added `NoPriorBurnExperience` domain property with EF migration, client-side + server-side CV validation, `ShowPrivateFirst` conditional ordering, and `_EditSectionPrivate.cshtml` partial.

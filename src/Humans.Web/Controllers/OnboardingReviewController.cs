@@ -69,7 +69,7 @@ public class OnboardingReviewController : Controller
         var allUserIds = reviewableProfiles.Select(p => p.UserId).ToList();
         var pendingAppUserIds = await _dbContext.Applications
             .Where(a => allUserIds.Contains(a.UserId) &&
-                (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview))
+                (a.Status == ApplicationStatus.Submitted))
             .Select(a => a.UserId)
             .ToHashSetAsync();
 
@@ -101,7 +101,7 @@ public class OnboardingReviewController : Controller
 
         var pendingApp = await _dbContext.Applications
             .Where(a => a.UserId == userId &&
-                (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview))
+                (a.Status == ApplicationStatus.Submitted))
             .FirstOrDefaultAsync();
 
         var viewModel = new OnboardingReviewDetailViewModel
@@ -298,7 +298,7 @@ public class OnboardingReviewController : Controller
         var applications = await _dbContext.Applications
             .Include(a => a.User)
             .Include(a => a.BoardVotes)
-            .Where(a => a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview)
+            .Where(a => a.Status == ApplicationStatus.Submitted)
             .OrderBy(a => a.MembershipTier)
             .ThenBy(a => a.SubmittedAt)
             .ToListAsync();
@@ -407,7 +407,8 @@ public class OnboardingReviewController : Controller
                     BoardMemberUserId = v.BoardMemberUserId,
                     DisplayName = v.BoardMemberUser.DisplayName,
                     Vote = v.Vote,
-                    Note = v.Note
+                    Note = v.Note,
+                    VotedAt = v.VotedAt.ToDateTimeUtc()
                 })
                 .OrderBy(v => v.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
@@ -432,7 +433,7 @@ public class OnboardingReviewController : Controller
             return NotFound();
         }
 
-        if (application.Status != ApplicationStatus.Submitted && application.Status != ApplicationStatus.UnderReview)
+        if (application.Status != ApplicationStatus.Submitted)
         {
             TempData["ErrorMessage"] = _localizer["BoardVoting_ApplicationNotVotable"].Value;
             return RedirectToAction(nameof(BoardVoting));
@@ -442,12 +443,6 @@ public class OnboardingReviewController : Controller
         if (currentUser == null)
         {
             return NotFound();
-        }
-
-        // Start review if still in Submitted status
-        if (application.Status == ApplicationStatus.Submitted)
-        {
-            application.StartReview(currentUser.Id, _clock);
         }
 
         var existingVote = await _dbContext.BoardVotes
@@ -499,7 +494,7 @@ public class OnboardingReviewController : Controller
             return NotFound();
         }
 
-        if (application.Status != ApplicationStatus.UnderReview && application.Status != ApplicationStatus.Submitted)
+        if (application.Status != ApplicationStatus.Submitted)
         {
             TempData["ErrorMessage"] = _localizer["BoardVoting_ApplicationNotVotable"].Value;
             return RedirectToAction(nameof(BoardVoting));
@@ -534,12 +529,6 @@ public class OnboardingReviewController : Controller
         {
             TempData["ErrorMessage"] = _localizer["BoardVoting_MeetingDateRequired"].Value;
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
-        }
-
-        // Ensure the application is in UnderReview before finalizing
-        if (application.Status == ApplicationStatus.Submitted)
-        {
-            application.StartReview(currentUser.Id, _clock);
         }
 
         application.BoardMeetingDate = meetingDate;

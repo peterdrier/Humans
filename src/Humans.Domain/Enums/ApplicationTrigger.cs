@@ -6,11 +6,6 @@ namespace Humans.Domain.Enums;
 public enum ApplicationTrigger
 {
     /// <summary>
-    /// Start reviewing the application.
-    /// </summary>
-    StartReview,
-
-    /// <summary>
     /// Approve the application.
     /// </summary>
     Approve,

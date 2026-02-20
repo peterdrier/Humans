@@ -12,11 +12,6 @@ public enum ApplicationStatus
     Submitted = 0,
 
     /// <summary>
-    /// Application is currently under review by administrators.
-    /// </summary>
-    UnderReview = 1,
-
-    /// <summary>
     /// Application has been approved.
     /// </summary>
     Approved = 2,

@@ -15,7 +15,6 @@ public static class StatusBadgeExtensions
         return status switch
         {
             ApplicationStatus.Submitted => "bg-primary",
-            ApplicationStatus.UnderReview => "bg-info",
             ApplicationStatus.Approved => "bg-success",
             ApplicationStatus.Rejected => "bg-danger",
             _ => "bg-secondary"
@@ -30,7 +29,6 @@ public static class StatusBadgeExtensions
         return status switch
         {
             "Submitted" => "bg-primary",
-            "UnderReview" => "bg-info",
             "Approved" => "bg-success",
             "Rejected" => "bg-danger",
             _ => "bg-secondary"

@@ -36,3 +36,11 @@ document.addEventListener('submit', function (e) {
         }
     }
 });
+
+// Clickable table rows via [data-href]
+document.addEventListener('click', function (e) {
+    var row = e.target.closest('tr[data-href]');
+    if (row) {
+        window.location = row.getAttribute('data-href');
+    }
+});

@@ -64,7 +64,7 @@ public class TermRenewalReminderJob
             // Exclude users who already have a pending renewal application for the same tier
             var userTiersWithPending = await _dbContext.Applications
                 .Where(a =>
-                    (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview))
+                    a.Status == ApplicationStatus.Submitted)
                 .Select(a => new { a.UserId, a.MembershipTier })
                 .ToListAsync(cancellationToken);
 

@@ -860,6 +860,7 @@
   <data name="OnboardingReview_Pending" xml:space="preserve"><value>In attesa</value></data>
   <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Segnalato</value></data>
   <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>Riepilogo del profilo</value></data>
+  <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>Riepilogo del nuovo human</value></data>
   <data name="OnboardingReview_LegalName" xml:space="preserve"><value>Nome legale</value></data>
   <data name="OnboardingReview_HasApplication" xml:space="preserve"><value>Ha una domanda</value></data>
   <data name="OnboardingReview_Consents" xml:space="preserve"><value>Consensi</value></data>
@@ -895,6 +896,7 @@
   <data name="BoardVoting_Details" xml:space="preserve"><value>Dettagli</value></data>
   <data name="BoardVoting_Vote" xml:space="preserve"><value>Voto</value></data>
   <data name="BoardVoting_Note" xml:space="preserve"><value>Nota</value></data>
+  <data name="BoardVoting_Date" xml:space="preserve"><value>Data</value></data>
   <data name="BoardVoting_CastVote" xml:space="preserve"><value>Esprimi il tuo voto</value></data>
   <data name="BoardVoting_YourVote" xml:space="preserve"><value>Il tuo voto</value></data>
   <data name="BoardVoting_VotesSoFar" xml:space="preserve"><value>Voti finora</value></data>

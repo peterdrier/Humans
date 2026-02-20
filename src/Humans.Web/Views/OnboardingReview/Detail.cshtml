@@ -15,28 +15,14 @@
 <div class="row">
     <div class="col-md-8">
         <div class="card mb-4">
-            <div class="card-header">@Localizer["OnboardingReview_ProfileSummary"]</div>
+            <div class="card-header">@Localizer["OnboardingReview_NewHumanSummary"]</div>
             <div class="card-body">
-                <div class="d-flex align-items-center mb-3">
-                    <vc:user-avatar profile-picture-url="@Model.ProfilePictureUrl"
-                                    display-name="@Model.DisplayName"
-                                    size="64"
-                                    css-class="me-3" />
-                    <div>
-                        <h4 class="mb-0">@Model.DisplayName</h4>
-                        <p class="text-muted mb-0">@Model.Email</p>
-                    </div>
-                </div>
-
                 <dl class="row mb-0">
                     <dt class="col-sm-4">@Localizer["OnboardingReview_LegalName"]</dt>
                     <dd class="col-sm-8">@Model.FirstName @Model.LastName</dd>
 
-                    @if (!string.IsNullOrEmpty(Model.City))
-                    {
-                        <dt class="col-sm-4">@Localizer["Profile_Location"]</dt>
-                        <dd class="col-sm-8">@Model.City, @Model.CountryCode</dd>
-                    }
+                    <dt class="col-sm-4">@Localizer["Admin_Joined"]</dt>
+                    <dd class="col-sm-8">@Model.ProfileCreatedAt.ToString("d MMMM yyyy")</dd>
 
                     <dt class="col-sm-4">@Localizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-8">
@@ -47,24 +33,14 @@
                         }
                     </dd>
 
-                    <dt class="col-sm-4">@Localizer["OnboardingReview_Consents"]</dt>
-                    <dd class="col-sm-8">@Model.ConsentCount / @Model.RequiredConsentCount @Localizer["OnboardingReview_Signed"]</dd>
-
-                    <dt class="col-sm-4">@Localizer["Admin_Joined"]</dt>
-                    <dd class="col-sm-8">@Model.ProfileCreatedAt.ToString("d MMMM yyyy")</dd>
+                    @if (!string.IsNullOrEmpty(Model.ApplicationMotivation))
+                    {
+                        <dt class="col-sm-4">@Localizer["OnboardingReview_ApplicationMotivation"]</dt>
+                        <dd class="col-sm-8" style="white-space: pre-wrap;">@Model.ApplicationMotivation</dd>
+                    }
                 </dl>
             </div>
         </div>
-
-        @if (!string.IsNullOrEmpty(Model.ApplicationMotivation))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["OnboardingReview_ApplicationMotivation"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.ApplicationMotivation</p>
-                </div>
-            </div>
-        }
 
         @if (!string.IsNullOrEmpty(Model.ConsentCheckNotes))
         {

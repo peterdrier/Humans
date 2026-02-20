@@ -198,7 +198,6 @@ public sealed class HumansMetricsService : IDisposable
     {
         var s = _snapshot;
         yield return new Measurement<int>(s.ApplicationsSubmitted, new KeyValuePair<string, object?>("status", "submitted"));
-        yield return new Measurement<int>(s.ApplicationsUnderReview, new KeyValuePair<string, object?>("status", "under_review"));
     }
 
     // --- Snapshot refresh ---
@@ -275,8 +274,6 @@ public sealed class HumansMetricsService : IDisposable
             // applications_pending
             var applicationsSubmitted = await db.Applications
                 .CountAsync(a => a.Status == ApplicationStatus.Submitted);
-            var applicationsUnderReview = await db.Applications
-                .CountAsync(a => a.Status == ApplicationStatus.UnderReview);
 
             // google_sync_outbox_pending
             var pendingOutboxEvents = await db.GoogleSyncOutboxEvents
@@ -302,7 +299,6 @@ public sealed class HumansMetricsService : IDisposable
                 GoogleResources = googleResources,
                 LegalDocumentsActive = legalDocumentsActive,
                 ApplicationsSubmitted = applicationsSubmitted,
-                ApplicationsUnderReview = applicationsUnderReview,
                 PendingOutboxEvents = pendingOutboxEvents
             };
 
@@ -349,7 +345,6 @@ public sealed class HumansMetricsService : IDisposable
         public int GoogleResources { get; init; }
         public int LegalDocumentsActive { get; init; }
         public int ApplicationsSubmitted { get; init; }
-        public int ApplicationsUnderReview { get; init; }
         public int PendingOutboxEvents { get; init; }
     }
 }

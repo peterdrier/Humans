@@ -144,7 +144,6 @@ public class ProfileController : Controller
         var hasPendingOrApprovedApplication = profile != null && await _dbContext.Applications
             .AnyAsync(a => a.UserId == user.Id &&
                 (a.Status == ApplicationStatus.Submitted ||
-                 a.Status == ApplicationStatus.UnderReview ||
                  a.Status == ApplicationStatus.Approved));
 
         // Load existing pending application for inline display during initial setup
@@ -153,7 +152,7 @@ public class ProfileController : Controller
         {
             pendingApplication = await _dbContext.Applications
                 .Where(a => a.UserId == user.Id &&
-                    (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview))
+                    a.Status == ApplicationStatus.Submitted)
                 .FirstOrDefaultAsync();
         }
 
@@ -325,7 +324,6 @@ public class ProfileController : Controller
             var hasPendingOrApprovedApp = await _dbContext.Applications
                 .AnyAsync(a => a.UserId == user.Id &&
                     (a.Status == ApplicationStatus.Submitted ||
-                     a.Status == ApplicationStatus.UnderReview ||
                      a.Status == ApplicationStatus.Approved));
             if (hasPendingOrApprovedApp)
             {
@@ -377,7 +375,7 @@ public class ProfileController : Controller
             {
                 var existingApp = await _dbContext.Applications
                     .FirstOrDefaultAsync(a => a.UserId == user.Id &&
-                        (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview));
+                        a.Status == ApplicationStatus.Submitted);
 
                 if (existingApp != null)
                 {

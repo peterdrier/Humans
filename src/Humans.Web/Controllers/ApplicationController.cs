@@ -59,8 +59,7 @@ public class ApplicationController : Controller
 
         // Can submit new if no pending/under review applications
         var hasPendingApplication = applications.Any(a =>
-            a.Status == ApplicationStatus.Submitted ||
-            a.Status == ApplicationStatus.UnderReview);
+            a.Status == ApplicationStatus.Submitted);
 
         var viewModel = new ApplicationIndexViewModel
         {
@@ -91,7 +90,7 @@ public class ApplicationController : Controller
         // Check if user already has a pending application
         var hasPending = await _dbContext.Applications
             .AnyAsync(a => a.UserId == user.Id &&
-                (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview));
+                (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Submitted));
 
         if (hasPending)
         {
@@ -125,7 +124,7 @@ public class ApplicationController : Controller
         // Double-check no pending application
         var hasPending = await _dbContext.Applications
             .AnyAsync(a => a.UserId == user.Id &&
-                (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview));
+                (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Submitted));
 
         if (hasPending)
         {
@@ -228,8 +227,7 @@ public class ApplicationController : Controller
             ResolvedAt = application.ResolvedAt?.ToDateTimeUtc(),
             ReviewerName = application.ReviewedByUser?.DisplayName,
             ReviewNotes = application.ReviewNotes,
-            CanWithdraw = application.Status == ApplicationStatus.Submitted ||
-                          application.Status == ApplicationStatus.UnderReview,
+            CanWithdraw = application.Status == ApplicationStatus.Submitted,
             History = application.StateHistory
                 .OrderByDescending(h => h.ChangedAt)
                 .Select(h => new ApplicationHistoryViewModel
@@ -263,8 +261,7 @@ public class ApplicationController : Controller
             return NotFound();
         }
 
-        if (application.Status != ApplicationStatus.Submitted &&
-            application.Status != ApplicationStatus.UnderReview)
+        if (application.Status != ApplicationStatus.Submitted)
         {
             TempData["ErrorMessage"] = _localizer["Application_CannotWithdraw"].Value;
             return RedirectToAction(nameof(Details), new { id });

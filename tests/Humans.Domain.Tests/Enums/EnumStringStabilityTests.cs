@@ -80,7 +80,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(ApplicationStatus),
-            new[] { "Submitted", "UnderReview", "Approved", "Rejected", "Withdrawn" }
+            new[] { "Submitted", "Approved", "Rejected", "Withdrawn" }
         },
         {
             typeof(MembershipTier),

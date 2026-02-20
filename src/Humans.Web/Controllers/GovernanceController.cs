@@ -70,8 +70,7 @@ public class GovernanceController : Controller
             ApplicationResolvedAt = latestApplication?.ResolvedAt?.ToDateTimeUtc(),
             ApplicationStatusBadgeClass = latestApplication?.Status.GetBadgeClass(),
             CanApply = latestApplication == null ||
-                (latestApplication.Status != ApplicationStatus.Submitted &&
-                 latestApplication.Status != ApplicationStatus.UnderReview)
+                latestApplication.Status != ApplicationStatus.Submitted
         };
 
         return View(viewModel);

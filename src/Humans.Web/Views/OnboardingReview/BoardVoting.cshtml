@@ -27,8 +27,8 @@ else
                     <thead class="table-light">
                         <tr>
                             <th>@Localizer["BoardVoting_Applicant"]</th>
-                            <th>@Localizer["BoardVoting_Tier"]</th>
-                            <th>@Localizer["Governance_Submitted"]</th>
+                            <th class="text-center">@Localizer["BoardVoting_Tier"]</th>
+                            <th class="text-center">@Localizer["Governance_Submitted"]</th>
                             @foreach (var member in Model.BoardMembers)
                             {
                                 <th class="text-center" style="min-width: 80px;">
@@ -53,7 +53,7 @@ else
                                     </td>
                                 </tr>
                             }
-                            <tr>
+                            <tr data-href="@Url.Action("BoardVotingDetail", new { applicationId = app.ApplicationId })">
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <vc:user-avatar profile-picture-url="@app.ProfilePictureUrl"
@@ -63,12 +63,12 @@ else
                                         <span>@app.DisplayName</span>
                                     </div>
                                 </td>
-                                <td>
-                                    <span class="badge @(app.MembershipTier == MembershipTier.Asociado ? "bg-purple" : "bg-info")">
+                                <td class="text-center">
+                                    <span class="badge @(app.MembershipTier == MembershipTier.Asociado ? "bg-primary" : "bg-info")">
                                         @app.MembershipTier
                                     </span>
                                 </td>
-                                <td>
+                                <td class="text-center">
                                     <small>@app.SubmittedAt.ToString("d MMM yyyy")</small>
                                 </td>
                                 @foreach (var member in Model.BoardMembers)
@@ -93,7 +93,7 @@ else
                                         }
                                     </td>
                                 }
-                                <td class="text-end">
+                                <td class="text-center">
                                     <a asp-action="BoardVotingDetail" asp-route-applicationId="@app.ApplicationId"
                                        class="btn btn-sm btn-outline-primary">
                                         @Localizer["BoardVoting_Details"]

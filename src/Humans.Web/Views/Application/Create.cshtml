@@ -21,20 +21,25 @@
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
                     <div class="mb-4">
-                        <label asp-for="MembershipTier" class="form-label">@Localizer["Profile_MembershipTier"]</label>
-                        <select asp-for="MembershipTier" class="form-select" id="tierSelect">
-                            <option value="Colaborador">Colaborador</option>
-                            <option value="Asociado">Asociado</option>
-                        </select>
-                        <span asp-validation-for="MembershipTier" class="text-danger"></span>
-                        <div class="form-text">
-                            <div id="tierDescColaborador" style="display: @(Model.MembershipTier != Humans.Domain.Enums.MembershipTier.Asociado ? "block" : "none");">
-                                @Localizer["ProfileEdit_TierColaboradorDesc"]
-                            </div>
-                            <div id="tierDescAsociado" style="display: @(Model.MembershipTier == Humans.Domain.Enums.MembershipTier.Asociado ? "block" : "none");">
-                                @Localizer["ProfileEdit_TierAsociadoDesc"]
-                            </div>
+                        <label class="form-label">@Localizer["Profile_MembershipTier"]</label>
+                        <p class="text-muted small mb-3">@Localizer["ProfileEdit_TierDescription"]</p>
+                        @{
+                            var isColaborador = Model.MembershipTier != Humans.Domain.Enums.MembershipTier.Asociado;
+                            var isAsociado = Model.MembershipTier == Humans.Domain.Enums.MembershipTier.Asociado;
+                        }
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="MembershipTier" value="Colaborador" id="tierColaborador" checked="@isColaborador" />
+                            <label class="form-check-label" for="tierColaborador">
+                                <strong>Colaborador</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierColaboradorDesc"]</span>
+                            </label>
                         </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="MembershipTier" value="Asociado" id="tierAsociado" checked="@isAsociado" />
+                            <label class="form-check-label" for="tierAsociado">
+                                <strong>Asociado</strong> <span class="text-muted">(@Localizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@Localizer["ProfileEdit_TierAsociadoDesc"]</span>
+                            </label>
+                        </div>
+                        <span asp-validation-for="MembershipTier" class="text-danger"></span>
                     </div>
 
                     <div class="mb-4">
@@ -122,23 +127,20 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         (function() {
-            const tierSelect = document.getElementById('tierSelect');
-            const asociadoQuestions = document.getElementById('asociadoQuestionsCreate');
-            const descColab = document.getElementById('tierDescColaborador');
-            const descAsociado = document.getElementById('tierDescAsociado');
-            if (!tierSelect) return;
+            var radios = document.querySelectorAll('input[name="MembershipTier"]');
+            var asociadoQuestions = document.getElementById('asociadoQuestionsCreate');
+            if (!radios.length) return;
 
-            tierSelect.addEventListener('change', function() {
-                const isAsociado = this.value === 'Asociado';
-                if (asociadoQuestions) {
-                    asociadoQuestions.style.display = isAsociado ? 'block' : 'none';
-                    // Clear hidden fields so stale values aren't submitted
-                    if (!isAsociado) {
-                        asociadoQuestions.querySelectorAll('textarea').forEach(t => t.value = '');
+            radios.forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    var isAsociado = this.value === 'Asociado';
+                    if (asociadoQuestions) {
+                        asociadoQuestions.style.display = isAsociado ? 'block' : 'none';
+                        if (!isAsociado) {
+                            asociadoQuestions.querySelectorAll('textarea').forEach(function(t) { t.value = ''; });
+                        }
                     }
-                }
-                if (descColab) descColab.style.display = isAsociado ? 'none' : 'block';
-                if (descAsociado) descAsociado.style.display = isAsociado ? 'block' : 'none';
+                });
             });
         })();
     </script>

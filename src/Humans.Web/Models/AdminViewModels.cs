@@ -127,7 +127,6 @@ public class AdminApplicationDetailViewModel
     public DateTime? ReviewStartedAt { get; set; }
     public string? ReviewerName { get; set; }
     public string? ReviewNotes { get; set; }
-    public bool CanStartReview { get; set; }
     public bool CanApproveReject { get; set; }
     public List<ApplicationHistoryViewModel> History { get; set; } = [];
 }

@@ -58,8 +58,7 @@ public class HomeController : Controller
             .FirstOrDefaultAsync();
 
         var hasPendingApp = latestApplication != null &&
-            (latestApplication.Status == ApplicationStatus.Submitted ||
-             latestApplication.Status == ApplicationStatus.UnderReview);
+            latestApplication.Status == ApplicationStatus.Submitted;
 
         // Get term expiry from latest approved application for the user's current tier
         var currentTier = profile?.MembershipTier ?? MembershipTier.Volunteer;

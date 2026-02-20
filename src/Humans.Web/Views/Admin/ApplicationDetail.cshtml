@@ -129,20 +129,13 @@
             </div>
         </div>
 
-        @if (Model.CanStartReview || Model.CanApproveReject)
+        @if (Model.CanApproveReject)
         {
             <div class="card mb-4">
                 <div class="card-header">@Localizer["TeamDetail_Actions"]</div>
                 <div class="card-body">
                     <form asp-action="ApplicationAction" asp-route-id="@Model.Id" method="post">
                         @Html.AntiForgeryToken()
-
-                        @if (Model.CanStartReview)
-                        {
-                            <button type="submit" name="Action" value="StartReview" class="btn btn-primary w-100 mb-2">
-                                @Localizer["AdminAppDetail_StartReview"]
-                            </button>
-                        }
 
                         @if (Model.CanApproveReject)
                         {

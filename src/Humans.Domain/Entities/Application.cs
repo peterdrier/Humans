@@ -146,13 +146,9 @@ public class Application
             s => Status = s);
 
         machine.Configure(ApplicationStatus.Submitted)
-            .Permit(ApplicationTrigger.StartReview, ApplicationStatus.UnderReview)
-            .Permit(ApplicationTrigger.Withdraw, ApplicationStatus.Withdrawn);
-
-        machine.Configure(ApplicationStatus.UnderReview)
             .Permit(ApplicationTrigger.Approve, ApplicationStatus.Approved)
             .Permit(ApplicationTrigger.Reject, ApplicationStatus.Rejected)
-            .Permit(ApplicationTrigger.RequestMoreInfo, ApplicationStatus.Submitted)
+            .PermitReentry(ApplicationTrigger.RequestMoreInfo)
             .Permit(ApplicationTrigger.Withdraw, ApplicationStatus.Withdrawn);
 
         machine.Configure(ApplicationStatus.Approved)
@@ -165,20 +161,6 @@ public class Application
             .OnEntry(() => ResolvedAt = SystemClock.Instance.GetCurrentInstant());
 
         return machine;
-    }
-
-    /// <summary>
-    /// Starts the review process for this application.
-    /// </summary>
-    /// <param name="reviewerUserId">The ID of the reviewer.</param>
-    /// <param name="clock">The clock to use for timestamps.</param>
-    public void StartReview(Guid reviewerUserId, IClock clock)
-    {
-        StateMachine.Fire(ApplicationTrigger.StartReview);
-        ReviewedByUserId = reviewerUserId;
-        ReviewStartedAt = clock.GetCurrentInstant();
-        UpdatedAt = clock.GetCurrentInstant();
-        AddStateHistory(ApplicationStatus.UnderReview, reviewerUserId, clock);
     }
 
     /// <summary>

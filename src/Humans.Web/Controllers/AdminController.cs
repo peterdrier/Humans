@@ -36,6 +36,7 @@ public class AdminController : Controller
     private readonly SystemTeamSyncJob _systemTeamSyncJob;
     private readonly HumansMetricsService _metrics;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly IWebHostEnvironment _environment;
 
     public AdminController(
         HumansDbContext dbContext,
@@ -50,7 +51,8 @@ public class AdminController : Controller
         ILogger<AdminController> logger,
         SystemTeamSyncJob systemTeamSyncJob,
         HumansMetricsService metrics,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        IWebHostEnvironment environment)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -65,6 +67,7 @@ public class AdminController : Controller
         _systemTeamSyncJob = systemTeamSyncJob;
         _metrics = metrics;
         _localizer = localizer;
+        _environment = environment;
     }
 
     [HttpGet("")]
@@ -72,7 +75,7 @@ public class AdminController : Controller
     {
         var totalMembers = await _dbContext.Users.CountAsync();
         var pendingApplications = await _dbContext.Applications
-            .CountAsync(a => a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.UnderReview);
+            .CountAsync(a => a.Status == ApplicationStatus.Submitted);
         var pendingVolunteers = await _dbContext.Profiles
             .CountAsync(p => !p.IsApproved && !p.IsSuspended);
 
@@ -284,8 +287,7 @@ public class AdminController : Controller
         {
             // Default: show pending applications
             query = query.Where(a =>
-                a.Status == ApplicationStatus.Submitted ||
-                a.Status == ApplicationStatus.UnderReview);
+                a.Status == ApplicationStatus.Submitted);
         }
 
         if (!string.IsNullOrWhiteSpace(tier) && Enum.TryParse<MembershipTier>(tier, out var tierEnum))
@@ -359,8 +361,7 @@ public class AdminController : Controller
             ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
             ReviewerName = application.ReviewedByUser?.DisplayName,
             ReviewNotes = application.ReviewNotes,
-            CanStartReview = application.Status == ApplicationStatus.Submitted,
-            CanApproveReject = application.Status == ApplicationStatus.UnderReview,
+            CanApproveReject = application.Status == ApplicationStatus.Submitted,
             History = application.StateHistory
                 .OrderByDescending(h => h.ChangedAt)
                 .Select(h => new ApplicationHistoryViewModel
@@ -396,20 +397,8 @@ public class AdminController : Controller
 
         switch (model.Action.ToUpperInvariant())
         {
-            case "STARTREVIEW":
-                if (application.Status != ApplicationStatus.Submitted)
-                {
-                    TempData["ErrorMessage"] = _localizer["Admin_CannotStartReview"].Value;
-                    break;
-                }
-                application.StartReview(currentUser.Id, _clock);
-                _logger.LogInformation("Admin {AdminId} started review of application {ApplicationId}",
-                    currentUser.Id, application.Id);
-                TempData["SuccessMessage"] = _localizer["Admin_ReviewStarted"].Value;
-                break;
-
             case "APPROVE":
-                if (application.Status != ApplicationStatus.UnderReview)
+                if (application.Status != ApplicationStatus.Submitted)
                 {
                     TempData["ErrorMessage"] = _localizer["Admin_CannotApprove"].Value;
                     break;
@@ -474,7 +463,7 @@ public class AdminController : Controller
                 return RedirectToAction(nameof(ApplicationDetail), new { id });
 
             case "REJECT":
-                if (application.Status != ApplicationStatus.UnderReview)
+                if (application.Status != ApplicationStatus.Submitted)
                 {
                     TempData["ErrorMessage"] = _localizer["Admin_CannotReject"].Value;
                     break;
@@ -521,7 +510,7 @@ public class AdminController : Controller
                 return RedirectToAction(nameof(ApplicationDetail), new { id });
 
             case "REQUESTINFO":
-                if (application.Status != ApplicationStatus.UnderReview)
+                if (application.Status != ApplicationStatus.Submitted)
                 {
                     TempData["ErrorMessage"] = _localizer["Admin_CannotRequestInfo"].Value;
                     break;
@@ -712,6 +701,68 @@ public class AdminController : Controller
 
         TempData["SuccessMessage"] = "Signup rejected.";
         return RedirectToAction(nameof(HumanDetail), new { id });
+    }
+
+    [HttpPost("Humans/{id}/Purge")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> PurgeHuman(Guid id)
+    {
+        if (_environment.IsProduction())
+        {
+            return NotFound();
+        }
+
+        var user = await _dbContext.Users.FindAsync(id);
+
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var currentUser = await _userManager.GetUserAsync(User);
+
+        if (user.Id == currentUser?.Id)
+        {
+            TempData["ErrorMessage"] = "You cannot purge your own account.";
+            return RedirectToAction(nameof(HumanDetail), new { id });
+        }
+
+        var displayName = user.DisplayName;
+
+        _logger.LogWarning(
+            "Admin {AdminId} purging human {HumanId} ({DisplayName}) in {Environment}",
+            currentUser?.Id, id, displayName, _environment.EnvironmentName);
+
+        // Sever OAuth link so next Google login creates a fresh user
+        var logins = await _userManager.GetLoginsAsync(user);
+        foreach (var login in logins)
+        {
+            await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
+        }
+
+        // Remove UserEmails so the unique index doesn't block the new account
+        var userEmails = await _dbContext.UserEmails.Where(e => e.UserId == id).ToListAsync();
+        _dbContext.UserEmails.RemoveRange(userEmails);
+
+        // Change email so email-based lookup won't match
+        var purgedEmail = $"purged-{Guid.NewGuid()}@deleted.local";
+        user.Email = purgedEmail;
+        user.NormalizedEmail = purgedEmail.ToUpperInvariant();
+        user.UserName = purgedEmail;
+        user.NormalizedUserName = purgedEmail.ToUpperInvariant();
+        user.DisplayName = $"Purged ({displayName})";
+
+        // Lock out the account permanently
+        user.LockoutEnabled = true;
+        user.LockoutEnd = DateTimeOffset.MaxValue;
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, id);
+
+        TempData["SuccessMessage"] = $"Purged {displayName}. They will get a fresh account on next login.";
+        return RedirectToAction(nameof(Humans));
     }
 
     [HttpGet("Teams")]

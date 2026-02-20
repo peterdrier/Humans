@@ -63,6 +63,7 @@ public class BoardVoteDetailItemViewModel
     public string DisplayName { get; set; } = string.Empty;
     public VoteChoice Vote { get; set; }
     public string? Note { get; set; }
+    public DateTime VotedAt { get; set; }
 }
 
 public class BoardVotingFinalizeModel

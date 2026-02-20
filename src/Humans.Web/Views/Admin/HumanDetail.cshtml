@@ -300,6 +300,17 @@
                         </button>
                     </form>
                 }
+                <environment exclude="Production">
+                    <hr />
+                    <form asp-action="PurgeHuman" asp-route-id="@Model.UserId" method="post"
+                          data-confirm="PURGE @Model.DisplayName? This severs their login — they will get a completely fresh account next time they sign in.">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="fa-solid fa-skull-crossbones me-1"></i> Purge (Dev/QA Only)
+                        </button>
+                        <small class="form-text text-muted">Severs OAuth link and locks account. Next login creates a fresh user.</small>
+                    </form>
+                </environment>
             </div>
         </div>
     </div>

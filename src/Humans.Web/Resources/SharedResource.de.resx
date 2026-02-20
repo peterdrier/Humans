@@ -860,6 +860,7 @@
   <data name="OnboardingReview_Pending" xml:space="preserve"><value>Ausstehend</value></data>
   <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Markiert</value></data>
   <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>Profil&#xFC;bersicht</value></data>
+  <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>Neuer Human &#x2013; Zusammenfassung</value></data>
   <data name="OnboardingReview_LegalName" xml:space="preserve"><value>B&#xFC;rgerlicher Name</value></data>
   <data name="OnboardingReview_HasApplication" xml:space="preserve"><value>Hat Antrag</value></data>
   <data name="OnboardingReview_Consents" xml:space="preserve"><value>Einwilligungen</value></data>
@@ -895,6 +896,7 @@
   <data name="BoardVoting_Details" xml:space="preserve"><value>Details</value></data>
   <data name="BoardVoting_Vote" xml:space="preserve"><value>Stimme</value></data>
   <data name="BoardVoting_Note" xml:space="preserve"><value>Notiz</value></data>
+  <data name="BoardVoting_Date" xml:space="preserve"><value>Datum</value></data>
   <data name="BoardVoting_CastVote" xml:space="preserve"><value>Deine Stimme abgeben</value></data>
   <data name="BoardVoting_YourVote" xml:space="preserve"><value>Deine Stimme</value></data>
   <data name="BoardVoting_VotesSoFar" xml:space="preserve"><value>Bisherige Stimmen</value></data>
