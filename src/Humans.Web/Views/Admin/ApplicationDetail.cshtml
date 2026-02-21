@@ -17,7 +17,7 @@
     <div class="col-md-8">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h1>@Localizer["AdminAppDetail_ApplicationReview"]</h1>
-            <span class="badge fs-5 @StatusBadgeExtensions.GetApplicationStatusBadgeClass(Model.Status)">@Model.Status</span>
+            <span class="badge fs-5 @StatusBadgeExtensions.GetApplicationStatusBadgeClass(Model.Status)">@Localizer["ApplicationStatus_" + Model.Status]</span>
         </div>
 
         <div class="card mb-4">

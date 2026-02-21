@@ -1,9 +1,9 @@
 @model Humans.Web.Models.ApplicationIndexViewModel
 @{
-    ViewData["Title"] = Localizer["Governance_Title"].Value;
+    ViewData["Title"] = Localizer["MyApplications_Title"].Value;
 }
 
-<h1 class="mb-4">@Localizer["Governance_Title"]</h1>
+<h1 class="mb-4">@Localizer["MyApplications_Title"]</h1>
 
 <vc:temp-data-alerts />
 
@@ -30,7 +30,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <a asp-action="Details" asp-route-id="@app.Id" class="text-decoration-none">@Localizer["Governance_YourApplication"]</a>
-                    <span class="badge @app.StatusBadgeClass">@app.Status</span>
+                    <span class="badge @app.StatusBadgeClass">@Localizer["ApplicationStatus_" + app.Status]</span>
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">

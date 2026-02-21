@@ -161,7 +161,7 @@ else if (Model.PendingConsents > 0)
                                 {
                                     <span class="badge bg-info me-1">@Model.LatestApplicationTier.Value</span>
                                 }
-                                <span class="badge @StatusBadgeExtensions.GetApplicationStatusBadgeClass(Model.LatestApplicationStatus)">@Model.LatestApplicationStatus</span>
+                                <span class="badge @StatusBadgeExtensions.GetApplicationStatusBadgeClass(Model.LatestApplicationStatus)">@Localizer["ApplicationStatus_" + Model.LatestApplicationStatus]</span>
                             </div>
                             <small class="text-muted">@Model.LatestApplicationDate?.ToString("d MMM yyyy")</small>
                         </div>

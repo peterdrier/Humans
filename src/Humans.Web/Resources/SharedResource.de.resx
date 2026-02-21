@@ -345,6 +345,13 @@
   <data name="Governance_Colaboradores" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Governance_Asociados" xml:space="preserve"><value>Asociados</value></data>
 
+  <!-- Application Status Badges -->
+  <data name="ApplicationStatus_Submitted" xml:space="preserve"><value>Eingereicht</value></data>
+  <data name="ApplicationStatus_Approved" xml:space="preserve"><value>Genehmigt</value></data>
+  <data name="ApplicationStatus_Rejected" xml:space="preserve"><value>Abgelehnt</value></data>
+  <data name="ApplicationStatus_Withdrawn" xml:space="preserve"><value>Zur&#xFC;ckgezogen</value></data>
+  <data name="MyApplications_Title" xml:space="preserve"><value>Meine Antr&#xE4;ge</value></data>
+
   <!-- Admin Application Statistics -->
   <data name="Admin_ApplicationStats" xml:space="preserve"><value>Antragsstatistiken</value></data>
   <data name="Admin_StatsTotal" xml:space="preserve"><value>Gesamt</value></data>

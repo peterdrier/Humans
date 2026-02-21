@@ -40,7 +40,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <span>
                         @string.Format(Localizer["Profile_TierApplicationStatus"].Value, Model.TierApplicationTier)
-                        <span class="badge @Model.TierApplicationBadgeClass ms-1">@Model.TierApplicationStatus</span>
+                        <span class="badge @Model.TierApplicationBadgeClass ms-1">@Localizer["ApplicationStatus_" + Model.TierApplicationStatus]</span>
                     </span>
                     <a asp-controller="Governance" asp-action="Index" class="alert-link">@Localizer["Profile_TierApplicationDetails"]</a>
                 </div>

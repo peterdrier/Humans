@@ -55,7 +55,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>@Localizer["Governance_YourApplication"]</span>
-                    <span class="badge @Model.ApplicationStatusBadgeClass">@Model.ApplicationStatus</span>
+                    <span class="badge @Model.ApplicationStatusBadgeClass">@Localizer["ApplicationStatus_" + Model.ApplicationStatus]</span>
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">

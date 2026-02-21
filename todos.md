@@ -1,7 +1,7 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-02-21
+Last synced: 2026-02-21T14:30
 
 ---
 
@@ -16,7 +16,21 @@ Dedicated page for app-specific operational disclosures (delegated coordinator r
 
 ### Priority 2: Quick Fixes (do now, standalone)
 
-*(empty — all quick fixes done)*
+#### QA-01: "Approved" badge not localized in non-English locales
+On the Spanish dashboard (and likely other locales), the "Approved" badge in the Governance section stays in English. Should be "Aprobado" / "Genehmigt" / etc.
+**Where:** Dashboard view, Governance card — badge rendering
+
+#### QA-02: `/Application` page title says "Governance"
+Navigating to `/Application` renders a page titled "Governance" showing only the application status card (missing statutes and community stats). Should use a distinct title like "My Applications" to differentiate from `/Governance`.
+**Where:** `Application/Index.cshtml` or routing
+
+#### QA-03: Language names missing diacritics in language switcher
+"Espanol" should be "Español" and "Francais" should be "Français" in the language dropdown.
+**Where:** `_Layout.cshtml` or language configuration
+
+#### QA-04: Enable custom error pages in Development mode
+`UseStatusCodePagesWithReExecute` is inside the `!IsDevelopment()` block (`Program.cs:299-304`), so 404s return bare empty responses in dev/QA. Move it outside the conditional so the friendly 404 page shows in all environments.
+**Where:** `Program.cs:299-304`
 
 ---
 
