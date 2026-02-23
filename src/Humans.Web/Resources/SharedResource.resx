@@ -349,7 +349,6 @@
   <data name="Admin_StatsApproved" xml:space="preserve"><value>Approved</value></data>
   <data name="Admin_StatsRejected" xml:space="preserve"><value>Rejected</value></data>
   <data name="Admin_StatsPending" xml:space="preserve"><value>Pending</value></data>
-  <data name="Admin_StatsApprovalRate" xml:space="preserve"><value>Approval rate</value></data>
 
   <!-- Governance Create View -->
   <data name="GovernanceCreate_NewApplication" xml:space="preserve"><value>New Application</value></data>

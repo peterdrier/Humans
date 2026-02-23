@@ -358,7 +358,6 @@
   <data name="Admin_StatsApproved" xml:space="preserve"><value>Approvate</value></data>
   <data name="Admin_StatsRejected" xml:space="preserve"><value>Respinte</value></data>
   <data name="Admin_StatsPending" xml:space="preserve"><value>In attesa</value></data>
-  <data name="Admin_StatsApprovalRate" xml:space="preserve"><value>Tasso di approvazione</value></data>
 
   <!-- Governance Create View -->
   <data name="GovernanceCreate_NewApplication" xml:space="preserve"><value>Nuova domanda</value></data>

@@ -6,7 +6,7 @@ Tracks when recurring maintenance processes were last run.
 |---------|----------|----------|---------|-------|
 | NuGet vulnerability check | 2026-02-15 | 2026-02-22 | Weekly | `dotnet list package --vulnerable` |
 | Todo audit | 2026-02-12 | 2026-02-19 | Weekly | Stale items, completed moves |
-| Code simplification | — | — | After features | Dead code, unused abstractions |
+| Code simplification | 2026-02-23 | After next feature change | After features | Dead code, unused abstractions |
 | ReSharper InspectCode | 2026-02-17 | 2026-02-24 | Weekly | `/resharper` — fix Tier 1+2 warnings |
 | Context cleanup | 2026-02-12 | 2026-03-12 | Monthly | CLAUDE.md, .claude/, todos.md |
 | Feature spec sync | 2026-02-12 | 2026-03-12 | Monthly | docs/features/ vs implementation |
@@ -18,3 +18,4 @@ Tracks when recurring maintenance processes were last run.
 | NuGet full update | 2026-02-17 | 2026-03-17 | Monthly | Non-security package updates |
 | About page package sync | 2026-02-15 | 2026-03-15 | Monthly | Update `About.cshtml` package versions after NuGet updates |
 | GitHub issue triage | — | — | Weekly | Sync issues vs todos.md |
+

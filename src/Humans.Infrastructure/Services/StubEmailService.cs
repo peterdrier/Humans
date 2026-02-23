@@ -7,7 +7,7 @@ namespace Humans.Infrastructure.Services;
 
 /// <summary>
 /// Stub implementation of IEmailService that logs actions without sending real emails.
-/// Replace with real implementation when email service integration is ready.
+/// Used for local/dev scenarios where SMTP transport is intentionally disabled.
 /// </summary>
 public class StubEmailService : IEmailService
 {

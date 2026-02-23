@@ -360,7 +360,6 @@
   <data name="Admin_StatsApproved" xml:space="preserve"><value>Aprobadas</value></data>
   <data name="Admin_StatsRejected" xml:space="preserve"><value>Rechazadas</value></data>
   <data name="Admin_StatsPending" xml:space="preserve"><value>Pendientes</value></data>
-  <data name="Admin_StatsApprovalRate" xml:space="preserve"><value>Tasa de aprobaci&#xF3;n</value></data>
 
   <!-- Governance Create View -->
   <data name="GovernanceCreate_NewApplication" xml:space="preserve"><value>Nueva solicitud</value></data>

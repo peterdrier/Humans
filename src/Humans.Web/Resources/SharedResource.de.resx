@@ -358,7 +358,6 @@
   <data name="Admin_StatsApproved" xml:space="preserve"><value>Genehmigt</value></data>
   <data name="Admin_StatsRejected" xml:space="preserve"><value>Abgelehnt</value></data>
   <data name="Admin_StatsPending" xml:space="preserve"><value>Ausstehend</value></data>
-  <data name="Admin_StatsApprovalRate" xml:space="preserve"><value>Genehmigungsrate</value></data>
 
   <!-- Governance Create View -->
   <data name="GovernanceCreate_NewApplication" xml:space="preserve"><value>Neuer Antrag</value></data>

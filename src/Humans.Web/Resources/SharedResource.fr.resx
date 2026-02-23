@@ -358,7 +358,6 @@
   <data name="Admin_StatsApproved" xml:space="preserve"><value>Approuv&#xE9;es</value></data>
   <data name="Admin_StatsRejected" xml:space="preserve"><value>Rejet&#xE9;es</value></data>
   <data name="Admin_StatsPending" xml:space="preserve"><value>En attente</value></data>
-  <data name="Admin_StatsApprovalRate" xml:space="preserve"><value>Taux d'approbation</value></data>
 
   <!-- Governance Create View -->
   <data name="GovernanceCreate_NewApplication" xml:space="preserve"><value>Nouvelle candidature</value></data>

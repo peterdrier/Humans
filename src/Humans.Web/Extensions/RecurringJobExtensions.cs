@@ -5,10 +5,8 @@ namespace Humans.Web.Extensions;
 
 public static class RecurringJobExtensions
 {
-    public static void UseHumansRecurringJobs(this WebApplication app)
+    public static void UseHumansRecurringJobs(this WebApplication _)
     {
-        _ = app;
-
         // Google permission-modifying jobs are currently DISABLED (SystemTeamSyncJob,
         // GoogleResourceReconciliationJob). They could be destructive if upstream
         // membership/consent data is incorrect during rollout.
