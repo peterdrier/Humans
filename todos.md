@@ -1,25 +1,21 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-02-21T20:00
+Last synced: 2026-02-24
 
 ---
 
 ## Open Work — Prioritized
 
-### Priority 1: GDPR & Security (Pre-Launch Blockers)
+### Blocked — Waiting on External Input
 
 #### #56: Add site policies page for app-specific legal disclosures
 Dedicated page for app-specific operational disclosures (delegated coordinator roles + enhanced access, contact point, visibility model, automated provisioning) with multi-language privacy policy viewer below (same tabbed UX as Governance statutes). Replaces current hardcoded English-only Privacy page.
-
----
+**Blocked:** Waiting on Pepe for legal advice on disclosure content.
 
 ---
 
 ### Priority 5: UI/Navigation Improvements
-
-#### #62: Fix missing id attributes on dynamically-generated form fields in profile edit
-Dynamically-created contact field and volunteer history rows lack `id` attributes, causing browser accessibility warnings and broken label-input associations. Affects `/Profile/Edit`.
 
 #### #14: Drive Activity Monitor: resolve people/ IDs to email addresses
 Drive Activity API returns `people/` IDs instead of email addresses. Need to resolve these via the People API for meaningful audit display.
@@ -249,6 +245,12 @@ Committed `793bceb`. Teams Index page now shows "My Teams" section at top with u
 
 ### #52/#53/#54/#46: Onboarding redesign epic DONE
 Three tiers (Volunteer/Colaborador/Asociado), board voting, Consent Coordinator gate, reject signup. Landed `8a9ee4e` + 5 follow-up fixes. QA validated, issues closed.
+
+### #62: Fix missing id attributes on dynamically-generated form fields in profile edit DONE
+Committed `e3f1ad5`. Added `id` attributes to dynamically-created contact field and volunteer history rows in `/Profile/Edit`.
+
+### #63: Add daily board digest email for new member approvals DONE
+Committed `1e2b29f`. Nightly Hangfire job (02:00 UTC) emails each Board member a summary of the previous UTC day's volunteer and tier application approvals, grouped by tier. Skips on zero-approval days. Localized templates in all 5 locales. Admin email preview added.
 
 ### QA-01 through QA-04: Localize status badges, fix page title, diacritics, error pages DONE
 Committed `a884b22`. Fixed "Approved" badge localization, `/Application` page title, language name diacritics, and custom error pages in dev mode.
