@@ -127,7 +127,6 @@
                 </form>
             </div>
         </div>
-        </div>
 
         @if (Model.TotalApplications > 0)
         {
@@ -150,16 +149,6 @@
                         <dd class="col-5 text-end mb-2">@Model.ColaboradorApplied</dd>
                         <dt class="col-7">Asociado</dt>
                         <dd class="col-5 text-end mb-2">@Model.AsociadoApplied</dd>
-                    </dl>
-                    @{
-                        var approvalRate = Model.TotalApplications > 0
-                            ? (int)Math.Round(100.0 * Model.ApprovedApplications / Model.TotalApplications)
-                            : 0;
-                    }
-                    <hr class="my-2" />
-                    <dl class="row mb-0">
-                        <dt class="col-7">@Localizer["Admin_StatsApprovalRate"]</dt>
-                        <dd class="col-5 text-end mb-0">@approvalRate%</dd>
                     </dl>
                 </div>
             </div>
