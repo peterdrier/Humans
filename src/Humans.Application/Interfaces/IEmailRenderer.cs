@@ -81,7 +81,7 @@ public interface IEmailRenderer
     EmailContent RenderTermRenewalReminder(string userName, string tierName, string expiresAt, string? culture = null);
 
     /// <summary>
-    /// Board daily digest of new approvals.
+    /// Board daily digest of new approvals and outstanding items.
     /// </summary>
-    EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, string? culture = null);
+    EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, BoardDigestOutstandingCounts? outstandingCounts = null, string? culture = null);
 }

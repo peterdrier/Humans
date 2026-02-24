@@ -48,7 +48,7 @@ public static class RecurringJobExtensions
         RecurringJob.AddOrUpdate<ProcessGoogleSyncOutboxJob>(
             "process-google-sync-outbox",
             job => job.ExecuteAsync(CancellationToken.None),
-            Cron.Minutely);
+            "*/10 * * * *");
 
         RecurringJob.AddOrUpdate<DriveActivityMonitorJob>(
             "drive-activity-monitor",

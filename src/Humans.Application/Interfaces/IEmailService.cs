@@ -221,12 +221,13 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends a Board daily digest email summarizing new approvals.
+    /// Sends a Board daily digest email summarizing new approvals and outstanding items.
     /// </summary>
     /// <param name="email">The Board member's email.</param>
     /// <param name="name">The Board member's display name.</param>
     /// <param name="date">The date being summarized (e.g. "2026-02-22").</param>
     /// <param name="groups">Tier groups with approved display names.</param>
+    /// <param name="outstandingCounts">Outstanding item counts (personalized per board member).</param>
     /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task SendBoardDailyDigestAsync(
@@ -234,6 +235,7 @@ public interface IEmailService
         string name,
         string date,
         IReadOnlyList<BoardDigestTierGroup> groups,
+        BoardDigestOutstandingCounts? outstandingCounts = null,
         string? culture = null,
         CancellationToken cancellationToken = default);
 }

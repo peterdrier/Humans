@@ -229,10 +229,11 @@ public class SmtpEmailService : IEmailService
         string name,
         string date,
         IReadOnlyList<BoardDigestTierGroup> groups,
+        BoardDigestOutstandingCounts? outstandingCounts = null,
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderBoardDailyDigest(name, date, groups, culture);
+        var content = _renderer.RenderBoardDailyDigest(name, date, groups, outstandingCounts, culture);
         await SendEmailAsync(email, content.Subject, content.HtmlBody, cancellationToken);
         _metrics.RecordEmailSent("board_daily_digest");
     }

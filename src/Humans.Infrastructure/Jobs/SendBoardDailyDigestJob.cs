@@ -11,12 +11,14 @@ using Humans.Infrastructure.Services;
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
-/// Nightly job that emails each Board member a summary of the previous UTC day's approvals.
+/// Nightly job that emails each Board member a summary of the previous UTC day's approvals
+/// plus outstanding items requiring attention.
 /// </summary>
 public class SendBoardDailyDigestJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
+    private readonly IMembershipCalculator _membershipCalculator;
     private readonly HumansMetricsService _metrics;
     private readonly ILogger<SendBoardDailyDigestJob> _logger;
     private readonly IClock _clock;
@@ -24,12 +26,14 @@ public class SendBoardDailyDigestJob
     public SendBoardDailyDigestJob(
         HumansDbContext dbContext,
         IEmailService emailService,
+        IMembershipCalculator membershipCalculator,
         HumansMetricsService metrics,
         ILogger<SendBoardDailyDigestJob> logger,
         IClock clock)
     {
         _dbContext = dbContext;
         _emailService = emailService;
+        _membershipCalculator = membershipCalculator;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -91,15 +95,64 @@ public class SendBoardDailyDigestJob
                 groups.Add(new BoardDigestTierGroup(tierLabel, names));
             }
 
-            // Nothing to report
-            if (groups.Count == 0)
+            // 3. Compute shared outstanding counts
+            var onboardingReviewCount = await _dbContext.Profiles
+                .CountAsync(p => p.ConsentCheckStatus != null
+                    && (p.ConsentCheckStatus == ConsentCheckStatus.Pending || p.ConsentCheckStatus == ConsentCheckStatus.Flagged)
+                    && p.RejectedAt == null, cancellationToken);
+
+            var totalNotApproved = await _dbContext.Profiles
+                .CountAsync(p => !p.IsApproved && !p.IsSuspended, cancellationToken);
+            var stillOnboardingCount = totalNotApproved - onboardingReviewCount;
+            if (stillOnboardingCount < 0) stillOnboardingCount = 0;
+
+            var boardVotingTotal = await _dbContext.Applications
+                .CountAsync(a => a.Status == ApplicationStatus.Submitted, cancellationToken);
+
+            var teamJoinRequestCount = await _dbContext.TeamJoinRequests
+                .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
+
+            // Pending consents (same logic as AdminController dashboard)
+            var allUserIds = await _dbContext.Users.Select(u => u.Id).ToListAsync(cancellationToken);
+            var usersWithAllConsents = await _membershipCalculator.GetUsersWithAllRequiredConsentsAsync(allUserIds, cancellationToken);
+
+            var leadUserIds = await _dbContext.TeamMembers
+                .Where(tm => tm.LeftAt == null && tm.Role == TeamMemberRole.Lead && tm.Team.SystemTeamType == SystemTeamType.None)
+                .Select(tm => tm.UserId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+            var leadsWithAllConsents = leadUserIds.Count > 0
+                ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(leadUserIds, SystemTeamIds.Leads, cancellationToken)
+                : (IReadOnlySet<Guid>)new HashSet<Guid>();
+
+            var pendingConsentsCount = allUserIds.Count(id =>
+                !usersWithAllConsents.Contains(id) ||
+                (leadUserIds.Contains(id) && !leadsWithAllConsents.Contains(id)));
+
+            var pendingDeletionsCount = await _dbContext.Users
+                .CountAsync(u => u.DeletionRequestedAt != null, cancellationToken);
+
+            // Only skip if both no approvals AND all counts are zero
+            var hasOutstandingItems = onboardingReviewCount > 0 || stillOnboardingCount > 0
+                || boardVotingTotal > 0 || teamJoinRequestCount > 0
+                || pendingConsentsCount > 0 || pendingDeletionsCount > 0;
+
+            if (groups.Count == 0 && !hasOutstandingItems)
             {
-                _logger.LogInformation("No approvals on {Date}, skipping Board digest", dateLabel);
+                _logger.LogInformation("No approvals and no outstanding items on {Date}, skipping Board digest", dateLabel);
                 _metrics.RecordJobRun("board_daily_digest", "skipped");
                 return;
             }
 
-            // 3. Find active Board members
+            // 4. Submitted application IDs (for per-member vote count)
+            var submittedApplicationIds = boardVotingTotal > 0
+                ? await _dbContext.Applications
+                    .Where(a => a.Status == ApplicationStatus.Submitted)
+                    .Select(a => a.Id)
+                    .ToListAsync(cancellationToken)
+                : new List<Guid>();
+
+            // 5. Find active Board members
             var boardMembers = await _dbContext.RoleAssignments
                 .Include(ra => ra.User)
                     .ThenInclude(u => u.UserEmails)
@@ -121,16 +174,38 @@ public class SendBoardDailyDigestJob
                     continue;
                 }
 
+                // Per-member: how many submitted applications this member hasn't voted on
+                var boardVotingYours = 0;
+                if (submittedApplicationIds.Count > 0)
+                {
+                    var votedAppIds = await _dbContext.BoardVotes
+                        .Where(v => v.BoardMemberUserId == member.Id
+                            && submittedApplicationIds.Contains(v.ApplicationId))
+                        .Select(v => v.ApplicationId)
+                        .ToListAsync(cancellationToken);
+
+                    boardVotingYours = submittedApplicationIds.Count - votedAppIds.Count;
+                }
+
+                var counts = new BoardDigestOutstandingCounts(
+                    onboardingReviewCount,
+                    stillOnboardingCount,
+                    boardVotingTotal,
+                    boardVotingYours,
+                    teamJoinRequestCount,
+                    pendingConsentsCount,
+                    pendingDeletionsCount);
+
                 await _emailService.SendBoardDailyDigestAsync(
-                    email, member.DisplayName, dateLabel, groups,
+                    email, member.DisplayName, dateLabel, groups, counts,
                     member.PreferredLanguage, cancellationToken);
                 sentCount++;
             }
 
             _metrics.RecordJobRun("board_daily_digest", "success");
             _logger.LogInformation(
-                "Board daily digest sent to {Count} Board members for {Date} ({TierCount} tier groups, {TotalApprovals} approvals)",
-                sentCount, dateLabel, groups.Count, groups.Sum(g => g.DisplayNames.Count));
+                "Board daily digest sent to {Count} Board members for {Date} ({TierCount} tier groups, {TotalApprovals} approvals, outstanding: {Outstanding})",
+                sentCount, dateLabel, groups.Count, groups.Sum(g => g.DisplayNames.Count), hasOutstandingItems);
         }
         catch (Exception ex)
         {

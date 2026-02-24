@@ -240,21 +240,86 @@ public class EmailRenderer : IEmailRenderer
         }
     }
 
-    public EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, string? culture = null)
+    public EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, BoardDigestOutstandingCounts? outstandingCounts = null, string? culture = null)
     {
         using (WithCulture(culture))
         {
             var subject = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDailyDigest_Subject"].Value, date);
-            var tierSectionsHtml = string.Join("\n", tierGroups.Select(g =>
-                $"<h3>{HtmlEncode(g.TierLabel)}</h3>\n<ul>\n{string.Join("\n", g.DisplayNames.Select(n => $"<li>{HtmlEncode(n)}</li>"))}\n</ul>"));
+
+            var outstandingHtml = BuildOutstandingSection(outstandingCounts);
+
+            string approvalsHtml;
+            if (tierGroups.Count > 0)
+            {
+                var tierSectionsHtml = string.Join("\n", tierGroups.Select(g =>
+                    $"<h3>{HtmlEncode(g.TierLabel)}</h3>\n<ul>\n{string.Join("\n", g.DisplayNames.Select(n => $"<li>{HtmlEncode(n)}</li>"))}\n</ul>"));
+                approvalsHtml = tierSectionsHtml;
+            }
+            else
+            {
+                approvalsHtml = $"<p>{_localizer["Email_BoardDigest_NoApprovals"].Value}</p>";
+            }
+
             var body = string.Format(
                 CultureInfo.CurrentCulture,
                 _localizer["Email_BoardDailyDigest_Body"].Value,
                 HtmlEncode(boardMemberName),
                 HtmlEncode(date),
-                tierSectionsHtml);
+                approvalsHtml,
+                outstandingHtml);
             return new EmailContent(subject, body);
         }
+    }
+
+    private string BuildOutstandingSection(BoardDigestOutstandingCounts? counts)
+    {
+        if (counts == null) return "";
+
+        var hasAny = counts.OnboardingReview > 0 || counts.StillOnboarding > 0
+            || counts.BoardVotingTotal > 0 || counts.TeamJoinRequests > 0
+            || counts.PendingConsents > 0 || counts.PendingDeletions > 0;
+        if (!hasAny) return "";
+
+        var items = new List<string>();
+
+        if (counts.OnboardingReview > 0)
+        {
+            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_OnboardingReview"].Value, counts.OnboardingReview);
+            items.Add($"<li>{text} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
+        }
+
+        if (counts.StillOnboarding > 0)
+        {
+            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_StillOnboarding"].Value, counts.StillOnboarding);
+            items.Add($"<li>{text}</li>");
+        }
+
+        if (counts.BoardVotingTotal > 0)
+        {
+            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_BoardVoting"].Value, counts.BoardVotingTotal, counts.BoardVotingYours);
+            items.Add($"<li>{text} <a href=\"{_settings.BaseUrl}/Applications\">&rarr;</a></li>");
+        }
+
+        if (counts.TeamJoinRequests > 0)
+        {
+            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_TeamJoinRequests"].Value, counts.TeamJoinRequests);
+            items.Add($"<li>{text} <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
+        }
+
+        if (counts.PendingConsents > 0)
+        {
+            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_PendingConsents"].Value, counts.PendingConsents);
+            items.Add($"<li>{text}</li>");
+        }
+
+        if (counts.PendingDeletions > 0)
+        {
+            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_PendingDeletions"].Value, counts.PendingDeletions);
+            items.Add($"<li>{text}</li>");
+        }
+
+        var header = _localizer["Email_BoardDigest_OutstandingHeader"].Value;
+        return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
     }
 
     private static CultureScope WithCulture(string? culture)

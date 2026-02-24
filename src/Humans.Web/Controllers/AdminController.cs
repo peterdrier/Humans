@@ -1330,7 +1330,15 @@ public class AdminController : Controller
                 new("Volunteer", new[] { "Alice Johnson", "Bob Smith" }),
                 new("Colaborador", new[] { "Carlos García" })
             };
-            var c15 = renderer.RenderBoardDailyDigest(name, "2026-02-22", sampleDigestGroups, culture);
+            var sampleOutstanding = new BoardDigestOutstandingCounts(
+                OnboardingReview: 3,
+                StillOnboarding: 5,
+                BoardVotingTotal: 7,
+                BoardVotingYours: 4,
+                TeamJoinRequests: 2,
+                PendingConsents: 12,
+                PendingDeletions: 1);
+            var c15 = renderer.RenderBoardDailyDigest(name, "2026-02-22", sampleDigestGroups, sampleOutstanding, culture);
             items.Add(new EmailPreviewItem { Id = "board-daily-digest", Name = "Board Daily Digest", Recipient = email, Subject = c15.Subject, Body = c15.HtmlBody });
 
             previews[culture] = items;

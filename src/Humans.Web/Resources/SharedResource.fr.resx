@@ -1069,12 +1069,21 @@
 &lt;p&gt;Sans renouvellement, vous resterez un human actif mais n'aurez plus l'acc&#xE8;s de niveau {1}.&lt;/p&gt;
 &lt;p&gt;Merci pour votre engagement !&lt;br/&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 
-  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>R&#xE9;sum&#xE9; du conseil : Nouvelles approbations du {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
+  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>R&#xE9;sum&#xE9; du conseil : {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
 
-  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;R&#xE9;sum&#xE9; quotidien des approbations&lt;/h2&gt;
+  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;R&#xE9;sum&#xE9; du conseil &amp;mdash; {1}&lt;/h2&gt;
 &lt;p&gt;Bonjour {0},&lt;/p&gt;
-&lt;p&gt;Les humans suivants ont &#xE9;t&#xE9; approuv&#xE9;s le &lt;strong&gt;{1}&lt;/strong&gt; :&lt;/p&gt;
+{3}
 {2}
-&lt;p&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = tier sections HTML</comment></data>
+&lt;p&gt;L'&#xE9;quipe Humans&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = approvals HTML, {3} = outstanding HTML</comment></data>
+
+  <data name="Email_BoardDigest_OutstandingHeader" xml:space="preserve"><value>&#xC9;l&#xE9;ments en attente</value></data>
+  <data name="Email_BoardDigest_NoApprovals" xml:space="preserve"><value>Aucune nouvelle approbation hier.</value></data>
+  <data name="Email_BoardDigest_OnboardingReview" xml:space="preserve"><value>{0} en attente de v&#xE9;rification d'int&#xE9;gration</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_StillOnboarding" xml:space="preserve"><value>{0} encore en cours d'int&#xE9;gration</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_BoardVoting" xml:space="preserve"><value>{0} candidatures de niveau en attente de vote ({1} n&#xE9;cessitent le v&#xF4;tre)</value><comment>{0} = total count, {1} = member's unvoted count</comment></data>
+  <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} demandes d'adh&#xE9;sion &#xE0; une &#xE9;quipe en attente</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} avec des exigences de consentement en attente</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} suppressions de compte en attente</value><comment>{0} = count</comment></data>
 
 </root>

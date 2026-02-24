@@ -1074,12 +1074,21 @@
 &lt;p&gt;Si no renuevas, seguir&#xE1;s siendo un human activo pero ya no tendr&#xE1;s acceso de nivel {1}.&lt;/p&gt;
 &lt;p&gt;&#xA1;Gracias por tu participaci&#xF3;n!&lt;br/&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = tier name, {2} = expiry date, {3} = base URL</comment></data>
 
-  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>Resumen de la Junta: Nuevas aprobaciones del {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
+  <data name="Email_BoardDailyDigest_Subject" xml:space="preserve"><value>Resumen de la Junta: {0}</value><comment>{0} = date (YYYY-MM-DD)</comment></data>
 
-  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;Resumen diario de aprobaciones&lt;/h2&gt;
+  <data name="Email_BoardDailyDigest_Body" xml:space="preserve"><value>&lt;h2&gt;Resumen de la Junta &amp;mdash; {1}&lt;/h2&gt;
 &lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Los siguientes humans fueron aprobados el &lt;strong&gt;{1}&lt;/strong&gt;:&lt;/p&gt;
+{3}
 {2}
-&lt;p&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = tier sections HTML</comment></data>
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = board member name, {1} = date, {2} = approvals HTML, {3} = outstanding HTML</comment></data>
+
+  <data name="Email_BoardDigest_OutstandingHeader" xml:space="preserve"><value>Elementos pendientes</value></data>
+  <data name="Email_BoardDigest_NoApprovals" xml:space="preserve"><value>No hubo nuevas aprobaciones ayer.</value></data>
+  <data name="Email_BoardDigest_OnboardingReview" xml:space="preserve"><value>{0} en espera de revisi&#xF3;n de incorporaci&#xF3;n</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_StillOnboarding" xml:space="preserve"><value>{0} a&#xFA;n completando la incorporaci&#xF3;n</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_BoardVoting" xml:space="preserve"><value>{0} solicitudes de nivel pendientes de voto ({1} necesitan el tuyo)</value><comment>{0} = total count, {1} = member's unvoted count</comment></data>
+  <data name="Email_BoardDigest_TeamJoinRequests" xml:space="preserve"><value>{0} solicitudes de equipo pendientes</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_PendingConsents" xml:space="preserve"><value>{0} con requisitos de consentimiento pendientes</value><comment>{0} = count</comment></data>
+  <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminaciones de cuenta pendientes</value><comment>{0} = count</comment></data>
 
 </root>

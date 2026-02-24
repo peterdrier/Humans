@@ -206,12 +206,13 @@ public class StubEmailService : IEmailService
         string name,
         string date,
         IReadOnlyList<BoardDigestTierGroup> groups,
+        BoardDigestOutstandingCounts? outstandingCounts = null,
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "[STUB] Would send Board daily digest to {Email} ({Name}) [Culture: {Culture}] for {Date} with {GroupCount} tier groups",
-            email, name, culture, date, groups.Count);
+            "[STUB] Would send Board daily digest to {Email} ({Name}) [Culture: {Culture}] for {Date} with {GroupCount} tier groups, outstanding: {@Outstanding}",
+            email, name, culture, date, groups.Count, outstandingCounts);
         return Task.CompletedTask;
     }
 }
