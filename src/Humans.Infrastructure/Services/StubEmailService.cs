@@ -18,17 +18,6 @@ public class StubEmailService : IEmailService
         _logger = logger;
     }
 
-    public Task SendApplicationSubmittedAsync(
-        Guid applicationId,
-        string applicantName,
-        CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation(
-            "[STUB] Would send application submitted email for application {ApplicationId} by {ApplicantName}",
-            applicationId, applicantName);
-        return Task.CompletedTask;
-    }
-
     public Task SendApplicationApprovedAsync(
         string userEmail,
         string userName,

@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
-using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
@@ -20,7 +19,6 @@ public class ApplicationController : Controller
 {
     private readonly HumansDbContext _dbContext;
     private readonly UserManager<Domain.Entities.User> _userManager;
-    private readonly IEmailService _emailService;
     private readonly HumansMetricsService _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ApplicationController> _logger;
@@ -29,7 +27,6 @@ public class ApplicationController : Controller
     public ApplicationController(
         HumansDbContext dbContext,
         UserManager<Domain.Entities.User> userManager,
-        IEmailService emailService,
         HumansMetricsService metrics,
         IClock clock,
         ILogger<ApplicationController> logger,
@@ -37,7 +34,6 @@ public class ApplicationController : Controller
     {
         _dbContext = dbContext;
         _userManager = userManager;
-        _emailService = emailService;
         _metrics = metrics;
         _clock = clock;
         _logger = logger;
@@ -178,15 +174,6 @@ public class ApplicationController : Controller
 
         _dbContext.Applications.Add(application);
         await _dbContext.SaveChangesAsync();
-
-        try
-        {
-            await _emailService.SendApplicationSubmittedAsync(application.Id, user.DisplayName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send application submission notification for {ApplicationId}", application.Id);
-        }
 
         _logger.LogInformation("User {UserId} submitted application {ApplicationId}", user.Id, application.Id);
 

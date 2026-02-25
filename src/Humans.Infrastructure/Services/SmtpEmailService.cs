@@ -39,17 +39,6 @@ public class SmtpEmailService : IEmailService
     }
 
     /// <inheritdoc />
-    public async Task SendApplicationSubmittedAsync(
-        Guid applicationId,
-        string applicantName,
-        CancellationToken cancellationToken = default)
-    {
-        var content = _renderer.RenderApplicationSubmitted(applicationId, applicantName);
-        await SendEmailAsync(_settings.AdminAddress, content.Subject, content.HtmlBody, cancellationToken);
-        _metrics.RecordEmailSent("application_submitted");
-    }
-
-    /// <inheritdoc />
     public async Task SendApplicationApprovedAsync(
         string userEmail,
         string userName,
