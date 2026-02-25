@@ -1,3 +1,4 @@
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnv
 @{
     ViewData["Title"] = Localizer["Login_Title"].Value;
 }
@@ -26,3 +27,30 @@
         </div>
     </div>
 </div>
+
+@if (HostEnv.IsDevelopment())
+{
+    <div class="row justify-content-center mt-3">
+        <div class="col-md-6">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark py-2">
+                    <small><strong>⚠️ Dev login — local only</strong></small>
+                </div>
+                <div class="card-body py-3 text-center">
+                    <p class="text-muted small mb-3">Skip Google OAuth and sign in as a seeded dev persona.</p>
+                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                        <a href="/dev/login/volunteer" class="btn btn-sm btn-outline-secondary">
+                            👤 Volunteer
+                        </a>
+                        <a href="/dev/login/board" class="btn btn-sm btn-outline-secondary">
+                            🏛️ Board
+                        </a>
+                        <a href="/dev/login/admin" class="btn btn-sm btn-outline-secondary">
+                            🔧 Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
