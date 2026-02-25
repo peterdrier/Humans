@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -30,6 +32,7 @@ public class OnboardingReviewController : Controller
     private readonly IEmailService _emailService;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly SystemTeamSyncJob _syncJob;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<OnboardingReviewController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -42,6 +45,7 @@ public class OnboardingReviewController : Controller
         IEmailService emailService,
         IApplicationDecisionService applicationDecisionService,
         SystemTeamSyncJob syncJob,
+        IMemoryCache cache,
         ILogger<OnboardingReviewController> logger,
         IStringLocalizer<SharedResource> localizer)
     {
@@ -53,6 +57,7 @@ public class OnboardingReviewController : Controller
         _emailService = emailService;
         _applicationDecisionService = applicationDecisionService;
         _syncJob = syncJob;
+        _cache = cache;
         _logger = logger;
         _localizer = localizer;
     }
@@ -178,6 +183,7 @@ public class OnboardingReviewController : Controller
             currentUser.Id, currentUser.DisplayName);
 
         await _dbContext.SaveChangesAsync();
+        _cache.Remove(CacheKeys.NavBadgeCounts);
 
         // Sync Volunteers team membership (adds to team + sends welcome email)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
@@ -222,6 +228,7 @@ public class OnboardingReviewController : Controller
             currentUser.Id, currentUser.DisplayName);
 
         await _dbContext.SaveChangesAsync();
+        _cache.Remove(CacheKeys.NavBadgeCounts);
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
@@ -271,6 +278,7 @@ public class OnboardingReviewController : Controller
             currentUser.Id, currentUser.DisplayName);
 
         await _dbContext.SaveChangesAsync();
+        _cache.Remove(CacheKeys.NavBadgeCounts);
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 

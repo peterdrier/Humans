@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain;
 using Humans.Domain.Enums;
@@ -17,6 +19,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
     private readonly SystemTeamSyncJob _syncJob;
     private readonly HumansMetricsService _metrics;
     private readonly IClock _clock;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<ApplicationDecisionService> _logger;
 
     public ApplicationDecisionService(
@@ -26,6 +29,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         SystemTeamSyncJob syncJob,
         HumansMetricsService metrics,
         IClock clock,
+        IMemoryCache cache,
         ILogger<ApplicationDecisionService> logger)
     {
         _dbContext = dbContext;
@@ -34,6 +38,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         _syncJob = syncJob;
         _metrics = metrics;
         _clock = clock;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -110,6 +115,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             return new ApplicationDecisionResult(false, "ConcurrencyConflict");
         }
 
+        _cache.Remove(CacheKeys.NavBadgeCounts);
         _metrics.RecordApplicationProcessed("approved");
         _logger.LogInformation("Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
@@ -194,6 +200,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             return new ApplicationDecisionResult(false, "ConcurrencyConflict");
         }
 
+        _cache.Remove(CacheKeys.NavBadgeCounts);
         _metrics.RecordApplicationProcessed("rejected");
         _logger.LogInformation("Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);

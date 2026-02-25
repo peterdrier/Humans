@@ -9,17 +9,6 @@ namespace Humans.Application.Interfaces;
 public interface IEmailService
 {
     /// <summary>
-    /// Sends an application submitted notification to administrators.
-    /// </summary>
-    /// <param name="applicationId">The application ID.</param>
-    /// <param name="applicantName">The applicant's name.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task SendApplicationSubmittedAsync(
-        Guid applicationId,
-        string applicantName,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Sends an application approved notification to the applicant.
     /// </summary>
     /// <param name="userEmail">The applicant's email.</param>

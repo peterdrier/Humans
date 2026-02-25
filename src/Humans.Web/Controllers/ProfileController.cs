@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -34,6 +36,7 @@ public class ProfileController : Controller
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IMemoryCache _cache;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     private const int VerificationCooldownMinutes = 5;
@@ -72,6 +75,7 @@ public class ProfileController : Controller
         IMembershipCalculator membershipCalculator,
         IUserEmailService userEmailService,
         IAuditLogService auditLogService,
+        IMemoryCache cache,
         IStringLocalizer<SharedResource> localizer)
     {
         _dbContext = dbContext;
@@ -85,6 +89,7 @@ public class ProfileController : Controller
         _membershipCalculator = membershipCalculator;
         _userEmailService = userEmailService;
         _auditLogService = auditLogService;
+        _cache = cache;
         _localizer = localizer;
     }
 
@@ -458,6 +463,7 @@ public class ProfileController : Controller
         await _userManager.UpdateAsync(user);
 
         await _dbContext.SaveChangesAsync();
+        _cache.Remove(CacheKeys.NavBadgeCounts);
 
         // Save contact fields
         var contactFieldDtos = model.EditableContactFields
@@ -507,6 +513,7 @@ public class ProfileController : Controller
                 profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
                 profile.UpdatedAt = _clock.GetCurrentInstant();
                 await _dbContext.SaveChangesAsync();
+                _cache.Remove(CacheKeys.NavBadgeCounts);
                 _logger.LogInformation(
                     "User {UserId} has all consents signed, consent check set to Pending", user.Id);
             }

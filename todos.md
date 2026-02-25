@@ -15,6 +15,13 @@ Dedicated page for app-specific operational disclosures (delegated coordinator r
 
 ---
 
+### Priority 4: Architecture / Refactoring
+
+#### #70: Extract IOnboardingService and expand IApplicationDecisionService
+Service-layer refactoring to move data mutations out of controllers. Consolidates duplicated consent-check logic, fixes missing deprovision call in `AdminController.RejectSignup`, and moves cache eviction from 10 scattered sites to 2 services. Full plan at `~/.claude/plans/sharded-swinging-thompson.md`. See [#70](https://github.com/nobodies-collective/Humans/issues/70).
+
+---
+
 ### Priority 5: UI/Navigation Improvements
 
 #### #14: Drive Activity Monitor: resolve people/ IDs to email addresses

@@ -4,8 +4,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -26,6 +28,7 @@ public class ConsentController : Controller
     private readonly SystemTeamSyncJob _systemTeamSyncJob;
     private readonly HumansMetricsService _metrics;
     private readonly IClock _clock;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<ConsentController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -36,6 +39,7 @@ public class ConsentController : Controller
         SystemTeamSyncJob systemTeamSyncJob,
         HumansMetricsService metrics,
         IClock clock,
+        IMemoryCache cache,
         ILogger<ConsentController> logger,
         IStringLocalizer<SharedResource> localizer)
     {
@@ -45,6 +49,7 @@ public class ConsentController : Controller
         _systemTeamSyncJob = systemTeamSyncJob;
         _metrics = metrics;
         _clock = clock;
+        _cache = cache;
         _logger = logger;
         _localizer = localizer;
     }
@@ -252,6 +257,7 @@ public class ConsentController : Controller
                 profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
                 profile.UpdatedAt = _clock.GetCurrentInstant();
                 await _dbContext.SaveChangesAsync();
+                _cache.Remove(CacheKeys.NavBadgeCounts);
                 _logger.LogInformation("User {UserId} has all consents signed, consent check set to Pending", user.Id);
             }
         }

@@ -185,6 +185,17 @@ h5, .h5 { font-size: 1.1rem; }
     border-radius: var(--h-radius-sm);
 }
 
+/* Queue count bubbles inside nav links */
+.nav-badge {
+    font-size: 0.65rem;
+    line-height: 1;
+    padding: 0.2em 0.5em;
+    margin-left: 0.3em;
+    vertical-align: middle;
+    background-color: var(--h-amber);
+    color: var(--h-warm-white);
+}
+
 .navbar .nav-link:hover,
 .navbar .nav-link:focus {
     color: var(--h-parchment) !important;

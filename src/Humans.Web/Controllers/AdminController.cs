@@ -2,8 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -35,6 +37,7 @@ public class AdminController : Controller
     private readonly ILogger<AdminController> _logger;
     private readonly SystemTeamSyncJob _systemTeamSyncJob;
     private readonly HumansMetricsService _metrics;
+    private readonly IMemoryCache _cache;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IWebHostEnvironment _environment;
 
@@ -51,6 +54,7 @@ public class AdminController : Controller
         ILogger<AdminController> logger,
         SystemTeamSyncJob systemTeamSyncJob,
         HumansMetricsService metrics,
+        IMemoryCache cache,
         IStringLocalizer<SharedResource> localizer,
         IWebHostEnvironment environment)
     {
@@ -66,6 +70,7 @@ public class AdminController : Controller
         _logger = logger;
         _systemTeamSyncJob = systemTeamSyncJob;
         _metrics = metrics;
+        _cache = cache;
         _localizer = localizer;
         _environment = environment;
     }
@@ -545,6 +550,7 @@ public class AdminController : Controller
             currentUser.Id, currentUser.DisplayName);
 
         await _dbContext.SaveChangesAsync();
+        _cache.Remove(CacheKeys.NavBadgeCounts);
 
         try
         {

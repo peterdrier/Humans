@@ -59,13 +59,13 @@
                         @if (User.IsInRole("ConsentCoordinator") || User.IsInRole("VolunteerCoordinator") || User.IsInRole("Admin") || User.IsInRole("Board"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_OnboardingReview"]</a>
+                                <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_OnboardingReview"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
                             </li>
                         }
                         @if (User.IsInRole("Board") || User.IsInRole("Admin"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_BoardVoting"]</a>
+                                <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_BoardVoting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
                             </li>
                         }
                         @if (User.IsInRole("Admin") || User.IsInRole("Board"))
@@ -114,7 +114,7 @@
             }
             @if (commitHash != null)
             {
-                <a href="https://github.com/nobodies-collective/Humans/commit/@commitHash" target="_blank" rel="noopener noreferrer" class="text-muted small font-monospace">@commitHash</a>
+                <a href="https://github.com/nobodies-collective/Humans/commit/@commitHash" target="_blank" rel="noopener noreferrer" class="text-muted small font-monospace">@commitHash[..Math.Min(8, commitHash.Length)]</a>
             }
         </div>
     </footer>
