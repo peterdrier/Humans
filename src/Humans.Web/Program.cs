@@ -58,8 +58,6 @@ Log.Logger = logConfig.CreateLogger();
 builder.Host.UseSerilog();
 
 // Add services to the container
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 // Configure NodaTime clock
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
@@ -70,16 +68,24 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 });
 
-// Configure Npgsql data source with NodaTime and dynamic JSON (for jsonb Dictionary columns)
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
-dataSourceBuilder.UseNodaTime();
-dataSourceBuilder.EnableDynamicJson();
-var dataSource = dataSourceBuilder.Build();
+// Configure Npgsql data source with NodaTime and dynamic JSON (for jsonb Dictionary columns).
+// Registered as a DI singleton so the connection string is resolved at service-resolution time,
+// allowing integration tests to override configuration via WebApplicationFactory.
+builder.Services.AddSingleton(sp =>
+{
+    var connStr = sp.GetRequiredService<IConfiguration>()
+        .GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    var dsb = new NpgsqlDataSourceBuilder(connStr);
+    dsb.UseNodaTime();
+    dsb.EnableDynamicJson();
+    return dsb.Build();
+});
 
 // Configure EF Core with PostgreSQL
-builder.Services.AddDbContext<HumansDbContext>(options =>
+builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
 {
-    options.UseNpgsql(dataSource, npgsqlOptions =>
+    options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
     {
         npgsqlOptions.UseNodaTime();
         npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
@@ -134,12 +140,14 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
 // Configure Hangfire
-builder.Services.AddHangfire(config => config
+builder.Services.AddHangfire((sp, config) => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
     .UsePostgreSqlStorage(options =>
-        options.UseNpgsqlConnection(connectionString)));
+        options.UseNpgsqlConnection(
+            sp.GetRequiredService<IConfiguration>()
+                .GetConnectionString("DefaultConnection")!)));
 
 builder.Services.AddHangfireServer();
 
@@ -172,7 +180,7 @@ builder.Services.AddSingleton(new ActivitySource(serviceName, serviceVersion));
 
 // Configure Health Checks
 builder.Services.AddHealthChecks()
-    .AddNpgSql(connectionString, name: "postgresql")
+    .AddNpgSql(sp => sp.GetRequiredService<NpgsqlDataSource>(), name: "postgresql")
     .AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire")
     .AddCheck<ConfigurationHealthCheck>("configuration")
     .AddCheck<SmtpHealthCheck>("smtp")
