@@ -424,7 +424,7 @@ public class OnboardingReviewController : Controller
                 .ToList(),
             CurrentUserVote = currentVote?.Vote,
             CurrentUserNote = currentVote?.Note,
-            CanFinalize = isBoard || isAdmin
+            CanFinalize = isAdmin
         };
 
         return View(viewModel);
