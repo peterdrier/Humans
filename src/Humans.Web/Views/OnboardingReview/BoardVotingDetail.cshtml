@@ -155,8 +155,8 @@
 
         @if (Model.CanFinalize)
         {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["BoardVoting_FinalizeDecision"]</div>
+            <div class="card border-danger mb-4">
+                <div class="card-header text-bg-danger">@Localizer["BoardVoting_FinalizeDecision"]</div>
                 <div class="card-body">
                     <form asp-action="Finalize" method="post">
                         @Html.AntiForgeryToken()
