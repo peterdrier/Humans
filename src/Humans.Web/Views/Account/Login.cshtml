@@ -39,14 +39,20 @@
                 <div class="card-body py-3 text-center">
                     <p class="text-muted small mb-3">Skip Google OAuth and sign in as a seeded dev persona.</p>
                     <div class="d-flex gap-2 justify-content-center flex-wrap">
-                        <a href="/dev/login/volunteer" class="btn btn-sm btn-outline-secondary">
+                        <a asp-controller="DevLogin" asp-action="Volunteer" class="btn btn-sm btn-outline-secondary">
                             👤 Volunteer
                         </a>
-                        <a href="/dev/login/board" class="btn btn-sm btn-outline-secondary">
+                        <a asp-controller="DevLogin" asp-action="Board" class="btn btn-sm btn-outline-secondary">
                             🏛️ Board
                         </a>
-                        <a href="/dev/login/admin" class="btn btn-sm btn-outline-secondary">
+                        <a asp-controller="DevLogin" asp-action="Admin" class="btn btn-sm btn-outline-secondary">
                             🔧 Admin
+                        </a>
+                        <a asp-controller="DevLogin" asp-action="ConsentCoordinator" class="btn btn-sm btn-outline-secondary">
+                            ✅ Consent Coord
+                        </a>
+                        <a asp-controller="DevLogin" asp-action="VolunteerCoordinator" class="btn btn-sm btn-outline-secondary">
+                            📋 Volunteer Coord
                         </a>
                     </div>
                 </div>

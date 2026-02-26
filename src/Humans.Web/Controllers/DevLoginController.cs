@@ -1,7 +1,6 @@
 #if DEBUG
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -21,9 +20,13 @@ namespace Humans.Web.Controllers;
 public class DevLoginController : Controller
 {
     // Fixed GUIDs so re-seeding is idempotent across restarts
-    private static readonly Guid VolunteerId   = Guid.Parse("ddddddd0-0000-0000-0000-000000000001");
-    private static readonly Guid AdminId       = Guid.Parse("ddddddd0-0000-0000-0000-000000000002");
-    private static readonly Guid BoardId       = Guid.Parse("ddddddd0-0000-0000-0000-000000000003");
+    private static readonly Guid VolunteerId        = Guid.Parse("ddddddd0-0000-0000-0000-000000000001");
+    private static readonly Guid AdminId            = Guid.Parse("ddddddd0-0000-0000-0000-000000000002");
+    private static readonly Guid BoardId            = Guid.Parse("ddddddd0-0000-0000-0000-000000000003");
+    private static readonly Guid ConsentCoordId     = Guid.Parse("ddddddd0-0000-0000-0000-000000000004");
+    private static readonly Guid VolunteerCoordId   = Guid.Parse("ddddddd0-0000-0000-0000-000000000005");
+
+    private static readonly SemaphoreSlim SeedLock = new(1, 1);
 
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
@@ -57,6 +60,12 @@ public class DevLoginController : Controller
     [HttpGet("board")]
     public Task<IActionResult> Board() => SignInAs(BoardId);
 
+    [HttpGet("consent-coordinator")]
+    public Task<IActionResult> ConsentCoordinator() => SignInAs(ConsentCoordId);
+
+    [HttpGet("volunteer-coordinator")]
+    public Task<IActionResult> VolunteerCoordinator() => SignInAs(VolunteerCoordId);
+
     private async Task<IActionResult> SignInAs(Guid personaId)
     {
         if (!_env.IsDevelopment())
@@ -79,25 +88,41 @@ public class DevLoginController : Controller
 
     private async Task EnsurePersonasSeededAsync()
     {
-        var now = _clock.GetCurrentInstant();
+        await SeedLock.WaitAsync();
+        try
+        {
+            var now = _clock.GetCurrentInstant();
 
-        await EnsureUserAsync(VolunteerId, "dev-volunteer@localhost", "Dev Volunteer", now);
-        await EnsureVolunteerTeamMemberAsync(VolunteerId, now);
+            await EnsurePersonaAsync(VolunteerId, "dev-volunteer@localhost", "Dev", "Volunteer",
+                now, [], [SystemTeamIds.Volunteers]);
 
-        await EnsureUserAsync(AdminId, "dev-admin@localhost", "Dev Admin", now);
-        await EnsureVolunteerTeamMemberAsync(AdminId, now);
-        await EnsureRoleAssignmentAsync(AdminId, RoleNames.Admin, now);
+            await EnsurePersonaAsync(AdminId, "dev-admin@localhost", "Dev", "Admin",
+                now, [RoleNames.Admin], [SystemTeamIds.Volunteers]);
 
-        await EnsureUserAsync(BoardId, "dev-board@localhost", "Dev Board", now);
-        await EnsureVolunteerTeamMemberAsync(BoardId, now);
-        await EnsureRoleAssignmentAsync(BoardId, RoleNames.Board, now);
+            await EnsurePersonaAsync(BoardId, "dev-board@localhost", "Dev", "Board",
+                now, [RoleNames.Board], [SystemTeamIds.Volunteers, SystemTeamIds.Board]);
+
+            await EnsurePersonaAsync(ConsentCoordId, "dev-consent@localhost", "Dev", "ConsentCoord",
+                now, [RoleNames.ConsentCoordinator], [SystemTeamIds.Volunteers]);
+
+            await EnsurePersonaAsync(VolunteerCoordId, "dev-volcoord@localhost", "Dev", "VolunteerCoord",
+                now, [RoleNames.VolunteerCoordinator], [SystemTeamIds.Volunteers]);
+        }
+        finally
+        {
+            SeedLock.Release();
+        }
     }
 
-    private async Task EnsureUserAsync(Guid id, string email, string displayName, Instant now)
+    private async Task EnsurePersonaAsync(
+        Guid id, string email, string firstName, string lastName,
+        Instant now, string[] roles, Guid[] teams)
     {
         var existing = await _userManager.FindByIdAsync(id.ToString());
         if (existing != null)
             return;
+
+        var displayName = $"{firstName} {lastName}";
 
         var user = new User
         {
@@ -118,72 +143,65 @@ public class DevLoginController : Controller
             return;
         }
 
-        // Add a UserEmail record (required by the data model)
-        var userEmail = new UserEmail
+        // Batch remaining entities into a single SaveChangesAsync
+        _db.UserEmails.Add(new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = id,
             Email = email,
-            IsOAuth = false,
+            IsOAuth = true,
             IsVerified = true,
             IsNotificationTarget = true,
             Visibility = ContactFieldVisibility.BoardOnly,
             DisplayOrder = 0,
             CreatedAt = now,
             UpdatedAt = now
-        };
-        _db.UserEmails.Add(userEmail);
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation("DEV: seeded user {Email}", email);
-    }
-
-    private async Task EnsureVolunteerTeamMemberAsync(Guid userId, Instant now)
-    {
-        var exists = await _db.TeamMembers
-            .AnyAsync(tm => tm.UserId == userId && tm.TeamId == SystemTeamIds.Volunteers && !tm.LeftAt.HasValue);
-
-        if (exists)
-            return;
-
-        _db.TeamMembers.Add(new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            TeamId = SystemTeamIds.Volunteers,
-            Role = TeamMemberRole.Member,
-            JoinedAt = now
         });
-        await _db.SaveChangesAsync();
 
-        _logger.LogInformation("DEV: added user {UserId} to Volunteers team", userId);
-    }
-
-    private async Task EnsureRoleAssignmentAsync(Guid userId, string roleName, Instant now)
-    {
-        var exists = await _db.RoleAssignments
-            .AnyAsync(ra =>
-                ra.UserId == userId &&
-                ra.RoleName == roleName &&
-                (ra.ValidTo == null || ra.ValidTo > now));
-
-        if (exists)
-            return;
-
-        _db.RoleAssignments.Add(new RoleAssignment
+        _db.Profiles.Add(new Profile
         {
             Id = Guid.NewGuid(),
-            UserId = userId,
-            RoleName = roleName,
-            ValidFrom = now,
-            ValidTo = null,
-            Notes = "Dev persona — auto-seeded",
+            UserId = id,
+            BurnerName = displayName,
+            FirstName = firstName,
+            LastName = lastName,
+            IsApproved = true,
+            ConsentCheckStatus = ConsentCheckStatus.Cleared,
             CreatedAt = now,
-            CreatedByUserId = userId
+            UpdatedAt = now
         });
+
+        foreach (var teamId in teams)
+        {
+            _db.TeamMembers.Add(new TeamMember
+            {
+                Id = Guid.NewGuid(),
+                UserId = id,
+                TeamId = teamId,
+                Role = TeamMemberRole.Member,
+                JoinedAt = now
+            });
+        }
+
+        foreach (var roleName in roles)
+        {
+            _db.RoleAssignments.Add(new RoleAssignment
+            {
+                Id = Guid.NewGuid(),
+                UserId = id,
+                RoleName = roleName,
+                ValidFrom = now,
+                ValidTo = null,
+                Notes = "Dev persona — auto-seeded",
+                CreatedAt = now,
+                CreatedByUserId = id
+            });
+        }
+
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("DEV: assigned role {Role} to user {UserId}", roleName, userId);
+        _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
+            email, string.Join(", ", roles), string.Join(", ", teams));
     }
 }
 #endif
