@@ -20,11 +20,11 @@ namespace Humans.Web.Controllers;
 public class DevLoginController : Controller
 {
     // Fixed GUIDs so re-seeding is idempotent across restarts
-    private static readonly Guid VolunteerId        = Guid.Parse("ddddddd0-0000-0000-0000-000000000001");
-    private static readonly Guid AdminId            = Guid.Parse("ddddddd0-0000-0000-0000-000000000002");
-    private static readonly Guid BoardId            = Guid.Parse("ddddddd0-0000-0000-0000-000000000003");
-    private static readonly Guid ConsentCoordId     = Guid.Parse("ddddddd0-0000-0000-0000-000000000004");
-    private static readonly Guid VolunteerCoordId   = Guid.Parse("ddddddd0-0000-0000-0000-000000000005");
+    private static readonly Guid VolunteerId = Guid.Parse("ddddddd0-0000-0000-0000-000000000001");
+    private static readonly Guid AdminId = Guid.Parse("ddddddd0-0000-0000-0000-000000000002");
+    private static readonly Guid BoardId = Guid.Parse("ddddddd0-0000-0000-0000-000000000003");
+    private static readonly Guid ConsentCoordId = Guid.Parse("ddddddd0-0000-0000-0000-000000000004");
+    private static readonly Guid VolunteerCoordId = Guid.Parse("ddddddd0-0000-0000-0000-000000000005");
 
     private static readonly SemaphoreSlim SeedLock = new(1, 1);
 
