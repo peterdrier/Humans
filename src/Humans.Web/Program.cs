@@ -402,6 +402,12 @@ app.MapRazorPages();
     await dbContext.Database.MigrateAsync();
 }
 
+// Force Hangfire global configuration to initialize (sets JobStorage.Current)
+// before registering recurring jobs. The AddHangfire((sp, config) => ...) overload
+// defers the config lambda until IGlobalConfiguration is resolved from DI;
+// RecurringJob.AddOrUpdate() uses the static JobStorage.Current, so we must
+// ensure it's set first.
+app.Services.GetRequiredService<IGlobalConfiguration>();
 app.UseHumansRecurringJobs();
 
 await app.RunAsync();
