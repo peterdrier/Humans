@@ -544,7 +544,7 @@ public class ProfileController : Controller
     }
 
     private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
-        Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, contentType, _logger);
+        Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, _logger);
 
     [HttpGet]
     public async Task<IActionResult> Emails()

@@ -1,17 +1,12 @@
 using System.Reflection;
 using Humans.Web.Helpers;
-using SkiaSharp;
+using ImageMagick;
 using Xunit;
 
 namespace Humans.Integration.Tests;
 
 public class ProfilePictureProcessorTests
 {
-    static ProfilePictureProcessorTests()
-    {
-        LibHeifResolver.Register();
-    }
-
     private static byte[] LoadTestHeic()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -23,24 +18,11 @@ public class ProfilePictureProcessorTests
     }
 
     [Fact]
-    public void DecodeHeifToSkBitmap_ReturnsValidBitmap_ForIPhoneHeic()
-    {
-        var heicData = LoadTestHeic();
-
-        using var bitmap = ProfilePictureProcessor.DecodeHeifToSkBitmap(heicData);
-
-        Assert.NotNull(bitmap);
-        Assert.True(bitmap.Width > 0);
-        Assert.True(bitmap.Height > 0);
-        Assert.Equal(SKColorType.Rgba8888, bitmap.ColorType);
-    }
-
-    [Fact]
     public void ResizeProfilePicture_ProducesJpeg_ForHeicInput()
     {
         var heicData = LoadTestHeic();
 
-        var result = ProfilePictureProcessor.ResizeProfilePicture(heicData, "image/heic");
+        var result = ProfilePictureProcessor.ResizeProfilePicture(heicData);
 
         Assert.NotNull(result);
         Assert.Equal("image/jpeg", result.Value.ContentType);
@@ -56,15 +38,12 @@ public class ProfilePictureProcessorTests
     {
         var heicData = LoadTestHeic();
 
-        var result = ProfilePictureProcessor.ResizeProfilePicture(heicData, "image/heic");
+        var result = ProfilePictureProcessor.ResizeProfilePicture(heicData);
 
         Assert.NotNull(result);
 
-        // Verify the output dimensions are within the 1000px limit
-        using var skData = SKData.CreateCopy(result.Value.Data);
-        using var codec = SKCodec.Create(skData);
-        Assert.NotNull(codec);
-        var longSide = Math.Max(codec.Info.Width, codec.Info.Height);
+        using var decoded = new MagickImage(result.Value.Data);
+        var longSide = Math.Max(decoded.Width, decoded.Height);
         Assert.True(longSide <= 1000, $"Long side {longSide} exceeds 1000px limit");
     }
 
@@ -73,7 +52,7 @@ public class ProfilePictureProcessorTests
     {
         var corruptData = new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 };
 
-        var result = ProfilePictureProcessor.ResizeProfilePicture(corruptData, "image/heic");
+        var result = ProfilePictureProcessor.ResizeProfilePicture(corruptData);
 
         Assert.Null(result);
     }
@@ -81,14 +60,11 @@ public class ProfilePictureProcessorTests
     [Fact]
     public void ResizeProfilePicture_StillWorksForJpeg()
     {
-        // Create a small valid JPEG via SkiaSharp
-        using var bitmap = new SKBitmap(100, 100, SKColorType.Rgba8888, SKAlphaType.Unpremul);
-        bitmap.Erase(SKColors.Red);
-        using var image = SKImage.FromBitmap(bitmap);
-        using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, 85);
-        var jpegData = encoded.ToArray();
+        using var testImage = new MagickImage(MagickColors.Red, 100, 100);
+        testImage.Format = MagickFormat.Jpeg;
+        var jpegData = testImage.ToByteArray();
 
-        var result = ProfilePictureProcessor.ResizeProfilePicture(jpegData, "image/jpeg");
+        var result = ProfilePictureProcessor.ResizeProfilePicture(jpegData);
 
         Assert.NotNull(result);
         Assert.Equal("image/jpeg", result.Value.ContentType);

@@ -29,11 +29,6 @@ using Npgsql;
 using Humans.Infrastructure.Logging;
 using Serilog;
 
-// PhotoSauce.NativeCodecs.Libheif ships the native library as "heif.dll" on Windows,
-// but LibHeifSharp P/Invokes "libheif". Bridge the name difference.
-// On Linux the .so is named correctly — no resolver needed.
-Humans.Web.Helpers.LibHeifResolver.Register();
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog
