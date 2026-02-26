@@ -140,16 +140,28 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
 // Configure Hangfire
-builder.Services.AddHangfire((sp, config) => config
-    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-    .UsePostgreSqlStorage(options =>
-        options.UseNpgsqlConnection(
-            sp.GetRequiredService<IConfiguration>()
-                .GetConnectionString("DefaultConnection")!)));
+builder.Services.AddHangfire((sp, config) =>
+{
+    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings();
 
-builder.Services.AddHangfireServer();
+    // Skip Postgres storage in test environment — Hangfire's static GlobalConfiguration
+    // and JobStorage.Current are per-AppDomain, which conflicts with parallel
+    // WebApplicationFactory instances each pointing at different Testcontainers.
+    if (!sp.GetRequiredService<IHostEnvironment>().IsEnvironment("Testing"))
+    {
+        config.UsePostgreSqlStorage(options =>
+            options.UseNpgsqlConnection(
+                sp.GetRequiredService<IConfiguration>()
+                    .GetConnectionString("DefaultConnection")!));
+    }
+});
+
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHangfireServer();
+}
 
 // Configure OpenTelemetry
 var serviceName = "Humans.Web";
@@ -380,13 +392,18 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 // Prometheus metrics endpoint
 app.MapPrometheusScrapingEndpoint("/metrics");
 
-// Hangfire dashboard (admin only in production)
-app.MapHangfireDashboard("/hangfire", new DashboardOptions
+// Hangfire dashboard (admin only in production).
+// Skipped in Testing — MapHangfireDashboard resolves JobStorage from DI eagerly,
+// and Hangfire's static JobStorage.Current isn't set until after migrations.
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    Authorization = app.Environment.IsDevelopment()
-        ? []
-        : [new Humans.Web.HangfireAuthorizationFilter()]
-});
+    app.MapHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = app.Environment.IsDevelopment()
+            ? []
+            : [new Humans.Web.HangfireAuthorizationFilter()]
+    });
+}
 
 app.MapControllerRoute(
     name: "default",
@@ -402,13 +419,16 @@ app.MapRazorPages();
     await dbContext.Database.MigrateAsync();
 }
 
-// Force Hangfire global configuration to initialize (sets JobStorage.Current)
-// before registering recurring jobs. The AddHangfire((sp, config) => ...) overload
-// defers the config lambda until IGlobalConfiguration is resolved from DI;
-// RecurringJob.AddOrUpdate() uses the static JobStorage.Current, so we must
-// ensure it's set first.
-app.Services.GetRequiredService<IGlobalConfiguration>();
-app.UseHumansRecurringJobs();
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    // Force Hangfire global configuration to initialize (sets JobStorage.Current)
+    // before registering recurring jobs. The AddHangfire((sp, config) => ...) overload
+    // defers the config lambda until IGlobalConfiguration is resolved from DI;
+    // RecurringJob.AddOrUpdate() uses the static JobStorage.Current, so we must
+    // ensure it's set first.
+    app.Services.GetRequiredService<IGlobalConfiguration>();
+    app.UseHumansRecurringJobs();
+}
 
 await app.RunAsync();
 
