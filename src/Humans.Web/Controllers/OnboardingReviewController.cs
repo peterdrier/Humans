@@ -188,6 +188,22 @@ public class OnboardingReviewController : Controller
         // Sync Volunteers team membership (adds to team + sends welcome email)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
 
+        // If user already has approved tier applications, sync those teams too.
+        // This handles the case where a tier application was approved before consent clearance.
+        var approvedTiers = await _dbContext.Applications
+            .Where(a => a.UserId == userId && a.Status == ApplicationStatus.Approved)
+            .Select(a => a.MembershipTier)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var tier in approvedTiers)
+        {
+            if (tier == MembershipTier.Colaborador)
+                await _syncJob.SyncColaboradorsMembershipForUserAsync(userId, CancellationToken.None);
+            else if (tier == MembershipTier.Asociado)
+                await _syncJob.SyncAsociadosMembershipForUserAsync(userId, CancellationToken.None);
+        }
+
         _logger.LogInformation("Consent check cleared for user {UserId} by {ReviewerId}", userId, currentUser.Id);
 
         TempData["SuccessMessage"] = _localizer["OnboardingReview_Cleared"].Value;
