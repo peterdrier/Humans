@@ -25,6 +25,7 @@ public interface IOnboardingService
         Guid userId, Guid reviewerId, string reviewerDisplayName, string? notes, CancellationToken ct = default);
 
     // --- Board vote ---
+    Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default);
     Task<OnboardingResult> CastBoardVoteAsync(
         Guid applicationId, Guid boardMemberUserId, VoteChoice vote, string? note, CancellationToken ct = default);
 

@@ -217,7 +217,7 @@ public class ProfileController : Controller
             if (!cf.Value.TrimStart().StartsWith('+'))
             {
                 ModelState.AddModelError(string.Empty,
-                    _localizer["Validation_PhoneE164", cf.FieldType.ToString()].Value);
+                    _localizer["Validation_PhoneE164", _localizer["Profile_" + cf.FieldType].Value].Value);
                 ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
                 return View(model);
             }

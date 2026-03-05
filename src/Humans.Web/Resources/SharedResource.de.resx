@@ -187,6 +187,7 @@
   <data name="Profile_Phone" xml:space="preserve"><value>Telefon</value></data>
   <data name="Profile_Location" xml:space="preserve"><value>Standort</value></data>
   <data name="Profile_Bio" xml:space="preserve"><value>Biografie</value></data>
+  <data name="Profile_ChooseVisibility" xml:space="preserve"><value>-- Sichtbarkeit wählen --</value></data>
   <data name="Profile_ContactInformation" xml:space="preserve"><value>Kontaktinformationen</value></data>
   <data name="Profile_NoContactInfo" xml:space="preserve"><value>Noch keine Kontaktdaten hinzugefügt.</value></data>
   <data name="Profile_AddSome" xml:space="preserve"><value>Einige hinzufügen</value></data>
@@ -885,6 +886,7 @@
   <data name="Validation_PhonePlaceholder" xml:space="preserve"><value>+34 612 345 678</value></data>
   <data name="Validation_PhoneHint" xml:space="preserve"><value>Muss mit + und L&#xE4;ndervorwahl beginnen (z.B. +34 612 345 678)</value></data>
   <data name="Profile_BoardInformation" xml:space="preserve"><value>Vorstand &amp; private Informationen</value></data>
+  <data name="Profile_WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
 
   <!-- Onboarding Review -->
   <data name="OnboardingReview_Title" xml:space="preserve"><value>Onboarding-Pr&#xFC;fwarteschlange</value></data>

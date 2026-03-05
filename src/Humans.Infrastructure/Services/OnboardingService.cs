@@ -234,6 +234,11 @@ public class OnboardingService : IOnboardingService
         return new OnboardingResult(true);
     }
 
+    public async Task<bool> HasBoardVotesAsync(Guid applicationId, CancellationToken ct = default)
+    {
+        return await _dbContext.BoardVotes.AnyAsync(v => v.ApplicationId == applicationId, ct);
+    }
+
     public async Task<OnboardingResult> CastBoardVoteAsync(
         Guid applicationId, Guid boardMemberUserId, VoteChoice vote, string? note, CancellationToken ct = default)
     {

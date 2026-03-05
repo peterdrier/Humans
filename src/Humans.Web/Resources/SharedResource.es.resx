@@ -187,6 +187,7 @@
   <data name="Profile_Phone" xml:space="preserve"><value>Tel&#xE9;fono</value></data>
   <data name="Profile_Location" xml:space="preserve"><value>Ubicaci&#xF3;n</value></data>
   <data name="Profile_Bio" xml:space="preserve"><value>Biograf&#xED;a</value></data>
+  <data name="Profile_ChooseVisibility" xml:space="preserve"><value>-- Elegir visibilidad --</value></data>
   <data name="Profile_ContactInformation" xml:space="preserve"><value>Informaci&#xF3;n de contacto</value></data>
   <data name="Profile_NoContactInfo" xml:space="preserve"><value>A&#xFA;n no se ha a&#xF1;adido informaci&#xF3;n de contacto.</value></data>
   <data name="Profile_AddSome" xml:space="preserve"><value>A&#xF1;adir informaci&#xF3;n</value></data>
@@ -890,6 +891,7 @@
   <data name="Validation_PhonePlaceholder" xml:space="preserve"><value>+34 612 345 678</value></data>
   <data name="Validation_PhoneHint" xml:space="preserve"><value>Debe empezar con + y c&#xF3;digo de pa&#xED;s (ej. +34 612 345 678)</value></data>
   <data name="Profile_BoardInformation" xml:space="preserve"><value>Información privada y de la Junta</value></data>
+  <data name="Profile_WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
 
   <!-- Onboarding Review -->
   <data name="OnboardingReview_Title" xml:space="preserve"><value>Cola de revisi&#xF3;n de incorporaci&#xF3;n</value></data>

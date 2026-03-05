@@ -187,6 +187,7 @@
   <data name="Profile_Phone" xml:space="preserve"><value>Phone</value></data>
   <data name="Profile_Location" xml:space="preserve"><value>Location</value></data>
   <data name="Profile_Bio" xml:space="preserve"><value>Bio</value></data>
+  <data name="Profile_ChooseVisibility" xml:space="preserve"><value>-- Choose visibility --</value></data>
   <data name="Profile_ContactInformation" xml:space="preserve"><value>Contact Information</value></data>
   <data name="Profile_NoContactInfo" xml:space="preserve"><value>No contact information added yet.</value></data>
   <data name="Profile_AddSome" xml:space="preserve"><value>Add some</value></data>
@@ -885,6 +886,7 @@
   <data name="Validation_PhonePlaceholder" xml:space="preserve"><value>+34 612 345 678</value></data>
   <data name="Validation_PhoneHint" xml:space="preserve"><value>Must start with + and country code (e.g. +34 612 345 678)</value></data>
   <data name="Profile_BoardInformation" xml:space="preserve"><value>Board &amp; Private Information</value></data>
+  <data name="Profile_WhatsApp" xml:space="preserve"><value>WhatsApp</value></data>
 
   <!-- Onboarding Review -->
   <data name="OnboardingReview_Title" xml:space="preserve"><value>Onboarding Review Queue</value></data>

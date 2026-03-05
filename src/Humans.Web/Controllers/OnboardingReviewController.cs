@@ -270,8 +270,7 @@ public class OnboardingReviewController : Controller
             TempData["ErrorMessage"] = result.ErrorKey switch
             {
                 "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
-                "NotSubmitted" => string.Format(
-                    _localizer["BoardVoting_ApplicationNotVotable_WithStatus"].Value, "not Submitted"),
+                "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
                 _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
             };
             return RedirectToAction(nameof(BoardVoting));
@@ -306,6 +305,14 @@ public class OnboardingReviewController : Controller
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
+        // Require at least one board vote before finalization
+        var hasVotes = await _onboardingService.HasBoardVotesAsync(model.ApplicationId);
+        if (!hasVotes)
+        {
+            TempData["ErrorMessage"] = _localizer["BoardVoting_NoVotes"].Value;
+            return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
+        }
+
         ApplicationDecisionResult result;
         if (model.Approved)
         {
@@ -327,8 +334,7 @@ public class OnboardingReviewController : Controller
             TempData["ErrorMessage"] = result.ErrorKey switch
             {
                 "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
-                "NotSubmitted" => string.Format(
-                    _localizer["BoardVoting_ApplicationNotVotable_WithStatus"].Value, "check Admin detail"),
+                "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
                 "ConcurrencyConflict" => _localizer["BoardVoting_ConcurrencyConflict"].Value,
                 _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
             };
