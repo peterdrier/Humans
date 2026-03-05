@@ -11,7 +11,6 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -36,6 +35,7 @@ public class ProfileController : Controller
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IOnboardingService _onboardingService;
     private readonly IMemoryCache _cache;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -75,6 +75,7 @@ public class ProfileController : Controller
         IMembershipCalculator membershipCalculator,
         IUserEmailService userEmailService,
         IAuditLogService auditLogService,
+        IOnboardingService onboardingService,
         IMemoryCache cache,
         IStringLocalizer<SharedResource> localizer)
     {
@@ -89,6 +90,7 @@ public class ProfileController : Controller
         _membershipCalculator = membershipCalculator;
         _userEmailService = userEmailService;
         _auditLogService = auditLogService;
+        _onboardingService = onboardingService;
         _cache = cache;
         _localizer = localizer;
     }
@@ -525,20 +527,7 @@ public class ProfileController : Controller
 
         // If profile was just created, check if user already has all required consents
         // (they may have consented before creating their profile)
-        if (!profile.IsApproved && profile.ConsentCheckStatus == null)
-        {
-            var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
-                user.Id, SystemTeamIds.Volunteers);
-            if (hasAllConsents)
-            {
-                profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
-                profile.UpdatedAt = _clock.GetCurrentInstant();
-                await _dbContext.SaveChangesAsync();
-                _cache.Remove(CacheKeys.NavBadgeCounts);
-                _logger.LogInformation(
-                    "User {UserId} has all consents signed, consent check set to Pending", user.Id);
-            }
-        }
+        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
         _logger.LogInformation("User {UserId} updated their profile", user.Id);
 

@@ -1,0 +1,47 @@
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using MemberApplication = Humans.Domain.Entities.Application;
+
+namespace Humans.Application.Interfaces;
+
+public record OnboardingResult(bool Success, string? ErrorKey = null);
+
+public interface IOnboardingService
+{
+    // --- Queries ---
+    Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds)>
+        GetReviewQueueAsync(CancellationToken ct = default);
+    Task<(Profile? Profile, int ConsentCount, int RequiredConsentCount,
+          MemberApplication? PendingApplication)>
+        GetReviewDetailAsync(Guid userId, CancellationToken ct = default);
+    Task<(List<MemberApplication> Applications, List<(Guid UserId, string DisplayName)> BoardMembers)>
+        GetBoardVotingDashboardAsync(CancellationToken ct = default);
+    Task<MemberApplication?> GetBoardVotingDetailAsync(Guid applicationId, CancellationToken ct = default);
+
+    // --- Consent check mutations ---
+    Task<OnboardingResult> ClearConsentCheckAsync(
+        Guid userId, Guid reviewerId, string reviewerDisplayName, string? notes, CancellationToken ct = default);
+    Task<OnboardingResult> FlagConsentCheckAsync(
+        Guid userId, Guid reviewerId, string reviewerDisplayName, string? notes, CancellationToken ct = default);
+
+    // --- Board vote ---
+    Task<OnboardingResult> CastBoardVoteAsync(
+        Guid applicationId, Guid boardMemberUserId, VoteChoice vote, string? note, CancellationToken ct = default);
+
+    // --- Signup reject (consolidates OnboardingReview + Admin paths, FIXES deprovision bug) ---
+    Task<OnboardingResult> RejectSignupAsync(
+        Guid userId, Guid reviewerId, string reviewerDisplayName, string? reason, CancellationToken ct = default);
+
+    // --- Volunteer approval (FIXES missing cache eviction) ---
+    Task<OnboardingResult> ApproveVolunteerAsync(
+        Guid userId, Guid adminId, string adminDisplayName, CancellationToken ct = default);
+
+    // --- Suspend / Unsuspend ---
+    Task<OnboardingResult> SuspendAsync(
+        Guid userId, Guid adminId, string adminDisplayName, string? notes, CancellationToken ct = default);
+    Task<OnboardingResult> UnsuspendAsync(
+        Guid userId, Guid adminId, string adminDisplayName, CancellationToken ct = default);
+
+    // --- Shared: consent-check pending (used by ConsentController + ProfileController) ---
+    Task<bool> SetConsentCheckPendingIfEligibleAsync(Guid userId, CancellationToken ct = default);
+}

@@ -40,6 +40,7 @@ public class AdminController : Controller
     private readonly IMemoryCache _cache;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IWebHostEnvironment _environment;
+    private readonly IOnboardingService _onboardingService;
 
     public AdminController(
         HumansDbContext dbContext,
@@ -56,7 +57,8 @@ public class AdminController : Controller
         HumansMetricsService metrics,
         IMemoryCache cache,
         IStringLocalizer<SharedResource> localizer,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IOnboardingService onboardingService)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -73,6 +75,7 @@ public class AdminController : Controller
         _cache = cache;
         _localizer = localizer;
         _environment = environment;
+        _onboardingService = onboardingService;
     }
 
     [HttpGet("")]
@@ -441,33 +444,13 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == id);
-
-        if (user?.Profile == null)
-        {
-            return NotFound();
-        }
-
         var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser == null)
+            return NotFound();
 
-        user.Profile.IsSuspended = true;
-        user.Profile.AdminNotes = notes;
-        user.Profile.UpdatedAt = _clock.GetCurrentInstant();
-
-        if (currentUser != null)
-        {
-            await _auditLogService.LogAsync(
-                AuditAction.MemberSuspended, "User", id,
-                $"{user.DisplayName} suspended by {currentUser.DisplayName}{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
-                currentUser.Id, currentUser.DisplayName);
-        }
-
-        await _dbContext.SaveChangesAsync();
-
-        _metrics.RecordMemberSuspended("admin");
-        _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", currentUser?.Id, id);
+        var result = await _onboardingService.SuspendAsync(id, currentUser.Id, currentUser.DisplayName, notes);
+        if (!result.Success)
+            return NotFound();
 
         TempData["SuccessMessage"] = _localizer["Admin_MemberSuspended"].Value;
         return RedirectToAction(nameof(HumanDetail), new { id });
@@ -477,31 +460,13 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == id);
-
-        if (user?.Profile == null)
-        {
-            return NotFound();
-        }
-
         var currentUser = await _userManager.GetUserAsync(User);
+        if (currentUser == null)
+            return NotFound();
 
-        user.Profile.IsSuspended = false;
-        user.Profile.UpdatedAt = _clock.GetCurrentInstant();
-
-        if (currentUser != null)
-        {
-            await _auditLogService.LogAsync(
-                AuditAction.MemberUnsuspended, "User", id,
-                $"{user.DisplayName} unsuspended by {currentUser.DisplayName}",
-                currentUser.Id, currentUser.DisplayName);
-        }
-
-        await _dbContext.SaveChangesAsync();
-
-        _logger.LogInformation("Admin {AdminId} unsuspended human {HumanId}", currentUser?.Id, id);
+        var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id, currentUser.DisplayName);
+        if (!result.Success)
+            return NotFound();
 
         TempData["SuccessMessage"] = _localizer["Admin_MemberUnsuspended"].Value;
         return RedirectToAction(nameof(HumanDetail), new { id });
@@ -511,36 +476,13 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveVolunteer(Guid id)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == id);
-
-        if (user?.Profile == null)
-        {
-            return NotFound();
-        }
-
         var currentUser = await _userManager.GetUserAsync(User);
-        var now = _clock.GetCurrentInstant();
+        if (currentUser == null)
+            return NotFound();
 
-        user.Profile.IsApproved = true;
-        user.Profile.UpdatedAt = now;
-
-        if (currentUser != null)
-        {
-            await _auditLogService.LogAsync(
-                AuditAction.VolunteerApproved, "User", id,
-                $"{user.DisplayName} approved as volunteer by {currentUser.DisplayName}",
-                currentUser.Id, currentUser.DisplayName);
-        }
-
-        await _dbContext.SaveChangesAsync();
-
-        // Sync Volunteers team membership (adds user if they also have all required consents)
-        await _systemTeamSyncJob.SyncVolunteersMembershipForUserAsync(id);
-
-        _metrics.RecordVolunteerApproved();
-        _logger.LogInformation("Admin {AdminId} approved human {HumanId}", currentUser?.Id, id);
+        var result = await _onboardingService.ApproveVolunteerAsync(id, currentUser.Id, currentUser.DisplayName);
+        if (!result.Success)
+            return NotFound();
 
         TempData["SuccessMessage"] = _localizer["Admin_VolunteerApproved"].Value;
         return RedirectToAction(nameof(HumanDetail), new { id });
@@ -550,57 +492,19 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == id);
-
-        if (user?.Profile == null)
-        {
-            return NotFound();
-        }
-
-        if (user.Profile.RejectedAt != null)
-        {
-            TempData["ErrorMessage"] = "This human has already been rejected.";
-            return RedirectToAction(nameof(HumanDetail), new { id });
-        }
-
         var currentUser = await _userManager.GetUserAsync(User);
         if (currentUser == null)
-        {
             return Unauthorized();
-        }
 
-        var now = _clock.GetCurrentInstant();
-
-        user.Profile.RejectionReason = reason;
-        user.Profile.RejectedAt = now;
-        user.Profile.RejectedByUserId = currentUser.Id;
-        user.Profile.IsApproved = false;
-        user.Profile.UpdatedAt = now;
-
-        await _auditLogService.LogAsync(
-            AuditAction.SignupRejected, "User", id,
-            $"{user.DisplayName} rejected by {currentUser.DisplayName}{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
-            currentUser.Id, currentUser.DisplayName);
-
-        await _dbContext.SaveChangesAsync();
-        _cache.Remove(CacheKeys.NavBadgeCounts);
-
-        try
+        var result = await _onboardingService.RejectSignupAsync(id, currentUser.Id, currentUser.DisplayName, reason);
+        if (!result.Success)
         {
-            await _emailService.SendSignupRejectedAsync(
-                user.Email ?? string.Empty,
-                user.DisplayName,
-                reason,
-                user.PreferredLanguage);
+            if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
+                TempData["ErrorMessage"] = "This human has already been rejected.";
+            else
+                return NotFound();
+            return RedirectToAction(nameof(HumanDetail), new { id });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send signup rejection email to {Email}", user.Email);
-        }
-
-        _logger.LogInformation("Admin {AdminId} rejected signup for human {HumanId}", currentUser.Id, id);
 
         TempData["SuccessMessage"] = "Signup rejected.";
         return RedirectToAction(nameof(HumanDetail), new { id });

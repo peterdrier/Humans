@@ -9,7 +9,6 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -29,6 +28,7 @@ public class ConsentController : Controller
     private readonly HumansMetricsService _metrics;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
+    private readonly IOnboardingService _onboardingService;
     private readonly ILogger<ConsentController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -40,6 +40,7 @@ public class ConsentController : Controller
         HumansMetricsService metrics,
         IClock clock,
         IMemoryCache cache,
+        IOnboardingService onboardingService,
         ILogger<ConsentController> logger,
         IStringLocalizer<SharedResource> localizer)
     {
@@ -50,6 +51,7 @@ public class ConsentController : Controller
         _metrics = metrics;
         _clock = clock;
         _cache = cache;
+        _onboardingService = onboardingService;
         _logger = logger;
         _localizer = localizer;
     }
@@ -247,20 +249,7 @@ public class ConsentController : Controller
             user.Id, version.LegalDocument.Name, version.VersionNumber);
 
         // Check if user now has all required consents and needs consent check
-        var profile = await _dbContext.Profiles.FirstOrDefaultAsync(p => p.UserId == user.Id);
-        if (profile != null && !profile.IsApproved && profile.ConsentCheckStatus == null)
-        {
-            var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
-                user.Id, SystemTeamIds.Volunteers);
-            if (hasAllConsents)
-            {
-                profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
-                profile.UpdatedAt = _clock.GetCurrentInstant();
-                await _dbContext.SaveChangesAsync();
-                _cache.Remove(CacheKeys.NavBadgeCounts);
-                _logger.LogInformation("User {UserId} has all consents signed, consent check set to Pending", user.Id);
-            }
-        }
+        await _onboardingService.SetConsentCheckPendingIfEligibleAsync(user.Id);
 
         // Sync system team memberships (adds user if eligible + all consents done)
         await _systemTeamSyncJob.SyncVolunteersMembershipForUserAsync(user.Id);
