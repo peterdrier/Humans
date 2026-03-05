@@ -1,24 +1,16 @@
+using Humans.Domain.Enums;
 using NodaTime;
+using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Interfaces;
 
 /// <summary>
-/// Single code path for approving or rejecting tier applications.
-/// Handles state transition, term expiry, profile tier update, audit log,
+/// Single code path for tier application lifecycle: submit, withdraw, approve, reject.
+/// Handles state transitions, term expiry, profile tier update, audit log,
 /// GDPR vote cleanup, team sync, and notification email.
 /// </summary>
 public interface IApplicationDecisionService
 {
-    /// <summary>
-    /// Approves a tier application.
-    /// </summary>
-    /// <param name="applicationId">The application to approve.</param>
-    /// <param name="reviewerUserId">The user performing the approval.</param>
-    /// <param name="reviewerDisplayName">Display name of the reviewer (for audit log).</param>
-    /// <param name="notes">Optional decision notes.</param>
-    /// <param name="boardMeetingDate">Date of the board meeting (null if admin-only decision).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Result indicating success or failure reason.</returns>
     Task<ApplicationDecisionResult> ApproveAsync(
         Guid applicationId,
         Guid reviewerUserId,
@@ -27,16 +19,6 @@ public interface IApplicationDecisionService
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Rejects a tier application.
-    /// </summary>
-    /// <param name="applicationId">The application to reject.</param>
-    /// <param name="reviewerUserId">The user performing the rejection.</param>
-    /// <param name="reviewerDisplayName">Display name of the reviewer (for audit log).</param>
-    /// <param name="reason">Rejection reason (required).</param>
-    /// <param name="boardMeetingDate">Date of the board meeting (null if admin-only decision).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Result indicating success or failure reason.</returns>
     Task<ApplicationDecisionResult> RejectAsync(
         Guid applicationId,
         Guid reviewerUserId,
@@ -44,6 +26,20 @@ public interface IApplicationDecisionService
         string reason,
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MemberApplication>> GetUserApplicationsAsync(
+        Guid userId, CancellationToken ct = default);
+
+    Task<MemberApplication?> GetUserApplicationDetailAsync(
+        Guid applicationId, Guid userId, CancellationToken ct = default);
+
+    Task<ApplicationDecisionResult> SubmitAsync(
+        Guid userId, MembershipTier tier, string motivation,
+        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
+        string language, CancellationToken ct = default);
+
+    Task<ApplicationDecisionResult> WithdrawAsync(
+        Guid applicationId, Guid userId, CancellationToken ct = default);
 }
 
-public record ApplicationDecisionResult(bool Success, string? ErrorKey = null);
+public record ApplicationDecisionResult(bool Success, string? ErrorKey = null, Guid? ApplicationId = null);

@@ -8,6 +8,7 @@ using Humans.Domain;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
+using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Services;
 
@@ -219,6 +220,85 @@ public class ApplicationDecisionService : IApplicationDecisionService
         {
             _logger.LogError(ex, "Failed to send rejection email for {ApplicationId}", application.Id);
         }
+
+        return new ApplicationDecisionResult(true);
+    }
+
+    public async Task<IReadOnlyList<MemberApplication>> GetUserApplicationsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        return await _dbContext.Applications
+            .Where(a => a.UserId == userId)
+            .OrderByDescending(a => a.SubmittedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<MemberApplication?> GetUserApplicationDetailAsync(
+        Guid applicationId, Guid userId, CancellationToken ct = default)
+    {
+        return await _dbContext.Applications
+            .Include(a => a.ReviewedByUser)
+            .Include(a => a.StateHistory)
+                .ThenInclude(h => h.ChangedByUser)
+            .FirstOrDefaultAsync(a => a.Id == applicationId && a.UserId == userId, ct);
+    }
+
+    public async Task<ApplicationDecisionResult> SubmitAsync(
+        Guid userId, MembershipTier tier, string motivation,
+        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
+        string language, CancellationToken ct = default)
+    {
+        // Check for existing pending application
+        var hasPending = await _dbContext.Applications
+            .AnyAsync(a => a.UserId == userId && a.Status == ApplicationStatus.Submitted, ct);
+
+        if (hasPending)
+            return new ApplicationDecisionResult(false, "AlreadyPending");
+
+        var now = _clock.GetCurrentInstant();
+
+        var application = new MemberApplication
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = tier,
+            Motivation = motivation,
+            AdditionalInfo = additionalInfo,
+            SignificantContribution = tier == MembershipTier.Asociado ? significantContribution : null,
+            RoleUnderstanding = tier == MembershipTier.Asociado ? roleUnderstanding : null,
+            Language = language,
+            SubmittedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.Applications.Add(application);
+        await _dbContext.SaveChangesAsync(ct);
+        _cache.Remove(CacheKeys.NavBadgeCounts);
+
+        _logger.LogInformation("User {UserId} submitted application {ApplicationId}", userId, application.Id);
+
+        return new ApplicationDecisionResult(true, ApplicationId: application.Id);
+    }
+
+    public async Task<ApplicationDecisionResult> WithdrawAsync(
+        Guid applicationId, Guid userId, CancellationToken ct = default)
+    {
+        var application = await _dbContext.Applications
+            .Include(a => a.StateHistory)
+            .FirstOrDefaultAsync(a => a.Id == applicationId && a.UserId == userId, ct);
+
+        if (application == null)
+            return new ApplicationDecisionResult(false, "NotFound");
+
+        if (application.Status != ApplicationStatus.Submitted)
+            return new ApplicationDecisionResult(false, "CannotWithdraw");
+
+        application.Withdraw(_clock);
+        await _dbContext.SaveChangesAsync(ct);
+        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _metrics.RecordApplicationProcessed("withdrawn");
+
+        _logger.LogInformation("User {UserId} withdrew application {ApplicationId}", userId, applicationId);
 
         return new ApplicationDecisionResult(true);
     }

@@ -2,46 +2,29 @@ using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
-using NodaTime;
 using Humans.Application;
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
-using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Web.Controllers;
 
 [Authorize]
 public class ApplicationController : Controller
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly UserManager<Domain.Entities.User> _userManager;
-    private readonly HumansMetricsService _metrics;
-    private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<ApplicationController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public ApplicationController(
-        HumansDbContext dbContext,
+        IApplicationDecisionService applicationDecisionService,
         UserManager<Domain.Entities.User> userManager,
-        HumansMetricsService metrics,
-        IClock clock,
-        IMemoryCache cache,
-        ILogger<ApplicationController> logger,
         IStringLocalizer<SharedResource> localizer)
     {
-        _dbContext = dbContext;
+        _applicationDecisionService = applicationDecisionService;
         _userManager = userManager;
-        _metrics = metrics;
-        _clock = clock;
-        _cache = cache;
-        _logger = logger;
         _localizer = localizer;
     }
 
@@ -49,16 +32,10 @@ public class ApplicationController : Controller
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
-        {
             return NotFound();
-        }
 
-        var applications = await _dbContext.Applications
-            .Where(a => a.UserId == user.Id)
-            .OrderByDescending(a => a.SubmittedAt)
-            .ToListAsync();
+        var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
 
-        // Can submit new if no pending/under review applications
         var hasPendingApplication = applications.Any(a =>
             a.Status == ApplicationStatus.Submitted);
 
@@ -84,14 +61,10 @@ public class ApplicationController : Controller
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
-        {
             return NotFound();
-        }
 
-        // Check if user already has a pending application
-        var hasPending = await _dbContext.Applications
-            .AnyAsync(a => a.UserId == user.Id &&
-                (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Submitted));
+        var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
+        var hasPending = applications.Any(a => a.Status == ApplicationStatus.Submitted);
 
         if (hasPending)
         {
@@ -118,22 +91,7 @@ public class ApplicationController : Controller
 
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
-        {
             return NotFound();
-        }
-
-        // Double-check no pending application
-        var hasPending = await _dbContext.Applications
-            .AnyAsync(a => a.UserId == user.Id &&
-                (a.Status == ApplicationStatus.Submitted || a.Status == ApplicationStatus.Submitted));
-
-        if (hasPending)
-        {
-            TempData["ErrorMessage"] = _localizer["Application_AlreadyPending"].Value;
-            return RedirectToAction(nameof(Index));
-        }
-
-        var now = _clock.GetCurrentInstant();
 
         // Validate tier is not Volunteer (applications are for Colaborador/Asociado only)
         if (model.MembershipTier == MembershipTier.Volunteer)
@@ -161,50 +119,31 @@ public class ApplicationController : Controller
             }
         }
 
-        var application = new MemberApplication
+        var result = await _applicationDecisionService.SubmitAsync(
+            user.Id, model.MembershipTier, model.Motivation,
+            model.AdditionalInfo, model.SignificantContribution, model.RoleUnderstanding,
+            CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+
+        if (!result.Success)
         {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            MembershipTier = model.MembershipTier,
-            Motivation = model.Motivation,
-            AdditionalInfo = model.AdditionalInfo,
-            SignificantContribution = model.MembershipTier == MembershipTier.Asociado
-                ? model.SignificantContribution : null,
-            RoleUnderstanding = model.MembershipTier == MembershipTier.Asociado
-                ? model.RoleUnderstanding : null,
-            Language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,
-            SubmittedAt = now,
-            UpdatedAt = now
-        };
-
-        _dbContext.Applications.Add(application);
-        await _dbContext.SaveChangesAsync();
-        _cache.Remove(CacheKeys.NavBadgeCounts);
-
-        _logger.LogInformation("User {UserId} submitted application {ApplicationId}", user.Id, application.Id);
+            if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
+                TempData["ErrorMessage"] = _localizer["Application_AlreadyPending"].Value;
+            return RedirectToAction(nameof(Index));
+        }
 
         TempData["SuccessMessage"] = _localizer["Application_Submitted"].Value;
-        return RedirectToAction(nameof(Details), new { id = application.Id });
+        return RedirectToAction(nameof(Details), new { id = result.ApplicationId });
     }
 
     public async Task<IActionResult> Details(Guid id)
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
-        {
             return NotFound();
-        }
 
-        var application = await _dbContext.Applications
-            .Include(a => a.ReviewedByUser)
-            .Include(a => a.StateHistory)
-                .ThenInclude(h => h.ChangedByUser)
-            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == user.Id);
-
+        var application = await _applicationDecisionService.GetUserApplicationDetailAsync(id, user.Id);
         if (application == null)
-        {
             return NotFound();
-        }
 
         var viewModel = new ApplicationDetailViewModel
         {
@@ -241,34 +180,18 @@ public class ApplicationController : Controller
     {
         var user = await _userManager.GetUserAsync(User);
         if (user == null)
-        {
             return NotFound();
-        }
 
-        var application = await _dbContext.Applications
-            .Include(a => a.StateHistory)
-            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == user.Id);
+        var result = await _applicationDecisionService.WithdrawAsync(id, user.Id);
 
-        if (application == null)
+        if (!result.Success)
         {
-            return NotFound();
-        }
-
-        if (application.Status != ApplicationStatus.Submitted)
-        {
-            TempData["ErrorMessage"] = _localizer["Application_CannotWithdraw"].Value;
+            if (string.Equals(result.ErrorKey, "CannotWithdraw", StringComparison.Ordinal))
+                TempData["ErrorMessage"] = _localizer["Application_CannotWithdraw"].Value;
             return RedirectToAction(nameof(Details), new { id });
         }
-
-        application.Withdraw(_clock);
-        await _dbContext.SaveChangesAsync();
-        _cache.Remove(CacheKeys.NavBadgeCounts);
-        _metrics.RecordApplicationProcessed("withdrawn");
-
-        _logger.LogInformation("User {UserId} withdrew application {ApplicationId}", user.Id, application.Id);
 
         TempData["SuccessMessage"] = _localizer["Application_Withdrawn"].Value;
         return RedirectToAction(nameof(Index));
     }
-
 }
