@@ -26,7 +26,7 @@
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.23" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
     <!-- Email -->
-    <PackageVersion Include="MailKit" Version="4.15.0" />
+    <PackageVersion Include="MailKit" Version="4.15.1" />
     <!-- GitHub API -->
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <!-- Google Workspace APIs -->
