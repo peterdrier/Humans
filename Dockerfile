@@ -17,7 +17,7 @@ COPY src/ src/
 
 # Coolify passes SOURCE_COMMIT as a build arg; deploy-qa.sh sets it from the host repo
 ARG SOURCE_COMMIT=""
-RUN dotnet publish src/Humans.Web/Humans.Web.csproj -c Release -o /app/publish --no-restore \
+RUN dotnet publish src/Humans.Web/Humans.Web.csproj -c Release -o /app/publish \
     -p:TreatWarningsAsErrors=false \
     -p:SourceRevisionId="${SOURCE_COMMIT}"
 
