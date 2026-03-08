@@ -64,6 +64,7 @@
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.19" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
     <!-- Testing -->
+    <PackageVersion Include="coverlet.collector" Version="8.0.0" />
     <PackageVersion Include="AwesomeAssertions" Version="9.4.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="NodaTime.Testing" Version="3.3.1" />
