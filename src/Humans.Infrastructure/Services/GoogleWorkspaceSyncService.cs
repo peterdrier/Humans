@@ -2,6 +2,7 @@ using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Admin.Directory.directory_v1.Data;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
+using Google.Apis.Groupssettings.v1;
 using Google.Apis.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -29,6 +30,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
     private DirectoryService? _directoryService;
     private DriveService? _driveService;
+    private GroupssettingsService? _groupssettingsService;
 
     public GoogleWorkspaceSyncService(
         HumansDbContext dbContext,
@@ -80,6 +82,24 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         });
 
         return _driveService;
+    }
+
+    private async Task<GroupssettingsService> GetGroupssettingsServiceAsync()
+    {
+        if (_groupssettingsService != null)
+        {
+            return _groupssettingsService;
+        }
+
+        var credential = await GetCredentialAsync(GroupssettingsService.Scope.AppsGroupsSettings);
+
+        _groupssettingsService = new GroupssettingsService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Humans"
+        });
+
+        return _groupssettingsService;
     }
 
     private async Task<GoogleCredential> GetCredentialAsync(params string[] scopes)
@@ -194,6 +214,29 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         };
 
         var createdGroup = await directory.Groups.Insert(group).ExecuteAsync(cancellationToken);
+
+        // Apply configured group settings
+        try
+        {
+            var groupssettingsService = await GetGroupssettingsServiceAsync();
+            var groupSettings = new Google.Apis.Groupssettings.v1.Data.Groups
+            {
+                WhoCanJoin = _settings.Groups.WhoCanJoin,
+                WhoCanViewMembership = _settings.Groups.WhoCanViewMembership,
+                WhoCanContactOwner = _settings.Groups.WhoCanContactOwner,
+                WhoCanPostMessage = _settings.Groups.WhoCanPostMessage,
+                WhoCanViewGroup = _settings.Groups.WhoCanViewGroup,
+                WhoCanModerateMembers = _settings.Groups.WhoCanModerateMembers,
+                AllowExternalMembers = _settings.Groups.AllowExternalMembers ? "true" : "false",
+            };
+            await groupssettingsService.Groups.Update(groupSettings, groupEmail).ExecuteAsync(cancellationToken);
+            _logger.LogInformation("Applied group settings to '{GroupEmail}'", groupEmail);
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal: group was created, settings can be applied later
+            _logger.LogWarning(ex, "Failed to apply group settings to '{GroupEmail}'. Group was created with Google defaults", groupEmail);
+        }
 
         var resource = new GoogleResource
         {
@@ -946,6 +989,79 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 LinkedTeams = resources.Select(r => r.Team.Name).Distinct(StringComparer.Ordinal).ToList(),
                 ErrorMessage = ex.Message
             };
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task EnsureTeamGroupAsync(Guid teamId, CancellationToken cancellationToken = default)
+    {
+        var team = await _dbContext.Teams
+            .Include(t => t.GoogleResources)
+            .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
+
+        if (team == null)
+        {
+            _logger.LogWarning("Team {TeamId} not found for EnsureTeamGroupAsync", teamId);
+            return;
+        }
+
+        if (team.GoogleGroupPrefix == null)
+        {
+            _logger.LogDebug("Team {TeamId} has no GoogleGroupPrefix, skipping group ensure", teamId);
+            return;
+        }
+
+        // Check if an active Group resource already exists
+        var existingGroup = team.GoogleResources
+            .FirstOrDefault(r => r.ResourceType == GoogleResourceType.Group && r.IsActive);
+
+        if (existingGroup != null)
+        {
+            _logger.LogDebug("Team {TeamId} already has active Group resource {ResourceId}", teamId, existingGroup.Id);
+            return;
+        }
+
+        var email = $"{team.GoogleGroupPrefix}@{_settings.Domain}";
+        var now = _clock.GetCurrentInstant();
+
+        // Try to find an existing Google Group with this email
+        try
+        {
+            var directory = await GetDirectoryServiceAsync();
+            var existingGoogleGroup = await directory.Groups.Get(email).ExecuteAsync(cancellationToken);
+
+            // Group exists in Google — link it
+            var resource = new GoogleResource
+            {
+                Id = Guid.NewGuid(),
+                TeamId = teamId,
+                ResourceType = GoogleResourceType.Group,
+                GoogleId = existingGoogleGroup.Id,
+                Name = team.Name,
+                Url = $"https://groups.google.com/a/{_settings.Domain}/g/{team.GoogleGroupPrefix}",
+                ProvisionedAt = now,
+                LastSyncedAt = now,
+                IsActive = true
+            };
+
+            _dbContext.GoogleResources.Add(resource);
+
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleResourceProvisioned, "GoogleResource", resource.Id,
+                $"Linked existing Google Group '{team.Name}' ({email}) for team",
+                nameof(GoogleWorkspaceSyncService),
+                relatedEntityId: teamId, relatedEntityType: "Team");
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation("Linked existing Google Group {GroupId} ({Email}) to team {TeamId}",
+                existingGoogleGroup.Id, email, teamId);
+        }
+        catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
+        {
+            // Group doesn't exist — create it
+            _logger.LogInformation("Google Group '{Email}' not found, creating for team {TeamId}", email, teamId);
+            await ProvisionTeamGroupAsync(teamId, email, team.Name, cancellationToken);
         }
     }
 

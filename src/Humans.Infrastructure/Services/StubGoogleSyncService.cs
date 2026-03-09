@@ -106,6 +106,12 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.CompletedTask;
     }
 
+    public Task EnsureTeamGroupAsync(Guid teamId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would ensure Google Group exists for team {TeamId}", teamId);
+        return Task.CompletedTask;
+    }
+
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,
