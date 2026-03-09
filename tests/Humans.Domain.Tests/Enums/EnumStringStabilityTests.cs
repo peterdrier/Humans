@@ -93,6 +93,18 @@ public class EnumStringStabilityTests
         {
             typeof(VoteChoice),
             new[] { "Yay", "Maybe", "No", "Abstain" }
+        },
+        {
+            typeof(SyncMode),
+            new[] { "None", "AddOnly", "AddAndRemove" }
+        },
+        {
+            typeof(SyncServiceType),
+            new[] { "GoogleDrive", "GoogleGroups", "Discord" }
+        },
+        {
+            typeof(SyncAction),
+            new[] { "Preview", "AddOnly", "AddAndRemove" }
         }
     };
 }
