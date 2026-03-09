@@ -1,5 +1,5 @@
-using Google.Apis.Admin.Directory.directory_v1;
-using Google.Apis.Admin.Directory.directory_v1.Data;
+using Google.Apis.CloudIdentity.v1;
+using Google.Apis.CloudIdentity.v1.Data;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
 using Google.Apis.Groupssettings.v1;
@@ -28,7 +28,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly IAuditLogService _auditLogService;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
-    private DirectoryService? _directoryService;
+    private CloudIdentityService? _cloudIdentityService;
     private DriveService? _driveService;
     private GroupssettingsService? _groupssettingsService;
 
@@ -46,24 +46,23 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _logger = logger;
     }
 
-    private async Task<DirectoryService> GetDirectoryServiceAsync()
+    private async Task<CloudIdentityService> GetCloudIdentityServiceAsync()
     {
-        if (_directoryService != null)
+        if (_cloudIdentityService != null)
         {
-            return _directoryService;
+            return _cloudIdentityService;
         }
 
         var credential = await GetCredentialAsync(
-            DirectoryService.Scope.AdminDirectoryGroup,
-            DirectoryService.Scope.AdminDirectoryGroupMember);
+            CloudIdentityService.Scope.CloudIdentityGroups);
 
-        _directoryService = new DirectoryService(new BaseClientService.Initializer
+        _cloudIdentityService = new CloudIdentityService(new BaseClientService.Initializer
         {
             HttpClientInitializer = credential,
             ApplicationName = "Humans"
         });
 
-        return _directoryService;
+        return _cloudIdentityService;
     }
 
     private async Task<DriveService> GetDriveServiceAsync()
@@ -203,17 +202,31 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     {
         _logger.LogInformation("Provisioning Google Group '{GroupEmail}' for team {TeamId}", groupEmail, teamId);
 
-        var directory = await GetDirectoryServiceAsync();
+        var cloudIdentity = await GetCloudIdentityServiceAsync();
         var now = _clock.GetCurrentInstant();
 
-        var group = new Group
+        var group = new Google.Apis.CloudIdentity.v1.Data.Group
         {
-            Email = groupEmail,
-            Name = groupName,
-            Description = $"Mailing list for {groupName} team"
+            GroupKey = new EntityKey { Id = groupEmail },
+            DisplayName = groupName,
+            Description = $"Mailing list for {groupName} team",
+            Parent = $"customers/{_settings.CustomerId}",
+            Labels = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["cloudidentity.googleapis.com/groups.discussion_forum"] = ""
+            }
         };
 
-        var createdGroup = await directory.Groups.Insert(group).ExecuteAsync(cancellationToken);
+        var createRequest = cloudIdentity.Groups.Create(group);
+        createRequest.InitialGroupConfig =
+            Google.Apis.CloudIdentity.v1.GroupsResource.CreateRequest.InitialGroupConfigEnum.EMPTY;
+        await createRequest.ExecuteAsync(cancellationToken);
+
+        // Look up the created group to get its resource name
+        var lookupRequest = cloudIdentity.Groups.Lookup();
+        lookupRequest.GroupKeyId = groupEmail;
+        var lookupResponse = await lookupRequest.ExecuteAsync(cancellationToken);
+        var createdGroupId = lookupResponse.Name["groups/".Length..];
 
         // Apply configured group settings
         try
@@ -243,7 +256,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             Id = Guid.NewGuid(),
             TeamId = teamId,
             ResourceType = GoogleResourceType.Group,
-            GoogleId = createdGroup.Id,
+            GoogleId = createdGroupId,
             Name = groupName,
             Url = $"https://groups.google.com/a/{_settings.Domain}/g/{groupEmail.Split('@')[0]}",
             ProvisionedAt = now,
@@ -262,7 +275,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Created Google Group {GroupId} ({GroupEmail}) for team {TeamId}",
-            createdGroup.Id, groupEmail, teamId);
+            createdGroupId, groupEmail, teamId);
 
         return resource;
     }
@@ -284,17 +297,19 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         _logger.LogInformation("Adding {UserEmail} to group {GroupId}", userEmail, resource.GoogleId);
 
-        var directory = await GetDirectoryServiceAsync();
+        var cloudIdentity = await GetCloudIdentityServiceAsync();
 
-        var member = new Member
+        var membership = new Membership
         {
-            Email = userEmail,
-            Role = "MEMBER"
+            PreferredMemberKey = new EntityKey { Id = userEmail },
+            Roles = [new MembershipRole { Name = "MEMBER" }]
         };
 
         try
         {
-            await directory.Members.Insert(member, resource.GoogleId).ExecuteAsync(cancellationToken);
+            await cloudIdentity.Groups.Memberships
+                .Create(membership, $"groups/{resource.GoogleId}")
+                .ExecuteAsync(cancellationToken);
 
             await _auditLogService.LogGoogleSyncAsync(
                 AuditAction.GoogleResourceAccessGranted, groupResourceId,
@@ -346,8 +361,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             .Where(email => email != null)
             .ToListAsync(cancellationToken);
 
-        // Get current group members from Google
-        var directory = await GetDirectoryServiceAsync();
+        // Get current group members from Google via Cloud Identity
+        var cloudIdentity = await GetCloudIdentityServiceAsync();
         var currentGroupMembers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         try
@@ -355,8 +370,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             string? pageToken = null;
             do
             {
-                var membersRequest = directory.Members.List(groupResource.GoogleId);
-                membersRequest.MaxResults = 200;
+                var membersRequest = cloudIdentity.Groups.Memberships.List($"groups/{groupResource.GoogleId}");
+                membersRequest.PageSize = 200;
                 if (pageToken != null)
                 {
                     membersRequest.PageToken = pageToken;
@@ -364,13 +379,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
                 var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
 
-                if (membersResponse.MembersValue != null)
+                if (membersResponse.Memberships != null)
                 {
-                    foreach (var member in membersResponse.MembersValue)
+                    foreach (var membership in membersResponse.Memberships)
                     {
-                        if (!string.IsNullOrEmpty(member.Email))
+                        var email = membership.PreferredMemberKey?.Id;
+                        if (!string.IsNullOrEmpty(email))
                         {
-                            currentGroupMembers.Add(member.Email);
+                            currentGroupMembers.Add(email);
                         }
                     }
                 }
@@ -661,28 +677,34 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var expectedEmails = new HashSet<string>(
                 expectedMembers.Select(m => m.Email!), StringComparer.OrdinalIgnoreCase);
 
-            // Current: Google Group members
-            var directory = await GetDirectoryServiceAsync();
+            // Current: Google Group members via Cloud Identity
+            var cloudIdentity = await GetCloudIdentityServiceAsync();
             var currentEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // Track membership resource names for deletion (email → "groups/{id}/memberships/{id}")
+            var membershipNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             try
             {
                 string? pageToken = null;
                 do
                 {
-                    var membersRequest = directory.Members.List(resource.GoogleId);
-                    membersRequest.MaxResults = 200;
+                    var membersRequest = cloudIdentity.Groups.Memberships.List($"groups/{resource.GoogleId}");
+                    membersRequest.PageSize = 200;
                     if (pageToken != null)
                         membersRequest.PageToken = pageToken;
 
                     var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
 
-                    if (membersResponse.MembersValue != null)
+                    if (membersResponse.Memberships != null)
                     {
-                        foreach (var member in membersResponse.MembersValue)
+                        foreach (var membership in membersResponse.Memberships)
                         {
-                            if (!string.IsNullOrEmpty(member.Email))
-                                currentEmails.Add(member.Email);
+                            var email = membership.PreferredMemberKey?.Id;
+                            if (!string.IsNullOrEmpty(email))
+                            {
+                                currentEmails.Add(email);
+                                membershipNames[email] = membership.Name;
+                            }
                         }
                     }
 
@@ -748,8 +770,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     {
                         try
                         {
-                            await directory.Members.Delete(resource.GoogleId, member.Email)
-                                .ExecuteAsync(cancellationToken);
+                            if (membershipNames.TryGetValue(member.Email, out var membershipName))
+                            {
+                                await cloudIdentity.Groups.Memberships.Delete(membershipName)
+                                    .ExecuteAsync(cancellationToken);
+                            }
 
                             await _auditLogService.LogGoogleSyncAsync(
                                 AuditAction.GoogleResourceAccessRevoked, resource.Id,
@@ -1062,11 +1087,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var email = $"{team.GoogleGroupPrefix}@{_settings.Domain}";
         var now = _clock.GetCurrentInstant();
 
-        // Try to find an existing Google Group with this email
+        // Try to find an existing Google Group with this email via Cloud Identity
         try
         {
-            var directory = await GetDirectoryServiceAsync();
-            var existingGoogleGroup = await directory.Groups.Get(email).ExecuteAsync(cancellationToken);
+            var cloudIdentity = await GetCloudIdentityServiceAsync();
+            var lookupRequest = cloudIdentity.Groups.Lookup();
+            lookupRequest.GroupKeyId = email;
+            var lookupResponse = await lookupRequest.ExecuteAsync(cancellationToken);
+            var groupId = lookupResponse.Name["groups/".Length..];
 
             // Group exists in Google — link it
             var resource = new GoogleResource
@@ -1074,7 +1102,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 Id = Guid.NewGuid(),
                 TeamId = teamId,
                 ResourceType = GoogleResourceType.Group,
-                GoogleId = existingGoogleGroup.Id,
+                GoogleId = groupId,
                 Name = team.Name,
                 Url = $"https://groups.google.com/a/{_settings.Domain}/g/{team.GoogleGroupPrefix}",
                 ProvisionedAt = now,
@@ -1093,7 +1121,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Linked existing Google Group {GroupId} ({Email}) to team {TeamId}",
-                existingGoogleGroup.Id, email, teamId);
+                groupId, email, teamId);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
         {

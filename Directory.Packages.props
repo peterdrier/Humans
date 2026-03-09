@@ -30,7 +30,7 @@
     <!-- GitHub API -->
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <!-- Google Workspace APIs -->
-    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.73.0.4058" />
+    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.73.0.4030" />
     <PackageVersion Include="Google.Apis.Drive.v3" Version="1.73.0.4068" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.70.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.68.0.2721" />

@@ -27,6 +27,12 @@ public class GoogleWorkspaceSettings
     public string Domain { get; set; } = "nobodies.team";
 
     /// <summary>
+    /// Google Workspace customer ID (e.g., C024frgt7).
+    /// Required by Cloud Identity Groups API as the parent for group operations.
+    /// </summary>
+    public string CustomerId { get; set; } = string.Empty;
+
+    /// <summary>
     /// Parent folder ID for team folders in Drive.
     /// If empty, folders are created in the root.
     /// </summary>

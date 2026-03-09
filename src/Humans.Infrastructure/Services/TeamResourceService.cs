@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Google.Apis.Admin.Directory.directory_v1;
+using Google.Apis.CloudIdentity.v1;
+using Google.Apis.CloudIdentity.v1.Data;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
@@ -31,7 +32,7 @@ public partial class TeamResourceService : ITeamResourceService
     private readonly ILogger<TeamResourceService> _logger;
 
     private DriveService? _driveService;
-    private DirectoryService? _directoryService;
+    private CloudIdentityService? _cloudIdentityService;
     private string? _serviceAccountEmail;
 
     public TeamResourceService(
@@ -302,11 +303,15 @@ public partial class TeamResourceService : ITeamResourceService
 
         try
         {
-            var directory = await GetDirectoryServiceAsync(ct);
-            var group = await directory.Groups.Get(groupEmail).ExecuteAsync(ct);
+            var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
+            var lookupRequest = cloudIdentity.Groups.Lookup();
+            lookupRequest.GroupKeyId = groupEmail;
+            var lookupResponse = await lookupRequest.ExecuteAsync(ct);
+
+            var fullGroup = await cloudIdentity.Groups.Get(lookupResponse.Name).ExecuteAsync(ct);
 
             var now = _clock.GetCurrentInstant();
-            var googleId = group.Id ?? groupEmail;
+            var googleId = lookupResponse.Name["groups/".Length..];
             var emailLocal = groupEmail.Split('@')[0];
 
             // Check for an inactive record to reactivate
@@ -320,7 +325,7 @@ public partial class TeamResourceService : ITeamResourceService
             if (inactive != null)
             {
                 inactive.GoogleId = googleId;
-                inactive.Name = group.Name ?? groupEmail;
+                inactive.Name = fullGroup.DisplayName ?? groupEmail;
                 inactive.Url = $"https://groups.google.com/a/{_googleSettings.Domain}/g/{emailLocal}";
                 inactive.LastSyncedAt = now;
                 inactive.IsActive = true;
@@ -335,7 +340,7 @@ public partial class TeamResourceService : ITeamResourceService
                     TeamId = teamId,
                     ResourceType = GoogleResourceType.Group,
                     GoogleId = googleId,
-                    Name = group.Name ?? groupEmail,
+                    Name = fullGroup.DisplayName ?? groupEmail,
                     Url = $"https://groups.google.com/a/{_googleSettings.Domain}/g/{emailLocal}",
                     ProvisionedAt = now,
                     LastSyncedAt = now,
@@ -347,7 +352,7 @@ public partial class TeamResourceService : ITeamResourceService
             await _dbContext.SaveChangesAsync(ct);
 
             _logger.LogInformation("Linked Google Group {GroupEmail} ({GroupName}) to team {TeamId}",
-                groupEmail, group.Name, teamId);
+                groupEmail, fullGroup.DisplayName, teamId);
 
             return new LinkResourceResult(true, Resource: resource);
         }
@@ -559,23 +564,23 @@ public partial class TeamResourceService : ITeamResourceService
         return _driveService;
     }
 
-    private async Task<DirectoryService> GetDirectoryServiceAsync(CancellationToken ct)
+    private async Task<CloudIdentityService> GetCloudIdentityServiceAsync(CancellationToken ct)
     {
-        if (_directoryService != null)
+        if (_cloudIdentityService != null)
         {
-            return _directoryService;
+            return _cloudIdentityService;
         }
 
         var credential = await LoadServiceAccountCredentialAsync(ct,
-            DirectoryService.Scope.AdminDirectoryGroupReadonly);
+            CloudIdentityService.Scope.CloudIdentityGroupsReadonly);
 
-        _directoryService = new DirectoryService(new BaseClientService.Initializer
+        _cloudIdentityService = new CloudIdentityService(new BaseClientService.Initializer
         {
             HttpClientInitializer = credential,
             ApplicationName = "Humans"
         });
 
-        return _directoryService;
+        return _cloudIdentityService;
     }
 
     /// <summary>

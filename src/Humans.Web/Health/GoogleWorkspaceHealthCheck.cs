@@ -1,4 +1,4 @@
-using Google.Apis.Admin.Directory.directory_v1;
+using Google.Apis.CloudIdentity.v1;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -9,7 +9,7 @@ namespace Humans.Web.Health;
 
 /// <summary>
 /// Health check that validates Google service account credentials and API access.
-/// Verifies the service account can authenticate and access the Admin SDK.
+/// Verifies the service account can authenticate and access the Cloud Identity Groups API.
 /// </summary>
 public class GoogleWorkspaceHealthCheck : IHealthCheck
 {
@@ -38,25 +38,25 @@ public class GoogleWorkspaceHealthCheck : IHealthCheck
         try
         {
             var credential = await GetCredentialAsync(cancellationToken);
-            var directoryService = new DirectoryService(new BaseClientService.Initializer
+            var cloudIdentityService = new CloudIdentityService(new BaseClientService.Initializer
             {
                 HttpClientInitializer = credential,
                 ApplicationName = "Humans Health Check"
             });
 
-            // List groups with max 1 result — validates credential + Admin SDK access
-            var request = directoryService.Groups.List();
-            request.Domain = _settings.Domain;
-            request.MaxResults = 1;
+            // List groups with max 1 result — validates credential + Cloud Identity API access
+            var request = cloudIdentityService.Groups.List();
+            request.Parent = $"customers/{_settings.CustomerId}";
+            request.PageSize = 1;
             await request.ExecuteAsync(cancellationToken);
 
             return HealthCheckResult.Healthy("Google service account authentication successful");
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403)
         {
-            _logger.LogWarning(ex, "Google API authorization failed - check service account admin role");
+            _logger.LogWarning(ex, "Google API authorization failed - check service account permissions");
             return HealthCheckResult.Unhealthy(
-                "Authorization failed - assign the Groups Admin role to the service account in Google Workspace Admin Console",
+                "Authorization failed - ensure the service account has Cloud Identity Groups access",
                 ex);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 401)
@@ -99,6 +99,6 @@ public class GoogleWorkspaceHealthCheck : IHealthCheck
                 .ConfigureAwait(false)).ToGoogleCredential();
         }
 
-        return credential.CreateScoped(DirectoryService.Scope.AdminDirectoryGroupReadonly);
+        return credential.CreateScoped(CloudIdentityService.Scope.CloudIdentityGroupsReadonly);
     }
 }
