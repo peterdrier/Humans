@@ -247,6 +247,7 @@ public class TeamController : Controller
         {
             UserId = p.UserId,
             DisplayName = p.DisplayName,
+            ProfilePictureUrl = p.ProfilePictureUrl,
             Latitude = p.Latitude,
             Longitude = p.Longitude,
             City = p.City,

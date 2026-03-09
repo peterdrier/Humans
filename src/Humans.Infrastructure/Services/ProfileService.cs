@@ -500,16 +500,17 @@ public class ProfileService : IProfileService
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<(Guid UserId, string DisplayName, double Latitude, double Longitude, string? City, string? CountryCode)>>
+    public async Task<IReadOnlyList<(Guid UserId, string DisplayName, string? ProfilePictureUrl, double Latitude, double Longitude, string? City, string? CountryCode)>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default)
     {
         return await _dbContext.Profiles
             .AsNoTracking()
             .Include(p => p.User)
             .Where(p => p.Latitude != null && p.Longitude != null && !p.IsSuspended && p.IsApproved)
-            .Select(p => new ValueTuple<Guid, string, double, double, string?, string?>(
+            .Select(p => new ValueTuple<Guid, string, string?, double, double, string?, string?>(
                 p.UserId,
                 p.User.DisplayName,
+                p.User.ProfilePictureUrl,
                 p.Latitude!.Value,
                 p.Longitude!.Value,
                 p.City,

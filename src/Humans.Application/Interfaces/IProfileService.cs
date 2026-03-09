@@ -38,7 +38,7 @@ public interface IProfileService
     Task<IReadOnlyList<(Guid UserId, string DisplayName, string? ProfilePictureUrl, bool HasCustomPicture, Guid ProfileId, int Day, int Month)>>
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default);
 
-    Task<IReadOnlyList<(Guid UserId, string DisplayName, double Latitude, double Longitude, string? City, string? CountryCode)>>
+    Task<IReadOnlyList<(Guid UserId, string DisplayName, string? ProfilePictureUrl, double Latitude, double Longitude, string? City, string? CountryCode)>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<DTOs.AdminHumanRow>> GetFilteredHumansAsync(
