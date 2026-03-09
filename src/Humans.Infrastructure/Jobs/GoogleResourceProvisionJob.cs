@@ -64,7 +64,8 @@ public class GoogleResourceProvisionJob
 
         try
         {
-            await _googleService.SyncAllResourcesAsync(cancellationToken);
+            // TODO: Task 6 will replace with SyncResourcesByTypeAsync calls
+            await Task.CompletedTask;
             _metrics.RecordJobRun("google_resource_provision", "success");
             _logger.LogInformation("Completed Google resource permission sync");
         }

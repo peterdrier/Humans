@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Services;
 
@@ -121,5 +122,23 @@ public class StubGoogleSyncService : IGoogleSyncService
     {
         _logger.LogInformation("[STUB] Would restore user {UserId} to all team Google resources", userId);
         return Task.CompletedTask;
+    }
+
+    public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
+        GoogleResourceType resourceType,
+        SyncAction action,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would sync resources of type {ResourceType} with action {Action}", resourceType, action);
+        return Task.FromResult(new SyncPreviewResult());
+    }
+
+    public Task<ResourceSyncDiff> SyncSingleResourceAsync(
+        Guid resourceId,
+        SyncAction action,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would sync single resource {ResourceId} with action {Action}", resourceId, action);
+        return Task.FromResult(new ResourceSyncDiff { ResourceId = resourceId });
     }
 }

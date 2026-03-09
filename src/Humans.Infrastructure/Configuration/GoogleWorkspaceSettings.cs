@@ -44,29 +44,15 @@ public class GoogleWorkspaceSettings
 }
 
 /// <summary>
-/// Default settings for Google Groups.
+/// Default settings for Google Groups created by the system.
 /// </summary>
 public class GroupSettings
 {
-    /// <summary>
-    /// Who can view the group membership.
-    /// Options: ALL_IN_DOMAIN_CAN_VIEW, ALL_MEMBERS_CAN_VIEW, ALL_MANAGERS_CAN_VIEW
-    /// </summary>
+    public string WhoCanJoin { get; set; } = "INVITED_CAN_JOIN";
     public string WhoCanViewMembership { get; set; } = "ALL_MEMBERS_CAN_VIEW";
-
-    /// <summary>
-    /// Who can post to the group.
-    /// Options: ANYONE_CAN_POST, ALL_IN_DOMAIN_CAN_POST, ALL_MEMBERS_CAN_POST, ALL_MANAGERS_CAN_POST
-    /// </summary>
-    public string WhoCanPostMessage { get; set; } = "ALL_MEMBERS_CAN_POST";
-
-    /// <summary>
-    /// Whether external members can join.
-    /// </summary>
+    public string WhoCanContactOwner { get; set; } = "ALL_MANAGERS_CAN_CONTACT";
+    public string WhoCanPostMessage { get; set; } = "ANYONE_CAN_POST";
+    public string WhoCanViewGroup { get; set; } = "ALL_MEMBERS_CAN_VIEW";
+    public string WhoCanModerateMembers { get; set; } = "OWNERS_AND_MANAGERS";
     public bool AllowExternalMembers { get; set; } = true;
-
-    /// <summary>
-    /// Whether the group is listed in the directory.
-    /// </summary>
-    public bool IsArchived { get; set; } = false;
 }

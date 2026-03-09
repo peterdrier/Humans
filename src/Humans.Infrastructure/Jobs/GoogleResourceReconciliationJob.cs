@@ -34,7 +34,8 @@ public class GoogleResourceReconciliationJob
 
         try
         {
-            await _googleSyncService.SyncAllResourcesAsync(cancellationToken);
+            // TODO: Task 8 will replace with mode-gated SyncResourcesByTypeAsync calls
+            await Task.CompletedTask;
             _metrics.RecordJobRun("google_resource_reconciliation", "success");
             _logger.LogInformation("Completed nightly Google resource reconciliation");
         }

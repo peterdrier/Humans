@@ -17,6 +17,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
         services.Configure<TeamResourceManagementSettings>(configuration.GetSection(TeamResourceManagementSettings.SectionName));
 
+        services.AddScoped<ISyncSettingsService, SyncSettingsService>();
+
         services.AddSingleton<HumansMetricsService>();
         services.AddSingleton<IHumansMetrics>(sp => sp.GetRequiredService<HumansMetricsService>());
 

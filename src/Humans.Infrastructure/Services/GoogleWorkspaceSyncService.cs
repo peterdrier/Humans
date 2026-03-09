@@ -357,106 +357,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _logger.LogInformation("Synced group members for team {TeamId}: {MemberCount} members", teamId, teamMembers.Count);
     }
 
-    /// <inheritdoc />
-    public async Task SyncResourcePermissionsAsync(Guid resourceId, CancellationToken cancellationToken = default)
-    {
-        var resource = await _dbContext.GoogleResources
-            .Include(r => r.Team)
-            .ThenInclude(t => t.Members)
-            .ThenInclude(m => m.User)
-            .FirstOrDefaultAsync(r => r.Id == resourceId, cancellationToken);
-
-        if (resource == null)
-        {
-            _logger.LogWarning("Resource {ResourceId} not found", resourceId);
-            return;
-        }
-
-        if (resource.ResourceType == GoogleResourceType.Group)
-        {
-            await SyncTeamGroupMembersAsync(resource.TeamId, cancellationToken);
-            return;
-        }
-
-        var drive = await GetDriveServiceAsync();
-
-        var expectedEmails = resource.Team.Members
-            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User.Email))
-            .Select(m => m.User.Email!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // Get current Drive permissions
-        var currentPermissions = await ListDrivePermissionsAsync(drive, resource.GoogleId, cancellationToken);
-
-        // Check ALL user permissions (including inherited from Shared Drive).
-        // Users with inherited access don't need a direct permission added.
-        var allUserEmails = currentPermissions
-            .Where(IsAnyUserPermission)
-            .Select(p => p.EmailAddress!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // Add missing permissions (skip users who already have access via inheritance or direct)
-        foreach (var email in expectedEmails)
-        {
-            if (!allUserEmails.Contains(email))
-            {
-                try
-                {
-                    var permission = new Google.Apis.Drive.v3.Data.Permission
-                    {
-                        Type = "user",
-                        Role = "writer",
-                        EmailAddress = email
-                    };
-
-                    var createReq = drive.Permissions.Create(permission, resource.GoogleId);
-                    createReq.SupportsAllDrives = true;
-                    await createReq.ExecuteAsync(cancellationToken);
-
-                    await _auditLogService.LogGoogleSyncAsync(
-                        AuditAction.GoogleResourceAccessGranted, resourceId,
-                        $"Granted Drive folder access to {email} ({resource.Name}) during sync",
-                        nameof(GoogleWorkspaceSyncService),
-                        email, "writer", GoogleSyncSource.ManualSync, success: true);
-                }
-                catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400)
-                {
-                    _logger.LogDebug("Permission already exists for {Email} on {ResourceId}", email, resourceId);
-                }
-            }
-        }
-
-        // Removal disabled — sync is add-only until automated sync is validated
-
-        resource.LastSyncedAt = _clock.GetCurrentInstant();
-        await _dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task SyncAllResourcesAsync(CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Starting sync of all Google resources");
-
-        var resources = await _dbContext.GoogleResources
-            .Where(r => r.IsActive)
-            .ToListAsync(cancellationToken);
-
-        foreach (var resource in resources)
-        {
-            try
-            {
-                await SyncResourcePermissionsAsync(resource.Id, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error syncing resource {ResourceId}", resource.Id);
-                resource.ErrorMessage = ex.Message;
-            }
-        }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        _logger.LogInformation("Completed sync of {Count} Google resources", resources.Count);
-    }
+    // NOTE: SyncResourcePermissionsAsync and SyncAllResourcesAsync removed — Task 6 will
+    // replace them with SyncResourcesByTypeAsync / SyncSingleResourceAsync.
 
     /// <inheritdoc />
     public async Task<GoogleResource?> GetResourceStatusAsync(
@@ -537,135 +439,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
-    public async Task<SyncPreviewResult> PreviewSyncAllAsync(CancellationToken cancellationToken = default)
-    {
-        _logger.LogInformation("Starting sync preview of all Google resources");
-
-        var resources = await _dbContext.GoogleResources
-            .Include(r => r.Team)
-                .ThenInclude(t => t.Members.Where(m => m.LeftAt == null))
-                    .ThenInclude(m => m.User)
-            .Where(r => r.IsActive)
-            .ToListAsync(cancellationToken);
-
-        var diffs = new List<ResourceSyncDiff>();
-
-        foreach (var resource in resources)
-        {
-            try
-            {
-                var diff = resource.ResourceType == GoogleResourceType.Group
-                    ? await PreviewGroupSyncAsync(resource, cancellationToken)
-                    : await PreviewDriveFolderSyncAsync(resource, cancellationToken);
-
-                diffs.Add(diff);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error previewing resource {ResourceId}", resource.Id);
-                diffs.Add(new ResourceSyncDiff
-                {
-                    ResourceId = resource.Id,
-                    ResourceName = resource.Name,
-                    ResourceType = resource.ResourceType.ToString(),
-                    TeamName = resource.Team.Name,
-                    GoogleId = resource.GoogleId,
-                    Url = resource.Url,
-                    ErrorMessage = ex.Message
-                });
-            }
-        }
-
-        _logger.LogInformation("Completed sync preview: {Total} resources, {Drift} drifted",
-            diffs.Count, diffs.Count(d => !d.IsInSync));
-
-        return new SyncPreviewResult { Diffs = diffs };
-    }
-
-    private async Task<ResourceSyncDiff> PreviewGroupSyncAsync(
-        GoogleResource resource, CancellationToken cancellationToken)
-    {
-        var expectedEmails = resource.Team.Members
-            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User.Email))
-            .Select(m => m.User.Email!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // Get actual members from Google
-        var directory = await GetDirectoryServiceAsync();
-        var actualEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        string? pageToken = null;
-        do
-        {
-            var membersRequest = directory.Members.List(resource.GoogleId);
-            membersRequest.MaxResults = 200;
-            if (pageToken != null)
-            {
-                membersRequest.PageToken = pageToken;
-            }
-
-            var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
-
-            if (membersResponse.MembersValue != null)
-            {
-                foreach (var member in membersResponse.MembersValue)
-                {
-                    if (!string.IsNullOrEmpty(member.Email))
-                    {
-                        actualEmails.Add(member.Email);
-                    }
-                }
-            }
-
-            pageToken = membersResponse.NextPageToken;
-        } while (!string.IsNullOrEmpty(pageToken));
-
-        return new ResourceSyncDiff
-        {
-            ResourceId = resource.Id,
-            ResourceName = resource.Name,
-            ResourceType = resource.ResourceType.ToString(),
-            TeamName = resource.Team.Name,
-            GoogleId = resource.GoogleId,
-            Url = resource.Url,
-            MembersToAdd = expectedEmails.Except(actualEmails, StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList(),
-            // Removal disabled — sync is add-only until automated sync is validated
-            MembersToRemove = []
-        };
-    }
-
-    private async Task<ResourceSyncDiff> PreviewDriveFolderSyncAsync(
-        GoogleResource resource, CancellationToken cancellationToken)
-    {
-        var expectedEmails = resource.Team.Members
-            .Where(m => m.LeftAt == null && !string.IsNullOrEmpty(m.User.Email))
-            .Select(m => m.User.Email!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var drive = await GetDriveServiceAsync();
-        var permissions = await ListDrivePermissionsAsync(drive, resource.GoogleId, cancellationToken);
-
-        // For "members to add", check ALL user permissions (including inherited from Shared Drive).
-        // Users with inherited access don't need a direct permission added.
-        var allUserEmails = permissions
-            .Where(IsAnyUserPermission)
-            .Select(p => p.EmailAddress!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        return new ResourceSyncDiff
-        {
-            ResourceId = resource.Id,
-            ResourceName = resource.Name,
-            ResourceType = resource.ResourceType.ToString(),
-            TeamName = resource.Team.Name,
-            GoogleId = resource.GoogleId,
-            Url = resource.Url,
-            MembersToAdd = expectedEmails.Except(allUserEmails, StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToList(),
-            // Removal disabled — sync is add-only until automated sync is validated
-            MembersToRemove = []
-        };
-    }
+    // NOTE: PreviewSyncAllAsync, PreviewGroupSyncAsync, PreviewDriveFolderSyncAsync removed —
+    // Task 6 will replace them with unified SyncResourcesByTypeAsync / SyncSingleResourceAsync.
 
     /// <summary>
     /// Returns true if this is any user permission (direct or inherited), excluding
@@ -736,6 +511,26 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         } while (!string.IsNullOrEmpty(pageToken));
 
         return permissions;
+    }
+
+    /// <inheritdoc />
+    public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
+        GoogleResourceType resourceType,
+        SyncAction action,
+        CancellationToken cancellationToken = default)
+    {
+        // TODO: Task 6 will implement the unified sync code path
+        throw new NotSupportedException("SyncResourcesByTypeAsync will be implemented in Task 6");
+    }
+
+    /// <inheritdoc />
+    public Task<ResourceSyncDiff> SyncSingleResourceAsync(
+        Guid resourceId,
+        SyncAction action,
+        CancellationToken cancellationToken = default)
+    {
+        // TODO: Task 6 will implement the unified sync code path
+        throw new NotSupportedException("SyncSingleResourceAsync will be implemented in Task 6");
     }
 
     /// <inheritdoc />
