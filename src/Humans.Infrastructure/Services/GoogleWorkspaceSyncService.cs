@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Google.Apis.CloudIdentity.v1;
 using Google.Apis.CloudIdentity.v1.Data;
 using Google.Apis.Auth.OAuth2;
@@ -31,6 +32,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private CloudIdentityService? _cloudIdentityService;
     private DriveService? _driveService;
     private GroupssettingsService? _groupssettingsService;
+    private string? _serviceAccountEmail;
 
     public GoogleWorkspaceSyncService(
         HumansDbContext dbContext,
@@ -125,6 +127,26 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         return credential.CreateScoped(scopes);
+    }
+
+    private async Task<string> GetServiceAccountEmailAsync()
+    {
+        if (_serviceAccountEmail != null)
+            return _serviceAccountEmail;
+
+        string? json = _settings.ServiceAccountKeyJson;
+        if (string.IsNullOrEmpty(json) && !string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
+            json = await File.ReadAllTextAsync(_settings.ServiceAccountKeyPath);
+
+        if (json != null)
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("client_email", out var emailElement))
+                _serviceAccountEmail = emailElement.GetString();
+        }
+
+        _serviceAccountEmail ??= "unknown@serviceaccount.iam.gserviceaccount.com";
+        return _serviceAccountEmail;
     }
 
     /// <inheritdoc />
@@ -677,6 +699,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             // Current: Google Group members via Cloud Identity
             var cloudIdentity = await GetCloudIdentityServiceAsync();
+            var saEmail = await GetServiceAccountEmailAsync();
             var currentEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             // Track membership resource names for deletion (email → "groups/{id}/memberships/{id}")
             var membershipNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -740,6 +763,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             foreach (var email in currentEmails)
             {
+                // Skip the service account — it's the group owner added at creation
+                if (string.Equals(email, saEmail, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 if (!expectedEmails.Contains(email))
                 {
                     members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, []));
@@ -883,8 +910,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 members.Add(new MemberSyncStatus(email, displayName, state, teamNames));
             }
 
+            var saEmail = await GetServiceAccountEmailAsync();
             foreach (var email in currentEmails)
             {
+                // Skip the service account — it manages the resources
+                if (string.Equals(email, saEmail, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 if (!membersByEmail.ContainsKey(email))
                 {
                     members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, []));
