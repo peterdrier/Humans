@@ -65,7 +65,7 @@
                     {
                         <tr class="@(ra.IsActive ? "" : "table-secondary")">
                             <td>
-                                <a asp-action="HumanDetail" asp-route-id="@ra.UserId">@ra.UserDisplayName</a>
+                                <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@ra.UserId">@ra.UserDisplayName</a>
                                 <br />
                                 <small class="text-muted">@ra.UserEmail</small>
                             </td>

@@ -5,7 +5,7 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_Admin"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Board" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
         <li class="breadcrumb-item"><a asp-action="Humans">@Localizer["AdminHumans_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Model.DisplayName</li>
     </ol>
@@ -130,7 +130,7 @@
                 <div class="list-group list-group-flush">
                     @foreach (var app in Model.Applications)
                     {
-                        <a asp-action="ApplicationDetail" asp-route-id="@app.Id" class="list-group-item list-group-item-action d-flex justify-content-between">
+                        <a asp-controller="Board" asp-action="ApplicationDetail" asp-route-id="@app.Id" class="list-group-item list-group-item-action d-flex justify-content-between">
                             <span>@app.SubmittedAt.ToString("d MMM yyyy")</span>
                             <span class="badge bg-secondary">@app.Status</span>
                         </a>
@@ -142,7 +142,7 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span>@Localizer["AdminHuman_RoleAssignments"]</span>
-                <a asp-action="AddRole" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">@Localizer["AdminHuman_AddRole"]</a>
+                <a asp-controller="Board" asp-action="AddRole" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-primary">@Localizer["AdminHuman_AddRole"]</a>
             </div>
             @if (Model.RoleAssignments.Count > 0)
             {
@@ -175,7 +175,7 @@
                             </div>
                             @if (role.IsActive)
                             {
-                                <form asp-action="EndRole" asp-route-id="@role.Id" method="post" class="d-inline"
+                                <form asp-controller="Board" asp-action="EndRole" asp-route-id="@role.Id" method="post" class="d-inline"
                                       data-confirm="@Localizer["AdminHuman_EndRoleConfirm"].Value">
                                     @Html.AntiForgeryToken()
                                     <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminHuman_End"]</button>

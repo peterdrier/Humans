@@ -55,7 +55,7 @@
                 <span>@Localizer["Admin_QuickActions"]</span>
             </div>
             <div class="list-group list-group-flush">
-                <a asp-action="Humans" asp-route-filter="pending" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <a asp-controller="Human" asp-action="Humans" asp-route-filter="pending" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                     @Localizer["Admin_ReviewPendingVolunteers"]
                     @if (Model.PendingVolunteers > 0)
                     {
@@ -69,7 +69,7 @@
                         <span class="badge bg-warning">@Model.PendingApplications</span>
                     }
                 </a>
-                <a asp-action="Humans" class="list-group-item list-group-item-action">
+                <a asp-controller="Human" asp-action="Humans" class="list-group-item list-group-item-action">
                     @Localizer["Admin_ManageMembers"]
                 </a>
                 <a asp-action="Teams" class="list-group-item list-group-item-action">

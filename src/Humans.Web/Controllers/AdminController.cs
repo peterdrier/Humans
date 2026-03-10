@@ -71,7 +71,7 @@ public class AdminController : Controller
         if (user.Id == currentUser?.Id)
         {
             TempData["ErrorMessage"] = "You cannot purge your own account.";
-            return RedirectToAction("HumanDetail", "Board", new { id });
+            return RedirectToAction("HumanDetail", "Human", new { id });
         }
 
         var displayName = user.DisplayName;
@@ -94,7 +94,7 @@ public class AdminController : Controller
         }
 
         TempData["SuccessMessage"] = $"Purged {displayName}. They will get a fresh account on next login.";
-        return RedirectToAction("Humans", "Board");
+        return RedirectToAction("Humans", "Human");
     }
 
     [HttpPost("SyncSystemTeams")]
