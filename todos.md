@@ -1,7 +1,7 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-03-09
+Last synced: 2026-03-10T09:00
 
 ---
 
@@ -11,6 +11,7 @@ Last synced: 2026-03-09
 
 #### #77: Reasons why an Asociado is accepted (or applying)
 Board members voting on Asociado applications should be required to select which bylaw criteria the applicant meets. Optionally, the applicant could also state their reasons when applying.
+
 
 ---
 
@@ -25,6 +26,7 @@ Dedicated page for app-specific operational disclosures (delegated coordinator r
 ---
 
 ### Priority 4: Architecture / Refactoring
+
 
 ### Priority 5: UI/Navigation Improvements
 
@@ -109,6 +111,18 @@ Two OpenTelemetry packages pinned to beta versions. Check for stable releases or
 ---
 
 ## Completed
+
+### #93: Merge pending requests into Manage Members page DONE
+Consolidated `/Teams/{slug}/Requests` into `/Teams/{slug}/Members`. Pending requests shown at top with approve/reject, members below. Removed standalone Requests page and view. Updated all navigation links. Committed `88c1065`.
+
+### #92: Allow team Leads to directly add members to their team DONE
+Added `AddMemberToTeamAsync` service method with Google provisioning and email notification. Added search endpoint and autocomplete UI on the Manage Members page. 3 unit tests. Localized in 5 languages. Committed `718d37f`.
+
+### #90: Dissolve BoardController — move actions to domain controllers DONE
+Moved ~500 lines from BoardController to domain-appropriate controllers: team actions to TeamController (`99a0b6c`), human actions to HumanController (`8a9c734`), application actions to ApplicationController (`4ec1fca`), role actions to Governance/HumanController (`dfe8958`), audit actions to AdminController (`d499109`). BoardController now contains only the dashboard Index action. Per-action `[Authorize(Roles = "Board,Admin")]` replaces class-level attribute. Views moved to target folders.
+
+### #94: Move Teams Summary to /Teams page with resource columns DONE
+Added `/Teams/Summary` page with Mail Group (bool) and Drive Resources (count) columns. Accessible to Board, Admin, and TeamsAdmin roles. Summary button on Teams index. Part of BoardController dissolution. Committed `99a0b6c`.
 
 ### P1-13: Apply configured Google group settings during provisioning DONE
 Group creation now applies `GoogleWorkspace:Groups` settings (WhoCanViewMembership, WhoCanPostMessage, AllowExternalMembers). Also: unified sync code path (`SyncResourcesByTypeAsync`/`SyncSingleResourceAsync`), per-service sync modes (`sync_service_settings` table), `TeamsAdmin` role, `GoogleGroupPrefix` on Team, Board/Admin controller split, sync status page at `/Teams/Sync`, admin sync settings at `/Admin/SyncSettings`.
@@ -296,6 +310,9 @@ Committed `1e2b29f`. Nightly Hangfire job (02:00 UTC) emails each Board member a
 
 ### QA-01 through QA-04: Localize status badges, fix page title, diacritics, error pages DONE
 Committed `a884b22`. Fixed "Approved" badge localization, `/Application` page title, language name diacritics, and custom error pages in dev mode.
+
+### P1: Switch Google Groups API from Admin SDK to Cloud Identity DONE
+Replaced Admin SDK Directory API with Cloud Identity Groups API for group/membership operations. Direct service account auth, no domain-wide delegation. Added `GoogleWorkspace:CustomerId` config. Follow-up fixes: `WITH_INITIAL_OWNER` for group creation, service account exclusion from drift detection, inherited vs direct Drive permission distinction. Committed `acc4ea5`, `0795623`, `24e4d7d`, `9625580`.
 
 ### #25 / F-06: Localize email bodies DONE
 ### #35: Deduplicate email previews DONE

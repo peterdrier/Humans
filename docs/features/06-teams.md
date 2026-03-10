@@ -392,11 +392,10 @@ Real implementation will manage Google Drive folder permissions.
 | `/Teams/{slug}/Join` | Join form |
 | `/Teams/My` | User's teams |
 | `/Teams/Sync` | Sync status (TeamsAdmin, Board, Admin) |
-| `/Teams/{slug}/Admin/Requests` | Pending requests |
-| `/Teams/{slug}/Admin/Members` | Manage members |
-| `/Board/Teams` | Board team management |
-| `/Board/Teams/Create` | Create team form |
-| `/Board/Teams/{id}/Edit` | Edit team (includes GoogleGroupPrefix field) |
+| `/Teams/{slug}/Admin/Members` | Manage members (includes pending requests) |
+| `/Teams/Summary` | Team summary with resource columns (Board, Admin, TeamsAdmin) |
+| `/Teams/Create` | Create team form (Board, Admin) |
+| `/Teams/{id}/Edit` | Edit team (Board, Admin) |
 
 ## Related Features
 
