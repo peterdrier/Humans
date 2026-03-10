@@ -186,6 +186,7 @@ public class TeamMembersViewModel
     public string TeamSlug { get; set; } = string.Empty;
     public bool IsSystemTeam { get; set; }
     public List<TeamMemberViewModel> Members { get; set; } = [];
+    public List<TeamJoinRequestViewModel> PendingRequests { get; set; } = [];
     public bool CanManageRoles { get; set; }
     public int TotalCount { get; set; }
     public int PageNumber { get; set; } = 1;

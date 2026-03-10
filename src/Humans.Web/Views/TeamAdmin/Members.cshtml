@@ -23,6 +23,95 @@
     </div>
 }
 
+@if (Model.PendingRequests.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>@Localizer["TeamDetail_PendingRequests"]</span>
+            <span class="badge bg-warning">@Model.PendingRequests.Count</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>@Localizer["AdminApp_Applicant"]</th>
+                        <th>@Localizer["TeamAdmin_Message"]</th>
+                        <th>@Localizer["MyTeams_Requested"]</th>
+                        <th>@Localizer["MyTeams_Actions"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var request in Model.PendingRequests)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <vc:user-avatar profile-picture-url="@request.UserProfilePictureUrl"
+                                                    display-name="@request.UserDisplayName"
+                                                    size="32"
+                                                    css-class="me-2" />
+                                    <div>
+                                        <strong>@request.UserDisplayName</strong><br>
+                                        <small class="text-muted">@request.UserEmail</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(request.Message))
+                                {
+                                    <span>@(request.Message.Length > 100 ? request.Message.Substring(0, 100) + "..." : request.Message)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@Localizer["TeamAdmin_NoMessage"]</span>
+                                }
+                            </td>
+                            <td>@request.RequestedAt.ToString("MMM d, yyyy HH:mm")</td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <form asp-action="ApproveRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@request.Id" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-success" data-confirm="@Localizer["TeamAdmin_ApproveConfirm"].Value">@Localizer["TeamAdmin_Approve"]</button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal-@request.Id">
+                                        @Localizer["TeamAdmin_Reject"]
+                                    </button>
+                                </div>
+
+                                <!-- Reject Modal -->
+                                <div class="modal fade" id="rejectModal-@request.Id" tabindex="-1" aria-labelledby="rejectModalLabel-@request.Id" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form asp-action="RejectRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@request.Id" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="rejectModalLabel-@request.Id">@Localizer["TeamAdmin_RejectRequest"]</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>@string.Format(Localizer["TeamAdmin_RejectingFrom"].Value, request.UserDisplayName)</p>
+                                                    <div class="mb-3">
+                                                        <label for="notes-@request.Id" class="form-label">@Localizer["TeamAdmin_RejectionReason"]</label>
+                                                        <textarea name="Notes" id="notes-@request.Id" class="form-control" rows="3" required></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Localizer["Common_Cancel"]</button>
+                                                    <button type="submit" class="btn btn-danger">@Localizer["TeamAdmin_RejectRequest"]</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
 @if (Model.Members.Any())
 {
     <div class="card">
@@ -125,6 +214,5 @@ else
 
 <div class="mt-3">
     <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["TeamAdmin_BackToTeam"]</a>
-    <a asp-action="Requests" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-primary">@Localizer["TeamAdmin_ViewPendingRequests"]</a>
     <a asp-action="Resources" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-info">@Localizer["TeamAdmin_ManageResources"]</a>
 </div>

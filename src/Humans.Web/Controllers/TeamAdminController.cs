@@ -40,63 +40,6 @@ public class TeamAdminController : Controller
         _localizer = localizer;
     }
 
-    [HttpGet("Requests")]
-    public async Task<IActionResult> Requests(string slug, int page = 1)
-    {
-        var pageSize = 20;
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
-        {
-            return NotFound();
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
-        }
-
-        var allRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
-        var totalCount = allRequests.Count;
-
-        var requests = allRequests
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(r => new TeamJoinRequestViewModel
-            {
-                Id = r.Id,
-                TeamId = r.TeamId,
-                TeamName = team.Name,
-                UserId = r.UserId,
-                UserDisplayName = r.User.DisplayName,
-                UserEmail = r.User.Email ?? "",
-                UserProfilePictureUrl = r.User.ProfilePictureUrl,
-                Status = r.Status.ToString(),
-                Message = r.Message,
-                RequestedAt = r.RequestedAt.ToDateTimeUtc()
-            }).ToList();
-
-        var viewModel = new PendingRequestsViewModel
-        {
-            TeamIdFilter = team.Id,
-            TeamNameFilter = team.Name,
-            Requests = requests,
-            TotalCount = totalCount,
-            PageNumber = page,
-            PageSize = pageSize
-        };
-
-        ViewData["TeamSlug"] = slug;
-        ViewData["TeamName"] = team.Name;
-        return View(viewModel);
-    }
-
     [HttpPost("Requests/{requestId}/Approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
@@ -129,7 +72,7 @@ public class TeamAdminController : Controller
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Requests), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [HttpPost("Requests/{requestId}/Reject")]
@@ -157,7 +100,7 @@ public class TeamAdminController : Controller
         if (string.IsNullOrWhiteSpace(model.Notes))
         {
             TempData["ErrorMessage"] = _localizer["TeamAdmin_ProvideRejectionReason"].Value;
-            return RedirectToAction(nameof(Requests), new { slug });
+            return RedirectToAction(nameof(Members), new { slug });
         }
 
         try
@@ -170,7 +113,7 @@ public class TeamAdminController : Controller
             TempData["ErrorMessage"] = ex.Message;
         }
 
-        return RedirectToAction(nameof(Requests), new { slug });
+        return RedirectToAction(nameof(Members), new { slug });
     }
 
     [HttpGet("Members")]
@@ -212,6 +155,22 @@ public class TeamAdminController : Controller
                 IsLead = m.Role == TeamMemberRole.Lead
             }).ToList();
 
+        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+        var pendingRequestViewModels = pendingRequests
+            .Select(r => new TeamJoinRequestViewModel
+            {
+                Id = r.Id,
+                TeamId = r.TeamId,
+                TeamName = team.Name,
+                UserId = r.UserId,
+                UserDisplayName = r.User.DisplayName,
+                UserEmail = r.User.Email ?? "",
+                UserProfilePictureUrl = r.User.ProfilePictureUrl,
+                Status = r.Status.ToString(),
+                Message = r.Message,
+                RequestedAt = r.RequestedAt.ToDateTimeUtc()
+            }).ToList();
+
         var viewModel = new TeamMembersViewModel
         {
             TeamId = team.Id,
@@ -220,6 +179,7 @@ public class TeamAdminController : Controller
             IsSystemTeam = team.IsSystemTeam,
             CanManageRoles = !team.IsSystemTeam,
             Members = members,
+            PendingRequests = pendingRequestViewModels,
             TotalCount = totalCount,
             PageNumber = page,
             PageSize = pageSize

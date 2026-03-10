@@ -208,15 +208,12 @@
                             @Localizer["TeamDetail_EditTeam"]
                         </a>
                     }
-                    <a asp-controller="TeamAdmin" asp-action="Requests" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                        @Localizer["TeamDetail_PendingRequests"]
+                    <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        @Localizer["TeamDetail_ManageMembers"]
                         @if (Model.PendingRequestCount > 0)
                         {
                             <span class="badge bg-warning">@Model.PendingRequestCount</span>
                         }
-                    </a>
-                    <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                        @Localizer["TeamDetail_ManageMembers"]
                     </a>
                     <a asp-controller="TeamAdmin" asp-action="Resources" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
                         @Localizer["TeamDetail_ManageResources"]
