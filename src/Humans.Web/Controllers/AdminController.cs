@@ -16,7 +16,7 @@ using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Board,Admin")]
 [Route("Admin")]
 public class AdminController : Controller
 {
@@ -388,7 +388,6 @@ public class AdminController : Controller
         });
     }
 
-    [Authorize(Roles = "Board,Admin")]
     [HttpGet("AuditLog")]
     public async Task<IActionResult> AuditLog(string? filter, int page = 1)
     {
@@ -417,7 +416,6 @@ public class AdminController : Controller
         return View(viewModel);
     }
 
-    [Authorize(Roles = "Board,Admin")]
     [HttpPost("AuditLog/CheckDriveActivity")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CheckDriveActivity(
@@ -444,7 +442,6 @@ public class AdminController : Controller
         return RedirectToAction(nameof(AuditLog), new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
     }
 
-    [Authorize(Roles = "Board,Admin")]
     [HttpGet("GoogleSync/Resource/{id}/Audit")]
     public async Task<IActionResult> GoogleSyncResourceAudit(Guid id)
     {

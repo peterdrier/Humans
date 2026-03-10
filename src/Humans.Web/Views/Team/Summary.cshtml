@@ -5,7 +5,10 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>@Localizer["AdminTeams_Title"]</h1>
-    <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
+    @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+    {
+        <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
+    }
 </div>
 
 <vc:temp-data-alerts />
@@ -23,7 +26,10 @@
                     <th>@Localizer["AdminTeams_DriveResources"]</th>
                     <th>@Localizer["Common_Status"]</th>
                     <th>@Localizer["AdminTeams_Created"]</th>
-                    <th>@Localizer["MyTeams_Actions"]</th>
+                    @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                    {
+                        <th>@Localizer["MyTeams_Actions"]</th>
+                    }
                 </tr>
             </thead>
             <tbody>
@@ -91,25 +97,28 @@
                             }
                         </td>
                         <td>@team.CreatedAt.ToString("MMM d, yyyy")</td>
-                        <td>
-                            @if (!team.IsSystemTeam)
-                            {
-                                <div class="d-flex gap-1" role="group">
-                                    <a asp-action="EditTeam" asp-route-id="@team.Id" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
-                                    @if (team.IsActive)
-                                    {
-                                        <form asp-action="DeleteTeam" asp-route-id="@team.Id" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["AdminTeams_DeactivateConfirm"].Value">@Localizer["AdminTeams_Deactivate"]</button>
-                                        </form>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <span class="text-muted">@Localizer["AdminTeams_SystemManaged"]</span>
-                            }
-                        </td>
+                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        {
+                            <td>
+                                @if (!team.IsSystemTeam)
+                                {
+                                    <div class="d-flex gap-1" role="group">
+                                        <a asp-action="EditTeam" asp-route-id="@team.Id" class="btn btn-sm btn-outline-primary">@Localizer["Common_Edit"]</a>
+                                        @if (team.IsActive)
+                                        {
+                                            <form asp-action="DeleteTeam" asp-route-id="@team.Id" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["AdminTeams_DeactivateConfirm"].Value">@Localizer["AdminTeams_Deactivate"]</button>
+                                            </form>
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@Localizer["AdminTeams_SystemManaged"]</span>
+                                }
+                            </td>
+                        }
                     </tr>
                 }
             </tbody>

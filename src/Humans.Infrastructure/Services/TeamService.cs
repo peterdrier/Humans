@@ -716,6 +716,15 @@ public partial class TeamService : ITeamService
             throw new InvalidOperationException("User is already a member of this team");
         }
 
+        // Resolve any pending join request for this user
+        var pendingRequest = await _dbContext.TeamJoinRequests
+            .FirstOrDefaultAsync(r => r.TeamId == teamId && r.UserId == targetUserId
+                && r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
+        if (pendingRequest != null)
+        {
+            pendingRequest.Approve(actorUserId, "Added directly by team manager", _clock);
+        }
+
         var member = new TeamMember
         {
             Id = Guid.NewGuid(),
