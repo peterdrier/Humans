@@ -119,10 +119,10 @@
         <div class="card-body">
             @Html.AntiForgeryToken()
             <div class="row align-items-end">
-                <div class="col-md-8">
+                <div class="col-md-8 position-relative">
                     <label for="memberSearch" class="form-label">@Localizer["TeamAdmin_SearchHumans"]</label>
                     <input type="text" class="form-control" id="memberSearch" placeholder="@Localizer["TeamAdmin_SearchPlaceholder"]" autocomplete="off" />
-                    <div id="searchResults" class="list-group mt-1 position-absolute" style="z-index: 1000; display: none;"></div>
+                    <div id="searchResults" class="list-group mt-1 position-absolute w-100 shadow" style="z-index: 1050; display: none;"></div>
                 </div>
             </div>
         </div>
