@@ -325,7 +325,7 @@ public partial class TeamResourceService : ITeamResourceService
             if (inactive != null)
             {
                 inactive.GoogleId = googleId;
-                inactive.Name = fullGroup.DisplayName ?? groupEmail;
+                inactive.Name = groupEmail;
                 inactive.Url = $"https://groups.google.com/a/{_googleSettings.Domain}/g/{emailLocal}";
                 inactive.LastSyncedAt = now;
                 inactive.IsActive = true;
@@ -340,7 +340,7 @@ public partial class TeamResourceService : ITeamResourceService
                     TeamId = teamId,
                     ResourceType = GoogleResourceType.Group,
                     GoogleId = googleId,
-                    Name = fullGroup.DisplayName ?? groupEmail,
+                    Name = groupEmail,
                     Url = $"https://groups.google.com/a/{_googleSettings.Domain}/g/{emailLocal}",
                     ProvisionedAt = now,
                     LastSyncedAt = now,
