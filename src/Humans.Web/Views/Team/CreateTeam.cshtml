@@ -5,8 +5,8 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_Admin"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Teams">@Localizer["AdminTeams_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Board" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Summary">@Localizer["AdminTeams_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminCreateTeam_Title"]</li>
     </ol>
 </nav>
@@ -53,7 +53,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">@Localizer["AdminCreateTeam_Title"]</button>
-                        <a asp-action="Teams" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
+                        <a asp-action="Summary" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
                     </div>
                 </form>
             </div>

@@ -19,6 +19,8 @@
                     <th>@Localizer["AdminTeams_Type"]</th>
                     <th>@Localizer["AdminTeams_Members"]</th>
                     <th>@Localizer["AdminTeams_Pending"]</th>
+                    <th>@Localizer["AdminTeams_MailGroup"]</th>
+                    <th>@Localizer["AdminTeams_DriveResources"]</th>
                     <th>@Localizer["Common_Status"]</th>
                     <th>@Localizer["AdminTeams_Created"]</th>
                     <th>@Localizer["MyTeams_Actions"]</th>
@@ -52,6 +54,26 @@
                                 <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@team.Slug">
                                     <span class="badge bg-warning">@team.PendingRequestCount</span>
                                 </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">0</span>
+                            }
+                        </td>
+                        <td>
+                            @if (team.HasMailGroup)
+                            {
+                                <i class="fa-solid fa-check text-success"></i>
+                            }
+                            else
+                            {
+                                <span class="text-muted">—</span>
+                            }
+                        </td>
+                        <td>
+                            @if (team.DriveResourceCount > 0)
+                            {
+                                <span>@team.DriveResourceCount</span>
                             }
                             else
                             {
@@ -110,7 +132,7 @@
             @for (var i = 1; i <= totalPages && i <= 10; i++)
             {
                 <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="Teams" asp-route-page="@i">@i</a>
+                    <a class="page-link" asp-action="Summary" asp-route-page="@i">@i</a>
                 </li>
             }
         </ul>

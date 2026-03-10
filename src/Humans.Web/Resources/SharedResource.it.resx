@@ -732,6 +732,8 @@
   <data name="AdminTeams_Type" xml:space="preserve"><value>Tipo</value></data>
   <data name="AdminTeams_Members" xml:space="preserve"><value>Membri</value></data>
   <data name="AdminTeams_Pending" xml:space="preserve"><value>In sospeso</value></data>
+  <data name="AdminTeams_MailGroup" xml:space="preserve"><value>Gruppo mail</value></data>
+  <data name="AdminTeams_DriveResources" xml:space="preserve"><value>Drive</value></data>
   <data name="AdminTeams_Created" xml:space="preserve"><value>Creato</value></data>
   <data name="AdminTeams_Open" xml:space="preserve"><value>Aperto</value></data>
   <data name="AdminTeams_Inactive" xml:space="preserve"><value>Inattivo</value></data>

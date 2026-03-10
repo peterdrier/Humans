@@ -5,8 +5,8 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_Admin"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="Teams">@Localizer["AdminTeams_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Board" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Summary">@Localizer["AdminTeams_Title"]</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminEditTeam_Title"]</li>
     </ol>
 </nav>
@@ -78,7 +78,7 @@
                         {
                             <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
                         }
-                        <a asp-action="Teams" class="btn btn-outline-secondary">@(Model.IsSystemTeam ? Localizer["Common_Back"].Value : Localizer["Common_Cancel"].Value)</a>
+                        <a asp-action="Summary" class="btn btn-outline-secondary">@(Model.IsSystemTeam ? Localizer["Common_Back"].Value : Localizer["Common_Cancel"].Value)</a>
                     </div>
                 </form>
             </div>

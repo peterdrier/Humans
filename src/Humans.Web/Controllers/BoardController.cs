@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -19,7 +18,6 @@ namespace Humans.Web.Controllers;
 public class BoardController : Controller
 {
     private readonly UserManager<User> _userManager;
-    private readonly ITeamService _teamService;
     private readonly IAuditLogService _auditLogService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IProfileService _profileService;
@@ -29,11 +27,9 @@ public class BoardController : Controller
     private readonly ILogger<BoardController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IOnboardingService _onboardingService;
-    private readonly IGoogleSyncService _googleSyncService;
 
     public BoardController(
         UserManager<User> userManager,
-        ITeamService teamService,
         IAuditLogService auditLogService,
         IRoleAssignmentService roleAssignmentService,
         IProfileService profileService,
@@ -42,11 +38,9 @@ public class BoardController : Controller
         IClock clock,
         ILogger<BoardController> logger,
         IStringLocalizer<SharedResource> localizer,
-        IOnboardingService onboardingService,
-        IGoogleSyncService googleSyncService)
+        IOnboardingService onboardingService)
     {
         _userManager = userManager;
-        _teamService = teamService;
         _auditLogService = auditLogService;
         _roleAssignmentService = roleAssignmentService;
         _profileService = profileService;
@@ -56,7 +50,6 @@ public class BoardController : Controller
         _logger = logger;
         _localizer = localizer;
         _onboardingService = onboardingService;
-        _googleSyncService = googleSyncService;
     }
 
     [HttpGet("")]
@@ -351,180 +344,6 @@ public class BoardController : Controller
 
         TempData["SuccessMessage"] = "Signup rejected.";
         return RedirectToAction(nameof(HumanDetail), new { id });
-    }
-
-    [HttpGet("/Teams/Summary")]
-    public async Task<IActionResult> Teams(int page = 1)
-    {
-        var pageSize = 20;
-        var (teams, totalCount) = await _teamService.GetAllTeamsForAdminAsync(page, pageSize);
-
-        var viewModel = new AdminTeamListViewModel
-        {
-            Teams = teams.Select(t => new AdminTeamViewModel
-            {
-                Id = t.Id,
-                Name = t.Name,
-                Slug = t.Slug,
-                IsActive = t.IsActive,
-                RequiresApproval = t.RequiresApproval,
-                IsSystemTeam = t.IsSystemTeam,
-                SystemTeamType = t.SystemTeamType != SystemTeamType.None ? t.SystemTeamType.ToString() : null,
-                MemberCount = t.Members.Count,
-                PendingRequestCount = t.JoinRequests.Count,
-                CreatedAt = t.CreatedAt.ToDateTimeUtc()
-            }).ToList(),
-            TotalCount = totalCount,
-            PageNumber = page,
-            PageSize = pageSize
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpGet("/Teams/Create")]
-    public IActionResult CreateTeam()
-    {
-        return View(new CreateTeamViewModel());
-    }
-
-    [HttpPost("/Teams/Create")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateTeam(CreateTeamViewModel model)
-    {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
-
-        try
-        {
-            var team = await _teamService.CreateTeamAsync(model.Name, model.Description, model.RequiresApproval, model.GoogleGroupPrefix);
-            var currentUser = await _userManager.GetUserAsync(User);
-            _logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, team.Id, team.Name);
-
-            if (!string.IsNullOrEmpty(model.GoogleGroupPrefix))
-            {
-                try
-                {
-                    await _googleSyncService.EnsureTeamGroupAsync(team.Id);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to create Google Group for new team {TeamId}, clearing prefix", team.Id);
-                    await _teamService.UpdateTeamAsync(team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive, null);
-                    TempData["SuccessMessage"] = string.Format(_localizer["Admin_TeamCreated"].Value, team.Name);
-                    TempData["ErrorMessage"] = $"Team created but Google Group setup failed: {ex.Message}. The group prefix has been cleared.";
-                    return RedirectToAction(nameof(Teams));
-                }
-            }
-
-            TempData["SuccessMessage"] = string.Format(_localizer["Admin_TeamCreated"].Value, team.Name);
-            return RedirectToAction(nameof(Teams));
-        }
-        catch (DbUpdateException)
-        {
-            ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
-            return View(model);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error creating team");
-            ModelState.AddModelError("", _localizer["Admin_TeamCreateError"].Value);
-            return View(model);
-        }
-    }
-
-    [HttpGet("/Teams/{id}/Edit")]
-    public async Task<IActionResult> EditTeam(Guid id)
-    {
-        var team = await _teamService.GetTeamByIdAsync(id);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var viewModel = new EditTeamViewModel
-        {
-            Id = team.Id,
-            Name = team.Name,
-            Description = team.Description,
-            GoogleGroupPrefix = team.GoogleGroupPrefix,
-            GoogleGroupEmail = team.GoogleGroupEmail,
-            RequiresApproval = team.RequiresApproval,
-            IsActive = team.IsActive,
-            IsSystemTeam = team.IsSystemTeam
-        };
-
-        return View(viewModel);
-    }
-
-    [HttpPost("/Teams/{id}/Edit")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> EditTeam(Guid id, EditTeamViewModel model)
-    {
-        if (id != model.Id)
-        {
-            return BadRequest();
-        }
-
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
-
-        try
-        {
-            await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.GoogleGroupPrefix);
-            var currentUser = await _userManager.GetUserAsync(User);
-            _logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
-
-            // Handles prefix set, changed, or cleared (deactivates old resource if needed)
-            try
-            {
-                await _googleSyncService.EnsureTeamGroupAsync(id);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to sync Google Group for team {TeamId}", id);
-                TempData["SuccessMessage"] = _localizer["Admin_TeamUpdated"].Value;
-                TempData["ErrorMessage"] = $"Team updated but Google Group setup failed: {ex.Message}";
-                return RedirectToAction(nameof(Teams));
-            }
-
-            TempData["SuccessMessage"] = _localizer["Admin_TeamUpdated"].Value;
-            return RedirectToAction(nameof(Teams));
-        }
-        catch (InvalidOperationException ex)
-        {
-            ModelState.AddModelError("", ex.Message);
-            return View(model);
-        }
-        catch (DbUpdateException)
-        {
-            ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
-            return View(model);
-        }
-    }
-
-    [HttpPost("/Teams/{id}/Delete")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteTeam(Guid id)
-    {
-        try
-        {
-            await _teamService.DeleteTeamAsync(id);
-            var currentUser = await _userManager.GetUserAsync(User);
-            _logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
-
-            TempData["SuccessMessage"] = _localizer["Admin_TeamDeactivated"].Value;
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ErrorMessage"] = ex.Message;
-        }
-
-        return RedirectToAction(nameof(Teams));
     }
 
     [HttpGet("Roles")]

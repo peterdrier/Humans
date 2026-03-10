@@ -264,6 +264,8 @@ public class AdminTeamViewModel
     public string? SystemTeamType { get; set; }
     public int MemberCount { get; set; }
     public int PendingRequestCount { get; set; }
+    public bool HasMailGroup { get; set; }
+    public int DriveResourceCount { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 

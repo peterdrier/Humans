@@ -10,11 +10,12 @@
         <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Map_Title"]</a>
         @if (ViewBag.CanViewSync == true)
         {
+            <a asp-action="Summary" class="btn btn-outline-secondary">@Localizer["AdminTeams_Title"]</a>
             <a asp-action="Sync" class="btn btn-outline-info">Sync Status</a>
         }
         @if (Model.CanCreateTeam)
         {
-            <a asp-controller="Board" asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
+            <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
         }
     </div>
 </div>

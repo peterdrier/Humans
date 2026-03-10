@@ -888,6 +888,7 @@ public partial class TeamService : ITeamService
         var query = _dbContext.Teams
             .Include(t => t.Members.Where(m => m.LeftAt == null))
             .Include(t => t.JoinRequests.Where(r => r.Status == TeamJoinRequestStatus.Pending))
+            .Include(t => t.GoogleResources)
             .OrderBy(t => t.SystemTeamType)
             .ThenBy(t => t.Name);
 
