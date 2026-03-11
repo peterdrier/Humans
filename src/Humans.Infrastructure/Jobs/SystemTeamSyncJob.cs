@@ -426,6 +426,12 @@ public class SystemTeamSyncJob : ISystemTeamSync
             var member = team.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt == null);
             if (member != null)
             {
+                // Clean up role slot assignments before ending membership
+                var roleAssignments = await _dbContext.Set<TeamRoleAssignment>()
+                    .Where(a => a.TeamMemberId == member.Id)
+                    .ToListAsync(cancellationToken);
+                _dbContext.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
+
                 member.LeftAt = now;
 
                 var userName = userNames.GetValueOrDefault(userId, userId.ToString());

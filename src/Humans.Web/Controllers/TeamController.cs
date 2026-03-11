@@ -163,7 +163,7 @@ public class TeamController : Controller
             IsSystemTeam = team.IsSystemTeam,
             SystemTeamType = team.SystemTeamType != SystemTeamType.None ? team.SystemTeamType.ToString() : null,
             CreatedAt = team.CreatedAt.ToDateTimeUtc(),
-            RoleDefinitions = roleDefinitions.Select(MapRoleDefinitionToViewModel).ToList(),
+            RoleDefinitions = roleDefinitions.Select(TeamRoleDefinitionViewModel.FromEntity).ToList(),
             Resources = googleResources.Select(gr => new TeamResourceLinkViewModel
             {
                 Name = gr.Name,
@@ -261,7 +261,7 @@ public class TeamController : Controller
             for (var i = 0; i < def.SlotCount; i++)
             {
                 var assignment = def.Assignments.FirstOrDefault(a => a.SlotIndex == i);
-                var slotPriority = i < def.Priorities.Count ? def.Priorities[i] : SlotPriority.NiceToHave;
+                var slotPriority = i < def.Priorities.Count ? def.Priorities[i] : SlotPriority.None;
                 var priorityStr = slotPriority.ToString();
 
                 slots.Add(new RosterSlotViewModel
@@ -275,7 +275,8 @@ public class TeamController : Controller
                     {
                         SlotPriority.Critical => "bg-danger",
                         SlotPriority.Important => "bg-warning text-dark",
-                        _ => "bg-secondary"
+                        SlotPriority.NiceToHave => "bg-secondary",
+                        _ => "bg-light text-dark"
                     },
                     IsFilled = assignment != null,
                     AssignedUserName = assignment?.TeamMember?.User?.DisplayName
@@ -294,7 +295,7 @@ public class TeamController : Controller
 
         // Sort: Critical first, then by team name
         slots = slots
-            .OrderBy(s => s.Priority switch { "Critical" => 0, "Important" => 1, _ => 2 })
+            .OrderBy(s => s.Priority switch { "Critical" => 0, "Important" => 1, "NiceToHave" => 2, _ => 3 })
             .ThenBy(s => s.TeamName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(s => s.RoleName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(s => s.SlotNumber)
@@ -735,34 +736,4 @@ public class TeamController : Controller
         return RedirectToAction(nameof(Summary));
     }
 
-    private static TeamRoleDefinitionViewModel MapRoleDefinitionToViewModel(TeamRoleDefinition d)
-    {
-        var slots = new List<TeamRoleSlotViewModel>();
-        for (var i = 0; i < d.SlotCount; i++)
-        {
-            var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
-            var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.NiceToHave;
-            slots.Add(new TeamRoleSlotViewModel
-            {
-                SlotIndex = i,
-                Priority = priority.ToString(),
-                PriorityBadgeClass = priority switch
-                {
-                    SlotPriority.Critical => "bg-danger",
-                    SlotPriority.Important => "bg-warning text-dark",
-                    _ => "bg-secondary"
-                },
-                IsFilled = assignment != null,
-                AssignedUserId = assignment?.TeamMember?.UserId,
-                AssignedUserName = assignment?.TeamMember?.User?.DisplayName,
-                TeamMemberId = assignment?.TeamMemberId
-            });
-        }
-        return new TeamRoleDefinitionViewModel
-        {
-            Id = d.Id, Name = d.Name, Description = d.Description,
-            SlotCount = d.SlotCount, Slots = slots, SortOrder = d.SortOrder,
-            IsLeadRole = d.IsLeadRole
-        };
-    }
 }

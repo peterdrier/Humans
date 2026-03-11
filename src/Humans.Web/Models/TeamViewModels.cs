@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
@@ -255,6 +256,54 @@ public class TeamRoleDefinitionViewModel
     public List<TeamRoleSlotViewModel> Slots { get; set; } = [];
     public int SortOrder { get; set; }
     public bool IsLeadRole { get; set; }
+
+    /// <summary>
+    /// IDs of members already assigned to this role (for filtering dropdowns).
+    /// </summary>
+    public HashSet<Guid> AssignedUserIds { get; set; } = [];
+
+    public static TeamRoleDefinitionViewModel FromEntity(TeamRoleDefinition d)
+    {
+        var slots = new List<TeamRoleSlotViewModel>();
+        var assignedUserIds = new HashSet<Guid>();
+
+        for (var i = 0; i < d.SlotCount; i++)
+        {
+            var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
+            var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.None;
+            slots.Add(new TeamRoleSlotViewModel
+            {
+                SlotIndex = i,
+                Priority = priority.ToString(),
+                PriorityBadgeClass = priority switch
+                {
+                    SlotPriority.Critical => "bg-danger",
+                    SlotPriority.Important => "bg-warning text-dark",
+                    SlotPriority.NiceToHave => "bg-secondary",
+                    _ => "bg-light text-dark"
+                },
+                IsFilled = assignment != null,
+                AssignedUserId = assignment?.TeamMember?.UserId,
+                AssignedUserName = assignment?.TeamMember?.User?.DisplayName,
+                TeamMemberId = assignment?.TeamMemberId
+            });
+
+            if (assignment?.TeamMember?.UserId != null)
+                assignedUserIds.Add(assignment.TeamMember.UserId);
+        }
+
+        return new TeamRoleDefinitionViewModel
+        {
+            Id = d.Id,
+            Name = d.Name,
+            Description = d.Description,
+            SlotCount = d.SlotCount,
+            Slots = slots,
+            SortOrder = d.SortOrder,
+            IsLeadRole = d.IsLeadRole,
+            AssignedUserIds = assignedUserIds
+        };
+    }
 }
 
 public class TeamRoleSlotViewModel
@@ -285,7 +334,7 @@ public class CreateRoleDefinitionModel
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int SlotCount { get; set; } = 1;
-    public string Priorities { get; set; } = "Critical";
+    public List<string> Priorities { get; set; } = ["None"];
     public int SortOrder { get; set; }
 }
 
@@ -294,7 +343,7 @@ public class EditRoleDefinitionModel
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public int SlotCount { get; set; }
-    public string Priorities { get; set; } = string.Empty;
+    public List<string> Priorities { get; set; } = [];
     public int SortOrder { get; set; }
 }
 

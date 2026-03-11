@@ -1,6 +1,7 @@
 @model Humans.Web.Models.RoleManagementViewModel
 @{
     ViewData["Title"] = $"Manage Roles - {Model.TeamName}";
+    var priorityOptions = new[] { "None", "Critical", "Important", "NiceToHave" };
 }
 
 <nav aria-label="breadcrumb">
@@ -53,12 +54,8 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Slot Count</label>
-                            <input type="number" class="form-control" name="SlotCount" value="@role.SlotCount" min="1" required />
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label">Priorities (CSV)</label>
-                            <input type="text" class="form-control" name="Priorities"
-                                   value="@string.Join(",", role.Slots.Select(s => s.Priority))" required />
+                            <input type="number" class="form-control slot-count-input" name="SlotCount" value="@role.SlotCount" min="1" required
+                                   data-role-id="@role.Id" />
                         </div>
                         <div class="col-md-1">
                             <label class="form-label">Sort</label>
@@ -66,6 +63,26 @@
                         </div>
                         <div class="col-md-1 d-flex align-items-end">
                             <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Slot Priorities</label>
+                        <div class="d-flex flex-wrap gap-2 priorities-container" data-role-id="@role.Id">
+                            @for (var i = 0; i < role.SlotCount; i++)
+                            {
+                                var currentPriority = i < role.Slots.Count ? role.Slots[i].Priority : "None";
+                                <div class="input-group input-group-sm" style="max-width: 200px;">
+                                    <span class="input-group-text">@(i + 1)</span>
+                                    <select name="Priorities" class="form-select form-select-sm">
+                                        @foreach (var opt in priorityOptions)
+                                        {
+                                            <option value="@opt" selected="@(string.Equals(opt, currentPriority, StringComparison.OrdinalIgnoreCase))">
+                                                @(opt == "NiceToHave" ? "Nice to Have" : opt)
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                            }
                         </div>
                     </div>
                 </form>
@@ -84,7 +101,7 @@
                         {
                             <tr>
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.PriorityBadgeClass">@slot.Priority</span></td>
+                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == "NiceToHave" ? "Nice to Have" : slot.Priority)</span></td>
                                 <td>
                                     @if (slot.IsFilled)
                                     {
@@ -112,7 +129,7 @@
                                             <div class="input-group input-group-sm" style="max-width: 300px; display: inline-flex !important;">
                                                 <select name="UserId" class="form-select form-select-sm" required>
                                                     <option value="">Select member...</option>
-                                                    @foreach (var member in Model.TeamMembers)
+                                                    @foreach (var member in Model.TeamMembers.Where(m => !role.AssignedUserIds.Contains(m.UserId)))
                                                     {
                                                         <option value="@member.UserId">@member.DisplayName</option>
                                                     }
@@ -151,11 +168,8 @@ else
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Slot Count</label>
-                    <input type="number" class="form-control" name="SlotCount" value="1" min="1" required />
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Priorities (CSV)</label>
-                    <input type="text" class="form-control" name="Priorities" value="Critical" required />
+                    <input type="number" class="form-control slot-count-input" name="SlotCount" value="1" min="1" required
+                           data-role-id="new" />
                 </div>
                 <div class="col-md-1">
                     <label class="form-label">Sort</label>
@@ -163,6 +177,20 @@ else
                 </div>
                 <div class="col-md-1 d-flex align-items-end">
                     <button type="submit" class="btn btn-success">Add</button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <label class="form-label">Slot Priorities</label>
+                <div class="d-flex flex-wrap gap-2 priorities-container" data-role-id="new">
+                    <div class="input-group input-group-sm" style="max-width: 200px;">
+                        <span class="input-group-text">1</span>
+                        <select name="Priorities" class="form-select form-select-sm">
+                            @foreach (var opt in priorityOptions)
+                            {
+                                <option value="@opt">@(opt == "NiceToHave" ? "Nice to Have" : opt)</option>
+                            }
+                        </select>
+                    </div>
                 </div>
             </div>
         </form>
@@ -173,3 +201,42 @@ else
     <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">@Localizer["TeamAdmin_BackToTeam"]</a>
     <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">@Localizer["TeamAdmin_ManageMembers"]</a>
 </div>
+
+@section Scripts {
+<script>
+document.querySelectorAll('.slot-count-input').forEach(function(input) {
+    input.addEventListener('change', function() {
+        var roleId = this.dataset.roleId;
+        var count = parseInt(this.value) || 1;
+        var container = document.querySelector('.priorities-container[data-role-id="' + roleId + '"]');
+        if (!container) return;
+        var current = container.children.length;
+        var options = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(priorityOptions));
+        while (container.children.length < count) {
+            var idx = container.children.length + 1;
+            var div = document.createElement('div');
+            div.className = 'input-group input-group-sm';
+            div.style.maxWidth = '200px';
+            var span = document.createElement('span');
+            span.className = 'input-group-text';
+            span.textContent = idx;
+            var sel = document.createElement('select');
+            sel.name = 'Priorities';
+            sel.className = 'form-select form-select-sm';
+            options.forEach(function(o) {
+                var opt = document.createElement('option');
+                opt.value = o;
+                opt.textContent = o === 'NiceToHave' ? 'Nice to Have' : o;
+                sel.appendChild(opt);
+            });
+            div.appendChild(span);
+            div.appendChild(sel);
+            container.appendChild(div);
+        }
+        while (container.children.length > count) {
+            container.removeChild(container.lastChild);
+        }
+    });
+});
+</script>
+}

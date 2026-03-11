@@ -45,9 +45,10 @@ public partial class TeamService : ITeamService
         var baseSlug = GenerateSlug(name);
         var now = _clock.GetCurrentInstant();
 
-        // Block reserved slugs
-        if (string.Equals(baseSlug, "roster", StringComparison.Ordinal))
-            throw new InvalidOperationException("The team name 'roster' is reserved");
+        // Block reserved slugs (static routes in TeamController)
+        string[] reservedSlugs = ["roster", "birthdays", "map", "my", "sync", "summary", "create"];
+        if (Array.Exists(reservedSlugs, s => string.Equals(baseSlug, s, StringComparison.Ordinal)))
+            throw new InvalidOperationException($"The team name '{name}' conflicts with a reserved route");
 
         // Retry with incrementing suffix on unique constraint violation
         for (var attempt = 0; attempt < 10; attempt++)
@@ -664,6 +665,40 @@ public partial class TeamService : ITeamService
 
         member.Role = role;
 
+        // Sync Lead role slot assignments with TeamMember.Role
+        var leadDef = await _dbContext.Set<TeamRoleDefinition>()
+            .Include(d => d.Assignments)
+            .FirstOrDefaultAsync(d => d.TeamId == teamId && d.Name == "Lead", cancellationToken);
+
+        if (leadDef != null)
+        {
+            var existingAssignment = leadDef.Assignments.FirstOrDefault(a => a.TeamMemberId == member.Id);
+
+            if (role == TeamMemberRole.Lead && existingAssignment == null)
+            {
+                // Promoting to Lead — create slot assignment if a slot is available
+                if (leadDef.Assignments.Count < leadDef.SlotCount)
+                {
+                    var usedSlots = leadDef.Assignments.Select(a => a.SlotIndex).ToHashSet();
+                    var nextSlot = Enumerable.Range(0, leadDef.SlotCount).First(i => !usedSlots.Contains(i));
+                    _dbContext.Set<TeamRoleAssignment>().Add(new TeamRoleAssignment
+                    {
+                        Id = Guid.NewGuid(),
+                        TeamRoleDefinitionId = leadDef.Id,
+                        TeamMemberId = member.Id,
+                        SlotIndex = nextSlot,
+                        AssignedAt = _clock.GetCurrentInstant(),
+                        AssignedByUserId = actorUserId
+                    });
+                }
+            }
+            else if (role == TeamMemberRole.Member && existingAssignment != null)
+            {
+                // Demoting from Lead — remove slot assignment
+                _dbContext.Set<TeamRoleAssignment>().Remove(existingAssignment);
+            }
+        }
+
         var roleActor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamMemberRoleChanged, "Team", teamId,
@@ -854,9 +889,14 @@ public partial class TeamService : ITeamService
             throw new InvalidOperationException("The 'Lead' role name is reserved and cannot be created manually");
         }
 
+        ValidateRoleName(name);
+
         // Check name uniqueness within the team (case-insensitive, backed by lower() index)
+        var lowerName = name.ToLowerInvariant();
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
         var nameExists = await _dbContext.Set<TeamRoleDefinition>()
-            .AnyAsync(d => d.TeamId == teamId && EF.Functions.ILike(d.Name, name), cancellationToken);
+            .AnyAsync(d => d.TeamId == teamId && d.Name.ToLower() == lowerName, cancellationToken);
+#pragma warning restore MA0011
         if (nameExists)
         {
             throw new InvalidOperationException($"A role definition with name '{name}' already exists for this team");
@@ -948,9 +988,14 @@ public partial class TeamService : ITeamService
         // Check name uniqueness if changed
         if (!string.Equals(definition.Name, name, StringComparison.Ordinal))
         {
+            ValidateRoleName(name);
+
+            var lowerName = name.ToLowerInvariant();
+#pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
             var nameExists = await _dbContext.Set<TeamRoleDefinition>()
                 .AnyAsync(d => d.TeamId == definition.TeamId && d.Id != roleDefinitionId
-                    && EF.Functions.ILike(d.Name, name), cancellationToken);
+                    && d.Name.ToLower() == lowerName, cancellationToken);
+#pragma warning restore MA0011
             if (nameExists)
             {
                 throw new InvalidOperationException($"A role definition with name '{name}' already exists for this team");
@@ -1249,6 +1294,18 @@ public partial class TeamService : ITeamService
             DeduplicationKey = $"{teamMemberId}:{eventType}"
         });
     }
+
+    private static void ValidateRoleName(string name)
+    {
+        if (!RoleNameRegex().IsMatch(name))
+        {
+            throw new InvalidOperationException(
+                "Role name may only contain letters, numbers, spaces, and hyphens");
+        }
+    }
+
+    [GeneratedRegex(@"^[\p{L}\p{N} \-]+$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
+    private static partial Regex RoleNameRegex();
 
     private static string GenerateSlug(string name)
     {

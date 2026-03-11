@@ -16,6 +16,7 @@
             <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Critical", status = Model.StatusFilter })">Critical</a></li>
             <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Important", status = Model.StatusFilter })">Important</a></li>
             <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "NiceToHave", status = Model.StatusFilter })">Nice to Have</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "None", status = Model.StatusFilter })">None</a></li>
         </ul>
     </div>
     <div class="dropdown">
@@ -53,7 +54,7 @@ else
                     <td><a href="@Url.Action("Details", "Team", new { slug = slot.TeamSlug })">@slot.TeamName</a></td>
                     <td>@slot.RoleName</td>
                     <td>@slot.SlotNumber</td>
-                    <td><span class="badge @slot.PriorityBadgeClass">@slot.Priority</span></td>
+                    <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == "NiceToHave" ? "Nice to Have" : slot.Priority)</span></td>
                     <td>
                         @if (slot.IsFilled)
                         {

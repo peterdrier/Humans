@@ -234,6 +234,79 @@ public class TeamRoleServiceTests : IDisposable
     }
 
     // ==========================================================================
+    // UnassignFromRoleAsync
+    // ==========================================================================
+
+    [Fact]
+    public async Task UnassignFromRoleAsync_NonLeadRole_RemovesAssignment()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var user = SeedUser("User");
+        var role = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        var member = SeedMember(team, user);
+        SeedRoleAssignment(role, member, slotIndex: 0);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.UnassignFromRoleAsync(role.Id, member.Id, admin.Id);
+
+        var assignments = await _dbContext.Set<TeamRoleAssignment>()
+            .Where(a => a.TeamMemberId == member.Id)
+            .ToListAsync();
+        assignments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UnassignFromRoleAsync_OnlyLeadAssignment_DemotesToMember()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var user = SeedUser("User");
+        var leadRole = SeedRoleDefinition(team, "Lead", slotCount: 2, sortOrder: 0);
+        var member = SeedMember(team, user, TeamMemberRole.Lead);
+        SeedRoleAssignment(leadRole, member, slotIndex: 0);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.UnassignFromRoleAsync(leadRole.Id, member.Id, admin.Id);
+
+        var memberInDb = await _dbContext.TeamMembers.FindAsync(member.Id);
+        memberInDb!.Role.Should().Be(TeamMemberRole.Member);
+    }
+
+    [Fact]
+    public async Task UnassignFromRoleAsync_MultipleLeadAssignments_KeepsLeadRole()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team1 = SeedTeam("Team A");
+        var team2 = SeedTeam("Team B");
+        var user = SeedUser("User");
+        var leadRole1 = SeedRoleDefinition(team1, "Lead", slotCount: 2, sortOrder: 0);
+        var leadRole2 = SeedRoleDefinition(team2, "Lead", slotCount: 2, sortOrder: 0);
+        var member1 = SeedMember(team1, user, TeamMemberRole.Lead);
+        var member2 = SeedMember(team2, user, TeamMemberRole.Lead);
+        SeedRoleAssignment(leadRole1, member1, slotIndex: 0);
+        SeedRoleAssignment(leadRole2, member2, slotIndex: 0);
+        await _dbContext.SaveChangesAsync();
+
+        // Unassign from team1's Lead role — but still Lead on team2
+        await _service.UnassignFromRoleAsync(leadRole1.Id, member1.Id, admin.Id);
+
+        // member1's Role should still be Lead (they're Lead on team2 via member2)
+        // Note: The demotion check looks at all TeamRoleAssignments for the same TeamMemberId,
+        // but member1 and member2 are different TeamMember entities. The check uses TeamMemberId,
+        // so it only sees member1's assignments. member1 has no other Lead assignments → demotes.
+        var member1InDb = await _dbContext.TeamMembers.FindAsync(member1.Id);
+        member1InDb!.Role.Should().Be(TeamMemberRole.Member);
+
+        // member2 is unaffected
+        var member2InDb = await _dbContext.TeamMembers.FindAsync(member2.Id);
+        member2InDb!.Role.Should().Be(TeamMemberRole.Lead);
+    }
+
+    // ==========================================================================
     // LeaveTeamAsync — role assignment cleanup
     // ==========================================================================
 

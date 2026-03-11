@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
@@ -188,6 +189,16 @@ public class ProcessAccountDeletionsJob
                 .Where(vh => vh.ProfileId == user.Profile.Id)
                 .ToListAsync(cancellationToken);
             _dbContext.VolunteerHistoryEntries.RemoveRange(volunteerHistory);
+        }
+
+        // Remove role slot assignments for active memberships
+        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt == null).Select(m => m.Id).ToList();
+        if (activeMemberIds.Count > 0)
+        {
+            var roleSlotAssignments = await _dbContext.Set<TeamRoleAssignment>()
+                .Where(a => activeMemberIds.Contains(a.TeamMemberId))
+                .ToListAsync(cancellationToken);
+            _dbContext.Set<TeamRoleAssignment>().RemoveRange(roleSlotAssignments);
         }
 
         // End team memberships (only active ones — may already be ended by RequestDeletion)

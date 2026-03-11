@@ -61,7 +61,7 @@ public class TeamRoleDefinition
     /// <summary>
     /// Whether this role is the team lead role.
     /// </summary>
-    public bool IsLeadRole => string.Equals(Name, "Lead", StringComparison.Ordinal);
+    public bool IsLeadRole => string.Equals(Name, "Lead", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Navigation property to role slot assignments.

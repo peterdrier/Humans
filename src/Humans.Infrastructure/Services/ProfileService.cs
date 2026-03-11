@@ -266,6 +266,17 @@ public class ProfileService : IProfileService
         await _dbContext.Entry(user).Collection(u => u.RoleAssignments).LoadAsync(ct);
 
         var endedMemberships = 0;
+        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt == null).Select(m => m.Id).ToList();
+
+        // Remove role assignments for departing memberships
+        if (activeMemberIds.Count > 0)
+        {
+            var roleAssignments = await _dbContext.Set<TeamRoleAssignment>()
+                .Where(a => activeMemberIds.Contains(a.TeamMemberId))
+                .ToListAsync(ct);
+            _dbContext.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
+        }
+
         foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt == null))
         {
             membership.LeftAt = now;

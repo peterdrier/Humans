@@ -70,7 +70,7 @@ public class TeamAdminController : Controller
             await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
             TempData["SuccessMessage"] = _localizer["TeamAdmin_RequestApproved"].Value;
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
@@ -603,7 +603,7 @@ public class TeamAdminController : Controller
             Slug = team.Slug,
             IsSystemTeam = team.IsSystemTeam,
             CanManage = canManage,
-            RoleDefinitions = definitions.Select(MapToViewModel).ToList(),
+            RoleDefinitions = definitions.Select(TeamRoleDefinitionViewModel.FromEntity).ToList(),
             TeamMembers = members.Select(m => new TeamMemberViewModel
             {
                 UserId = m.UserId,
@@ -646,7 +646,6 @@ public class TeamAdminController : Controller
         try
         {
             var priorities = model.Priorities
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
                 .ToList();
 
@@ -656,7 +655,7 @@ public class TeamAdminController : Controller
 
             TempData["SuccessMessage"] = $"Role '{model.Name}' created.";
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
@@ -689,7 +688,6 @@ public class TeamAdminController : Controller
         try
         {
             var priorities = model.Priorities
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
                 .ToList();
 
@@ -699,7 +697,7 @@ public class TeamAdminController : Controller
 
             TempData["SuccessMessage"] = $"Role '{model.Name}' updated.";
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
@@ -734,7 +732,7 @@ public class TeamAdminController : Controller
             await _teamService.DeleteRoleDefinitionAsync(roleId, user.Id);
             TempData["SuccessMessage"] = "Role deleted.";
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
@@ -770,7 +768,7 @@ public class TeamAdminController : Controller
             await _systemTeamSyncJob.SyncLeadsMembershipForUserAsync(model.UserId);
             TempData["SuccessMessage"] = "Member assigned to role.";
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
@@ -816,7 +814,7 @@ public class TeamAdminController : Controller
 
             TempData["SuccessMessage"] = "Member unassigned from role.";
         }
-        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
             TempData["ErrorMessage"] = ex.Message;
         }
@@ -877,34 +875,4 @@ public class TeamAdminController : Controller
         return Json(combined);
     }
 
-    private static TeamRoleDefinitionViewModel MapToViewModel(TeamRoleDefinition d)
-    {
-        var slots = new List<TeamRoleSlotViewModel>();
-        for (var i = 0; i < d.SlotCount; i++)
-        {
-            var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
-            var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.NiceToHave;
-            slots.Add(new TeamRoleSlotViewModel
-            {
-                SlotIndex = i,
-                Priority = priority.ToString(),
-                PriorityBadgeClass = priority switch
-                {
-                    SlotPriority.Critical => "bg-danger",
-                    SlotPriority.Important => "bg-warning text-dark",
-                    _ => "bg-secondary"
-                },
-                IsFilled = assignment != null,
-                AssignedUserId = assignment?.TeamMember?.UserId,
-                AssignedUserName = assignment?.TeamMember?.User?.DisplayName,
-                TeamMemberId = assignment?.TeamMemberId
-            });
-        }
-        return new TeamRoleDefinitionViewModel
-        {
-            Id = d.Id, Name = d.Name, Description = d.Description,
-            SlotCount = d.SlotCount, Slots = slots, SortOrder = d.SortOrder,
-            IsLeadRole = d.IsLeadRole
-        };
-    }
 }
