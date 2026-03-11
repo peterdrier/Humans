@@ -565,4 +565,346 @@ public class TeamAdminController : Controller
 
         return RedirectToAction(nameof(Resources), new { slug });
     }
+
+    [HttpGet("Roles")]
+    public async Task<IActionResult> Roles(string slug)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        var definitions = await _teamService.GetRoleDefinitionsAsync(team.Id);
+        var members = await _teamService.GetTeamMembersAsync(team.Id);
+
+        var memberUserIds = members.Select(m => m.UserId).ToList();
+        var profilesWithCustomPictures = await _profileService.GetCustomPictureInfoByUserIdsAsync(memberUserIds);
+        var customPictureByUserId = profilesWithCustomPictures.ToDictionary(
+            p => p.UserId,
+            p => Url.Action("Picture", "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
+
+        var viewModel = new RoleManagementViewModel
+        {
+            TeamId = team.Id,
+            TeamName = team.Name,
+            Slug = team.Slug,
+            IsSystemTeam = team.IsSystemTeam,
+            CanManage = canManage,
+            RoleDefinitions = definitions.Select(MapToViewModel).ToList(),
+            TeamMembers = members.Select(m => new TeamMemberViewModel
+            {
+                UserId = m.UserId,
+                DisplayName = m.User.DisplayName,
+                Email = m.User.Email ?? "",
+                ProfilePictureUrl = m.User.ProfilePictureUrl,
+                HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
+                CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
+                Role = m.Role.ToString(),
+                JoinedAt = m.JoinedAt.ToDateTimeUtc(),
+                IsLead = m.Role == TeamMemberRole.Lead
+            }).ToList()
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost("Roles/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateRole(string slug, CreateRoleDefinitionModel model)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            var priorities = model.Priorities
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
+                .ToList();
+
+            await _teamService.CreateRoleDefinitionAsync(
+                team.Id, model.Name, model.Description, model.SlotCount,
+                priorities, model.SortOrder, user.Id);
+
+            TempData["SuccessMessage"] = $"Role '{model.Name}' created.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpPost("Roles/{roleId}/Edit")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditRole(string slug, Guid roleId, EditRoleDefinitionModel model)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            var priorities = model.Priorities
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
+                .ToList();
+
+            await _teamService.UpdateRoleDefinitionAsync(
+                roleId, model.Name, model.Description, model.SlotCount,
+                priorities, model.SortOrder, user.Id);
+
+            TempData["SuccessMessage"] = $"Role '{model.Name}' updated.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpPost("Roles/{roleId}/Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteRole(string slug, Guid roleId)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await _teamService.DeleteRoleDefinitionAsync(roleId, user.Id);
+            TempData["SuccessMessage"] = "Role deleted.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpPost("Roles/{roleId}/Assign")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AssignRole(string slug, Guid roleId, AssignRoleModel model)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
+            await _systemTeamSyncJob.SyncLeadsMembershipForUserAsync(model.UserId);
+            TempData["SuccessMessage"] = "Member assigned to role.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpPost("Roles/{roleId}/Unassign/{memberId}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnassignRole(string slug, Guid roleId, Guid memberId)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return NotFound();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            // Look up the member's UserId before unassigning
+            var members = await _teamService.GetTeamMembersAsync(team.Id);
+            var member = members.FirstOrDefault(m => m.Id == memberId);
+            var userId = member?.UserId;
+
+            await _teamService.UnassignFromRoleAsync(roleId, memberId, user.Id);
+
+            if (userId.HasValue)
+            {
+                await _systemTeamSyncJob.SyncLeadsMembershipForUserAsync(userId.Value);
+            }
+
+            TempData["SuccessMessage"] = "Member unassigned from role.";
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Roles), new { slug });
+    }
+
+    [HttpGet("Roles/SearchMembers")]
+    public async Task<IActionResult> SearchMembersForRole(string slug, string q)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null)
+        {
+            return Unauthorized();
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team == null)
+        {
+            return NotFound();
+        }
+
+        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+        {
+            return Json(Array.Empty<object>());
+        }
+
+        var teamMembers = await _teamService.GetTeamMembersAsync(team.Id);
+        var teamMemberUserIds = teamMembers
+            .Where(m => m.LeftAt == null)
+            .Select(m => m.UserId)
+            .ToHashSet();
+
+        // Search team members first by name match
+        var matchingTeamMembers = teamMembers
+            .Where(m => m.LeftAt == null &&
+                        (m.User.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                         (m.User.Email != null && m.User.Email.Contains(q, StringComparison.OrdinalIgnoreCase))))
+            .Take(10)
+            .Select(m => new { Id = m.UserId, m.User.DisplayName, Email = m.User.Email ?? "", OnTeam = true })
+            .ToList();
+
+        // Also search all approved users for non-members
+        var allResults = await _profileService.SearchApprovedUsersAsync(q);
+        var nonMembers = allResults
+            .Where(r => !teamMemberUserIds.Contains(r.UserId))
+            .Take(10 - matchingTeamMembers.Count)
+            .Select(r => new { Id = r.UserId, r.DisplayName, r.Email, OnTeam = false })
+            .ToList();
+
+        var combined = matchingTeamMembers.Concat(nonMembers).ToList();
+        return Json(combined);
+    }
+
+    private static TeamRoleDefinitionViewModel MapToViewModel(TeamRoleDefinition d)
+    {
+        var slots = new List<TeamRoleSlotViewModel>();
+        for (var i = 0; i < d.SlotCount; i++)
+        {
+            var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
+            var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.NiceToHave;
+            slots.Add(new TeamRoleSlotViewModel
+            {
+                SlotIndex = i,
+                Priority = priority.ToString(),
+                PriorityBadgeClass = priority switch
+                {
+                    SlotPriority.Critical => "bg-danger",
+                    SlotPriority.Important => "bg-warning text-dark",
+                    _ => "bg-secondary"
+                },
+                IsFilled = assignment != null,
+                AssignedUserId = assignment?.TeamMember?.UserId,
+                AssignedUserName = assignment?.TeamMember?.User?.DisplayName,
+                TeamMemberId = assignment?.TeamMemberId
+            });
+        }
+        return new TeamRoleDefinitionViewModel
+        {
+            Id = d.Id, Name = d.Name, Description = d.Description,
+            SlotCount = d.SlotCount, Slots = slots, SortOrder = d.SortOrder,
+            IsLeadRole = d.IsLeadRole
+        };
+    }
 }

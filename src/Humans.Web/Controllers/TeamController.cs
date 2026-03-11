@@ -246,6 +246,59 @@ public class TeamController : Controller
         return View(viewModel);
     }
 
+    [HttpGet("Roster")]
+    public async Task<IActionResult> Roster(string? priority, string? status)
+    {
+        var definitions = await _teamService.GetAllRoleDefinitionsAsync();
+
+        var slots = new List<RosterSlotViewModel>();
+        foreach (var def in definitions)
+        {
+            for (var i = 0; i < def.SlotCount; i++)
+            {
+                var assignment = def.Assignments.FirstOrDefault(a => a.SlotIndex == i);
+                var slotPriority = i < def.Priorities.Count ? def.Priorities[i] : SlotPriority.NiceToHave;
+                var priorityStr = slotPriority.ToString();
+
+                slots.Add(new RosterSlotViewModel
+                {
+                    TeamName = def.Team.Name,
+                    TeamSlug = def.Team.Slug,
+                    RoleName = def.Name,
+                    SlotNumber = i + 1,
+                    Priority = priorityStr,
+                    PriorityBadgeClass = slotPriority switch
+                    {
+                        SlotPriority.Critical => "bg-danger",
+                        SlotPriority.Important => "bg-warning text-dark",
+                        _ => "bg-secondary"
+                    },
+                    IsFilled = assignment != null,
+                    AssignedUserName = assignment?.TeamMember?.User?.DisplayName
+                });
+            }
+        }
+
+        // Apply filters
+        if (!string.IsNullOrEmpty(priority))
+            slots = slots.Where(s => string.Equals(s.Priority, priority, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        if (string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase))
+            slots = slots.Where(s => !s.IsFilled).ToList();
+        else if (string.Equals(status, "Filled", StringComparison.OrdinalIgnoreCase))
+            slots = slots.Where(s => s.IsFilled).ToList();
+
+        // Sort: Critical first, then by team name
+        slots = slots
+            .OrderBy(s => s.Priority switch { "Critical" => 0, "Important" => 1, _ => 2 })
+            .ThenBy(s => s.TeamName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.RoleName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(s => s.SlotNumber)
+            .ToList();
+
+        return View(new RosterSummaryViewModel { Slots = slots, PriorityFilter = priority, StatusFilter = status });
+    }
+
     [HttpGet("Map")]
     public async Task<IActionResult> Map()
     {

@@ -40,6 +40,7 @@ public class TeamDetailViewModel
 
     public List<TeamMemberViewModel> Members { get; set; } = [];
     public List<TeamResourceLinkViewModel> Resources { get; set; } = [];
+    public List<TeamRoleDefinitionViewModel> RoleDefinitions { get; set; } = [];
 
     // Current user context
     public bool IsCurrentUserMember { get; set; }
@@ -243,6 +244,82 @@ public class ApproveRejectRequestModel
 public class AddMemberModel
 {
     public Guid UserId { get; set; }
+}
+
+public class TeamRoleDefinitionViewModel
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int SlotCount { get; set; }
+    public List<TeamRoleSlotViewModel> Slots { get; set; } = [];
+    public int SortOrder { get; set; }
+    public bool IsLeadRole { get; set; }
+}
+
+public class TeamRoleSlotViewModel
+{
+    public int SlotIndex { get; set; }
+    public string Priority { get; set; } = string.Empty;
+    public string PriorityBadgeClass { get; set; } = string.Empty;
+    public bool IsFilled { get; set; }
+    public Guid? AssignedUserId { get; set; }
+    public string? AssignedUserName { get; set; }
+    public string? AssignedUserProfilePictureUrl { get; set; }
+    public Guid? TeamMemberId { get; set; }
+}
+
+public class RoleManagementViewModel
+{
+    public Guid TeamId { get; set; }
+    public string TeamName { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public bool IsSystemTeam { get; set; }
+    public bool CanManage { get; set; }
+    public List<TeamRoleDefinitionViewModel> RoleDefinitions { get; set; } = [];
+    public List<TeamMemberViewModel> TeamMembers { get; set; } = [];
+}
+
+public class CreateRoleDefinitionModel
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int SlotCount { get; set; } = 1;
+    public string Priorities { get; set; } = "Critical";
+    public int SortOrder { get; set; }
+}
+
+public class EditRoleDefinitionModel
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int SlotCount { get; set; }
+    public string Priorities { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+}
+
+public class AssignRoleModel
+{
+    public Guid UserId { get; set; }
+}
+
+public class RosterSummaryViewModel
+{
+    public List<RosterSlotViewModel> Slots { get; set; } = [];
+    public string? PriorityFilter { get; set; }
+    public string? StatusFilter { get; set; }
+}
+
+public class RosterSlotViewModel
+{
+    public string TeamName { get; set; } = string.Empty;
+    public string TeamSlug { get; set; } = string.Empty;
+    public string RoleName { get; set; } = string.Empty;
+    public int SlotNumber { get; set; }
+    public string Priority { get; set; } = string.Empty;
+    public string PriorityBadgeClass { get; set; } = string.Empty;
+    public bool IsFilled { get; set; }
+    public string? AssignedUserName { get; set; }
 }
 
 public class AdminTeamListViewModel
