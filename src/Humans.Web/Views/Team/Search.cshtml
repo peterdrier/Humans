@@ -38,7 +38,7 @@
         <div class="list-group">
             @foreach (var result in Model.Results)
             {
-                <a asp-controller="Human" asp-action="Index" asp-route-id="@result.UserId" class="list-group-item list-group-item-action">
+                <a asp-controller="Human" asp-action="View" asp-route-id="@result.UserId" class="list-group-item list-group-item-action">
                     <div class="d-flex align-items-center gap-3">
                         @if (result.EffectiveProfilePictureUrl != null)
                         {
