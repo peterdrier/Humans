@@ -1280,7 +1280,7 @@ public partial class TeamService : ITeamService
                 if (existing != null)
                     cachedTeams[definition.TeamId] = ct with { Members = ct.Members.Select(m => m.UserId == targetUserId ? cachedMember : m).ToList() };
                 else
-                    cachedTeams[definition.TeamId] = ct with { Members = [..ct.Members, cachedMember] };
+                    cachedTeams[definition.TeamId] = ct with { Members = [.. ct.Members, cachedMember] };
             }
         }
 
@@ -1541,7 +1541,7 @@ public partial class TeamService : ITeamService
         if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached) && cached != null
             && cached.TryGetValue(teamId, out var team))
         {
-            cached[teamId] = team with { Members = [..team.Members, member] };
+            cached[teamId] = team with { Members = [.. team.Members, member] };
         }
     }
 
