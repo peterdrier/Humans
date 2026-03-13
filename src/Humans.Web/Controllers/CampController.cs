@@ -72,10 +72,44 @@ public class CampController : Controller
         if (filters?.AcceptingMembers == true)
             cards = cards.Where(c => c.AcceptingMembers == YesNoMaybe.Yes).ToList();
 
+        var myCamps = new List<CampCardViewModel>();
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user is not null)
+            {
+                var allUserCamps = await _campService.GetCampsByLeadUserIdAsync(user.Id);
+                myCamps = allUserCamps
+                    .Where(b => b.Seasons.Any(s => s.Year == year &&
+                        s.Status != CampSeasonStatus.Active && s.Status != CampSeasonStatus.Full))
+                    .Where(b => !cards.Any(c => c.Id == b.Id)) // exclude already-shown
+                    .Select(b =>
+                    {
+                        var season = b.Seasons.FirstOrDefault(s => s.Year == year);
+                        var firstImage = b.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
+                        return new CampCardViewModel
+                        {
+                            Id = b.Id,
+                            Slug = b.Slug,
+                            Name = season?.Name ?? b.Slug,
+                            BlurbShort = season?.BlurbShort ?? string.Empty,
+                            ImageUrl = firstImage != null ? $"/{firstImage.StoragePath}" : null,
+                            Vibes = season?.Vibes ?? new List<CampVibe>(),
+                            AcceptingMembers = season?.AcceptingMembers ?? YesNoMaybe.No,
+                            KidsWelcome = season?.KidsWelcome ?? YesNoMaybe.No,
+                            SoundZone = season?.SoundZone,
+                            Status = season?.Status ?? CampSeasonStatus.Pending,
+                            TimesAtNowhere = b.TimesAtNowhere
+                        };
+                    }).ToList();
+            }
+        }
+
         var viewModel = new CampIndexViewModel
         {
             Year = year,
             Camps = cards.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+            MyCamps = myCamps,
             Filters = filters ?? new CampFilterViewModel()
         };
 
@@ -215,6 +249,9 @@ public class CampController : Controller
             TempData["ErrorMessage"] = "Registration is currently closed.";
             return RedirectToAction(nameof(Index));
         }
+
+        var year = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
+        ViewData["SeasonYear"] = year;
 
         return View(new CampRegisterViewModel());
     }

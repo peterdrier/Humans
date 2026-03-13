@@ -181,7 +181,9 @@
                 </div>
             }
 
-            @* Placement data *@
+            @* Placement data (visible only to leads and CampAdmins) *@
+            @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
+            {
             <div class="card mb-4">
                 <div class="card-header">
                     <i class="fa-solid fa-map-location-dot me-1"></i> Placement
@@ -221,6 +223,7 @@
                     </div>
                 </div>
             </div>
+            }
         }
     </div>
 

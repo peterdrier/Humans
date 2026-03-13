@@ -26,6 +26,7 @@ public interface ICampService
     Task<Camp?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default);
     Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default);
+    Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<List<CampSeason>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
     // Season management

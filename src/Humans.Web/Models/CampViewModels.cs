@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
@@ -7,6 +8,7 @@ public class CampIndexViewModel
 {
     public int Year { get; set; }
     public List<CampCardViewModel> Camps { get; set; } = new();
+    public List<CampCardViewModel> MyCamps { get; set; } = new();
     public CampFilterViewModel Filters { get; set; } = new();
 }
 
@@ -93,6 +95,7 @@ public class CampRegisterViewModel
 {
     public string Name { get; set; } = string.Empty;
     public string ContactEmail { get; set; } = string.Empty;
+    [Phone]
     public string ContactPhone { get; set; } = string.Empty;
     public string? WebOrSocialUrl { get; set; }
     public string ContactMethod { get; set; } = string.Empty;

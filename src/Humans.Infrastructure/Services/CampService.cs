@@ -161,6 +161,16 @@ public class CampService : ICampService
         return camps;
     }
 
+    public async Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Camps
+            .Include(b => b.Seasons)
+            .Include(b => b.Images.OrderBy(i => i.SortOrder))
+            .Include(b => b.Leads)
+            .Where(b => b.Leads.Any(l => l.UserId == userId && l.LeftAt == null))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         return await _dbContext.CampSettings.FirstAsync(cancellationToken);

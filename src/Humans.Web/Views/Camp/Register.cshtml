@@ -1,6 +1,6 @@
 @model Humans.Web.Models.CampRegisterViewModel
 @{
-    ViewData["Title"] = $"Register Your {Localizer["Camp_Singular"]}";
+    ViewData["Title"] = $"Register Your {Localizer["Camp_Singular"]} — {ViewData["SeasonYear"]}";
 }
 
 <nav aria-label="breadcrumb">
@@ -10,7 +10,7 @@
     </ol>
 </nav>
 
-<h1 class="mb-4">Register Your @Localizer["Camp_Singular"]</h1>
+<h1 class="mb-4">Register Your @Localizer["Camp_Singular"] <small class="text-muted">(@ViewData["SeasonYear"] season)</small></h1>
 
 <vc:temp-data-alerts />
 
@@ -21,11 +21,11 @@
 
     @* Camp Info *@
     <div class="card mb-4">
-        <div class="card-header"><i class="fa-solid fa-campground me-1"></i> Camp Info</div>
+        <div class="card-header"><i class="fa-solid fa-campground me-1"></i> @Localizer["Camp_InfoTitle"]</div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label asp-for="Name" class="form-label">Camp Name</label>
+                    <label asp-for="Name" class="form-label">@Localizer["Camp_NameLabel"]</label>
                     <input asp-for="Name" class="form-control" required />
                 </div>
                 <div class="col-md-6">
@@ -34,7 +34,7 @@
                 </div>
                 <div class="col-md-6">
                     <label asp-for="ContactPhone" class="form-label">Contact Phone</label>
-                    <input asp-for="ContactPhone" class="form-control" />
+                    <input asp-for="ContactPhone" class="form-control" type="tel" pattern="[+]?[\d\s\-()]{6,20}" />
                 </div>
                 <div class="col-md-6">
                     <label asp-for="ContactMethod" class="form-label">Preferred Contact Method</label>

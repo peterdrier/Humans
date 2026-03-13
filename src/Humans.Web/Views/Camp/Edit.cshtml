@@ -28,11 +28,11 @@
 
             @* Camp Info *@
             <div class="card mb-4">
-                <div class="card-header"><i class="fa-solid fa-campground me-1"></i> Camp Info</div>
+                <div class="card-header"><i class="fa-solid fa-campground me-1"></i> @Localizer["Camp_InfoTitle"]</div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label asp-for="Name" class="form-label">Camp Name</label>
+                            <label asp-for="Name" class="form-label">@Localizer["Camp_NameLabel"]</label>
                             @if (Model.IsNameLocked)
                             {
                                 <input asp-for="Name" class="form-control" readonly />
@@ -51,7 +51,7 @@
                         </div>
                         <div class="col-md-6">
                             <label asp-for="ContactPhone" class="form-label">Contact Phone</label>
-                            <input asp-for="ContactPhone" class="form-control" />
+                            <input asp-for="ContactPhone" class="form-control" type="tel" pattern="[+]?[\d\s\-()]{6,20}" />
                         </div>
                         <div class="col-md-6">
                             <label asp-for="ContactMethod" class="form-label">Preferred Contact Method</label>
@@ -299,13 +299,52 @@
                                 <img src="@image.Url" alt="Camp image" class="rounded"
                                      style="width: 60px; height: 60px; object-fit: cover;" />
                                 <span class="text-muted small">#@(image.SortOrder + 1)</span>
-                                <form asp-action="DeleteImage" asp-route-slug="@Model.Slug" asp-route-imageId="@image.Id"
-                                      method="post" class="ms-auto">
-                                    @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete image">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </form>
+                                <div class="ms-auto d-flex gap-1">
+                                    <form asp-action="ReorderImages" asp-route-slug="@Model.Slug" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        @{
+                                            var moveUpIds = Model.Images.OrderBy(i => i.SortOrder).Select(i => i.Id).ToList();
+                                            var currentIdx = moveUpIds.IndexOf(image.Id);
+                                            if (currentIdx > 0)
+                                            {
+                                                // Swap with previous
+                                                (moveUpIds[currentIdx], moveUpIds[currentIdx - 1]) = (moveUpIds[currentIdx - 1], moveUpIds[currentIdx]);
+                                            }
+                                        }
+                                        @foreach (var id in moveUpIds)
+                                        {
+                                            <input type="hidden" name="imageIds" value="@id" />
+                                        }
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move up" @(currentIdx == 0 ? "disabled" : "")>
+                                            <i class="fa-solid fa-arrow-up"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="ReorderImages" asp-route-slug="@Model.Slug" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        @{
+                                            var moveDownIds = Model.Images.OrderBy(i => i.SortOrder).Select(i => i.Id).ToList();
+                                            var downIdx = moveDownIds.IndexOf(image.Id);
+                                            if (downIdx < moveDownIds.Count - 1)
+                                            {
+                                                (moveDownIds[downIdx], moveDownIds[downIdx + 1]) = (moveDownIds[downIdx + 1], moveDownIds[downIdx]);
+                                            }
+                                        }
+                                        @foreach (var id in moveDownIds)
+                                        {
+                                            <input type="hidden" name="imageIds" value="@id" />
+                                        }
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move down" @(downIdx == Model.Images.Count - 1 ? "disabled" : "")>
+                                            <i class="fa-solid fa-arrow-down"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="DeleteImage" asp-route-slug="@Model.Slug" asp-route-imageId="@image.Id"
+                                          method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete image">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </li>
                     }
@@ -316,13 +355,11 @@
                 <div class="card-body">
                     <form asp-action="UploadImage" asp-route-slug="@Model.Slug" method="post" enctype="multipart/form-data">
                         @Html.AntiForgeryToken()
-                        <div class="input-group">
-                            <input type="file" name="file" class="form-control" accept="image/jpeg,image/png,image/webp" required />
-                            <button type="submit" class="btn btn-outline-primary">
-                                <i class="fa-solid fa-upload"></i>
-                            </button>
-                        </div>
-                        <div class="form-text">JPEG, PNG, or WebP. Max 10MB.</div>
+                        <input type="file" name="file" class="form-control mb-2" accept="image/jpeg,image/png,image/webp" required />
+                        <div class="form-text mb-2">JPEG, PNG, or WebP. Max 10MB.</div>
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="fa-solid fa-upload me-1"></i> Upload Image
+                        </button>
                     </form>
                 </div>
             }
