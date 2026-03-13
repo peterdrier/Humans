@@ -30,8 +30,8 @@ public class CampFilterViewModel
 {
     public CampVibe? Vibe { get; set; }
     public SoundZone? SoundZone { get; set; }
-    public bool? KidsFriendly { get; set; }
-    public bool? AcceptingMembers { get; set; }
+    public bool KidsFriendly { get; set; }
+    public bool AcceptingMembers { get; set; }
 }
 
 // Detail page
