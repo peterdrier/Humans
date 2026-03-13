@@ -59,7 +59,7 @@
                             <td>
                                 @if (!string.IsNullOrEmpty(request.Message))
                                 {
-                                    <span>@(request.Message.Length > 100 ? request.Message.Substring(0, 100) + "..." : request.Message)</span>
+                                    <span style="white-space: pre-wrap;">@request.Message</span>
                                 }
                                 else
                                 {

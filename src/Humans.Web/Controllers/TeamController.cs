@@ -197,7 +197,7 @@ public class TeamController : Controller
             CanCurrentUserJoin = !isMember && !team.IsSystemTeam && pendingRequest == null,
             CanCurrentUserLeave = isMember && !team.IsSystemTeam,
             CanCurrentUserManage = canManage,
-            CanCurrentUserEditTeam = isBoardMember || isAdmin,
+            CanCurrentUserEditTeam = isBoardMember || isAdmin || isTeamsAdmin,
             CurrentUserPendingRequestId = pendingRequest?.Id,
             PendingRequestCount = pendingRequestCount
         };
@@ -679,7 +679,7 @@ public class TeamController : Controller
     }
 
     [HttpGet("{id:guid}/Edit")]
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = "Board,Admin,TeamsAdmin")]
     public async Task<IActionResult> EditTeam(Guid id)
     {
         var team = await _teamService.GetTeamByIdAsync(id);
@@ -704,7 +704,7 @@ public class TeamController : Controller
     }
 
     [HttpPost("{id:guid}/Edit")]
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = "Board,Admin,TeamsAdmin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditTeam(Guid id, EditTeamViewModel model)
     {
