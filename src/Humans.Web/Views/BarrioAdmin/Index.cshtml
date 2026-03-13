@@ -1,0 +1,211 @@
+@model Humans.Web.Models.BarrioAdminViewModel
+@{
+    ViewData["Title"] = "Barrios Admin";
+}
+
+<h1>Barrios Admin</h1>
+
+<vc:temp-data-alerts />
+
+@* Summary cards *@
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">@Model.TotalBarrios</h5>
+                <p class="card-text text-muted">Total Barrios (@Model.PublicYear)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">@Model.ActiveBarrios</h5>
+                <p class="card-text text-muted">Active</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">@Model.PendingBarrios.Count</h5>
+                <p class="card-text text-muted">Pending Review</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">@(Model.OpenSeasons.Count > 0 ? string.Join(", ", Model.OpenSeasons) : "None")</h5>
+                <p class="card-text text-muted">Open Seasons</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Pending Approvals *@
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-clock me-2"></i>Pending Approvals
+    </div>
+    @if (Model.PendingBarrios.Count == 0)
+    {
+        <div class="card-body">
+            <p class="text-muted mb-0">No barrios pending review.</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Notes</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var barrio in Model.PendingBarrios)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Barrio" asp-action="Details" asp-route-slug="@barrio.Slug">
+                                    @barrio.Name
+                                </a>
+                            </td>
+                            <td>@(barrio.BlurbShort.Length > 100 ? barrio.BlurbShort[..100] + "..." : barrio.BlurbShort)</td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm" form="approve-@barrio.Id" name="notes" placeholder="Optional notes" />
+                            </td>
+                            <td class="text-end">
+                                <form id="approve-@barrio.Id" asp-controller="BarrioAdmin" asp-action="Approve" asp-route-seasonId="@barrio.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-success btn-sm" title="Approve">
+                                        <i class="fa-solid fa-check me-1"></i>Approve
+                                    </button>
+                                </form>
+                                <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="collapse" data-bs-target="#reject-@barrio.Id" title="Reject">
+                                    <i class="fa-solid fa-xmark me-1"></i>Reject
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="collapse" id="reject-@barrio.Id">
+                            <td colspan="4">
+                                <form asp-controller="BarrioAdmin" asp-action="Reject" asp-route-seasonId="@barrio.Id" method="post" class="d-flex gap-2 p-2">
+                                    @Html.AntiForgeryToken()
+                                    <input type="text" name="notes" class="form-control form-control-sm" placeholder="Rejection reason (required)" required />
+                                    <button type="submit" class="btn btn-danger btn-sm text-nowrap">Confirm Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@* Season Management *@
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-calendar me-2"></i>Season Management
+            </div>
+            <div class="card-body">
+                <h6>Open a Season for Registration</h6>
+                <form asp-controller="BarrioAdmin" asp-action="OpenSeason" method="post" class="d-flex gap-2 mb-3">
+                    @Html.AntiForgeryToken()
+                    <input type="number" name="year" class="form-control form-control-sm" style="max-width: 120px;" placeholder="Year" min="2024" max="2099" required />
+                    <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">
+                        <i class="fa-solid fa-door-open me-1"></i>Open
+                    </button>
+                </form>
+
+                @if (Model.OpenSeasons.Count > 0)
+                {
+                    <h6>Close a Season</h6>
+                    @foreach (var year in Model.OpenSeasons)
+                    {
+                        <form asp-controller="BarrioAdmin" asp-action="CloseSeason" asp-route-year="@year" method="post" class="d-inline me-2 mb-2">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-warning btn-sm">
+                                <i class="fa-solid fa-door-closed me-1"></i>Close @year
+                            </button>
+                        </form>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-eye me-2"></i>Public Year
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Currently showing: <strong>@Model.PublicYear</strong></p>
+                <form asp-controller="BarrioAdmin" asp-action="SetPublicYear" method="post" class="d-flex gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="number" name="year" class="form-control form-control-sm" style="max-width: 120px;" value="@Model.PublicYear" min="2024" max="2099" required />
+                    <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i>Set
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-lock me-2"></i>Name Lock Date
+            </div>
+            <div class="card-body">
+                <p class="text-muted">After this date, barrios can no longer change their name for a season.</p>
+                <form asp-controller="BarrioAdmin" asp-action="SetNameLockDate" method="post" class="d-flex gap-2">
+                    @Html.AntiForgeryToken()
+                    <input type="number" name="year" class="form-control form-control-sm" style="max-width: 120px;" placeholder="Year" min="2024" max="2099" required />
+                    <input type="date" name="lockDate" class="form-control form-control-sm" style="max-width: 180px;" required />
+                    <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">
+                        <i class="fa-solid fa-lock me-1"></i>Set
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* All Barrios quick list — link to public page *@
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fa-solid fa-campground me-2"></i>All Barrios (@Model.PublicYear)</span>
+        <a asp-controller="Barrio" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>View Public Page
+        </a>
+    </div>
+    <div class="card-body">
+        <p class="text-muted">Use the public Barrios page to browse all registered barrios. CampAdmin and Admin users can edit any barrio from its detail page.</p>
+    </div>
+</div>
+
+@if (User.IsInRole("Admin"))
+{
+    <div class="card mb-4 border-danger">
+        <div class="card-header bg-danger text-white">
+            <i class="fa-solid fa-triangle-exclamation me-2"></i>Danger Zone (Admin Only)
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Permanently delete a barrio and all its seasons, images, and leads.</p>
+            <form asp-controller="BarrioAdmin" asp-action="Delete" method="post" class="d-flex gap-2"
+                  onsubmit="return confirm('Are you sure? This action cannot be undone.');">
+                @Html.AntiForgeryToken()
+                <input type="text" name="barrioId" class="form-control form-control-sm" style="max-width: 320px;" placeholder="Barrio ID (GUID)" required pattern="^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$" />
+                <button type="submit" class="btn btn-danger btn-sm text-nowrap">
+                    <i class="fa-solid fa-trash me-1"></i>Delete
+                </button>
+            </form>
+        </div>
+    </div>
+}
