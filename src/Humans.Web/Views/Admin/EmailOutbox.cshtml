@@ -88,51 +88,42 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Recipient</th>
+                        <th>Name</th>
                         <th>Template</th>
+                        <th>Email Address</th>
                         <th>Status</th>
                         <th>Queued At</th>
                         <th>Sent At</th>
                         <th>Actions</th>
+                        <th>Error</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var msg in Model.Messages)
                     {
+                        var badgeClass = msg.Status switch
+                        {
+                            EmailOutboxStatus.Queued => "bg-warning text-dark",
+                            EmailOutboxStatus.Sent => "bg-success",
+                            EmailOutboxStatus.Failed => "bg-danger",
+                            _ => "bg-secondary"
+                        };
                         <tr>
-                            <td>
-                                <span title="@msg.Subject">@msg.RecipientEmail</span>
-                                @if (!string.IsNullOrEmpty(msg.RecipientName))
-                                {
-                                    <br /><small class="text-muted">@msg.RecipientName</small>
-                                }
-                            </td>
+                            <td>@(msg.User?.DisplayName ?? msg.RecipientName ?? "—")</td>
                             <td><code class="small">@msg.TemplateName</code></td>
+                            <td class="small">@msg.RecipientEmail</td>
                             <td>
-                                @{
-                                    var badgeClass = msg.Status switch
-                                    {
-                                        EmailOutboxStatus.Queued => "bg-warning text-dark",
-                                        EmailOutboxStatus.Sent => "bg-success",
-                                        EmailOutboxStatus.Failed => "bg-danger",
-                                        _ => "bg-secondary"
-                                    };
-                                }
                                 <span class="badge @badgeClass">@msg.Status</span>
                                 @if (msg.RetryCount > 0)
                                 {
                                     <small class="text-muted ms-1">×@msg.RetryCount</small>
                                 }
-                                @if (!string.IsNullOrEmpty(msg.LastError))
-                                {
-                                    <br /><small class="text-danger" title="@msg.LastError">@msg.LastError[..Math.Min(60, msg.LastError.Length)]@(msg.LastError.Length > 60 ? "…" : "")</small>
-                                }
                             </td>
-                            <td class="text-nowrap small">@msg.CreatedAt.ToString("yyyy-MM-dd HH:mm", null) UTC</td>
+                            <td class="text-nowrap small">@msg.CreatedAt.ToString("yyyy-MM-dd HH:mm", null)</td>
                             <td class="text-nowrap small">
                                 @if (msg.SentAt.HasValue)
                                 {
-                                    @msg.SentAt.Value.ToString("yyyy-MM-dd HH:mm", null) <text>UTC</text>
+                                    @msg.SentAt.Value.ToString("yyyy-MM-dd HH:mm", null)
                                 }
                                 else
                                 {
@@ -151,6 +142,12 @@
                                         <button type="submit" class="btn btn-sm btn-outline-danger"
                                                 onclick="return confirm('Discard this message? It cannot be recovered.')">Discard</button>
                                     </form>
+                                }
+                            </td>
+                            <td class="small text-danger">
+                                @if (!string.IsNullOrEmpty(msg.LastError))
+                                {
+                                    <span title="@msg.LastError">@msg.LastError[..Math.Min(80, msg.LastError.Length)]@(msg.LastError.Length > 80 ? "…" : "")</span>
                                 }
                             </td>
                         </tr>

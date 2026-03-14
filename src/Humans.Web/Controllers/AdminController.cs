@@ -345,6 +345,7 @@ public class AdminController : Controller
         var isPaused = string.Equals(pausedSetting?.Value, "true", StringComparison.OrdinalIgnoreCase);
 
         var messages = await _dbContext.EmailOutboxMessages
+            .Include(m => m.User)
             .OrderByDescending(m => m.CreatedAt)
             .Take(50)
             .ToListAsync();
