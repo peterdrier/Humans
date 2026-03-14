@@ -370,6 +370,8 @@ public class CampaignService : ICampaignService
         var encodedName = WebUtility.HtmlEncode(name);
 
         var renderedBody = campaign.EmailBodyTemplate
+            .Replace("\r\n", "<br>", StringComparison.Ordinal)
+            .Replace("\n", "<br>", StringComparison.Ordinal)
             .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
             .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
 
