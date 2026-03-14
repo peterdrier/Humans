@@ -99,6 +99,9 @@ public class ProcessEmailOutboxJob
                     extraHeaders,
                     cancellationToken);
 
+                // Throttle: 1 second delay between sends to avoid SMTP rate limits
+                await Task.Delay(1000, cancellationToken);
+
                 // Success
                 message.Status = EmailOutboxStatus.Sent;
                 message.SentAt = now;
