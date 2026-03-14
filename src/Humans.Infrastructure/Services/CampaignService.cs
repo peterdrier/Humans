@@ -1,12 +1,10 @@
 using System.Net;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -21,7 +19,6 @@ public class CampaignService : ICampaignService
     private readonly IClock _clock;
     private readonly IHumansMetrics _metrics;
     private readonly EmailSettings _settings;
-    private readonly IDataProtectionProvider _dataProtectionProvider;
     private readonly string _environmentName;
     private readonly ILogger<CampaignService> _logger;
 
@@ -30,7 +27,6 @@ public class CampaignService : ICampaignService
         IClock clock,
         IHumansMetrics metrics,
         IOptions<EmailSettings> settings,
-        IDataProtectionProvider dataProtectionProvider,
         IHostEnvironment hostEnvironment,
         ILogger<CampaignService> logger)
     {
@@ -38,7 +34,6 @@ public class CampaignService : ICampaignService
         _clock = clock;
         _metrics = metrics;
         _settings = settings.Value;
-        _dataProtectionProvider = dataProtectionProvider;
         _environmentName = hostEnvironment.EnvironmentName;
         _logger = logger;
     }
@@ -189,14 +184,8 @@ public class CampaignService : ICampaignService
 
         var alreadyGrantedSet = alreadyGrantedUserIds.ToHashSet();
 
-        var unsubscribedUserIds = await _dbContext.Users
-            .Where(u => activeTeamUserIds.Contains(u.Id) && u.UnsubscribedFromCampaigns)
-            .Select(u => u.Id)
-            .ToListAsync(ct);
-        var unsubscribedSet = unsubscribedUserIds.ToHashSet();
-
         var eligible = activeTeamUserIds
-            .Where(id => !alreadyGrantedSet.Contains(id) && !unsubscribedSet.Contains(id))
+            .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
 
         var availableCodes = await CountAvailableCodesAsync(campaignId, ct);
@@ -204,8 +193,7 @@ public class CampaignService : ICampaignService
         return new WaveSendPreview(
             EligibleCount: eligible.Count,
             AlreadyGrantedExcluded: activeTeamUserIds.Count(id => alreadyGrantedSet.Contains(id)),
-            UnsubscribedExcluded: activeTeamUserIds.Count(id =>
-                !alreadyGrantedSet.Contains(id) && unsubscribedSet.Contains(id)),
+            UnsubscribedExcluded: 0,
             CodesAvailable: availableCodes,
             CodesRemainingAfterSend: availableCodes - eligible.Count);
     }
@@ -233,8 +221,7 @@ public class CampaignService : ICampaignService
         var eligibleUsers = await _dbContext.Users
             .Include(u => u.UserEmails)
             .Where(u => activeTeamUserIds.Contains(u.Id)
-                        && !alreadyGrantedSet.Contains(u.Id)
-                        && !u.UnsubscribedFromCampaigns)
+                        && !alreadyGrantedSet.Contains(u.Id))
             .ToListAsync(ct);
 
         if (eligibleUsers.Count == 0)
@@ -380,34 +367,9 @@ public class CampaignService : ICampaignService
             .Replace("{{Code}}", code, StringComparison.Ordinal)
             .Replace("{{Name}}", name, StringComparison.Ordinal);
 
-        // Generate unsubscribe token
-        var protector = _dataProtectionProvider
-            .CreateProtector("CampaignUnsubscribe");
-        var timeLimitedProtector = protector.ToTimeLimitedDataProtector();
-        var unsubscribeToken = timeLimitedProtector.Protect(
-            user.Id.ToString(), TimeSpan.FromDays(90));
-
-        var unsubscribeUrl = $"{_settings.BaseUrl}/Unsubscribe/{Uri.EscapeDataString(unsubscribeToken)}";
-
-        // Append unsubscribe link (lower right, minimal)
-        var unsubscribeFooter = $"""
-            <p style="font-size: 11px; text-align: right; margin: 24px 0 0 0;">
-                <a href="{WebUtility.HtmlEncode(unsubscribeUrl)}" style="color: #8b7355;">Unsubscribe</a>
-            </p>
-            """;
-
-        var bodyWithFooter = renderedBody + "\n" + unsubscribeFooter;
-
         // Wrap in email template
-        var wrappedHtml = WrapInTemplate(bodyWithFooter);
-        var plainText = HtmlToPlainText(bodyWithFooter);
-
-        // Build extra headers with List-Unsubscribe
-        var extraHeaders = JsonSerializer.Serialize(new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["List-Unsubscribe"] = $"<{unsubscribeUrl}>",
-            ["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
-        });
+        var wrappedHtml = WrapInTemplate(renderedBody);
+        var plainText = HtmlToPlainText(renderedBody);
 
         return new EmailOutboxMessage
         {
@@ -421,7 +383,6 @@ public class CampaignService : ICampaignService
             UserId = user.Id,
             CampaignGrantId = grantId,
             ReplyTo = campaign.ReplyToAddress,
-            ExtraHeaders = extraHeaders,
             Status = EmailOutboxStatus.Queued,
             CreatedAt = now
         };

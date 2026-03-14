@@ -41,14 +41,11 @@ public class CampaignServiceTests : IDisposable
             BaseUrl = "https://humans.nobodies.team"
         });
 
-        var dataProtectionProvider = DataProtectionProvider.Create("TestApp");
-
         _service = new CampaignService(
             _dbContext,
             _clock,
             _metrics,
             emailSettings,
-            dataProtectionProvider,
             hostEnvironment,
             NullLogger<CampaignService>.Instance);
     }
@@ -222,24 +219,6 @@ public class CampaignServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SendWaveAsync_SetsExtraHeadersWithListUnsubscribe()
-    {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "CODE-X" });
-
-        var user = SeedUser(displayName: "Bob");
-        var team = SeedTeam("Beta");
-        SeedTeamMember(team.Id, user.Id);
-        await _dbContext.SaveChangesAsync();
-
-        await _service.SendWaveAsync(campaign.Id, team.Id);
-
-        var outbox = await _dbContext.EmailOutboxMessages.SingleAsync();
-        outbox.ExtraHeaders.Should().NotBeNull();
-        outbox.ExtraHeaders.Should().Contain("List-Unsubscribe");
-        outbox.ExtraHeaders.Should().Contain("List-Unsubscribe-Post");
-    }
-
-    [Fact]
     public async Task SendWaveAsync_SubstitutesNameInSubject()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(
@@ -276,27 +255,6 @@ public class CampaignServiceTests : IDisposable
         // Second wave should send to nobody (both already granted)
         var count2 = await _service.SendWaveAsync(campaign.Id, team.Id);
         count2.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task SendWaveAsync_ExcludesUnsubscribedUsers()
-    {
-        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "CODE-1", "CODE-2" });
-
-        var subscribedUser = SeedUser(displayName: "Subscribed");
-        var unsubscribedUser = SeedUser(displayName: "Unsubscribed");
-        unsubscribedUser.UnsubscribedFromCampaigns = true;
-        var team = SeedTeam("Epsilon");
-        SeedTeamMember(team.Id, subscribedUser.Id);
-        SeedTeamMember(team.Id, unsubscribedUser.Id);
-        await _dbContext.SaveChangesAsync();
-
-        var count = await _service.SendWaveAsync(campaign.Id, team.Id);
-
-        count.Should().Be(1);
-        var grants = await _dbContext.CampaignGrants.ToListAsync();
-        grants.Should().ContainSingle();
-        grants[0].UserId.Should().Be(subscribedUser.Id);
     }
 
     [Fact]
@@ -412,12 +370,11 @@ public class CampaignServiceTests : IDisposable
 
         var eligible = SeedUser(displayName: "Eligible");
         var alreadyGranted = SeedUser(displayName: "Granted");
-        var unsubscribed = SeedUser(displayName: "Unsub");
-        unsubscribed.UnsubscribedFromCampaigns = true;
+        var otherUser = SeedUser(displayName: "Other");
         var team = SeedTeam("Preview");
         SeedTeamMember(team.Id, eligible.Id);
         SeedTeamMember(team.Id, alreadyGranted.Id);
-        SeedTeamMember(team.Id, unsubscribed.Id);
+        SeedTeamMember(team.Id, otherUser.Id);
         await _dbContext.SaveChangesAsync();
 
         // Grant a code to alreadyGranted user manually
@@ -434,11 +391,11 @@ public class CampaignServiceTests : IDisposable
 
         var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id);
 
-        preview.EligibleCount.Should().Be(1); // only "Eligible"
+        preview.EligibleCount.Should().Be(2); // "Eligible" + "Other"
         preview.AlreadyGrantedExcluded.Should().Be(1);
-        preview.UnsubscribedExcluded.Should().Be(1);
+        preview.UnsubscribedExcluded.Should().Be(0);
         preview.CodesAvailable.Should().Be(4); // 5 total - 1 granted
-        preview.CodesRemainingAfterSend.Should().Be(3); // 4 available - 1 eligible
+        preview.CodesRemainingAfterSend.Should().Be(2); // 4 available - 2 eligible
     }
 
     // ==========================================================================

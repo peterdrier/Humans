@@ -65,6 +65,12 @@ public class SmtpEmailTransport : IEmailTransport
             }
             message.Body = bodyBuilder.ToMessageBody();
 
+            // Set Message-Id domain to match From address (avoids Docker container hostname)
+            var fromDomain = _settings.FromAddress.Contains('@', StringComparison.Ordinal)
+                ? _settings.FromAddress[(_settings.FromAddress.IndexOf('@', StringComparison.Ordinal) + 1)..]
+                : "nobodies.team";
+            message.MessageId = $"{Guid.NewGuid()}@{fromDomain}";
+
             using var client = new SmtpClient();
 
             await client.ConnectAsync(
