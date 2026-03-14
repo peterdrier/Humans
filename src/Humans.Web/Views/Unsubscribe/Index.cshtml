@@ -1,0 +1,19 @@
+@{
+    ViewData["Title"] = "Unsubscribe from Campaign Emails";
+    var displayName = ViewData["DisplayName"] as string;
+}
+
+<h1>Unsubscribe from campaign emails?</h1>
+
+@if (!string.IsNullOrEmpty(displayName))
+{
+    <p>Hi <strong>@displayName</strong>,</p>
+}
+
+<p>If you confirm, you will no longer receive campaign emails from Humans.</p>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <button type="submit" class="btn btn-danger">Confirm Unsubscribe</button>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary ms-2">Cancel</a>
+</form>
