@@ -20,6 +20,8 @@ services:
       - GoogleWorkspace__ServiceAccountKeyJson=${GOOGLE_SA_KEY_JSON}
     ports:
       - "5000:8080"
+    volumes:
+      - ./uploads:/app/wwwroot/uploads
     depends_on:
       db:
         condition: service_healthy

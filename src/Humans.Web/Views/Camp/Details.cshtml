@@ -1,0 +1,327 @@
+@model Humans.Web.Models.CampDetailViewModel
+@functions {
+    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
+    string ConvertMarkdownToHtml(string content)
+    {
+        if (string.IsNullOrEmpty(content)) return string.Empty;
+        var html = Markdig.Markdown.ToHtml(content);
+        return Sanitizer.Sanitize(html);
+    }
+}
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+    </ol>
+</nav>
+
+<vc:temp-data-alerts />
+
+<div class="row">
+    <div class="col-md-8">
+        @* Image carousel *@
+        @if (Model.ImageUrls.Count > 0)
+        {
+            if (Model.ImageUrls.Count == 1)
+            {
+                <img src="@Model.ImageUrls[0]" class="img-fluid rounded mb-4" alt="@Model.Name"
+                     style="width: 100%; max-height: 400px; object-fit: cover;" />
+            }
+            else
+            {
+                <div id="campCarousel" class="carousel slide mb-4" data-bs-ride="carousel">
+                    <div class="carousel-indicators">
+                        @for (var i = 0; i < Model.ImageUrls.Count; i++)
+                        {
+                            <button type="button" data-bs-target="#campCarousel" data-bs-slide-to="@i"
+                                    class="@(i == 0 ? "active" : "")" aria-label="Slide @(i + 1)"></button>
+                        }
+                    </div>
+                    <div class="carousel-inner">
+                        @for (var i = 0; i < Model.ImageUrls.Count; i++)
+                        {
+                            <div class="carousel-item @(i == 0 ? "active" : "")">
+                                <img src="@Model.ImageUrls[i]" class="d-block w-100 rounded" alt="@Model.Name"
+                                     style="max-height: 400px; object-fit: cover;" />
+                            </div>
+                        }
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#campCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#campCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
+            }
+        }
+
+        @* Camp name and badges *@
+        <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+                <h1 class="mb-1">@Model.Name</h1>
+                @if (Model.HistoricalNames.Count > 0)
+                {
+                    <p class="text-muted mb-0">
+                        <i class="fa-solid fa-clock-rotate-left me-1"></i>
+                        Also known as: @string.Join(", ", Model.HistoricalNames)
+                    </p>
+                }
+            </div>
+            <div class="d-flex gap-1">
+                @if (Model.IsSwissCamp)
+                {
+                    <span class="badge bg-danger fs-6">
+                        <i class="fa-solid fa-flag me-1"></i>Swiss Camp
+                    </span>
+                }
+                @if (Model.CurrentSeason?.Status == CampSeasonStatus.Full)
+                {
+                    <span class="badge bg-warning text-dark fs-6">Full</span>
+                }
+            </div>
+        </div>
+
+        @* Season details *@
+        @if (Model.CurrentSeason != null)
+        {
+            var season = Model.CurrentSeason;
+
+            @* Blurb *@
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-pen-fancy me-1"></i> About
+                </div>
+                <div class="card-body">
+                    @Html.Raw(ConvertMarkdownToHtml(season.BlurbLong))
+                </div>
+            </div>
+
+            @* Community info *@
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-users me-1"></i> Community
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl>
+                                <dt>Languages</dt>
+                                <dd>@season.Languages</dd>
+                                <dt>Accepting Members</dt>
+                                <dd>@season.AcceptingMembers</dd>
+                                <dt>Kids Welcome</dt>
+                                <dd>@season.KidsWelcome</dd>
+                                @if (season.KidsWelcome != YesNoMaybe.No)
+                                {
+                                    <dt>Kids Visiting</dt>
+                                    <dd>@season.KidsVisiting</dd>
+                                    @if (!string.IsNullOrEmpty(season.KidsAreaDescription))
+                                    {
+                                        <dt>Kids Area</dt>
+                                        <dd>@season.KidsAreaDescription</dd>
+                                    }
+                                }
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl>
+                                <dt>Adult Playspace</dt>
+                                <dd>@season.AdultPlayspace</dd>
+                                <dt>Member Count</dt>
+                                <dd>@season.MemberCount</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Vibes *@
+            @if (season.Vibes.Count > 0)
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fa-solid fa-heart-pulse me-1"></i> Vibes
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var vibe in season.Vibes)
+                            {
+                                <span class="badge bg-secondary fs-6">@vibe</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @* Performance & Culture *@
+            @if (season.HasPerformanceSpace != PerformanceSpaceStatus.No || !string.IsNullOrEmpty(season.PerformanceTypes))
+            {
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fa-solid fa-masks-theater me-1"></i> Culture & Events
+                    </div>
+                    <div class="card-body">
+                        <dl>
+                            <dt>Performance Space</dt>
+                            <dd>@season.HasPerformanceSpace</dd>
+                            @if (!string.IsNullOrEmpty(season.PerformanceTypes))
+                            {
+                                <dt>Performance Types</dt>
+                                <dd>@season.PerformanceTypes</dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+            }
+
+            @* Placement data (visible only to leads and CampAdmins) *@
+            @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
+            {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-map-location-dot me-1"></i> Placement
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl>
+                                @if (season.SoundZone.HasValue)
+                                {
+                                    <dt>Sound Zone</dt>
+                                    <dd><span class="badge bg-info">@season.SoundZone</span></dd>
+                                }
+                                @if (season.SpaceRequirement.HasValue)
+                                {
+                                    <dt>Space Requirement</dt>
+                                    <dd>@season.SpaceRequirement</dd>
+                                }
+                                <dt>Containers</dt>
+                                <dd>@season.ContainerCount</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl>
+                                @if (!string.IsNullOrEmpty(season.ContainerNotes))
+                                {
+                                    <dt>Container Notes</dt>
+                                    <dd>@season.ContainerNotes</dd>
+                                }
+                                @if (season.ElectricalGrid.HasValue)
+                                {
+                                    <dt>Electrical Grid</dt>
+                                    <dd>@season.ElectricalGrid</dd>
+                                }
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            }
+        }
+    </div>
+
+    <div class="col-md-4">
+        @* Contact info *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-address-book me-1"></i> Contact
+            </div>
+            <div class="card-body">
+                <dl class="mb-0">
+                    <dt>Email</dt>
+                    <dd><a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a></dd>
+                    <dt>Preferred Contact</dt>
+                    <dd>@Model.ContactMethod</dd>
+                    @if (!string.IsNullOrEmpty(Model.WebOrSocialUrl))
+                    {
+                        <dt>Web / Social</dt>
+                        <dd><a href="@Model.WebOrSocialUrl" target="_blank" rel="noopener noreferrer">@Model.WebOrSocialUrl</a></dd>
+                    }
+                </dl>
+            </div>
+        </div>
+
+        @* Times at Nowhere *@
+        @if (Model.TimesAtNowhere > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <i class="fa-solid fa-fire fa-2x text-warning mb-2"></i>
+                    <h5>@Model.TimesAtNowhere year@(Model.TimesAtNowhere != 1 ? "s" : "") at Nowhere</h5>
+                </div>
+            </div>
+        }
+
+        @* Leads (only if authenticated) *@
+        @if (User.Identity?.IsAuthenticated == true && Model.Leads.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-user-shield me-1"></i> Leads
+                </div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var lead in Model.Leads)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @lead.DisplayName
+                            @if (lead.Role == CampLeadRole.Primary)
+                            {
+                                <span class="badge bg-primary">Primary</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Co-Lead</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @* Actions *@
+        @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-gear me-1"></i> Actions
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <a asp-action="Edit" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit @Localizer["Camp_Singular"]
+                    </a>
+                    @if (Model.CurrentSeason != null)
+                    {
+                        var s = Model.CurrentSeason;
+                        @if (Model.IsCurrentUserLead && (s.Status == CampSeasonStatus.Pending || s.Status == CampSeasonStatus.Active))
+                        {
+                            <form asp-controller="Camp" asp-action="Withdraw" asp-route-slug="@Model.Slug" asp-route-seasonId="@s.Id" method="post"
+                                  onsubmit="return confirm('Are you sure you want to withdraw from this season?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-warning w-100">
+                                    <i class="fa-solid fa-right-from-bracket me-1"></i> Withdraw Season
+                                </button>
+                            </form>
+                        }
+                        @if (Model.IsCurrentUserCampAdmin && (s.Status == CampSeasonStatus.Withdrawn || s.Status == CampSeasonStatus.Full))
+                        {
+                            <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@s.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="returnSlug" value="@Model.Slug" />
+                                <button type="submit" class="btn btn-outline-success w-100">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Reactivate Season
+                                </button>
+                            </form>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>

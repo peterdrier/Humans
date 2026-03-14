@@ -22,6 +22,12 @@
 | TeamRoleDefinition | Named role slots on a team (name, description, slot count, priorities) |
 | TeamRoleAssignment | Assigns a team member to a specific slot in a role definition |
 | AuditLogEntry | **APPEND-ONLY** system audit trail (user actions, sync ops) |
+| Camp | Camp core entity (contact, slug, flags) |
+| CampSeason | Per-year season data (name, blurbs, community info, placement) |
+| CampLead | Lead assignments with Primary/CoLead roles |
+| CampImage | Image metadata (files stored on disk) |
+| CampHistoricalName | Name history for tracking renames |
+| CampSettings | Singleton settings (public year, open seasons) |
 
 ## Relationships
 
@@ -55,6 +61,14 @@ TeamJoinRequest 1──n TeamJoinRequestStateHistory
 
 AuditLogEntry n──1 User (ActorUser, optional)
 AuditLogEntry n──1 GoogleResource (optional)
+
+Camp 1──n CampSeason
+Camp 1──n CampLead
+Camp 1──n CampImage
+Camp 1──n CampHistoricalName
+Camp n──1 User (CreatedByUser)
+CampLead n──1 User
+CampSeason n──1 User (ReviewedByUser, optional)
 ```
 
 ## Profile Entity
@@ -255,6 +269,24 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 - On expiry without renewal: user reverts to Volunteer tier, removed from Colaboradors/Asociados team
 - Renewal: new Application entity (same tier), goes through normal Board voting
 - Reminder: `TermRenewalReminderJob` sends reminders 90 days before expiry
+
+## Camp Enums
+
+| Enum | Values |
+|------|--------|
+| CampSeasonStatus | Pending, Active, Full, Rejected, Withdrawn |
+| CampLeadRole | Primary, CoLead |
+| CampVibe | Adult, ChillOut, ElectronicMusic, Games, Queer, Sober, Lecture, LiveMusic, Wellness, Workshop |
+| CampNameSource | Manual, NameChange |
+| YesNoMaybe | Yes, No, Maybe |
+| KidsVisitingPolicy | Yes, DaytimeOnly, No |
+| PerformanceSpaceStatus | Yes, No, WorkingOnIt |
+| AdultPlayspacePolicy | Yes, No, NightOnly |
+| SpaceSize | Sqm150, Sqm300, Sqm450, Sqm600, Sqm750, Sqm900, Sqm1200, Sqm1500, Sqm2000, Sqm2400, Sqm2800 |
+| SoundZone | Blue, Green, Yellow, Orange, Red, Surprise |
+| ElectricalGrid | Yellow, Red, Norg, OwnSupply, Unknown |
+
+All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb array.
 
 ## Serialization Notes
 

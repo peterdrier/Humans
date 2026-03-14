@@ -37,6 +37,9 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">@Localizer["Nav_Home"]</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a>
+                        </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             var isActiveMember = User.HasClaim("ActiveMember", "true") || User.IsInRole("Admin") || User.IsInRole("Board") || User.IsInRole("TeamsAdmin");

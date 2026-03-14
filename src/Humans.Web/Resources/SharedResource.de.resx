@@ -1124,5 +1124,11 @@
   <data name="Search_NoResults" xml:space="preserve"><value>Keine Humans gefunden, die deiner Suche entsprechen.</value></data>
   <data name="Search_MatchedIn" xml:space="preserve"><value>Treffer in</value></data>
   <data name="Search_MinChars" xml:space="preserve"><value>Gib mindestens 2 Zeichen ein, um zu suchen.</value></data>
+  <data name="Camp_Singular" xml:space="preserve"><value>Barrio</value></data>
+  <data name="Camp_Plural" xml:space="preserve"><value>Barrios</value></data>
+  <data name="Camp_AdminTitle" xml:space="preserve"><value>Barrios Admin</value></data>
+  <data name="Camp_SwissCampLabel" xml:space="preserve"><value>Wurde dieses Camp jemals "Swiss Camp" genannt?</value></data>
+  <data name="Camp_InfoTitle" xml:space="preserve"><value>Barrio-Info</value></data>
+  <data name="Camp_NameLabel" xml:space="preserve"><value>Barrio-Name</value></data>
 
 </root>

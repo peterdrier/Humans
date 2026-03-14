@@ -1405,20 +1405,7 @@ public partial class TeamService : ITeamService
     [GeneratedRegex(@"^[\p{L}\p{N} \-]+$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex RoleNameRegex();
 
-    private static string GenerateSlug(string name)
-    {
-        var slug = name.ToLowerInvariant();
-        slug = SlugRegex().Replace(slug, "-");
-        slug = MultipleHyphensRegex().Replace(slug, "-");
-        slug = slug.Trim('-');
-        return slug;
-    }
-
-    [GeneratedRegex(@"[^a-z0-9\-]", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex SlugRegex();
-
-    [GeneratedRegex(@"-+", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
-    private static partial Regex MultipleHyphensRegex();
+    private static string GenerateSlug(string name) => Helpers.SlugHelper.GenerateSlug(name);
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
         IEnumerable<Guid> teamIds,

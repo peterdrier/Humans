@@ -1,0 +1,63 @@
+@model Humans.Web.Models.CampCardViewModel
+
+<div class="col">
+    <div class="card h-100">
+        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+        {
+            <img src="@Model.ImageUrl" class="card-img-top" alt="@Model.Name"
+                 style="height: 200px; object-fit: cover;" />
+        }
+        <div class="card-body">
+            <h5 class="card-title">
+                <a asp-action="Details" asp-route-slug="@Model.Slug" class="text-decoration-none">
+                    @Model.Name
+                </a>
+            </h5>
+            @if (!string.IsNullOrEmpty(Model.BlurbShort))
+            {
+                <p class="card-text text-muted small">
+                    @(Model.BlurbShort.Length > 150 ? string.Concat(Model.BlurbShort.AsSpan(0, 150), "...") : Model.BlurbShort)
+                </p>
+            }
+            <div class="d-flex flex-wrap gap-1 mb-2">
+                @foreach (var vibe in Model.Vibes)
+                {
+                    <span class="badge bg-secondary">@vibe</span>
+                }
+                @if (Model.SoundZone.HasValue)
+                {
+                    <span class="badge bg-info">
+                        <i class="fa-solid fa-volume-high me-1"></i>@Model.SoundZone
+                    </span>
+                }
+            </div>
+            <div class="d-flex flex-wrap gap-1">
+                @if (Model.AcceptingMembers == YesNoMaybe.Yes)
+                {
+                    <span class="badge bg-success">Accepting Members</span>
+                }
+                @if (Model.KidsWelcome == YesNoMaybe.Yes)
+                {
+                    <span class="badge bg-primary">
+                        <i class="fa-solid fa-children me-1"></i>Kids Welcome
+                    </span>
+                }
+                @if (Model.Status == CampSeasonStatus.Full)
+                {
+                    <span class="badge bg-warning text-dark">Full</span>
+                }
+            </div>
+        </div>
+        <div class="card-footer bg-transparent">
+            <a asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-primary">
+                View Details
+            </a>
+            @if (Model.TimesAtNowhere > 0)
+            {
+                <small class="text-muted float-end mt-1">
+                    <i class="fa-solid fa-fire me-1"></i>@Model.TimesAtNowhere year@(Model.TimesAtNowhere != 1 ? "s" : "")
+                </small>
+            }
+        </div>
+    </div>
+</div>

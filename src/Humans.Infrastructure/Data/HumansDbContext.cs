@@ -40,6 +40,12 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<BoardVote> BoardVotes => Set<BoardVote>();
     public DbSet<SyncServiceSettings> SyncServiceSettings => Set<SyncServiceSettings>();
+    public DbSet<Camp> Camps => Set<Camp>();
+    public DbSet<CampSeason> CampSeasons => Set<CampSeason>();
+    public DbSet<CampLead> CampLeads => Set<CampLead>();
+    public DbSet<CampHistoricalName> CampHistoricalNames => Set<CampHistoricalName>();
+    public DbSet<CampImage> CampImages => Set<CampImage>();
+    public DbSet<CampSettings> CampSettings => Set<CampSettings>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

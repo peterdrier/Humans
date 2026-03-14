@@ -24,6 +24,9 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Human",       // Public profile viewing
         "Language",         // Language switching
         "OnboardingReview", // Has its own coordinator/Board role gate
+        "Camp",             // Public camps pages ([AllowAnonymous])
+        "CampAdmin",        // Has its own Roles = "CampAdmin,Admin" gate
+        "CampApi",          // Public API ([AllowAnonymous])
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -38,7 +41,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
 
         // Admin/Board/Coordinator bypass — they always have access
         if (user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board) ||
-            user.IsInRole(RoleNames.TeamsAdmin) ||
+            user.IsInRole(RoleNames.TeamsAdmin) || user.IsInRole(RoleNames.CampAdmin) ||
             user.IsInRole(RoleNames.ConsentCoordinator) || user.IsInRole(RoleNames.VolunteerCoordinator))
         {
             return next();

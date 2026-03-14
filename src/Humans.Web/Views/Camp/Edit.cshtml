@@ -1,0 +1,368 @@
+@model Humans.Web.Models.CampEditViewModel
+@{
+    ViewData["Title"] = $"Edit {Model.Name}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.Slug">@Model.Name</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Edit</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">Edit @Model.Name <small class="text-muted">(@Model.Year)</small></h1>
+
+<vc:temp-data-alerts />
+
+<div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+<div class="row">
+    <div class="col-md-8">
+        <form asp-action="Edit" asp-route-slug="@Model.Slug" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="CampId" />
+            <input type="hidden" asp-for="SeasonId" />
+            <input type="hidden" asp-for="Slug" />
+            <input type="hidden" asp-for="Year" />
+
+            @* Camp Info *@
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-campground me-1"></i> @Localizer["Camp_InfoTitle"]</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="Name" class="form-label">@Localizer["Camp_NameLabel"]</label>
+                            @if (Model.IsNameLocked)
+                            {
+                                <input asp-for="Name" class="form-control" readonly />
+                                <div class="form-text text-warning">
+                                    <i class="fa-solid fa-lock me-1"></i> Name is locked for this season.
+                                </div>
+                            }
+                            else
+                            {
+                                <input asp-for="Name" class="form-control" required />
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactEmail" class="form-label">Contact Email</label>
+                            <input asp-for="ContactEmail" class="form-control" type="email" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactPhone" class="form-label">Contact Phone</label>
+                            <input asp-for="ContactPhone" class="form-control" type="tel" pattern="\+[\d\s\-()]{6,20}" placeholder="+34 612 345 678" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactMethod" class="form-label">Preferred Contact Method</label>
+                            <input asp-for="ContactMethod" class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="WebOrSocialUrl" class="form-label">Website or Social Media</label>
+                            <input asp-for="WebOrSocialUrl" class="form-control" type="url" placeholder="https://" />
+                        </div>
+                        <div class="col-md-3">
+                            <label asp-for="TimesAtNowhere" class="form-label">Times at Nowhere</label>
+                            <input asp-for="TimesAtNowhere" class="form-control" type="number" min="0" />
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input asp-for="IsSwissCamp" class="form-check-input" />
+                                <label asp-for="IsSwissCamp" class="form-check-label">@Localizer["Camp_SwissCampLabel"]</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* About Your Camp *@
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-pen-fancy me-1"></i> About Your @Localizer["Camp_Singular"]</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label asp-for="BlurbShort" class="form-label">Short Description</label>
+                            <textarea asp-for="BlurbShort" class="form-control" rows="2" maxlength="300" required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="BlurbLong" class="form-label">Full Description</label>
+                            <textarea asp-for="BlurbLong" class="form-control" rows="6" required></textarea>
+                            <div class="form-text">Markdown formatting is supported.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Languages" class="form-label">Languages Spoken</label>
+                            <input asp-for="Languages" class="form-control" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Community *@
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-users me-1"></i> Community</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="AcceptingMembers" class="form-label">Accepting New Members?</label>
+                            <select asp-for="AcceptingMembers" class="form-select"
+                                    asp-items="@(new SelectList(Enum.GetValues<YesNoMaybe>()))"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="KidsWelcome" class="form-label">Kids Welcome?</label>
+                            <select asp-for="KidsWelcome" class="form-select"
+                                    asp-items="@(new SelectList(Enum.GetValues<YesNoMaybe>()))"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="KidsVisiting" class="form-label">Kids Visiting Policy</label>
+                            <select asp-for="KidsVisiting" class="form-select"
+                                    asp-items="@(new SelectList(Enum.GetValues<KidsVisitingPolicy>()))"></select>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="KidsAreaDescription" class="form-label">Kids Area Description</label>
+                            <textarea asp-for="KidsAreaDescription" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="AdultPlayspace" class="form-label">Adult Playspace</label>
+                            <select asp-for="AdultPlayspace" class="form-select"
+                                    asp-items="@(new SelectList(Enum.GetValues<AdultPlayspacePolicy>()))"></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="MemberCount" class="form-label">Expected Members</label>
+                            <input asp-for="MemberCount" class="form-control" type="number" min="1" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Culture & Events *@
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-masks-theater me-1"></i> Culture & Events</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="HasPerformanceSpace" class="form-label">Performance Space</label>
+                            <select asp-for="HasPerformanceSpace" class="form-select"
+                                    asp-items="@(new SelectList(Enum.GetValues<PerformanceSpaceStatus>()))"></select>
+                        </div>
+                        <div class="col-md-8">
+                            <label asp-for="PerformanceTypes" class="form-label">Performance Types</label>
+                            <input asp-for="PerformanceTypes" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Vibes</label>
+                            <div class="d-flex flex-wrap gap-3">
+                                @foreach (var vibe in Enum.GetValues<CampVibe>())
+                                {
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox"
+                                               name="Vibes" value="@vibe"
+                                               id="vibe-@vibe"
+                                               checked="@(Model.Vibes.Contains(vibe) ? "checked" : null)" />
+                                        <label class="form-check-label" for="vibe-@vibe">@vibe</label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Placement *@
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-map-location-dot me-1"></i> Placement</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label asp-for="SoundZone" class="form-label">Sound Zone Preference</label>
+                            <select asp-for="SoundZone" class="form-select"
+                                    asp-items="@(new SelectList(Enum.GetValues<SoundZone>()))">
+                                <option value="">No Preference</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="SpaceRequirement" class="form-label">Space Requirement</label>
+                            <select asp-for="SpaceRequirement" class="form-select"
+                                    asp-items="@(new SelectList(Enum.GetValues<SpaceSize>()))">
+                                <option value="">Not Sure</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="ElectricalGrid" class="form-label">Electrical Grid</label>
+                            <select asp-for="ElectricalGrid" class="form-select"
+                                    asp-items="@(new SelectList(Enum.GetValues<ElectricalGrid>()))">
+                                <option value="">Unknown</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label asp-for="ContainerCount" class="form-label">Number of Containers</label>
+                            <input asp-for="ContainerCount" class="form-control" type="number" min="0" />
+                        </div>
+                        <div class="col-md-8">
+                            <label asp-for="ContainerNotes" class="form-label">Container Notes</label>
+                            <input asp-for="ContainerNotes" class="form-control" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between mb-4">
+                <a asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="col-md-4">
+        @* Lead Management *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-user-shield me-1"></i> Leads
+            </div>
+            <ul class="list-group list-group-flush">
+                @foreach (var lead in Model.Leads)
+                {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            @lead.DisplayName
+                            @if (lead.Role == CampLeadRole.Primary)
+                            {
+                                <span class="badge bg-primary ms-1">Primary</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary ms-1">Co-Lead</span>
+                            }
+                        </div>
+                        @if (lead.Role == CampLeadRole.CoLead)
+                        {
+                            <form asp-action="RemoveLead" asp-route-slug="@Model.Slug" asp-route-leadId="@lead.LeadId" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove lead">
+                                    <i class="fa-solid fa-user-minus"></i>
+                                </button>
+                            </form>
+                        }
+                    </li>
+                }
+            </ul>
+            <div class="card-body">
+                <form asp-action="AddLead" asp-route-slug="@Model.Slug" method="post" class="input-group">
+                    @Html.AntiForgeryToken()
+                    <input type="text" name="userId" class="form-control" placeholder="User ID (GUID)" required />
+                    <button type="submit" class="btn btn-outline-success" title="Add co-lead">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </button>
+                </form>
+                <div class="form-text">Enter the user ID of the new co-lead.</div>
+            </div>
+        </div>
+
+        @* Transfer Primary *@
+        @if (Model.Leads.Count > 1)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-right-left me-1"></i> Transfer Primary Lead
+                </div>
+                <div class="card-body">
+                    <form asp-action="TransferPrimary" asp-route-slug="@Model.Slug" method="post">
+                        @Html.AntiForgeryToken()
+                        <select name="newPrimaryUserId" class="form-select mb-2" required>
+                            <option value="">Select new primary lead</option>
+                            @foreach (var lead in Model.Leads.Where(l => l.Role == CampLeadRole.CoLead))
+                            {
+                                <option value="@lead.UserId">@lead.DisplayName</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="fa-solid fa-right-left me-1"></i> Transfer
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+
+        @* Image Management *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-images me-1"></i> Images (@Model.Images.Count/5)
+            </div>
+            @if (Model.Images.Count > 0)
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var image in Model.Images.OrderBy(i => i.SortOrder))
+                    {
+                        <li class="list-group-item">
+                            <div class="d-flex align-items-center gap-2">
+                                <img src="@image.Url" alt="Camp image" class="rounded"
+                                     style="width: 60px; height: 60px; object-fit: cover;" />
+                                <span class="text-muted small">#@(image.SortOrder + 1)</span>
+                                <div class="ms-auto d-flex gap-1">
+                                    <form asp-action="ReorderImages" asp-route-slug="@Model.Slug" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        @{
+                                            var moveUpIds = Model.Images.OrderBy(i => i.SortOrder).Select(i => i.Id).ToList();
+                                            var currentIdx = moveUpIds.IndexOf(image.Id);
+                                            if (currentIdx > 0)
+                                            {
+                                                // Swap with previous
+                                                (moveUpIds[currentIdx], moveUpIds[currentIdx - 1]) = (moveUpIds[currentIdx - 1], moveUpIds[currentIdx]);
+                                            }
+                                        }
+                                        @foreach (var id in moveUpIds)
+                                        {
+                                            <input type="hidden" name="imageIds" value="@id" />
+                                        }
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move up" @(currentIdx == 0 ? "disabled" : "")>
+                                            <i class="fa-solid fa-arrow-up"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="ReorderImages" asp-route-slug="@Model.Slug" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        @{
+                                            var moveDownIds = Model.Images.OrderBy(i => i.SortOrder).Select(i => i.Id).ToList();
+                                            var downIdx = moveDownIds.IndexOf(image.Id);
+                                            if (downIdx < moveDownIds.Count - 1)
+                                            {
+                                                (moveDownIds[downIdx], moveDownIds[downIdx + 1]) = (moveDownIds[downIdx + 1], moveDownIds[downIdx]);
+                                            }
+                                        }
+                                        @foreach (var id in moveDownIds)
+                                        {
+                                            <input type="hidden" name="imageIds" value="@id" />
+                                        }
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move down" @(downIdx == Model.Images.Count - 1 ? "disabled" : "")>
+                                            <i class="fa-solid fa-arrow-down"></i>
+                                        </button>
+                                    </form>
+                                    <form asp-action="DeleteImage" asp-route-slug="@Model.Slug" asp-route-imageId="@image.Id"
+                                          method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete image">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+            @if (Model.Images.Count < 5)
+            {
+                <div class="card-body">
+                    <form asp-action="UploadImage" asp-route-slug="@Model.Slug" method="post" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <input type="file" name="file" class="form-control mb-2" accept="image/jpeg,image/png,image/webp" required />
+                        <div class="form-text mb-2">JPEG, PNG, or WebP. Max 10MB.</div>
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="fa-solid fa-upload me-1"></i> Upload Image
+                        </button>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>

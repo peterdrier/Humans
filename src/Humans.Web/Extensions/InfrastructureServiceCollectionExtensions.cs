@@ -23,6 +23,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IHumansMetrics>(sp => sp.GetRequiredService<HumansMetricsService>());
 
         services.AddScoped<ITeamService, TeamService>();
+        services.AddScoped<ICampService, CampService>();
         services.AddScoped<IContactFieldService, ContactFieldService>();
         services.AddScoped<IUserEmailService, UserEmailService>();
         services.AddScoped<VolunteerHistoryService>();

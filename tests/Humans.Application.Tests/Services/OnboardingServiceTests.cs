@@ -897,6 +897,17 @@ public class OnboardingServiceTests : IDisposable
         ConsentCheckStatus? consentCheckStatus = null,
         Instant? rejectedAt = null)
     {
+        if (!await _dbContext.Users.AnyAsync(u => u.Id == userId))
+        {
+            _dbContext.Users.Add(new User
+            {
+                Id = userId,
+                DisplayName = "Test User",
+                UserName = $"test-{userId}@test.com",
+                Email = $"test-{userId}@test.com",
+                PreferredLanguage = "en"
+            });
+        }
         _dbContext.Profiles.Add(new Profile
         {
             Id = Guid.NewGuid(),

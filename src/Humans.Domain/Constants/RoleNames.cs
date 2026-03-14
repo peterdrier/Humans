@@ -32,4 +32,10 @@ public static class RoleNames
     /// and configure Google Group prefixes system-wide.
     /// </summary>
     public const string TeamsAdmin = "TeamsAdmin";
+
+    /// <summary>
+    /// Camp Administrator — can manage camps, approve/reject season registrations,
+    /// and configure camp settings system-wide.
+    /// </summary>
+    public const string CampAdmin = "CampAdmin";
 }
