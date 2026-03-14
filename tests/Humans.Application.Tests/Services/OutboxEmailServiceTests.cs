@@ -162,7 +162,7 @@ public class OutboxEmailServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SendEmailVerificationAsync_DoesNotEnqueueJobForNonTimeSensitiveEmails()
+    public async Task SendWelcomeEmailAsync_DoesNotEnqueueHangfireJob()
     {
         _renderer.RenderWelcome("Alice", "en")
             .Returns(new EmailContent("Welcome!", "<p>Hello</p>"));
