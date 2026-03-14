@@ -146,6 +146,44 @@ public class CampAdminController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("Deactivate/{seasonId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Deactivate(Guid seasonId, string? returnSlug)
+    {
+        try
+        {
+            await _campService.DeactivateSeasonAsync(seasonId);
+            TempData["SuccessMessage"] = "Season deactivated.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        if (!string.IsNullOrEmpty(returnSlug))
+            return RedirectToAction("Details", "Camp", new { slug = returnSlug });
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("Reactivate/{seasonId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Reactivate(Guid seasonId, string? returnSlug)
+    {
+        try
+        {
+            await _campService.ReactivateSeasonAsync(seasonId);
+            TempData["SuccessMessage"] = "Season reactivated.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        if (!string.IsNullOrEmpty(returnSlug))
+            return RedirectToAction("Details", "Camp", new { slug = returnSlug });
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpPost("Delete")]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = RoleNames.Admin)]

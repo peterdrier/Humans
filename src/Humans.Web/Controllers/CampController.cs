@@ -463,6 +463,34 @@ public class CampController : Controller
         return RedirectToAction(nameof(Edit), new { slug, year });
     }
 
+    [Authorize]
+    [HttpPost("{slug}/Withdraw/{seasonId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Withdraw(string slug, Guid seasonId)
+    {
+        var camp = await _campService.GetCampBySlugAsync(slug);
+        if (camp is null) return NotFound();
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
+        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        if (!isLead && !isCampAdmin) return Forbid();
+
+        try
+        {
+            await _campService.WithdrawSeasonAsync(seasonId);
+            TempData["SuccessMessage"] = "Season withdrawn.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { slug });
+    }
+
     // ======================================================================
     // Lead management
     // ======================================================================

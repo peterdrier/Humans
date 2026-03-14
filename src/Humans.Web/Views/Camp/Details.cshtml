@@ -292,10 +292,48 @@
                 <div class="card-header">
                     <i class="fa-solid fa-gear me-1"></i> Actions
                 </div>
-                <div class="card-body">
-                    <a asp-action="Edit" asp-route-slug="@Model.Slug" class="btn btn-outline-primary w-100">
+                <div class="card-body d-grid gap-2">
+                    <a asp-action="Edit" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
                         <i class="fa-solid fa-pen-to-square me-1"></i> Edit @Localizer["Camp_Singular"]
                     </a>
+                    @if (Model.CurrentSeason != null)
+                    {
+                        var s = Model.CurrentSeason;
+                        @if (Model.IsCurrentUserLead && (s.Status == CampSeasonStatus.Pending || s.Status == CampSeasonStatus.Active))
+                        {
+                            <form asp-controller="Camp" asp-action="Withdraw" asp-route-slug="@Model.Slug" asp-route-seasonId="@s.Id" method="post"
+                                  onsubmit="return confirm('Are you sure you want to withdraw from this season?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-warning w-100">
+                                    <i class="fa-solid fa-right-from-bracket me-1"></i> Withdraw Season
+                                </button>
+                            </form>
+                        }
+                        @if (Model.IsCurrentUserCampAdmin)
+                        {
+                            @if (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)
+                            {
+                                <form asp-controller="CampAdmin" asp-action="Deactivate" asp-route-seasonId="@s.Id" method="post"
+                                      onsubmit="return confirm('Deactivate this season?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="returnSlug" value="@Model.Slug" />
+                                    <button type="submit" class="btn btn-outline-danger w-100">
+                                        <i class="fa-solid fa-ban me-1"></i> Deactivate Season
+                                    </button>
+                                </form>
+                            }
+                            @if (s.Status == CampSeasonStatus.Inactive || s.Status == CampSeasonStatus.Full)
+                            {
+                                <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@s.Id" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="returnSlug" value="@Model.Slug" />
+                                    <button type="submit" class="btn btn-outline-success w-100">
+                                        <i class="fa-solid fa-rotate-left me-1"></i> Reactivate Season
+                                    </button>
+                                </form>
+                            }
+                        }
+                    }
                 </div>
             </div>
         }

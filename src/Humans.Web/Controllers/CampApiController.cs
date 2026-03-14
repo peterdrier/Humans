@@ -7,6 +7,7 @@ namespace Humans.Web.Controllers;
 
 [AllowAnonymous]
 [ApiController]
+[Route("api/barrios")]
 [Route("api/camps")]
 public class CampApiController : ControllerBase
 {
