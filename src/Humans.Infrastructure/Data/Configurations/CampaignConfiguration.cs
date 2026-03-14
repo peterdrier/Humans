@@ -15,6 +15,7 @@ public class CampaignConfiguration : IEntityTypeConfiguration<Campaign>
         builder.Property(c => c.Description).HasMaxLength(2000);
         builder.Property(c => c.EmailSubject).HasMaxLength(1000).IsRequired();
         builder.Property(c => c.EmailBodyTemplate).IsRequired();
+        builder.Property(c => c.ReplyToAddress).HasMaxLength(320);
         builder.Property(c => c.Status)
             .HasConversion<string>()
             .HasMaxLength(20)

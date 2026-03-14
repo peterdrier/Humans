@@ -45,7 +45,7 @@ public class CampaignController : Controller
 
     [HttpPost("Create")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(string title, string? description, string emailSubject, string emailBodyTemplate)
+    public async Task<IActionResult> Create(string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
         if (string.IsNullOrWhiteSpace(title))
             ModelState.AddModelError(nameof(title), "Title is required.");
@@ -60,13 +60,14 @@ public class CampaignController : Controller
             ViewBag.Description = description;
             ViewBag.EmailSubject = emailSubject;
             ViewBag.EmailBodyTemplate = emailBodyTemplate;
+            ViewBag.ReplyToAddress = replyToAddress;
             return View();
         }
 
         var currentUser = await _userManager.GetUserAsync(User);
         if (currentUser == null) return Unauthorized();
 
-        var campaign = await _campaignService.CreateAsync(title, description, emailSubject, emailBodyTemplate, currentUser.Id);
+        var campaign = await _campaignService.CreateAsync(title, description, emailSubject, emailBodyTemplate, replyToAddress, currentUser.Id);
         TempData["SuccessMessage"] = "Campaign created.";
         return RedirectToAction(nameof(Detail), new { id = campaign.Id });
     }
@@ -81,7 +82,7 @@ public class CampaignController : Controller
 
     [HttpPost("Edit/{id:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(Guid id, string title, string? description, string emailSubject, string emailBodyTemplate)
+    public async Task<IActionResult> Edit(Guid id, string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
         if (string.IsNullOrWhiteSpace(title))
             ModelState.AddModelError(nameof(title), "Title is required.");
@@ -100,6 +101,7 @@ public class CampaignController : Controller
         campaign.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
         campaign.EmailSubject = emailSubject.Trim();
         campaign.EmailBodyTemplate = emailBodyTemplate.Trim();
+        campaign.ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim();
 
         await _dbContext.SaveChangesAsync();
 

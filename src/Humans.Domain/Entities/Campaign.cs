@@ -10,6 +10,7 @@ public class Campaign
     public string? Description { get; set; }
     public string EmailSubject { get; set; } = string.Empty;
     public string EmailBodyTemplate { get; set; } = string.Empty;
+    public string? ReplyToAddress { get; set; }
     public CampaignStatus Status { get; set; }
     public Instant CreatedAt { get; set; }
     public Guid CreatedByUserId { get; set; }

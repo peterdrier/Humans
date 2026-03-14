@@ -73,7 +73,7 @@ public class CampaignServiceTests : IDisposable
         var result = await _service.CreateAsync(
             "Test Campaign", "A description",
             "Your code: {{Code}}", "<p>Hi {{Name}}, your code is {{Code}}</p>",
-            userId);
+            null, userId);
 
         result.Title.Should().Be("Test Campaign");
         result.Description.Should().Be("A description");

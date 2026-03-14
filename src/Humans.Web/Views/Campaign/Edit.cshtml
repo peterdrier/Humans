@@ -32,7 +32,13 @@
             <div class="mb-3">
                 <label for="emailBodyTemplate" class="form-label">Email Body Template</label>
                 <textarea class="form-control font-monospace" id="emailBodyTemplate" name="emailBodyTemplate" rows="10" required>@Model.EmailBodyTemplate</textarea>
-                <small class="form-text text-muted">Use <code>{{Code}}</code> for the code and <code>{{Name}}</code> for the human's name.</small>
+                <small class="form-text text-muted">Markdown supported. Use <code>{{Code}}</code> for the code and <code>{{Name}}</code> for the human's name.</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="replyToAddress" class="form-label">Reply-To Address <span class="text-muted">(optional)</span></label>
+                <input type="email" class="form-control" id="replyToAddress" name="replyToAddress" value="@Model.ReplyToAddress" placeholder="e.g. tickets@nobodies.team">
+                <small class="form-text text-muted">Recipients who reply to the campaign email will reach this address.</small>
             </div>
 
             <div class="d-flex gap-2">

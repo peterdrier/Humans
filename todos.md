@@ -9,6 +9,9 @@ Last synced: 2026-03-10T09:00
 
 ### Priority 2: Small-Medium Enhancements
 
+#### #112: Add preferred language distribution chart to board dashboard
+Pie/donut chart on the board dashboard showing the count/percentage of humans by PreferredLanguage.
+
 #### #77: Reasons why an Asociado is accepted (or applying)
 Board members voting on Asociado applications should be required to select which bylaw criteria the applicant meets. Optionally, the applicant could also state their reasons when applying.
 

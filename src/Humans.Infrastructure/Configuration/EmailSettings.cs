@@ -38,7 +38,7 @@ public class EmailSettings
     /// <summary>
     /// From email address.
     /// </summary>
-    public string FromAddress { get; set; } = "noreply@nobodies.team";
+    public string FromAddress { get; set; } = "humans@nobodies.team";
 
     /// <summary>
     /// From display name.

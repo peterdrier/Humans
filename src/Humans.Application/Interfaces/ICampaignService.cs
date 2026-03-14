@@ -12,8 +12,8 @@ public record WaveSendPreview(
 public interface ICampaignService
 {
     Task<Campaign> CreateAsync(string title, string? description,
-        string emailSubject, string emailBodyTemplate, Guid createdByUserId,
-        CancellationToken ct = default);
+        string emailSubject, string emailBodyTemplate, string? replyToAddress,
+        Guid createdByUserId, CancellationToken ct = default);
     Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<List<Campaign>> GetAllAsync(CancellationToken ct = default);
     Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default);

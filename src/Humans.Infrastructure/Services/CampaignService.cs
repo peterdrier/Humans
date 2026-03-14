@@ -44,8 +44,8 @@ public class CampaignService : ICampaignService
     }
 
     public async Task<Campaign> CreateAsync(string title, string? description,
-        string emailSubject, string emailBodyTemplate, Guid createdByUserId,
-        CancellationToken ct = default)
+        string emailSubject, string emailBodyTemplate, string? replyToAddress,
+        Guid createdByUserId, CancellationToken ct = default)
     {
         var campaign = new Campaign
         {
@@ -54,6 +54,7 @@ public class CampaignService : ICampaignService
             Description = description,
             EmailSubject = emailSubject,
             EmailBodyTemplate = emailBodyTemplate,
+            ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim(),
             Status = CampaignStatus.Draft,
             CreatedAt = _clock.GetCurrentInstant(),
             CreatedByUserId = createdByUserId
@@ -419,6 +420,7 @@ public class CampaignService : ICampaignService
             TemplateName = "campaign_code",
             UserId = user.Id,
             CampaignGrantId = grantId,
+            ReplyTo = campaign.ReplyToAddress,
             ExtraHeaders = extraHeaders,
             Status = EmailOutboxStatus.Queued,
             CreatedAt = now
