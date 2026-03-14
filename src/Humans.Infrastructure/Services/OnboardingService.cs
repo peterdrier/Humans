@@ -146,6 +146,7 @@ public class OnboardingService : IOnboardingService
         Guid userId, Guid reviewerId, string reviewerDisplayName, string? notes, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
+            .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
         if (profile == null)
