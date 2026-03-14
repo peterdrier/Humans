@@ -47,6 +47,9 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<CampImage> CampImages => Set<CampImage>();
     public DbSet<CampSettings> CampSettings => Set<CampSettings>();
     public DbSet<EmailOutboxMessage> EmailOutboxMessages { get; set; } = null!;
+    public DbSet<Campaign> Campaigns { get; set; } = null!;
+    public DbSet<CampaignCode> CampaignCodes { get; set; } = null!;
+    public DbSet<CampaignGrant> CampaignGrants { get; set; } = null!;
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     protected override void OnModelCreating(ModelBuilder builder)
