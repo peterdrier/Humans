@@ -8,7 +8,7 @@ The system centers on a **placement phase** concept: CampAdmin opens and closes 
 
 ## Scope
 
-**This spec (Phase 2 of Camps/Barrios):**
+**This spec:**
 - Interactive satellite map centered on the festival site
 - Polygon drawing/editing for each barrio's camp footprint
 - Live area display in square metres
@@ -22,14 +22,6 @@ The system centers on a **placement phase** concept: CampAdmin opens and closes 
 - Server-side enforcement of the limit zone (currently visual only)
 - Conflict detection between overlapping barrio polygons
 - Export of the full site map as an image
-
-**Prerequisites:** Phase 1 Camp entities must exist before this feature is implemented:
-- `Camp` entity with `Id` (Guid), `Slug` (string)
-- `CampSeason` entity with `CampId`, `Year`, `Name`, `Status` (CampSeasonStatus)
-- `CampLead` entity with `CampId`, `UserId`, `LeftAt` (Instant?) — soft-deleted leads
-- `CampSettings` entity with `PublicYear` (int)
-- `RoleNames.CampAdmin = "CampAdmin"` constant
-- `HumansDbContext` with DbSets: `Camps`, `CampSeasons`, `CampLeads`, `CampSettings`
 
 ## Data Model
 
