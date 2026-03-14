@@ -134,24 +134,35 @@ Closed
 ```
 
 When placement is open:
-- Camp leads see an "Edit" button on the map
-- City planning team members can edit any polygon
-- CampAdmin can always edit
+- Camp leads whose barrio **has no polygon yet** see an **"Add my barrio on the map"** button. Clicking it enters draw mode locked to their camp season.
+- Camp leads whose barrio **already has a polygon** see no button — instead their polygon is highlighted in a distinct colour. Clicking it enters edit mode.
+- CampAdmin and city planning team see **"Add a barrio on the map"** followed by a dropdown of all camp seasons that do not yet have a polygon. Selecting one enters draw mode for that season.
+- CampAdmin and city planning team can click any existing polygon to edit it.
 
 When placement is closed:
-- Map is read-only for camp leads and regular volunteers
-- CampAdmin and city planning team members retain edit access
-- A banner indicates placement is closed
+- No add/edit controls for camp leads and volunteers — map is read-only.
+- Camp leads still see their own polygon highlighted, but clicking it does not enter edit mode.
+- CampAdmin and city planning team retain full edit access regardless.
+- A banner indicates placement is closed.
 
-### Polygon Save Workflow
+### Polygon Add Workflow (first time)
 
-1. User draws or edits a polygon using maplibre-gl-draw
-2. Turf.js calculates area in m² in real time (shown during editing)
-3. User clicks "Save"
-4. Client sends PUT `/api/camp-map/polygons/{campSeasonId}` with GeoJSON + area
-5. Server checks edit permission, updates `CampPolygon`, appends to `CampPolygonHistory`
-6. Server broadcasts polygon update via SignalR to all connected clients
-7. All connected users' maps update to show the new polygon
+1. Lead clicks "Add my barrio on the map" (or admin selects a barrio from the dropdown)
+2. Draw mode activates — user draws a polygon on the map
+3. Turf.js calculates and displays area in m² in real time while drawing
+4. User clicks "Save"
+5. Client sends PUT `/api/camp-map/polygons/{campSeasonId}` with GeoJSON + area
+6. Server checks edit permission, creates `CampPolygon`, appends first `CampPolygonHistory` entry
+7. Server broadcasts polygon to all connected clients — polygon appears on everyone's map
+8. The "Add" button disappears for that lead; their polygon is now shown highlighted
+
+### Polygon Edit Workflow (subsequent edits)
+
+1. Lead clicks their highlighted polygon (or admin clicks any polygon)
+2. Edit mode activates — existing polygon becomes editable via maplibre-gl-draw
+3. Turf.js updates area display in real time as the shape changes
+4. User clicks "Save"
+5. Same as steps 5–7 above — polygon updated in place, history entry appended, broadcast sent
 
 ### Polygon History & Restore
 
@@ -192,7 +203,7 @@ When placement is closed:
 
 | Method | Route | Auth | Purpose |
 |--------|-------|------|---------|
-| GET | `/api/camp-map/state` | Authenticated | Current settings + all polygons for the active year |
+| GET | `/api/camp-map/state` | Authenticated | Current settings + all polygons for the active year + list of camp seasons without a polygon |
 | GET | `/api/camp-map/polygons/{campSeasonId}/history` | Authenticated | Polygon history for one camp season |
 | PUT | `/api/camp-map/polygons/{campSeasonId}` | Authenticated | Save/update polygon for a camp season |
 | POST | `/api/camp-map/polygons/{campSeasonId}/restore/{historyId}` | Authenticated | Restore a historical version |
@@ -247,6 +258,7 @@ All loaded from CDN. Added to `About.cshtml` with version and license:
 
 ```
 GetPolygonsAsync(year)                    → all CampPolygon records for CampSeasons in the given year
+GetCampSeasonsWithoutPolygonAsync(year)   → list of CampSeason (id, name, slug) that have no CampPolygon yet
 GetPolygonHistoryAsync(campSeasonId)      → CampPolygonHistory ordered by ModifiedAt desc
 SavePolygonAsync(campSeasonId, geoJson, areaSqm, userId, note = "Saved")
 RestorePolygonVersionAsync(campSeasonId, historyId, restoredByUserId)
@@ -275,11 +287,17 @@ DeleteLimitZoneAsync(userId)
 
 **Anti-forgery:** AJAX PUT/POST requests send the `RequestVerificationToken` header (read from the hidden `@Html.AntiForgeryToken()` input in the page). Both `SavePolygon` and `RestorePolygonVersion` are decorated with `[ValidateAntiForgeryToken]`.
 
-**Own camp highlight:** The `Index.cshtml` view receives `USER_CAMP_SEASON_ID` from the server (the CampSeason.Id for the user's camp in the active year, null if none). The user's own camp polygon is rendered in a distinct color (e.g., `#00bfff`) while other camps use the default color (e.g., `#ff6600`).
+**Own camp highlight:** The `Index.cshtml` view receives `USER_CAMP_SEASON_ID` from the server (the CampSeason.Id for the user's camp in the active year, null if none). The user's own camp polygon is rendered in a distinct colour (e.g., `#00bfff`) while other camps use the default colour (e.g., `#ff6600`).
+
+**"Add my barrio" button (leads):** Shown only when placement is open AND `USER_CAMP_SEASON_ID` is set AND that season has no polygon yet. Hidden once the polygon exists — the highlighted shape is the entry point for editing instead.
+
+**"Add a barrio" button + dropdown (CampAdmin / city planning):** Always visible when placement is open (or user is map admin). The dropdown lists all camp seasons for the active year that have no polygon. Selecting one activates draw mode for that session, setting the target `campSeasonId` client-side before the Save call.
+
+**Click-to-edit:** Clicking a polygon that the current user is allowed to edit activates edit mode via `draw.add()` and `draw.changeMode('direct_select')`. For leads, only their own highlighted polygon is clickable for editing.
 
 **History panel XSS safety:** The history list renders using data attributes + event listeners instead of inline `onclick` handlers with embedded GeoJSON strings.
 
-**Save button disabled state:** The Save button is disabled until the user has drawn a polygon. For CampAdmin and city planning team members (who have `USER_CAMP_SEASON_ID = null`), a camp selector is shown so they can choose which camp season to save to. *(Note: this selector is a follow-up UI concern; the core save/restore logic does not depend on it.)*
+**Save button:** Disabled until a polygon has been drawn or an existing polygon is in edit mode. Always sends to the `campSeasonId` that was set when draw/edit mode was activated.
 
 ### EF Core Configuration
 
