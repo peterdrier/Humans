@@ -94,6 +94,7 @@ public class CampaignService : ICampaignService
         var now = _clock.GetCurrentInstant();
         var imported = 0;
         var skipped = 0;
+        var maxOrder = campaign.Codes.Any() ? campaign.Codes.Max(c => c.ImportOrder) : 0;
 
         foreach (var code in codes)
         {
@@ -107,11 +108,13 @@ public class CampaignService : ICampaignService
                 continue;
             }
 
+            maxOrder++;
             _dbContext.CampaignCodes.Add(new CampaignCode
             {
                 Id = Guid.NewGuid(),
                 CampaignId = campaignId,
                 Code = trimmed,
+                ImportOrder = maxOrder,
                 ImportedAt = now
             });
             existingCodes.Add(trimmed);
@@ -231,8 +234,7 @@ public class CampaignService : ICampaignService
         var availableCodes = await _dbContext.CampaignCodes
             .Where(c => c.CampaignId == campaignId
                         && !_dbContext.CampaignGrants.Any(g => g.CampaignCodeId == c.Id))
-            .OrderBy(c => c.ImportedAt)
-            .ThenBy(c => c.Id)
+            .OrderBy(c => c.ImportOrder)
             .Take(eligibleUsers.Count)
             .ToListAsync(ct);
 
