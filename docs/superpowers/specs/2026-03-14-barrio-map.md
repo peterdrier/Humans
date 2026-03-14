@@ -8,7 +8,7 @@ The system centers on a **placement phase** concept: CampAdmin opens and closes 
 
 ## Scope
 
-**This spec (Phase 2 of Barrios):**
+**This spec (Phase 2 of Camps/Barrios):**
 - Interactive satellite map centered on the festival site
 - Polygon drawing/editing for each barrio's camp footprint
 - Live area display in square metres
@@ -21,46 +21,52 @@ The system centers on a **placement phase** concept: CampAdmin opens and closes 
 **Out of scope (future):**
 - Server-side enforcement of the limit zone (currently visual only)
 - Conflict detection between overlapping barrio polygons
-- Export of the full site map as GeoJSON or image
+- Export of the full site map as an image
 
-**Prerequisites:** Phase 1 Barrios entities (`Barrio`, `BarrioSeason`, `BarrioLead`, `BarrioSettings`, `RoleNames.CampAdmin`) must exist before this feature is implemented.
+**Prerequisites:** Phase 1 Camp entities must exist before this feature is implemented:
+- `Camp` entity with `Id` (Guid), `Slug` (string)
+- `CampSeason` entity with `CampId`, `Year`, `Name`, `Status` (CampSeasonStatus)
+- `CampLead` entity with `CampId`, `UserId`, `LeftAt` (Instant?) — soft-deleted leads
+- `CampSettings` entity with `PublicYear` (int)
+- `RoleNames.CampAdmin = "CampAdmin"` constant
+- `HumansDbContext` with DbSets: `Camps`, `CampSeasons`, `CampLeads`, `CampSettings`
 
 ## Data Model
 
 ### New Entities
 
-#### BarrioPolygon
+#### CampPolygon
 
-One record per barrio. Updated in-place when the polygon changes; history is separately tracked in `BarrioPolygonHistory`.
+One record per camp. Updated in-place when the polygon changes; history is separately tracked in `CampPolygonHistory`.
 
 | Field | Type | Notes |
 |-------|------|-------|
 | Id | Guid | PK, init |
-| BarrioId | Guid (FK → Barrio) | Unique (1:1 with Barrio) |
+| CampId | Guid (FK → Camp) | Unique (1:1 with Camp) |
 | GeoJson | string | GeoJSON Feature string. Stored as PostgreSQL `text`. |
 | AreaSqm | double | Pre-calculated area in m². Computed client-side by Turf.js. |
 | LastModifiedByUserId | Guid (FK → User) | Non-nullable. DeleteBehavior.Restrict. |
 | LastModifiedAt | Instant | NodaTime. Updated on every save. |
 
-**Navigation:** `Barrio`, `LastModifiedByUser`
+**Navigation:** `Camp`, `LastModifiedByUser`
 
-#### BarrioPolygonHistory
+#### CampPolygonHistory
 
 Append-only log of every polygon version. Never updated or deleted. One entry written each time a polygon is saved or restored.
 
 | Field | Type | Notes |
 |-------|------|-------|
 | Id | Guid | PK, init |
-| BarrioId | Guid (FK → Barrio) | init. DeleteBehavior.Restrict. |
+| CampId | Guid (FK → Camp) | init. DeleteBehavior.Restrict. |
 | GeoJson | string | Snapshot of the polygon at this point in time. init. |
 | AreaSqm | double | Area at time of save. init. |
 | ModifiedByUserId | Guid (FK → User) | Who saved. init. DeleteBehavior.Restrict. |
 | ModifiedAt | Instant | NodaTime. init. |
 | Note | string | Human-readable label. Default: `"Saved"`. Restore entries: `"Restored from 2026-03-10 14:32 UTC"`. init. |
 
-**Navigation:** `Barrio`, `ModifiedByUser`
+**Navigation:** `Camp`, `ModifiedByUser`
 
-#### BarrioMapSettings
+#### CampMapSettings
 
 Single-row settings table. Seeded on migration; always has exactly one row with a fixed well-known Guid.
 
@@ -76,8 +82,8 @@ Single-row settings table. Seeded on migration; always has exactly one row with 
 ### Relationships
 
 ```
-Barrio 1──0..1 BarrioPolygon
-Barrio 1──∞    BarrioPolygonHistory (append-only)
+Camp 1──0..1 CampPolygon
+Camp 1──∞    CampPolygonHistory (append-only)
 ```
 
 ### Storage
@@ -90,16 +96,16 @@ GeoJSON is stored as PostgreSQL `text` columns (not `jsonb`) — the system neve
 
 | Role | Map access |
 |------|-----------|
-| **CampAdmin** | Full access at all times. Can open/close placement, upload limit zone, restore any barrio's history. Can edit any polygon even when placement is closed. Full admin panel access. |
-| **City planning team member** | Full admin panel access: can open/close placement, upload/delete limit zone. Can edit any barrio's polygon at all times (including after placement closes). |
-| **Barrio lead (primary or co-lead)** | Can edit their own barrio's polygon when placement is open. Cannot edit other barrios. Read-only when closed. |
+| **CampAdmin** | Full access at all times. Can open/close placement, upload limit zone, restore any camp's history. Can edit any polygon even when placement is closed. Full admin panel access. |
+| **City planning team member** | Full admin panel access: can open/close placement, upload/delete limit zone. Can edit any camp's polygon at all times (including after placement closes). |
+| **Camp lead (primary or co-lead)** | Can edit their own camp's polygon when placement is open. Cannot edit other camps. Read-only when closed. |
 | **Active volunteer** | Read-only map view. |
 | **Anonymous** | Not permitted — map requires authentication. |
 
 **City planning team** is identified by a slug configured in `appsettings.json`:
 
 ```json
-"BarrioMap": {
+"CampMap": {
   "CityPlanningTeamSlug": "city-planning"
 }
 ```
@@ -112,13 +118,13 @@ This is a manually-managed team (not auto-synced) whose members get map-wide edi
 if user.IsInRole(CampAdmin) → always allowed
 if user is member of city planning team → always allowed
 if placement is closed → denied
-if user is active lead of the target barrio → allowed
+if user is active lead of the target camp → allowed
 otherwise → denied
 ```
 
-### Per-Barrio Ownership Check
+### Per-Camp Ownership Check
 
-Non-admin, non-city-planning leads can only save polygons for their own barrio. Attempting to save to a different barrio's polygon returns `403 Forbidden`.
+Non-admin, non-city-planning leads can only save polygons for their own camp. Attempting to save to a different camp's polygon returns `403 Forbidden`.
 
 ## Workflows
 
@@ -135,12 +141,12 @@ Closed
 ```
 
 When placement is open:
-- Barrio leads see an "Edit" button on the map
+- Camp leads see an "Edit" button on the map
 - City planning team members can edit any polygon
 - CampAdmin can always edit
 
 When placement is closed:
-- Map is read-only for barrio leads and regular volunteers
+- Map is read-only for camp leads and regular volunteers
 - CampAdmin and city planning team members retain edit access
 - A banner indicates placement is closed
 
@@ -149,17 +155,17 @@ When placement is closed:
 1. User draws or edits a polygon using maplibre-gl-draw
 2. Turf.js calculates area in m² in real time (shown during editing)
 3. User clicks "Save"
-4. Client sends PUT `/BarrioMap/SavePolygon/{barrioId}` with GeoJSON + area
-5. Server checks edit permission, updates `BarrioPolygon`, appends to `BarrioPolygonHistory`
+4. Client sends PUT `/api/camp-map/polygons/{campId}` with GeoJSON + area
+5. Server checks edit permission, updates `CampPolygon`, appends to `CampPolygonHistory`
 6. Server broadcasts polygon update via SignalR to all connected clients
 7. All connected users' maps update to show the new polygon
 
 ### Polygon History & Restore
 
-- Each save creates an immutable `BarrioPolygonHistory` entry
+- Each save creates an immutable `CampPolygonHistory` entry
 - History panel shows: who, when, area, note — sorted newest first
 - "Preview" shows the historical polygon overlaid on the current state (not persisted)
-- "Restore" calls POST `/BarrioMap/RestorePolygonVersion/{historyId}`, which:
+- "Restore" calls POST `/api/camp-map/polygons/{campId}/restore/{historyId}`, which:
   1. Calls `SavePolygonAsync` with the historical GeoJSON
   2. Creates a new history entry with note `"Restored from {iso8601} UTC"`
   3. Broadcasts the restored polygon to all connected users
@@ -174,11 +180,11 @@ When placement is closed:
 
 ### Limit Zone
 
-- CampAdmin uploads a GeoJSON file via the admin panel
-- The limit zone is stored in `BarrioMapSettings.LimitZoneGeoJson`
+- CampAdmin or city planning team uploads a GeoJSON file via the admin panel
+- The limit zone is stored in `CampMapSettings.LimitZoneGeoJson`
 - On the map, the limit zone is rendered as a semi-transparent overlay showing the allowed placement area
 - Polygons placed outside the limit zone are visually highlighted (e.g., red outline) but not server-side rejected
-- CampAdmin can delete the limit zone (sets to null)
+- CampAdmin or city planning team can delete the limit zone (sets to null)
 
 ## Routes
 
@@ -187,21 +193,27 @@ When placement is closed:
 | Method | Route | Auth | Purpose |
 |--------|-------|------|---------|
 | GET | `/BarrioMap` | Authenticated | Interactive map for all logged-in users |
+| GET | `/BarrioMap/Admin` | CampAdmin or city planning team | Admin panel: placement toggle + limit zone |
 
 ### API (AJAX, anti-forgery validated)
 
 | Method | Route | Auth | Purpose |
 |--------|-------|------|---------|
-| GET | `/BarrioMap/GetPolygons` | Authenticated | All current barrio polygons (GeoJSON) |
-| GET | `/BarrioMap/GetHistory/{barrioId}` | Authenticated | Polygon history for one barrio |
-| PUT | `/BarrioMap/SavePolygon/{barrioId}` | Authenticated | Save/update polygon |
-| POST | `/BarrioMap/RestorePolygonVersion/{historyId}` | Authenticated | Restore a historical version |
+| GET | `/api/camp-map/state` | Authenticated | Current settings + all polygons |
+| GET | `/api/camp-map/polygons/{campId}/history` | Authenticated | Polygon history for one camp |
+| PUT | `/api/camp-map/polygons/{campId}` | Authenticated | Save/update polygon |
+| POST | `/api/camp-map/polygons/{campId}/restore/{historyId}` | Authenticated | Restore a historical version |
 
-### Admin Panel
+### Export
 
 | Method | Route | Auth | Purpose |
 |--------|-------|------|---------|
-| GET | `/BarrioMap/Admin` | CampAdmin or city planning team | Admin panel: placement toggle + limit zone |
+| GET | `/api/camp-map/export.geojson` | CampAdmin or city planning team | Download all current polygons as a GeoJSON FeatureCollection. Each feature includes camp name, slug, and area in its `properties`. |
+
+### Admin Actions (POST, anti-forgery validated)
+
+| Method | Route | Auth | Purpose |
+|--------|-------|------|---------|
 | POST | `/BarrioMap/Admin/OpenPlacement` | CampAdmin or city planning team | Open the placement phase |
 | POST | `/BarrioMap/Admin/ClosePlacement` | CampAdmin or city planning team | Close the placement phase |
 | POST | `/BarrioMap/Admin/UploadLimitZone` | CampAdmin or city planning team | Upload GeoJSON limit zone file |
@@ -211,7 +223,7 @@ When placement is closed:
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/hubs/barrio-map` | Real-time cursor presence + polygon broadcast |
+| `/hubs/camp-map` | Real-time cursor presence + polygon broadcast |
 
 ## Technical Implementation
 
@@ -238,60 +250,61 @@ All loaded from CDN. Added to `About.cshtml` with version and license:
 
 ### Service Layer
 
-`IBarrioMapService` / `BarrioMapService` in Application/Infrastructure layers:
+`ICampMapService` / `CampMapService` in Application/Infrastructure layers:
 
 ```
-GetPolygonsAsync(year)           → all BarrioPolygon records for barrios in the given year
-GetPolygonHistoryAsync(barrioId) → BarrioPolygonHistory ordered by ModifiedAt desc
-SavePolygonAsync(barrioId, geoJson, areaSqm, userId, note = "Saved")
-RestorePolygonVersionAsync(historyId, restoredByUserId)
-CanUserEditAsync(userId, barrioId) → bool    // CampAdmin + city planning always true; leads only when placement open
-IsUserMapAdminAsync(userId) → bool           // true for CampAdmin or city planning team member
-GetOrCreateSettingsAsync()       → BarrioMapSettings (creates with defaults if missing)
+GetPolygonsAsync(year)              → all CampPolygon records for camps in the given year
+GetPolygonHistoryAsync(campId)      → CampPolygonHistory ordered by ModifiedAt desc
+SavePolygonAsync(campId, geoJson, areaSqm, userId, note = "Saved")
+RestorePolygonVersionAsync(campId, historyId, restoredByUserId)
+CanUserEditAsync(userId, campId)    → bool  // CampAdmin + city planning always true; leads only when placement open
+IsUserMapAdminAsync(userId)         → bool  // true for CampAdmin or city planning team member
+ExportAsGeoJsonAsync(year)          → string (GeoJSON FeatureCollection with all polygons, camp name/slug/area in properties)
+GetSettingsAsync()                  → CampMapSettings
 OpenPlacementAsync(userId)
 ClosePlacementAsync(userId)
-UploadLimitZoneAsync(geoJson, userId)
+UpdateLimitZoneAsync(geoJson, userId)
 DeleteLimitZoneAsync(userId)
 ```
 
 `SavePolygonAsync` is the single write path used by both saves and restores. It:
-1. Upserts `BarrioPolygon` (creates on first save, updates thereafter)
-2. Appends to `BarrioPolygonHistory`
+1. Upserts `CampPolygon` (creates on first save, updates thereafter)
+2. Appends to `CampPolygonHistory`
 
-### SignalR Hub (`BarrioMapHub`)
+### SignalR Hub (`CampMapHub`)
 
 - `[Authorize]` — only authenticated users can connect
 - `UpdateCursor(lat, lng)` — client sends cursor position; hub relays to `Others`
-- `PolygonUpdated(barrioId, geoJson, areaSqm)` — broadcast from `SavePolygonAsync` (via `IHubContext<BarrioMapHub>`)
+- `PolygonUpdated(campId, geoJson, areaSqm)` — broadcast from `SavePolygonAsync` (via `IHubContext<CampMapHub>`)
 - `OnDisconnectedAsync` — broadcasts `CursorLeft(connectionId)` to group
 
 ### UI Patterns
 
 **Anti-forgery:** AJAX PUT/POST requests send the `RequestVerificationToken` header (read from the hidden `@Html.AntiForgeryToken()` input in the page). Both `SavePolygon` and `RestorePolygonVersion` are decorated with `[ValidateAntiForgeryToken]`.
 
-**Own barrio highlight:** The `Index.cshtml` view receives `USER_BARRIO_ID` from the server. The user's own barrio polygon is rendered in a distinct color (e.g., `#00bfff`) while other barrios use the default color (e.g., `#ff6600`).
+**Own camp highlight:** The `Index.cshtml` view receives `USER_CAMP_ID` from the server. The user's own camp polygon is rendered in a distinct color (e.g., `#00bfff`) while other camps use the default color (e.g., `#ff6600`).
 
 **History panel XSS safety:** The history list renders using data attributes + event listeners instead of inline `onclick` handlers with embedded GeoJSON strings.
 
-**Save button disabled state:** The Save button is disabled until the user has drawn a polygon. For CampAdmin and city planning team members (who have `USER_BARRIO_ID = null`), a barrio selector is shown so they can choose which barrio to save to. *(Note: this selector is a follow-up UI concern; the core save/restore logic does not depend on it.)*
+**Save button disabled state:** The Save button is disabled until the user has drawn a polygon. For CampAdmin and city planning team members (who have `USER_CAMP_ID = null`), a camp selector is shown so they can choose which camp to save to. *(Note: this selector is a follow-up UI concern; the core save/restore logic does not depend on it.)*
 
 ### EF Core Configuration
 
-- `BarrioPolygonConfiguration` — unique index on `BarrioId`, `DeleteBehavior.Restrict` on both FKs (non-nullable Guids cannot use SetNull)
-- `BarrioPolygonHistoryConfiguration` — index on `(BarrioId, ModifiedAt)`, `DeleteBehavior.Restrict` on both FKs
-- `BarrioMapSettingsConfiguration` — seeds one row with fixed well-known Id `00000000-0000-0000-0004-000000000001`, `IsPlacementOpen = false`
+- `CampPolygonConfiguration` — unique index on `CampId`, `DeleteBehavior.Restrict` on both FKs (non-nullable Guids cannot use SetNull)
+- `CampPolygonHistoryConfiguration` — index on `(CampId, ModifiedAt)`, `DeleteBehavior.Restrict` on both FKs
+- `CampMapSettingsConfiguration` — seeds one row with fixed well-known Id `00000000-0000-0000-0004-000000000001`, `IsPlacementOpen = false`
 
 ### DI Registration
 
-- `IBarrioMapService` registered as scoped in `InfrastructureServiceCollectionExtensions`
+- `ICampMapService` registered as scoped in `InfrastructureServiceCollectionExtensions`
 - `builder.Services.AddSignalR()` in `Program.cs`
-- `app.MapHub<BarrioMapHub>("/hubs/barrio-map")` in `Program.cs`
+- `app.MapHub<CampMapHub>("/hubs/camp-map")` in `Program.cs`
 
 ## Related Features
 
 | Feature | Relationship |
 |---------|-------------|
-| Barrios Phase 1 | **Prerequisite** — provides `Barrio`, `BarrioSeason`, `BarrioLead`, `RoleNames.CampAdmin` |
+| Camps Phase 1 | **Prerequisite** — provides `Camp`, `CampSeason`, `CampLead`, `CampSettings`, `RoleNames.CampAdmin` |
 | Teams | City planning team is a standard `Team` — no special entity needed |
 | Google Sync | Not involved — no Google resources provisioned for the map |
 | GDPR | No personal data exported by map APIs. GeoJSON polygons are spatial data only. |
