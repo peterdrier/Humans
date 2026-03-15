@@ -136,6 +136,9 @@ public class AdminController : Controller
             ("GitHub", "GitHub:AccessToken", true),
             ("Google Maps", "GoogleMaps:ApiKey", true),
             ("OpenTelemetry", "OpenTelemetry:OtlpEndpoint", false),
+            ("Ticket Vendor", "TicketVendor:EventId", false),
+            ("Ticket Vendor", "TicketVendor:Provider", false),
+            ("Ticket Vendor", "TicketVendor:SyncIntervalMinutes", false),
         };
 
         var items = keys.Select(k =>
@@ -157,6 +160,17 @@ public class AdminController : Controller
                 IsRequired = k.Required,
             };
         }).ToList();
+
+        // Ticket vendor API key is from env var, not configuration
+        var apiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY");
+        items.Add(new ConfigurationItemViewModel
+        {
+            Section = "Ticket Vendor",
+            Key = "TICKET_VENDOR_API_KEY (env)",
+            IsSet = !string.IsNullOrEmpty(apiKey),
+            Preview = !string.IsNullOrEmpty(apiKey) ? apiKey[..Math.Min(3, apiKey.Length)] + "..." : "(not set)",
+            IsRequired = false,
+        });
 
         return View(new AdminConfigurationViewModel { Items = items });
     }
