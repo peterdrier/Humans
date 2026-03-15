@@ -61,6 +61,7 @@
                                 <th>Campaign</th>
                                 <th>Code</th>
                                 <th>Assigned</th>
+                                <th>Redeemed</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -70,6 +71,16 @@
                                     <td>@grant.Campaign.Title</td>
                                     <td><code>@grant.Code.Code</code></td>
                                     <td>@grant.AssignedAt.ToDateTimeUtc().ToString("yyyy-MM-dd")</td>
+                                    <td>
+                                        @if (grant.RedeemedAt.HasValue)
+                                        {
+                                            <span class="badge bg-success">@grant.RedeemedAt.Value.InUtc().Date.ToString("yyyy-MM-dd", null)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">&mdash;</span>
+                                        }
+                                    </td>
                                 </tr>
                             }
                         </tbody>

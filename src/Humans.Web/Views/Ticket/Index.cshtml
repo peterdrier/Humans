@@ -228,7 +228,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales));
+            var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
             var ctx = document.getElementById('dailySalesChart').getContext('2d');
             new Chart(ctx, {
                 type: 'bar',

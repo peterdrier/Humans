@@ -82,7 +82,7 @@
                         <td>
                             @if (a.MatchedUserId.HasValue)
                             {
-                                <a asp-controller="Human" asp-action="Detail" asp-route-id="@a.MatchedUserId">
+                                <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@a.MatchedUserId">
                                     <i class="fa-solid fa-check text-success"></i> @a.MatchedUserName
                                 </a>
                             }
