@@ -84,19 +84,15 @@ public class TicketTailorService : ITicketVendorService
 
             foreach (var order in body.Data)
             {
-                if (!long.TryParse(order.CreatedAt, System.Globalization.CultureInfo.InvariantCulture, out var epochSeconds))
-                {
-                    _logger.LogWarning("Order {OrderId} has unparseable created_at '{CreatedAt}', skipping", order.Id, order.CreatedAt);
-                    continue;
-                }
-                var purchasedAt = Instant.FromUnixTimeSeconds(epochSeconds);
+                var purchasedAt = Instant.FromUnixTimeSeconds(order.CreatedAt);
+                var buyer = order.BuyerDetails;
 
                 orders.Add(new VendorOrderDto(
                     VendorOrderId: order.Id,
-                    BuyerName: $"{order.BuyerFirstName} {order.BuyerLastName}".Trim(),
-                    BuyerEmail: order.BuyerEmail ?? string.Empty,
+                    BuyerName: buyer?.Name ?? $"{buyer?.FirstName} {buyer?.LastName}".Trim(),
+                    BuyerEmail: buyer?.Email ?? string.Empty,
                     TotalAmount: (order.Total ?? 0) / 100m, // TT stores amounts in cents
-                    Currency: order.Currency?.ToUpperInvariant() ?? "EUR",
+                    Currency: order.Currency?.Code?.ToUpperInvariant() ?? "EUR",
                     DiscountCode: order.VoucherCode,
                     PaymentStatus: order.Status ?? "completed",
                     VendorDashboardUrl: null, // TT doesn't expose dashboard URLs via API
@@ -139,10 +135,10 @@ public class TicketTailorService : ITicketVendorService
                 tickets.Add(new VendorTicketDto(
                     VendorTicketId: ticket.Id,
                     VendorOrderId: ticket.OrderId ?? string.Empty,
-                    AttendeeName: $"{ticket.FirstName} {ticket.LastName}".Trim(),
+                    AttendeeName: ticket.FullName ?? $"{ticket.FirstName} {ticket.LastName}".Trim(),
                     AttendeeEmail: ticket.Email,
-                    TicketTypeName: ticket.TicketTypeName ?? "Unknown",
-                    Price: (ticket.Price ?? 0) / 100m,
+                    TicketTypeName: ticket.Description ?? "Unknown",
+                    Price: (ticket.ListedPrice ?? 0) / 100m,
                     Status: ticket.Status ?? "valid"));
             }
 
@@ -163,12 +159,16 @@ public class TicketTailorService : ITicketVendorService
 
         var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct);
 
+        // Capacity = sum of quantity_total across all ticket types
+        var totalCapacity = evt?.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
+        var ticketsSold = evt?.TotalIssuedTickets ?? 0;
+
         return new VendorEventSummaryDto(
             EventId: eventId,
             EventName: evt?.Name ?? "Unknown",
-            TotalCapacity: evt?.TotalHolds ?? 0,
-            TicketsSold: evt?.TotalIssuedTickets ?? 0,
-            TicketsRemaining: (evt?.TotalHolds ?? 0) - (evt?.TotalIssuedTickets ?? 0));
+            TotalCapacity: totalCapacity,
+            TicketsSold: ticketsSold,
+            TicketsRemaining: totalCapacity - ticketsSold);
     }
 
     public async Task<IReadOnlyList<string>> GenerateDiscountCodesAsync(
@@ -239,29 +239,44 @@ public class TicketTailorService : ITicketVendorService
 
     internal sealed record TtOrder(
         [property: JsonPropertyName("id")] string Id,
-        [property: JsonPropertyName("buyer_first_name")] string? BuyerFirstName,
-        [property: JsonPropertyName("buyer_last_name")] string? BuyerLastName,
-        [property: JsonPropertyName("buyer_email")] string? BuyerEmail,
+        [property: JsonPropertyName("buyer_details")] TtBuyerDetails? BuyerDetails,
         [property: JsonPropertyName("total")] int? Total,
-        [property: JsonPropertyName("currency")] string? Currency,
+        [property: JsonPropertyName("currency")] TtCurrency? Currency,
         [property: JsonPropertyName("voucher_code")] string? VoucherCode,
         [property: JsonPropertyName("status")] string? Status,
-        [property: JsonPropertyName("created_at")] string CreatedAt);
+        [property: JsonPropertyName("created_at")] long CreatedAt);
+
+    internal sealed record TtBuyerDetails(
+        [property: JsonPropertyName("first_name")] string? FirstName,
+        [property: JsonPropertyName("last_name")] string? LastName,
+        [property: JsonPropertyName("email")] string? Email,
+        [property: JsonPropertyName("name")] string? Name);
+
+    internal sealed record TtCurrency(
+        [property: JsonPropertyName("code")] string? Code,
+        [property: JsonPropertyName("base_multiplier")] int? BaseMultiplier);
 
     internal sealed record TtIssuedTicket(
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("first_name")] string? FirstName,
         [property: JsonPropertyName("last_name")] string? LastName,
+        [property: JsonPropertyName("full_name")] string? FullName,
         [property: JsonPropertyName("email")] string? Email,
-        [property: JsonPropertyName("ticket_type_name")] string? TicketTypeName,
-        [property: JsonPropertyName("price")] int? Price,
+        [property: JsonPropertyName("description")] string? Description,
+        [property: JsonPropertyName("listed_price")] int? ListedPrice,
         [property: JsonPropertyName("status")] string? Status,
         [property: JsonPropertyName("order_id")] string? OrderId);
 
     internal sealed record TtEvent(
         [property: JsonPropertyName("name")] string? Name,
         [property: JsonPropertyName("total_holds")] int? TotalHolds,
-        [property: JsonPropertyName("total_issued_tickets")] int? TotalIssuedTickets);
+        [property: JsonPropertyName("total_issued_tickets")] int? TotalIssuedTickets,
+        [property: JsonPropertyName("total_orders")] int? TotalOrders,
+        [property: JsonPropertyName("ticket_types")] List<TtTicketType>? TicketTypes);
+
+    internal sealed record TtTicketType(
+        [property: JsonPropertyName("quantity_total")] int? QuantityTotal,
+        [property: JsonPropertyName("quantity_issued")] int? QuantityIssued);
 
     internal sealed record TtVoucherCode(
         [property: JsonPropertyName("code")] string? Code,

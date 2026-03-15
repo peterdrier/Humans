@@ -35,14 +35,12 @@ public class TicketTailorServiceTests
                 new
                 {
                     id = "ord_001",
-                    buyer_first_name = "Jane",
-                    buyer_last_name = "Doe",
-                    buyer_email = "jane@example.com",
+                    buyer_details = new { first_name = "Jane", last_name = "Doe", email = "jane@example.com", name = "Jane Doe" },
                     total = 15000,
-                    currency = "eur",
+                    currency = new { code = "eur", base_multiplier = 100 },
                     voucher_code = "NOBO25",
                     status = "completed",
-                    created_at = "1716811200"
+                    created_at = 1716811200L
                 }
             },
             links = new { next = (string?)null }
@@ -67,9 +65,10 @@ public class TicketTailorServiceTests
             {
                 new
                 {
-                    id = "ord_001", buyer_first_name = "A", buyer_last_name = "B",
-                    buyer_email = "a@b.com", total = 100, currency = "eur",
-                    voucher_code = (string?)null, status = "completed", created_at = "1716811200"
+                    id = "ord_001",
+                    buyer_details = new { first_name = "A", last_name = "B", email = "a@b.com", name = "A B" },
+                    total = 100, currency = new { code = "eur", base_multiplier = 100 },
+                    voucher_code = (string?)null, status = "completed", created_at = 1716811200L
                 }
             },
             links = new { next = "has_more" }
@@ -80,9 +79,10 @@ public class TicketTailorServiceTests
             {
                 new
                 {
-                    id = "ord_002", buyer_first_name = "C", buyer_last_name = "D",
-                    buyer_email = "c@d.com", total = 200, currency = "eur",
-                    voucher_code = (string?)null, status = "completed", created_at = "1716811200"
+                    id = "ord_002",
+                    buyer_details = new { first_name = "C", last_name = "D", email = "c@d.com", name = "C D" },
+                    total = 200, currency = new { code = "eur", base_multiplier = 100 },
+                    voucher_code = (string?)null, status = "completed", created_at = 1716811200L
                 }
             },
             links = new { next = (string?)null }
@@ -119,9 +119,10 @@ public class TicketTailorServiceTests
                     id = "it_001",
                     first_name = "Jane",
                     last_name = "Doe",
+                    full_name = "Jane Doe",
                     email = "jane@example.com",
-                    ticket_type_name = "Full Week",
-                    price = 15000,
+                    description = "Full Week",
+                    listed_price = 15000,
                     status = "valid",
                     order_id = "ord_001"
                 }
@@ -145,18 +146,25 @@ public class TicketTailorServiceTests
         var handler = new MockHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            name = "Nowhere 2026",
-            total_holds = 3000,
-            total_issued_tickets = 1847
+            name = "Elsewhere 2026",
+            total_holds = 0,
+            total_issued_tickets = 96,
+            total_orders = 88,
+            ticket_types = new[]
+            {
+                new { quantity_total = 2000, quantity_issued = 86 },
+                new { quantity_total = 500, quantity_issued = 6 },
+                new { quantity_total = 500, quantity_issued = 4 },
+            }
         });
 
         var service = CreateService(handler);
         var summary = await service.GetEventSummaryAsync("ev_test");
 
-        summary.EventName.Should().Be("Nowhere 2026");
+        summary.EventName.Should().Be("Elsewhere 2026");
         summary.TotalCapacity.Should().Be(3000);
-        summary.TicketsSold.Should().Be(1847);
-        summary.TicketsRemaining.Should().Be(1153);
+        summary.TicketsSold.Should().Be(96);
+        summary.TicketsRemaining.Should().Be(2904);
     }
 }
 
