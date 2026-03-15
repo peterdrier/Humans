@@ -153,7 +153,7 @@ public class TeamAdminController : Controller
         var profilesWithCustomPictures = await _profileService.GetCustomPictureInfoByUserIdsAsync(memberUserIds);
         var customPictureByUserId = profilesWithCustomPictures.ToDictionary(
             p => p.UserId,
-            p => Url.Action("Picture", "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
+            p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
@@ -594,7 +594,7 @@ public class TeamAdminController : Controller
         var profilesWithCustomPictures = await _profileService.GetCustomPictureInfoByUserIdsAsync(memberUserIds);
         var customPictureByUserId = profilesWithCustomPictures.ToDictionary(
             p => p.UserId,
-            p => Url.Action("Picture", "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
+            p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
         var viewModel = new RoleManagementViewModel
         {

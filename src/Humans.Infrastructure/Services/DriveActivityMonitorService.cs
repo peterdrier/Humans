@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
@@ -158,7 +159,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
                         await _auditLogService.LogAsync(
                             AuditAction.AnomalousPermissionDetected,
-                            "GoogleResource",
+                            nameof(GoogleResource),
                             resourceId,
                             description,
                             JobName);

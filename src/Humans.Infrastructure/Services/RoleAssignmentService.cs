@@ -145,7 +145,7 @@ public class RoleAssignmentService : IRoleAssignmentService
         var user = await _dbContext.Users.FindAsync([userId], ct);
 
         await _auditLogService.LogAsync(
-            AuditAction.RoleAssigned, "User", userId,
+            AuditAction.RoleAssigned, nameof(User), userId,
             $"Role '{roleName}' assigned to {user?.DisplayName ?? userId.ToString()}",
             assignerId, assignerDisplayName);
 
@@ -193,7 +193,7 @@ public class RoleAssignmentService : IRoleAssignmentService
         }
 
         await _auditLogService.LogAsync(
-            AuditAction.RoleEnded, "User", roleAssignment.UserId,
+            AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
             $"Role '{roleAssignment.RoleName}' ended for {roleAssignment.User.DisplayName}",
             enderId, enderDisplayName);
 

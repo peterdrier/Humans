@@ -91,7 +91,7 @@ public class ProcessAccountDeletionsJob
                     _teamService.RemoveMemberFromAllTeamsCache(user.Id);
 
                     await _auditLogService.LogAsync(
-                        AuditAction.AccountAnonymized, "User", user.Id,
+                        AuditAction.AccountAnonymized, nameof(User), user.Id,
                         $"Account anonymized (was {originalName})",
                         nameof(ProcessAccountDeletionsJob));
 

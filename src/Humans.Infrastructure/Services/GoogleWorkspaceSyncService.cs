@@ -204,10 +204,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _dbContext.GoogleResources.Add(resource);
 
         await _auditLogService.LogAsync(
-            AuditAction.GoogleResourceProvisioned, "GoogleResource", resource.Id,
+            AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Provisioned Drive folder '{folder.Name}' for team",
             nameof(GoogleWorkspaceSyncService),
-            relatedEntityId: teamId, relatedEntityType: "Team");
+            relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -287,10 +287,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _dbContext.GoogleResources.Add(resource);
 
         await _auditLogService.LogAsync(
-            AuditAction.GoogleResourceProvisioned, "GoogleResource", resource.Id,
+            AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
             $"Provisioned Google Group '{groupName}' ({groupEmail}) for team",
             nameof(GoogleWorkspaceSyncService),
-            relatedEntityId: teamId, relatedEntityType: "Team");
+            relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -492,7 +492,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         $"Granted Drive folder access to {user.Email} ({resource.Name})",
                         nameof(GoogleWorkspaceSyncService),
                         user.Email, "writer", GoogleSyncSource.TeamMemberJoined, success: true,
-                        relatedEntityId: userId, relatedEntityType: "User");
+                        relatedEntityId: userId, relatedEntityType: nameof(User));
                 }
                 catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400)
                 {
@@ -1081,10 +1081,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     existingGroup.Id, teamId);
 
                 await _auditLogService.LogAsync(
-                    AuditAction.GoogleResourceDeactivated, "GoogleResource", existingGroup.Id,
+                    AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                     "Deactivated Google Group resource (prefix cleared)",
                     nameof(GoogleWorkspaceSyncService),
-                    relatedEntityId: teamId, relatedEntityType: "Team");
+                    relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
             }
@@ -1114,10 +1114,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 existingGroup.Id, teamId, team.GoogleGroupPrefix);
 
             await _auditLogService.LogAsync(
-                AuditAction.GoogleResourceDeactivated, "GoogleResource", existingGroup.Id,
+                AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
                 $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
                 nameof(GoogleWorkspaceSyncService),
-                relatedEntityId: teamId, relatedEntityType: "Team");
+                relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
@@ -1151,10 +1151,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             _dbContext.GoogleResources.Add(resource);
 
             await _auditLogService.LogAsync(
-                AuditAction.GoogleResourceProvisioned, "GoogleResource", resource.Id,
+                AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), resource.Id,
                 $"Linked existing Google Group '{team.Name}' ({email}) for team",
                 nameof(GoogleWorkspaceSyncService),
-                relatedEntityId: teamId, relatedEntityType: "Team");
+                relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
             await _dbContext.SaveChangesAsync(cancellationToken);
 

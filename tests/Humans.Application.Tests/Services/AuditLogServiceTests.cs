@@ -40,7 +40,7 @@ public class AuditLogServiceTests : IDisposable
         var entityId = Guid.NewGuid();
 
         await _service.LogAsync(
-            AuditAction.VolunteerApproved, "User", entityId,
+            AuditAction.VolunteerApproved, nameof(User), entityId,
             "Auto-approved", "SystemTeamSyncJob");
 
         _dbContext.ChangeTracker.Entries<Domain.Entities.AuditLogEntry>().Should().HaveCount(1);
@@ -57,7 +57,7 @@ public class AuditLogServiceTests : IDisposable
         var actorId = Guid.NewGuid();
 
         await _service.LogAsync(
-            AuditAction.MemberSuspended, "User", entityId,
+            AuditAction.MemberSuspended, nameof(User), entityId,
             "Suspended for inactivity", actorId, "Admin User");
 
         await _dbContext.SaveChangesAsync();
@@ -78,7 +78,7 @@ public class AuditLogServiceTests : IDisposable
         var entityId = Guid.NewGuid();
 
         await _service.LogAsync(
-            AuditAction.RoleAssigned, "User", entityId,
+            AuditAction.RoleAssigned, nameof(User), entityId,
             "Assigned Board role", "TestJob");
 
         _dbContext.AuditLogEntries.Count().Should().Be(0);

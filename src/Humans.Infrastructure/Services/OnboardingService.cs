@@ -169,7 +169,7 @@ public class OnboardingService : IOnboardingService
         profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
-            AuditAction.ConsentCheckCleared, "Profile", userId,
+            AuditAction.ConsentCheckCleared, nameof(Profile), userId,
             $"Consent check cleared by {reviewerDisplayName}",
             reviewerId, reviewerDisplayName);
 
@@ -225,7 +225,7 @@ public class OnboardingService : IOnboardingService
         profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
-            AuditAction.ConsentCheckFlagged, "Profile", userId,
+            AuditAction.ConsentCheckFlagged, nameof(Profile), userId,
             $"Consent check flagged by {reviewerDisplayName}: {notes}",
             reviewerId, reviewerDisplayName);
 
@@ -316,7 +316,7 @@ public class OnboardingService : IOnboardingService
         profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
-            AuditAction.SignupRejected, "Profile", userId,
+            AuditAction.SignupRejected, nameof(Profile), userId,
             $"Signup rejected by {reviewerDisplayName}{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId, reviewerDisplayName);
 
@@ -366,7 +366,7 @@ public class OnboardingService : IOnboardingService
         user.Profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
-            AuditAction.VolunteerApproved, "User", userId,
+            AuditAction.VolunteerApproved, nameof(User), userId,
             $"{user.DisplayName} approved as volunteer by {adminDisplayName}",
             adminId, adminDisplayName);
 
@@ -406,7 +406,7 @@ public class OnboardingService : IOnboardingService
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _auditLogService.LogAsync(
-            AuditAction.MemberSuspended, "User", userId,
+            AuditAction.MemberSuspended, nameof(User), userId,
             $"{user.DisplayName} suspended by {adminDisplayName}{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
             adminId, adminDisplayName);
 
@@ -438,7 +438,7 @@ public class OnboardingService : IOnboardingService
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _auditLogService.LogAsync(
-            AuditAction.MemberUnsuspended, "User", userId,
+            AuditAction.MemberUnsuspended, nameof(User), userId,
             $"{user.DisplayName} unsuspended by {adminDisplayName}",
             adminId, adminDisplayName);
 

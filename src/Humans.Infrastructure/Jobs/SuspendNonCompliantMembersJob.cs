@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
@@ -122,7 +123,7 @@ public class SuspendNonCompliantMembersJob
                 }
 
                 await _auditLogService.LogAsync(
-                    AuditAction.MemberSuspended, "User", user.Id,
+                    AuditAction.MemberSuspended, nameof(User), user.Id,
                     $"{user.DisplayName} suspended for missing required document consent (grace period expired)",
                     nameof(SuspendNonCompliantMembersJob));
 

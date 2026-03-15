@@ -82,7 +82,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         // Audit
         await _auditLogService.LogAsync(
-            AuditAction.TierApplicationApproved, "Application", application.Id,
+            AuditAction.TierApplicationApproved, nameof(Humans.Domain.Entities.Application), application.Id,
             $"{application.MembershipTier} application approved for {application.User.DisplayName} by {reviewerDisplayName}",
             reviewerUserId, reviewerDisplayName);
 
@@ -170,7 +170,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         // Audit
         await _auditLogService.LogAsync(
-            AuditAction.TierApplicationRejected, "Application", application.Id,
+            AuditAction.TierApplicationRejected, nameof(Humans.Domain.Entities.Application), application.Id,
             $"{application.MembershipTier} application rejected for {application.User.DisplayName} by {reviewerDisplayName}",
             reviewerUserId, reviewerDisplayName);
 

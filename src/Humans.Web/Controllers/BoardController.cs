@@ -149,7 +149,7 @@ public class BoardController : Controller
         var viewModel = new GoogleSyncAuditListViewModel
         {
             Title = $"Sync Audit: {resource.Name}",
-            BackUrl = Url.Action("Sync", "Team"),
+            BackUrl = Url.Action(nameof(TeamController.Sync), "Team"),
             BackLabel = "Back to Sync Status",
             Entries = entries.Select(e => new GoogleSyncAuditEntryViewModel
             {

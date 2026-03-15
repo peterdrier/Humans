@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces;
+using Humans.Web.Controllers;
 
 namespace Humans.Web.Helpers;
 
@@ -25,7 +26,7 @@ public static class ProfilePictureUrlHelper
         var customPictures = await profileService.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
         var customByUserId = customPictures.ToDictionary(
             p => p.UserId,
-            p => urlHelper.Action("Picture", "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks }));
+            p => urlHelper.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks }));
 
         return userList.ToDictionary(
             u => u.UserId,

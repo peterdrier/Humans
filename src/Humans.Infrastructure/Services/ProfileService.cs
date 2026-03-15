@@ -300,7 +300,7 @@ public class ProfileService : IProfileService
         }
 
         await _auditLogService.LogAsync(
-            AuditAction.MembershipsRevokedOnDeletionRequest, "User", user.Id,
+            AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), user.Id,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
             user.Id, user.DisplayName);
 

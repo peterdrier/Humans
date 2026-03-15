@@ -252,10 +252,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
             profile.UpdatedAt = todayInstant;
 
             await _auditLogService.LogAsync(
-                AuditAction.TierDowngraded, "Profile", profile.UserId,
+                AuditAction.TierDowngraded, nameof(Profile), profile.UserId,
                 $"Membership tier changed to {newTier} for {profile.User?.DisplayName ?? "Unknown"} due to {tier} term expiry",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: profile.UserId, relatedEntityType: "User");
+                relatedEntityId: profile.UserId, relatedEntityType: nameof(User));
         }
 
         if (toDowngrade.Count > 0)
@@ -416,10 +416,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
             await _auditLogService.LogAsync(
-                AuditAction.TeamMemberAdded, "Team", team.Id,
+                AuditAction.TeamMemberAdded, nameof(Team), team.Id,
                 $"{userName} added to {team.Name} by system sync",
                 nameof(SystemTeamSyncJob),
-                relatedEntityId: userId, relatedEntityType: "User");
+                relatedEntityId: userId, relatedEntityType: nameof(User));
 
             await _googleSyncService.AddUserToTeamResourcesAsync(team.Id, userId, cancellationToken);
         }
@@ -440,10 +440,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
                 var userName = userNames.GetValueOrDefault(userId, userId.ToString());
                 await _auditLogService.LogAsync(
-                    AuditAction.TeamMemberRemoved, "Team", team.Id,
+                    AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
                     $"{userName} removed from {team.Name} by system sync",
                     nameof(SystemTeamSyncJob),
-                    relatedEntityId: userId, relatedEntityType: "User");
+                    relatedEntityId: userId, relatedEntityType: nameof(User));
 
                 await _googleSyncService.RemoveUserFromTeamResourcesAsync(team.Id, userId, cancellationToken);
             }

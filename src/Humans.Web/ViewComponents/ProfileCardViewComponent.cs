@@ -6,6 +6,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
+using Humans.Web.Controllers;
 using Humans.Web.Models;
 
 namespace Humans.Web.ViewComponents;
@@ -117,7 +118,7 @@ public class ProfileCardViewComponent : ViewComponent
 
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
         var pictureUrl = hasCustomPicture
-            ? Url.Action("Picture", "Profile", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+            ? Url.Action(nameof(ProfileController.Picture), "Profile", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
             : null;
 
         var model = new ProfileCardViewModel

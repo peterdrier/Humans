@@ -137,7 +137,7 @@ public class TeamController : Controller
 
         var customPictureByUserId = profilesWithCustomPictures.ToDictionary(
             p => p.UserId,
-            p => Url.Action("Picture", "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
+            p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
         // Load active Google resources for this team
         var googleResources = await _teamResourceService.GetTeamResourcesAsync(team.Id);
@@ -258,7 +258,7 @@ public class TeamController : Controller
         viewModel.Results = results.Select(r =>
         {
             string? pictureUrl = r.HasCustomPicture
-                ? Url.Action("Picture", "Profile", new { id = r.ProfileId, v = r.UpdatedAtTicks })
+                ? Url.Action(nameof(ProfileController.Picture), "Profile", new { id = r.ProfileId, v = r.UpdatedAtTicks })
                 : r.ProfilePictureUrl;
 
             return new HumanSearchResultViewModel
