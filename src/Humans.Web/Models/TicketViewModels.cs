@@ -1,0 +1,166 @@
+using Humans.Domain.Enums;
+using NodaTime;
+
+namespace Humans.Web.Models;
+
+public class TicketDashboardViewModel
+{
+    public int TicketsSold { get; set; }
+    public int TotalCapacity { get; set; }
+    public decimal Revenue { get; set; }
+    public decimal AveragePrice { get; set; }
+    public int TicketsRemaining { get; set; }
+    public string Currency { get; set; } = "EUR";
+
+    // Daily sales chart data
+    public List<DailySalesPoint> DailySales { get; set; } = [];
+
+    // Problems / attention items
+    public int UnmatchedOrderCount { get; set; }
+    public TicketSyncStatus SyncStatus { get; set; }
+    public string? SyncError { get; set; }
+    public Instant? LastSyncAt { get; set; }
+
+    // Recent orders (last 10)
+    public List<TicketOrderSummary> RecentOrders { get; set; } = [];
+
+    public bool IsConfigured { get; set; }
+
+    // Who hasn't bought count (for dashboard link)
+    public int WhoHasntBoughtCount { get; set; }
+}
+
+public class DailySalesPoint
+{
+    public string Date { get; set; } = string.Empty; // "2026-05-15" for Chart.js
+    public int TicketsSold { get; set; }
+    public decimal? RollingAverage { get; set; } // 7-day rolling avg
+}
+
+public class TicketOrderSummary
+{
+    public Guid Id { get; set; }
+    public string BuyerName { get; set; } = string.Empty;
+    public int TicketCount { get; set; }
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "EUR";
+    public Instant PurchasedAt { get; set; }
+    public bool IsMatched { get; set; }
+}
+
+public class TicketOrdersViewModel
+{
+    public List<TicketOrderRow> Orders { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+    public string? Search { get; set; }
+    public string SortBy { get; set; } = "date";
+    public bool SortDesc { get; set; } = true;
+    public string? FilterPaymentStatus { get; set; }
+    public string? FilterTicketType { get; set; }
+    public bool? FilterMatched { get; set; }
+    public List<string> AvailableTicketTypes { get; set; } = [];
+
+    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+}
+
+public class TicketOrderRow
+{
+    public Guid Id { get; set; }
+    public Instant PurchasedAt { get; set; }
+    public string BuyerName { get; set; } = string.Empty;
+    public string BuyerEmail { get; set; } = string.Empty;
+    public int AttendeeCount { get; set; }
+    public decimal TotalAmount { get; set; }
+    public string Currency { get; set; } = "EUR";
+    public string? DiscountCode { get; set; }
+    public TicketPaymentStatus PaymentStatus { get; set; }
+    public string? VendorDashboardUrl { get; set; }
+    public Guid? MatchedUserId { get; set; }
+    public string? MatchedUserName { get; set; }
+}
+
+public class TicketAttendeesViewModel
+{
+    public List<TicketAttendeeRow> Attendees { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+    public string? Search { get; set; }
+    public string SortBy { get; set; } = "name";
+    public bool SortDesc { get; set; }
+    public string? FilterTicketType { get; set; }
+    public string? FilterStatus { get; set; }
+    public bool? FilterMatched { get; set; }
+    public List<string> AvailableTicketTypes { get; set; } = [];
+
+    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+}
+
+public class TicketAttendeeRow
+{
+    public Guid Id { get; set; }
+    public string AttendeeName { get; set; } = string.Empty;
+    public string? AttendeeEmail { get; set; }
+    public string TicketTypeName { get; set; } = string.Empty;
+    public decimal Price { get; set; }
+    public TicketAttendeeStatus Status { get; set; }
+    public Guid? MatchedUserId { get; set; }
+    public string? MatchedUserName { get; set; }
+    public string VendorOrderId { get; set; } = string.Empty;
+}
+
+public class TicketCodeTrackingViewModel
+{
+    public int TotalCodesSent { get; set; }
+    public int CodesRedeemed { get; set; }
+    public int CodesUnused { get; set; }
+    public decimal RedemptionRate { get; set; }
+    public List<CampaignCodeSummary> Campaigns { get; set; } = [];
+    public List<CodeDetailRow> Codes { get; set; } = [];
+    public string? Search { get; set; }
+}
+
+public class CodeDetailRow
+{
+    public string Code { get; set; } = string.Empty;
+    public string RecipientName { get; set; } = string.Empty;
+    public Guid RecipientUserId { get; set; }
+    public string CampaignTitle { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public Instant? RedeemedAt { get; set; }
+}
+
+public class CampaignCodeSummary
+{
+    public Guid CampaignId { get; set; }
+    public string CampaignTitle { get; set; } = string.Empty;
+    public int TotalGrants { get; set; }
+    public int Redeemed { get; set; }
+    public int Unused { get; set; }
+    public decimal RedemptionRate { get; set; }
+}
+
+public class WhoHasntBoughtViewModel
+{
+    public List<WhoHasntBoughtRow> Humans { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 25;
+    public string? Search { get; set; }
+    public string? FilterTeam { get; set; }
+    public string? FilterTier { get; set; }
+    public List<string> AvailableTeams { get; set; } = [];
+
+    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
+}
+
+public class WhoHasntBoughtRow
+{
+    public Guid UserId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Teams { get; set; } = string.Empty;
+    public string Tier { get; set; } = string.Empty;
+}

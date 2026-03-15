@@ -1,0 +1,127 @@
+@model Humans.Web.Models.TicketAttendeesViewModel
+@{
+    ViewData["Title"] = "Ticket Attendees";
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+        <h1>Ticket Attendees</h1>
+        <a asp-action="Index" class="btn btn-outline-secondary"><i class="fa-solid fa-arrow-left"></i> Dashboard</a>
+    </div>
+
+    <!-- Search & Filters -->
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search name or email..." />
+        </div>
+        <div class="col-md-2">
+            <select name="filterTicketType" class="form-select">
+                <option value="">All Types</option>
+                @foreach (var tt in Model.AvailableTicketTypes)
+                {
+                    <option value="@tt" selected="@(Model.FilterTicketType == tt)">@tt</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="filterStatus" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="Valid" selected="@(Model.FilterStatus == "Valid")">Valid</option>
+                <option value="Void" selected="@(Model.FilterStatus == "Void")">Void</option>
+                <option value="CheckedIn" selected="@(Model.FilterStatus == "CheckedIn")">Checked In</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="filterMatched" class="form-select">
+                <option value="">All</option>
+                <option value="true" selected="@(Model.FilterMatched == true)">Matched</option>
+                <option value="false" selected="@(Model.FilterMatched == false)">Unmatched</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filter</button>
+        </div>
+        <input type="hidden" name="sortBy" value="@Model.SortBy" />
+        <input type="hidden" name="sortDesc" value="@Model.SortDesc" />
+        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+    </form>
+
+    <p class="text-muted">@Model.TotalCount attendees found</p>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th><a asp-action="Attendees" asp-route-sortBy="name" asp-route-sortDesc="@(Model.SortBy == "name" ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize">Name</a></th>
+                    <th>Email</th>
+                    <th><a asp-action="Attendees" asp-route-sortBy="type" asp-route-sortDesc="@(Model.SortBy == "type" ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize">Ticket Type</a></th>
+                    <th><a asp-action="Attendees" asp-route-sortBy="price" asp-route-sortDesc="@(Model.SortBy == "price" ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize">Price</a></th>
+                    <th><a asp-action="Attendees" asp-route-sortBy="status" asp-route-sortDesc="@(Model.SortBy == "status" ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize">Status</a></th>
+                    <th>Matched Human</th>
+                    <th>Order</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.Attendees)
+                {
+                    <tr>
+                        <td>@a.AttendeeName</td>
+                        <td><small>@(a.AttendeeEmail ?? "\u2014")</small></td>
+                        <td>@a.TicketTypeName</td>
+                        <td>@a.Price.ToString("N2")</td>
+                        <td>
+                            @{
+                                var statusClass = a.Status switch
+                                {
+                                    Humans.Domain.Enums.TicketAttendeeStatus.Valid => "bg-success",
+                                    Humans.Domain.Enums.TicketAttendeeStatus.CheckedIn => "bg-info",
+                                    Humans.Domain.Enums.TicketAttendeeStatus.Void => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @statusClass">@a.Status</span>
+                        </td>
+                        <td>
+                            @if (a.MatchedUserId.HasValue)
+                            {
+                                <a asp-controller="Human" asp-action="Detail" asp-route-id="@a.MatchedUserId">
+                                    <i class="fa-solid fa-check text-success"></i> @a.MatchedUserName
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">&mdash;</span>
+                            }
+                        </td>
+                        <td><small>@a.VendorOrderId</small></td>
+                    </tr>
+                }
+                @if (Model.Attendees.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-muted text-center">No attendees found</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Attendees" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched">Previous</a>
+                </li>
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Attendees" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Attendees" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched">Next</a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>

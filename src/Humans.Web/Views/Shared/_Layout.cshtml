@@ -83,6 +83,12 @@
                                 <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                             </li>
                         }
+                        @if (User.IsInRole("TicketAdmin") || User.IsInRole("Admin") || User.IsInRole("Board"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
+                            </li>
+                        }
                     </ul>
                     <div class="d-flex align-items-center gap-2">
                         <partial name="_LanguageChooser" />
