@@ -1,0 +1,97 @@
+@{
+    var fieldName = ViewData["FieldName"] as string ?? "userId";
+    var inputId = "human-search-" + fieldName;
+    var dropdownId = "human-search-dropdown-" + fieldName;
+    var hiddenId = "human-search-hidden-" + fieldName;
+}
+
+<div class="human-search-wrapper position-relative" style="flex: 1;">
+    <input type="text"
+           id="@inputId"
+           class="form-control"
+           placeholder="Search by name…"
+           autocomplete="off" />
+    <input type="hidden"
+           id="@hiddenId"
+           name="@fieldName" />
+    <ul id="@dropdownId"
+        class="list-group position-absolute w-100 shadow-sm"
+        style="z-index: 1050; display: none; max-height: 260px; overflow-y: auto; top: 100%;">
+    </ul>
+</div>
+
+<script>
+(function () {
+    var textInput = document.getElementById('@inputId');
+    var hiddenInput = document.getElementById('@hiddenId');
+    var dropdown = document.getElementById('@dropdownId');
+    var debounceTimer = null;
+
+    textInput.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        var q = textInput.value.trim();
+        if (q.length < 2) {
+            hideDropdown();
+            hiddenInput.value = '';
+            return;
+        }
+        debounceTimer = setTimeout(function () { fetchResults(q); }, 300);
+    });
+
+    textInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!textInput.contains(e.target) && !dropdown.contains(e.target)) {
+            hideDropdown();
+        }
+    });
+
+    function fetchResults(q) {
+        fetch('/api/humans/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (results) { renderDropdown(results); })
+            .catch(function () { hideDropdown(); });
+    }
+
+    function renderDropdown(results) {
+        dropdown.innerHTML = '';
+        if (!results || results.length === 0) {
+            hideDropdown();
+            return;
+        }
+        results.forEach(function (r) {
+            var li = document.createElement('li');
+            li.className = 'list-group-item list-group-item-action py-2 px-3';
+            li.style.cursor = 'pointer';
+            var label = r.displayName;
+            if (r.burnerName) {
+                label += ' <span class="text-muted small">(' + escapeHtml(r.burnerName) + ')</span>';
+            }
+            li.innerHTML = label;
+            li.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                hiddenInput.value = r.userId;
+                textInput.value = r.displayName + (r.burnerName ? ' (' + r.burnerName + ')' : '');
+                hideDropdown();
+            });
+            dropdown.appendChild(li);
+        });
+        dropdown.style.display = '';
+    }
+
+    function hideDropdown() {
+        dropdown.style.display = 'none';
+        dropdown.innerHTML = '';
+    }
+
+    function escapeHtml(s) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+    }
+})();
+</script>

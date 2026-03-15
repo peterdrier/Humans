@@ -250,12 +250,12 @@
             <div class="card-body">
                 <form asp-action="AddLead" asp-route-slug="@Model.Slug" method="post" class="input-group">
                     @Html.AntiForgeryToken()
-                    <input type="text" name="userId" class="form-control" placeholder="User ID (GUID)" required />
+                    <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", "userId" } })' />
                     <button type="submit" class="btn btn-outline-success" title="Add co-lead">
                         <i class="fa-solid fa-user-plus"></i>
                     </button>
                 </form>
-                <div class="form-text">Enter the user ID of the new co-lead.</div>
+                <div class="form-text">Search by name to find the new co-lead.</div>
             </div>
         </div>
 
