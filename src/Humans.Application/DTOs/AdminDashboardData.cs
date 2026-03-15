@@ -2,10 +2,13 @@ namespace Humans.Application.DTOs;
 
 public record AdminDashboardData(
     int TotalMembers,
+    int IncompleteSignup,
+    int PendingApproval,
     int ActiveMembers,
-    int PendingVolunteers,
+    int MissingConsents,
+    int Suspended,
+    int PendingDeletion,
     int PendingApplications,
-    int PendingConsents,
     int TotalApplications,
     int ApprovedApplications,
     int RejectedApplications,

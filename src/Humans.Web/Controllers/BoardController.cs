@@ -43,9 +43,9 @@ public class BoardController : Controller
         {
             TotalMembers = dashboardData.TotalMembers,
             ActiveMembers = dashboardData.ActiveMembers,
-            PendingVolunteers = dashboardData.PendingVolunteers,
+            PendingVolunteers = dashboardData.PendingApproval,
             PendingApplications = dashboardData.PendingApplications,
-            PendingConsents = dashboardData.PendingConsents,
+            PendingConsents = dashboardData.MissingConsents,
             RecentActivity = recentEntries.Select(e => new RecentActivityViewModel
             {
                 Description = e.Description,

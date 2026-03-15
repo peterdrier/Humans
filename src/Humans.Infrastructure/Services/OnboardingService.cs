@@ -488,29 +488,11 @@ public class OnboardingService : IOnboardingService
 
     public async Task<Application.DTOs.AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
-        var totalMembers = await _dbContext.Users.CountAsync(ct);
-        var activeMembers = await _dbContext.Profiles.CountAsync(p => !p.IsSuspended, ct);
-        var pendingVolunteers = await _dbContext.Profiles
-            .CountAsync(p => !p.IsApproved && !p.IsSuspended, ct);
+        var allUserIds = await _dbContext.Users.Select(u => u.Id).ToListAsync(ct);
+        var partition = await _membershipCalculator.PartitionUsersAsync(allUserIds, ct);
+
         var pendingApplications = await _dbContext.Applications
             .CountAsync(a => a.Status == ApplicationStatus.Submitted, ct);
-
-        // Calculate users with missing required consents
-        var allUserIds = await _dbContext.Users.Select(u => u.Id).ToListAsync(ct);
-        var usersWithAllVolunteerConsents = await _membershipCalculator.GetUsersWithAllRequiredConsentsAsync(allUserIds);
-
-        var leadUserIds = await _dbContext.TeamMembers
-            .Where(tm => tm.LeftAt == null && tm.Role == TeamMemberRole.Lead && tm.Team.SystemTeamType == SystemTeamType.None)
-            .Select(tm => tm.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-        var leadsWithAllConsents = leadUserIds.Count > 0
-            ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(leadUserIds, SystemTeamIds.Leads)
-            : new HashSet<Guid>();
-
-        var pendingConsents = allUserIds.Count(id =>
-            !usersWithAllVolunteerConsents.Contains(id) ||
-            (leadUserIds.Contains(id) && !leadsWithAllConsents.Contains(id)));
 
         // Application statistics (non-withdrawn)
         var appStats = await _dbContext.Applications
@@ -528,9 +510,19 @@ public class OnboardingService : IOnboardingService
             .FirstOrDefaultAsync(ct);
 
         return new Application.DTOs.AdminDashboardData(
-            totalMembers, activeMembers, pendingVolunteers, pendingApplications, pendingConsents,
-            appStats?.Total ?? 0, appStats?.Approved ?? 0, appStats?.Rejected ?? 0,
-            appStats?.Colaborador ?? 0, appStats?.Asociado ?? 0);
+            TotalMembers: allUserIds.Count,
+            IncompleteSignup: partition.IncompleteSignup.Count,
+            PendingApproval: partition.PendingApproval.Count,
+            ActiveMembers: partition.Active.Count,
+            MissingConsents: partition.MissingConsents.Count,
+            Suspended: partition.Suspended.Count,
+            PendingDeletion: partition.PendingDeletion.Count,
+            PendingApplications: pendingApplications,
+            TotalApplications: appStats?.Total ?? 0,
+            ApprovedApplications: appStats?.Approved ?? 0,
+            RejectedApplications: appStats?.Rejected ?? 0,
+            ColaboradorApplied: appStats?.Colaborador ?? 0,
+            AsociadoApplied: appStats?.Asociado ?? 0);
     }
 
     public async Task<OnboardingResult> PurgeHumanAsync(Guid userId, CancellationToken ct = default)
