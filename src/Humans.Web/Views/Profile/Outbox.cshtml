@@ -1,21 +1,34 @@
 @model IList<Humans.Domain.Entities.EmailOutboxMessage>
 @using Humans.Domain.Enums
 @{
-    ViewData["Title"] = "My Emails";
+    var humanId = (Guid?)ViewBag.HumanId;
+    var isAdminView = humanId.HasValue;
+    ViewData["Title"] = isAdminView ? "Emails" : "My Emails";
 }
 
 <div class="row">
     <div class="col-md-10">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h1>My Emails</h1>
-            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
-                <i class="fa-solid fa-arrow-left me-1"></i>Back to Profile
-            </a>
+            <h1>@ViewData["Title"]</h1>
+            @if (isAdminView)
+            {
+                <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@humanId" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+                </a>
+            }
+            else
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Back to Profile
+                </a>
+            }
         </div>
 
         <vc:temp-data-alerts />
 
-        <p class="text-muted">Emails the system has sent to you (within the last 150 days).</p>
+        <p class="text-muted">
+            @(isAdminView ? "Emails the system has sent to this human." : "Emails the system has sent to you (within the last 150 days).")
+        </p>
 
         @if (!Model.Any())
         {
