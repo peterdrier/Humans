@@ -311,4 +311,38 @@ public class CampMapServiceTests : IDisposable
         result.Should().HaveCount(1);
         result[0].CampSeasonId.Should().Be(seasonWithout.Id);
     }
+
+    [Fact]
+    public async Task ExportAsGeoJsonAsync_ReturnsFeatureCollection()
+    {
+        var (_, season, user) = await SeedCampWithLeadAsync(year: 2026);
+        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]},"properties":{}}""";
+
+        await _sut.SavePolygonAsync(season.Id, geoJson, 100.0, user.Id);
+
+        var result = await _sut.ExportAsGeoJsonAsync(2026);
+
+        using var doc = System.Text.Json.JsonDocument.Parse(result);
+        doc.RootElement.GetProperty("type").GetString().Should().Be("FeatureCollection");
+        var features = doc.RootElement.GetProperty("features");
+        features.GetArrayLength().Should().Be(1);
+        features[0].GetProperty("properties").GetProperty("areaSqm").GetDouble().Should().Be(100.0);
+    }
+
+    [Fact]
+    public async Task GetPolygonHistoryAsync_ReturnsEntriesInDescendingOrder()
+    {
+        var (_, season, user) = await SeedCampWithLeadAsync();
+
+        _clock.Advance(Duration.FromSeconds(1));
+        await _sut.SavePolygonAsync(season.Id, """{"type":"Feature"}""", 100.0, user.Id);
+        _clock.Advance(Duration.FromSeconds(1));
+        await _sut.SavePolygonAsync(season.Id, """{"type":"Feature"}""", 200.0, user.Id);
+
+        var history = await _sut.GetPolygonHistoryAsync(season.Id);
+
+        history.Should().HaveCount(2);
+        history[0].AreaSqm.Should().Be(200.0); // Most recent first
+        history[1].AreaSqm.Should().Be(100.0);
+    }
 }

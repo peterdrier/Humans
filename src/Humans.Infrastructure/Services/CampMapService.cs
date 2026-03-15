@@ -228,26 +228,35 @@ public class CampMapService : ICampMapService
             .Where(p => p.CampSeason.Year == year)
             .ToListAsync(cancellationToken);
 
-        var features = polygons.Select(p =>
+        var docs = new List<System.Text.Json.JsonDocument>();
+        try
         {
-            using var doc = System.Text.Json.JsonDocument.Parse(p.GeoJson);
-            var geom = doc.RootElement.TryGetProperty("geometry", out var g) ? g : doc.RootElement;
-            return new
+            var features = polygons.Select(p =>
             {
-                type = "Feature",
-                geometry = geom,
-                properties = new
+                var doc = System.Text.Json.JsonDocument.Parse(p.GeoJson);
+                docs.Add(doc);
+                var geom = doc.RootElement.TryGetProperty("geometry", out var g) ? g : doc.RootElement;
+                return new
                 {
-                    campName = p.CampSeason.Name,
-                    campSlug = p.CampSeason.Camp.Slug,
-                    year = p.CampSeason.Year,
-                    areaSqm = p.AreaSqm
-                }
-            };
-        }).ToList();
+                    type = "Feature",
+                    geometry = geom,
+                    properties = new
+                    {
+                        campName = p.CampSeason.Name,
+                        campSlug = p.CampSeason.Camp.Slug,
+                        year = p.CampSeason.Year,
+                        areaSqm = p.AreaSqm
+                    }
+                };
+            }).ToList();
 
-        return System.Text.Json.JsonSerializer.Serialize(
-            new { type = "FeatureCollection", features },
-            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            return System.Text.Json.JsonSerializer.Serialize(
+                new { type = "FeatureCollection", features },
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        finally
+        {
+            foreach (var d in docs) d.Dispose();
+        }
     }
 }
