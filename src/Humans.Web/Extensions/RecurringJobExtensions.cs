@@ -7,19 +7,17 @@ public static class RecurringJobExtensions
 {
     public static void UseHumansRecurringJobs(this WebApplication _)
     {
-        // Google permission-modifying jobs are currently DISABLED (SystemTeamSyncJob,
-        // GoogleResourceReconciliationJob). They could be destructive if upstream
-        // membership/consent data is incorrect during rollout.
-        //
-        // RecurringJob.AddOrUpdate<SystemTeamSyncJob>(
-        //     "system-team-sync",
-        //     job => job.ExecuteAsync(CancellationToken.None),
-        //     Cron.Hourly);
-        //
-        // RecurringJob.AddOrUpdate<GoogleResourceReconciliationJob>(
-        //     "google-resource-reconciliation",
-        //     job => job.ExecuteAsync(CancellationToken.None),
-        //     "0 3 * * *");
+        // Google sync jobs — controlled by SyncServiceSettings (Admin/SyncSettings).
+        // Set service mode to "None" to disable without redeploying.
+        RecurringJob.AddOrUpdate<SystemTeamSyncJob>(
+            "system-team-sync",
+            job => job.ExecuteAsync(CancellationToken.None),
+            Cron.Hourly);
+
+        RecurringJob.AddOrUpdate<GoogleResourceReconciliationJob>(
+            "google-resource-reconciliation",
+            job => job.ExecuteAsync(CancellationToken.None),
+            "0 3 * * *"); // Daily at 03:00 UTC
 
         RecurringJob.AddOrUpdate<ProcessAccountDeletionsJob>(
             "process-account-deletions",

@@ -43,7 +43,7 @@ See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relati
 
 **All Google Drive resources are on Shared Drives.** This system does NOT use regular (My Drive) folders. All Drive API calls must use `SupportsAllDrives = true`, and permission listing must include `permissionDetails` to distinguish inherited from direct permissions. Only direct permissions are managed by the system — inherited Shared Drive permissions are excluded from drift detection and sync.
 
-**Google permission-modifying jobs are currently DISABLED** (`SystemTeamSyncJob`, `GoogleResourceReconciliationJob`). Use the manual "Sync Now" button at `/Admin/GoogleSync` until automated sync is validated.
+**Google sync jobs** (`SystemTeamSyncJob` hourly, `GoogleResourceReconciliationJob` daily at 03:00) are controlled by per-service mode at `/Admin/SyncSettings` (None/AddOnly/AddAndRemove). Set a service to "None" to disable without redeploying.
 
 ## Important: ConsentRecord is Immutable
 
