@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -14,17 +16,20 @@ namespace Humans.Web.Controllers;
 public class CampaignController : Controller
 {
     private readonly ICampaignService _campaignService;
+    private readonly ITicketVendorService _vendorService;
     private readonly HumansDbContext _dbContext;
     private readonly UserManager<User> _userManager;
     private readonly ILogger<CampaignController> _logger;
 
     public CampaignController(
         ICampaignService campaignService,
+        ITicketVendorService vendorService,
         HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<CampaignController> logger)
     {
         _campaignService = campaignService;
+        _vendorService = vendorService;
         _dbContext = dbContext;
         _userManager = userManager;
         _logger = logger;
@@ -122,10 +127,15 @@ public class CampaignController : Controller
         var sentCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent);
         var failedCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed);
 
+        var codesRedeemed = campaign.Grants.Count(g => g.RedeemedAt != null);
+        var totalGrants = campaign.Grants.Count;
+
         ViewBag.TotalCodes = totalCodes;
         ViewBag.AvailableCodes = availableCodes;
         ViewBag.SentCount = sentCount;
         ViewBag.FailedCount = failedCount;
+        ViewBag.CodesRedeemed = codesRedeemed;
+        ViewBag.TotalGrants = totalGrants;
 
         return View(campaign);
     }
@@ -156,6 +166,40 @@ public class CampaignController : Controller
 
         await _campaignService.ImportCodesAsync(id, codes);
         TempData["SuccessMessage"] = $"Imported {codes.Count} codes.";
+        return RedirectToAction(nameof(Detail), new { id });
+    }
+
+    [HttpPost("{id:guid}/GenerateCodes")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
+    {
+        var campaign = await _dbContext.Set<Campaign>().FindAsync(id);
+        if (campaign == null) return NotFound();
+
+        if (campaign.Status != CampaignStatus.Draft)
+        {
+            TempData["ErrorMessage"] = "Codes can only be generated for Draft campaigns.";
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+
+        if (count <= 0)
+        {
+            TempData["ErrorMessage"] = "Count must be greater than zero.";
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+
+        if (!Enum.TryParse<DiscountType>(discountType, out var parsedType))
+        {
+            TempData["ErrorMessage"] = "Invalid discount type.";
+            return RedirectToAction(nameof(Detail), new { id });
+        }
+
+        var spec = new DiscountCodeSpec(count, parsedType, discountValue, ExpiresAt: null);
+        var codes = await _vendorService.GenerateDiscountCodesAsync(spec);
+        await _campaignService.ImportGeneratedCodesAsync(id, codes);
+
+        TempData["SuccessMessage"] = $"Generated and imported {codes.Count} discount codes.";
         return RedirectToAction(nameof(Detail), new { id });
     }
 

@@ -5,6 +5,9 @@
     var availableCodes = (int)ViewBag.AvailableCodes;
     var sentCount = (int)ViewBag.SentCount;
     var failedCount = (int)ViewBag.FailedCount;
+    var codesRedeemed = (int)ViewBag.CodesRedeemed;
+    var totalGrants = (int)ViewBag.TotalGrants;
+    var redemptionPct = totalGrants > 0 ? (int)Math.Round(100.0 * codesRedeemed / totalGrants) : 0;
     var statusClass = Model.Status switch
     {
         CampaignStatus.Draft => "bg-secondary",
@@ -54,6 +57,19 @@
 
     @if (Model.Status == CampaignStatus.Draft)
     {
+        <form asp-action="GenerateCodes" asp-route-id="@Model.Id" method="post" class="d-inline-flex align-items-center gap-2">
+            @Html.AntiForgeryToken()
+            <input type="number" name="count" min="1" placeholder="Count" class="form-control form-control-sm" style="max-width: 90px;" required />
+            <select name="discountType" class="form-select form-select-sm" style="max-width: 140px;" required>
+                <option value="Percentage">Percentage</option>
+                <option value="Fixed">Fixed</option>
+            </select>
+            <input type="number" name="discountValue" min="0" step="0.01" placeholder="Value" class="form-control form-control-sm" style="max-width: 100px;" required />
+            <button type="submit" class="btn btn-outline-success btn-sm">
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Generate Codes
+            </button>
+        </form>
+
         <form asp-action="Activate" asp-route-id="@Model.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-success btn-sm">
@@ -119,6 +135,15 @@
     </div>
 </div>
 
+@* Redemption stats *@
+@if (totalGrants > 0)
+{
+    <div class="alert alert-info mb-4">
+        <i class="fa-solid fa-ticket me-1"></i>
+        <strong>@codesRedeemed</strong> of <strong>@totalGrants</strong> codes redeemed (@redemptionPct%)
+    </div>
+}
+
 @* Grants table *@
 <div class="card">
     <div class="card-header">Grants</div>
@@ -136,6 +161,7 @@
                         <th>Email</th>
                         <th>Code</th>
                         <th>Assigned</th>
+                        <th>Redeemed</th>
                         <th>Email Status</th>
                         <th></th>
                     </tr>
@@ -155,6 +181,16 @@
                             <td class="text-muted small">@grant.User.Email</td>
                             <td><code>@grant.Code.Code</code></td>
                             <td>@grant.AssignedAt.ToString("d MMM yyyy HH:mm", null)</td>
+                            <td>
+                                @if (grant.RedeemedAt.HasValue)
+                                {
+                                    <span class="text-success">@grant.RedeemedAt.Value.ToString("d MMM yyyy", null)</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">&mdash;</span>
+                                }
+                            </td>
                             <td>
                                 @if (grant.LatestEmailStatus.HasValue)
                                 {

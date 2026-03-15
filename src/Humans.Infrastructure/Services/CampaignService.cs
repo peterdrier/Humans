@@ -130,6 +130,37 @@ public class CampaignService : ICampaignService
             campaignId, imported, skipped);
     }
 
+    public async Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes,
+        CancellationToken ct = default)
+    {
+        var campaign = await _dbContext.Campaigns
+            .Include(c => c.Codes)
+            .FirstOrDefaultAsync(c => c.Id == campaignId, ct)
+            ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
+
+        var now = _clock.GetCurrentInstant();
+        var maxOrder = campaign.Codes.Any() ? campaign.Codes.Max(c => c.ImportOrder) : 0;
+
+        foreach (var code in codes)
+        {
+            maxOrder++;
+            _dbContext.CampaignCodes.Add(new CampaignCode
+            {
+                Id = Guid.NewGuid(),
+                CampaignId = campaignId,
+                Code = code,
+                ImportOrder = maxOrder,
+                ImportedAt = now
+            });
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Campaign {CampaignId}: imported {Count} vendor-generated codes",
+            campaignId, codes.Count);
+    }
+
     public async Task ActivateAsync(Guid campaignId, CancellationToken ct = default)
     {
         var campaign = await _dbContext.Campaigns

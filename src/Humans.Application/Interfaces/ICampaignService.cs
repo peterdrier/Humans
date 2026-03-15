@@ -17,6 +17,7 @@ public interface ICampaignService
     Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<List<Campaign>> GetAllAsync(CancellationToken ct = default);
     Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default);
+    Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes, CancellationToken ct = default);
     Task ActivateAsync(Guid campaignId, CancellationToken ct = default);
     Task CompleteAsync(Guid campaignId, CancellationToken ct = default);
     Task<WaveSendPreview> PreviewWaveSendAsync(Guid campaignId, Guid teamId, CancellationToken ct = default);
