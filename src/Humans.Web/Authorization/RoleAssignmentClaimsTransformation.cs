@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Data;
@@ -10,6 +11,7 @@ namespace Humans.Web.Authorization;
 /// <summary>
 /// Claims transformation that syncs active RoleAssignment entities to Identity role claims
 /// and adds membership status claims. Runs on every authenticated request.
+/// Results are cached per user for 60 seconds to avoid 2 DB queries per request.
 /// </summary>
 public class RoleAssignmentClaimsTransformation : IClaimsTransformation
 {
@@ -18,13 +20,17 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
     /// </summary>
     public const string ActiveMemberClaimType = "ActiveMember";
 
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
+
     private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
+    private readonly IMemoryCache _cache;
 
-    public RoleAssignmentClaimsTransformation(IServiceProvider serviceProvider, IClock clock)
+    public RoleAssignmentClaimsTransformation(IServiceProvider serviceProvider, IClock clock, IMemoryCache cache)
     {
         _serviceProvider = serviceProvider;
         _clock = clock;
+        _cache = cache;
     }
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
@@ -46,10 +52,34 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
             return principal;
         }
 
+        var cacheKey = $"claims:{userId}";
+        var claims = await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            return await LoadClaimsFromDbAsync(userId);
+        });
+
+        var identity = new ClaimsIdentity();
+        foreach (var claim in claims!)
+        {
+            identity.AddClaim(claim);
+        }
+
+        // Marker claim to prevent duplicate processing
+        identity.AddClaim(new Claim("RoleAssignmentClaimsAdded", "true"));
+
+        principal.AddIdentity(identity);
+
+        return principal;
+    }
+
+    private async Task<List<Claim>> LoadClaimsFromDbAsync(Guid userId)
+    {
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var now = _clock.GetCurrentInstant();
+        var claims = new List<Claim>();
 
         var activeRoles = await dbContext.RoleAssignments
             .AsNoTracking()
@@ -61,14 +91,11 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
             .Distinct()
             .ToListAsync();
 
-        var identity = new ClaimsIdentity();
-
         foreach (var role in activeRoles)
         {
-            identity.AddClaim(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        // Check if user is an active Volunteers team member
         var isVolunteerMember = await dbContext.TeamMembers
             .AsNoTracking()
             .AnyAsync(tm =>
@@ -78,14 +105,9 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
 
         if (isVolunteerMember)
         {
-            identity.AddClaim(new Claim(ActiveMemberClaimType, "true"));
+            claims.Add(new Claim(ActiveMemberClaimType, "true"));
         }
 
-        // Marker claim to prevent duplicate processing
-        identity.AddClaim(new Claim("RoleAssignmentClaimsAdded", "true"));
-
-        principal.AddIdentity(identity);
-
-        return principal;
+        return claims;
     }
 }
