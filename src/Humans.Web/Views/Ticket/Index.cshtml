@@ -208,6 +208,16 @@
                         <i class="fa-solid fa-sync"></i> Sync Now
                     </button>
                 </form>
+                @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                {
+                    <form asp-action="FullResync" method="post" class="d-inline ms-2"
+                          onsubmit="return confirm('This will re-fetch ALL orders from the vendor. Continue?');">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            <i class="fa-solid fa-arrows-rotate"></i> Full Re-sync
+                        </button>
+                    </form>
+                }
             }
         </div>
     </div>

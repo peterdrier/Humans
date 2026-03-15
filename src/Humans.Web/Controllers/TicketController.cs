@@ -508,6 +508,23 @@ public class TicketController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("FullResync")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = RoleNames.Admin)]
+    public async Task<IActionResult> FullResync()
+    {
+        var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
+        if (syncState != null)
+        {
+            syncState.LastSyncAt = null;
+            await _dbContext.SaveChangesAsync();
+        }
+
+        BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
+        TempData["SuccessMessage"] = "Full re-sync triggered. All orders will be re-fetched.";
+        return RedirectToAction(nameof(Index));
+    }
+
     [HttpGet("Export/Attendees")]
     [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
     public async Task<IActionResult> ExportAttendees()
