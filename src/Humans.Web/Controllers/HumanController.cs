@@ -235,6 +235,13 @@ public class HumanController : Controller
             .ToListAsync();
         ViewBag.CampaignGrants = campaignGrants;
 
+        var outboxMessages = await _dbContext.EmailOutboxMessages
+            .Where(m => m.UserId == id)
+            .OrderByDescending(m => m.CreatedAt)
+            .Take(20)
+            .ToListAsync();
+        ViewBag.OutboxMessages = outboxMessages;
+
         var now = _clock.GetCurrentInstant();
 
         var viewModel = new AdminHumanDetailViewModel

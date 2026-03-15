@@ -4,6 +4,7 @@
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
     var campaignGrants = (IList<CampaignGrant>?)ViewBag.CampaignGrants;
+    var outboxMessages = (IList<EmailOutboxMessage>?)ViewBag.OutboxMessages;
 }
 
 <nav aria-label="breadcrumb">
@@ -265,6 +266,52 @@
                                         @if (grant.LatestEmailStatus.HasValue)
                                         {
                                             <span class="badge @badgeClass">@grant.LatestEmailStatus</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @if (outboxMessages != null && outboxMessages.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fa-solid fa-envelope me-1"></i> Email Outbox</span>
+                    <span class="badge bg-secondary">@outboxMessages.Count</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Subject</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var msg in outboxMessages)
+                            {
+                                <tr>
+                                    <td class="text-nowrap"><small>@msg.CreatedAt.InUtc().ToString("dd MMM yyyy HH:mm", null)</small></td>
+                                    <td><small>@msg.Subject</small></td>
+                                    <td>
+                                        @{
+                                            var msgClass = msg.Status switch
+                                            {
+                                                EmailOutboxStatus.Sent => "bg-success",
+                                                EmailOutboxStatus.Failed => "bg-danger",
+                                                EmailOutboxStatus.Queued => "bg-warning text-dark",
+                                                _ => "bg-secondary"
+                                            };
+                                        }
+                                        <span class="badge @msgClass">@msg.Status</span>
+                                        @if (msg.LastError != null)
+                                        {
+                                            <br /><small class="text-danger">@msg.LastError[..Math.Min(50, msg.LastError.Length)]</small>
                                         }
                                     </td>
                                 </tr>
