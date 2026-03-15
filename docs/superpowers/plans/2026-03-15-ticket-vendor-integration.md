@@ -824,6 +824,11 @@ public class TicketVendorSettings
     public string Provider { get; set; } = "TicketTailor";
     public string EventId { get; set; } = string.Empty;
     public int SyncIntervalMinutes { get; set; } = 15;
+    /// <summary>API key — populated from TICKET_VENDOR_API_KEY env var at DI registration time.
+    /// Not stored in appsettings (sensitive). Accessible in settings for testability.</summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    public bool IsConfigured => !string.IsNullOrEmpty(EventId) && !string.IsNullOrEmpty(ApiKey);
 }
 ```
 
@@ -859,7 +864,7 @@ public class TicketTailorService : ITicketVendorService
         _settings = settings.Value;
         _logger = logger;
 
-        var apiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY") ?? string.Empty;
+        var apiKey = _settings.ApiKey;
         if (!string.IsNullOrEmpty(apiKey))
         {
             var authBytes = Encoding.ASCII.GetBytes($"{apiKey}:");
@@ -876,7 +881,11 @@ public class TicketTailorService : ITicketVendorService
 
         do
         {
+            // TT API returns newest-first by default. We pass created_at.gte
+            // to let the API handle incremental filtering server-side.
             var url = $"{BaseUrl}/orders?event_id={eventId}";
+            if (since.HasValue)
+                url += $"&created_at.gte={since.Value.ToUnixTimeSeconds()}";
             if (cursor != null)
                 url += $"&starting_after={cursor}";
 
@@ -890,12 +899,6 @@ public class TicketTailorService : ITicketVendorService
             foreach (var order in body.Data)
             {
                 var purchasedAt = Instant.FromUnixTimeSeconds(long.Parse(order.CreatedAt));
-                if (since.HasValue && purchasedAt <= since.Value)
-                {
-                    // We've reached orders we've already synced
-                    cursor = null;
-                    break;
-                }
 
                 orders.Add(new VendorOrderDto(
                     VendorOrderId: order.Id,
@@ -928,6 +931,8 @@ public class TicketTailorService : ITicketVendorService
         do
         {
             var url = $"{BaseUrl}/issued_tickets?event_id={eventId}";
+            if (since.HasValue)
+                url += $"&created_at.gte={since.Value.ToUnixTimeSeconds()}";
             if (cursor != null)
                 url += $"&starting_after={cursor}";
 
@@ -1031,17 +1036,18 @@ public class TicketTailorService : ITicketVendorService
         return results;
     }
 
-    // --- TicketTailor API response models (internal) ---
+    // --- TicketTailor API response models ---
+    // Must be internal (not private) for System.Text.Json deserialization
 
-    private record TtPaginatedResponse<T>(
+    internal record TtPaginatedResponse<T>(
         [property: JsonPropertyName("data")] List<T> Data,
         [property: JsonPropertyName("links")] TtLinks? Links);
 
-    private record TtLinks(
+    internal record TtLinks(
         [property: JsonPropertyName("next")] string? Next,
         [property: JsonPropertyName("previous")] string? Previous);
 
-    private record TtOrder(
+    internal record TtOrder(
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("buyer_first_name")] string? BuyerFirstName,
         [property: JsonPropertyName("buyer_last_name")] string? BuyerLastName,
@@ -1052,7 +1058,7 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("status")] string? Status,
         [property: JsonPropertyName("created_at")] string CreatedAt);
 
-    private record TtIssuedTicket(
+    internal record TtIssuedTicket(
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("first_name")] string? FirstName,
         [property: JsonPropertyName("last_name")] string? LastName,
@@ -1062,12 +1068,12 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("status")] string? Status,
         [property: JsonPropertyName("order_id")] string? OrderId);
 
-    private record TtEvent(
+    internal record TtEvent(
         [property: JsonPropertyName("name")] string? Name,
         [property: JsonPropertyName("total_holds")] int? TotalHolds,
         [property: JsonPropertyName("total_issued_tickets")] int? TotalIssuedTickets);
 
-    private record TtVoucherCode(
+    internal record TtVoucherCode(
         [property: JsonPropertyName("code")] string? Code,
         [property: JsonPropertyName("times_used")] int? TimesUsed);
 }
@@ -1134,12 +1140,13 @@ public class TicketSyncService : ITicketSyncService
 
     public async Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default)
     {
-        var eventId = _settings.EventId;
-        if (string.IsNullOrEmpty(eventId))
+        if (!_settings.IsConfigured)
         {
-            _logger.LogWarning("TicketVendor:EventId is not configured, skipping sync");
+            _logger.LogWarning("Ticket vendor not configured (missing EventId or API key), skipping sync");
             return new TicketSyncResult(0, 0, 0, 0, 0);
         }
+
+        var eventId = _settings.EventId;
 
         var syncState = await _dbContext.TicketSyncStates.FindAsync([1], ct)
             ?? throw new InvalidOperationException("TicketSyncState seed row missing");
@@ -1172,10 +1179,17 @@ public class TicketSyncService : ITicketSyncService
                     ordersMatched++;
             }
 
+            // IMPORTANT: Save orders before processing attendees so that
+            // UpsertAttendeeAsync can find parent orders via DB query.
+            // Without this, newly added orders are only in the Change Tracker
+            // and FirstOrDefaultAsync won't see them.
+            await _dbContext.SaveChangesAsync(ct);
+
             // Sync all tickets (not grouped by order — we match by VendorTicketId)
             foreach (var ticketDto in tickets)
             {
                 var attendee = await UpsertAttendeeAsync(ticketDto, eventId, emailLookup, now, ct);
+                if (attendee == null) continue; // Skipped — parent order not found
                 attendeesSynced++;
                 if (attendee.MatchedUserId.HasValue)
                     attendeesMatched++;
@@ -1227,10 +1241,32 @@ public class TicketSyncService : ITicketSyncService
             .ToListAsync(ct);
 
         var lookup = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-        foreach (var ue in userEmails.OrderByDescending(e => e.IsOAuth))
+        // Group by email to detect ambiguity (multiple users sharing same email)
+        var grouped = userEmails.GroupBy(e => e.Email, StringComparer.OrdinalIgnoreCase);
+        foreach (var group in grouped)
         {
-            // First write wins — OAuth emails take priority (sorted first)
-            lookup.TryAdd(ue.Email, ue.UserId);
+            var entries = group.ToList();
+            var distinctUserIds = entries.Select(e => e.UserId).Distinct().ToList();
+
+            if (distinctUserIds.Count == 1)
+            {
+                lookup[group.Key] = distinctUserIds[0];
+            }
+            else
+            {
+                // Multiple users share this email — prefer OAuth
+                var oauthEntry = entries.FirstOrDefault(e => e.IsOAuth);
+                if (oauthEntry != null)
+                {
+                    lookup[group.Key] = oauthEntry.UserId;
+                }
+                else
+                {
+                    // Still ambiguous — per spec, log warning and leave unmatched
+                    _logger.LogWarning("Email {Email} shared by {Count} users with no OAuth owner, leaving unmatched",
+                        group.Key, distinctUserIds.Count);
+                }
+            }
         }
 
         return lookup;
@@ -1279,7 +1315,7 @@ public class TicketSyncService : ITicketSyncService
         return order;
     }
 
-    private async Task<TicketAttendee> UpsertAttendeeAsync(
+    private async Task<TicketAttendee?> UpsertAttendeeAsync(
         VendorTicketDto dto, string eventId,
         Dictionary<string, Guid> emailLookup, Instant now,
         CancellationToken ct)
@@ -1311,7 +1347,7 @@ public class TicketSyncService : ITicketSyncService
         {
             _logger.LogWarning("Attendee {VendorTicketId} references unknown order {VendorOrderId}, skipping",
                 dto.VendorTicketId, dto.VendorOrderId);
-            return new TicketAttendee { Id = Guid.NewGuid(), VendorTicketId = dto.VendorTicketId };
+            return null;
         }
 
         var attendee = new TicketAttendee
@@ -1469,8 +1505,10 @@ public class TicketSyncJob
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ticket sync job failed");
-            // Don't rethrow — Hangfire will mark as failed but we've already
-            // updated TicketSyncState with the error
+            // Rethrow so Hangfire marks the run as failed and can retry.
+            // TicketSyncState has already been updated with the error by
+            // the sync service's catch block.
+            throw;
         }
     }
 }
@@ -1482,7 +1520,12 @@ Add to `src/Humans.Web/Extensions/InfrastructureServiceCollectionExtensions.cs` 
 
 ```csharp
 // Ticket vendor integration
-services.Configure<TicketVendorSettings>(configuration.GetSection(TicketVendorSettings.SectionName));
+services.Configure<TicketVendorSettings>(opts =>
+{
+    configuration.GetSection(TicketVendorSettings.SectionName).Bind(opts);
+    // Populate API key from environment variable (not in appsettings — sensitive)
+    opts.ApiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY") ?? string.Empty;
+});
 services.AddHttpClient<ITicketVendorService, TicketTailorService>();
 services.AddScoped<ITicketSyncService, TicketSyncService>();
 ```
@@ -1494,12 +1537,15 @@ Add the using: `using Humans.Infrastructure.Services;` (if not already present)
 Add to `src/Humans.Web/Extensions/RecurringJobExtensions.cs` at the end of `UseHumansRecurringJobs`:
 
 ```csharp
-// Sync ticket data from vendor every 15 minutes.
+// Sync ticket data from vendor at configured interval (default 15 min).
 // Requires TICKET_VENDOR_API_KEY environment variable and TicketVendor:EventId in appsettings.
+// Note: Hangfire cron doesn't support dynamic intervals, so we use the config value
+// at startup time. Changes to SyncIntervalMinutes require app restart.
+var ticketSyncInterval = _.Configuration.GetValue("TicketVendor:SyncIntervalMinutes", 15);
 RecurringJob.AddOrUpdate<TicketSyncJob>(
     "ticket-vendor-sync",
     job => job.ExecuteAsync(CancellationToken.None),
-    "*/15 * * * *");
+    $"*/{ticketSyncInterval} * * * *");
 ```
 
 - [ ] **Step 4: Add TicketVendor config to appsettings**
@@ -1951,6 +1997,18 @@ public class TicketCodeTrackingViewModel
     public int CodesUnused { get; set; }
     public decimal RedemptionRate { get; set; } // percentage
     public List<CampaignCodeSummary> Campaigns { get; set; } = [];
+    public List<CodeDetailRow> Codes { get; set; } = [];
+    public string? Search { get; set; }
+}
+
+public class CodeDetailRow
+{
+    public string Code { get; set; } = string.Empty;
+    public string RecipientName { get; set; } = string.Empty;
+    public Guid RecipientUserId { get; set; }
+    public string CampaignTitle { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty; // "Redeemed", "Sent", "Pending"
+    public Instant? RedeemedAt { get; set; }
 }
 
 public class CampaignCodeSummary
@@ -2000,6 +2058,7 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Web.Controllers;
@@ -2011,24 +2070,27 @@ public class TicketController : Controller
     private readonly HumansDbContext _dbContext;
     private readonly ITicketVendorService _vendorService;
     private readonly TicketVendorSettings _settings;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TicketController> _logger;
 
     public TicketController(
         HumansDbContext dbContext,
         ITicketVendorService vendorService,
         IOptions<TicketVendorSettings> settings,
+        IMemoryCache cache,
         ILogger<TicketController> logger)
     {
         _dbContext = dbContext;
         _vendorService = vendorService;
         _settings = settings.Value;
+        _cache = cache;
         _logger = logger;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var isConfigured = !string.IsNullOrEmpty(_settings.EventId);
+        var isConfigured = _settings.IsConfigured;
         var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
 
         if (!isConfigured)
@@ -2040,17 +2102,24 @@ public class TicketController : Controller
         var orders = _dbContext.TicketOrders.AsQueryable();
         var attendees = _dbContext.TicketAttendees.AsQueryable();
 
-        var ticketsSold = await attendees.CountAsync(a => a.Status == TicketAttendeeStatus.Valid);
+        // Count both Valid and CheckedIn — both are sold tickets
+        var ticketsSold = await attendees.CountAsync(a =>
+            a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn);
         var revenue = await orders.SumAsync(o => o.TotalAmount);
         var avgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
         var unmatchedCount = await orders.CountAsync(o => o.MatchedUserId == null);
 
-        // Try to get capacity from vendor (cached/fallback)
+        // Cache vendor event summary (15-min TTL) to avoid API call on every page load.
+        // Per CLAUDE.md: "Prefer in-memory caching over query optimization."
         int totalCapacity = 0;
         try
         {
-            var summary = await _vendorService.GetEventSummaryAsync(_settings.EventId);
-            totalCapacity = summary.TotalCapacity;
+            var summary = await _cache.GetOrCreateAsync("ticket-event-summary", async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15);
+                return await _vendorService.GetEventSummaryAsync(_settings.EventId);
+            });
+            totalCapacity = summary?.TotalCapacity ?? 0;
         }
         catch (Exception ex)
         {
@@ -2064,27 +2133,38 @@ public class TicketController : Controller
             .Select(o => new { o.PurchasedAt, AttendeeCount = o.Attendees.Count })
             .ToListAsync();
 
-        var dailySales = orderDates
+        var salesByDate = orderDates
             .GroupBy(o => o.PurchasedAt.InUtc().Date)
-            .Select(g => new { Date = g.Key, Count = g.Sum(o => o.AttendeeCount) })
-            .OrderBy(d => d.Date)
-            .ToList();
+            .ToDictionary(g => g.Key, g => g.Sum(o => o.AttendeeCount));
 
+        // Fill in zero-sale days so chart and rolling average are correct
         var dailySalesPoints = new List<DailySalesPoint>();
-        for (var i = 0; i < dailySales.Count; i++)
+        if (salesByDate.Count > 0)
         {
-            var point = dailySales[i];
-            // 7-day rolling average
-            var windowStart = Math.Max(0, i - 6);
-            var window = dailySales.Skip(windowStart).Take(i - windowStart + 1);
-            var rollingAvg = window.Average(d => (decimal)d.Count);
+            var startDate = salesByDate.Keys.Min();
+            var endDate = salesByDate.Keys.Max();
+            var allDays = new List<(LocalDate Date, int Count)>();
 
-            dailySalesPoints.Add(new DailySalesPoint
+            for (var d = startDate; d <= endDate; d = d.PlusDays(1))
             {
-                Date = point.Date.ToString("yyyy-MM-dd", null),
-                TicketsSold = point.Count,
-                RollingAverage = Math.Round(rollingAvg, 1)
-            });
+                allDays.Add((d, salesByDate.GetValueOrDefault(d, 0)));
+            }
+
+            for (var i = 0; i < allDays.Count; i++)
+            {
+                var (date, count) = allDays[i];
+                // 7-day rolling average (including zero-sale days)
+                var windowStart = Math.Max(0, i - 6);
+                var window = allDays.Skip(windowStart).Take(i - windowStart + 1);
+                var rollingAvg = window.Average(d => (decimal)d.Count);
+
+                dailySalesPoints.Add(new DailySalesPoint
+                {
+                    Date = date.ToString("yyyy-MM-dd", null),
+                    TicketsSold = count,
+                    RollingAverage = Math.Round(rollingAvg, 1)
+                });
+            }
         }
 
         // Recent 10 orders
@@ -2149,6 +2229,9 @@ public class TicketController : Controller
             Enum.TryParse<TicketPaymentStatus>(filterPaymentStatus, true, out var ps))
             query = query.Where(o => o.PaymentStatus == ps);
 
+        if (!string.IsNullOrEmpty(filterTicketType))
+            query = query.Where(o => o.Attendees.Any(a => a.TicketTypeName == filterTicketType));
+
         if (filterMatched == true)
             query = query.Where(o => o.MatchedUserId != null);
         else if (filterMatched == false)
@@ -2156,11 +2239,12 @@ public class TicketController : Controller
 
         var totalCount = await query.CountAsync();
 
-        // Sort
-        query = sortBy.ToLower() switch
+        // Sort — use ToLowerInvariant() for culture-independent comparison
+        query = sortBy.ToLowerInvariant() switch
         {
             "amount" => sortDesc ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount),
             "name" => sortDesc ? query.OrderByDescending(o => o.BuyerName) : query.OrderBy(o => o.BuyerName),
+            "tickets" => sortDesc ? query.OrderByDescending(o => o.Attendees.Count) : query.OrderBy(o => o.Attendees.Count),
             _ => sortDesc ? query.OrderByDescending(o => o.PurchasedAt) : query.OrderBy(o => o.PurchasedAt),
         };
 
@@ -2242,7 +2326,7 @@ public class TicketController : Controller
 
         var totalCount = await query.CountAsync();
 
-        query = sortBy.ToLower() switch
+        query = sortBy.ToLowerInvariant() switch
         {
             "type" => sortDesc ? query.OrderByDescending(a => a.TicketTypeName) : query.OrderBy(a => a.TicketTypeName),
             "price" => sortDesc ? query.OrderByDescending(a => a.Price) : query.OrderBy(a => a.Price),
@@ -2292,12 +2376,14 @@ public class TicketController : Controller
     }
 
     [HttpGet("Codes")]
-    public async Task<IActionResult> Codes()
+    public async Task<IActionResult> Codes(string? search)
     {
         var campaigns = await _dbContext.Set<Domain.Entities.Campaign>()
             .Where(c => c.Status == CampaignStatus.Active || c.Status == CampaignStatus.Completed)
-            .Include(c => c.Grants)
+            .Include(c => c.Grants).ThenInclude(g => g.Code)
+            .Include(c => c.Grants).ThenInclude(g => g.User)
             .OrderByDescending(c => c.CreatedAt)
+            .AsSplitQuery()
             .ToListAsync();
 
         var campaignSummaries = campaigns.Select(c =>
@@ -2315,6 +2401,26 @@ public class TicketController : Controller
             };
         }).ToList();
 
+        // Build individual code table (spec requires searchable by code string)
+        var allGrants = campaigns.SelectMany(c => c.Grants);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLowerInvariant();
+            allGrants = allGrants.Where(g =>
+                (g.Code?.Code?.ToLowerInvariant().Contains(s) == true) ||
+                g.User.DisplayName.ToLowerInvariant().Contains(s));
+        }
+
+        var codeRows = allGrants.Select(g => new CodeDetailRow
+        {
+            Code = g.Code?.Code ?? "—",
+            RecipientName = g.User.DisplayName,
+            RecipientUserId = g.UserId,
+            CampaignTitle = campaigns.First(c => c.Id == g.CampaignId).Title,
+            Status = g.RedeemedAt != null ? "Redeemed" : (g.LatestEmailStatus?.ToString() ?? "Pending"),
+            RedeemedAt = g.RedeemedAt,
+        }).ToList();
+
         var totalSent = campaignSummaries.Sum(c => c.TotalGrants);
         var totalRedeemed = campaignSummaries.Sum(c => c.Redeemed);
 
@@ -2325,6 +2431,8 @@ public class TicketController : Controller
             CodesUnused = totalSent - totalRedeemed,
             RedemptionRate = totalSent > 0 ? Math.Round(totalRedeemed * 100m / totalSent, 1) : 0,
             Campaigns = campaignSummaries,
+            Codes = codeRows,
+            Search = search,
         };
 
         return View(model);
@@ -2345,6 +2453,46 @@ public class TicketController : Controller
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
         TempData["SuccessMessage"] = "Ticket sync triggered. Data will update shortly.";
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet("Export/Attendees")]
+    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    public async Task<IActionResult> ExportAttendees()
+    {
+        var attendees = await _dbContext.TicketAttendees
+            .Include(a => a.TicketOrder)
+            .OrderBy(a => a.AttendeeName)
+            .ToListAsync();
+
+        var csv = new System.Text.StringBuilder();
+        csv.AppendLine("Name,Email,Ticket Type,Price,Status,Order ID");
+        foreach (var a in attendees)
+        {
+            csv.AppendLine($"\"{a.AttendeeName}\",\"{a.AttendeeEmail ?? ""}\",\"{a.TicketTypeName}\",{a.Price},{a.Status},\"{a.TicketOrder.VendorOrderId}\"");
+        }
+
+        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
+            "text/csv", "attendees-export.csv");
+    }
+
+    [HttpGet("Export/Orders")]
+    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    public async Task<IActionResult> ExportOrders()
+    {
+        var orders = await _dbContext.TicketOrders
+            .Include(o => o.Attendees)
+            .OrderByDescending(o => o.PurchasedAt)
+            .ToListAsync();
+
+        var csv = new System.Text.StringBuilder();
+        csv.AppendLine("Date,Purchaser,Email,Tickets,Amount,Currency,Code,Status");
+        foreach (var o in orders)
+        {
+            csv.AppendLine($"\"{o.PurchasedAt.InUtc().Date}\",\"{o.BuyerName}\",\"{o.BuyerEmail}\",{o.Attendees.Count},{o.TotalAmount},{o.Currency},\"{o.DiscountCode ?? ""}\",{o.PaymentStatus}");
+        }
+
+        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
+            "text/csv", "orders-export.csv");
     }
 }
 ```
@@ -2382,6 +2530,8 @@ Create `src/Humans.Web/Views/Ticket/Index.cshtml` with:
 Include Chart.js via CDN: `https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js`
 
 Reference: Follow the card layout pattern from existing views (Bootstrap 5 `row`/`col-md-3` for cards). Use `<canvas>` element for Chart.js. Pass daily sales data as JSON via `@Html.Raw(Json.Serialize(Model.DailySales))`.
+
+**Important UI terminology:** Per CLAUDE.md, use **"humans"** in all user-facing text — not "members", "users", or "volunteers". E.g. "Matched Human", "Unmatched Humans", "Who Hasn't Bought?" should reference "humans". Internal code (variable names, ViewModels) is unaffected.
 
 - [ ] **Step 2: Build and verify view compiles**
 
@@ -2649,26 +2799,55 @@ public async Task<IActionResult> WhoHasntBought(
         .Distinct()
         .ToListAsync();
 
-    // Query active humans (MembershipStatus = Active) not in matched set
-    // MembershipStatus is computed, so we load all active profiles and filter in memory
-    var profiles = await _dbContext.Set<Profile>()
-        .Include(p => p.User)
-            .ThenInclude(u => u.UserEmails)
-        .Where(p => !matchedUserIds.Contains(p.UserId))
+    // Load users not in matched set, with their profiles, teams, and emails.
+    // NOTE: MembershipStatus is COMPUTED (not stored) via ComputeMembershipStatus()
+    // which requires role assignments, consent records, etc. Use the existing
+    // IMembershipCalculator service or the precomputed IsVolunteer claim.
+    // DisplayName is on User, not Profile.
+    // At ~500 users, loading all and filtering in-memory is fine.
+    var users = await _dbContext.Users
+        .Include(u => u.Profile)
+        .Include(u => u.UserEmails)
+        .Include(u => u.TeamMembers).ThenInclude(tm => tm.Team)
+        .Where(u => !matchedUserIds.Contains(u.Id))
         .ToListAsync();
 
-    // Filter to active members only (profile complete, consents, cleared)
-    var activeHumans = profiles
-        .Where(p => p.MembershipStatus == MembershipStatus.Active)
+    // Filter to active volunteers (those with the ActiveMember claim set by the system)
+    // The simplest reliable check: user has a Profile and is in the Volunteers system team.
+    var volunteersTeamId = await _dbContext.Set<Domain.Entities.Team>()
+        .Where(t => t.SystemType == Domain.Enums.SystemTeamType.Volunteers)
+        .Select(t => t.Id)
+        .FirstOrDefaultAsync();
+
+    var activeHumans = users
+        .Where(u => u.Profile != null &&
+            u.TeamMembers.Any(tm => tm.TeamId == volunteersTeamId))
         .ToList();
 
-    // Apply search/filter in memory (small dataset)
+    // Apply team filter
+    if (!string.IsNullOrEmpty(filterTeam))
+    {
+        activeHumans = activeHumans
+            .Where(u => u.TeamMembers.Any(tm =>
+                string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+    }
+
+    // Apply tier filter (Volunteer / Colaborador / Asociado)
+    if (!string.IsNullOrEmpty(filterTier))
+    {
+        activeHumans = activeHumans
+            .Where(u => string.Equals(u.Profile?.MembershipTier.ToString(), filterTier, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    // Apply search
     if (!string.IsNullOrWhiteSpace(search))
     {
-        var s = search.ToLower();
+        var s = search.ToLowerInvariant();
         activeHumans = activeHumans
-            .Where(p => p.DisplayName.ToLower().Contains(s) ||
-                p.User.UserEmails.Any(e => e.Email.ToLower().Contains(s)))
+            .Where(u => u.DisplayName.ToLowerInvariant().Contains(s) ||
+                u.UserEmails.Any(e => e.Email.ToLowerInvariant().Contains(s)))
             .ToList();
     }
 
@@ -2676,13 +2855,21 @@ public async Task<IActionResult> WhoHasntBought(
     var pagedHumans = activeHumans
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
-        .Select(p => new WhoHasntBoughtRow
+        .Select(u => new WhoHasntBoughtRow
         {
-            UserId = p.UserId,
-            Name = p.DisplayName,
-            Email = p.User.UserEmails.FirstOrDefault(e => e.IsNotificationTarget)?.Email ?? string.Empty,
+            UserId = u.Id,
+            Name = u.DisplayName,
+            Email = u.UserEmails.FirstOrDefault(e => e.IsNotificationTarget)?.Email ?? string.Empty,
+            Teams = string.Join(", ", u.TeamMembers.Select(tm => tm.Team.Name)),
+            Tier = u.Profile?.MembershipTier.ToString() ?? "Volunteer",
         })
         .ToList();
+
+    // Available teams for filter dropdown
+    var teams = await _dbContext.Set<Domain.Entities.Team>()
+        .Select(t => t.Name)
+        .OrderBy(n => n)
+        .ToListAsync();
 
     var model = new WhoHasntBoughtViewModel
     {
@@ -2691,13 +2878,16 @@ public async Task<IActionResult> WhoHasntBought(
         Page = page,
         PageSize = pageSize,
         Search = search,
+        FilterTeam = filterTeam,
+        FilterTier = filterTier,
+        AvailableTeams = teams,
     };
 
     return View(model);
 }
 ```
 
-Note: The exact implementation will depend on the `Profile` entity's `MembershipStatus` property and how team memberships are loaded. Check `src/Humans.Domain/Entities/Profile.cs` and adjust the query accordingly. The pattern above is indicative — adapt to the actual entity structure.
+Note: `MembershipStatus` is computed (not stored) — it requires role assignments, consent records, etc. The approach above uses Volunteers team membership as the "active" proxy, which is simpler and correct for this use case. `DisplayName` is on `User`, not `Profile`. `MembershipTier` is on `Profile`. Check actual entity shapes during implementation and adjust if needed.
 
 - [ ] **Step 3: Create view**
 
@@ -2743,7 +2933,9 @@ Add to `CampaignController.cs`:
 [HttpPost("{id:guid}/GenerateCodes")]
 [ValidateAntiForgeryToken]
 [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
-public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
+public async Task<IActionResult> GenerateCodes(
+    Guid id, int count, string discountType, decimal discountValue,
+    string? expiresAt)
 {
     var campaign = await _campaignService.GetByIdAsync(id);
     if (campaign == null) return NotFound();
@@ -2753,33 +2945,33 @@ public async Task<IActionResult> GenerateCodes(Guid id, int count, string discou
         return RedirectToAction(nameof(Detail), new { id });
     }
 
+    // Parse optional expiry date
+    Instant? expiresAtInstant = null;
+    if (!string.IsNullOrEmpty(expiresAt) && LocalDate.TryParseExact(expiresAt, "yyyy-MM-dd", out var expiryDate))
+    {
+        expiresAtInstant = expiryDate.AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
+    }
+
     var spec = new DiscountCodeSpec(
         count,
         discountType == "percentage" ? DiscountType.Percentage : DiscountType.Fixed,
         discountValue,
-        null);
+        expiresAtInstant);
 
     var codes = await _vendorService.GenerateDiscountCodesAsync(spec);
 
-    // Insert generated codes as CampaignCode records
-    foreach (var code in codes)
-    {
-        _dbContext.Set<CampaignCode>().Add(new CampaignCode
-        {
-            Id = Guid.NewGuid(),
-            CampaignId = id,
-            Code = code,
-            ImportedAt = _clock.GetCurrentInstant()
-        });
-    }
-    await _dbContext.SaveChangesAsync();
+    // Route through campaign service to properly set ImportOrder
+    // (follows existing pattern — controller delegates to service, not direct DB writes)
+    await _campaignService.ImportGeneratedCodesAsync(id, codes);
 
     TempData["SuccessMessage"] = $"Generated {codes.Count} discount codes via ticket vendor.";
     return RedirectToAction(nameof(Detail), new { id });
 }
 ```
 
-Note: This requires injecting `ITicketVendorService` and `IClock` into the `CampaignController` constructor.
+Note: This requires:
+1. Injecting `ITicketVendorService` into the `CampaignController` constructor (add field + parameter)
+2. Adding `ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes)` to `ICampaignService` and `CampaignService` — this method computes the next `ImportOrder` value and inserts codes, following the same pattern as `ImportCodesAsync` but without CSV parsing.
 
 - [ ] **Step 4: Add Generate Codes button to Campaign Detail view**
 
@@ -2827,11 +3019,9 @@ public class TicketTailorServiceTests
         var settings = Options.Create(new TicketVendorSettings
         {
             EventId = "ev_test",
-            SyncIntervalMinutes = 15
+            SyncIntervalMinutes = 15,
+            ApiKey = "test_key" // API key is now in settings, not env var — safe for parallel tests
         });
-
-        // Set TICKET_VENDOR_API_KEY for test
-        Environment.SetEnvironmentVariable("TICKET_VENDOR_API_KEY", "test_key");
 
         return new TicketTailorService(client, settings,
             NullLogger<TicketTailorService>.Instance);
