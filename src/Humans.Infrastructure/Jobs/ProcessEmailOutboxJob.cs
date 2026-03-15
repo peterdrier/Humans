@@ -99,10 +99,7 @@ public class ProcessEmailOutboxJob
                     extraHeaders,
                     cancellationToken);
 
-                // Throttle: 1 second delay between sends to avoid SMTP rate limits
-                await Task.Delay(1000, cancellationToken);
-
-                // Success
+                // Success — mark as sent BEFORE throttle delay to avoid re-send on cancellation
                 message.Status = EmailOutboxStatus.Sent;
                 message.SentAt = now;
                 message.PickedUpAt = null;
@@ -119,6 +116,9 @@ public class ProcessEmailOutboxJob
                         grant.LatestEmailAt = now;
                     }
                 }
+
+                // Throttle: 1 second delay between sends to avoid SMTP rate limits
+                await Task.Delay(1000, cancellationToken);
             }
             catch (Exception ex)
             {

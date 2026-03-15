@@ -15,7 +15,7 @@
         </div>
     </div>
     <div class="col">
-        <a href="/Admin/Humans?status=active" class="text-decoration-none">
+        <a asp-controller="Human" asp-action="Humans" asp-route-filter="active" class="text-decoration-none">
             <div class="card text-center h-100 bg-success text-white">
                 <div class="card-body">
                     <h2 class="card-title mb-0">@Model.ActiveMembers</h2>
@@ -25,7 +25,7 @@
         </a>
     </div>
     <div class="col">
-        <a href="/Admin/Humans?status=pending" class="text-decoration-none">
+        <a asp-controller="Human" asp-action="Humans" asp-route-filter="pending" class="text-decoration-none">
             <div class="card text-center h-100 @(Model.PendingApproval > 0 ? "bg-warning" : "") ">
                 <div class="card-body">
                     <h2 class="card-title mb-0 @(Model.PendingApproval > 0 ? "" : "text-warning")">@Model.PendingApproval</h2>
@@ -35,7 +35,7 @@
         </a>
     </div>
     <div class="col">
-        <a href="/Admin/Humans?status=missingconsents" class="text-decoration-none">
+        <a asp-controller="Human" asp-action="Humans" asp-route-filter="missingconsents" class="text-decoration-none">
             <div class="card text-center h-100 @(Model.MissingConsents > 0 ? "border-warning" : "")">
                 <div class="card-body">
                     <h2 class="card-title mb-0" style="color: @(Model.MissingConsents > 0 ? "darkorange" : "inherit")">@Model.MissingConsents</h2>
@@ -45,7 +45,7 @@
         </a>
     </div>
     <div class="col">
-        <a href="/Admin/Humans?status=incomplete" class="text-decoration-none">
+        <a asp-controller="Human" asp-action="Humans" asp-route-filter="incomplete" class="text-decoration-none">
             <div class="card text-center h-100 bg-secondary text-white">
                 <div class="card-body">
                     <h2 class="card-title mb-0">@Model.IncompleteSignup</h2>
@@ -55,7 +55,7 @@
         </a>
     </div>
     <div class="col">
-        <a href="/Admin/Humans?status=suspended" class="text-decoration-none">
+        <a asp-controller="Human" asp-action="Humans" asp-route-filter="suspended" class="text-decoration-none">
             <div class="card text-center h-100 @(Model.Suspended > 0 ? "bg-danger text-white" : "")">
                 <div class="card-body">
                     <h2 class="card-title mb-0 @(Model.Suspended > 0 ? "" : "text-danger")">@Model.Suspended</h2>
@@ -65,7 +65,7 @@
         </a>
     </div>
     <div class="col">
-        <a href="/Admin/Humans?status=deleting" class="text-decoration-none">
+        <a asp-controller="Human" asp-action="Humans" asp-route-filter="deleting" class="text-decoration-none">
             <div class="card text-center h-100 @(Model.PendingDeletion > 0 ? "bg-dark text-white" : "")">
                 <div class="card-body">
                     <h2 class="card-title mb-0 @(Model.PendingDeletion > 0 ? "" : "text-dark")">@Model.PendingDeletion</h2>

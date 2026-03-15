@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -548,32 +549,25 @@ public class ProfileService : IProfileService
                 u.DisplayName.Contains(search));
         }
 
-        switch (statusFilter?.ToLowerInvariant())
+        // Partition once upfront — used for both filtering and status label assignment
+        var allIds = await query.Select(u => u.Id).ToListAsync(ct);
+        var partition = await _membershipCalculator.PartitionUsersAsync(allIds, ct);
+
+        // Apply filter using partition buckets
+        HashSet<Guid>? filteredIds = statusFilter?.ToLowerInvariant() switch
         {
-            case "active":
-            case "missingconsents":
-            {
-                // These two buckets both have approved, non-suspended profiles; need partition to distinguish
-                var ids = await query.Select(u => u.Id).ToListAsync(ct);
-                var partition = await _membershipCalculator.PartitionUsersAsync(ids, ct);
-                var matchingIds = statusFilter.Equals("active", StringComparison.OrdinalIgnoreCase)
-                    ? partition.Active
-                    : partition.MissingConsents;
-                query = query.Where(u => matchingIds.Contains(u.Id));
-                break;
-            }
-            case "pending":
-                query = query.Where(u => u.Profile != null && !u.Profile.IsApproved && !u.Profile.IsSuspended);
-                break;
-            case "suspended":
-                query = query.Where(u => u.Profile != null && u.Profile.IsSuspended);
-                break;
-            case "incomplete":
-                query = query.Where(u => u.Profile == null);
-                break;
-            case "deleting":
-                query = query.Where(u => u.DeletionRequestedAt != null);
-                break;
+            "active" => partition.Active,
+            "missingconsents" => partition.MissingConsents,
+            "pending" => partition.PendingApproval,
+            "suspended" => partition.Suspended,
+            "incomplete" => partition.IncompleteSignup,
+            "deleting" => partition.PendingDeletion,
+            _ => null
+        };
+
+        if (filteredIds != null)
+        {
+            query = query.Where(u => filteredIds.Contains(u.Id));
         }
 
         var rows = await query
@@ -590,9 +584,6 @@ public class ProfileService : IProfileService
             })
             .ToListAsync(ct);
 
-        var rowIds = rows.Select(r => r.Id).ToList();
-        var statusPartition = await _membershipCalculator.PartitionUsersAsync(rowIds, ct);
-
         return rows.Select(r => new Application.DTOs.AdminHumanRow(
             r.Id,
             r.Email,
@@ -602,12 +593,12 @@ public class ProfileService : IProfileService
             r.LastLoginAt,
             r.HasProfile,
             r.IsApproved,
-            statusPartition.PendingDeletion.Contains(r.Id) ? "Pending Deletion" :
-            statusPartition.Suspended.Contains(r.Id) ? "Suspended" :
-            statusPartition.PendingApproval.Contains(r.Id) ? "Pending Approval" :
-            statusPartition.MissingConsents.Contains(r.Id) ? "Missing Consents" :
-            statusPartition.Active.Contains(r.Id) ? "Active" :
-            statusPartition.IncompleteSignup.Contains(r.Id) ? "Incomplete Signup" :
+            partition.PendingDeletion.Contains(r.Id) ? MembershipStatusLabels.PendingDeletion :
+            partition.Suspended.Contains(r.Id) ? MembershipStatusLabels.Suspended :
+            partition.PendingApproval.Contains(r.Id) ? MembershipStatusLabels.PendingApproval :
+            partition.MissingConsents.Contains(r.Id) ? MembershipStatusLabels.MissingConsents :
+            partition.Active.Contains(r.Id) ? MembershipStatusLabels.Active :
+            partition.IncompleteSignup.Contains(r.Id) ? MembershipStatusLabels.IncompleteSignup :
             "Unknown"))
         .ToList();
     }

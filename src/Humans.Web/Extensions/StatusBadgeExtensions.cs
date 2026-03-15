@@ -1,3 +1,4 @@
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Extensions;
@@ -42,12 +43,12 @@ public static class StatusBadgeExtensions
     {
         return status switch
         {
-            "Active" => "bg-success",
-            "Pending Approval" => "bg-warning text-dark",
-            "Missing Consents" => "bg-info text-dark",
-            "Incomplete Signup" => "bg-secondary",
-            "Suspended" => "bg-danger",
-            "Pending Deletion" => "bg-dark",
+            MembershipStatusLabels.Active => "bg-success",
+            MembershipStatusLabels.PendingApproval => "bg-warning text-dark",
+            MembershipStatusLabels.MissingConsents => "bg-info text-dark",
+            MembershipStatusLabels.IncompleteSignup => "bg-secondary",
+            MembershipStatusLabels.Suspended => "bg-danger",
+            MembershipStatusLabels.PendingDeletion => "bg-dark",
             _ => "bg-secondary"
         };
     }

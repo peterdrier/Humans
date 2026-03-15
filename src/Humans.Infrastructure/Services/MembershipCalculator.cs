@@ -386,17 +386,24 @@ public class MembershipCalculator : IMembershipCalculator
 
         remaining = remaining.Where(id => !suspended.Contains(id)).ToList();
 
-        // 5. PendingApproval — !Profile.IsApproved
+        // 5. PendingApproval — !Profile.IsApproved (rejected users go to IncompleteSignup)
         var pendingApproval = new HashSet<Guid>();
         foreach (var id in remaining)
         {
             if (!profileByUserId[id]!.IsApproved)
             {
-                pendingApproval.Add(id);
+                if (profileByUserId[id]!.RejectedAt != null)
+                {
+                    incompleteSignup.Add(id);
+                }
+                else
+                {
+                    pendingApproval.Add(id);
+                }
             }
         }
 
-        remaining = remaining.Where(id => !pendingApproval.Contains(id)).ToList();
+        remaining = remaining.Where(id => !pendingApproval.Contains(id) && !incompleteSignup.Contains(id)).ToList();
 
         // 6. Active vs MissingConsents — approved, not suspended
         var usersWithConsents = await GetUsersWithAllRequiredConsentsForTeamAsync(remaining, SystemTeamIds.Volunteers, ct);

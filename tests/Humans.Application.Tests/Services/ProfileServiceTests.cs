@@ -822,6 +822,20 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(MakeProfile(u2, isApproved: false));
         await _dbContext.SaveChangesAsync();
 
+        _membershipCalculator
+            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IEnumerable<Guid>>().ToHashSet();
+                return Task.FromResult(new MembershipPartition(
+                    IncompleteSignup: [],
+                    PendingApproval: ids.Where(id => id == u2).ToHashSet(),
+                    Active: ids.Where(id => id == u1).ToHashSet(),
+                    MissingConsents: [],
+                    Suspended: [],
+                    PendingDeletion: []));
+            });
+
         var result = await _service.GetFilteredHumansAsync(null, "pending");
 
         result.Should().HaveCount(1);
@@ -838,6 +852,20 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(MakeProfile(u1, isSuspended: true));
         _dbContext.Profiles.Add(MakeProfile(u2));
         await _dbContext.SaveChangesAsync();
+
+        _membershipCalculator
+            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IEnumerable<Guid>>().ToHashSet();
+                return Task.FromResult(new MembershipPartition(
+                    IncompleteSignup: [],
+                    PendingApproval: [],
+                    Active: ids.Where(id => id == u2).ToHashSet(),
+                    MissingConsents: [],
+                    Suspended: ids.Where(id => id == u1).ToHashSet(),
+                    PendingDeletion: []));
+            });
 
         var result = await _service.GetFilteredHumansAsync(null, "suspended");
 
