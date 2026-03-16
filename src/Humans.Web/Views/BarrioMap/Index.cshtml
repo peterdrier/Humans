@@ -102,8 +102,14 @@
         const IS_MAP_ADMIN = @(isMapAdmin ? "true" : "false");
 
         const ESRI_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-        const MAP_CENTER = [-0.13717, 41.69964]; // Festival site
-        const MAP_ZOOM = 17;
+        const MAP_BOUNDS = [
+            [
+            -0.14285979741055144,
+            41.696961407716145,
+          ], [
+            -0.13157837273621453,
+            41.70290716137069
+        ]]; // [SW, NE] corners of festival site
 
         let map, draw, state, connection;
         let activeCampSeasonId = null;
@@ -119,8 +125,7 @@
                     sources: { esri: { type: 'raster', tiles: [ESRI_TILES], tileSize: 256, attribution: '© Esri' } },
                     layers: [{ id: 'esri-layer', type: 'raster', source: 'esri' }]
                 },
-                center: MAP_CENTER,
-                zoom: MAP_ZOOM
+                bounds: MAP_BOUNDS
             });
 
             draw = new MapboxDraw({ displayControlsDefault: false });
