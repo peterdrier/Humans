@@ -87,6 +87,7 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
     {
         npgsqlOptions.UseNodaTime();
         npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
+        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
     if (builder.Environment.IsDevelopment())
     {
