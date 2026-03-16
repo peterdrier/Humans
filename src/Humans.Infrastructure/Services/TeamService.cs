@@ -1071,6 +1071,31 @@ public partial class TeamService : ITeamService
         definition.SlotCount = slotCount;
         definition.Priorities = priorities;
         definition.SortOrder = sortOrder;
+        // If clearing IsManagement, demote any coordinators who have no other management assignments
+        if (definition.IsManagement && !isManagement)
+        {
+            var assignedMemberIds = definition.Assignments.Select(a => a.TeamMemberId).ToList();
+            if (assignedMemberIds.Count > 0)
+            {
+                var members = await _dbContext.TeamMembers
+                    .Where(m => assignedMemberIds.Contains(m.Id) && m.Role == TeamMemberRole.Coordinator)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var member in members)
+                {
+                    var hasOtherManagement = await _dbContext.Set<TeamRoleAssignment>()
+                        .AnyAsync(a => a.TeamMemberId == member.Id
+                            && a.TeamRoleDefinitionId != roleDefinitionId
+                            && a.TeamRoleDefinition.IsManagement, cancellationToken);
+
+                    if (!hasOtherManagement)
+                    {
+                        member.Role = TeamMemberRole.Member;
+                    }
+                }
+            }
+        }
+
         definition.IsManagement = isManagement;
         definition.UpdatedAt = _clock.GetCurrentInstant();
 
