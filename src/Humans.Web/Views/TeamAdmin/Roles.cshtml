@@ -39,14 +39,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Name</label>
-                            @if (role.IsManagement)
-                            {
-                                <input type="text" class="form-control" name="Name" value="@role.Name" readonly />
-                            }
-                            else
-                            {
-                                <input type="text" class="form-control" name="Name" value="@role.Name" required />
-                            }
+                            <input type="text" class="form-control" name="Name" value="@role.Name" required />
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Slot Count</label>
