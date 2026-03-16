@@ -64,7 +64,7 @@ public class ContactFieldServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetViewerAccessLevel_WhenLead_ReturnsLeadsAndBoard()
+    public async Task GetViewerAccessLevel_WhenCoordinator_ReturnsCoordinatorsAndBoard()
     {
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
@@ -73,14 +73,14 @@ public class ContactFieldServiceTests : IDisposable
         _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamMember>
             {
-                CreateTeamMember(viewerId, TeamMemberRole.Lead)
+                CreateTeamMember(viewerId, TeamMemberRole.Coordinator)
             });
         _teamService.GetUserTeamsAsync(ownerId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamMember>());
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);
 
-        result.Should().Be(ContactFieldVisibility.LeadsAndBoard);
+        result.Should().Be(ContactFieldVisibility.CoordinatorsAndBoard);
     }
 
     [Fact]
@@ -419,8 +419,8 @@ public class ContactFieldServiceTests : IDisposable
                 Id = Guid.NewGuid(),
                 ProfileId = profile.Id,
                 FieldType = ContactFieldType.Telegram,
-                Value = "@leadcontact",
-                Visibility = ContactFieldVisibility.LeadsAndBoard,
+                Value = "@coordcontact",
+                Visibility = ContactFieldVisibility.CoordinatorsAndBoard,
                 DisplayOrder = 2,
                 CreatedAt = now,
                 UpdatedAt = now

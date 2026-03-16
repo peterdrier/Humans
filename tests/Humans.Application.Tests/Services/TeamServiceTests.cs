@@ -166,59 +166,59 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
-    // IsUserLeadOfTeamAsync
+    // IsUserCoordinatorOfTeamAsync
     // ==========================================================================
 
     [Fact]
-    public async Task IsUserLeadOfTeamAsync_ActiveLead_ReturnsTrue()
+    public async Task IsUserCoordinatorOfTeamAsync_ActiveCoordinator_ReturnsTrue()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Lead);
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserLeadOfTeamAsync(team.Id, user.Id);
+        var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
         result.Should().BeTrue();
     }
 
     [Fact]
-    public async Task IsUserLeadOfTeamAsync_MemberNotLead_ReturnsFalse()
+    public async Task IsUserCoordinatorOfTeamAsync_MemberNotCoordinator_ReturnsFalse()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
         SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserLeadOfTeamAsync(team.Id, user.Id);
+        var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
         result.Should().BeFalse();
     }
 
     [Fact]
-    public async Task IsUserLeadOfTeamAsync_LeftTeam_ReturnsFalse()
+    public async Task IsUserCoordinatorOfTeamAsync_LeftTeam_ReturnsFalse()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Lead,
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator,
             leftAt: _clock.GetCurrentInstant() - Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserLeadOfTeamAsync(team.Id, user.Id);
+        var result = await _service.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
         result.Should().BeFalse();
     }
 
     [Fact]
-    public async Task IsUserLeadOfTeamAsync_LeadOfDifferentTeam_ReturnsFalse()
+    public async Task IsUserCoordinatorOfTeamAsync_CoordinatorOfDifferentTeam_ReturnsFalse()
     {
         var user = SeedUser();
         var teamA = SeedTeam("Alpha");
         var teamB = SeedTeam("Beta");
-        SeedTeamMember(teamA.Id, user.Id, TeamMemberRole.Lead);
+        SeedTeamMember(teamA.Id, user.Id, TeamMemberRole.Coordinator);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserLeadOfTeamAsync(teamB.Id, user.Id);
+        var result = await _service.IsUserCoordinatorOfTeamAsync(teamB.Id, user.Id);
 
         result.Should().BeFalse();
     }
@@ -256,11 +256,11 @@ public class TeamServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task CanUserApproveRequestsForTeamAsync_LeadOfTeam_ReturnsTrue()
+    public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfTeam_ReturnsTrue()
     {
         var user = SeedUser();
         var team = SeedTeam("Alpha");
-        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Lead);
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
@@ -577,19 +577,19 @@ public class TeamServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetPendingRequestsForApproverAsync_Lead_ReturnsOnlyOwnTeamRequests()
+    public async Task GetPendingRequestsForApproverAsync_Coordinator_ReturnsOnlyOwnTeamRequests()
     {
-        var lead = SeedUser();
+        var coordinator = SeedUser();
         var teamA = SeedTeam("Alpha", requiresApproval: true);
         var teamB = SeedTeam("Beta", requiresApproval: true);
-        SeedTeamMember(teamA.Id, lead.Id, TeamMemberRole.Lead);
+        SeedTeamMember(teamA.Id, coordinator.Id, TeamMemberRole.Coordinator);
         var requestor1 = SeedUser(displayName: "R1");
         var requestor2 = SeedUser(displayName: "R2");
         SeedJoinRequest(teamA.Id, requestor1.Id);
         SeedJoinRequest(teamB.Id, requestor2.Id);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.GetPendingRequestsForApproverAsync(lead.Id);
+        var result = await _service.GetPendingRequestsForApproverAsync(coordinator.Id);
 
         result.Should().ContainSingle();
         result[0].TeamId.Should().Be(teamA.Id);
@@ -759,19 +759,16 @@ public class TeamServiceTests : IDisposable
     public async Task GetTeamMembersAsync_OrderedByRoleThenJoinedAt()
     {
         var team = SeedTeam("Alpha");
-        var lead = SeedUser(displayName: "Lead");
+        var coordinator = SeedUser(displayName: "Coordinator");
         var memberEarly = SeedUser(displayName: "Early");
         var memberLate = SeedUser(displayName: "Late");
-        // Lead role (enum value 1 > Member 0) — but OrderBy(Role) ascending means Member(0) first, Lead(1) second
-        // Actually: Lead = 1, Member = 0; OrderBy ascending => Member first, Lead second
-        // Wait — the code says .OrderBy(tm => tm.Role) which is ascending, so Member(0) < Lead(1).
-        // Let me re-read: Lead=1, Member=0. Ascending: Member first.
+        // Coordinator role (enum value 1 > Member 0) — OrderBy(Role) ascending means Member(0) first, Coordinator(1) second
         var m1 = new TeamMember
         {
             Id = Guid.NewGuid(),
             TeamId = team.Id,
-            UserId = lead.Id,
-            Role = TeamMemberRole.Lead,
+            UserId = coordinator.Id,
+            Role = TeamMemberRole.Coordinator,
             JoinedAt = _clock.GetCurrentInstant() - Duration.FromDays(5)
         };
         var m2 = new TeamMember
@@ -796,10 +793,10 @@ public class TeamServiceTests : IDisposable
         var result = await _service.GetTeamMembersAsync(team.Id);
 
         result.Should().HaveCount(3);
-        // Ascending by Role: Member(0) before Lead(1)
+        // Ascending by Role: Member(0) before Coordinator(1)
         result[0].Role.Should().Be(TeamMemberRole.Member);
         result[1].Role.Should().Be(TeamMemberRole.Member);
-        result[2].Role.Should().Be(TeamMemberRole.Lead);
+        result[2].Role.Should().Be(TeamMemberRole.Coordinator);
         // Members ordered by JoinedAt ascending
         result[0].UserId.Should().Be(memberEarly.Id);
         result[1].UserId.Should().Be(memberLate.Id);

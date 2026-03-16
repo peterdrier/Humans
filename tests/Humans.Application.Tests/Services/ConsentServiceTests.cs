@@ -149,7 +149,7 @@ public class ConsentServiceTests : IDisposable
         await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent");
 
         await _syncJob.Received().SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
-        await _syncJob.Received().SyncLeadsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _syncJob.Received().SyncCoordinatorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [Fact]

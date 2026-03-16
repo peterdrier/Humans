@@ -43,7 +43,7 @@ public class EnumStringStabilityTests
     {
         {
             typeof(TeamMemberRole),
-            new[] { "Member", "Lead" }
+            new[] { "Member", "Coordinator" }
         },
         {
             typeof(TeamJoinRequestStatus),
@@ -51,7 +51,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(SystemTeamType),
-            new[] { "None", "Volunteers", "Leads", "Board", "Asociados", "Colaboradors" }
+            new[] { "None", "Volunteers", "Coordinators", "Board", "Asociados", "Colaboradors" }
         },
         {
             typeof(GoogleResourceType),
@@ -63,7 +63,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(ContactFieldVisibility),
-            new[] { "BoardOnly", "LeadsAndBoard", "MyTeams", "AllActiveProfiles" }
+            new[] { "BoardOnly", "CoordinatorsAndBoard", "MyTeams", "AllActiveProfiles" }
         },
         {
             typeof(AuditAction),
