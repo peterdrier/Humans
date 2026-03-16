@@ -7,6 +7,10 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Teams_Title"]</a></li>
+        @if (Model.ParentTeam != null)
+        {
+            <li class="breadcrumb-item"><a asp-action="Details" asp-route-slug="@Model.ParentTeam.Slug">@Model.ParentTeam.Name</a></li>
+        }
         <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
     </ol>
 </nav>

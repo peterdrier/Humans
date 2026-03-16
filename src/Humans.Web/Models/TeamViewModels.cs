@@ -421,6 +421,7 @@ public class AdminTeamViewModel
     public bool HasMailGroup { get; set; }
     public int DriveResourceCount { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsChildTeam { get; set; }
 }
 
 /// <summary>

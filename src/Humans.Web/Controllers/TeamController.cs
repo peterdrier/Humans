@@ -597,26 +597,49 @@ public class TeamController : Controller
     [Authorize(Roles = "Board,Admin,TeamsAdmin")]
     public async Task<IActionResult> Summary(int page = 1)
     {
-        var pageSize = 20;
+        var pageSize = 50;
         var (teams, totalCount) = await _teamService.GetAllTeamsForAdminAsync(page, pageSize);
+
+        AdminTeamViewModel ToViewModel(Team t, bool isChild) => new()
+        {
+            Id = t.Id,
+            Name = t.Name,
+            Slug = t.Slug,
+            IsActive = t.IsActive,
+            RequiresApproval = t.RequiresApproval,
+            IsSystemTeam = t.IsSystemTeam,
+            SystemTeamType = t.SystemTeamType != SystemTeamType.None ? t.SystemTeamType.ToString() : null,
+            MemberCount = t.Members.Count,
+            PendingRequestCount = t.JoinRequests.Count,
+            HasMailGroup = t.GoogleResources.Any(r => r.ResourceType == GoogleResourceType.Group && r.IsActive),
+            DriveResourceCount = t.GoogleResources.Count(r => r.ResourceType != GoogleResourceType.Group && r.IsActive),
+            CreatedAt = t.CreatedAt.ToDateTimeUtc(),
+            IsChildTeam = isChild
+        };
+
+        // Build hierarchy: system teams first, then user teams ordered with children below parents
+        var childIds = teams.Where(t => t.ParentTeamId.HasValue).Select(t => t.Id).ToHashSet();
+        var ordered = new List<AdminTeamViewModel>();
+        foreach (var t in teams)
+        {
+            if (t.ParentTeamId.HasValue)
+                continue; // children are inserted after their parent below
+
+            ordered.Add(ToViewModel(t, false));
+
+            // Insert child teams directly after their parent
+            var children = teams
+                .Where(c => c.ParentTeamId == t.Id)
+                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase);
+            foreach (var child in children)
+            {
+                ordered.Add(ToViewModel(child, true));
+            }
+        }
 
         var viewModel = new AdminTeamListViewModel
         {
-            Teams = teams.Select(t => new AdminTeamViewModel
-            {
-                Id = t.Id,
-                Name = t.Name,
-                Slug = t.Slug,
-                IsActive = t.IsActive,
-                RequiresApproval = t.RequiresApproval,
-                IsSystemTeam = t.IsSystemTeam,
-                SystemTeamType = t.SystemTeamType != SystemTeamType.None ? t.SystemTeamType.ToString() : null,
-                MemberCount = t.Members.Count,
-                PendingRequestCount = t.JoinRequests.Count,
-                HasMailGroup = t.GoogleResources.Any(r => r.ResourceType == GoogleResourceType.Group && r.IsActive),
-                DriveResourceCount = t.GoogleResources.Count(r => r.ResourceType != GoogleResourceType.Group && r.IsActive),
-                CreatedAt = t.CreatedAt.ToDateTimeUtc()
-            }).ToList(),
+            Teams = ordered,
             TotalCount = totalCount,
             PageNumber = page,
             PageSize = pageSize

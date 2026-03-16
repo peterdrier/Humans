@@ -37,6 +37,10 @@
                 {
                     <tr>
                         <td>
+                            @if (team.IsChildTeam)
+                            {
+                                <span class="text-muted ms-3">└</span>
+                            }
                             <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug">@team.Name</a>
                         </td>
                         <td>
