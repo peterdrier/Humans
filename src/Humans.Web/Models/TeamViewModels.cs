@@ -339,6 +339,7 @@ public class RoleManagementViewModel
     public string TeamName { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public bool IsSystemTeam { get; set; }
+    public bool IsChildTeam { get; set; }
     public bool CanManage { get; set; }
     public List<TeamRoleDefinitionViewModel> RoleDefinitions { get; set; } = [];
     public List<TeamMemberViewModel> TeamMembers { get; set; } = [];

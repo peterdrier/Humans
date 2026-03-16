@@ -567,6 +567,7 @@ public class TeamAdminController : Controller
             TeamName = team.Name,
             Slug = team.Slug,
             IsSystemTeam = team.IsSystemTeam,
+            IsChildTeam = team.ParentTeamId.HasValue,
             CanManage = canManage,
             RoleDefinitions = definitions.Select(TeamRoleDefinitionViewModel.FromEntity).ToList(),
             TeamMembers = members.Select(m => new TeamMemberViewModel
