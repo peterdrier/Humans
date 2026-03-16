@@ -14,10 +14,6 @@
     <link rel="stylesheet" href="https://unpkg.com/@@maplibre/maplibre-gl-draw@1.4.0/dist/maplibre-gl-draw.css" />
     <style nonce="@nonce">
         #map { height: calc(100vh - 56px); width: 100%; }
-        #map-toolbar {
-            position: absolute; top: 70px; left: 10px; z-index: 10;
-            display: flex; flex-direction: column; gap: 8px;
-        }
         #area-badge {
             position: absolute; bottom: 30px; left: 10px; z-index: 10;
             background: rgba(0,0,0,0.7); color: white;
@@ -36,7 +32,8 @@
     <div id="map"></div>
 
     <!-- Toolbar -->
-    <div id="map-toolbar">
+    <div class="card position-absolute top-0 left-0 mt-2 ms-2">
+        <div class="card-body d-flex flex-column gap-2">
         @if (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId))
         {
             <button id="add-my-barrio-btn" class="btn btn-primary btn-sm shadow">
@@ -46,7 +43,7 @@
         @if (isMapAdmin && seasonsWithout.Any())
         {
             <div id="add-barrio-container" class="d-flex gap-2 align-items-center">
-                <select id="add-barrio-select" class="form-select form-select-sm shadow" style="width:200px;">
+                <select id="add-barrio-select" class="form-select form-select-sm" style="width:200px;">
                     <option value="">Add a barrio…</option>
                     @foreach (var s in seasonsWithout)
                     {
@@ -55,18 +52,19 @@
                 </select>
             </div>
         }
-        <button id="save-btn" class="btn btn-success btn-sm shadow" disabled>
+        <button id="save-btn" class="btn btn-success btn-sm" disabled>
             <i class="fa fa-save me-1"></i> Save
         </button>
-        <button id="history-btn" class="btn btn-outline-light btn-sm shadow" disabled>
+        <button id="history-btn" class="btn btn-outline-primary btn-sm" disabled>
             <i class="fa fa-history me-1"></i> History
         </button>
         @if (isMapAdmin)
         {
-            <a href="/BarrioMap/Admin" class="btn btn-outline-light btn-sm shadow">
+            <a href="/BarrioMap/Admin" class="btn btn-outline-primary btn-sm">
                 <i class="fa fa-cog me-1"></i> Admin
             </a>
         }
+        </div>
     </div>
 
     <div id="area-badge"><span id="area-display"></span></div>
