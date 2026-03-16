@@ -1,7 +1,6 @@
 @using System.Text.Json
 @{
     ViewData["Title"] = "Barrio Map";
-    var nonce = Context.Items["CspNonce"]?.ToString() ?? string.Empty;
     var isPlacementOpen = (bool)ViewBag.IsPlacementOpen;
     var isMapAdmin = (bool)ViewBag.IsMapAdmin;
     var userCampSeasonId = (string)ViewBag.UserCampSeasonId;
@@ -10,9 +9,9 @@
 }
 
 @section Styles {
-    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
-    <link rel="stylesheet" href="https://unpkg.com/@@maplibre/maplibre-gl-draw@1.4.0/dist/maplibre-gl-draw.css" />
-    <style nonce="@nonce">
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@@mapbox/mapbox-gl-draw@1.5.1/dist/mapbox-gl-draw.css" />
+    <style>
         #map { height: calc(100vh - 56px); width: 100%; }
         #area-badge {
             position: absolute; bottom: 30px; left: 10px; z-index: 10;
@@ -32,6 +31,7 @@
     <div id="map"></div>
 
     <!-- Toolbar -->
+    @if (isPlacementOpen || isMapAdmin) {
     <div class="card position-absolute top-0 left-0 mt-2 ms-2">
         <div class="card-body d-flex flex-column gap-2">
         @if (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId))
@@ -55,7 +55,7 @@
         <button id="save-btn" class="btn btn-success btn-sm" disabled>
             <i class="fa fa-save me-1"></i> Save
         </button>
-        <button id="history-btn" class="btn btn-outline-primary btn-sm" disabled>
+        <button id="history-btn" class="btn btn-outline-primary btn-sm">
             <i class="fa fa-history me-1"></i> History
         </button>
         @if (isMapAdmin)
@@ -66,6 +66,7 @@
         }
         </div>
     </div>
+    }
 
     <div id="area-badge"><span id="area-display"></span></div>
 </div>
@@ -85,11 +86,11 @@
 @Html.AntiForgeryToken()
 
 @section Scripts {
-    <script nonce="@nonce" src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-    <script nonce="@nonce" src="https://unpkg.com/@@maplibre/maplibre-gl-draw@1.4.0/dist/maplibre-gl-draw.js"></script>
-    <script nonce="@nonce" src="https://unpkg.com/@@turf/turf@7.1.0/turf.min.js"></script>
-    <script nonce="@nonce" src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-    <script nonce="@nonce">
+    <script src="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@@mapbox/mapbox-gl-draw@1.5.1/dist/mapbox-gl-draw.js"></script>
+    <script src="https://unpkg.com/@@turf/turf@7.1.0/turf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script>
         // --- Server-side constants ---
         const USER_CAMP_SEASON_ID = '@userCampSeasonId';
         const IS_PLACEMENT_OPEN = @(isPlacementOpen ? "true" : "false");
@@ -117,7 +118,7 @@
                 zoom: MAP_ZOOM
             });
 
-            draw = new MaplibreGLDraw({ displayControlsDefault: false, controls: { trash: true } });
+            draw = new MapboxDraw({ displayControlsDefault: false, controls: { trash: true } });
             map.addControl(draw);
             map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
