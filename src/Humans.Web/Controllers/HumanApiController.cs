@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces;
+using Humans.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,7 +20,7 @@ public class HumanApiController : ControllerBase
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string? q)
     {
-        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+        if (!q.HasSearchTerm())
             return Ok(Array.Empty<object>());
 
         var results = await _profileService.SearchHumansAsync(q);

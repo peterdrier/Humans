@@ -14,21 +14,14 @@
         ["ca"] = "Catal\u00e0"
     };
 
-    string GetLanguageLabel(string langCode)
-    {
-        var name = languageNames.TryGetValue(langCode, out var n) ? n : langCode.ToUpperInvariant();
-        return langCode == "es" ? $"{name} (Legal)" : name;
-    }
-
     // Order: Spanish (canonical/legal) always first, then alphabetical
     var orderedLanguages = Model.StatutesContent
-        .OrderByDescending(kv => kv.Key == "es")
-        .ThenBy(kv => languageNames.TryGetValue(kv.Key, out var n) ? n : kv.Key, StringComparer.Ordinal)
+        .OrderByDisplayLanguage(canonicalFirst: true)
         .ToList();
 
     // Default active tab: user's language if available, else Spanish
     var userLang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-    var defaultLang = Model.StatutesContent.ContainsKey(userLang) ? userLang : "es";
+    var defaultLang = Model.StatutesContent.ContainsKey(userLang) ? userLang : CultureCatalog.CanonicalLegalCultureCode;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -108,7 +101,7 @@
                                 <button class="nav-link @(isActive ? "active" : "")" id="statutes-tab-@lang.Key" data-bs-toggle="tab"
                                         data-bs-target="#statutes-content-@lang.Key" type="button" role="tab"
                                         aria-controls="statutes-content-@lang.Key" aria-selected="@(isActive ? "true" : "false")">
-                                    @GetLanguageLabel(lang.Key)
+                                    @lang.Key.ToLegalLanguageLabel()
                                 </button>
                             </li>
                         }

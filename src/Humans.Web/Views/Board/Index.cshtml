@@ -154,14 +154,7 @@
                     {
                         var lang = Model.LanguageDistribution[i];
                         var percentage = totalActive > 0 ? (int)(100.0 * lang.Count / totalActive) : 0;
-                        var label = lang.Language switch {
-                            "en" => "English",
-                            "es" => "Spanish",
-                            "de" => "German",
-                            "fr" => "French",
-                            "it" => "Italian",
-                            _ => lang.Language
-                        };
+                        var label = lang.Language.ToDisplayLanguageName();
                         var color = barColors[i % barColors.Length];
                         <div class="d-flex align-items-center mb-2">
                             <span class="me-2" style="min-width: 70px;">@label</span>

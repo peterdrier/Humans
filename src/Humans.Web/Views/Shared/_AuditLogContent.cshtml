@@ -26,7 +26,7 @@
             All
         </a>
         <a asp-action="AuditLog" asp-route-filter="AnomalousPermissionDetected"
-           class="btn btn-sm @(string.Equals(Model.ActionFilter, "AnomalousPermissionDetected", StringComparison.Ordinal) ? "btn-warning" : "btn-outline-warning")">
+           class="btn btn-sm @Model.ActionFilter.ToAuditFilterButtonClass(nameof(AuditAction.AnomalousPermissionDetected), "btn-warning", "btn-outline-warning")">
             Anomalous Permissions
             @if (Model.AnomalyCount > 0)
             {
@@ -34,19 +34,19 @@
             }
         </a>
         <a asp-action="AuditLog" asp-route-filter="GoogleResourceAccessGranted"
-           class="btn btn-sm @(string.Equals(Model.ActionFilter, "GoogleResourceAccessGranted", StringComparison.Ordinal) ? "btn-primary" : "btn-outline-primary")">
+           class="btn btn-sm @Model.ActionFilter.ToAuditFilterButtonClass(nameof(AuditAction.GoogleResourceAccessGranted), "btn-primary", "btn-outline-primary")">
             Access Granted
         </a>
         <a asp-action="AuditLog" asp-route-filter="GoogleResourceAccessRevoked"
-           class="btn btn-sm @(string.Equals(Model.ActionFilter, "GoogleResourceAccessRevoked", StringComparison.Ordinal) ? "btn-primary" : "btn-outline-primary")">
+           class="btn btn-sm @Model.ActionFilter.ToAuditFilterButtonClass(nameof(AuditAction.GoogleResourceAccessRevoked), "btn-primary", "btn-outline-primary")">
             Access Revoked
         </a>
         <a asp-action="AuditLog" asp-route-filter="MemberSuspended"
-           class="btn btn-sm @(string.Equals(Model.ActionFilter, "MemberSuspended", StringComparison.Ordinal) ? "btn-primary" : "btn-outline-primary")">
+           class="btn btn-sm @Model.ActionFilter.ToAuditFilterButtonClass(nameof(AuditAction.MemberSuspended), "btn-primary", "btn-outline-primary")">
             Suspensions
         </a>
         <a asp-action="AuditLog" asp-route-filter="RoleAssigned"
-           class="btn btn-sm @(string.Equals(Model.ActionFilter, "RoleAssigned", StringComparison.Ordinal) ? "btn-primary" : "btn-outline-primary")">
+           class="btn btn-sm @Model.ActionFilter.ToAuditFilterButtonClass(nameof(AuditAction.RoleAssigned), "btn-primary", "btn-outline-primary")">
             Roles
         </a>
     </div>
@@ -74,18 +74,10 @@ else
                 <tbody>
                     @foreach (var entry in Model.Entries)
                     {
-                        var rowClass = string.Equals(entry.Action, "AnomalousPermissionDetected", StringComparison.Ordinal)
-                            ? "table-warning" : "";
+                        var rowClass = entry.Action.ToAuditEntryRowClass();
                         <tr class="@rowClass">
                             <td>
-                                @if (string.Equals(entry.Action, "AnomalousPermissionDetected", StringComparison.Ordinal))
-                                {
-                                    <span class="badge bg-warning text-dark">Anomaly</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">@entry.Action</span>
-                                }
+                                <span class="badge @entry.Action.ToAuditBadgeClass()">@entry.Action.ToAuditBadgeLabel()</span>
                             </td>
                             <td>@entry.Description</td>
                             <td>

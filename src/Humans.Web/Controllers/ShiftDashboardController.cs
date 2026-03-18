@@ -3,6 +3,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -92,7 +93,7 @@ public class ShiftDashboardController : HumansControllerBase
         if (!ShiftRoleChecks.CanAccessDashboard(User))
             return Forbid();
 
-        if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+        if (!query.HasSearchTerm())
             return Json(Array.Empty<VolunteerSearchResult>());
 
         try

@@ -65,7 +65,7 @@
                                     ["fr"] = "Français",
                                     ["it"] = "Italiano"
                                 };
-                                var langDisplay = languageNames.GetValueOrDefault(Model.Language, Model.Language);
+                                var langDisplay = Model.Language.ToDisplayLanguageName();
                             }
                             @langDisplay
                         </dd>

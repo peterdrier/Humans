@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -190,16 +191,14 @@ public class TicketController : HumansControllerBase
             .AsQueryable();
 
         // Search
-        if (!string.IsNullOrWhiteSpace(search))
+        if (search.HasSearchTerm(1))
         {
-#pragma warning disable MA0011 // ToLower inside EF LINQ is translated to SQL LOWER()
-            var s = search.ToLower();
-            query = query.Where(o =>
-                o.BuyerName.ToLower().Contains(s) ||
-                o.BuyerEmail.ToLower().Contains(s) ||
-                o.VendorOrderId.ToLower().Contains(s) ||
-                (o.DiscountCode != null && o.DiscountCode.ToLower().Contains(s)));
-#pragma warning restore MA0011
+            query = query.WhereAnyContainsInsensitive(
+                search,
+                o => o.BuyerName,
+                o => o.BuyerEmail,
+                o => o.VendorOrderId,
+                o => o.DiscountCode);
         }
 
         // Filters
@@ -287,14 +286,12 @@ public class TicketController : HumansControllerBase
         if (!string.IsNullOrEmpty(filterOrderId))
             query = query.Where(a => a.TicketOrder.VendorOrderId == filterOrderId);
 
-        if (!string.IsNullOrWhiteSpace(search))
+        if (search.HasSearchTerm(1))
         {
-#pragma warning disable MA0011 // ToLower inside EF LINQ is translated to SQL LOWER()
-            var s = search.ToLower();
-            query = query.Where(a =>
-                a.AttendeeName.ToLower().Contains(s) ||
-                (a.AttendeeEmail != null && a.AttendeeEmail.ToLower().Contains(s)));
-#pragma warning restore MA0011
+            query = query.WhereAnyContainsInsensitive(
+                search,
+                a => a.AttendeeName,
+                a => a.AttendeeEmail);
         }
 
         if (!string.IsNullOrEmpty(filterTicketType))
@@ -387,12 +384,11 @@ public class TicketController : HumansControllerBase
         }).ToList();
 
         var allGrants = campaigns.SelectMany(c => c.Grants).AsEnumerable();
-        if (!string.IsNullOrWhiteSpace(search))
+        if (search.HasSearchTerm(1))
         {
-            var s = search.ToLowerInvariant();
             allGrants = allGrants.Where(g =>
-                (g.Code?.Code?.Contains(s, StringComparison.OrdinalIgnoreCase) == true) ||
-                g.User.DisplayName.Contains(s, StringComparison.OrdinalIgnoreCase));
+                g.Code?.Code.ContainsOrdinalIgnoreCase(search) == true ||
+                g.User.DisplayName.ContainsOrdinalIgnoreCase(search));
         }
 
         // Load orders with discount codes to show who redeemed and on which order
@@ -509,11 +505,11 @@ public class TicketController : HumansControllerBase
                 .ToList();
         }
 
-        if (!string.IsNullOrWhiteSpace(search))
+        if (search.HasSearchTerm(1))
         {
             activeHumans = activeHumans
-                .Where(u => u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    u.UserEmails.Any(e => e.Email.Contains(search, StringComparison.OrdinalIgnoreCase)))
+                .Where(u => u.DisplayName.ContainsOrdinalIgnoreCase(search) ||
+                    u.UserEmails.Any(e => e.Email.ContainsOrdinalIgnoreCase(search)))
                 .ToList();
         }
 

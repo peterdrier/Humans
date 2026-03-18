@@ -18,10 +18,10 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Humans.Domain.Entities;
+using Humans.Web.Extensions;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
-using Humans.Web.Extensions;
 using Humans.Web.Health;
 using Humans.Web.Middleware;
 using Microsoft.Extensions.Localization;
@@ -268,7 +268,7 @@ builder.Services.AddControllersWithViews(options =>
     .AddDataAnnotationsLocalization();
 builder.Services.AddRazorPages();
 
-var supportedCultures = new[] { "en", "es", "de", "it", "fr" };
+var supportedCultures = CultureCatalog.SupportedCultureCodes.ToArray();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
     options.SetDefaultCulture("en");

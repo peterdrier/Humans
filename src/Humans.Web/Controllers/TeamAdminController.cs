@@ -7,6 +7,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -237,7 +238,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+        if (!q.HasSearchTerm())
         {
             return Json(Array.Empty<object>());
         }
@@ -801,7 +802,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+        if (!q.HasSearchTerm())
         {
             return Json(Array.Empty<object>());
         }

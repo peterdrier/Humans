@@ -2,16 +2,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Domain.Entities;
+using Humans.Web.Extensions;
 
 namespace Humans.Web.Controllers;
 
 public class LanguageController : HumansControllerBase
 {
-    private static readonly HashSet<string> SupportedCultures = new(StringComparer.Ordinal)
-    {
-        "en", "es", "de", "it", "fr"
-    };
-
     public LanguageController(UserManager<User> userManager)
         : base(userManager)
     {
@@ -21,9 +17,9 @@ public class LanguageController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetLanguage(string culture, string? returnUrl)
     {
-        if (!SupportedCultures.Contains(culture))
+        if (!culture.IsSupportedCultureCode())
         {
-            culture = "en";
+            culture = CultureCatalog.DefaultCultureCode;
         }
 
         // Set the culture cookie

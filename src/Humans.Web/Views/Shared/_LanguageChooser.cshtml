@@ -1,7 +1,7 @@
 @using Microsoft.AspNetCore.Localization
 @{
     var requestCulture = Context.Features.Get<IRequestCultureFeature>();
-    var currentCulture = requestCulture?.RequestCulture.UICulture.TwoLetterISOLanguageName ?? "en";
+    var currentCulture = requestCulture?.RequestCulture.UICulture.TwoLetterISOLanguageName ?? CultureCatalog.DefaultCultureCode;
 
     var languages = new[]
     {
@@ -12,7 +12,7 @@
         ("it", "Italiano")
     };
 
-    var currentLanguageName = languages.FirstOrDefault(l => string.Equals(l.Item1, currentCulture, StringComparison.Ordinal)).Item2 ?? "English";
+    var currentLanguageName = currentCulture.ToDisplayLanguageName();
 }
 
 <div class="dropdown">
@@ -20,7 +20,7 @@
         @currentLanguageName
     </button>
     <ul class="dropdown-menu dropdown-menu-end">
-        @foreach (var (culture, name) in languages)
+        @foreach (var culture in CultureCatalog.SupportedCultureCodes)
         {
             <li>
                 <form asp-controller="Language" asp-action="SetLanguage" method="post">
@@ -28,7 +28,7 @@
                     <input type="hidden" name="culture" value="@culture" />
                     <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
                     <button type="submit" class="dropdown-item @(string.Equals(culture, currentCulture, StringComparison.Ordinal) ? "active" : "")">
-                        @name
+                        @culture.ToDisplayLanguageName()
                     </button>
                 </form>
             </li>

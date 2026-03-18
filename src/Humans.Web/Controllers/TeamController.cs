@@ -7,6 +7,8 @@ using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -397,7 +399,7 @@ public class TeamController : Controller
     {
         var viewModel = new HumanSearchViewModel { Query = q };
 
-        if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+        if (!q.HasSearchTerm())
         {
             return View(viewModel);
         }

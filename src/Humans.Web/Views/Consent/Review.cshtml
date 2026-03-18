@@ -14,21 +14,14 @@
         ["ca"] = "Catal\u00e0"
     };
 
-    string GetLanguageLabel(string langCode)
-    {
-        var name = languageNames.TryGetValue(langCode, out var n) ? n : langCode.ToUpperInvariant();
-        return langCode == "es" ? $"{name} (Legal)" : name;
-    }
-
     // Order: Spanish (canonical/legal) always first, then alphabetical
     var orderedLanguages = Model.Content
-        .OrderByDescending(kv => kv.Key == "es")
-        .ThenBy(kv => languageNames.TryGetValue(kv.Key, out var n) ? n : kv.Key, StringComparer.Ordinal)
+        .OrderByDisplayLanguage(canonicalFirst: true)
         .ToList();
 
     // Default active tab: user's language if available, else Spanish
     var userLang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-    var defaultLang = Model.Content.ContainsKey(userLang) ? userLang : "es";
+    var defaultLang = Model.Content.ContainsKey(userLang) ? userLang : CultureCatalog.CanonicalLegalCultureCode;
 
     // Build per-language translations for consent checkbox text (used by tab-switch JS)
     var rm = new System.Resources.ResourceManager(typeof(SharedResource));
@@ -85,7 +78,7 @@
                         <button class="nav-link @(isActive ? "active" : "")" id="tab-@lang.Key" data-bs-toggle="tab"
                                 data-bs-target="#content-@lang.Key" type="button" role="tab"
                                 aria-controls="content-@lang.Key" aria-selected="@(isActive ? "true" : "false")">
-                            @GetLanguageLabel(lang.Key)
+                            @lang.Key.ToLegalLanguageLabel()
                         </button>
                     </li>
                 }
