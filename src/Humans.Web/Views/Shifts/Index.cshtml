@@ -9,17 +9,6 @@
 }
 
 @functions {
-    string FormatDate(EventSettings es, int dayOffset)
-    {
-        var date = es.GateOpeningDate.PlusDays(dayOffset);
-        return date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
-    }
-
-    string FormatTime(Instant instant, DateTimeZone tz)
-    {
-        return instant.InZone(tz).ToString("HH:mm", null);
-    }
-
     string GetPhase(Shift shift, EventSettings es)
     {
         return shift.GetShiftPeriod(es) switch
@@ -137,7 +126,7 @@
                                         <select name="startDayOffset" class="form-select form-select-sm">
                                             @foreach (var s in availableShifts)
                                             {
-                                                <option value="@s.Shift.DayOffset">@FormatDate(es, s.Shift.DayOffset)</option>
+                                                <option value="@s.Shift.DayOffset">@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()</option>
                                             }
                                         </select>
                                     </div>
@@ -146,7 +135,7 @@
                                         <select name="endDayOffset" class="form-select form-select-sm">
                                             @foreach (var s in availableShifts)
                                             {
-                                                <option value="@s.Shift.DayOffset" selected="@(s == availableShifts.Last())">@FormatDate(es, s.Shift.DayOffset)</option>
+                                                <option value="@s.Shift.DayOffset" selected="@(s == availableShifts.Last())">@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()</option>
                                             }
                                         </select>
                                     </div>
@@ -166,7 +155,7 @@
                                             var isFull = item.RemainingSlots <= 0;
                                             var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
                                             <tr class="@(isFull ? "table-secondary" : "")">
-                                                <td>@FormatDate(es, item.Shift.DayOffset)</td>
+                                                <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
                                                 <td>
                                                     <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
                                                     <small class="text-muted">/ @item.Shift.MaxVolunteers</small>
@@ -208,6 +197,7 @@
                                     </tbody>
                                 </table>
                             </div>
+                           
                         }
                         else
                         {
@@ -238,8 +228,8 @@
                                             <tr class="@(isFull ? "table-secondary" : "")">
                                                 <td>@(shift.IsAllDay ? "All day" : $"{shift.StartTime.ToString("HH:mm", null)}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToString("HH:mm", null)}")</td>
                                                 <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                                <td>@FormatDate(es, shift.DayOffset)</td>
-                                                <td>@FormatTime(item.AbsoluteStart, tz)</td>
+                                                <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                                                <td>@item.AbsoluteStart.ToDisplayTime(tz)</td>
                                                 <td>@(shift.IsAllDay ? "Full day" : $"{shift.Duration.TotalHours}h")</td>
                                                 <td>
                                                     <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>

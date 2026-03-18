@@ -70,7 +70,7 @@
                     {
                         var shift = item.Shift;
                         var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
-                        var shiftDateLabel = shiftDate.DayOfWeek.ToString()[..3] + " " + shiftDate.ToString("MMM d", null);
+                        var shiftDateLabel = shiftDate.ToDisplayShiftDate();
                         var period = shift.GetShiftPeriod(Model.EventSettings);
                         var periodBadge = period switch
                         {

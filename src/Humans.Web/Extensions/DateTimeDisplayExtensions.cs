@@ -77,11 +77,17 @@ public static class DateTimeDisplayExtensions
     public static string? ToDisplayCompactDateTime(this Instant? value) =>
         value?.ToDisplayCompactDateTime();
 
+    public static string ToDisplayShiftDate(this LocalDate value) =>
+        value.DayOfWeek.ToString()[..3] + " " + value.ToString("MMM d", null);
+
     public static string ToDisplayTime(this DateTime value) =>
         value.ToString("HH:mm", CultureInfo.InvariantCulture);
 
     public static string? ToDisplayTime(this DateTime? value) =>
         value?.ToDisplayTime();
+
+    public static string ToDisplayTime(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).ToString("HH:mm", null);
 
     public static string ToAuditTimestamp(this DateTime value) =>
         value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);

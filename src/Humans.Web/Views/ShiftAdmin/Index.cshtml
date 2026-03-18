@@ -203,7 +203,7 @@
                                         </td>
                                         @{
                                             var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
-                                            var shiftDateLabel = shiftDate.DayOfWeek.ToString()[..3] + " " + shiftDate.ToString("MMM d", null);
+                                            var shiftDateLabel = shiftDate.ToDisplayShiftDate();
                                             var phase = shift.GetShiftPeriod(Model.EventSettings);
                                             var phaseBadge = phase switch
                                             {
@@ -302,7 +302,7 @@
                                                                 @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
                                                                 {
                                                                     var editDate = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                                    var editLabel = editDate.DayOfWeek.ToString()[..3] + " " + editDate.ToString("MMM d", null);
+                                                                    var editLabel = editDate.ToDisplayShiftDate();
                                                                     <option value="@d" selected="@(d == shift.DayOffset)">@editLabel</option>
                                                                 }
                                                             </select>
@@ -440,7 +440,7 @@
                                     @for (var d = periodRange.Start; d <= periodRange.End; d++)
                                     {
                                         var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                        var dateLabel = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                        var dateLabel = date.ToDisplayShiftDate();
                                         <option value="@d">@dateLabel</option>
                                     }
                                 </select>
@@ -451,7 +451,7 @@
                                     @for (var d = periodRange.Start; d <= periodRange.End; d++)
                                     {
                                         var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                        var dateLabel = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                        var dateLabel = date.ToDisplayShiftDate();
                                         <option value="@d" selected="@(d == periodRange.End)">@dateLabel</option>
                                     }
                                 </select>
@@ -482,7 +482,7 @@
                             [@for (var d = periodRange.Start; d <= periodRange.End; d++)
                             {
                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                var dateLabel = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                var dateLabel = date.ToDisplayShiftDate();
                                 if (d > periodRange.Start) { @Html.Raw(",") }
                                 @Html.Raw($"{{\"offset\":{d},\"label\":\"{dateLabel}\"}}")
                             }]
@@ -508,7 +508,7 @@
                                             @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                                var label = date.ToDisplayShiftDate();
                                                 <option value="@d" selected="@(d == 0)">@label</option>
                                             }
                                         </select>
@@ -519,7 +519,7 @@
                                             @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                                var label = date.ToDisplayShiftDate();
                                                 <option value="@d" selected="@(d == Model.EventSettings.EventEndOffset)">@label</option>
                                             }
                                         </select>
@@ -567,7 +567,7 @@
                                         @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
                                         {
                                             var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                            var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                            var label = date.ToDisplayShiftDate();
                                             <option value="@d" selected="@(d == 0)">@label</option>
                                         }
                                     </select>
