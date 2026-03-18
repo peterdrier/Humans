@@ -9,6 +9,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 
@@ -472,9 +473,7 @@ public class HumanController : HumansControllerBase
         {
             UserId = id,
             UserDisplayName = user.DisplayName,
-            AvailableRoles = User.IsInRole(RoleNames.Admin)
-                ? [RoleNames.Admin, RoleNames.Board, RoleNames.TeamsAdmin, RoleNames.CampAdmin, RoleNames.TicketAdmin, RoleNames.NoInfoAdmin, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
-                : [RoleNames.Board, RoleNames.TeamsAdmin, RoleNames.CampAdmin, RoleNames.TicketAdmin, RoleNames.NoInfoAdmin, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
+            AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
         };
 
         return View(viewModel);
@@ -496,14 +495,12 @@ public class HumanController : HumansControllerBase
             ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
             model.UserId = id;
             model.UserDisplayName = user.DisplayName;
-            model.AvailableRoles = User.IsInRole(RoleNames.Admin)
-                ? [RoleNames.Admin, RoleNames.Board, RoleNames.TeamsAdmin, RoleNames.CampAdmin, RoleNames.TicketAdmin, RoleNames.NoInfoAdmin, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
-                : [RoleNames.Board, RoleNames.TeamsAdmin, RoleNames.CampAdmin, RoleNames.TicketAdmin, RoleNames.NoInfoAdmin, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator];
+            model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
             return View(model);
         }
 
         // Enforce role assignment authorization
-        if (!CanManageRole(model.RoleName))
+        if (!RoleChecks.CanManageRole(User, model.RoleName))
         {
             return Forbid();
         }
@@ -540,7 +537,7 @@ public class HumanController : HumansControllerBase
         }
 
         // Enforce role assignment authorization
-        if (!CanManageRole(roleAssignment.RoleName))
+        if (!RoleChecks.CanManageRole(User, roleAssignment.RoleName))
         {
             return Forbid();
         }
@@ -564,26 +561,4 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
     }
 
-    /// <summary>
-    /// Checks whether the current user can assign/end the specified role.
-    /// Admin can manage any role. Board can manage Board and coordinator roles.
-    /// </summary>
-    private bool CanManageRole(string roleName)
-    {
-        if (User.IsInRole(RoleNames.Admin))
-        {
-            return true;
-        }
-
-        // Board members can manage Board and coordinator roles
-        if (User.IsInRole(RoleNames.Board))
-        {
-            return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal);
-        }
-
-        return false;
-    }
 }

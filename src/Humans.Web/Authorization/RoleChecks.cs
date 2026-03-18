@@ -5,6 +5,29 @@ namespace Humans.Web.Authorization;
 
 public static class RoleChecks
 {
+    private static readonly string[] AdminAssignableRoles =
+    [
+        RoleNames.Admin,
+        RoleNames.Board,
+        RoleNames.TeamsAdmin,
+        RoleNames.CampAdmin,
+        RoleNames.TicketAdmin,
+        RoleNames.NoInfoAdmin,
+        RoleNames.ConsentCoordinator,
+        RoleNames.VolunteerCoordinator
+    ];
+
+    private static readonly string[] BoardAssignableRoles =
+    [
+        RoleNames.Board,
+        RoleNames.TeamsAdmin,
+        RoleNames.CampAdmin,
+        RoleNames.TicketAdmin,
+        RoleNames.NoInfoAdmin,
+        RoleNames.ConsentCoordinator,
+        RoleNames.VolunteerCoordinator
+    ];
+
     public static bool IsAdmin(ClaimsPrincipal user)
     {
         return user.IsInRole(RoleNames.Admin);
@@ -23,5 +46,28 @@ public static class RoleChecks
     public static bool IsCampAdmin(ClaimsPrincipal user)
     {
         return IsAdmin(user) || user.IsInRole(RoleNames.CampAdmin);
+    }
+
+    public static IReadOnlyList<string> GetAssignableRoles(ClaimsPrincipal user)
+    {
+        return IsAdmin(user) ? AdminAssignableRoles : BoardAssignableRoles;
+    }
+
+    public static bool CanManageRole(ClaimsPrincipal user, string roleName)
+    {
+        if (IsAdmin(user))
+        {
+            return true;
+        }
+
+        if (user.IsInRole(RoleNames.Board))
+        {
+            return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal);
+        }
+
+        return false;
     }
 }
