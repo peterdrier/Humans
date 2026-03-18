@@ -74,7 +74,7 @@ public class CampServiceTests : IDisposable
             .FirstOrDefaultAsync(l => l.CampId == camp.Id);
         lead.Should().NotBeNull();
         lead!.UserId.Should().Be(userId);
-        lead.Role.Should().Be(CampLeadRole.Primary);
+        lead.Role.Should().Be(CampLeadRole.CoLead);
     }
 
     [Fact]
@@ -192,16 +192,15 @@ public class CampServiceTests : IDisposable
     // ==========================================================================
 
     [Fact]
-    public async Task AddLeadAsync_UnderMax_AddsCoLead()
+    public async Task AddLeadAsync_UnderMax_AddsLead()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var coLeadId = Guid.NewGuid();
+        var newLeadId = Guid.NewGuid();
 
-        var lead = await _service.AddLeadAsync(camp.Id, coLeadId, CampLeadRole.CoLead);
+        var lead = await _service.AddLeadAsync(camp.Id, newLeadId);
 
-        lead.Role.Should().Be(CampLeadRole.CoLead);
-        lead.UserId.Should().Be(coLeadId);
+        lead.UserId.Should().Be(newLeadId);
     }
 
     [Fact]
@@ -209,32 +208,23 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        // Add 4 co-leads (1 primary + 4 = 5 max)
+        // Add 4 more leads (1 creator + 4 = 5 max)
         for (var i = 0; i < 4; i++)
-            await _service.AddLeadAsync(camp.Id, Guid.NewGuid(), CampLeadRole.CoLead);
+            await _service.AddLeadAsync(camp.Id, Guid.NewGuid());
 
-        var act = () => _service.AddLeadAsync(camp.Id, Guid.NewGuid(), CampLeadRole.CoLead);
+        var act = () => _service.AddLeadAsync(camp.Id, Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*maximum*");
     }
 
-    // ==========================================================================
-    // TransferPrimaryLeadAsync
-    // ==========================================================================
-
     [Fact]
-    public async Task TransferPrimaryLeadAsync_ToCoLead_SwapsRoles()
+    public async Task RemoveLeadAsync_LastLead_Throws()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var coLeadId = Guid.NewGuid();
-        await _service.AddLeadAsync(camp.Id, coLeadId, CampLeadRole.CoLead);
+        var lead = await _dbContext.CampLeads.FirstAsync(l => l.CampId == camp.Id);
 
-        await _service.TransferPrimaryLeadAsync(camp.Id, coLeadId);
-
-        var leads = await _dbContext.CampLeads
-            .Where(l => l.CampId == camp.Id && l.LeftAt == null)
-            .ToListAsync();
-        leads.First(l => l.UserId == coLeadId).Role.Should().Be(CampLeadRole.Primary);
+        var act = () => _service.RemoveLeadAsync(lead.Id);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*last lead*");
     }
 
     // ==========================================================================

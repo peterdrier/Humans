@@ -224,22 +224,13 @@
                 @foreach (var lead in Model.Leads)
                 {
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            @lead.DisplayName
-                            @if (lead.Role == CampLeadRole.Primary)
-                            {
-                                <span class="badge bg-primary ms-1">Primary</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary ms-1">Co-Lead</span>
-                            }
-                        </div>
-                        @if (lead.Role == CampLeadRole.CoLead)
+                        @lead.DisplayName
+                        @if (Model.Leads.Count > 1)
                         {
                             <form asp-action="RemoveLead" asp-route-slug="@Model.Slug" asp-route-leadId="@lead.LeadId" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove lead">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove lead"
+                                        data-confirm="Remove @lead.DisplayName as a lead?">
                                     <i class="fa-solid fa-user-minus"></i>
                                 </button>
                             </form>
@@ -251,38 +242,13 @@
                 <form asp-action="AddLead" asp-route-slug="@Model.Slug" method="post" class="input-group">
                     @Html.AntiForgeryToken()
                     <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", "userId" } })' />
-                    <button type="submit" class="btn btn-outline-success" title="Add co-lead">
+                    <button type="submit" class="btn btn-outline-success" title="Add lead">
                         <i class="fa-solid fa-user-plus"></i>
                     </button>
                 </form>
-                <div class="form-text">Search by name to find the new co-lead.</div>
+                <div class="form-text">Search by name to find the new lead.</div>
             </div>
         </div>
-
-        @* Transfer Primary *@
-        @if (Model.Leads.Count > 1)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fa-solid fa-right-left me-1"></i> Transfer Primary Lead
-                </div>
-                <div class="card-body">
-                    <form asp-action="TransferPrimary" asp-route-slug="@Model.Slug" method="post">
-                        @Html.AntiForgeryToken()
-                        <select name="newPrimaryUserId" class="form-select mb-2" required>
-                            <option value="">Select new primary lead</option>
-                            @foreach (var lead in Model.Leads.Where(l => l.Role == CampLeadRole.CoLead))
-                            {
-                                <option value="@lead.UserId">@lead.DisplayName</option>
-                            }
-                        </select>
-                        <button type="submit" class="btn btn-warning w-100">
-                            <i class="fa-solid fa-right-left me-1"></i> Transfer
-                        </button>
-                    </form>
-                </div>
-            </div>
-        }
 
         @* Image Management *@
         <div class="card mb-4">

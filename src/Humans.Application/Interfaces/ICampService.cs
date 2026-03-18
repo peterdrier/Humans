@@ -44,13 +44,11 @@ public interface ICampService
     Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default);
 
     // Lead management
-    Task<CampLead> AddLeadAsync(Guid campId, Guid userId, CampLeadRole role, CancellationToken cancellationToken = default);
+    Task<CampLead> AddLeadAsync(Guid campId, Guid userId, CancellationToken cancellationToken = default);
     Task RemoveLeadAsync(Guid leadId, CancellationToken cancellationToken = default);
-    Task TransferPrimaryLeadAsync(Guid campId, Guid newPrimaryUserId, CancellationToken cancellationToken = default);
 
     // Authorization checks
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
-    Task<bool> IsUserPrimaryLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
 
     // Images
     Task<CampImage> UploadImageAsync(Guid campId, Stream fileStream, string fileName, string contentType, long length, CancellationToken cancellationToken = default);

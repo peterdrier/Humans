@@ -141,7 +141,6 @@ public class CampController : Controller
 
         var isAuthenticated = User.Identity?.IsAuthenticated == true;
         var isLead = false;
-        var isPrimaryLead = false;
         var isCampAdmin = false;
 
         if (isAuthenticated)
@@ -150,7 +149,6 @@ public class CampController : Controller
             if (user is not null)
             {
                 isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-                isPrimaryLead = await _campService.IsUserPrimaryLeadAsync(user.Id, camp.Id);
                 isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
             }
         }
@@ -174,11 +172,9 @@ public class CampController : Controller
                     LeadId = l.Id,
                     UserId = l.UserId,
                     DisplayName = l.User.DisplayName,
-                    Role = l.Role
                 }).ToList(),
             CurrentSeason = currentSeason != null ? MapSeasonDetail(currentSeason) : null,
             IsCurrentUserLead = isLead,
-            IsCurrentUserPrimaryLead = isPrimaryLead,
             IsCurrentUserCampAdmin = isCampAdmin
         };
 
@@ -199,7 +195,6 @@ public class CampController : Controller
 
         var isAuthenticated = User.Identity?.IsAuthenticated == true;
         var isLead = false;
-        var isPrimaryLead = false;
         var isCampAdmin = false;
 
         if (isAuthenticated)
@@ -208,7 +203,6 @@ public class CampController : Controller
             if (user is not null)
             {
                 isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-                isPrimaryLead = await _campService.IsUserPrimaryLeadAsync(user.Id, camp.Id);
                 isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
             }
         }
@@ -232,11 +226,9 @@ public class CampController : Controller
                     LeadId = l.Id,
                     UserId = l.UserId,
                     DisplayName = l.User.DisplayName,
-                    Role = l.Role
                 }).ToList(),
             CurrentSeason = MapSeasonDetail(season),
             IsCurrentUserLead = isLead,
-            IsCurrentUserPrimaryLead = isPrimaryLead,
             IsCurrentUserCampAdmin = isCampAdmin
         };
 
@@ -381,8 +373,7 @@ public class CampController : Controller
                         LeadId = l.Id,
                         UserId = l.UserId,
                         DisplayName = l.User.DisplayName,
-                        Role = l.Role
-                    }).ToList();
+                        }).ToList();
                 model.Images = camp.Images.OrderBy(i => i.SortOrder)
                     .Select(i => new CampImageViewModel
                     {
@@ -494,6 +485,34 @@ public class CampController : Controller
         return RedirectToAction(nameof(Details), new { slug });
     }
 
+    [Authorize]
+    [HttpPost("{slug}/Rejoin/{seasonId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Rejoin(string slug, Guid seasonId)
+    {
+        var camp = await _campService.GetCampBySlugAsync(slug);
+        if (camp is null) return NotFound();
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
+        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        if (!isLead && !isCampAdmin) return Forbid();
+
+        try
+        {
+            await _campService.ReactivateSeasonAsync(seasonId);
+            TempData["SuccessMessage"] = "Season reactivated. Welcome back!";
+        }
+        catch (InvalidOperationException ex)
+        {
+            TempData["ErrorMessage"] = ex.Message;
+        }
+
+        return RedirectToAction(nameof(Details), new { slug });
+    }
+
     // ======================================================================
     // Lead management
     // ======================================================================
@@ -513,9 +532,15 @@ public class CampController : Controller
         var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
         if (!isLead && !isCampAdmin) return Forbid();
 
+        if (userId == Guid.Empty)
+        {
+            TempData["ErrorMessage"] = "Please search and select a human first.";
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
         try
         {
-            await _campService.AddLeadAsync(camp.Id, userId, CampLeadRole.CoLead);
+            await _campService.AddLeadAsync(camp.Id, userId);
             TempData["SuccessMessage"] = "Co-lead added.";
         }
         catch (InvalidOperationException ex)
@@ -554,33 +579,6 @@ public class CampController : Controller
         return RedirectToAction(nameof(Edit), new { slug });
     }
 
-    [Authorize]
-    [HttpPost("{slug}/Leads/TransferPrimary")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> TransferPrimary(string slug, Guid newPrimaryUserId)
-    {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
-        if (!isLead && !isCampAdmin) return Forbid();
-
-        try
-        {
-            await _campService.TransferPrimaryLeadAsync(camp.Id, newPrimaryUserId);
-            TempData["SuccessMessage"] = "Primary lead transferred.";
-        }
-        catch (InvalidOperationException ex)
-        {
-            TempData["ErrorMessage"] = ex.Message;
-        }
-
-        return RedirectToAction(nameof(Edit), new { slug });
-    }
 
     // ======================================================================
     // Image management
@@ -749,7 +747,6 @@ public class CampController : Controller
                     LeadId = l.Id,
                     UserId = l.UserId,
                     DisplayName = l.User.DisplayName,
-                    Role = l.Role
                 }).ToList(),
             Images = camp.Images
                 .OrderBy(i => i.SortOrder)

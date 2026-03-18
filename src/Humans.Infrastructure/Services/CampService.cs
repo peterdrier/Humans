@@ -84,7 +84,7 @@ public class CampService : ICampService
             Id = Guid.NewGuid(),
             CampId = camp.Id,
             UserId = createdByUserId,
-            Role = CampLeadRole.Primary,
+            Role = CampLeadRole.CoLead,
             JoinedAt = now
         };
 
@@ -485,7 +485,7 @@ public class CampService : ICampService
     // Lead management
     // ==========================================================================
 
-    public async Task<CampLead> AddLeadAsync(Guid campId, Guid userId, CampLeadRole role,
+    public async Task<CampLead> AddLeadAsync(Guid campId, Guid userId,
         CancellationToken cancellationToken = default)
     {
         var alreadyLead = await _dbContext.CampLeads
@@ -504,7 +504,7 @@ public class CampService : ICampService
             Id = Guid.NewGuid(),
             CampId = campId,
             UserId = userId,
-            Role = role,
+            Role = CampLeadRole.CoLead,
             JoinedAt = now
         };
 
@@ -512,7 +512,7 @@ public class CampService : ICampService
 
         await _auditLogService.LogAsync(
             AuditAction.CampLeadAdded, nameof(CampLead), lead.Id,
-            $"Added as {role}",
+            "Added as camp lead",
             userId, userId.ToString(),
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
@@ -525,8 +525,11 @@ public class CampService : ICampService
     {
         var lead = await _dbContext.CampLeads.FindAsync([leadId], cancellationToken)
             ?? throw new InvalidOperationException("Lead not found.");
-        if (lead.Role == CampLeadRole.Primary)
-            throw new InvalidOperationException("Cannot remove primary lead. Transfer primary role first.");
+
+        var activeCount = await _dbContext.CampLeads
+            .CountAsync(l => l.CampId == lead.CampId && l.LeftAt == null, cancellationToken);
+        if (activeCount <= 1)
+            throw new InvalidOperationException("Cannot remove the last lead. A camp must have at least one lead.");
 
         lead.LeftAt = _clock.GetCurrentInstant();
 
@@ -539,29 +542,6 @@ public class CampService : ICampService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task TransferPrimaryLeadAsync(Guid campId, Guid newPrimaryUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var leads = await _dbContext.CampLeads
-            .Where(l => l.CampId == campId && l.LeftAt == null)
-            .ToListAsync(cancellationToken);
-
-        var currentPrimary = leads.FirstOrDefault(l => l.Role == CampLeadRole.Primary)
-            ?? throw new InvalidOperationException("No current primary lead found.");
-        var newPrimary = leads.FirstOrDefault(l => l.UserId == newPrimaryUserId)
-            ?? throw new InvalidOperationException("Target user is not an active lead.");
-
-        currentPrimary.Role = CampLeadRole.CoLead;
-        newPrimary.Role = CampLeadRole.Primary;
-
-        await _auditLogService.LogAsync(
-            AuditAction.CampPrimaryLeadTransferred, nameof(CampLead), campId,
-            $"Primary transferred from {currentPrimary.UserId} to {newPrimaryUserId}",
-            newPrimaryUserId, newPrimaryUserId.ToString(),
-            relatedEntityId: currentPrimary.UserId, relatedEntityType: nameof(User));
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-    }
 
     // ==========================================================================
     // Authorization checks
@@ -575,14 +555,6 @@ public class CampService : ICampService
                 cancellationToken);
     }
 
-    public async Task<bool> IsUserPrimaryLeadAsync(Guid userId, Guid campId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.CampLeads
-            .AnyAsync(l => l.CampId == campId && l.UserId == userId
-                && l.Role == CampLeadRole.Primary && l.LeftAt == null,
-                cancellationToken);
-    }
 
     // ==========================================================================
     // Images
