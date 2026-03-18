@@ -29,6 +29,7 @@ public class GovernanceController : HumansControllerBase
     private readonly IClock _clock;
 
     private const string StatutesCacheKey = "StatutesContent";
+    private static readonly TimeSpan StatutesCacheTtl = TimeSpan.FromHours(1);
     private static readonly Regex LanguageFilePattern = new(
         @"^(?<name>.+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$",
         RegexOptions.Compiled,
@@ -90,52 +91,56 @@ public class GovernanceController : HumansControllerBase
     /// </summary>
     private async Task<Dictionary<string, string>> GetStatutesContentAsync()
     {
-        if (_cache.TryGetValue(StatutesCacheKey, out Dictionary<string, string>? cached) && cached != null)
-            return cached;
-
-        var content = new Dictionary<string, string>(StringComparer.Ordinal);
-
         try
         {
-            var client = new GitHubClient(new ProductHeaderValue("NobodiesHumans"));
-            if (!string.IsNullOrEmpty(_gitHubSettings.AccessToken))
+            return await _cache.GetOrCreateAsync(StatutesCacheKey, async entry =>
             {
-                client.Credentials = new Credentials(_gitHubSettings.AccessToken);
-            }
-
-            var files = await client.Repository.Content.GetAllContents(
-                _gitHubSettings.Owner,
-                _gitHubSettings.Repository,
-                "Estatutos");
-
-            foreach (var file in files.Where(f =>
-                f.Name.StartsWith("ESTATUTOS", StringComparison.OrdinalIgnoreCase) &&
-                f.Name.EndsWith(".md", StringComparison.OrdinalIgnoreCase)))
-            {
-                var match = LanguageFilePattern.Match(file.Name);
-                if (!match.Success) continue;
-
-                var lang = match.Groups["lang"].Success
-                    ? match.Groups["lang"].Value.ToLowerInvariant()
-                    : "es";
-
-                // Fetch full content (GetAllContents for a directory only returns metadata)
-                var fileContent = await client.Repository.Content.GetAllContents(
-                    _gitHubSettings.Owner,
-                    _gitHubSettings.Repository,
-                    file.Path);
-
-                if (fileContent.Count > 0 && fileContent[0].Content != null)
-                {
-                    content[lang] = fileContent[0].Content;
-                }
-            }
-
-            _cache.Set(StatutesCacheKey, content, TimeSpan.FromHours(1));
+                entry.AbsoluteExpirationRelativeToNow = StatutesCacheTtl;
+                return await FetchStatutesContentAsync();
+            }) ?? new Dictionary<string, string>(StringComparer.Ordinal);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to fetch statutes from GitHub");
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
+    }
+
+    private async Task<Dictionary<string, string>> FetchStatutesContentAsync()
+    {
+        var client = new GitHubClient(new ProductHeaderValue("NobodiesHumans"));
+        if (!string.IsNullOrEmpty(_gitHubSettings.AccessToken))
+        {
+            client.Credentials = new Credentials(_gitHubSettings.AccessToken);
+        }
+
+        var files = await client.Repository.Content.GetAllContents(
+            _gitHubSettings.Owner,
+            _gitHubSettings.Repository,
+            "Estatutos");
+
+        var content = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var file in files.Where(f =>
+            f.Name.StartsWith("ESTATUTOS", StringComparison.OrdinalIgnoreCase) &&
+            f.Name.EndsWith(".md", StringComparison.OrdinalIgnoreCase)))
+        {
+            var match = LanguageFilePattern.Match(file.Name);
+            if (!match.Success) continue;
+
+            var lang = match.Groups["lang"].Success
+                ? match.Groups["lang"].Value.ToLowerInvariant()
+                : "es";
+
+            // Fetch full content (GetAllContents for a directory only returns metadata)
+            var fileContent = await client.Repository.Content.GetAllContents(
+                _gitHubSettings.Owner,
+                _gitHubSettings.Repository,
+                file.Path);
+
+            if (fileContent.Count > 0 && fileContent[0].Content != null)
+            {
+                content[lang] = fileContent[0].Content;
+            }
         }
 
         return content;

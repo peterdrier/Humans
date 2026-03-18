@@ -20,6 +20,7 @@ public class CampService : ICampService
     private readonly ILogger<CampService> _logger;
 
     private const string CacheKeyPrefix = "camps_year_";
+    private static readonly TimeSpan CampsForYearCacheTtl = TimeSpan.FromMinutes(5);
 
     public CampService(
         HumansDbContext dbContext,
@@ -148,21 +149,18 @@ public class CampService : ICampService
 
     public async Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"{CacheKeyPrefix}{year}";
-        if (_cache.TryGetValue(cacheKey, out List<Camp>? cached) && cached is not null)
-            return cached;
-
-        var camps = await _dbContext.Camps
-            .Include(b => b.Seasons.Where(s => s.Year == year &&
-                (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
-            .Include(b => b.Images.OrderBy(i => i.SortOrder))
-            .Include(b => b.HistoricalNames)
-            .Where(b => b.Seasons.Any(s => s.Year == year &&
-                (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
-            .ToListAsync(cancellationToken);
-
-        _cache.Set(cacheKey, camps, TimeSpan.FromMinutes(5));
-        return camps;
+        return await _cache.GetOrCreateAsync(GetCampsForYearCacheKey(year), async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CampsForYearCacheTtl;
+            return await _dbContext.Camps
+                .Include(b => b.Seasons.Where(s => s.Year == year &&
+                    (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
+                .Include(b => b.Images.OrderBy(i => i.SortOrder))
+                .Include(b => b.HistoricalNames)
+                .Where(b => b.Seasons.Any(s => s.Year == year &&
+                    (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
+                .ToListAsync(cancellationToken);
+        }) ?? [];
     }
 
     public async Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -769,8 +767,10 @@ public class CampService : ICampService
 
     private void InvalidateCache(int year)
     {
-        _cache.Remove($"{CacheKeyPrefix}{year}");
+        _cache.Remove(GetCampsForYearCacheKey(year));
     }
+
+    private static string GetCampsForYearCacheKey(int year) => $"{CacheKeyPrefix}{year}";
 
     private static CampSeason CreateSeasonFromData(Guid campId, int year, string name,
         CampSeasonData data, Instant now)
