@@ -15,7 +15,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Shifts/Dashboard")]
-public class ShiftDashboardController : Controller
+public class ShiftDashboardController : HumansControllerBase
 {
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
@@ -31,6 +31,7 @@ public class ShiftDashboardController : Controller
         IProfileService profileService,
         UserManager<User> userManager,
         ILogger<ShiftDashboardController> logger)
+        : base(userManager)
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
@@ -49,7 +50,7 @@ public class ShiftDashboardController : Controller
         var es = await _shiftMgmt.GetActiveAsync();
         if (es == null)
         {
-            TempData["ErrorMessage"] = "No active event settings configured.";
+            SetError("No active event settings configured.");
             return RedirectToAction(nameof(HomeController.Index), "Home");
         }
 
@@ -118,12 +119,21 @@ public class ShiftDashboardController : Controller
         if (!User.IsInRole(RoleNames.NoInfoAdmin) && !User.IsInRole(RoleNames.Admin) && !User.IsInRole(RoleNames.VolunteerCoordinator))
             return Forbid();
 
-        var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser == null) return Unauthorized();
+        var (currentUserNotFound, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserNotFound != null)
+        {
+            return currentUserNotFound;
+        }
 
         var result = await _signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
-        TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] =
-            result.Success ? "Volunteer assigned to shift." : result.Error;
+        if (result.Success)
+        {
+            SetSuccess("Volunteer assigned to shift.");
+        }
+        else
+        {
+            SetError(result.Error ?? "Failed to assign volunteer.");
+        }
 
         return RedirectToAction(nameof(Index));
     }
@@ -174,5 +184,16 @@ public class ShiftDashboardController : Controller
         }
 
         return results;
+    }
+
+    private async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrUnauthorizedAsync()
+    {
+        var (errorResult, user) = await ResolveCurrentUserAsync();
+        if (errorResult != null)
+        {
+            return (Unauthorized(), user);
+        }
+
+        return (null, user);
     }
 }
