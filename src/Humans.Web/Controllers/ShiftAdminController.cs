@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -85,7 +86,7 @@ public class ShiftAdminController : Controller
             .Distinct()
             .ToList();
 
-        var canViewMedical = User.IsInRole(RoleNames.NoInfoAdmin) || User.IsInRole(RoleNames.Admin);
+        var canViewMedical = ShiftRoleChecks.CanViewMedical(User);
         var profileDict = new Dictionary<Guid, VolunteerEventProfile>();
         foreach (var uid in allUserIds)
         {
@@ -470,7 +471,7 @@ public class ShiftAdminController : Controller
                 .Take(10)
                 .ToListAsync();
 
-            var canViewMedical = User.IsInRole(RoleNames.NoInfoAdmin) || User.IsInRole(RoleNames.Admin);
+            var canViewMedical = ShiftRoleChecks.CanViewMedical(User);
 
             // Load pool data for this shift's day
             var poolVolunteers = await _availabilityService.GetAvailableForDayAsync(es.Id, shift.DayOffset);
@@ -541,8 +542,7 @@ public class ShiftAdminController : Controller
 
     private async Task<bool> CanApproveAsync(Guid userId, Guid teamId)
     {
-        return User.IsInRole(RoleNames.Admin) ||
-               User.IsInRole(RoleNames.NoInfoAdmin) ||
+        return ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                await _shiftMgmt.CanApproveSignupsAsync(userId, teamId);
     }
 

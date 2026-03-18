@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -44,7 +45,7 @@ public class ShiftDashboardController : HumansControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? date)
     {
-        if (!User.IsInRole(RoleNames.NoInfoAdmin) && !User.IsInRole(RoleNames.Admin) && !User.IsInRole(RoleNames.VolunteerCoordinator))
+        if (!ShiftRoleChecks.CanAccessDashboard(User))
             return Forbid();
 
         var es = await _shiftMgmt.GetActiveAsync();
@@ -88,7 +89,7 @@ public class ShiftDashboardController : HumansControllerBase
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
     {
-        if (!User.IsInRole(RoleNames.NoInfoAdmin) && !User.IsInRole(RoleNames.Admin) && !User.IsInRole(RoleNames.VolunteerCoordinator))
+        if (!ShiftRoleChecks.CanAccessDashboard(User))
             return Forbid();
 
         if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
@@ -116,7 +117,7 @@ public class ShiftDashboardController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Voluntell(Guid shiftId, Guid userId)
     {
-        if (!User.IsInRole(RoleNames.NoInfoAdmin) && !User.IsInRole(RoleNames.Admin) && !User.IsInRole(RoleNames.VolunteerCoordinator))
+        if (!ShiftRoleChecks.CanAccessDashboard(User))
             return Forbid();
 
         var (currentUserNotFound, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
@@ -149,7 +150,7 @@ public class ShiftDashboardController : HumansControllerBase
             .Take(10)
             .ToListAsync();
 
-        var canViewMedical = User.IsInRole(RoleNames.NoInfoAdmin) || User.IsInRole(RoleNames.Admin);
+        var canViewMedical = ShiftRoleChecks.CanViewMedical(User);
 
         var poolVolunteers = await _availabilityService.GetAvailableForDayAsync(es.Id, shift.DayOffset);
         var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();

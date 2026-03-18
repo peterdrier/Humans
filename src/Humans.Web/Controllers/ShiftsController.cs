@@ -3,6 +3,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -168,7 +169,7 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        var privileged = User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.NoInfoAdmin);
+        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var result = await _signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
 
         if (!result.Success)
@@ -194,7 +195,7 @@ public class ShiftsController : HumansControllerBase
             return currentUserNotFound;
         }
 
-        var privileged = User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.NoInfoAdmin);
+        var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
         var result = await _signupService.SignUpRangeAsync(user.Id, rotaId, startDayOffset, endDayOffset, isPrivileged: privileged);
 
         if (!result.Success)
