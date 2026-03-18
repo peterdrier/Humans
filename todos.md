@@ -23,6 +23,9 @@ Send reminders to humans who signed up but never completed profile/consent, auto
 #### #137: Public team pages with editable markdown content, CTAs, and member roster
 Public-facing team pages with editable markdown, calls-to-action, and visible member roster. Label: none.
 
+#### #141: Add in-app feedback system for bug reports and feature requests
+Feedback widget on every page (post-login) capturing bug reports / feature requests with automatic URL/browser context and optional screenshot. Admin triage page with status workflow, email responses to reporters, and Claude Code queryable data for dev workflow.
+
 #### #138: Add Catalan (ca) translation
 New `SharedResource.ca.resx` with all ~805 keys, register `"ca"` culture in `Program.cs`, language selector, and Catalan email templates.
 
