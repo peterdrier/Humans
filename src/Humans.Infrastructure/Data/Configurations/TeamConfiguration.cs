@@ -155,6 +155,20 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 ParentTeamId = (Guid?)null,
                 CreatedAt = SeedTimestamp,
                 UpdatedAt = SeedTimestamp
+            },
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0001-000000000006"),
+                Name = "Barrio Leads",
+                Description = "All active camp leads across all camps",
+                Slug = "barrio-leads",
+                IsActive = true,
+                RequiresApproval = false,
+                SystemTeamType = SystemTeamType.BarrioLeads,
+                GoogleGroupPrefix = (string?)null,
+                ParentTeamId = (Guid?)null,
+                CreatedAt = SeedTimestamp,
+                UpdatedAt = SeedTimestamp
             });
     }
 }

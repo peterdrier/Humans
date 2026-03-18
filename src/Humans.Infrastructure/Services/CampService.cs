@@ -14,6 +14,7 @@ public class CampService : ICampService
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
+    private readonly ISystemTeamSync _systemTeamSync;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<CampService> _logger;
@@ -23,12 +24,14 @@ public class CampService : ICampService
     public CampService(
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
+        ISystemTeamSync systemTeamSync,
         IClock clock,
         IMemoryCache cache,
         ILogger<CampService> logger)
     {
         _dbContext = dbContext;
         _auditLogService = auditLogService;
+        _systemTeamSync = systemTeamSync;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -111,6 +114,7 @@ public class CampService : ICampService
             createdByUserId, createdByUserId.ToString());
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(createdByUserId, cancellationToken);
         InvalidateCache(year);
 
         return camp;
@@ -517,6 +521,7 @@ public class CampService : ICampService
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken);
 
         return lead;
     }
@@ -540,6 +545,7 @@ public class CampService : ICampService
             relatedEntityId: lead.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(lead.UserId, cancellationToken);
     }
 
 

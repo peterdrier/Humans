@@ -1,7 +1,7 @@
 namespace Humans.Application.Interfaces;
 
 /// <summary>
-/// Syncs system team memberships (Volunteers, Coordinators, Colaboradors, Asociados, Board)
+/// Syncs system team memberships (Volunteers, Coordinators, Colaboradors, Asociados, Board, Barrio Leads)
 /// after approval/consent/role changes.
 /// </summary>
 public interface ISystemTeamSync
@@ -11,4 +11,5 @@ public interface ISystemTeamSync
     Task SyncColaboradorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task SyncAsociadosMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task SyncBoardTeamAsync(CancellationToken cancellationToken = default);
+    Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

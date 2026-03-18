@@ -248,13 +248,13 @@
             </div>
         </div>
 
-        @* Times at Nowhere *@
+        @* Times participating *@
         @if (Model.TimesAtNowhere > 0)
         {
             <div class="card mb-4">
                 <div class="card-body text-center">
                     <i class="fa-solid fa-fire fa-2x text-warning mb-2"></i>
-                    <h5>@Model.TimesAtNowhere year@(Model.TimesAtNowhere != 1 ? "s" : "") at Nowhere</h5>
+                    <h5>@Model.TimesAtNowhere year@(Model.TimesAtNowhere != 1 ? "s" : "") participating</h5>
                 </div>
             </div>
         }
@@ -270,7 +270,7 @@
                     @foreach (var lead in Model.Leads)
                     {
                         <li class="list-group-item">
-                            @lead.DisplayName
+                            <a asp-controller="Human" asp-action="Detail" asp-route-id="@lead.UserId">@lead.DisplayName</a>
                         </li>
                     }
                 </ul>

@@ -38,5 +38,11 @@ public enum SystemTeamType
     /// Colaboradors (active contributors) with approved applications.
     /// Auto-synced based on Application status.
     /// </summary>
-    Colaboradors = 5
+    Colaboradors = 5,
+
+    /// <summary>
+    /// All active camp leads across all camps.
+    /// Auto-synced based on CampLead assignments.
+    /// </summary>
+    BarrioLeads = 6
 }
