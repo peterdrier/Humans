@@ -13,7 +13,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Teams/{slug}")]
-public class TeamAdminController : HumansControllerBase
+public class TeamAdminController : HumansTeamControllerBase
 {
     private readonly ITeamService _teamService;
     private readonly ITeamResourceService _teamResourceService;
@@ -32,7 +32,7 @@ public class TeamAdminController : HumansControllerBase
         ISystemTeamSync systemTeamSyncJob,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager)
+        : base(userManager, teamService)
     {
         _teamService = teamService;
         _teamResourceService = teamResourceService;
@@ -47,21 +47,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
@@ -81,21 +70,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         if (string.IsNullOrWhiteSpace(model.Notes))
@@ -121,21 +99,10 @@ public class TeamAdminController : HumansControllerBase
     public async Task<IActionResult> Members(string slug, int page = 1)
     {
         var pageSize = 20;
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         var allMembers = await _teamService.GetTeamMembersAsync(team.Id);
@@ -203,21 +170,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMember(string slug, Guid userId)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
@@ -241,21 +197,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddMember(string slug, AddMemberModel model)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
@@ -524,21 +469,10 @@ public class TeamAdminController : HumansControllerBase
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(string slug)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         var definitions = await _teamService.GetRoleDefinitionsAsync(team.Id);
@@ -580,21 +514,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRole(string slug, CreateRoleDefinitionModel model)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
@@ -621,21 +544,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditRole(string slug, Guid roleId, EditRoleDefinitionModel model)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
@@ -662,21 +574,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRole(string slug, Guid roleId)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
@@ -696,21 +597,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleManagement(string slug, Guid roleId)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
@@ -739,21 +629,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AssignRole(string slug, Guid roleId, AssignRoleModel model)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
@@ -774,21 +653,10 @@ public class TeamAdminController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnassignRole(string slug, Guid roleId, Guid memberId)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return currentUserNotFound;
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         try
