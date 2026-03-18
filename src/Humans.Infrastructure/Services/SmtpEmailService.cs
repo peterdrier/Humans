@@ -252,7 +252,7 @@ public class SmtpEmailService : IEmailService
         var content = _renderer.RenderFacilitatedMessage(
             recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);
         var replyTo = includeContactInfo ? senderEmail : null;
-        await SendEmailAsync(recipientEmail, content.Subject, content.HtmlBody, replyTo, cancellationToken);
+        await SendEmailAsync(recipientEmail, content.Subject, content.HtmlBody, cancellationToken, replyTo);
         _metrics.RecordEmailSent("facilitated_message");
     }
 
@@ -260,8 +260,8 @@ public class SmtpEmailService : IEmailService
         string toAddress,
         string subject,
         string htmlBody,
-        string? replyTo,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? replyTo = null)
     {
         try
         {
@@ -274,51 +274,6 @@ public class SmtpEmailService : IEmailService
             {
                 message.ReplyTo.Add(MailboxAddress.Parse(replyTo));
             }
-
-            var bodyBuilder = new BodyBuilder
-            {
-                HtmlBody = WrapInTemplate(htmlBody),
-                TextBody = HtmlPlainTextConverter.Convert(htmlBody)
-            };
-            message.Body = bodyBuilder.ToMessageBody();
-
-            using var client = new SmtpClient();
-
-            await client.ConnectAsync(
-                _settings.SmtpHost,
-                _settings.SmtpPort,
-                _settings.UseSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None,
-                cancellationToken);
-
-            if (!string.IsNullOrEmpty(_settings.Username))
-            {
-                await client.AuthenticateAsync(_settings.Username, _settings.Password, cancellationToken);
-            }
-
-            await client.SendAsync(message, cancellationToken);
-            await client.DisconnectAsync(true, cancellationToken);
-
-            _logger.LogInformation("Email sent to {To}: {Subject}", toAddress, subject);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send email to {To}: {Subject}", toAddress, subject);
-            throw;
-        }
-    }
-
-    private async Task SendEmailAsync(
-        string toAddress,
-        string subject,
-        string htmlBody,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(_settings.FromName, _settings.FromAddress));
-            message.To.Add(MailboxAddress.Parse(toAddress));
-            message.Subject = subject;
 
             var bodyBuilder = new BodyBuilder
             {
