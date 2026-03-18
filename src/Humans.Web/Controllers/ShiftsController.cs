@@ -50,8 +50,7 @@ public class ShiftsController : HumansControllerBase
         var es = await _shiftMgmt.GetActiveAsync();
         if (es == null) return View("NoActiveEvent");
 
-        var isPrivileged = User.IsInRole(RoleNames.Admin) ||
-                           User.IsInRole(RoleNames.NoInfoAdmin) ||
+        var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                            (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(user.Id)).Count > 0;
 
         var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);

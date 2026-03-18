@@ -81,10 +81,9 @@ public class HumanController : HumansControllerBase
         if (!isOwnProfile)
         {
             var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(viewer.Id)).Count > 0;
-            var viewerIsNoInfoAdmin = User.IsInRole(RoleNames.NoInfoAdmin);
-            var viewerIsAdmin = User.IsInRole(RoleNames.Admin);
+            var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
 
-            if (viewerIsCoordinator || viewerIsNoInfoAdmin || viewerIsAdmin)
+            if (viewerCanViewShiftHistory)
             {
                 var noShows = await _shiftSignupService.GetNoShowHistoryAsync(id);
                 if (noShows.Count > 0)
