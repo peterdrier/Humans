@@ -659,7 +659,7 @@
 (function() {
     var debounceTimers = {};
     var slug = '@Model.Department.Slug';
-    var tokenHtml = '@Html.Raw(antiForgeryHtml?.Replace("'", "\\'"))';
+    var tokenHtml = '@Html.Raw(antiForgeryHtml?.Replace("'", "\\'", StringComparison.Ordinal))';
 
     document.querySelectorAll('.dept-voluntell-search').forEach(function(input) {
         input.addEventListener('input', function() {

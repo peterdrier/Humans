@@ -621,5 +621,5 @@ public class TicketController : HumansControllerBase
     }
 
     private static string CsvEscape(string? s) =>
-        $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
+        $"\"{(s ?? "").Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 }

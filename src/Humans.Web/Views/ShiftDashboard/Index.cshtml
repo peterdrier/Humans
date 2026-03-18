@@ -150,7 +150,7 @@
 (function () {
     var searchUrl = '@Html.Raw(searchUrl)';
     var voluntellUrl = '@Html.Raw(voluntellUrl)';
-    var tokenHtml = '@Html.Raw(antiForgeryHtml?.Replace("'", "\\'"))';
+    var tokenHtml = '@Html.Raw(antiForgeryHtml?.Replace("'", "\\'", StringComparison.Ordinal))';
 
     function escapeHtml(str) {
         if (!str) return '';

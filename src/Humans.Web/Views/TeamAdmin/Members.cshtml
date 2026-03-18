@@ -224,8 +224,8 @@ else
             var debounceTimer = null;
             var searchUrl = '/Teams/@Model.TeamSlug/Members/Search';
             var addUrl = '/Teams/@Model.TeamSlug/Members/Add';
-            var noResultsText = '@Localizer["TeamAdmin_NoResults"].Value.Replace("'", "\\'")';
-            var addText = '@Localizer["TeamAdmin_Add"].Value.Replace("'", "\\'")';
+            var noResultsText = '@Localizer["TeamAdmin_NoResults"].Value.Replace("'", "\\'", StringComparison.Ordinal)';
+            var addText = '@Localizer["TeamAdmin_Add"].Value.Replace("'", "\\'", StringComparison.Ordinal)';
             var antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value
                 || document.querySelector('meta[name="__RequestVerificationToken"]')?.getAttribute('content')
                 || '';

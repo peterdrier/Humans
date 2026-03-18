@@ -352,7 +352,7 @@ public class EmailRenderer : IEmailRenderer
                 _localizer["Email_FacilitatedMessage_Subject"].Value,
                 senderName);
 
-            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />");
+            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
 
             var contactInfoHtml = includeContactInfo && !string.IsNullOrEmpty(senderEmail)
                 ? $"<p><strong>{HtmlEncode(senderName)}</strong> &mdash; <a href=\"mailto:{HtmlEncode(senderEmail)}\">{HtmlEncode(senderEmail)}</a></p>"

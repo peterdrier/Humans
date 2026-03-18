@@ -136,7 +136,7 @@
                                     };
                                     var isActive = Model.CurrentUserVote == choice;
                                     <button type="submit" name="vote" value="@choice"
-                                            class="btn @(isActive ? btnClass.Replace("outline-", "") : btnClass)">
+                                            class="btn @(isActive ? btnClass.Replace("outline-", "", StringComparison.Ordinal) : btnClass)">
                                         @choice
                                     </button>
                                 }
