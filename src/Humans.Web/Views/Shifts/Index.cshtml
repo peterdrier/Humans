@@ -204,6 +204,10 @@
                                             <th>Time</th>
                                             <th>Duration</th>
                                             <th>Filled</th>
+                                            @if (Model.ShowSignups)
+                                            {
+                                                <th>@Localizer["Shifts_SignedUp"]</th>
+                                            }
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -227,6 +231,19 @@
                                                         <span class="badge bg-warning text-dark">Needs help</span>
                                                     }
                                                 </td>
+                                                @if (Model.ShowSignups)
+                                                {
+                                                    <td class="small">
+                                                        @for (var i = 0; i < item.Signups.Count; i++)
+                                                        {
+                                                            var signup = item.Signups[i];
+                                                            if (i > 0) { <text>, </text> }
+                                                            <a asp-controller="Human" asp-action="View" asp-route-id="@signup.UserId"
+                                                               class="text-decoration-none @(signup.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")">@signup.DisplayName</a>@if (signup.Status == SignupStatus.Pending)
+                                                            {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
+                                                        }
+                                                    </td>
+                                                }
                                                 <td>
                                                     @if (Model.UserSignupShiftIds.Contains(shift.Id))
                                                     {
