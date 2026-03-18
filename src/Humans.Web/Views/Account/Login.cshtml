@@ -1,6 +1,8 @@
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnv
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
 @{
     ViewData["Title"] = Localizer["Login_Title"].Value;
+    var devAuthEnabled = !HostEnv.IsProduction() && Config.GetValue<bool>("DevAuth:Enabled");
 }
 
 <div class="row justify-content-center">
@@ -28,33 +30,36 @@
     </div>
 </div>
 
-@if (HostEnv.IsDevelopment())
+@if (devAuthEnabled)
 {
     <div class="row justify-content-center mt-3">
         <div class="col-md-6">
             <div class="card border-warning">
                 <div class="card-header bg-warning text-dark py-2">
-                    <small><strong>⚠️ Dev login — local only</strong></small>
+                    <small><strong>Dev login — @HostEnv.EnvironmentName</strong></small>
                 </div>
                 <div class="card-body py-3 text-center">
-                    <p class="text-muted small mb-3">Skip Google OAuth and sign in as a seeded dev persona.</p>
-                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                    <p class="text-muted small mb-3">Skip Google OAuth and sign in directly.</p>
+                    <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
                         <a asp-controller="DevLogin" asp-action="Volunteer" class="btn btn-sm btn-outline-secondary">
-                            👤 Volunteer
+                            Volunteer
                         </a>
                         <a asp-controller="DevLogin" asp-action="Board" class="btn btn-sm btn-outline-secondary">
-                            🏛️ Board
+                            Board
                         </a>
                         <a asp-controller="DevLogin" asp-action="Admin" class="btn btn-sm btn-outline-secondary">
-                            🔧 Admin
+                            Admin
                         </a>
                         <a asp-controller="DevLogin" asp-action="ConsentCoordinator" class="btn btn-sm btn-outline-secondary">
-                            ✅ Consent Coord
+                            Consent Coord
                         </a>
                         <a asp-controller="DevLogin" asp-action="VolunteerCoordinator" class="btn btn-sm btn-outline-secondary">
-                            📋 Volunteer Coord
+                            Volunteer Coord
                         </a>
                     </div>
+                    <a asp-controller="DevLogin" asp-action="Users" class="btn btn-sm btn-outline-warning">
+                        Choose any user...
+                    </a>
                 </div>
             </div>
         </div>
