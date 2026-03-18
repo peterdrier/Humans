@@ -267,7 +267,7 @@ public class OutboxEmailService : IEmailService
         string? replyTo = null)
     {
         var wrappedHtml = WrapInTemplate(content.HtmlBody);
-        var plainText = HtmlToPlainText(content.HtmlBody);
+        var plainText = HtmlPlainTextConverter.Convert(content.HtmlBody);
 
         // Look up user by email to set UserId for profile email history
         var userId = await _dbContext.UserEmails
@@ -304,6 +304,4 @@ public class OutboxEmailService : IEmailService
     }
 
     private string WrapInTemplate(string content) => BrandedEmailTemplate.Wrap(content, _settings.BaseUrl, _environmentName);
-
-    private static string HtmlToPlainText(string html) => HtmlPlainTextConverter.Convert(html);
 }

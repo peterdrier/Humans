@@ -278,7 +278,7 @@ public class SmtpEmailService : IEmailService
             var bodyBuilder = new BodyBuilder
             {
                 HtmlBody = WrapInTemplate(htmlBody),
-                TextBody = HtmlToPlainText(htmlBody)
+                TextBody = HtmlPlainTextConverter.Convert(htmlBody)
             };
             message.Body = bodyBuilder.ToMessageBody();
 
@@ -323,7 +323,7 @@ public class SmtpEmailService : IEmailService
             var bodyBuilder = new BodyBuilder
             {
                 HtmlBody = WrapInTemplate(htmlBody),
-                TextBody = HtmlToPlainText(htmlBody)
+                TextBody = HtmlPlainTextConverter.Convert(htmlBody)
             };
             message.Body = bodyBuilder.ToMessageBody();
 
@@ -390,6 +390,4 @@ public class SmtpEmailService : IEmailService
             </html>
             """;
     }
-
-    private static string HtmlToPlainText(string html) => HtmlPlainTextConverter.Convert(html);
 }

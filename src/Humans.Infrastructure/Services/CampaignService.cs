@@ -404,7 +404,7 @@ public class CampaignService : ICampaignService
 
         // Wrap in email template
         var wrappedHtml = WrapInTemplate(renderedBody);
-        var plainText = HtmlToPlainText(renderedBody);
+        var plainText = HtmlPlainTextConverter.Convert(renderedBody);
 
         return new EmailOutboxMessage
         {
@@ -431,6 +431,4 @@ public class CampaignService : ICampaignService
     }
 
     private string WrapInTemplate(string content) => BrandedEmailTemplate.Wrap(content, _settings.BaseUrl, _environmentName);
-
-    private static string HtmlToPlainText(string html) => HtmlPlainTextConverter.Convert(html);
 }
