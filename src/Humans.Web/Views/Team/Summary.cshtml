@@ -5,7 +5,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Teams Summary</h1>
-    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Board) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+    @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
     {
         <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
     }
@@ -27,7 +27,7 @@
                     <th>@Localizer["AdminTeams_DriveResources"]</th>
                     <th>@Localizer["Common_Status"]</th>
                     <th>@Localizer["AdminTeams_Created"]</th>
-                    @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Board) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                    @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                     {
                         <th>@Localizer["MyTeams_Actions"]</th>
                     }
@@ -103,7 +103,7 @@
                             }
                         </td>
                         <td>@team.CreatedAt.ToString("MMM d, yyyy")</td>
-                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Board) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                         {
                             <td>
                                 @if (!team.IsSystemTeam)
