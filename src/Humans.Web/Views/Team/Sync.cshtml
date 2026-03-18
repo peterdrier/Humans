@@ -39,7 +39,9 @@
     'use strict';
 
     const canExecuteActions = @Json.Serialize(Model.CanExecuteActions);
-    const antiForgeryToken = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]')?.value;
+    @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
+
+    const antiForgeryToken = getRequestVerificationToken('#antiForgeryForm input[name="__RequestVerificationToken"]');
     const loadedTabs = {};
 
     // Resource type mapping: tab data-resource-type values to API enum values

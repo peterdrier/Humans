@@ -226,11 +226,11 @@ else
             var addUrl = '/Teams/@Model.TeamSlug/Members/Add';
             var noResultsText = '@Localizer["TeamAdmin_NoResults"].Value.Replace("'", "\\'", StringComparison.Ordinal)';
             var addText = '@Localizer["TeamAdmin_Add"].Value.Replace("'", "\\'", StringComparison.Ordinal)';
-            var antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value
-                || document.querySelector('meta[name="__RequestVerificationToken"]')?.getAttribute('content')
-                || '';
 
             @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
+            @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
+
+            var antiForgeryToken = getRequestVerificationToken();
 
             searchInput.addEventListener('input', function () {
                 clearTimeout(debounceTimer);
