@@ -50,7 +50,7 @@ public partial class TeamService : ITeamService
         string? googleGroupPrefix = null,
         CancellationToken cancellationToken = default)
     {
-        var baseSlug = GenerateSlug(name);
+        var baseSlug = Helpers.SlugHelper.GenerateSlug(name);
         var now = _clock.GetCurrentInstant();
 
         // Block reserved slugs (static routes in TeamController)
@@ -220,7 +220,7 @@ public partial class TeamService : ITeamService
         // Regenerate slug if name changed
         if (!string.Equals(team.Name, name, StringComparison.Ordinal))
         {
-            var newSlug = GenerateSlug(name);
+            var newSlug = Helpers.SlugHelper.GenerateSlug(name);
             // Check slug isn't taken by another team
             var slugTaken = await _dbContext.Teams.AnyAsync(
                 t => t.Id != teamId && t.Slug == newSlug, cancellationToken);
@@ -1512,8 +1512,6 @@ public partial class TeamService : ITeamService
 
     [GeneratedRegex(@"^[\p{L}\p{N} \-]+$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex RoleNameRegex();
-
-    private static string GenerateSlug(string name) => Helpers.SlugHelper.GenerateSlug(name);
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
         IEnumerable<Guid> teamIds,

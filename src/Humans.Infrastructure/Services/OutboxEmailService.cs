@@ -266,7 +266,7 @@ public class OutboxEmailService : IEmailService
         bool triggerImmediate = false,
         string? replyTo = null)
     {
-        var wrappedHtml = WrapInTemplate(content.HtmlBody);
+        var wrappedHtml = BrandedEmailTemplate.Wrap(content.HtmlBody, _settings.BaseUrl, _environmentName);
         var plainText = HtmlPlainTextConverter.Convert(content.HtmlBody);
 
         // Look up user by email to set UserId for profile email history
@@ -302,6 +302,4 @@ public class OutboxEmailService : IEmailService
             _logger.LogInformation("Triggered immediate outbox processing for {TemplateName}", templateName);
         }
     }
-
-    private string WrapInTemplate(string content) => BrandedEmailTemplate.Wrap(content, _settings.BaseUrl, _environmentName);
 }

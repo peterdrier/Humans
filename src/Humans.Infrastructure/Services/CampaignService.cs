@@ -403,7 +403,7 @@ public class CampaignService : ICampaignService
             .Replace("{{Name}}", name, StringComparison.Ordinal);
 
         // Wrap in email template
-        var wrappedHtml = WrapInTemplate(renderedBody);
+        var wrappedHtml = BrandedEmailTemplate.Wrap(renderedBody, _settings.BaseUrl, _environmentName);
         var plainText = HtmlPlainTextConverter.Convert(renderedBody);
 
         return new EmailOutboxMessage
@@ -429,6 +429,4 @@ public class CampaignService : ICampaignService
             .FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
         return notificationEmail?.Email ?? user.Email!;
     }
-
-    private string WrapInTemplate(string content) => BrandedEmailTemplate.Wrap(content, _settings.BaseUrl, _environmentName);
 }
