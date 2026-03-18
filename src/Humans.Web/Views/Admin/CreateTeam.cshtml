@@ -29,17 +29,7 @@
                         <span asp-validation-for="Name" class="text-danger"></span>
                     </div>
 
-                    <div class="mb-3">
-                        <label asp-for="Description" class="form-label">@Localizer["AdminTeams_DescriptionOptional"]</label>
-                        <textarea asp-for="Description" class="form-control" rows="4"></textarea>
-                        <span asp-validation-for="Description" class="text-danger"></span>
-                    </div>
-
-                    <div class="mb-3 form-check">
-                        <input asp-for="RequiresApproval" type="checkbox" class="form-check-input" />
-                        <label asp-for="RequiresApproval" class="form-check-label">@Localizer["AdminTeams_RequireApproval"]</label>
-                        <div class="form-text">@Localizer["AdminTeams_RequireApprovalHelp"]</div>
-                    </div>
+                    <partial name="~/Views/Shared/_TeamDescriptionAndApprovalFields.cshtml" model="Model" />
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">@Localizer["AdminCreateTeam_Title"]</button>

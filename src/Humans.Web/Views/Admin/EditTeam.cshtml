@@ -38,16 +38,7 @@
                         <span asp-validation-for="Name" class="text-danger"></span>
                     </div>
 
-                    <div class="mb-3">
-                        <label asp-for="Description" class="form-label">@Localizer["AdminTeams_DescriptionOptional"]</label>
-                        <textarea asp-for="Description" class="form-control" rows="4" disabled="@Model.IsSystemTeam"></textarea>
-                        <span asp-validation-for="Description" class="text-danger"></span>
-                    </div>
-
-                    <div class="mb-3 form-check">
-                        <input asp-for="RequiresApproval" type="checkbox" class="form-check-input" disabled="@Model.IsSystemTeam" />
-                        <label asp-for="RequiresApproval" class="form-check-label">@Localizer["AdminTeams_RequireApproval"]</label>
-                    </div>
+                    <partial name="~/Views/Shared/_TeamDescriptionAndApprovalFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = Model.IsSystemTeam, ["ShowRequiresApprovalHelp"] = false }' />
 
                     <div class="mb-3 form-check">
                         <input asp-for="IsActive" type="checkbox" class="form-check-input" disabled="@Model.IsSystemTeam" />
