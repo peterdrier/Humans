@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Teams")]
-public class TeamController : Controller
+public class TeamController : HumansControllerBase
 {
     private readonly ITeamService _teamService;
     private readonly UserManager<User> _userManager;
@@ -40,6 +40,7 @@ public class TeamController : Controller
         IStringLocalizer<SharedResource> localizer,
         IConfiguration configuration,
         ILogger<TeamController> logger)
+        : base(userManager)
     {
         _teamService = teamService;
         _userManager = userManager;

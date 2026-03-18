@@ -680,7 +680,7 @@ public class TeamAdminController : HumansTeamControllerBase
     [HttpGet("EditPage")]
     public async Task<IActionResult> EditPage(string slug)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -720,7 +720,7 @@ public class TeamAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditPage(string slug, EditTeamPageViewModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
