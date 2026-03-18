@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Web.Filters;
 
 namespace Humans.Web.Extensions;
 
@@ -97,6 +98,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IShiftManagementService, ShiftManagementService>();
         services.AddScoped<IShiftSignupService, ShiftSignupService>();
         services.AddScoped<IGeneralAvailabilityService, GeneralAvailabilityService>();
+
+        // Feedback API key
+        services.Configure<FeedbackApiSettings>(opts =>
+        {
+            opts.ApiKey = Environment.GetEnvironmentVariable("FEEDBACK_API_KEY") ?? string.Empty;
+        });
+        services.AddScoped<ApiKeyAuthFilter>();
 
         // Ticket vendor integration
         services.Configure<TicketVendorSettings>(opts =>

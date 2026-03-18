@@ -27,6 +27,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Camp",             // Public camps pages ([AllowAnonymous])
         "CampAdmin",        // Has its own Roles = "CampAdmin,Admin" gate
         "CampApi",          // Public API ([AllowAnonymous])
+        "FeedbackApi",      // API key auth, no membership required
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
