@@ -9,10 +9,9 @@ using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize]
-public class ConsentController : Controller
+    [Authorize]
+public class ConsentController : HumansControllerBase
 {
-    private readonly UserManager<User> _userManager;
     private readonly IConsentService _consentService;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -20,15 +19,15 @@ public class ConsentController : Controller
         UserManager<User> userManager,
         IConsentService consentService,
         IStringLocalizer<SharedResource> localizer)
+        : base(userManager)
     {
-        _userManager = userManager;
         _consentService = consentService;
         _localizer = localizer;
     }
 
     public async Task<IActionResult> Index()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -82,7 +81,7 @@ public class ConsentController : Controller
     [HttpGet]
     public async Task<IActionResult> Review(Guid id)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -112,7 +111,7 @@ public class ConsentController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(ConsentSubmitModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -136,7 +135,7 @@ public class ConsentController : Controller
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["SuccessMessage"] = string.Format(_localizer["Consent_ThankYou"].Value, result.DocumentName);
+        SetSuccess(string.Format(_localizer["Consent_ThankYou"].Value, result.DocumentName));
         return RedirectToAction(nameof(Index));
     }
 }
