@@ -230,11 +230,7 @@ else
                 || document.querySelector('meta[name="__RequestVerificationToken"]')?.getAttribute('content')
                 || '';
 
-            function escapeHtml(text) {
-                var div = document.createElement('div');
-                div.appendChild(document.createTextNode(text));
-                return div.innerHTML;
-            }
+            @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 
             searchInput.addEventListener('input', function () {
                 clearTimeout(debounceTimer);

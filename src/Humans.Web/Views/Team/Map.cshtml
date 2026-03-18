@@ -49,12 +49,7 @@ else
         <script>
             const markers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Markers, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
 
-            function escapeHtml(str) {
-                if (!str) return '';
-                var div = document.createElement('div');
-                div.appendChild(document.createTextNode(str));
-                return div.innerHTML;
-            }
+            @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 
             function avatarHtml(m, size) {
                 const s = size || 40;

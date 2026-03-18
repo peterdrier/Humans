@@ -698,7 +698,7 @@
         });
     });
 
-    function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 
     // Staffing grid: two-step date range → day grid with cascade-fill
     document.querySelectorAll('.staffing-grid-container').forEach(function(container) {

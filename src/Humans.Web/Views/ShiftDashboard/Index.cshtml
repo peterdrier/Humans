@@ -149,15 +149,7 @@
     var voluntellUrl = '@Html.Raw(voluntellUrl)';
     var tokenHtml = '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())';
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
+    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 
     function renderBadges(items, cssClass) {
         if (!items || items.length === 0) return '';
