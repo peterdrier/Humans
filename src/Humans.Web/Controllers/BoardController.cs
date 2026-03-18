@@ -145,28 +145,11 @@ public class BoardController : HumansControllerBase
         }
 
         var entries = await _auditLogService.GetByResourceAsync(id);
-
-        var viewModel = new GoogleSyncAuditListViewModel
-        {
-            Title = $"Sync Audit: {resource.Name}",
-            BackUrl = Url.Action(nameof(TeamController.Sync), "Team"),
-            BackLabel = "Back to Sync Status",
-            Entries = entries.Select(e => new GoogleSyncAuditEntryViewModel
-            {
-                Action = e.Action.ToString(),
-                Description = e.Description,
-                UserEmail = e.UserEmail,
-                Role = e.Role,
-                SyncSource = e.SyncSource?.ToString(),
-                OccurredAt = e.OccurredAt.ToDateTimeUtc(),
-                Success = e.Success,
-                ErrorMessage = e.ErrorMessage,
-                ActorName = e.ActorName,
-                RelatedEntityId = e.RelatedEntityId
-            }).ToList()
-        };
-
-        return View("GoogleSyncAudit", viewModel);
+        return GoogleSyncAuditView(
+            $"Sync Audit: {resource.Name}",
+            Url.Action(nameof(TeamController.Sync), "Team"),
+            "Back to Sync Status",
+            entries);
     }
 
 }

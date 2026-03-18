@@ -1,4 +1,6 @@
 using Humans.Domain.Entities;
+using Humans.Web.Extensions;
+using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -62,5 +64,43 @@ public abstract class HumansControllerBase : Controller
     protected Task<IdentityResult> UpdateCurrentUserAsync(User user)
     {
         return _userManager.UpdateAsync(user);
+    }
+
+    protected IActionResult GoogleSyncAuditView(
+        string title,
+        string? backUrl,
+        string? backLabel,
+        IEnumerable<AuditLogEntry> entries)
+    {
+        return View("GoogleSyncAudit", BuildGoogleSyncAuditViewModel(title, backUrl, backLabel, entries));
+    }
+
+    protected static GoogleSyncAuditListViewModel BuildGoogleSyncAuditViewModel(
+        string title,
+        string? backUrl,
+        string? backLabel,
+        IEnumerable<AuditLogEntry> entries)
+    {
+        return new GoogleSyncAuditListViewModel
+        {
+            Title = title,
+            BackUrl = backUrl,
+            BackLabel = backLabel,
+            Entries = entries.Select(static entry => new GoogleSyncAuditEntryViewModel
+            {
+                Action = entry.Action.ToString(),
+                Description = entry.Description,
+                UserEmail = entry.UserEmail,
+                Role = entry.Role,
+                SyncSource = entry.SyncSource?.ToString(),
+                OccurredAt = entry.OccurredAt.ToDateTimeUtc(),
+                Success = entry.Success,
+                ErrorMessage = entry.ErrorMessage,
+                ActorName = entry.ActorName,
+                ResourceName = entry.Resource?.Name,
+                ResourceId = entry.ResourceId,
+                RelatedEntityId = entry.RelatedEntityId
+            }).ToList()
+        };
     }
 }

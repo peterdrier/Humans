@@ -433,29 +433,11 @@ public class HumanController : HumansControllerBase
         }
 
         var entries = await _auditLogService.GetGoogleSyncByUserAsync(id);
-
-        var viewModel = new GoogleSyncAuditListViewModel
-        {
-            Title = $"Google Sync Audit: {user.DisplayName}",
-            BackUrl = Url.Action(nameof(HumanDetail), new { id }),
-            BackLabel = "Back to Member Detail",
-            Entries = entries.Select(e => new GoogleSyncAuditEntryViewModel
-            {
-                Action = e.Action.ToString(),
-                Description = e.Description,
-                UserEmail = e.UserEmail,
-                Role = e.Role,
-                SyncSource = e.SyncSource?.ToString(),
-                OccurredAt = e.OccurredAt.ToDateTimeUtc(),
-                Success = e.Success,
-                ErrorMessage = e.ErrorMessage,
-                ActorName = e.ActorName,
-                ResourceName = e.Resource?.Name,
-                ResourceId = e.ResourceId
-            }).ToList()
-        };
-
-        return View("GoogleSyncAudit", viewModel);
+        return GoogleSyncAuditView(
+            $"Google Sync Audit: {user.DisplayName}",
+            Url.Action(nameof(HumanDetail), new { id }),
+            "Back to Member Detail",
+            entries);
     }
 
     [Authorize(Roles = RoleGroups.BoardOrAdmin)]
