@@ -135,26 +135,14 @@ public class AdminApplicationViewModel
     public string MembershipTier { get; set; } = string.Empty;
 }
 
-public class AdminApplicationDetailViewModel
+public class AdminApplicationDetailViewModel : ApplicationDetailViewModelBase
 {
-    public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
     public string UserDisplayName { get; set; } = string.Empty;
     public string? UserProfilePictureUrl { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public string Motivation { get; set; } = string.Empty;
-    public string? AdditionalInfo { get; set; }
-    public string? SignificantContribution { get; set; }
-    public string? RoleUnderstanding { get; set; }
-    public MembershipTier MembershipTier { get; set; }
     public string? Language { get; set; }
-    public DateTime SubmittedAt { get; set; }
-    public DateTime? ReviewStartedAt { get; set; }
-    public string? ReviewerName { get; set; }
-    public string? ReviewNotes { get; set; }
     public bool CanApproveReject { get; set; }
-    public List<ApplicationHistoryViewModel> History { get; set; } = [];
 }
 
 public class AdminApplicationActionModel
