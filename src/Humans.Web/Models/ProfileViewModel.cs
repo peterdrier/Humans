@@ -361,7 +361,7 @@ public class ContactFieldViewModel
 #pragma warning restore CS0618
         ContactFieldType.Phone => $"tel:{Value}",
         ContactFieldType.WhatsApp => $"https://wa.me/{new string(Value.Where(char.IsDigit).ToArray())}",
-        ContactFieldType.Telegram => Value.StartsWith('@') ? $"https://t.me/{Value[1..]}" : $"https://t.me/{Value}",
+        ContactFieldType.Telegram => Value.StartsWith("@", StringComparison.Ordinal) ? $"https://t.me/{Value[1..]}" : $"https://t.me/{Value}",
         _ => null
     };
 

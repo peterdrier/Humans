@@ -136,7 +136,7 @@ public class StubTeamResourceService : ITeamResourceService
     {
         _logger.LogInformation("[STUB] Would link Google Group '{GroupEmail}' to team {TeamId}", groupEmail, teamId);
 
-        if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains('@'))
+        if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains("@", StringComparison.Ordinal))
         {
             return Task.FromResult(new LinkResourceResult(false,
                 ErrorMessage: "Please enter a valid group email address."));

@@ -280,7 +280,7 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains('@'))
+        if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains("@", StringComparison.Ordinal))
         {
             return new LinkResourceResult(false,
                 ErrorMessage: "Please enter a valid group email address.");

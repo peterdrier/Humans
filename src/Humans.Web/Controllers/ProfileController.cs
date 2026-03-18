@@ -226,14 +226,14 @@ public class ProfileController : HumansControllerBase
         for (var i = 0; i < model.EditableContactFields.Count; i++)
         {
             var cf = model.EditableContactFields[i];
-            if (!string.IsNullOrWhiteSpace(cf.Value) && phoneTypes.Contains(cf.FieldType) && !cf.Value.TrimStart().StartsWith('+'))
+            if (!string.IsNullOrWhiteSpace(cf.Value) && phoneTypes.Contains(cf.FieldType) && !cf.Value.TrimStart().StartsWith("+", StringComparison.Ordinal))
             {
                 ModelState.AddModelError($"EditableContactFields[{i}].Value",
                     _localizer["Validation_PhoneE164", _localizer["Profile_" + cf.FieldType].Value].Value);
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(model.EmergencyContactPhone) && !model.EmergencyContactPhone.TrimStart().StartsWith('+'))
+        if (!string.IsNullOrWhiteSpace(model.EmergencyContactPhone) && !model.EmergencyContactPhone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(nameof(model.EmergencyContactPhone),
                 _localizer["Validation_PhoneE164", _localizer["Profile_EmergencyContactPhone"].Value].Value);

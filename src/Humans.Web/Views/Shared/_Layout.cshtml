@@ -134,10 +134,10 @@
                 var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
                     Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
                 var informationalVersion = attr?.InformationalVersion ?? "";
-                var plusIndex = informationalVersion.IndexOf('+');
+                var plusIndex = informationalVersion.IndexOf("+", StringComparison.Ordinal);
                 var version = plusIndex >= 0 ? informationalVersion[..plusIndex] : informationalVersion;
                 var commitHash = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : null;
-                var isRelease = version.Length > 0 && !version.Contains('-');
+                var isRelease = version.Length > 0 && !version.Contains("-", StringComparison.Ordinal);
             }
             @if (isRelease)
             {

@@ -792,7 +792,7 @@ public class CampController : Controller
 
     private void ValidatePhoneE164(string? phone, string fieldName)
     {
-        if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith('+'))
+        if (!string.IsNullOrWhiteSpace(phone) && !phone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(fieldName,
                 _localizer["Validation_PhoneE164", "Contact Phone"].Value);
