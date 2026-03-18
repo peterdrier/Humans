@@ -130,7 +130,7 @@
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
-                                        <tr><th>Date</th><th>Filled</th><th>Status</th></tr>
+                                        <tr><th>Date</th><th>Filled</th><th>Status</th>@if (Model.ShowSignups) {<th>@Localizer["Shifts_SignedUp"]</th>}</tr>
                                     </thead>
                                     <tbody>
                                         @foreach (var item in allDayShifts)
@@ -157,6 +157,24 @@
                                                         <span class="badge bg-warning text-dark">Needs help</span>
                                                     }
                                                 </td>
+                                                @if (Model.ShowSignups)
+                                                {
+                                                    <td>
+                                                        <div class="d-flex flex-wrap gap-1">
+                                                            @foreach (var signup in item.Signups)
+                                                            {
+                                                                <a asp-controller="Human" asp-action="View" asp-route-id="@signup.UserId"
+                                                                   title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                                   class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
+                                                                   style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")">
+                                                                    <vc:user-avatar profile-picture-url="@signup.ProfilePictureUrl"
+                                                                                    display-name="@signup.DisplayName"
+                                                                                    size="26" />
+                                                                </a>
+                                                            }
+                                                        </div>
+                                                    </td>
+                                                }
                                             </tr>
                                         }
                                     </tbody>
