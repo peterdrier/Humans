@@ -152,7 +152,7 @@ else if (Model.PendingConsents > 0)
                         else if (Model.TermExpiresSoon)
                         {
                             <div class="alert alert-warning mb-2">
-                                @Html.Raw(string.Format(Localizer["Dashboard_TermExpiresSoon"].Value, Model.TermExpiresAt?.ToString("d MMM yyyy")))
+                                @Html.Raw(string.Format(Localizer["Dashboard_TermExpiresSoon"].Value, Model.TermExpiresAt?.ToDisplayDate()))
                             </div>
                             <a asp-controller="Application" asp-action="Create" class="btn btn-sm btn-warning">@Localizer["Dashboard_RenewNow"]</a>
                         }
@@ -166,7 +166,7 @@ else if (Model.PendingConsents > 0)
                         }
                         @if (Model.TermExpiresAt.HasValue && !Model.TermExpired)
                         {
-                            <p class="text-muted mb-0"><small>@Html.Raw(string.Format(Localizer["Dashboard_TermExpires"].Value, Model.TermExpiresAt.Value.ToString("d MMM yyyy")))</small></p>
+                            <p class="text-muted mb-0"><small>@Html.Raw(string.Format(Localizer["Dashboard_TermExpires"].Value, Model.TermExpiresAt.Value.ToDisplayDate()))</small></p>
                         }
                     </div>
                 </div>
@@ -186,7 +186,7 @@ else if (Model.PendingConsents > 0)
                                 }
                                 <span class="badge @StatusBadgeExtensions.GetApplicationStatusBadgeClass(Model.LatestApplicationStatus)">@Localizer["ApplicationStatus_" + Model.LatestApplicationStatus]</span>
                             </div>
-                            <small class="text-muted">@Model.LatestApplicationDate?.ToString("d MMM yyyy")</small>
+                            <small class="text-muted">@Model.LatestApplicationDate?.ToDisplayDate()</small>
                         </div>
                         <div class="mt-2">
                             <a asp-controller="Application" asp-action="Index">@Localizer["Dashboard_ViewApplicationHistory"]</a>
@@ -209,11 +209,11 @@ else if (Model.PendingConsents > 0)
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-6">@Localizer["Dashboard_MemberSince"]</dt>
-                    <dd class="col-6">@Model.MemberSince.ToString("MMM yyyy")</dd>
+                    <dd class="col-6">@Model.MemberSince.ToDisplayMonthYear()</dd>
                     @if (Model.LastLogin.HasValue)
                     {
                         <dt class="col-6">@Localizer["Dashboard_LastLogin"]</dt>
-                        <dd class="col-6">@Model.LastLogin.Value.ToString("d MMM")</dd>
+                        <dd class="col-6">@Model.LastLogin.Value.ToDisplayDayMonth()</dd>
                     }
                 </dl>
             </div>
@@ -240,4 +240,3 @@ else if (Model.PendingConsents > 0)
         </div>
     </div>
 </div>
-

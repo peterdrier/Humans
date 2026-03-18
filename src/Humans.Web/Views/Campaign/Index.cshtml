@@ -62,7 +62,7 @@
                                     @failedCount
                                 }
                             </td>
-                            <td>@campaign.CreatedAt.ToString("d MMM yyyy", null)</td>
+                            <td>@campaign.CreatedAt.ToDisplayDate()</td>
                         </tr>
                     }
                 </tbody>

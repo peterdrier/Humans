@@ -102,7 +102,7 @@
                                 <span class="badge bg-secondary">@Localizer["AdminTeams_Inactive"]</span>
                             }
                         </td>
-                        <td>@team.CreatedAt.ToString("MMM d, yyyy")</td>
+                        <td>@team.CreatedAt.ToDisplayCompactDate()</td>
                         @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                         {
                             <td>

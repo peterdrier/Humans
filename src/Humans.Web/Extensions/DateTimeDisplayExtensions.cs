@@ -80,6 +80,18 @@ public static class DateTimeDisplayExtensions
     public static string ToDisplayShiftDate(this LocalDate value) =>
         value.DayOfWeek.ToString()[..3] + " " + value.ToString("MMM d", null);
 
+    public static string ToDisplayMonthYear(this DateTime value) =>
+        value.ToString("MMM yyyy", CultureInfo.CurrentCulture);
+
+    public static string? ToDisplayMonthYear(this DateTime? value) =>
+        value?.ToDisplayMonthYear();
+
+    public static string ToDisplayDayMonth(this DateTime value) =>
+        value.ToString("d MMM", CultureInfo.CurrentCulture);
+
+    public static string? ToDisplayDayMonth(this DateTime? value) =>
+        value?.ToDisplayDayMonth();
+
     public static string ToDisplayTime(this DateTime value) =>
         value.ToString("HH:mm", CultureInfo.InvariantCulture);
 
