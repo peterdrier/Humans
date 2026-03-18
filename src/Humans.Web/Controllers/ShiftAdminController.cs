@@ -221,12 +221,12 @@ public class ShiftAdminController : Controller
         var timeSlots = new List<(LocalTime StartTime, double DurationHours)>();
         foreach (var slot in model.TimeSlots)
         {
-            if (!TimeOnly.TryParse(slot.StartTime, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            if (!slot.StartTime.TryParseInvariantLocalTime(out var parsed))
             {
                 TempData["ErrorMessage"] = $"Invalid start time: {slot.StartTime}";
                 return RedirectToAction(nameof(Index), new { slug });
             }
-            timeSlots.Add((new LocalTime(parsed.Hour, parsed.Minute), slot.DurationHours));
+            timeSlots.Add((parsed, slot.DurationHours));
         }
 
         try
@@ -263,7 +263,7 @@ public class ShiftAdminController : Controller
         if (rota == null) return NotFound();
         if (rota.TeamId != team.Id) return NotFound();
 
-        if (!TimeOnly.TryParse(model.StartTime, System.Globalization.CultureInfo.InvariantCulture, out var parsedTime))
+        if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
             TempData["ErrorMessage"] = "Invalid start time format.";
             return RedirectToAction(nameof(Index), new { slug });
@@ -275,7 +275,7 @@ public class ShiftAdminController : Controller
             RotaId = model.RotaId,
             Description = model.Description,
             DayOffset = model.DayOffset,
-            StartTime = new LocalTime(parsedTime.Hour, parsedTime.Minute),
+            StartTime = parsedTime,
             Duration = Duration.FromHours(model.DurationHours),
             MinVolunteers = model.MinVolunteers,
             MaxVolunteers = model.MaxVolunteers,
@@ -308,7 +308,7 @@ public class ShiftAdminController : Controller
         if (shift == null) return NotFound();
         if (shift.Rota.TeamId != team.Id) return NotFound();
 
-        if (!TimeOnly.TryParse(model.StartTime, System.Globalization.CultureInfo.InvariantCulture, out var parsedTime))
+        if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
             TempData["ErrorMessage"] = "Invalid start time format.";
             return RedirectToAction(nameof(Index), new { slug });
@@ -316,7 +316,7 @@ public class ShiftAdminController : Controller
 
         shift.Description = model.Description;
         shift.DayOffset = model.DayOffset;
-        shift.StartTime = new LocalTime(parsedTime.Hour, parsedTime.Minute);
+        shift.StartTime = parsedTime;
         shift.Duration = Duration.FromHours(model.DurationHours);
         shift.MinVolunteers = model.MinVolunteers;
         shift.MaxVolunteers = model.MaxVolunteers;

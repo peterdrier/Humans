@@ -196,6 +196,19 @@ Display formatting should be standardized through shared extensions instead of s
 
 **Rationale:** This keeps view formatting consistent and makes date/time policy easy to evolve.
 
+For CLR date formatting used outside display-only views (for example, outbound email payload strings), use shared helper extensions in the layer owning the content. 
+Email templates should use `Humans.Infrastructure.Helpers.EmailDateTimeExtensions` rather than repeating long-date literals.
+
+## Time Parsing Standardization
+
+Use shared parser helpers for converting time input strings into `TimeOnly`/`LocalTime`.
+
+**Rule:**
+- Use `TryParseInvariantTimeOnly` and `TryParseInvariantLocalTime` from `Humans.Web.Extensions.TimeParsingExtensions` for shift/admin time parsing.
+- Keep parsing locale-stable (`CultureInfo.InvariantCulture`) to avoid culture-dependent acceptance differences.
+
+**Rationale:** This removes repeated parsing logic and avoids subtle parse differences when the server default culture changes.
+
 ## Search Endpoint Response Shape
 
 Autocomplete/search JSON endpoints must use stable typed response models.

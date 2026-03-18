@@ -1,4 +1,3 @@
-using System.Globalization;
 using Hangfire;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
@@ -159,7 +158,7 @@ public class OutboxEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var formattedDate = deletionDate.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        var formattedDate = deletionDate.ToInvariantLongDate();
         var content = _renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         await EnqueueAsync(userEmail, userName, content, "deletion_requested", cancellationToken);
     }

@@ -1,4 +1,3 @@
-using System.Globalization;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using MailKit.Net.Smtp;
@@ -152,7 +151,7 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var formattedDate = deletionDate.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        var formattedDate = deletionDate.ToInvariantLongDate();
         var content = _renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
         _metrics.RecordEmailSent("deletion_requested");
