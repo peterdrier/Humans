@@ -60,5 +60,8 @@ EXPOSE 9090
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8080/health/live || exit 1
 
+# Copy entrypoint wrapper (handles preview environment DB selection)
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+
 # Entry point
-ENTRYPOINT ["dotnet", "Humans.Web.dll"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

@@ -1,0 +1,41 @@
+@model List<(Guid Id, string DisplayName, string Email)>
+@{
+    ViewData["Title"] = "Dev Login — Choose User";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mt-5 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <strong>Dev Login — Sign in as any user</strong>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">Select a user to sign in as. This is only available in dev/preview environments.</p>
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Model)
+                            {
+                                <tr>
+                                    <td>@user.DisplayName</td>
+                                    <td class="text-muted">@user.Email</td>
+                                    <td>
+                                        <a asp-controller="DevLogin" asp-action="SignInAsUser" asp-route-id="@user.Id"
+                                           class="btn btn-sm btn-outline-primary">Sign in</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

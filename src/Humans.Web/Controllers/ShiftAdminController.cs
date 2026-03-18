@@ -148,7 +148,7 @@ public class ShiftAdminController : Controller
 
         await _shiftMgmt.CreateRotaAsync(rota);
         TempData["SuccessMessage"] = $"Rota '{model.Name}' created.";
-        return RedirectToAction(nameof(Index), new { slug });
+        return Redirect(Url.Action(nameof(Index), new { slug }) + "#rota-" + rota.Id.ToString("N"));
     }
 
     [HttpPost("Rotas/{rotaId}")]

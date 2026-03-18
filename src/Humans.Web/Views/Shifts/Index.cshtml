@@ -24,8 +24,8 @@
     {
         return shift.GetShiftPeriod(es) switch
         {
-            ShiftPeriod.Build => "Build",
-            ShiftPeriod.Event => "Burn",
+            ShiftPeriod.Build => "Set-up",
+            ShiftPeriod.Event => "Event",
             ShiftPeriod.Strike => "Strike",
             _ => ""
         };
@@ -115,7 +115,7 @@
                             {
                                 <span class="badge bg-warning text-dark ms-1">Important</span>
                             }
-                            <span class="badge @(rotaGroup.Rota.Period == RotaPeriod.Build ? "bg-info" : rotaGroup.Rota.Period == RotaPeriod.Strike ? "bg-secondary" : "bg-success") ms-1">@rotaGroup.Rota.Period</span>
+                            <span class="badge @(rotaGroup.Rota.Period == RotaPeriod.Build ? "bg-info" : rotaGroup.Rota.Period == RotaPeriod.Strike ? "bg-secondary" : "bg-success") ms-1">@(rotaGroup.Rota.Period == RotaPeriod.Build ? "Set-up" : rotaGroup.Rota.Period.ToString())</span>
                         </h6>
                         @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
                         {
@@ -127,6 +127,34 @@
                             @* Build/Strike: show date range with per-day fill rates and range signup *@
                             var allDayShifts = rotaGroup.Shifts.Where(s => s.Shift.IsAllDay).OrderBy(s => s.Shift.DayOffset).ToList();
                             var availableShifts = allDayShifts.Where(s => s.RemainingSlots > 0 && !Model.UserSignupShiftIds.Contains(s.Shift.Id)).ToList();
+                            @if (availableShifts.Count > 0)
+                            {
+                                <form asp-action="SignUpRange" method="post" class="row g-2 align-items-end mb-3">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="rotaId" value="@rotaGroup.Rota.Id" />
+                                    <div class="col-auto">
+                                        <label class="form-label form-label-sm">Start</label>
+                                        <select name="startDayOffset" class="form-select form-select-sm">
+                                            @foreach (var s in availableShifts)
+                                            {
+                                                <option value="@s.Shift.DayOffset">@FormatDate(es, s.Shift.DayOffset)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label form-label-sm">End</label>
+                                        <select name="endDayOffset" class="form-select form-select-sm">
+                                            @foreach (var s in availableShifts)
+                                            {
+                                                <option value="@s.Shift.DayOffset" selected="@(s == availableShifts.Last())">@FormatDate(es, s.Shift.DayOffset)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="submit" class="btn btn-sm btn-success">Sign Up for Range</button>
+                                    </div>
+                                </form>
+                            }
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
@@ -180,34 +208,6 @@
                                     </tbody>
                                 </table>
                             </div>
-                            @if (availableShifts.Count > 0)
-                            {
-                                <form asp-action="SignUpRange" method="post" class="row g-2 align-items-end mb-3">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="rotaId" value="@rotaGroup.Rota.Id" />
-                                    <div class="col-auto">
-                                        <label class="form-label form-label-sm">Start</label>
-                                        <select name="startDayOffset" class="form-select form-select-sm">
-                                            @foreach (var s in availableShifts)
-                                            {
-                                                <option value="@s.Shift.DayOffset">@FormatDate(es, s.Shift.DayOffset)</option>
-                                            }
-                                        </select>
-                                    </div>
-                                    <div class="col-auto">
-                                        <label class="form-label form-label-sm">End</label>
-                                        <select name="endDayOffset" class="form-select form-select-sm">
-                                            @foreach (var s in availableShifts)
-                                            {
-                                                <option value="@s.Shift.DayOffset" selected="@(s == availableShifts.Last())">@FormatDate(es, s.Shift.DayOffset)</option>
-                                            }
-                                        </select>
-                                    </div>
-                                    <div class="col-auto">
-                                        <button type="submit" class="btn btn-sm btn-success">Sign Up for Range</button>
-                                    </div>
-                                </form>
-                            }
                         }
                         else
                         {
@@ -236,11 +236,11 @@
                                             var isFull = item.RemainingSlots <= 0;
                                             var understaffed = item.ConfirmedCount < shift.MinVolunteers;
                                             <tr class="@(isFull ? "table-secondary" : "")">
-                                                <td>@(shift.IsAllDay ? "All day" : $"{shift.StartTime}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes)}")</td>
+                                                <td>@(shift.IsAllDay ? "All day" : $"{shift.StartTime.ToString("HH:mm", null)}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToString("HH:mm", null)}")</td>
                                                 <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
                                                 <td>@FormatDate(es, shift.DayOffset)</td>
                                                 <td>@FormatTime(item.AbsoluteStart, tz)</td>
-                                                <td>@(shift.Duration.TotalHours)h</td>
+                                                <td>@(shift.IsAllDay ? "Full day" : $"{shift.Duration.TotalHours}h")</td>
                                                 <td>
                                                     <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
                                                     <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>

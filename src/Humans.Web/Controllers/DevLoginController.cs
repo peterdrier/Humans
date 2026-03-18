@@ -1,6 +1,6 @@
-#if DEBUG
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -10,11 +10,11 @@ using Humans.Infrastructure.Data;
 namespace Humans.Web.Controllers;
 
 /// <summary>
-/// Development-only controller for signing in as pre-seeded personas without Google OAuth.
-/// Cannot be used in production — two independent guards prevent it:
-/// 1. <c>#if DEBUG</c> preprocessor directive excludes the entire class from Release builds.
-/// 2. <c>_env.IsDevelopment()</c> runtime check returns 404 unless the environment is Development.
-/// Both guards would need to be bypassed simultaneously for this to be exploitable.
+/// Development/preview controller for signing in without Google OAuth.
+/// Guarded by TWO independent checks — both must pass:
+/// 1. <c>DevAuth:Enabled</c> configuration value must be "true".
+/// 2. Environment must NOT be "Production".
+/// Set <c>DevAuth__Enabled=true</c> in preview/dev environments only.
 /// </summary>
 [Route("dev/login")]
 public class DevLoginController : Controller
@@ -33,6 +33,7 @@ public class DevLoginController : Controller
     private readonly HumansDbContext _db;
     private readonly IClock _clock;
     private readonly IWebHostEnvironment _env;
+    private readonly IConfiguration _config;
     private readonly ILogger<DevLoginController> _logger;
 
     public DevLoginController(
@@ -41,6 +42,7 @@ public class DevLoginController : Controller
         HumansDbContext db,
         IClock clock,
         IWebHostEnvironment env,
+        IConfiguration config,
         ILogger<DevLoginController> logger)
     {
         _userManager = userManager;
@@ -48,27 +50,66 @@ public class DevLoginController : Controller
         _db = db;
         _clock = clock;
         _env = env;
+        _config = config;
         _logger = logger;
     }
 
     [HttpGet("volunteer")]
-    public Task<IActionResult> Volunteer() => SignInAs(VolunteerId);
+    public Task<IActionResult> Volunteer() => SignInAsPersona(VolunteerId);
 
     [HttpGet("admin")]
-    public Task<IActionResult> Admin() => SignInAs(AdminId);
+    public Task<IActionResult> Admin() => SignInAsPersona(AdminId);
 
     [HttpGet("board")]
-    public Task<IActionResult> Board() => SignInAs(BoardId);
+    public Task<IActionResult> Board() => SignInAsPersona(BoardId);
 
     [HttpGet("consent-coordinator")]
-    public Task<IActionResult> ConsentCoordinator() => SignInAs(ConsentCoordId);
+    public Task<IActionResult> ConsentCoordinator() => SignInAsPersona(ConsentCoordId);
 
     [HttpGet("volunteer-coordinator")]
-    public Task<IActionResult> VolunteerCoordinator() => SignInAs(VolunteerCoordId);
+    public Task<IActionResult> VolunteerCoordinator() => SignInAsPersona(VolunteerCoordId);
 
-    private async Task<IActionResult> SignInAs(Guid personaId)
+    /// <summary>
+    /// Shows a list of all real users in the database for sign-in.
+    /// Useful in preview environments with cloned production-like data.
+    /// </summary>
+    [HttpGet("users")]
+    public async Task<IActionResult> Users()
     {
-        if (!_env.IsDevelopment())
+        if (!IsDevAuthEnabled())
+            return NotFound();
+
+        var users = await _db.Users
+            .OrderBy(u => u.DisplayName)
+            .Select(u => new { u.Id, u.DisplayName, u.Email })
+            .Take(100)
+            .ToListAsync();
+
+        return View(users.Select(u => (u.Id, u.DisplayName ?? u.Email ?? "Unknown", u.Email ?? "")).ToList());
+    }
+
+    /// <summary>
+    /// Signs in as any user by ID. Used by the user chooser.
+    /// </summary>
+    [HttpGet("users/{id:guid}")]
+    public async Task<IActionResult> SignInAsUser(Guid id)
+    {
+        if (!IsDevAuthEnabled())
+            return NotFound();
+
+        var user = await _userManager.FindByIdAsync(id.ToString());
+        if (user == null)
+            return NotFound();
+
+        await _signInManager.SignInAsync(user, isPersistent: false);
+        _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
+
+        return RedirectToAction("Index", "Home");
+    }
+
+    private async Task<IActionResult> SignInAsPersona(Guid personaId)
+    {
+        if (!IsDevAuthEnabled())
             return NotFound();
 
         await EnsurePersonasSeededAsync();
@@ -84,6 +125,14 @@ public class DevLoginController : Controller
         _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
 
         return RedirectToAction("Index", "Home");
+    }
+
+    private bool IsDevAuthEnabled()
+    {
+        if (_env.IsProduction())
+            return false;
+
+        return _config.GetValue<bool>("DevAuth:Enabled");
     }
 
     private async Task EnsurePersonasSeededAsync()
@@ -204,4 +253,3 @@ public class DevLoginController : Controller
             email, string.Join(", ", roles), string.Join(", ", teams));
     }
 }
-#endif
