@@ -6,15 +6,5 @@
 <partial name="~/Views/Shared/_AuditLogContent.cshtml" model="Model" />
 
 @section Scripts {
-<script>
-    document.getElementById('checkForm').addEventListener('submit', function (e) {
-        if (!confirm('This will check Drive Activity API for anomalous permission changes. Continue?')) {
-            e.preventDefault();
-            return;
-        }
-        var btn = document.getElementById('checkBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Checking\u2026';
-    });
-</script>
+    <partial name="~/Views/Shared/_AuditLogScripts.cshtml" />
 }
