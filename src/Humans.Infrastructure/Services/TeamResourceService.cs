@@ -396,27 +396,12 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        // Board members can always manage resources
-        var isBoardMember = await _teamService.IsUserBoardMemberAsync(userId, ct);
-        if (isBoardMember)
-        {
-            return true;
-        }
-
-        // TeamsAdmin can always manage resources
-        var isTeamsAdmin = await _teamService.IsUserTeamsAdminAsync(userId, ct);
-        if (isTeamsAdmin)
-        {
-            return true;
-        }
-
-        // Coordinators can manage if the setting allows it
-        if (_resourceSettings.AllowCoordinatorsToManageResources)
-        {
-            return await _teamService.IsUserCoordinatorOfTeamAsync(teamId, userId, ct);
-        }
-
-        return false;
+        return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
+            _teamService,
+            _resourceSettings,
+            teamId,
+            userId,
+            ct);
     }
 
     /// <inheritdoc />

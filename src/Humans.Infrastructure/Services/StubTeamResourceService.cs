@@ -182,18 +182,12 @@ public class StubTeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        var isBoardMember = await _teamService.IsUserBoardMemberAsync(userId, ct);
-        if (isBoardMember)
-        {
-            return true;
-        }
-
-        if (_resourceSettings.AllowCoordinatorsToManageResources)
-        {
-            return await _teamService.IsUserCoordinatorOfTeamAsync(teamId, userId, ct);
-        }
-
-        return false;
+        return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
+            _teamService,
+            _resourceSettings,
+            teamId,
+            userId,
+            ct);
     }
 
     /// <inheritdoc />
