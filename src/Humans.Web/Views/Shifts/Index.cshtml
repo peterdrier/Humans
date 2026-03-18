@@ -52,7 +52,7 @@
             {
                 <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard</a>
             }
-            @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+            @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
             {
                 <a asp-action="Settings" class="btn btn-outline-secondary"><i class="fa-solid fa-gear me-1"></i>Settings</a>
             }

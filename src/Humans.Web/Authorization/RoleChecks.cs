@@ -48,6 +48,33 @@ public static class RoleChecks
         return IsAdmin(user) || user.IsInRole(RoleNames.CampAdmin);
     }
 
+    public static bool CanAccessReviewQueue(ClaimsPrincipal user)
+    {
+        return IsAdminOrBoard(user) ||
+               user.IsInRole(RoleNames.ConsentCoordinator) ||
+               user.IsInRole(RoleNames.VolunteerCoordinator);
+    }
+
+    public static bool CanAccessTickets(ClaimsPrincipal user)
+    {
+        return IsAdminOrBoard(user) || user.IsInRole(RoleNames.TicketAdmin);
+    }
+
+    public static bool CanManageTickets(ClaimsPrincipal user)
+    {
+        return IsAdmin(user) || user.IsInRole(RoleNames.TicketAdmin);
+    }
+
+    public static bool BypassesMembershipRequirement(ClaimsPrincipal user)
+    {
+        return IsTeamsAdminBoardOrAdmin(user) ||
+               IsCampAdmin(user) ||
+               user.IsInRole(RoleNames.TicketAdmin) ||
+               user.IsInRole(RoleNames.NoInfoAdmin) ||
+               user.IsInRole(RoleNames.ConsentCoordinator) ||
+               user.IsInRole(RoleNames.VolunteerCoordinator);
+    }
+
     public static IReadOnlyList<string> GetAssignableRoles(ClaimsPrincipal user)
     {
         return IsAdmin(user) ? AdminAssignableRoles : BoardAssignableRoles;

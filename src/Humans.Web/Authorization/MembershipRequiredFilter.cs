@@ -42,10 +42,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         }
 
         // Admin/Board/Coordinator bypass — they always have access
-        if (user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board) ||
-            user.IsInRole(RoleNames.TeamsAdmin) || user.IsInRole(RoleNames.CampAdmin) ||
-            user.IsInRole(RoleNames.TicketAdmin) || user.IsInRole(RoleNames.NoInfoAdmin) ||
-            user.IsInRole(RoleNames.ConsentCoordinator) || user.IsInRole(RoleNames.VolunteerCoordinator))
+        if (RoleChecks.BypassesMembershipRequirement(user))
         {
             return next();
         }

@@ -65,7 +65,7 @@
                                 </li>
                             }
                         }
-                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.ConsentCoordinator) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Board))
+                        @if (Humans.Web.Authorization.RoleChecks.CanAccessReviewQueue(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
@@ -83,13 +83,13 @@
                                 <a class="nav-link" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
                             </li>
                         }
-                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                             </li>
                         }
-                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Board))
+                        @if (Humans.Web.Authorization.RoleChecks.CanAccessTickets(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>

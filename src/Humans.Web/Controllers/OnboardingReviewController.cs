@@ -8,6 +8,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -213,7 +214,7 @@ public class OnboardingReviewController : HumansControllerBase
             return NotFound();
 
         var currentVote = application.BoardVotes.FirstOrDefault(v => v.BoardMemberUserId == currentUser.Id);
-        var isAdmin = User.IsInRole(RoleNames.Admin);
+        var isAdmin = RoleChecks.IsAdmin(User);
 
         var viewModel = new BoardVotingDetailViewModel
         {

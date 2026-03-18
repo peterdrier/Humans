@@ -214,7 +214,7 @@
                     <span class="badge bg-danger ms-2">Error</span>
                 }
             </span>
-            @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin))
+            @if (Humans.Web.Authorization.RoleChecks.CanManageTickets(User))
             {
                 <form asp-action="Sync" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
@@ -222,7 +222,7 @@
                         <i class="fa-solid fa-sync"></i> Sync Now
                     </button>
                 </form>
-                @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
                 {
                     <form asp-action="FullResync" method="post" class="d-inline ms-2"
                           onsubmit="return confirm('This will re-fetch ALL orders from the vendor. Continue?');">
