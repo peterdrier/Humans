@@ -2,6 +2,8 @@ namespace Humans.Web.Models;
 
 public abstract class PagedListViewModel
 {
+    private int _pageNumber = 1;
+
     protected PagedListViewModel(int defaultPageSize = 20)
     {
         PageSize = defaultPageSize;
@@ -9,7 +11,17 @@ public abstract class PagedListViewModel
 
     public int TotalCount { get; set; }
 
-    public int PageNumber { get; set; } = 1;
+    public int PageNumber
+    {
+        get => _pageNumber;
+        set => _pageNumber = value;
+    }
+
+    public int Page
+    {
+        get => _pageNumber;
+        set => _pageNumber = value;
+    }
 
     public int PageSize { get; set; }
 

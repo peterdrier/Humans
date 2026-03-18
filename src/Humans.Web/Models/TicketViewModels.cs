@@ -49,12 +49,13 @@ public class TicketOrderSummary
     public bool IsMatched { get; set; }
 }
 
-public class TicketOrdersViewModel
+public class TicketOrdersViewModel : PagedListViewModel
 {
+    public TicketOrdersViewModel() : base(25)
+    {
+    }
+
     public List<TicketOrderRow> Orders { get; set; } = [];
-    public int TotalCount { get; set; }
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 25;
     public string? Search { get; set; }
     public string SortBy { get; set; } = "date";
     public bool SortDesc { get; set; } = true;
@@ -62,8 +63,6 @@ public class TicketOrdersViewModel
     public string? FilterTicketType { get; set; }
     public bool? FilterMatched { get; set; }
     public List<string> AvailableTicketTypes { get; set; } = [];
-
-    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
 }
 
 public class TicketOrderRow
@@ -83,12 +82,13 @@ public class TicketOrderRow
     public string? MatchedUserName { get; set; }
 }
 
-public class TicketAttendeesViewModel
+public class TicketAttendeesViewModel : PagedListViewModel
 {
+    public TicketAttendeesViewModel() : base(25)
+    {
+    }
+
     public List<TicketAttendeeRow> Attendees { get; set; } = [];
-    public int TotalCount { get; set; }
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 25;
     public string? Search { get; set; }
     public string SortBy { get; set; } = "name";
     public bool SortDesc { get; set; }
@@ -96,8 +96,6 @@ public class TicketAttendeesViewModel
     public string? FilterStatus { get; set; }
     public bool? FilterMatched { get; set; }
     public List<string> AvailableTicketTypes { get; set; } = [];
-
-    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
 }
 
 public class TicketAttendeeRow
@@ -147,19 +145,18 @@ public class CampaignCodeSummary
     public decimal RedemptionRate { get; set; }
 }
 
-public class WhoHasntBoughtViewModel
+public class WhoHasntBoughtViewModel : PagedListViewModel
 {
+    public WhoHasntBoughtViewModel() : base(25)
+    {
+    }
+
     public List<WhoHasntBoughtRow> Humans { get; set; } = [];
-    public int TotalCount { get; set; }
-    public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 25;
     public string? Search { get; set; }
     public string? FilterTeam { get; set; }
     public string? FilterTier { get; set; }
     public string? FilterTicketStatus { get; set; } // "bought", "not_bought", or null (all)
     public List<string> AvailableTeams { get; set; } = [];
-
-    public int TotalPages => (int)Math.Ceiling(TotalCount / (double)PageSize);
 }
 
 public class WhoHasntBoughtRow
