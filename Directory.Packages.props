@@ -51,7 +51,7 @@
     <PackageVersion Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
     <!-- Image Processing -->
-    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.10.4" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.11.0" />
     <!-- Localization -->
     <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.3" />
     <!-- Data Protection -->

@@ -373,7 +373,7 @@ public class CampController : Controller
                         LeadId = l.Id,
                         UserId = l.UserId,
                         DisplayName = l.User.DisplayName,
-                        }).ToList();
+                    }).ToList();
                 model.Images = camp.Images.OrderBy(i => i.SortOrder)
                     .Select(i => new CampImageViewModel
                     {
