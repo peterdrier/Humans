@@ -1141,5 +1141,7 @@
   <data name="Camp_SwissCampLabel" xml:space="preserve"><value>Questo camp è mai stato chiamato "Swiss Camp"?</value></data>
   <data name="Camp_InfoTitle" xml:space="preserve"><value>Info del Barrio</value></data>
   <data name="Camp_NameLabel" xml:space="preserve"><value>Nome del Barrio</value></data>
+  <data name="Shifts_SignedUp" xml:space="preserve"><value>Iscritti</value></data>
+  <data name="Shifts_Pending" xml:space="preserve"><value>(in attesa)</value></data>
 
 </root>
