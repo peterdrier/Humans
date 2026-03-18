@@ -1,4 +1,5 @@
 @model Humans.Web.Models.TeamMembersViewModel
+@using Humans.Web.Controllers
 @{
     ViewData["Title"] = string.Format(Localizer["TeamAdminMembers_Title"].Value, Model.TeamName);
 }
@@ -217,61 +218,16 @@ else
 @if (Model.CanManageRoles)
 {
     <script nonce="@Context.Items["CspNonce"]">
-        (function () {
-            var searchInput = document.getElementById('memberSearch');
-            var resultsDiv = document.getElementById('searchResults');
-            var debounceTimer = null;
-            var searchUrl = '/Teams/@Model.TeamSlug/Members/Search';
-            var addUrl = '/Teams/@Model.TeamSlug/Members/Add';
-            var noResultsText = '@Localizer["TeamAdmin_NoResults"].Value.Replace("'", "\\'", StringComparison.Ordinal)';
-            var addText = '@Localizer["TeamAdmin_Add"].Value.Replace("'", "\\'", StringComparison.Ordinal)';
-
-            @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
-            @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
-
-            var antiForgeryToken = getRequestVerificationToken();
-
-            searchInput.addEventListener('input', function () {
-                clearTimeout(debounceTimer);
-                var q = searchInput.value.trim();
-                if (q.length < 2) {
-                    resultsDiv.style.display = 'none';
-                    resultsDiv.innerHTML = '';
-                    return;
-                }
-                debounceTimer = setTimeout(function () {
-                    fetch(searchUrl + '?q=' + encodeURIComponent(q))
-                        .then(function (res) { return res.json(); })
-                        .then(function (data) {
-                            resultsDiv.innerHTML = '';
-                            if (data.length === 0) {
-                                resultsDiv.innerHTML = '<div class="list-group-item text-muted">' + escapeHtml(noResultsText) + '</div>';
-                            } else {
-                                data.forEach(function (user) {
-                                    var item = document.createElement('div');
-                                    item.className = 'list-group-item d-flex justify-content-between align-items-center';
-                                    item.innerHTML = '<div><strong>' + escapeHtml(user.displayName) + '</strong> <small class="text-muted">' + escapeHtml(user.email) + '</small></div>' +
-                                        '<form method="post" action="' + addUrl + '" class="d-inline">' +
-                                        '<input type="hidden" name="__RequestVerificationToken" value="' + antiForgeryToken + '" />' +
-                                        '<input type="hidden" name="UserId" value="' + user.userId + '" />' +
-                                        '<button type="submit" class="btn btn-sm btn-success">' + escapeHtml(addText) + '</button>' +
-                                        '</form>';
-                                    resultsDiv.appendChild(item);
-                                });
-                            }
-                            resultsDiv.style.display = 'block';
-                        })
-                        .catch(function () {
-                            resultsDiv.style.display = 'none';
-                        });
-                }, 300);
-            });
-
-            document.addEventListener('click', function (e) {
-                if (!resultsDiv.contains(e.target) && e.target !== searchInput) {
-                    resultsDiv.style.display = 'none';
-                }
-            });
-        })();
+        @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
+        @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
+        @await Html.PartialAsync("~/Views/Shared/_MemberSearchScript.cshtml", new ViewDataDictionary(ViewData)
+        {
+            ["SearchInputSelector"] = "#memberSearch",
+            ["ResultsSelector"] = "#searchResults",
+            ["SearchUrl"] = Url.Action(nameof(TeamAdminController.SearchUsers), "TeamAdmin", new { slug = Model.TeamSlug }),
+            ["AddUrl"] = Url.Action(nameof(TeamAdminController.AddMember), "TeamAdmin", new { slug = Model.TeamSlug }),
+            ["NoResultsText"] = Localizer["TeamAdmin_NoResults"].Value,
+            ["AddText"] = Localizer["TeamAdmin_Add"].Value
+        })
     </script>
 }

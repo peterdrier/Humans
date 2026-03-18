@@ -2,9 +2,12 @@
 @using Humans.Application.Interfaces
 @using Humans.Domain.Entities
 @using Humans.Domain.Enums
+@using Humans.Web.Controllers
 
 @{
     ViewData["Title"] = $"Shifts - {Model.Department.Name}";
+    var searchUrl = Url.Action(nameof(ShiftAdminController.SearchVolunteers), "ShiftAdmin", new { slug = Model.Department.Slug });
+    var voluntellUrl = Url.Action(nameof(ShiftAdminController.Voluntell), "ShiftAdmin", new { slug = Model.Department.Slug });
 }
 
 @{
@@ -397,11 +400,11 @@
                                             <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <div class="p-3 bg-light">
                                                     <div class="input-group mb-2" style="max-width: 400px;">
-                                                        <input type="text" class="form-control dept-voluntell-search"
+                                                        <input type="text" class="form-control volunteer-search-input"
                                                                data-shift-id="@shift.Id"
                                                                placeholder="Search by name (min 2 chars)..." />
                                                     </div>
-                                                    <div class="dept-voluntell-results" data-shift-id="@shift.Id"></div>
+                                                    <div class="volunteer-results" data-shift-id="@shift.Id"></div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -654,51 +657,18 @@
 
 <script>
 (function() {
-    var debounceTimers = {};
-    var slug = '@Model.Department.Slug';
-    var tokenHtml = '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())';
-
-    document.querySelectorAll('.dept-voluntell-search').forEach(function(input) {
-        input.addEventListener('input', function() {
-            var shiftId = this.dataset.shiftId;
-            var query = this.value.trim();
-            var resultsDiv = document.querySelector('.dept-voluntell-results[data-shift-id="' + shiftId + '"]');
-
-            clearTimeout(debounceTimers[shiftId]);
-            if (query.length < 2) { resultsDiv.innerHTML = ''; return; }
-
-            debounceTimers[shiftId] = setTimeout(function() {
-                fetch('/Teams/' + slug + '/Shifts/SearchVolunteers?shiftId=' + encodeURIComponent(shiftId) + '&query=' + encodeURIComponent(query))
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        if (data.length === 0) { resultsDiv.innerHTML = '<p class="text-muted mb-0">No results.</p>'; return; }
-                        var html = '';
-                        data.forEach(function(v) {
-                            html += '<div class="d-flex justify-content-between align-items-center border-bottom py-2">';
-                            html += '<div><strong>' + escapeHtml(v.displayName) + '</strong>';
-                            html += ' <small class="text-muted">(' + v.bookedShiftCount + ' shifts)</small>';
-                            if (v.isInPool) html += ' <span class="badge bg-success">Pool</span>';
-                            if (v.hasOverlap) html += ' <span class="badge bg-warning text-dark">Overlap</span>';
-                            html += '<div class="mt-1">';
-                            (v.skills || []).forEach(function(s) { html += '<span class="badge bg-info me-1">' + escapeHtml(s) + '</span>'; });
-                            (v.quirks || []).forEach(function(s) { html += '<span class="badge bg-secondary me-1">' + escapeHtml(s) + '</span>'; });
-                            if (v.dietaryPreference) html += '<span class="badge bg-success me-1">' + escapeHtml(v.dietaryPreference) + '</span>';
-                            (v.languages || []).forEach(function(s) { html += '<span class="badge bg-primary me-1">' + escapeHtml(s) + '</span>'; });
-                            html += '</div></div>';
-                            html += '<form method="post" action="/Teams/' + slug + '/Shifts/Voluntell">';
-                            html += tokenHtml;
-                            html += '<input type="hidden" name="shiftId" value="' + shiftId + '" />';
-                            html += '<input type="hidden" name="userId" value="' + v.userId + '" />';
-                            html += '<button type="submit" class="btn btn-sm btn-primary">Assign</button>';
-                            html += '</form></div>';
-                        });
-                        resultsDiv.innerHTML = html;
-                    });
-            }, 300);
-        });
-    });
-
     @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
+    @await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
+    {
+        ["SearchUrl"] = searchUrl,
+        ["VoluntellUrl"] = voluntellUrl,
+        ["AssignButtonClass"] = "btn-primary",
+        ["NoResultsText"] = "No results.",
+        ["ErrorText"] = "Search failed.",
+        ["OverlapLabel"] = "Overlap",
+        ["DietaryPreferenceStyle"] = "badge",
+        ["ShowPoolBadge"] = true
+    })
 
     // Staffing grid: two-step date range → day grid with cascade-fill
     document.querySelectorAll('.staffing-grid-container').forEach(function(container) {
