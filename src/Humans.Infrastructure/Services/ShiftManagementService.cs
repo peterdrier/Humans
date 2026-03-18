@@ -468,7 +468,7 @@ public class ShiftManagementService : IShiftManagementService
                 var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
                 var score = CalculateScore(s, confirmedCount);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
-                return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name);
+                return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name, []);
             })
             .Where(u => u.UrgencyScore > 0)
             .OrderByDescending(u => u.UrgencyScore)
@@ -482,7 +482,7 @@ public class ShiftManagementService : IShiftManagementService
 
     public async Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(
         Guid eventSettingsId, Guid? departmentId = null, LocalDate? date = null,
-        bool includeAdminOnly = false)
+        bool includeAdminOnly = false, bool includeSignups = false)
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
@@ -491,7 +491,7 @@ public class ShiftManagementService : IShiftManagementService
         var query = _dbContext.Shifts
             .Include(s => s.Rota).ThenInclude(r => r.Team)
             .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups)
+            .Include(s => s.ShiftSignups).ThenInclude(ss => ss.User)
             .Where(s => s.Rota.EventSettingsId == eventSettingsId);
 
         if (!includeAdminOnly)
@@ -514,7 +514,16 @@ public class ShiftManagementService : IShiftManagementService
                 var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
                 var score = CalculateScore(s, confirmedCount);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
-                return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name);
+                var signups = includeSignups
+                    ? s.ShiftSignups
+                        .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+                        .Select(ss => (ss.UserId, ss.User.DisplayName, ss.Status,
+                            HasProfilePicture: ss.User.ProfilePictureUrl != null))
+                        .OrderBy(ss => ss.Status)
+                        .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                    : [];
+                return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name, signups);
             })
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();
