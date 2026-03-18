@@ -167,58 +167,20 @@ public class PendingRequestsViewModel : PagedListViewModel
     public string? TeamNameFilter { get; set; }
 }
 
-public class CreateTeamViewModel
+public class CreateTeamViewModel : TeamFormViewModelBase
 {
-    [Required]
-    [StringLength(256, MinimumLength = 2)]
-    public string Name { get; set; } = string.Empty;
-
-    [StringLength(2000)]
-    public string? Description { get; set; }
-
-    [StringLength(64)]
-    [RegularExpression(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", ErrorMessage = "Only lowercase letters, numbers, and hyphens allowed")]
-    public string? GoogleGroupPrefix { get; set; }
-
-    public bool RequiresApproval { get; set; } = true;
-
-    public Guid? ParentTeamId { get; set; }
-
-    /// <summary>
-    /// Available parent teams for the dropdown.
-    /// </summary>
-    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> EligibleParents { get; set; } = [];
 }
 
-public class EditTeamViewModel
+public class EditTeamViewModel : TeamFormViewModelBase
 {
     public Guid Id { get; set; }
-
-    [Required]
-    [StringLength(256, MinimumLength = 2)]
-    public string Name { get; set; } = string.Empty;
-
-    [StringLength(2000)]
-    public string? Description { get; set; }
-
-    [StringLength(64)]
-    [RegularExpression(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", ErrorMessage = "Only lowercase letters, numbers, and hyphens allowed")]
-    public string? GoogleGroupPrefix { get; set; }
 
     // Display-only
     public string? GoogleGroupEmail { get; set; }
     public string Slug { get; set; } = string.Empty;
 
-    public bool RequiresApproval { get; set; }
     public bool IsActive { get; set; }
     public bool IsSystemTeam { get; set; }
-
-    public Guid? ParentTeamId { get; set; }
-
-    /// <summary>
-    /// Available parent teams for the dropdown.
-    /// </summary>
-    public List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> EligibleParents { get; set; } = [];
 }
 
 public class EditTeamPageViewModel
