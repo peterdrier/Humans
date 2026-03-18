@@ -131,7 +131,7 @@ public class ConsentController : HumansControllerBase
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
-                TempData["InfoMessage"] = _localizer["Consent_AlreadyConsented"].Value;
+                SetInfo(_localizer["Consent_AlreadyConsented"].Value);
             return RedirectToAction(nameof(Index));
         }
 

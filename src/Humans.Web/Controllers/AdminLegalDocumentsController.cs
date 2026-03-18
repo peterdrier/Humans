@@ -11,9 +11,8 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Roles = "Board,Admin")]
 [Route("Admin")]
-public class AdminLegalDocumentsController : Controller
+public class AdminLegalDocumentsController : HumansControllerBase
 {
-    private readonly UserManager<User> _userManager;
     private readonly IAdminLegalDocumentService _adminLegalDocumentService;
     private readonly IClock _clock;
     private readonly ILogger<AdminLegalDocumentsController> _logger;
@@ -23,8 +22,8 @@ public class AdminLegalDocumentsController : Controller
         IAdminLegalDocumentService adminLegalDocumentService,
         IClock clock,
         ILogger<AdminLegalDocumentsController> logger)
+        : base(userManager)
     {
-        _userManager = userManager;
         _adminLegalDocumentService = adminLegalDocumentService;
         _clock = clock;
         _logger = logger;
@@ -91,7 +90,7 @@ public class AdminLegalDocumentsController : Controller
 
         var document = await _adminLegalDocumentService.CreateLegalDocumentAsync(ToUpsertRequest(model, folderPath));
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         _logger.LogInformation("Admin {AdminId} created legal document {DocumentId} ({Name})",
             currentUser?.Id, document.Id, document.Name);
 
@@ -101,20 +100,20 @@ public class AdminLegalDocumentsController : Controller
             try
             {
                 var result = await _adminLegalDocumentService.SyncLegalDocumentAsync(document.Id);
-                TempData["SuccessMessage"] = result != null
+                SetSuccess(result != null
                     ? $"Legal document '{document.Name}' created. {result}"
-                    : $"Legal document '{document.Name}' created. GitHub content is already up to date.";
+                    : $"Legal document '{document.Name}' created. GitHub content is already up to date.");
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Initial sync failed for new document {DocumentId}", document.Id);
-                TempData["SuccessMessage"] = $"Legal document '{document.Name}' created.";
-                TempData["ErrorMessage"] = $"Initial sync failed: {ex.Message}";
+                SetSuccess($"Legal document '{document.Name}' created.");
+                SetError($"Initial sync failed: {ex.Message}");
             }
         }
         else
         {
-            TempData["SuccessMessage"] = $"Legal document '{document.Name}' created. Set a GitHub Folder Path and sync to add content.";
+            SetSuccess($"Legal document '{document.Name}' created. Set a GitHub Folder Path and sync to add content.");
         }
 
         return RedirectToAction(nameof(LegalDocuments));
@@ -194,10 +193,10 @@ public class AdminLegalDocumentsController : Controller
             return NotFound();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         _logger.LogInformation("Admin {AdminId} updated legal document {DocumentId}", currentUser?.Id, id);
 
-        TempData["SuccessMessage"] = $"Legal document '{document.Name}' updated successfully.";
+        SetSuccess($"Legal document '{document.Name}' updated successfully.");
         return RedirectToAction(nameof(LegalDocuments));
     }
 
@@ -211,10 +210,10 @@ public class AdminLegalDocumentsController : Controller
             return NotFound();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         _logger.LogInformation("Admin {AdminId} archived legal document {DocumentId}", currentUser?.Id, id);
 
-        TempData["SuccessMessage"] = $"Legal document '{document.Name}' archived.";
+        SetSuccess($"Legal document '{document.Name}' archived.");
         return RedirectToAction(nameof(LegalDocuments));
     }
 
@@ -225,15 +224,15 @@ public class AdminLegalDocumentsController : Controller
         try
         {
             var result = await _adminLegalDocumentService.SyncLegalDocumentAsync(id);
-            var currentUser = await _userManager.GetUserAsync(User);
+            var currentUser = await GetCurrentUserAsync();
             _logger.LogInformation("Admin {AdminId} triggered sync for legal document {DocumentId}", currentUser?.Id, id);
 
-            TempData["SuccessMessage"] = result ?? "Document is already up to date.";
+            SetSuccess(result ?? "Document is already up to date.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error syncing legal document {DocumentId}", id);
-            TempData["ErrorMessage"] = $"Sync failed: {ex.Message}";
+            SetError($"Sync failed: {ex.Message}");
         }
 
         return RedirectToAction(nameof(EditLegalDocument), new { id });
@@ -249,7 +248,7 @@ public class AdminLegalDocumentsController : Controller
             return NotFound();
         }
 
-        TempData["SuccessMessage"] = "Version summary updated.";
+        SetSuccess("Version summary updated.");
         return RedirectToAction(nameof(EditLegalDocument), new { id });
     }
 

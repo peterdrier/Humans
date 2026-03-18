@@ -39,4 +39,9 @@ public abstract class HumansControllerBase : Controller
     {
         TempData["ErrorMessage"] = message;
     }
+
+    protected void SetInfo(string message)
+    {
+        TempData["InfoMessage"] = message;
+    }
 }
