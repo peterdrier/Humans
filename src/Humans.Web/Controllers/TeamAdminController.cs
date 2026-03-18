@@ -13,13 +13,12 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Teams/{slug}")]
-public class TeamAdminController : Controller
+public class TeamAdminController : HumansControllerBase
 {
     private readonly ITeamService _teamService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IProfileService _profileService;
-    private readonly UserManager<User> _userManager;
     private readonly ISystemTeamSync _systemTeamSyncJob;
     private readonly ILogger<TeamAdminController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -33,12 +32,12 @@ public class TeamAdminController : Controller
         ISystemTeamSync systemTeamSyncJob,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
+        : base(userManager)
     {
         _teamService = teamService;
         _teamResourceService = teamResourceService;
         _googleSyncService = googleSyncService;
         _profileService = profileService;
-        _userManager = userManager;
         _systemTeamSyncJob = systemTeamSyncJob;
         _logger = logger;
         _localizer = localizer;
@@ -48,10 +47,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -83,10 +81,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -124,10 +121,9 @@ public class TeamAdminController : Controller
     public async Task<IActionResult> Members(string slug, int page = 1)
     {
         var pageSize = 20;
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -207,10 +203,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveMember(string slug, Guid userId)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -246,10 +241,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddMember(string slug, AddMemberModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -280,7 +274,7 @@ public class TeamAdminController : Controller
     [HttpGet("Members/Search")]
     public async Task<IActionResult> SearchUsers(string slug, string q)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return Unauthorized();
@@ -323,10 +317,9 @@ public class TeamAdminController : Controller
     [HttpGet("Resources")]
     public async Task<IActionResult> Resources(string slug)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -378,10 +371,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkDriveResource(string slug, LinkDriveResourceModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -425,10 +417,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkGroup(string slug, LinkGroupModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -472,10 +463,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnlinkResource(string slug, Guid resourceId)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -500,10 +490,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncResource(string slug, Guid resourceId)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -535,10 +524,9 @@ public class TeamAdminController : Controller
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(string slug)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -592,10 +580,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateRole(string slug, CreateRoleDefinitionModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -634,10 +621,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditRole(string slug, Guid roleId, EditRoleDefinitionModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -676,10 +662,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRole(string slug, Guid roleId)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -711,10 +696,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ToggleManagement(string slug, Guid roleId)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -755,10 +739,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AssignRole(string slug, Guid roleId, AssignRoleModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -791,10 +774,9 @@ public class TeamAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnassignRole(string slug, Guid roleId, Guid memberId)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
         {
-            return NotFound();
+            return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -928,7 +910,7 @@ public class TeamAdminController : Controller
     [HttpGet("Roles/SearchMembers")]
     public async Task<IActionResult> SearchMembersForRole(string slug, string q)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return Unauthorized();
