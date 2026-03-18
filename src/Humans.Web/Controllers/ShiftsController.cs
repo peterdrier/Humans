@@ -70,7 +70,8 @@ public class ShiftsController : Controller
 
         // Build the browse view — show all active shifts, hide AdminOnly from regular volunteers
         var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
-            es.Id, departmentId: departmentId, date: filterDate, includeAdminOnly: isPrivileged);
+            es.Id, departmentId: departmentId, date: filterDate,
+            includeAdminOnly: isPrivileged, includeSignups: isPrivileged);
 
         // Group by department → rota → shift
         var departments = urgentShifts
@@ -102,7 +103,12 @@ public class ShiftsController : Controller
                                             AbsoluteEnd = end,
                                             Period = period,
                                             ConfirmedCount = u.ConfirmedCount,
-                                            RemainingSlots = u.RemainingSlots
+                                            RemainingSlots = u.RemainingSlots,
+                                            Signups = u.Signups
+                                                .Select(s => new ShiftSignupInfo(
+                                                    s.UserId, s.DisplayName, s.Status,
+                                                    s.HasProfilePicture ? $"/Human/{s.UserId}/Picture" : null))
+                                                .ToList()
                                         };
                                     })
                                     .OrderBy(s => s.AbsoluteStart)
@@ -126,11 +132,9 @@ public class ShiftsController : Controller
         }
         else
         {
-            var allShifts = await _shiftMgmt.GetBrowseShiftsAsync(es.Id, includeAdminOnly: isPrivileged);
-            allDepartments = allShifts
-                .Select(u => new DepartmentOption { TeamId = u.Shift!.Rota.TeamId, Name = u.DepartmentName ?? "Unknown" })
-                .DistinctBy(d => d.TeamId)
-                .OrderBy(d => d.Name, StringComparer.Ordinal)
+            var depts = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
+            allDepartments = depts
+                .Select(d => new DepartmentOption { TeamId = d.TeamId, Name = d.TeamName })
                 .ToList();
         }
 
@@ -143,7 +147,8 @@ public class ShiftsController : Controller
             UserSignupShiftIds = userSignupShiftIds,
             UserSignupStatuses = userSignupStatuses,
             Departments = departments,
-            AllDepartments = allDepartments
+            AllDepartments = allDepartments,
+            ShowSignups = isPrivileged
         };
 
         return View(model);

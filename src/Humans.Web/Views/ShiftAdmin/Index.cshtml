@@ -173,6 +173,10 @@
                                     <th>Start</th>
                                     <th>Hours</th>
                                     <th>Filled</th>
+                                    @if (Model.CanApproveSignups)
+                                    {
+                                        <th>@Localizer["Shifts_SignedUp"]</th>
+                                    }
                                     <th></th>
                                 </tr>
                             </thead>
@@ -227,6 +231,42 @@
                                             <span class="@(understaffed ? "text-danger fw-bold" : "")">@confirmed</span>
                                             <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
                                         </td>
+                                        @if (Model.CanApproveSignups)
+                                        {
+                                            var activeSignups = shift.ShiftSignups
+                                                .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+                                                .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1).ThenBy(ss => ss.User?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                                .ToList();
+                                            <td class="small">
+                                                @if (rota.Period == RotaPeriod.Event)
+                                                {
+                                                    @for (var i = 0; i < activeSignups.Count; i++)
+                                                    {
+                                                        var ss = activeSignups[i];
+                                                        if (i > 0) { <text>, </text> }
+                                                        <a asp-controller="Human" asp-action="View" asp-route-id="@ss.UserId"
+                                                           class="text-decoration-none @(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")">@ss.User?.DisplayName</a>@if (ss.Status == SignupStatus.Pending)
+                                                        {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        @foreach (var ss in activeSignups)
+                                                        {
+                                                            <a asp-controller="Human" asp-action="View" asp-route-id="@ss.UserId"
+                                                               title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                               class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
+                                                               style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")">
+                                                                <vc:user-avatar profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)"
+                                                                                display-name="@(ss.User?.DisplayName)"
+                                                                                size="26" />
+                                                            </a>
+                                                        }
+                                                    </div>
+                                                }
+                                            </td>
+                                        }
                                         <td>
                                             @if (Model.CanManageShifts)
                                             {
@@ -252,7 +292,7 @@
                                     @if (Model.CanManageShifts)
                                     {
                                         <tr class="collapse" id="edit-shift-@shift.Id.ToString("N")">
-                                            <td colspan="6">
+                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <form asp-action="EditShift" asp-route-slug="@Model.Department.Slug" asp-route-shiftId="@shift.Id" method="post">
                                                     @Html.AntiForgeryToken()
                                                     <div class="row g-2 align-items-end">
@@ -301,7 +341,7 @@
                                     {
                                         var signupsCollapseId = "signups-" + shift.Id.ToString("N");
                                         <tr>
-                                            <td colspan="6">
+                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <button class="btn btn-sm btn-outline-info" type="button"
                                                         data-bs-toggle="collapse" data-bs-target="#@signupsCollapseId">
                                                     Signups (@shiftSignups.Count)
@@ -309,7 +349,7 @@
                                             </td>
                                         </tr>
                                         <tr class="collapse" id="@signupsCollapseId">
-                                            <td colspan="6">
+                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <div class="p-2">
                                                     @foreach (var signup in shiftSignups)
                                                     {
@@ -357,7 +397,7 @@
                                     {
                                         var voluntellCollapseId = "dept-voluntell-" + shift.Id.ToString("N");
                                         <tr class="collapse" id="@voluntellCollapseId">
-                                            <td colspan="6">
+                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <div class="p-3 bg-light">
                                                     <div class="input-group mb-2" style="max-width: 400px;">
                                                         <input type="text" class="form-control dept-voluntell-search"
