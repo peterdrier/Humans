@@ -52,7 +52,7 @@
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Consent" asp-action="Index">@Localizer["Nav_Consents"]</a>
                             </li>
-                            @if (isActiveMember || User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator))
+                            @if (isActiveMember || Humans.Web.Authorization.ShiftRoleChecks.CanAccessDashboard(User))
                             {
                                 <li class="nav-item">
                                     <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
