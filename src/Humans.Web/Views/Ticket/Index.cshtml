@@ -21,13 +21,7 @@
         return;
     }
 
-    @if (TempData["SuccessMessage"] is string successMsg)
-    {
-        <div class="alert alert-success alert-dismissible fade show">
-            @successMsg
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    }
+    <vc:temp-data-alerts />
 
     <!-- Summary Cards -->
     <div class="row mb-4">
@@ -160,7 +154,7 @@
                             @foreach (var order in Model.RecentOrders)
                             {
                                 <tr>
-                                    <td>@order.PurchasedAt.InUtc().Date.ToString("dd MMM", null)</td>
+                                    <td>@order.PurchasedAt.ToDisplayCompactDate()</td>
                                     <td>@order.BuyerName</td>
                                     <td>@order.TicketCount</td>
                                     <td>@order.Currency @order.Amount.ToString("N0")</td>
@@ -199,7 +193,7 @@
             <span class="text-muted">
                 @if (Model.LastSyncAt.HasValue)
                 {
-                    <text>Last synced: @Model.LastSyncAt.Value.InUtc().ToString("yyyy-MM-dd HH:mm", null) UTC</text>
+                    <text>Last synced: @Model.LastSyncAt.Value.ToAuditMinuteTimestamp() UTC</text>
                 }
                 else
                 {

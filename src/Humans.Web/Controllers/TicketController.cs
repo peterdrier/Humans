@@ -185,44 +185,11 @@ public class TicketController : HumansControllerBase
     {
         pageSize = pageSize.ClampPageSize();
 
-        var query = _dbContext.TicketOrders
-            .Include(o => o.Attendees)
-            .Include(o => o.MatchedUser)
-            .AsQueryable();
-
-        // Search
-        if (search.HasSearchTerm(1))
-        {
-            query = query.WhereAnyContainsInsensitive(
-                search,
-                o => o.BuyerName,
-                o => o.BuyerEmail,
-                o => o.VendorOrderId,
-                o => o.DiscountCode);
-        }
-
-        // Filters
-        if (!string.IsNullOrEmpty(filterPaymentStatus) &&
-            Enum.TryParse<TicketPaymentStatus>(filterPaymentStatus, true, out var ps))
-            query = query.Where(o => o.PaymentStatus == ps);
-
-        if (!string.IsNullOrEmpty(filterTicketType))
-            query = query.Where(o => o.Attendees.Any(a => a.TicketTypeName == filterTicketType));
-
-        if (filterMatched == true)
-            query = query.Where(o => o.MatchedUserId != null);
-        else if (filterMatched == false)
-            query = query.Where(o => o.MatchedUserId == null);
+        var query = BuildOrdersQuery(search, filterPaymentStatus, filterTicketType, filterMatched);
 
         var totalCount = await query.CountAsync();
 
-        query = sortBy.ToLowerInvariant() switch
-        {
-            "amount" => sortDesc ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount),
-            "name" => sortDesc ? query.OrderByDescending(o => o.BuyerName) : query.OrderBy(o => o.BuyerName),
-            "tickets" => sortDesc ? query.OrderByDescending(o => o.Attendees.Count) : query.OrderBy(o => o.Attendees.Count),
-            _ => sortDesc ? query.OrderByDescending(o => o.PurchasedAt) : query.OrderBy(o => o.PurchasedAt),
-        };
+        query = ApplyOrderSorting(query, sortBy, sortDesc);
 
         var orderRows = await query
             .Skip((page - 1) * pageSize)
@@ -272,43 +239,11 @@ public class TicketController : HumansControllerBase
     {
         pageSize = pageSize.ClampPageSize();
 
-        var query = _dbContext.TicketAttendees
-            .Include(a => a.MatchedUser)
-            .Include(a => a.TicketOrder)
-            .AsQueryable();
-
-        if (!string.IsNullOrEmpty(filterOrderId))
-            query = query.Where(a => a.TicketOrder.VendorOrderId == filterOrderId);
-
-        if (search.HasSearchTerm(1))
-        {
-            query = query.WhereAnyContainsInsensitive(
-                search,
-                a => a.AttendeeName,
-                a => a.AttendeeEmail);
-        }
-
-        if (!string.IsNullOrEmpty(filterTicketType))
-            query = query.Where(a => a.TicketTypeName == filterTicketType);
-
-        if (!string.IsNullOrEmpty(filterStatus) &&
-            Enum.TryParse<TicketAttendeeStatus>(filterStatus, true, out var status))
-            query = query.Where(a => a.Status == status);
-
-        if (filterMatched == true)
-            query = query.Where(a => a.MatchedUserId != null);
-        else if (filterMatched == false)
-            query = query.Where(a => a.MatchedUserId == null);
+        var query = BuildAttendeesQuery(search, filterTicketType, filterStatus, filterMatched, filterOrderId);
 
         var totalCount = await query.CountAsync();
 
-        query = sortBy.ToLowerInvariant() switch
-        {
-            "type" => sortDesc ? query.OrderByDescending(a => a.TicketTypeName) : query.OrderBy(a => a.TicketTypeName),
-            "price" => sortDesc ? query.OrderByDescending(a => a.Price) : query.OrderBy(a => a.Price),
-            "status" => sortDesc ? query.OrderByDescending(a => a.Status) : query.OrderBy(a => a.Status),
-            _ => sortDesc ? query.OrderByDescending(a => a.AttendeeName) : query.OrderBy(a => a.AttendeeName),
-        };
+        query = ApplyAttendeeSorting(query, sortBy, sortDesc);
 
         var attendeeRows = await query
             .Skip((page - 1) * pageSize)
@@ -438,19 +373,7 @@ public class TicketController : HumansControllerBase
     {
         pageSize = pageSize.ClampPageSize();
 
-        var matchedFromAttendees = await _dbContext.TicketAttendees
-            .Where(a => a.MatchedUserId != null)
-            .Select(a => a.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync();
-
-        var matchedFromOrders = await _dbContext.TicketOrders
-            .Where(o => o.MatchedUserId != null)
-            .Select(o => o.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync();
-
-        var matchedUserIds = matchedFromAttendees.Union(matchedFromOrders).ToHashSet();
+        var matchedUserIds = await GetMatchedTicketUserIdsAsync();
 
         // Load ALL active humans (not just unmatched) so we can toggle between views
         var users = await _dbContext.Users
@@ -471,38 +394,16 @@ public class TicketController : HumansControllerBase
                 u.TeamMemberships.Any(tm => tm.TeamId == volunteersTeamId))
             .ToList();
 
-        // Ticket status filter
-        if (string.Equals(filterTicketStatus, "bought", StringComparison.OrdinalIgnoreCase))
-            activeHumans = activeHumans.Where(u => matchedUserIds.Contains(u.Id)).ToList();
-        else if (string.Equals(filterTicketStatus, "not_bought", StringComparison.OrdinalIgnoreCase))
-            activeHumans = activeHumans.Where(u => !matchedUserIds.Contains(u.Id)).ToList();
-        // null/empty = show all
+        var filteredHumans = FilterWhoHasntBoughtHumans(
+            activeHumans,
+            matchedUserIds,
+            filterTicketStatus,
+            filterTeam,
+            filterTier,
+            search);
 
-        if (!string.IsNullOrEmpty(filterTeam))
-        {
-            activeHumans = activeHumans
-                .Where(u => u.TeamMemberships.Any(tm =>
-                    string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-        }
-
-        if (!string.IsNullOrEmpty(filterTier))
-        {
-            activeHumans = activeHumans
-                .Where(u => string.Equals(u.Profile?.MembershipTier.ToString(), filterTier, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
-        if (search.HasSearchTerm(1))
-        {
-            activeHumans = activeHumans
-                .Where(u => u.DisplayName.ContainsOrdinalIgnoreCase(search) ||
-                    u.UserEmails.Any(e => e.Email.ContainsOrdinalIgnoreCase(search)))
-                .ToList();
-        }
-
-        var totalCount = activeHumans.Count;
-        var pagedHumans = activeHumans
+        var totalCount = filteredHumans.Count;
+        var pagedHumans = filteredHumans
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(u => new WhoHasntBoughtRow
@@ -619,5 +520,201 @@ public class TicketController : HumansControllerBase
             .Distinct()
             .OrderBy(t => t)
             .ToListAsync();
+    }
+
+    private IQueryable<TicketOrder> BuildOrdersQuery(
+        string? search,
+        string? filterPaymentStatus,
+        string? filterTicketType,
+        bool? filterMatched)
+    {
+        var query = _dbContext.TicketOrders
+            .Include(o => o.Attendees)
+            .Include(o => o.MatchedUser)
+            .AsQueryable();
+
+        if (search.HasSearchTerm(1))
+        {
+            query = query.WhereAnyContainsInsensitive(
+                search,
+                o => o.BuyerName,
+                o => o.BuyerEmail,
+                o => o.VendorOrderId,
+                o => o.DiscountCode);
+        }
+
+        if (!string.IsNullOrEmpty(filterPaymentStatus) &&
+            Enum.TryParse<TicketPaymentStatus>(filterPaymentStatus, true, out var paymentStatus))
+        {
+            query = query.Where(o => o.PaymentStatus == paymentStatus);
+        }
+
+        if (!string.IsNullOrEmpty(filterTicketType))
+        {
+            query = query.Where(o => o.Attendees.Any(a => a.TicketTypeName == filterTicketType));
+        }
+
+        if (filterMatched == true)
+        {
+            query = query.Where(o => o.MatchedUserId != null);
+        }
+        else if (filterMatched == false)
+        {
+            query = query.Where(o => o.MatchedUserId == null);
+        }
+
+        return query;
+    }
+
+    private static IQueryable<TicketOrder> ApplyOrderSorting(
+        IQueryable<TicketOrder> query,
+        string? sortBy,
+        bool sortDesc)
+    {
+        if (string.Equals(sortBy, "amount", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount);
+        }
+
+        if (string.Equals(sortBy, "name", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(o => o.BuyerName) : query.OrderBy(o => o.BuyerName);
+        }
+
+        if (string.Equals(sortBy, "tickets", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(o => o.Attendees.Count) : query.OrderBy(o => o.Attendees.Count);
+        }
+
+        return sortDesc ? query.OrderByDescending(o => o.PurchasedAt) : query.OrderBy(o => o.PurchasedAt);
+    }
+
+    private IQueryable<TicketAttendee> BuildAttendeesQuery(
+        string? search,
+        string? filterTicketType,
+        string? filterStatus,
+        bool? filterMatched,
+        string? filterOrderId)
+    {
+        var query = _dbContext.TicketAttendees
+            .Include(a => a.MatchedUser)
+            .Include(a => a.TicketOrder)
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(filterOrderId))
+        {
+            query = query.Where(a => a.TicketOrder.VendorOrderId == filterOrderId);
+        }
+
+        if (search.HasSearchTerm(1))
+        {
+            query = query.WhereAnyContainsInsensitive(
+                search,
+                a => a.AttendeeName,
+                a => a.AttendeeEmail);
+        }
+
+        if (!string.IsNullOrEmpty(filterTicketType))
+        {
+            query = query.Where(a => a.TicketTypeName == filterTicketType);
+        }
+
+        if (!string.IsNullOrEmpty(filterStatus) &&
+            Enum.TryParse<TicketAttendeeStatus>(filterStatus, true, out var status))
+        {
+            query = query.Where(a => a.Status == status);
+        }
+
+        if (filterMatched == true)
+        {
+            query = query.Where(a => a.MatchedUserId != null);
+        }
+        else if (filterMatched == false)
+        {
+            query = query.Where(a => a.MatchedUserId == null);
+        }
+
+        return query;
+    }
+
+    private static IQueryable<TicketAttendee> ApplyAttendeeSorting(
+        IQueryable<TicketAttendee> query,
+        string? sortBy,
+        bool sortDesc)
+    {
+        if (string.Equals(sortBy, "type", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(a => a.TicketTypeName) : query.OrderBy(a => a.TicketTypeName);
+        }
+
+        if (string.Equals(sortBy, "price", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(a => a.Price) : query.OrderBy(a => a.Price);
+        }
+
+        if (string.Equals(sortBy, "status", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(a => a.Status) : query.OrderBy(a => a.Status);
+        }
+
+        return sortDesc ? query.OrderByDescending(a => a.AttendeeName) : query.OrderBy(a => a.AttendeeName);
+    }
+
+    private async Task<HashSet<Guid>> GetMatchedTicketUserIdsAsync()
+    {
+        var matchedFromAttendees = await _dbContext.TicketAttendees
+            .Where(a => a.MatchedUserId != null)
+            .Select(a => a.MatchedUserId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        var matchedFromOrders = await _dbContext.TicketOrders
+            .Where(o => o.MatchedUserId != null)
+            .Select(o => o.MatchedUserId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        return matchedFromAttendees.Union(matchedFromOrders).ToHashSet();
+    }
+
+    private static List<User> FilterWhoHasntBoughtHumans(
+        IEnumerable<User> humans,
+        HashSet<Guid> matchedUserIds,
+        string? filterTicketStatus,
+        string? filterTeam,
+        string? filterTier,
+        string? search)
+    {
+        var filteredHumans = humans;
+
+        if (string.Equals(filterTicketStatus, "bought", StringComparison.OrdinalIgnoreCase))
+        {
+            filteredHumans = filteredHumans.Where(u => matchedUserIds.Contains(u.Id));
+        }
+        else if (string.Equals(filterTicketStatus, "not_bought", StringComparison.OrdinalIgnoreCase))
+        {
+            filteredHumans = filteredHumans.Where(u => !matchedUserIds.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrEmpty(filterTeam))
+        {
+            filteredHumans = filteredHumans.Where(u =>
+                u.TeamMemberships.Any(tm => string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        if (!string.IsNullOrEmpty(filterTier))
+        {
+            filteredHumans = filteredHumans.Where(u =>
+                string.Equals(u.Profile?.MembershipTier.ToString(), filterTier, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (search.HasSearchTerm(1))
+        {
+            filteredHumans = filteredHumans.Where(u =>
+                u.DisplayName.ContainsOrdinalIgnoreCase(search) ||
+                u.UserEmails.Any(e => e.Email.ContainsOrdinalIgnoreCase(search)));
+        }
+
+        return filteredHumans.ToList();
     }
 }

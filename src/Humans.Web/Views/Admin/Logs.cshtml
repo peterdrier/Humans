@@ -37,7 +37,7 @@
                             _ => ""
                         };
                         <tr class="@levelClass">
-                            <td class="text-nowrap">@evt.Timestamp.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td class="text-nowrap">@evt.Timestamp.UtcDateTime.ToAuditTimestamp()</td>
                             <td>@evt.Level</td>
                             <td>
                                 @evt.RenderMessage()
