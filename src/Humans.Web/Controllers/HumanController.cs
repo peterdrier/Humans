@@ -98,9 +98,9 @@ public class HumanController : HumansControllerBase
                         {
                             ShiftLabel = s.Shift.Rota.Name,
                             DepartmentName = s.Shift.Rota.Team?.Name ?? "",
-                            ShiftDateLabel = zoned.ToString("ddd MMM d HH:mm", null),
+                            ShiftDateLabel = zoned.ToDisplayShortDateTime(),
                             MarkedByName = s.ReviewedByUser?.DisplayName,
-                            MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToString("MMM d HH:mm", null)
+                            MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDisplayShortMonthDayTime()
                         };
                     }).ToList();
                 }

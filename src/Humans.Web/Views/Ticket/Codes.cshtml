@@ -120,7 +120,7 @@
                         <td>
                             @if (code.RedeemedAt.HasValue)
                             {
-                                @code.RedeemedAt.Value.InUtc().Date.ToString("dd MMM yyyy", null)
+                                @code.RedeemedAt.Value.ToDisplayDate()
                             }
                             else
                             {

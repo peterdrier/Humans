@@ -112,11 +112,11 @@
                                 <tr>
                                     <td>@grant.Campaign.Title</td>
                                     <td><code>@grant.Code.Code</code></td>
-                                    <td>@grant.AssignedAt.ToDateTimeUtc().ToString("yyyy-MM-dd")</td>
+                                    <td>@grant.AssignedAt.ToDisplayDate()</td>
                                     <td>
                                         @if (grant.RedeemedAt.HasValue)
                                         {
-                                            <span class="badge bg-success">@grant.RedeemedAt.Value.InUtc().Date.ToString("yyyy-MM-dd", null)</span>
+                                            <span class="badge bg-success">@grant.RedeemedAt.Value.ToDisplayDate()</span>
                                         }
                                         else
                                         {

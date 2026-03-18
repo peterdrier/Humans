@@ -691,7 +691,7 @@ public class ProfileController : HumansControllerBase
         var deletionDate = user.DeletionScheduledFor?.ToDateTimeUtc();
         SetSuccess(string.Format(CultureInfo.CurrentCulture,
             _localizer["Profile_DeletionRequested"].Value,
-            deletionDate?.ToString("MMMM d, yyyy", CultureInfo.CurrentCulture) ?? ""));
+            deletionDate.ToDisplayLongDate() ?? ""));
         return RedirectToAction(nameof(Privacy));
     }
 

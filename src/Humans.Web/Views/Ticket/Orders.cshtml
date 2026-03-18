@@ -63,7 +63,7 @@
                 {
                     <tr>
                         <td><small><code>@order.VendorOrderId</code></small></td>
-                        <td>@order.PurchasedAt.InUtc().Date.ToString("dd MMM yyyy", null)</td>
+                        <td>@order.PurchasedAt.ToDisplayDate()</td>
                         <td>@order.BuyerName</td>
                         <td><small>@order.BuyerEmail</small></td>
                         <td><a asp-action="Attendees" asp-route-filterOrderId="@order.VendorOrderId">@order.AttendeeCount</a></td>

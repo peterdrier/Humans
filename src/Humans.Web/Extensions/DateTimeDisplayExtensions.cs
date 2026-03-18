@@ -17,6 +17,12 @@ public static class DateTimeDisplayExtensions
     public static string? ToDisplayDate(this Instant? value) =>
         value?.ToDisplayDate();
 
+    public static string ToDisplayDate(this LocalDate value) =>
+        value.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
+
+    public static string? ToDisplayDate(this LocalDate? value) =>
+        value?.ToDisplayDate();
+
     public static string ToDisplayLongDate(this DateTime value) =>
         value.ToString("d MMMM yyyy", CultureInfo.CurrentCulture);
 
@@ -100,6 +106,18 @@ public static class DateTimeDisplayExtensions
 
     public static string ToDisplayTime(this Instant value, DateTimeZone timeZone) =>
         value.InZone(timeZone).ToString("HH:mm", null);
+
+    public static string ToDisplayShortDateTime(this ZonedDateTime value) =>
+        value.ToString("ddd MMM d HH:mm", null);
+
+    public static string? ToDisplayShortDateTime(this ZonedDateTime? value) =>
+        value?.ToDisplayShortDateTime();
+
+    public static string ToDisplayShortMonthDayTime(this ZonedDateTime value) =>
+        value.ToString("MMM d HH:mm", null);
+
+    public static string? ToDisplayShortMonthDayTime(this ZonedDateTime? value) =>
+        value?.ToDisplayShortMonthDayTime();
 
     public static string ToAuditTimestamp(this DateTime value) =>
         value.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);

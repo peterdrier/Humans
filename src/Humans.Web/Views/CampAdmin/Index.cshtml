@@ -172,7 +172,7 @@
                                 <strong>@year:</strong>
                                 @if (lockDate.HasValue)
                                 {
-                                    @lockDate.Value.ToString("d MMM yyyy", null)
+                                    @lockDate.Value.ToDisplayDate()
                                 }
                                 else
                                 {
