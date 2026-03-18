@@ -54,7 +54,7 @@
   <data name="Nav_Home" xml:space="preserve"><value>Inicio</value></data>
   <data name="Nav_MyProfile" xml:space="preserve"><value>Mi perfil</value></data>
   <data name="Nav_Teams" xml:space="preserve"><value>Equipos</value></data>
-  <data name="Nav_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Nav_Shifts" xml:space="preserve"><value>Volunteer</value></data>
   <data name="Nav_Roster" xml:space="preserve"><value>Roster</value></data>
   <data name="Nav_Consents" xml:space="preserve"><value>Acuerdos</value></data>
   <data name="Nav_Governance" xml:space="preserve"><value>Gobernanza</value></data>

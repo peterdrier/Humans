@@ -287,9 +287,17 @@ public class ShiftManagementService : IShiftManagementService
                 throw new InvalidOperationException($"Day offset {dayOffset} is outside the strike period ({es.EventEndOffset + 1} to {es.StrikeEndOffset})");
         }
 
+        // Skip days that already have shifts (additive mode)
+        var existingDayOffsets = await _dbContext.Shifts
+            .Where(s => s.RotaId == rotaId)
+            .Select(s => s.DayOffset)
+            .Distinct()
+            .ToListAsync();
+        var existingSet = existingDayOffsets.ToHashSet();
+
         var now = _clock.GetCurrentInstant();
 
-        foreach (var (dayOffset, staffing) in dailyStaffing.OrderBy(d => d.Key))
+        foreach (var (dayOffset, staffing) in dailyStaffing.Where(d => !existingSet.Contains(d.Key)).OrderBy(d => d.Key))
         {
             var shift = new Shift
             {
@@ -545,9 +553,10 @@ public class ShiftManagementService : IShiftManagementService
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
-        // Build period: [BuildStartOffset..-1] and Strike period: [EventEndOffset+1..StrikeEndOffset]
+        // All periods: Build [BuildStartOffset..-1], Event [0..EventEndOffset], Strike [EventEndOffset+1..StrikeEndOffset]
         var dayOffsets = new List<int>();
         for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
+        for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
         for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
 
         if (dayOffsets.Count == 0) return [];
@@ -569,7 +578,7 @@ public class ShiftManagementService : IShiftManagementService
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var period = dayOffset < 0 ? "Build" : "Strike";
+            var period = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
             var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
 
             var overlapping = shifts.Where(s =>

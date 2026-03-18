@@ -160,7 +160,7 @@ public interface IShiftManagementService
     // === Staffing & Summary ===
 
     /// <summary>
-    /// Gets per-day staffing data for build/strike periods.
+    /// Gets per-day staffing data for all periods (set-up, event, strike).
     /// </summary>
     Task<IReadOnlyList<DailyStaffingData>> GetStaffingDataAsync(
         Guid eventSettingsId, Guid? departmentId = null);
@@ -189,7 +189,7 @@ public record UrgentShift(
     string DepartmentName);
 
 /// <summary>
-/// Per-day staffing data for build/strike visualization.
+/// Per-day staffing data for set-up/event/strike visualization.
 /// </summary>
 public record DailyStaffingData(
     int DayOffset,
