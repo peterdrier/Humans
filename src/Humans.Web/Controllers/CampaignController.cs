@@ -13,7 +13,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Roles = RoleNames.Admin)]
 [Route("Admin/Campaigns")]
-public class CampaignController : Controller
+public class CampaignController : HumansControllerBase
 {
     private readonly ICampaignService _campaignService;
     private readonly ITicketVendorService _vendorService;
@@ -27,6 +27,7 @@ public class CampaignController : Controller
         HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<CampaignController> logger)
+        : base(userManager)
     {
         _campaignService = campaignService;
         _vendorService = vendorService;
@@ -69,11 +70,11 @@ public class CampaignController : Controller
             return View();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null) return Unauthorized();
 
         var campaign = await _campaignService.CreateAsync(title, description, emailSubject, emailBodyTemplate, replyToAddress, currentUser.Id);
-        TempData["SuccessMessage"] = "Campaign created.";
+        SetSuccess("Campaign created.");
         return RedirectToAction(nameof(Detail), new { id = campaign.Id });
     }
 
@@ -111,7 +112,7 @@ public class CampaignController : Controller
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Campaign {CampaignId} updated by {User}", id, User.Identity?.Name);
-        TempData["SuccessMessage"] = "Campaign updated.";
+        SetSuccess("Campaign updated.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -146,7 +147,7 @@ public class CampaignController : Controller
     {
         if (file == null || file.Length == 0)
         {
-            TempData["ErrorMessage"] = "Please select a CSV file.";
+            SetError("Please select a CSV file.");
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -160,12 +161,12 @@ public class CampaignController : Controller
 
         if (codes.Count == 0)
         {
-            TempData["ErrorMessage"] = "No codes found in the file.";
+            SetError("No codes found in the file.");
             return RedirectToAction(nameof(Detail), new { id });
         }
 
         await _campaignService.ImportCodesAsync(id, codes);
-        TempData["SuccessMessage"] = $"Imported {codes.Count} codes.";
+        SetSuccess($"Imported {codes.Count} codes.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -179,19 +180,19 @@ public class CampaignController : Controller
 
         if (campaign.Status != CampaignStatus.Draft)
         {
-            TempData["ErrorMessage"] = "Codes can only be generated for Draft campaigns.";
+            SetError("Codes can only be generated for Draft campaigns.");
             return RedirectToAction(nameof(Detail), new { id });
         }
 
         if (count <= 0)
         {
-            TempData["ErrorMessage"] = "Count must be greater than zero.";
+            SetError("Count must be greater than zero.");
             return RedirectToAction(nameof(Detail), new { id });
         }
 
         if (!Enum.TryParse<DiscountType>(discountType, out var parsedType))
         {
-            TempData["ErrorMessage"] = "Invalid discount type.";
+            SetError("Invalid discount type.");
             return RedirectToAction(nameof(Detail), new { id });
         }
 
@@ -199,7 +200,7 @@ public class CampaignController : Controller
         var codes = await _vendorService.GenerateDiscountCodesAsync(spec);
         await _campaignService.ImportGeneratedCodesAsync(id, codes);
 
-        TempData["SuccessMessage"] = $"Generated and imported {codes.Count} discount codes.";
+        SetSuccess($"Generated and imported {codes.Count} discount codes.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -208,7 +209,7 @@ public class CampaignController : Controller
     public async Task<IActionResult> Activate(Guid id)
     {
         await _campaignService.ActivateAsync(id);
-        TempData["SuccessMessage"] = "Campaign activated.";
+        SetSuccess("Campaign activated.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -217,7 +218,7 @@ public class CampaignController : Controller
     public async Task<IActionResult> Complete(Guid id)
     {
         await _campaignService.CompleteAsync(id);
-        TempData["SuccessMessage"] = "Campaign completed.";
+        SetSuccess("Campaign completed.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -246,7 +247,7 @@ public class CampaignController : Controller
     public async Task<IActionResult> SendWave(Guid id, Guid teamId)
     {
         var sentCount = await _campaignService.SendWaveAsync(id, teamId);
-        TempData["SuccessMessage"] = $"Wave sent to {sentCount} humans.";
+        SetSuccess($"Wave sent to {sentCount} humans.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -259,7 +260,7 @@ public class CampaignController : Controller
         if (grant == null) return NotFound();
 
         await _campaignService.ResendToGrantAsync(grantId);
-        TempData["SuccessMessage"] = "Resend queued.";
+        SetSuccess("Resend queued.");
         return RedirectToAction(nameof(Detail), new { id = grant.CampaignId });
     }
 
@@ -268,7 +269,7 @@ public class CampaignController : Controller
     public async Task<IActionResult> RetryAllFailed(Guid id)
     {
         await _campaignService.RetryAllFailedAsync(id);
-        TempData["SuccessMessage"] = "Retrying all failed sends.";
+        SetSuccess("Retrying all failed sends.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 }
