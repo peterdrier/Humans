@@ -5,9 +5,6 @@
 
 @{
     ViewData["Title"] = "Shift Dashboard";
-    var antiForgeryWriter = new System.IO.StringWriter();
-    Html.AntiForgeryToken().WriteTo(antiForgeryWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
-    var antiForgeryHtml = antiForgeryWriter.ToString();
     var searchUrl = Url.Action(nameof(ShiftDashboardController.SearchVolunteers), "ShiftDashboard");
     var voluntellUrl = Url.Action(nameof(ShiftDashboardController.Voluntell), "ShiftDashboard");
 }
@@ -150,7 +147,7 @@
 (function () {
     var searchUrl = '@Html.Raw(searchUrl)';
     var voluntellUrl = '@Html.Raw(voluntellUrl)';
-    var tokenHtml = '@Html.Raw(antiForgeryHtml?.Replace("'", "\\'", StringComparison.Ordinal))';
+    var tokenHtml = '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())';
 
     function escapeHtml(str) {
         if (!str) return '';

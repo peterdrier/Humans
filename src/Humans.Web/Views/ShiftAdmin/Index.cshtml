@@ -8,9 +8,6 @@
 }
 
 @{
-    var antiForgeryWriter = new System.IO.StringWriter();
-    Html.AntiForgeryToken().WriteTo(antiForgeryWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
-    var antiForgeryHtml = antiForgeryWriter.ToString();
 }
 
 <div class="container py-4">
@@ -659,7 +656,7 @@
 (function() {
     var debounceTimers = {};
     var slug = '@Model.Department.Slug';
-    var tokenHtml = '@Html.Raw(antiForgeryHtml?.Replace("'", "\\'", StringComparison.Ordinal))';
+    var tokenHtml = '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())';
 
     document.querySelectorAll('.dept-voluntell-search').forEach(function(input) {
         input.addEventListener('input', function() {
