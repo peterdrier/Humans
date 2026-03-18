@@ -8,7 +8,7 @@ Coordinators and admins managing shifts cannot currently see who has signed up f
 
 Signup names/avatars use existing per-page auth checks — no new authorization logic needed:
 
-- **Browse page (`/Shifts`):** Uses the existing `isPrivileged` variable in `ShiftsController` — true for Admin, NoInfoAdmin, VolunteerCoordinator, or any department coordinator (`GetCoordinatorDepartmentIdsAsync().Count > 0`).
+- **Browse page (`/Shifts`):** Uses the existing `isPrivileged` variable in `ShiftsController` — true for Admin, NoInfoAdmin, or any department coordinator (`GetCoordinatorDepartmentIdsAsync().Count > 0`).
 - **Admin page (`/Teams/{slug}/Shifts`):** Uses the existing `CanApproveAsync` helper in `ShiftAdminController` — true for Admin, NoInfoAdmin, VolunteerCoordinator, or coordinator of that specific team.
 
 Regular volunteers see only fill counts (existing behavior, unchanged).

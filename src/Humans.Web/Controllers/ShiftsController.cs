@@ -132,12 +132,9 @@ public class ShiftsController : Controller
         }
         else
         {
-            var allShifts = await _shiftMgmt.GetBrowseShiftsAsync(es.Id,
-                includeAdminOnly: isPrivileged, includeSignups: false);
-            allDepartments = allShifts
-                .Select(u => new DepartmentOption { TeamId = u.Shift!.Rota.TeamId, Name = u.DepartmentName ?? "Unknown" })
-                .DistinctBy(d => d.TeamId)
-                .OrderBy(d => d.Name, StringComparer.Ordinal)
+            var depts = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
+            allDepartments = depts
+                .Select(d => new DepartmentOption { TeamId = d.TeamId, Name = d.TeamName })
                 .ToList();
         }
 

@@ -488,11 +488,23 @@ public class ShiftManagementService : IShiftManagementService
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
         if (es == null) return [];
 
-        var query = _dbContext.Shifts
-            .Include(s => s.Rota).ThenInclude(r => r.Team)
-            .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups).ThenInclude(ss => ss.User)
-            .Where(s => s.Rota.EventSettingsId == eventSettingsId);
+        IQueryable<Shift> query;
+        if (includeSignups)
+        {
+            query = _dbContext.Shifts
+                .Include(s => s.Rota).ThenInclude(r => r.Team)
+                .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+                .Include(s => s.ShiftSignups).ThenInclude(ss => ss.User);
+        }
+        else
+        {
+            query = _dbContext.Shifts
+                .Include(s => s.Rota).ThenInclude(r => r.Team)
+                .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+                .Include(s => s.ShiftSignups);
+        }
+
+        query = query.Where(s => s.Rota.EventSettingsId == eventSettingsId);
 
         if (!includeAdminOnly)
             query = query.Where(s => !s.AdminOnly);
@@ -517,9 +529,9 @@ public class ShiftManagementService : IShiftManagementService
                 var signups = includeSignups
                     ? s.ShiftSignups
                         .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                        .Select(ss => (ss.UserId, ss.User.DisplayName, ss.Status,
-                            HasProfilePicture: ss.User.ProfilePictureUrl != null))
-                        .OrderBy(ss => ss.Status)
+                        .Select(ss => (ss.UserId, DisplayName: ss.User?.DisplayName ?? "", ss.Status,
+                            HasProfilePicture: ss.User?.ProfilePictureUrl != null))
+                        .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)
                         .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
                         .ToList()
                     : [];

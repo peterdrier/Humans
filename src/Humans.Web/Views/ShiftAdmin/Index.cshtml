@@ -235,7 +235,7 @@
                                         {
                                             var activeSignups = shift.ShiftSignups
                                                 .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                                                .OrderBy(ss => ss.Status).ThenBy(ss => ss.User.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                                .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1).ThenBy(ss => ss.User?.DisplayName, StringComparer.OrdinalIgnoreCase)
                                                 .ToList();
                                             <td class="small">
                                                 @if (rota.Period == RotaPeriod.Event)
@@ -245,7 +245,7 @@
                                                         var ss = activeSignups[i];
                                                         if (i > 0) { <text>, </text> }
                                                         <a asp-controller="Human" asp-action="View" asp-route-id="@ss.UserId"
-                                                           class="text-decoration-none @(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")">@ss.User.DisplayName</a>@if (ss.Status == SignupStatus.Pending)
+                                                           class="text-decoration-none @(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")">@ss.User?.DisplayName</a>@if (ss.Status == SignupStatus.Pending)
                                                         {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
                                                     }
                                                 }
@@ -255,11 +255,11 @@
                                                         @foreach (var ss in activeSignups)
                                                         {
                                                             <a asp-controller="Human" asp-action="View" asp-route-id="@ss.UserId"
-                                                               title="@ss.User.DisplayName@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                               title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
                                                                class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
                                                                style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")">
-                                                                <vc:user-avatar profile-picture-url="@(ss.User.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)"
-                                                                                display-name="@ss.User.DisplayName"
+                                                                <vc:user-avatar profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)"
+                                                                                display-name="@(ss.User?.DisplayName)"
                                                                                 size="26" />
                                                             </a>
                                                         }
