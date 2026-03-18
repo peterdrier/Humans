@@ -32,9 +32,9 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
                 ["Email:SmtpHost"] = "localhost",
                 ["Email:FromAddress"] = "test@example.com",
                 ["Email:BaseUrl"] = "https://localhost",
-                ["GitHub:Owner"] = "test-owner",
-                ["GitHub:Repository"] = "test-repo",
-                ["GitHub:AccessToken"] = "test-token",
+                ["GitHub:Owner"] = "",
+                ["GitHub:Repository"] = "",
+                ["GitHub:AccessToken"] = "",
                 ["GoogleMaps:ApiKey"] = "test-api-key",
             });
         });
@@ -47,6 +47,7 @@ public class HumansWebApplicationFactory : WebApplicationFactory<Program>, IAsyn
             if (emailDescriptor != null)
                 services.Remove(emailDescriptor);
             services.AddScoped(_ => Substitute.For<IEmailService>());
+
         });
     }
 
