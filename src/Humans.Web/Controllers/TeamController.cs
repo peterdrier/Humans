@@ -854,7 +854,7 @@ public class TeamController : Controller
     }
 
     [HttpGet("{id:guid}/Edit")]
-    [Authorize(Roles = "Board,Admin,TeamsAdmin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin},{RoleNames.TeamsAdmin}")]
     public async Task<IActionResult> EditTeam(Guid id, CancellationToken cancellationToken)
     {
         var team = await _teamService.GetTeamByIdAsync(id, cancellationToken);
@@ -882,7 +882,7 @@ public class TeamController : Controller
     }
 
     [HttpPost("{id:guid}/Edit")]
-    [Authorize(Roles = "Board,Admin,TeamsAdmin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin},{RoleNames.TeamsAdmin}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditTeam(Guid id, EditTeamViewModel model)
     {

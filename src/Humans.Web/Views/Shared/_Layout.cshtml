@@ -42,7 +42,7 @@
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            var isActiveMember = User.HasClaim("ActiveMember", "true") || User.IsInRole("Admin") || User.IsInRole("Board") || User.IsInRole("TeamsAdmin");
+                            var isActiveMember = User.HasClaim("ActiveMember", "true") || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Board) || User.IsInRole(Humans.Domain.Constants.RoleNames.TeamsAdmin);
                             if (isActiveMember)
                             {
                                 <li class="nav-item">
@@ -65,25 +65,25 @@
                                 </li>
                             }
                         }
-                        @if (User.IsInRole("ConsentCoordinator") || User.IsInRole("VolunteerCoordinator") || User.IsInRole("Admin") || User.IsInRole("Board"))
+                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.ConsentCoordinator) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Board))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
                             </li>
                         }
-                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Board) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
                             </li>
                         }
-                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Board) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
                             </li>
                         }
-                        @if (User.IsInRole("Admin"))
+                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>

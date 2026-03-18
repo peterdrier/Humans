@@ -527,7 +527,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpPost("{id:guid}/Admin/Roles/{roleId:guid}/End")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
