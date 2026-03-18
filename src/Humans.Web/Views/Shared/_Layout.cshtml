@@ -124,6 +124,7 @@
             <div class="d-flex gap-3">
                 <a asp-controller="Home" asp-action="About" class="text-muted small">About</a>
                 <a asp-controller="Home" asp-action="Privacy" class="text-muted small">@Localizer["Nav_Privacy"]</a>
+                <a href="#" class="text-muted small" data-bs-toggle="modal" data-bs-target="#feedbackModal">@Localizer["Feedback_Button"]</a>
             </div>
             @{
                 var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
@@ -162,5 +163,6 @@
             crossorigin="anonymous"></script>
     <script src="~/js/site.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    @await Component.InvokeAsync("FeedbackWidget")
 </body>
 </html>

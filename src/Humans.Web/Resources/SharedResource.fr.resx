@@ -1155,4 +1155,20 @@
 &lt;p&gt;Merci de nous aider à nous améliorer !&lt;/p&gt;
 &lt;p&gt;L'équipe Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
 
+  <!-- Feedback Widget -->
+  <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
+  <data name="Feedback_Title" xml:space="preserve"><value>Envoyer un Feedback</value></data>
+  <data name="Feedback_Category" xml:space="preserve"><value>Catégorie</value></data>
+  <data name="Feedback_Category_Bug" xml:space="preserve"><value>Rapport de bug</value></data>
+  <data name="Feedback_Category_FeatureRequest" xml:space="preserve"><value>Demande de fonctionnalité</value></data>
+  <data name="Feedback_Category_Question" xml:space="preserve"><value>Question</value></data>
+  <data name="Feedback_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Feedback_DescriptionPlaceholder" xml:space="preserve"><value>Dites-nous ce qui s'est passé ou ce que vous aimeriez voir...</value></data>
+  <data name="Feedback_Screenshot" xml:space="preserve"><value>Capture d'écran (facultatif)</value></data>
+  <data name="Feedback_ScreenshotHelp" xml:space="preserve"><value>JPEG, PNG ou WebP. Max 10 Mo.</value></data>
+  <data name="Feedback_Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Feedback_Submit" xml:space="preserve"><value>Envoyer</value></data>
+  <data name="Feedback_Submitted" xml:space="preserve"><value>Merci ! Votre feedback a été envoyé.</value></data>
+  <data name="Feedback_Error" xml:space="preserve"><value>Une erreur est survenue lors de l'envoi de votre feedback. Veuillez réessayer.</value></data>
+
 </root>
