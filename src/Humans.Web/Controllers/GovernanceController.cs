@@ -179,6 +179,6 @@ public class GovernanceController : HumansControllerBase
             PageSize = pageSize
         };
 
-        return View(viewModel);
+        return View("~/Views/Shared/Roles.cshtml", viewModel);
     }
 }

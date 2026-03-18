@@ -105,7 +105,7 @@ public class BoardController : HumansControllerBase
             PageSize = pageSize
         };
 
-        return View(viewModel);
+        return View("~/Views/Shared/AuditLog.cshtml", viewModel);
     }
 
     [HttpPost("AuditLog/CheckDriveActivity")]

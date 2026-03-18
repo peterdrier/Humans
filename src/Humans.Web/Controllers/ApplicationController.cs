@@ -229,7 +229,7 @@ public class ApplicationController : HumansControllerBase
             PageSize = pageSize
         };
 
-        return View(viewModel);
+        return View("~/Views/Shared/Applications.cshtml", viewModel);
     }
 
     [HttpGet("Application/Admin/{id:guid}")]
