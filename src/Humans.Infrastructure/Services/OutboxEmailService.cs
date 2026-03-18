@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Infrastructure.Helpers;
 
 namespace Humans.Infrastructure.Services;
 
@@ -349,14 +350,5 @@ public class OutboxEmailService : IEmailService
             """;
     }
 
-    private static string HtmlToPlainText(string html)
-    {
-        var text = html;
-        text = System.Text.RegularExpressions.Regex.Replace(text, "<br\\s*/?>", "\n", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = System.Text.RegularExpressions.Regex.Replace(text, "</p>", "\n\n", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = System.Text.RegularExpressions.Regex.Replace(text, "</li>", "\n", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = System.Text.RegularExpressions.Regex.Replace(text, "<[^>]+>", "", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = System.Net.WebUtility.HtmlDecode(text);
-        return text.Trim();
-    }
+    private static string HtmlToPlainText(string html) => HtmlPlainTextConverter.Convert(html);
 }

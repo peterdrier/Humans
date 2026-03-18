@@ -1,10 +1,10 @@
 using System.Net;
-using System.Text.RegularExpressions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -477,14 +477,5 @@ public class CampaignService : ICampaignService
             """;
     }
 
-    private static string HtmlToPlainText(string html)
-    {
-        var text = html;
-        text = Regex.Replace(text, "<br\\s*/?>", "\n", RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = Regex.Replace(text, "</p>", "\n\n", RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = Regex.Replace(text, "</li>", "\n", RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = Regex.Replace(text, "<[^>]+>", "", RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = WebUtility.HtmlDecode(text);
-        return text.Trim();
-    }
+    private static string HtmlToPlainText(string html) => HtmlPlainTextConverter.Convert(html);
 }
