@@ -1,7 +1,7 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-03-17T17:00
+Last synced: 2026-03-18T01:45
 
 ---
 
@@ -28,6 +28,9 @@ Camp/barrio pages should link lead names to their profiles. Auto-create a "Camp 
 
 #### #127: Add incomplete signup lifecycle — reminders and auto-deletion
 Send reminders to humans who signed up but never completed profile/consent, auto-delete after configurable period. Label: enhancement.
+
+#### #137: Public team pages with editable markdown content, CTAs, and member roster
+Public-facing team pages with editable markdown, calls-to-action, and visible member roster. Label: none.
 
 #### #138: Add Catalan (ca) translation
 New `SharedResource.ca.resx` with all ~805 keys, register `"ca"` culture in `Program.cs`, language selector, and Catalan email templates.

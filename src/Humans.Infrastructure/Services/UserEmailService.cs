@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application.DTOs;
+using Humans.Domain.Helpers;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -86,7 +87,7 @@ public class UserEmailService : IUserEmailService
         string email,
         CancellationToken cancellationToken = default)
     {
-        email = email.Trim();
+        email = EmailNormalization.Canonicalize(email.Trim());
 
         // Validate email format
         if (!new EmailAddressAttribute().IsValid(email))
@@ -293,6 +294,7 @@ public class UserEmailService : IUserEmailService
         string email,
         CancellationToken cancellationToken = default)
     {
+        email = EmailNormalization.Canonicalize(email);
         var now = _clock.GetCurrentInstant();
 
         var userEmail = new UserEmail
