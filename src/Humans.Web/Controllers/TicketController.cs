@@ -1,12 +1,14 @@
 using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -17,7 +19,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin},{RoleNames.Board}")]
 [Route("Tickets")]
-public class TicketController : Controller
+public class TicketController : HumansControllerBase
 {
     private readonly HumansDbContext _dbContext;
     private readonly ITicketVendorService _vendorService;
@@ -30,7 +32,9 @@ public class TicketController : Controller
         ITicketVendorService vendorService,
         IOptions<TicketVendorSettings> settings,
         IMemoryCache cache,
+        UserManager<User> userManager,
         ILogger<TicketController> logger)
+        : base(userManager)
     {
         _dbContext = dbContext;
         _vendorService = vendorService;
@@ -552,7 +556,7 @@ public class TicketController : Controller
     public IActionResult Sync()
     {
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
-        TempData["SuccessMessage"] = "Ticket sync triggered. Data will update shortly.";
+        SetSuccess("Ticket sync triggered. Data will update shortly.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -569,7 +573,7 @@ public class TicketController : Controller
         }
 
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
-        TempData["SuccessMessage"] = "Full re-sync triggered. All orders will be re-fetched.";
+        SetSuccess("Full re-sync triggered. All orders will be re-fetched.");
         return RedirectToAction(nameof(Index));
     }
 
