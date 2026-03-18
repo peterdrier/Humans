@@ -675,7 +675,7 @@ public class ProfileController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
     {
-            var user = await GetCurrentUserAsync();
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -683,8 +683,8 @@ public class ProfileController : HumansControllerBase
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-            SetError(_localizer["Profile_DeletionAlreadyPending"].Value);
-                return RedirectToAction(nameof(Privacy));
+                SetError(_localizer["Profile_DeletionAlreadyPending"].Value);
+            return RedirectToAction(nameof(Privacy));
         }
 
         // Reload user to get updated deletion date
@@ -709,7 +709,7 @@ public class ProfileController : HumansControllerBase
         {
             if (string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal))
                 SetError(_localizer["Profile_NoDeletionPending"].Value);
-                return RedirectToAction(nameof(Privacy));
+            return RedirectToAction(nameof(Privacy));
         }
 
         SetSuccess(_localizer["Profile_DeletionCancelled"].Value);

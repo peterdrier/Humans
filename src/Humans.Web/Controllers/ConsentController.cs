@@ -9,7 +9,7 @@ using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-    [Authorize]
+[Authorize]
 public class ConsentController : HumansControllerBase
 {
     private readonly IConsentService _consentService;
