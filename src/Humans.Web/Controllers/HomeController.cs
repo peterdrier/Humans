@@ -8,9 +8,8 @@ using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-public class HomeController : Controller
+public class HomeController : HumansControllerBase
 {
-    private readonly UserManager<User> _userManager;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IProfileService _profileService;
     private readonly IApplicationDecisionService _applicationDecisionService;
@@ -30,8 +29,8 @@ public class HomeController : Controller
         IConfiguration configuration,
         IClock clock,
         ILogger<HomeController> logger)
+        : base(userManager)
     {
-        _userManager = userManager;
         _membershipCalculator = membershipCalculator;
         _profileService = profileService;
         _applicationDecisionService = applicationDecisionService;
@@ -50,7 +49,7 @@ public class HomeController : Controller
         }
 
         // Show dashboard for logged in users
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
         {
             return View();

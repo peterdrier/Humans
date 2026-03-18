@@ -4,12 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = "Board,Admin")]
+[Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
 [Route("Admin")]
 public class AdminLegalDocumentsController : HumansControllerBase
 {

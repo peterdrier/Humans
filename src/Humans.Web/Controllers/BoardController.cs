@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -11,7 +12,7 @@ using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = "Board,Admin")]
+[Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
 [Route("Board")]
 public class BoardController : HumansControllerBase
 {

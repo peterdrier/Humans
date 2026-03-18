@@ -5,18 +5,16 @@ using Humans.Domain.Entities;
 
 namespace Humans.Web.Controllers;
 
-public class LanguageController : Controller
+public class LanguageController : HumansControllerBase
 {
     private static readonly HashSet<string> SupportedCultures = new(StringComparer.Ordinal)
     {
         "en", "es", "de", "it", "fr"
     };
 
-    private readonly UserManager<User> _userManager;
-
     public LanguageController(UserManager<User> userManager)
+        : base(userManager)
     {
-        _userManager = userManager;
     }
 
     [HttpPost]
@@ -37,11 +35,11 @@ public class LanguageController : Controller
         // If authenticated, persist to user profile
         if (User.Identity?.IsAuthenticated == true)
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = await GetCurrentUserAsync();
             if (user != null)
             {
                 user.PreferredLanguage = culture;
-                await _userManager.UpdateAsync(user);
+                await UpdateCurrentUserAsync(user);
             }
         }
 

@@ -44,4 +44,9 @@ public abstract class HumansControllerBase : Controller
     {
         TempData["InfoMessage"] = message;
     }
+
+    protected Task<IdentityResult> UpdateCurrentUserAsync(User user)
+    {
+        return _userManager.UpdateAsync(user);
+    }
 }

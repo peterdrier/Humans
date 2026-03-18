@@ -201,7 +201,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(View), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpGet("Admin")]
     public async Task<IActionResult> Humans(string? search, string? filter, string sort = "name", string dir = "asc", int page = 1)
     {
@@ -257,7 +257,7 @@ public class HumanController : HumansControllerBase
         return View(viewModel);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpGet("{id:guid}/Admin")]
     public async Task<IActionResult> HumanDetail(Guid id)
     {
@@ -334,7 +334,7 @@ public class HumanController : HumansControllerBase
         return View(viewModel);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpGet("{id:guid}/Outbox")]
     public async Task<IActionResult> Outbox(Guid id)
     {
@@ -347,7 +347,7 @@ public class HumanController : HumansControllerBase
         return View("~/Views/Profile/Outbox.cshtml", messages);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpPost("{id:guid}/Admin/Suspend")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
@@ -364,7 +364,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpPost("{id:guid}/Admin/Unsuspend")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
@@ -381,7 +381,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpPost("{id:guid}/Admin/Approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveVolunteer(Guid id)
@@ -398,7 +398,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpPost("{id:guid}/Admin/Reject")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
@@ -421,7 +421,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpGet("{id:guid}/Admin/GoogleSyncAudit")]
     public async Task<IActionResult> HumanGoogleSyncAudit(Guid id)
     {
@@ -458,7 +458,7 @@ public class HumanController : HumansControllerBase
         return View("GoogleSyncAudit", viewModel);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpGet("{id:guid}/Admin/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
@@ -480,7 +480,7 @@ public class HumanController : HumansControllerBase
         return View(viewModel);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpPost("{id:guid}/Admin/Roles/Add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)

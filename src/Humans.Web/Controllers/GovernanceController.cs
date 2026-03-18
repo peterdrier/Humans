@@ -7,6 +7,8 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using Octokit;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Web.Extensions;
@@ -16,9 +18,8 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("[controller]")]
-public class GovernanceController : Controller
+public class GovernanceController : HumansControllerBase
 {
-    private readonly UserManager<Domain.Entities.User> _userManager;
     private readonly ILogger<GovernanceController> _logger;
     private readonly IMemoryCache _cache;
     private readonly GitHubSettings _gitHubSettings;
@@ -42,8 +43,8 @@ public class GovernanceController : Controller
         IApplicationDecisionService applicationDecisionService,
         IRoleAssignmentService roleAssignmentService,
         IClock clock)
+        : base(userManager)
     {
-        _userManager = userManager;
         _logger = logger;
         _cache = cache;
         _gitHubSettings = gitHubSettings.Value;
@@ -55,7 +56,7 @@ public class GovernanceController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -140,7 +141,7 @@ public class GovernanceController : Controller
         return content;
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
     {
