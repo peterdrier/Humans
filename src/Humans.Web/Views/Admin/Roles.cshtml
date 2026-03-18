@@ -65,7 +65,7 @@
                     {
                         <tr class="@(ra.IsActive ? "" : "table-secondary")">
                             <td>
-                                <a asp-action="HumanDetail" asp-route-id="@ra.UserId">@ra.UserDisplayName</a>
+                                <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@ra.UserId">@ra.UserDisplayName</a>
                                 <br />
                                 <small class="text-muted">@ra.UserEmail</small>
                             </td>
@@ -94,7 +94,7 @@
                             <td class="text-end">
                                 @if (ra.IsActive)
                                 {
-                                    <form asp-action="EndRole" asp-route-id="@ra.Id" method="post" class="d-inline"
+                                    <form asp-controller="Human" asp-action="EndRole" asp-route-id="@ra.UserId" asp-route-roleId="@ra.Id" method="post" class="d-inline"
                                           data-confirm="@Localizer["AdminHuman_EndRoleConfirm"].Value">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminHuman_End"]</button>
