@@ -220,22 +220,10 @@ public class TeamAdminController : HumansTeamControllerBase
     [HttpGet("Members/Search")]
     public async Task<IActionResult> SearchUsers(string slug, string q)
     {
-        var user = await GetCurrentUserAsync();
-        if (user == null)
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return Unauthorized();
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         if (!q.HasSearchTerm())
@@ -784,22 +772,10 @@ public class TeamAdminController : HumansTeamControllerBase
     [HttpGet("Roles/SearchMembers")]
     public async Task<IActionResult> SearchMembersForRole(string slug, string q)
     {
-        var user = await GetCurrentUserAsync();
-        if (user == null)
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError != null)
         {
-            return Unauthorized();
-        }
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
-        {
-            return NotFound();
-        }
-
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
-        {
-            return Forbid();
+            return teamError;
         }
 
         if (!q.HasSearchTerm())
@@ -816,8 +792,8 @@ public class TeamAdminController : HumansTeamControllerBase
         // Search team members first by name match
         var matchingTeamMembers = teamMembers
             .Where(m => m.LeftAt == null &&
-                        (m.User.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                         (m.User.Email != null && m.User.Email.Contains(q, StringComparison.OrdinalIgnoreCase))))
+                        (m.User.DisplayName.ContainsOrdinalIgnoreCase(q) ||
+                         m.User.Email.ContainsOrdinalIgnoreCase(q)))
             .Take(10)
             .Select(m => new RoleAssignmentSearchResult(m.UserId, m.User.DisplayName, m.User.Email ?? "", true))
             .ToList();
