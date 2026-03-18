@@ -154,18 +154,19 @@ This project uses **Font Awesome 6** (loaded via CDN in `_Layout.cshtml`). Boots
 
 ## Critical: Never Edit EF Core Migration Files
 
-Migration files (`Migrations/*.cs`) are **generated** by `dotnet ef migrations add`. Never manually edit, rename, or rewrite them. This includes adding `migrationBuilder.Sql()` calls for data cleanup, pre-migration fixups, or any other hand-written code.
+Migration files (`Migrations/*.cs`) are **generated** by `dotnet ef migrations add`. Two categories:
 
-**What goes wrong:** Hand-edited migrations break the Designer/snapshot consistency, cause integration test failures, and create migrations that can't be cleanly removed or regenerated. Even "harmless" SQL additions corrupt the migration because the Designer file no longer matches the actual Up/Down content.
+**Schema migrations (EF generated content in Up/Down):** Never edit. No exceptions. Don't add SQL, don't tweak columns, don't insert data fixups. Commit exactly what EF generates.
 
-**Rule — zero tolerance, no exceptions:**
-1. Run `dotnet ef migrations add <Name>` — commit exactly what it generates
-2. Never add `migrationBuilder.Sql()` calls to generated migrations
-3. Never edit the `Up`/`Down` methods of an existing migration
+**Data-only migrations (EF generates empty Up/Down):** Adding `migrationBuilder.Sql()` is the proper EF API for data migrations when there are no schema changes. However, this requires **explicit user permission** every time — it has been done once in 500+ commits. Never do this autonomously.
+
+**What goes wrong with unauthorized edits:** Hand-edited schema migrations break Designer/snapshot consistency, cause integration test failures, and create migrations that can't be cleanly removed or regenerated.
+
+**Rules:**
+1. Schema migrations: commit exactly what EF generates, never touch
+2. Data-only migrations: only with explicit user permission, never autonomously
+3. Never edit the `Up`/`Down` methods of an existing committed migration
 4. Never rename migration files (the timestamp IS the migration ID)
-5. Never manually write SQL in migration files for any reason
-
-**Data cleanup before schema changes:** If data needs to be cleaned up before a column drop (e.g., nulling out references, deleting orphans), do it as a separate operational step — a SQL script run manually before deploying, or an application startup task. Never embed it in the migration.
 
 **If a migration fails because objects already exist**, the database is out of sync with migration history. Fix the root cause (usually a missing `__EFMigrationsHistory` entry or a previously deleted migration), don't patch the migration.
 
