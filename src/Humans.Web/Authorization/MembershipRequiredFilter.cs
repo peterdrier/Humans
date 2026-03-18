@@ -63,7 +63,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         // Check ActiveMember claim (set by RoleAssignmentClaimsTransformation)
         var isActiveMember = user.HasClaim(c =>
             string.Equals(c.Type, RoleAssignmentClaimsTransformation.ActiveMemberClaimType, StringComparison.Ordinal) &&
-            string.Equals(c.Value, "true", StringComparison.Ordinal));
+            string.Equals(c.Value, RoleAssignmentClaimsTransformation.ActiveClaimValue, StringComparison.Ordinal));
 
         if (isActiveMember)
         {

@@ -42,7 +42,7 @@
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            var isActiveMember = User.HasClaim("ActiveMember", "true") || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Board) || User.IsInRole(Humans.Domain.Constants.RoleNames.TeamsAdmin);
+                            var isActiveMember = User.HasClaim(Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType, Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Board) || User.IsInRole(Humans.Domain.Constants.RoleNames.TeamsAdmin);
                             if (isActiveMember)
                             {
                                 <li class="nav-item">
