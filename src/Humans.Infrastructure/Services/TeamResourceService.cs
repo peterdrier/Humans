@@ -54,11 +54,7 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
     {
-        return await _dbContext.GoogleResources
-            .Where(r => r.TeamId == teamId && r.IsActive)
-            .OrderBy(r => r.ProvisionedAt)
-            .AsNoTracking()
-            .ToListAsync(ct);
+        return await TeamResourcePersistence.GetActiveTeamResourcesAsync(_dbContext, teamId, ct);
     }
 
     /// <inheritdoc />
@@ -379,16 +375,11 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default)
     {
-        var resource = await _dbContext.GoogleResources
-            .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
-
+        var resource = await TeamResourcePersistence.DeactivateResourceAsync(_dbContext, resourceId, ct);
         if (resource == null)
         {
             return;
         }
-
-        resource.IsActive = false;
-        await _dbContext.SaveChangesAsync(ct);
 
         _logger.LogInformation("Unlinked resource {ResourceId} ({ResourceName})", resourceId, resource.Name);
     }
@@ -664,9 +655,6 @@ public partial class TeamResourceService : ITeamResourceService
 
     public async Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
-        return await _dbContext.GoogleResources
-            .AsNoTracking()
-            .Include(r => r.Team)
-            .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
+        return await TeamResourcePersistence.GetResourceByIdAsync(_dbContext, resourceId, ct);
     }
 }
