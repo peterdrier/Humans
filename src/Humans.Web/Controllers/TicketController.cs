@@ -1,4 +1,5 @@
 using Hangfire;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -133,7 +134,7 @@ public class TicketController : HumansControllerBase
 
                 dailySalesPoints.Add(new DailySalesPoint
                 {
-                    Date = date.ToString("yyyy-MM-dd", null),
+                    Date = date.ToIsoDateString(),
                     TicketsSold = count,
                     RollingAverage = Math.Round(rollingAvg, 1)
                 });
@@ -499,7 +500,7 @@ public class TicketController : HumansControllerBase
         foreach (var o in orderList)
         {
             csv.AppendCsvRow(
-                o.PurchasedAt.InUtc().Date.ToString("yyyy-MM-dd", null),
+                o.PurchasedAt.InUtc().Date.ToIsoDateString(),
                 o.BuyerName,
                 o.BuyerEmail,
                 o.Attendees.Count,

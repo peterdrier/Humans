@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
+using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -197,7 +198,7 @@ public class ProfileController : HumansControllerBase
             EditableVolunteerHistory = volunteerHistory.Select(vh => new VolunteerHistoryEntryEditViewModel
             {
                 Id = vh.Id,
-                DateString = vh.Date.ToString("yyyy-MM-dd", null),
+                DateString = vh.Date.ToIsoDateString(),
                 EventName = vh.EventName,
                 Description = vh.Description
             }).ToList()
@@ -843,7 +844,7 @@ public class ProfileController : HumansControllerBase
 
         var json = System.Text.Json.JsonSerializer.Serialize(exportData, ExportJsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var fileName = $"nobodies-profiles-export-{DateTime.UtcNow:yyyy-MM-dd}.json";
+        var fileName = $"nobodies-profiles-export-{DateTime.UtcNow.ToIsoDateString()}.json";
 
         return File(bytes, "application/json", fileName);
     }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -408,14 +409,14 @@ public class ProfileService : IProfileService
 
         return new
         {
-            ExportedAt = _clock.GetCurrentInstant().ToString(null, CultureInfo.InvariantCulture),
+            ExportedAt = _clock.GetCurrentInstant().ToInvariantInstantString(),
             Account = user != null ? new
             {
                 user.Id,
                 user.Email,
                 user.DisplayName,
-                CreatedAt = user.CreatedAt.ToString(null, CultureInfo.InvariantCulture),
-                LastLoginAt = user.LastLoginAt?.ToString(null, CultureInfo.InvariantCulture)
+                CreatedAt = user.CreatedAt.ToInvariantInstantString(),
+                LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
             } : null,
             UserEmails = userEmails.Select(e => new
             {
@@ -442,8 +443,8 @@ public class ProfileService : IProfileService
                 profile.EmergencyContactPhone,
                 profile.EmergencyContactRelationship,
                 profile.HasCustomProfilePicture,
-                CreatedAt = profile.CreatedAt.ToString(null, CultureInfo.InvariantCulture),
-                UpdatedAt = profile.UpdatedAt.ToString(null, CultureInfo.InvariantCulture)
+                CreatedAt = profile.CreatedAt.ToInvariantInstantString(),
+                UpdatedAt = profile.UpdatedAt.ToInvariantInstantString()
             } : null,
             ContactFields = contactFields.Select(cf => new
             {
@@ -461,15 +462,15 @@ public class ProfileService : IProfileService
                 a.AdditionalInfo,
                 a.SignificantContribution,
                 a.RoleUnderstanding,
-                SubmittedAt = a.SubmittedAt.ToString(null, CultureInfo.InvariantCulture),
-                ResolvedAt = a.ResolvedAt?.ToString(null, CultureInfo.InvariantCulture)
+                SubmittedAt = a.SubmittedAt.ToInvariantInstantString(),
+                ResolvedAt = a.ResolvedAt.ToInvariantInstantString()
             }),
             Consents = consents.Select(c => new
             {
                 DocumentName = c.DocumentVersion.LegalDocument.Name,
                 DocumentVersion = c.DocumentVersion.VersionNumber,
                 c.ExplicitConsent,
-                ConsentedAt = c.ConsentedAt.ToString(null, CultureInfo.InvariantCulture),
+                ConsentedAt = c.ConsentedAt.ToInvariantInstantString(),
                 c.IpAddress,
                 c.UserAgent
             }),
@@ -477,14 +478,14 @@ public class ProfileService : IProfileService
             {
                 TeamName = tm.Team.Name,
                 tm.Role,
-                JoinedAt = tm.JoinedAt.ToString(null, CultureInfo.InvariantCulture),
-                LeftAt = tm.LeftAt?.ToString(null, CultureInfo.InvariantCulture)
+                JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
+                LeftAt = tm.LeftAt.ToInvariantInstantString()
             }),
             RoleAssignments = roleAssignments.Select(ra => new
             {
                 ra.RoleName,
-                ValidFrom = ra.ValidFrom.ToString(null, CultureInfo.InvariantCulture),
-                ValidTo = ra.ValidTo?.ToString(null, CultureInfo.InvariantCulture),
+                ValidFrom = ra.ValidFrom.ToInvariantInstantString(),
+                ValidTo = ra.ValidTo.ToInvariantInstantString(),
                 ra.CreatedByUserId
             })
         };

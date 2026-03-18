@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -65,7 +66,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
         // Check activity from the last 24 hours
         var lookbackTime = _clock.GetCurrentInstant().Minus(Duration.FromHours(24));
-        var filterTime = lookbackTime.ToString(null, System.Globalization.CultureInfo.InvariantCulture);
+        var filterTime = lookbackTime.ToInvariantInstantString();
 
         foreach (var resource in resources)
         {
