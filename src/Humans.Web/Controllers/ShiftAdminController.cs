@@ -536,7 +536,7 @@ public class ShiftAdminController : Controller
 
     private async Task<bool> CanManageAsync(Guid userId, Guid teamId)
     {
-        return User.IsInRole(RoleNames.Admin) ||
+        return RoleChecks.IsAdmin(User) ||
                await _shiftMgmt.CanManageShiftsAsync(userId, teamId);
     }
 

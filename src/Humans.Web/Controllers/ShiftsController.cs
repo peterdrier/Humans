@@ -358,7 +358,7 @@ public class ShiftsController : HumansControllerBase
     [HttpGet("Settings")]
     public async Task<IActionResult> Settings()
     {
-        if (!User.IsInRole(RoleNames.Admin))
+        if (!RoleChecks.IsAdmin(User))
             return Forbid();
 
         var es = await _shiftMgmt.GetActiveAsync();
@@ -393,7 +393,7 @@ public class ShiftsController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Settings(EventSettingsViewModel model)
     {
-        if (!User.IsInRole(RoleNames.Admin))
+        if (!RoleChecks.IsAdmin(User))
             return Forbid();
 
         if (!ModelState.IsValid)

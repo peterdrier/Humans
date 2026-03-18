@@ -209,7 +209,7 @@
     </div>
 </div>
 
-@if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+@if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
 {
     <div class="card mb-4 border-danger">
         <div class="card-header bg-danger text-white">

@@ -112,7 +112,7 @@
     </div>
 
     <div class="col-md-4">
-        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Board))
+        @if (Humans.Web.Authorization.RoleChecks.IsBoard(User))
         {
             <div class="card mb-4">
                 <div class="card-header">@Localizer["BoardVoting_CastVote"]</div>

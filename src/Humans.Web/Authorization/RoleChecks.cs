@@ -33,14 +33,24 @@ public static class RoleChecks
         return user.IsInRole(RoleNames.Admin);
     }
 
+    public static bool IsBoard(ClaimsPrincipal user)
+    {
+        return user.IsInRole(RoleNames.Board);
+    }
+
     public static bool IsAdminOrBoard(ClaimsPrincipal user)
     {
-        return IsAdmin(user) || user.IsInRole(RoleNames.Board);
+        return IsAdmin(user) || IsBoard(user);
+    }
+
+    public static bool IsTeamsAdmin(ClaimsPrincipal user)
+    {
+        return user.IsInRole(RoleNames.TeamsAdmin);
     }
 
     public static bool IsTeamsAdminBoardOrAdmin(ClaimsPrincipal user)
     {
-        return IsAdminOrBoard(user) || user.IsInRole(RoleNames.TeamsAdmin);
+        return IsAdminOrBoard(user) || IsTeamsAdmin(user);
     }
 
     public static bool IsCampAdmin(ClaimsPrincipal user)
@@ -87,7 +97,7 @@ public static class RoleChecks
             return true;
         }
 
-        if (user.IsInRole(RoleNames.Board))
+        if (IsBoard(user))
         {
             return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
