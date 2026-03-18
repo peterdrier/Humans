@@ -66,7 +66,7 @@
                                     <span class="text-muted">@Localizer["TeamAdmin_NoMessage"]</span>
                                 }
                             </td>
-                            <td>@request.RequestedAt.ToString("MMM d, yyyy HH:mm")</td>
+                            <td>@request.RequestedAt.ToDisplayCompactDateTime()</td>
                             <td>
                                 <div class="d-flex gap-1">
                                     <form asp-action="ApproveRequest" asp-route-slug="@Model.TeamSlug" asp-route-requestId="@request.Id" method="post" class="d-inline">
@@ -169,7 +169,7 @@
                             <td>
                                 @await Html.PartialAsync("_RoleBadge", member.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)
                             </td>
-                            <td>@member.JoinedAt.ToString("MMM d, yyyy")</td>
+                            <td>@member.JoinedAt.ToDisplayCompactDate()</td>
                             @if (Model.CanManageRoles)
                             {
                                 <td>

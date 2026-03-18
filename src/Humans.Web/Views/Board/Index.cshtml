@@ -190,7 +190,7 @@
                                     <span class="badge bg-secondary me-2">@activity.Type</span>
                                     @activity.Description
                                 </div>
-                                <small class="text-muted text-nowrap ms-3">@activity.Timestamp.ToString("g")</small>
+                                <small class="text-muted text-nowrap ms-3">@activity.Timestamp.ToDisplayGeneralDateTime()</small>
                             </li>
                         }
                     </ul>

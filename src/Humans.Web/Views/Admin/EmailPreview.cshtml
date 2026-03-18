@@ -2,15 +2,6 @@
 @{
     ViewData["Title"] = "Email Preview";
 
-    var languageNames = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["en"] = "English",
-        ["es"] = "Castellano",
-        ["de"] = "Deutsch",
-        ["fr"] = "Fran\u00e7ais",
-        ["it"] = "Italiano"
-    };
-
     var orderedLanguages = Model.Previews
         .OrderByDisplayLanguage()
         .ToList();

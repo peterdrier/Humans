@@ -91,7 +91,7 @@ else
                                 }
                                 <span class="ms-1">@entry.ActorName</span>
                             </td>
-                            <td class="text-nowrap">@entry.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td class="text-nowrap">@entry.OccurredAt.ToAuditTimestamp()</td>
                         </tr>
                     }
                 </tbody>

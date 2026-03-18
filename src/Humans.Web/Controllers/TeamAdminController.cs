@@ -240,7 +240,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (!q.HasSearchTerm())
         {
-            return Json(Array.Empty<object>());
+            return Json(Array.Empty<ApprovedUserSearchResult>());
         }
 
         var results = await _profileService.SearchApprovedUsersAsync(q);
@@ -254,7 +254,7 @@ public class TeamAdminController : HumansTeamControllerBase
         var filtered = results
             .Where(r => !existingMemberIds.Contains(r.UserId))
             .Take(10)
-            .Select(r => new { r.UserId, r.DisplayName, r.Email })
+            .Select(r => r.ToApprovedUserSearchResult())
             .ToList();
 
         return Json(filtered);
@@ -804,7 +804,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (!q.HasSearchTerm())
         {
-            return Json(Array.Empty<object>());
+            return Json(Array.Empty<RoleAssignmentSearchResult>());
         }
 
         var teamMembers = await _teamService.GetTeamMembersAsync(team.Id);
@@ -819,7 +819,7 @@ public class TeamAdminController : HumansTeamControllerBase
                         (m.User.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
                          (m.User.Email != null && m.User.Email.Contains(q, StringComparison.OrdinalIgnoreCase))))
             .Take(10)
-            .Select(m => new { Id = m.UserId, m.User.DisplayName, Email = m.User.Email ?? "", OnTeam = true })
+            .Select(m => new RoleAssignmentSearchResult(m.UserId, m.User.DisplayName, m.User.Email ?? "", true))
             .ToList();
 
         // Also search all approved users for non-members
@@ -827,7 +827,7 @@ public class TeamAdminController : HumansTeamControllerBase
         var nonMembers = allResults
             .Where(r => !teamMemberUserIds.Contains(r.UserId))
             .Take(10 - matchingTeamMembers.Count)
-            .Select(r => new { Id = r.UserId, r.DisplayName, r.Email, OnTeam = false })
+            .Select(r => new RoleAssignmentSearchResult(r.UserId, r.DisplayName, r.Email, false))
             .ToList();
 
         var combined = matchingTeamMembers.Concat(nonMembers).ToList();

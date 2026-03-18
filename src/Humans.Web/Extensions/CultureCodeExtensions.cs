@@ -60,4 +60,14 @@ public static class CultureCodeExtensions
                 .ThenBy(kv => kv.Key.ToDisplayLanguageName(), StringComparer.Ordinal)
             : source.OrderBy(kv => kv.Key.ToDisplayLanguageName(), StringComparer.Ordinal);
     }
+
+    public static string GetDefaultDocumentLanguage<T>(this IReadOnlyDictionary<string, T> documents)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+
+        var userLanguage = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        return documents.ContainsKey(userLanguage)
+            ? userLanguage
+            : CultureCatalog.CanonicalLegalCultureCode;
+    }
 }

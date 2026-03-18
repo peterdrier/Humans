@@ -50,31 +50,18 @@
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-5">@Localizer["Governance_Submitted"]</dt>
-                    <dd class="col-7">@Model.SubmittedAt.ToString("d MMM yyyy")</dd>
+                    <dd class="col-7">@Model.SubmittedAt.ToDisplayDate()</dd>
 
                     @if (!string.IsNullOrEmpty(Model.Language))
                     {
                         <dt class="col-5">@Localizer["AdminAppDetail_Language"]</dt>
-                        <dd class="col-7">
-                            @{
-                                var languageNames = new Dictionary<string, string>
-                                {
-                                    ["es"] = "Castellano",
-                                    ["en"] = "English",
-                                    ["de"] = "Deutsch",
-                                    ["fr"] = "Français",
-                                    ["it"] = "Italiano"
-                                };
-                                var langDisplay = Model.Language.ToDisplayLanguageName();
-                            }
-                            @langDisplay
-                        </dd>
+                        <dd class="col-7">@Model.Language.ToDisplayLanguageName()</dd>
                     }
 
                     @if (Model.ReviewStartedAt.HasValue)
                     {
                         <dt class="col-5">@Localizer["ApplicationDetail_ReviewStarted"]</dt>
-                        <dd class="col-7">@Model.ReviewStartedAt.Value.ToString("d MMM yyyy")</dd>
+                        <dd class="col-7">@Model.ReviewStartedAt.ToDisplayDate()</dd>
                     }
 
                     @if (!string.IsNullOrEmpty(Model.ReviewerName))

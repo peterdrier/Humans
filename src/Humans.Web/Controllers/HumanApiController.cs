@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Web.Extensions;
+using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,14 +22,11 @@ public class HumanApiController : ControllerBase
     public async Task<IActionResult> Search([FromQuery] string? q)
     {
         if (!q.HasSearchTerm())
-            return Ok(Array.Empty<object>());
+            return Ok(Array.Empty<HumanLookupSearchResult>());
 
         var results = await _profileService.SearchHumansAsync(q);
-        return Ok(results.Take(10).Select(r => new
-        {
-            r.UserId,
-            r.DisplayName,
-            r.BurnerName
-        }));
+        return Ok(results
+            .Take(10)
+            .Select(r => r.ToHumanLookupSearchResult()));
     }
 }

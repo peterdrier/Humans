@@ -406,25 +406,9 @@ public class TeamController : Controller
 
         var results = await _profileService.SearchHumansAsync(q);
 
-        viewModel.Results = results.Select(r =>
-        {
-            string? pictureUrl = r.HasCustomPicture
-                ? Url.Action(nameof(ProfileController.Picture), "Profile", new { id = r.ProfileId, v = r.UpdatedAtTicks })
-                : r.ProfilePictureUrl;
-
-            return new HumanSearchResultViewModel
-            {
-                UserId = r.UserId,
-                DisplayName = r.DisplayName,
-                BurnerName = r.BurnerName,
-                City = r.City,
-                Bio = r.Bio,
-                ContributionInterests = r.ContributionInterests,
-                EffectiveProfilePictureUrl = pictureUrl,
-                MatchField = r.MatchField,
-                MatchSnippet = r.MatchSnippet
-            };
-        }).ToList();
+        viewModel.Results = results
+            .Select(r => r.ToHumanSearchViewModel(Url))
+            .ToList();
 
         return View(viewModel);
     }

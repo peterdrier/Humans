@@ -2,16 +2,6 @@
 @{
     var requestCulture = Context.Features.Get<IRequestCultureFeature>();
     var currentCulture = requestCulture?.RequestCulture.UICulture.TwoLetterISOLanguageName ?? CultureCatalog.DefaultCultureCode;
-
-    var languages = new[]
-    {
-        ("de", "Deutsch"),
-        ("en", "English"),
-        ("es", "Español"),
-        ("fr", "Français"),
-        ("it", "Italiano")
-    };
-
     var currentLanguageName = currentCulture.ToDisplayLanguageName();
 }
 

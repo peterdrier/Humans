@@ -1,13 +1,4 @@
 @model Humans.Web.Models.CampDetailViewModel
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content)) return string.Empty;
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
 @{
     ViewData["Title"] = Model.Name;
 }
@@ -99,7 +90,7 @@
                     <i class="fa-solid fa-pen-fancy me-1"></i> About
                 </div>
                 <div class="card-body">
-                    @Html.Raw(ConvertMarkdownToHtml(season.BlurbLong))
+                    @Html.SanitizedMarkdown(season.BlurbLong)
                 </div>
             </div>
 

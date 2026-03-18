@@ -4,11 +4,11 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -464,49 +464,15 @@ public class ShiftAdminController : Controller
             var es = shift.Rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
             if (es == null) return NotFound();
 
-            var shiftStart = shift.GetAbsoluteStart(es);
-            var shiftEnd = shift.GetAbsoluteEnd(es);
-
-            var users = await _userManager.Users
-                .Where(u => EF.Functions.ILike(u.DisplayName, "%" + query + "%"))
-                .Take(10)
-                .ToListAsync();
-
-            var canViewMedical = ShiftRoleChecks.CanViewMedical(User);
-
-            // Load pool data for this shift's day
-            var poolVolunteers = await _availabilityService.GetAvailableForDayAsync(es.Id, shift.DayOffset);
-            var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
-
-            var results = new List<VolunteerSearchResult>();
-            foreach (var user in users)
-            {
-                var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: canViewMedical);
-                var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
-                var confirmed = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
-
-                var hasOverlap = confirmed.Any(s =>
-                {
-                    var sStart = s.Shift.GetAbsoluteStart(es);
-                    var sEnd = s.Shift.GetAbsoluteEnd(es);
-                    return shiftStart < sEnd && shiftEnd > sStart;
-                });
-
-                results.Add(new VolunteerSearchResult
-                {
-                    UserId = user.Id,
-                    DisplayName = user.DisplayName,
-                    Skills = profile?.Skills ?? [],
-                    Quirks = profile?.Quirks ?? [],
-                    Languages = profile?.Languages ?? [],
-                    DietaryPreference = profile?.DietaryPreference,
-                    BookedShiftCount = confirmed.Count,
-                    HasOverlap = hasOverlap,
-                    IsInPool = poolUserIds.Contains(user.Id),
-                    MedicalConditions = profile?.MedicalConditions
-                });
-            }
-
+            var results = await ShiftVolunteerSearchBuilder.BuildAsync(
+                shift,
+                query,
+                es,
+                ShiftRoleChecks.CanViewMedical(User),
+                _userManager,
+                _profileService,
+                _signupService,
+                _availabilityService);
             return Json(results);
         }
         catch (Exception ex)

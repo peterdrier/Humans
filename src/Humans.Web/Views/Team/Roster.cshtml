@@ -1,18 +1,5 @@
 @model Humans.Web.Models.RosterSummaryViewModel
 
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
-
 @{
     ViewData["Title"] = "Team Roster";
 }
@@ -123,7 +110,7 @@ else
                     <tr class="collapse" id="@collapseId">
                         <td colspan="5">
                             <div class="role-description small text-muted">
-                                @Html.Raw(ConvertMarkdownToHtml(slot.RoleDescription!))
+                                @Html.SanitizedMarkdown(slot.RoleDescription)
                             </div>
                         </td>
                     </tr>
