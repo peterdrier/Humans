@@ -128,7 +128,7 @@ public class StubTeamResourceService : ITeamResourceService
         }
 
         return Task.FromResult(new LinkResourceResult(false,
-            ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...)."));
+            ErrorMessage: TeamResourceValidationMessages.InvalidDriveUrl));
     }
 
     /// <inheritdoc />
@@ -139,7 +139,7 @@ public class StubTeamResourceService : ITeamResourceService
         if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains("@", StringComparison.Ordinal))
         {
             return Task.FromResult(new LinkResourceResult(false,
-                ErrorMessage: "Please enter a valid group email address."));
+                ErrorMessage: TeamResourceValidationMessages.InvalidGroupEmail));
         }
 
         var now = _clock.GetCurrentInstant();
