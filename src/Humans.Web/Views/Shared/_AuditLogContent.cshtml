@@ -108,20 +108,17 @@ else
     </div>
 }
 
-@{
-    var totalPages = (int)Math.Ceiling(Model.TotalCount / (double)Model.PageSize);
-}
-@if (totalPages > 1)
+@if (Model.TotalPages > 1)
 {
     <nav class="mt-3">
         <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= totalPages && i <= 10; i++)
+            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
             {
                 <li class="page-item @(i == Model.PageNumber ? "active" : "")">
                     <a asp-action="AuditLog" asp-route-filter="@Model.ActionFilter" asp-route-page="@i" class="page-link">@i</a>
                 </li>
             }
-            @if (totalPages > 10)
+            @if (Model.TotalPages > 10)
             {
                 <li class="page-item disabled"><span class="page-link">...</span></li>
             }

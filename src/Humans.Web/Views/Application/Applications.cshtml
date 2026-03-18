@@ -86,12 +86,11 @@
     </div>
 </div>
 
-@if (Model.TotalCount > Model.PageSize)
+@if (Model.TotalPages > 1)
 {
-    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize);
     <nav class="mt-4">
         <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= totalPages && i <= 10; i++)
+            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
             {
                 <li class="page-item @(i == Model.PageNumber ? "active" : "")">
                     <a class="page-link" asp-action="Applications" asp-route-page="@i" asp-route-status="@Model.StatusFilter" asp-route-tier="@Model.TierFilter">@i</a>

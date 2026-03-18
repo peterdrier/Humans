@@ -156,14 +156,15 @@ public class TeamJoinRequestViewModel
     public string? ReviewNotes { get; set; }
 }
 
-public class PendingRequestsViewModel
+public class PendingRequestsViewModel : PagedListViewModel
 {
+    public PendingRequestsViewModel() : base(20)
+    {
+    }
+
     public List<TeamJoinRequestViewModel> Requests { get; set; } = [];
     public Guid? TeamIdFilter { get; set; }
     public string? TeamNameFilter { get; set; }
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
 }
 
 public class CreateTeamViewModel
@@ -246,7 +247,12 @@ public class CallToActionViewModel
 }
 
 public class TeamMembersViewModel
+    : PagedListViewModel
 {
+    public TeamMembersViewModel() : base(20)
+    {
+    }
+
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;
@@ -254,9 +260,6 @@ public class TeamMembersViewModel
     public List<TeamMemberViewModel> Members { get; set; } = [];
     public List<TeamJoinRequestViewModel> PendingRequests { get; set; } = [];
     public bool CanManageRoles { get; set; }
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
 }
 
 public class BirthdayCalendarViewModel
@@ -457,12 +460,13 @@ public class HumanSearchResultViewModel
     public string? MatchSnippet { get; set; }
 }
 
-public class AdminTeamListViewModel
+public class AdminTeamListViewModel : PagedListViewModel
 {
+    public AdminTeamListViewModel() : base(20)
+    {
+    }
+
     public List<AdminTeamViewModel> Teams { get; set; } = [];
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
 }
 
 public class AdminTeamViewModel
