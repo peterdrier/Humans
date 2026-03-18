@@ -18,9 +18,8 @@ namespace Humans.Web.Controllers;
 /// </summary>
 [Authorize(Roles = $"{RoleNames.ConsentCoordinator},{RoleNames.VolunteerCoordinator},{RoleNames.Board},{RoleNames.Admin}")]
 [Route("[controller]")]
-public class OnboardingReviewController : Controller
+public class OnboardingReviewController : HumansControllerBase
 {
-    private readonly UserManager<User> _userManager;
     private readonly IOnboardingService _onboardingService;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly ILogger<OnboardingReviewController> _logger;
@@ -32,8 +31,8 @@ public class OnboardingReviewController : Controller
         IApplicationDecisionService applicationDecisionService,
         ILogger<OnboardingReviewController> logger,
         IStringLocalizer<SharedResource> localizer)
+        : base(userManager)
     {
-        _userManager = userManager;
         _onboardingService = onboardingService;
         _applicationDecisionService = applicationDecisionService;
         _logger = logger;
@@ -91,7 +90,7 @@ public class OnboardingReviewController : Controller
     [Authorize(Roles = $"{RoleNames.ConsentCoordinator},{RoleNames.Board},{RoleNames.Admin}")]
     public async Task<IActionResult> Clear(Guid userId, string? notes)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -100,16 +99,16 @@ public class OnboardingReviewController : Controller
 
         if (!result.Success)
         {
-            TempData["ErrorMessage"] = result.ErrorKey switch
+            SetError(result.ErrorKey switch
             {
                 "AlreadyRejected" => _localizer["OnboardingReview_AlreadyRejected"].Value,
                 "ConsentsRequired" => _localizer["OnboardingReview_ConsentsRequired"].Value,
                 _ => _localizer["OnboardingReview_Error"].Value
-            };
+            });
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["SuccessMessage"] = _localizer["OnboardingReview_Cleared"].Value;
+        SetSuccess(_localizer["OnboardingReview_Cleared"].Value);
         return RedirectToAction(nameof(Index));
     }
 
@@ -118,7 +117,7 @@ public class OnboardingReviewController : Controller
     [Authorize(Roles = $"{RoleNames.ConsentCoordinator},{RoleNames.Board},{RoleNames.Admin}")]
     public async Task<IActionResult> Flag(Guid userId, string? notes)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -127,11 +126,11 @@ public class OnboardingReviewController : Controller
 
         if (!result.Success)
         {
-            TempData["ErrorMessage"] = _localizer["OnboardingReview_Error"].Value;
+            SetError(_localizer["OnboardingReview_Error"].Value);
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["SuccessMessage"] = _localizer["OnboardingReview_Flagged"].Value;
+        SetSuccess(_localizer["OnboardingReview_Flagged"].Value);
         return RedirectToAction(nameof(Index));
     }
 
@@ -140,7 +139,7 @@ public class OnboardingReviewController : Controller
     [Authorize(Roles = $"{RoleNames.ConsentCoordinator},{RoleNames.Board},{RoleNames.Admin}")]
     public async Task<IActionResult> Reject(Guid userId, string? reason)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -150,11 +149,11 @@ public class OnboardingReviewController : Controller
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = _localizer["OnboardingReview_AlreadyRejected"].Value;
+                SetError(_localizer["OnboardingReview_AlreadyRejected"].Value);
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["SuccessMessage"] = _localizer["OnboardingReview_Rejected"].Value;
+        SetSuccess(_localizer["OnboardingReview_Rejected"].Value);
         return RedirectToAction(nameof(Index));
     }
 
@@ -209,7 +208,7 @@ public class OnboardingReviewController : Controller
         if (application == null)
             return NotFound();
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -258,7 +257,7 @@ public class OnboardingReviewController : Controller
     [Authorize(Roles = RoleNames.Board)]
     public async Task<IActionResult> Vote(Guid applicationId, VoteChoice vote, string? note)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -267,16 +266,16 @@ public class OnboardingReviewController : Controller
 
         if (!result.Success)
         {
-            TempData["ErrorMessage"] = result.ErrorKey switch
+            SetError(result.ErrorKey switch
             {
                 "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
                 "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
                 _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
-            };
+            });
             return RedirectToAction(nameof(BoardVoting));
         }
 
-        TempData["SuccessMessage"] = _localizer["BoardVoting_VoteSaved"].Value;
+        SetSuccess(_localizer["BoardVoting_VoteSaved"].Value);
         return RedirectToAction(nameof(BoardVotingDetail), new { applicationId });
     }
 
@@ -285,7 +284,7 @@ public class OnboardingReviewController : Controller
     [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
     public async Task<IActionResult> Finalize(BoardVotingFinalizeModel model)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -301,7 +300,7 @@ public class OnboardingReviewController : Controller
 
         if (meetingDate == null)
         {
-            TempData["ErrorMessage"] = _localizer["BoardVoting_MeetingDateRequired"].Value;
+            SetError(_localizer["BoardVoting_MeetingDateRequired"].Value);
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
@@ -309,7 +308,7 @@ public class OnboardingReviewController : Controller
         var hasVotes = await _onboardingService.HasBoardVotesAsync(model.ApplicationId);
         if (!hasVotes)
         {
-            TempData["ErrorMessage"] = _localizer["BoardVoting_NoVotes"].Value;
+            SetError(_localizer["BoardVoting_NoVotes"].Value);
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
@@ -331,17 +330,17 @@ public class OnboardingReviewController : Controller
         {
             _logger.LogWarning("Finalize failed for application {ApplicationId}: {ErrorKey}",
                 model.ApplicationId, result.ErrorKey);
-            TempData["ErrorMessage"] = result.ErrorKey switch
+            SetError(result.ErrorKey switch
             {
                 "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
                 "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
                 "ConcurrencyConflict" => _localizer["BoardVoting_ConcurrencyConflict"].Value,
                 _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
-            };
+            });
             return RedirectToAction(nameof(BoardVoting));
         }
 
-        TempData["SuccessMessage"] = _localizer["BoardVoting_Finalized"].Value;
+        SetSuccess(_localizer["BoardVoting_Finalized"].Value);
         return RedirectToAction(nameof(BoardVoting));
     }
 
