@@ -183,7 +183,7 @@ public class TicketController : HumansControllerBase
         string? filterPaymentStatus = null, string? filterTicketType = null,
         bool? filterMatched = null)
     {
-        pageSize = Math.Clamp(pageSize, 1, 250);
+        pageSize = pageSize.ClampPageSize();
 
         var query = _dbContext.TicketOrders
             .Include(o => o.Attendees)
@@ -245,12 +245,6 @@ public class TicketController : HumansControllerBase
             })
             .ToListAsync();
 
-        var ticketTypes = await _dbContext.TicketAttendees
-            .Select(a => a.TicketTypeName)
-            .Distinct()
-            .OrderBy(t => t)
-            .ToListAsync();
-
         var model = new TicketOrdersViewModel
         {
             Orders = orderRows,
@@ -263,7 +257,7 @@ public class TicketController : HumansControllerBase
             FilterPaymentStatus = filterPaymentStatus,
             FilterTicketType = filterTicketType,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = ticketTypes,
+            AvailableTicketTypes = await GetAvailableTicketTypesAsync(),
         };
 
         return View(model);
@@ -276,7 +270,7 @@ public class TicketController : HumansControllerBase
         string? filterTicketType = null, string? filterStatus = null,
         bool? filterMatched = null, string? filterOrderId = null)
     {
-        pageSize = Math.Clamp(pageSize, 1, 250);
+        pageSize = pageSize.ClampPageSize();
 
         var query = _dbContext.TicketAttendees
             .Include(a => a.MatchedUser)
@@ -333,12 +327,6 @@ public class TicketController : HumansControllerBase
             })
             .ToListAsync();
 
-        var ticketTypes = await _dbContext.TicketAttendees
-            .Select(a => a.TicketTypeName)
-            .Distinct()
-            .OrderBy(t => t)
-            .ToListAsync();
-
         var model = new TicketAttendeesViewModel
         {
             Attendees = attendeeRows,
@@ -351,7 +339,7 @@ public class TicketController : HumansControllerBase
             FilterTicketType = filterTicketType,
             FilterStatus = filterStatus,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = ticketTypes,
+            AvailableTicketTypes = await GetAvailableTicketTypesAsync(),
         };
 
         return View(model);
@@ -448,7 +436,7 @@ public class TicketController : HumansControllerBase
         string? filterTicketStatus = null,
         int page = 1, int pageSize = 25)
     {
-        pageSize = Math.Clamp(pageSize, 1, 250);
+        pageSize = pageSize.ClampPageSize();
 
         var matchedFromAttendees = await _dbContext.TicketAttendees
             .Where(a => a.MatchedUserId != null)
@@ -586,10 +574,10 @@ public class TicketController : HumansControllerBase
             .ToListAsync();
 
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Name,Email,Ticket Type,Price,Status,Order ID");
+        csv.AppendCsvRow("Name", "Email", "Ticket Type", "Price", "Status", "Order ID");
         foreach (var a in attendeeList)
         {
-            csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"{CsvEscape(a.AttendeeName)},{CsvEscape(a.AttendeeEmail)},{CsvEscape(a.TicketTypeName)},{a.Price},{a.Status},{CsvEscape(a.TicketOrder.VendorOrderId)}");
+            csv.AppendCsvRow(a.AttendeeName, a.AttendeeEmail, a.TicketTypeName, a.Price, a.Status, a.TicketOrder.VendorOrderId);
         }
 
         return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
@@ -606,16 +594,30 @@ public class TicketController : HumansControllerBase
             .ToListAsync();
 
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Date,Purchaser,Email,Tickets,Amount,Currency,Code,Status");
+        csv.AppendCsvRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency", "Code", "Status");
         foreach (var o in orderList)
         {
-            csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"{CsvEscape(o.PurchasedAt.InUtc().Date.ToString("yyyy-MM-dd", null))},{CsvEscape(o.BuyerName)},{CsvEscape(o.BuyerEmail)},{o.Attendees.Count},{o.TotalAmount},{o.Currency},{CsvEscape(o.DiscountCode)},{o.PaymentStatus}");
+            csv.AppendCsvRow(
+                o.PurchasedAt.InUtc().Date.ToString("yyyy-MM-dd", null),
+                o.BuyerName,
+                o.BuyerEmail,
+                o.Attendees.Count,
+                o.TotalAmount,
+                o.Currency,
+                o.DiscountCode,
+                o.PaymentStatus);
         }
 
         return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
             "text/csv", "orders-export.csv");
     }
 
-    private static string CsvEscape(string? s) =>
-        $"\"{(s ?? "").Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+    private Task<List<string>> GetAvailableTicketTypesAsync()
+    {
+        return _dbContext.TicketAttendees
+            .Select(a => a.TicketTypeName)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToListAsync();
+    }
 }
