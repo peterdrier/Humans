@@ -277,7 +277,7 @@ public class SmtpEmailService : IEmailService
 
             var bodyBuilder = new BodyBuilder
             {
-                HtmlBody = WrapInTemplate(htmlBody),
+                HtmlBody = BrandedEmailTemplate.Wrap(htmlBody, _settings.BaseUrl, _environmentName),
                 TextBody = HtmlPlainTextConverter.Convert(htmlBody)
             };
             message.Body = bodyBuilder.ToMessageBody();
@@ -305,44 +305,5 @@ public class SmtpEmailService : IEmailService
             _logger.LogError(ex, "Failed to send email to {To}: {Subject}", toAddress, subject);
             throw;
         }
-    }
-
-    private string WrapInTemplate(string content)
-    {
-        var isProduction = string.Equals(_environmentName, "Production", StringComparison.OrdinalIgnoreCase);
-        var envLabel = string.Equals(_environmentName, "Staging", StringComparison.OrdinalIgnoreCase)
-            ? "QA"
-            : _environmentName.ToUpperInvariant();
-        var envBanner = isProduction
-            ? ""
-            : $"""
-                <div style="background:#a0522d;color:#fff;text-align:center;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:4px 0;">
-                    {System.Net.WebUtility.HtmlEncode(envLabel)} &bull; {System.Net.WebUtility.HtmlEncode(envLabel)} &bull; {System.Net.WebUtility.HtmlEncode(envLabel)}
-                </div>
-                """;
-
-        return """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    body { font-family: 'Source Sans 3', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #3d2b1f; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #faf6f0; }
-                    h2 { color: #3d2b1f; font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; font-weight: 600; }
-                    a { color: #8b6914; }
-                    ul { padding-left: 20px; }
-                    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #c9a96e; font-size: 12px; color: #6b5a4e; }
-                </style>
-            </head>
-            <body>
-            """ + envBanner + content + $"""
-                <div class="footer">
-                    <p>Humans &mdash; Nobodies Collective<br/>
-                    <a href="{_settings.BaseUrl}">{_settings.BaseUrl}</a></p>
-                </div>
-            </body>
-            </html>
-            """;
     }
 }
