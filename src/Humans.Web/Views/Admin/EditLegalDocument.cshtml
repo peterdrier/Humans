@@ -49,7 +49,7 @@
                     <dt>Total Versions</dt>
                     <dd>@Model.VersionCount</dd>
                     <dt>Last Synced</dt>
-                    <dd>@(Model.LastSyncedAt?.ToString("d MMM yyyy HH:mm") ?? "Never")</dd>
+                        <dd>@(Model.LastSyncedAt?.ToDisplayDateTime() ?? "Never")</dd>
                 </dl>
             </div>
         </div>
@@ -102,7 +102,7 @@
                                     <span class="badge bg-light text-dark me-1">@lang</span>
                                 }
                             </td>
-                            <td>@version.EffectiveFrom.ToString("d MMM yyyy HH:mm")</td>
+                                    <td>@version.EffectiveFrom.ToDisplayDateTime()</td>
                             <td colspan="2">
                                 <form asp-controller="AdminLegalDocuments" asp-action="UpdateVersionSummary" asp-route-id="@Model.Id" asp-route-versionId="@version.Id" method="post" class="d-flex gap-2">
                                     @Html.AntiForgeryToken()

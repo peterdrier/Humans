@@ -54,7 +54,7 @@
                             <span class="badge bg-secondary">@Localizer["OnboardingReview_ConsentsNotStarted"]</span>
                         }
                         <br />
-                        <small class="text-muted">@item.ProfileCreatedAt.ToString("d MMM yyyy")</small>
+                                    <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
                     </div>
                 </div>
             </a>
@@ -92,7 +92,7 @@
                         }
                         <span class="badge bg-danger">@Localizer["OnboardingReview_FlaggedBadge"]</span>
                         <br />
-                        <small class="text-muted">@item.ProfileCreatedAt.ToString("d MMM yyyy")</small>
+                                    <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
                     </div>
                 </div>
             </a>

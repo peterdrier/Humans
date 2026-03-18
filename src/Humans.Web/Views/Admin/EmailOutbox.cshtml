@@ -119,11 +119,11 @@
                                     <small class="text-muted ms-1">×@msg.RetryCount</small>
                                 }
                             </td>
-                            <td class="text-nowrap small">@msg.CreatedAt.ToString("yyyy-MM-dd HH:mm", null)</td>
+                            <td class="text-nowrap small">@msg.CreatedAt.ToAuditMinuteTimestamp()</td>
                             <td class="text-nowrap small">
                                 @if (msg.SentAt.HasValue)
                                 {
-                                    @msg.SentAt.Value.ToString("yyyy-MM-dd HH:mm", null)
+                                    @msg.SentAt.Value.ToAuditMinuteTimestamp()
                                 }
                                 else
                                 {

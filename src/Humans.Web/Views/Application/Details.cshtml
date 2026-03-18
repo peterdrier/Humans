@@ -24,18 +24,18 @@
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-sm-3">@Localizer["Governance_Submitted"]</dt>
-                    <dd class="col-sm-9">@Model.SubmittedAt.ToString("d MMMM yyyy 'at' HH:mm")</dd>
+                    <dd class="col-sm-9">@Model.SubmittedAt.ToDisplayLongDateTime()</dd>
 
                     @if (Model.ReviewStartedAt.HasValue)
                     {
                         <dt class="col-sm-3">@Localizer["ApplicationDetail_ReviewStarted"]</dt>
-                        <dd class="col-sm-9">@Model.ReviewStartedAt.Value.ToString("d MMMM yyyy")</dd>
+                        <dd class="col-sm-9">@Model.ReviewStartedAt.Value.ToDisplayLongDate()</dd>
                     }
 
                     @if (Model.ResolvedAt.HasValue)
                     {
                         <dt class="col-sm-3">@Localizer["Governance_Resolved"]</dt>
-                        <dd class="col-sm-9">@Model.ResolvedAt.Value.ToString("d MMMM yyyy")</dd>
+                        <dd class="col-sm-9">@Model.ResolvedAt.Value.ToDisplayLongDate()</dd>
                     }
 
                     @if (!string.IsNullOrEmpty(Model.ReviewerName))

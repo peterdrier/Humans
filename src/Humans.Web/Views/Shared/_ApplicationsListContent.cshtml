@@ -63,7 +63,7 @@
                                 <small class="text-muted">@app.UserEmail</small>
                             </td>
                             <td><span class="badge bg-info">@app.MembershipTier</span></td>
-                            <td>@app.SubmittedAt.ToString("d MMM yyyy")</td>
+                            <td>@app.SubmittedAt.ToDisplayDate()</td>
                             <td>
                                 <span class="badge @app.StatusBadgeClass">@app.Status</span>
                             </td>

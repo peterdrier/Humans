@@ -112,11 +112,11 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>@member.CreatedAt.ToString("d MMM yyyy")</td>
+                            <td>@member.CreatedAt.ToDisplayDate()</td>
                             <td>
                                 @if (member.LastLoginAt.HasValue)
                                 {
-                                    @member.LastLoginAt.Value.ToString("d MMM yyyy")
+                                @member.LastLoginAt.Value.ToDisplayDate()
                                 }
                                 else
                                 {

@@ -35,12 +35,12 @@
                 <div class="card-body">
                     <dl class="row mb-0">
                         <dt class="col-sm-3">@Localizer["Governance_Submitted"]</dt>
-                        <dd class="col-sm-9">@app.SubmittedAt.ToString("d MMMM yyyy")</dd>
+                                    <dd class="col-sm-9">@app.SubmittedAt.ToDisplayLongDate()</dd>
 
                         @if (app.ResolvedAt.HasValue)
                         {
                             <dt class="col-sm-3">@Localizer["Governance_Resolved"]</dt>
-                            <dd class="col-sm-9">@app.ResolvedAt.Value.ToString("d MMMM yyyy")</dd>
+                                        <dd class="col-sm-9">@app.ResolvedAt.Value.ToDisplayLongDate()</dd>
                         }
                     </dl>
 
