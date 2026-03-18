@@ -403,8 +403,7 @@ public class CampaignService : ICampaignService
             .Replace("{{Name}}", name, StringComparison.Ordinal);
 
         // Wrap in email template
-        var wrappedHtml = BrandedEmailTemplate.Wrap(renderedBody, _settings.BaseUrl, _environmentName);
-        var plainText = HtmlPlainTextConverter.Convert(renderedBody);
+        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(renderedBody, _settings.BaseUrl, _environmentName);
 
         return new EmailOutboxMessage
         {

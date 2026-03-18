@@ -275,10 +275,12 @@ public class SmtpEmailService : IEmailService
                 message.ReplyTo.Add(MailboxAddress.Parse(replyTo));
             }
 
+            var (wrappedHtml, plainText) = EmailBodyComposer.Compose(htmlBody, _settings.BaseUrl, _environmentName);
+
             var bodyBuilder = new BodyBuilder
             {
-                HtmlBody = BrandedEmailTemplate.Wrap(htmlBody, _settings.BaseUrl, _environmentName),
-                TextBody = HtmlPlainTextConverter.Convert(htmlBody)
+                HtmlBody = wrappedHtml,
+                TextBody = plainText
             };
             message.Body = bodyBuilder.ToMessageBody();
 

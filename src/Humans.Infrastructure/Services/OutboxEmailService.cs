@@ -266,8 +266,7 @@ public class OutboxEmailService : IEmailService
         bool triggerImmediate = false,
         string? replyTo = null)
     {
-        var wrappedHtml = BrandedEmailTemplate.Wrap(content.HtmlBody, _settings.BaseUrl, _environmentName);
-        var plainText = HtmlPlainTextConverter.Convert(content.HtmlBody);
+        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(content.HtmlBody, _settings.BaseUrl, _environmentName);
 
         // Look up user by email to set UserId for profile email history
         var userId = await _dbContext.UserEmails
