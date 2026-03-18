@@ -256,38 +256,28 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default)
     {
-        // Try folder URL first, then file URL
-        var folderId = ParseDriveFolderId(url);
-        if (folderId != null)
-        {
-            return await LinkDriveFolderAsync(teamId, url, ct);
-        }
-
-        var fileId = ParseDriveFileId(url);
-        if (fileId != null)
-        {
-            return await LinkDriveFileAsync(teamId, url, ct);
-        }
-
-        return new LinkResourceResult(false,
-            ErrorMessage: TeamResourceValidationMessages.InvalidDriveUrl);
+        return await TeamResourceInputValidation.LinkDriveResourceAsync(
+            teamId,
+            url,
+            ct,
+            LinkDriveFolderAsync,
+            LinkDriveFileAsync);
     }
 
     /// <inheritdoc />
     public async Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains("@", StringComparison.Ordinal))
+        var normalizedGroupEmail = TeamResourceInputValidation.NormalizeGroupEmail(groupEmail);
+        if (normalizedGroupEmail == null)
         {
             return new LinkResourceResult(false,
                 ErrorMessage: TeamResourceValidationMessages.InvalidGroupEmail);
         }
 
-        groupEmail = groupEmail.Trim();
-
         // Check if this group is already linked to this team
         var existing = await _dbContext.GoogleResources
             .FirstOrDefaultAsync(r => r.TeamId == teamId
-                && EF.Functions.ILike(r.GoogleId, groupEmail)
+                && EF.Functions.ILike(r.GoogleId, normalizedGroupEmail)
                 && r.ResourceType == GoogleResourceType.Group
                 && r.IsActive, ct);
 
@@ -301,19 +291,19 @@ public partial class TeamResourceService : ITeamResourceService
         {
             var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
             var lookupRequest = cloudIdentity.Groups.Lookup();
-            lookupRequest.GroupKeyId = groupEmail;
+            lookupRequest.GroupKeyId = normalizedGroupEmail;
             var lookupResponse = await lookupRequest.ExecuteAsync(ct);
 
             var fullGroup = await cloudIdentity.Groups.Get(lookupResponse.Name).ExecuteAsync(ct);
 
             var now = _clock.GetCurrentInstant();
             var googleId = lookupResponse.Name["groups/".Length..];
-            var emailLocal = groupEmail.Split('@')[0];
+            var emailLocal = normalizedGroupEmail.Split('@')[0];
 
             // Check for an inactive record to reactivate
             var inactive = await _dbContext.GoogleResources
                 .FirstOrDefaultAsync(r => r.TeamId == teamId
-                    && (r.GoogleId == googleId || EF.Functions.ILike(r.GoogleId, groupEmail))
+                    && (r.GoogleId == googleId || EF.Functions.ILike(r.GoogleId, normalizedGroupEmail))
                     && r.ResourceType == GoogleResourceType.Group
                     && !r.IsActive, ct);
 
@@ -321,7 +311,7 @@ public partial class TeamResourceService : ITeamResourceService
             if (inactive != null)
             {
                 inactive.GoogleId = googleId;
-                inactive.Name = groupEmail;
+                inactive.Name = normalizedGroupEmail;
                 inactive.Url = $"https://groups.google.com/a/{_googleSettings.Domain}/g/{emailLocal}";
                 inactive.LastSyncedAt = now;
                 inactive.IsActive = true;
@@ -336,7 +326,7 @@ public partial class TeamResourceService : ITeamResourceService
                     TeamId = teamId,
                     ResourceType = GoogleResourceType.Group,
                     GoogleId = googleId,
-                    Name = groupEmail,
+                    Name = normalizedGroupEmail,
                     Url = $"https://groups.google.com/a/{_googleSettings.Domain}/g/{emailLocal}",
                     ProvisionedAt = now,
                     LastSyncedAt = now,
@@ -348,13 +338,13 @@ public partial class TeamResourceService : ITeamResourceService
             await _dbContext.SaveChangesAsync(ct);
 
             _logger.LogInformation("Linked Google Group {GroupEmail} ({GroupName}) to team {TeamId}",
-                groupEmail, fullGroup.DisplayName, teamId);
+                normalizedGroupEmail, fullGroup.DisplayName, teamId);
 
             return new LinkResourceResult(true, Resource: resource);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
         {
-            _logger.LogWarning(ex, "Google Group not found when linking {GroupEmail} to team {TeamId}", groupEmail, teamId);
+            _logger.LogWarning(ex, "Google Group not found when linking {GroupEmail} to team {TeamId}", normalizedGroupEmail, teamId);
             var serviceAccountEmail = await GetServiceAccountEmailAsync(ct);
             return new LinkResourceResult(false,
                 ErrorMessage: "The Google Group was not found or the service account does not have access. " +
@@ -363,7 +353,7 @@ public partial class TeamResourceService : ITeamResourceService
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403)
         {
-            _logger.LogWarning(ex, "Permission denied when linking Google Group {GroupEmail} to team {TeamId}", groupEmail, teamId);
+            _logger.LogWarning(ex, "Permission denied when linking Google Group {GroupEmail} to team {TeamId}", normalizedGroupEmail, teamId);
             var serviceAccountEmail = await GetServiceAccountEmailAsync(ct);
             return new LinkResourceResult(false,
                 ErrorMessage: "The service account does not have permission to access this group. " +

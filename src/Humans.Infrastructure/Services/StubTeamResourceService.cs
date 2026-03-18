@@ -110,21 +110,12 @@ public class StubTeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default)
     {
-        // Try folder URL first, then file URL
-        var folderId = TeamResourceService.ParseDriveFolderId(url);
-        if (folderId != null)
-        {
-            return LinkDriveFolderAsync(teamId, url, ct);
-        }
-
-        var fileId = TeamResourceService.ParseDriveFileId(url);
-        if (fileId != null)
-        {
-            return LinkDriveFileAsync(teamId, url, ct);
-        }
-
-        return Task.FromResult(new LinkResourceResult(false,
-            ErrorMessage: TeamResourceValidationMessages.InvalidDriveUrl));
+        return TeamResourceInputValidation.LinkDriveResourceAsync(
+            teamId,
+            url,
+            ct,
+            LinkDriveFolderAsync,
+            LinkDriveFileAsync);
     }
 
     /// <inheritdoc />
@@ -132,7 +123,8 @@ public class StubTeamResourceService : ITeamResourceService
     {
         _logger.LogInformation("[STUB] Would link Google Group '{GroupEmail}' to team {TeamId}", groupEmail, teamId);
 
-        if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains("@", StringComparison.Ordinal))
+        var normalizedGroupEmail = TeamResourceInputValidation.NormalizeGroupEmail(groupEmail);
+        if (normalizedGroupEmail == null)
         {
             return Task.FromResult(new LinkResourceResult(false,
                 ErrorMessage: TeamResourceValidationMessages.InvalidGroupEmail));
@@ -144,9 +136,9 @@ public class StubTeamResourceService : ITeamResourceService
             Id = Guid.NewGuid(),
             TeamId = teamId,
             ResourceType = GoogleResourceType.Group,
-            GoogleId = groupEmail,
-            Name = groupEmail,
-            Url = $"https://groups.google.com/a/nobodies.team/g/{groupEmail.Split('@')[0]}",
+            GoogleId = normalizedGroupEmail,
+            Name = normalizedGroupEmail,
+            Url = $"https://groups.google.com/a/nobodies.team/g/{normalizedGroupEmail.Split('@')[0]}",
             ProvisionedAt = now,
             LastSyncedAt = now,
             IsActive = true
