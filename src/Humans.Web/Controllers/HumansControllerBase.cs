@@ -20,6 +20,11 @@ public abstract class HumansControllerBase : Controller
         return _userManager.GetUserAsync(User);
     }
 
+    protected Task<User?> FindUserByIdAsync(Guid userId)
+    {
+        return _userManager.FindByIdAsync(userId.ToString());
+    }
+
     protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserAsync()
     {
         return await ResolveCurrentUserAsync(() => NotFound());

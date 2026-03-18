@@ -61,7 +61,7 @@ public class AdminController : HumansControllerBase
             return NotFound();
         }
 
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await FindUserByIdAsync(id);
         if (user == null)
         {
             return NotFound();

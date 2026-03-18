@@ -131,7 +131,7 @@ public class HumanController : HumansControllerBase
         if (currentUser.Id == id)
             return RedirectToAction(nameof(View), new { id });
 
-        var targetUser = await _userManager.FindByIdAsync(id.ToString());
+        var targetUser = await FindUserByIdAsync(id);
         if (targetUser == null)
             return NotFound();
 
@@ -425,7 +425,7 @@ public class HumanController : HumansControllerBase
     [HttpGet("{id:guid}/Admin/GoogleSyncAudit")]
     public async Task<IActionResult> HumanGoogleSyncAudit(Guid id)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await FindUserByIdAsync(id);
 
         if (user == null)
         {
@@ -444,7 +444,7 @@ public class HumanController : HumansControllerBase
     [HttpGet("{id:guid}/Admin/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await FindUserByIdAsync(id);
         if (user == null)
         {
             return NotFound();
@@ -465,7 +465,7 @@ public class HumanController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await FindUserByIdAsync(id);
         if (user == null)
         {
             return NotFound();
