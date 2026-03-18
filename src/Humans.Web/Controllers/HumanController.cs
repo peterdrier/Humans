@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Human")]
-public class HumanController : Controller
+public class HumanController : HumansControllerBase
 {
     private readonly IProfileService _profileService;
     private readonly IEmailService _emailService;
@@ -42,6 +42,7 @@ public class HumanController : Controller
         IClock clock,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext)
+        : base(userManager)
     {
         _profileService = profileService;
         _emailService = emailService;
@@ -66,7 +67,7 @@ public class HumanController : Controller
             return NotFound();
         }
 
-        var viewer = await _userManager.GetUserAsync(User);
+        var viewer = await GetCurrentUserAsync();
         if (viewer == null)
         {
             return NotFound();
@@ -123,7 +124,7 @@ public class HumanController : Controller
     [HttpGet("{id:guid}/SendMessage")]
     public async Task<IActionResult> SendMessage(Guid id)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -147,7 +148,7 @@ public class HumanController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -193,9 +194,9 @@ public class HumanController : Controller
             $"Message sent to {targetUser.DisplayName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
             currentUser.Id, currentUser.DisplayName);
 
-        TempData["SuccessMessage"] = string.Format(
+        SetSuccess(string.Format(
             _localizer["SendMessage_Success"].Value,
-            targetUser.DisplayName);
+            targetUser.DisplayName));
 
         return RedirectToAction(nameof(View), new { id });
     }
@@ -351,7 +352,7 @@ public class HumanController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -359,7 +360,7 @@ public class HumanController : Controller
         if (!result.Success)
             return NotFound();
 
-        TempData["SuccessMessage"] = _localizer["Admin_MemberSuspended"].Value;
+        SetSuccess(_localizer["Admin_MemberSuspended"].Value);
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
@@ -368,7 +369,7 @@ public class HumanController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -376,7 +377,7 @@ public class HumanController : Controller
         if (!result.Success)
             return NotFound();
 
-        TempData["SuccessMessage"] = _localizer["Admin_MemberUnsuspended"].Value;
+        SetSuccess(_localizer["Admin_MemberUnsuspended"].Value);
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
@@ -385,7 +386,7 @@ public class HumanController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveVolunteer(Guid id)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -393,7 +394,7 @@ public class HumanController : Controller
         if (!result.Success)
             return NotFound();
 
-        TempData["SuccessMessage"] = _localizer["Admin_VolunteerApproved"].Value;
+        SetSuccess(_localizer["Admin_VolunteerApproved"].Value);
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
@@ -402,7 +403,7 @@ public class HumanController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return Unauthorized();
 
@@ -410,13 +411,13 @@ public class HumanController : Controller
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = "This human has already been rejected.";
+                SetError("This human has already been rejected.");
             else
                 return NotFound();
             return RedirectToAction(nameof(HumanDetail), new { id });
         }
 
-        TempData["SuccessMessage"] = "Signup rejected.";
+        SetSuccess("Signup rejected.");
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
@@ -507,7 +508,7 @@ public class HumanController : Controller
             return Forbid();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
         {
             return Unauthorized();
@@ -518,11 +519,11 @@ public class HumanController : Controller
 
         if (!result.Success)
         {
-            TempData["ErrorMessage"] = string.Format(_localizer["Admin_RoleAlreadyActive"].Value, model.RoleName);
+            SetError(string.Format(_localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
             return RedirectToAction(nameof(HumanDetail), new { id });
         }
 
-        TempData["SuccessMessage"] = string.Format(_localizer["Admin_RoleAssigned"].Value, model.RoleName);
+        SetSuccess(string.Format(_localizer["Admin_RoleAssigned"].Value, model.RoleName));
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
@@ -544,7 +545,7 @@ public class HumanController : Controller
             return Forbid();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
         {
             return Unauthorized();
@@ -555,11 +556,11 @@ public class HumanController : Controller
 
         if (!result.Success)
         {
-            TempData["ErrorMessage"] = _localizer["Admin_RoleNotActive"].Value;
+            SetError(_localizer["Admin_RoleNotActive"].Value);
             return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
         }
 
-        TempData["SuccessMessage"] = string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, roleAssignment.User.DisplayName);
+        SetSuccess(string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, roleAssignment.User.DisplayName));
         return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
     }
 
