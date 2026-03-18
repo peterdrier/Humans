@@ -24,10 +24,10 @@ public abstract class HumansControllerBase : Controller
         return user is null ? (NotFound(), null!) : (null, user);
     }
 
-    protected async Task<IActionResult?> RequireCurrentUserAsync(out User? user)
+    protected async Task<(IActionResult? ErrorResult, User User)> RequireCurrentUserAsync()
     {
-        user = await GetCurrentUserAsync();
-        return user == null ? NotFound() : null;
+        var user = await GetCurrentUserAsync();
+        return user == null ? (NotFound(), null!) : (null, user);
     }
 
     protected void SetSuccess(string message)

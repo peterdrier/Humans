@@ -56,11 +56,11 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
-            TempData["SuccessMessage"] = _localizer["TeamAdmin_RequestApproved"].Value;
+            SetSuccess(_localizer["TeamAdmin_RequestApproved"].Value);
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -78,18 +78,18 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (string.IsNullOrWhiteSpace(model.Notes))
         {
-            TempData["ErrorMessage"] = _localizer["TeamAdmin_ProvideRejectionReason"].Value;
+            SetError(_localizer["TeamAdmin_ProvideRejectionReason"].Value);
             return RedirectToAction(nameof(Members), new { slug });
         }
 
         try
         {
             await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
-            TempData["SuccessMessage"] = _localizer["TeamAdmin_RequestRejected"].Value;
+            SetSuccess(_localizer["TeamAdmin_RequestRejected"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -183,11 +183,11 @@ public class TeamAdminController : HumansTeamControllerBase
             {
                 await _systemTeamSyncJob.SyncCoordinatorsMembershipForUserAsync(userId);
             }
-            TempData["SuccessMessage"] = _localizer["TeamAdmin_MemberRemoved"].Value;
+            SetSuccess(_localizer["TeamAdmin_MemberRemoved"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -206,11 +206,11 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             await _teamService.AddMemberToTeamAsync(team.Id, model.UserId, user.Id);
-            TempData["SuccessMessage"] = _localizer["TeamAdmin_MemberAdded"].Value;
+            SetSuccess(_localizer["TeamAdmin_MemberAdded"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Members), new { slug });
@@ -262,7 +262,8 @@ public class TeamAdminController : HumansTeamControllerBase
     [HttpGet("Resources")]
     public async Task<IActionResult> Resources(string slug)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound != null)
         {
             return currentUserNotFound;
         }
@@ -316,7 +317,8 @@ public class TeamAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkDriveResource(string slug, LinkDriveResourceModel model)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound != null)
         {
             return currentUserNotFound;
         }
@@ -335,7 +337,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (!ModelState.IsValid)
         {
-            TempData["ErrorMessage"] = _localizer["TeamAdmin_InvalidDriveUrl"].Value;
+            SetError(_localizer["TeamAdmin_InvalidDriveUrl"].Value);
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
@@ -343,7 +345,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (result.Success)
         {
-            TempData["SuccessMessage"] = $"Drive resource '{result.Resource!.Name}' linked successfully.";
+            SetSuccess($"Drive resource '{result.Resource!.Name}' linked successfully.");
         }
         else
         {
@@ -352,7 +354,7 @@ public class TeamAdminController : HumansTeamControllerBase
             {
                 errorMessage += $" {string.Format(_localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
             }
-            TempData["ErrorMessage"] = errorMessage;
+            SetError(errorMessage);
         }
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -362,7 +364,8 @@ public class TeamAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkGroup(string slug, LinkGroupModel model)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound != null)
         {
             return currentUserNotFound;
         }
@@ -381,7 +384,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (!ModelState.IsValid)
         {
-            TempData["ErrorMessage"] = _localizer["TeamAdmin_InvalidGroupEmail"].Value;
+            SetError(_localizer["TeamAdmin_InvalidGroupEmail"].Value);
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
@@ -389,7 +392,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         if (result.Success)
         {
-            TempData["SuccessMessage"] = string.Format(_localizer["TeamAdmin_GroupLinked"].Value, result.Resource!.Name);
+            SetSuccess(string.Format(_localizer["TeamAdmin_GroupLinked"].Value, result.Resource!.Name));
         }
         else
         {
@@ -398,7 +401,7 @@ public class TeamAdminController : HumansTeamControllerBase
             {
                 errorMessage += $" {string.Format(_localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
             }
-            TempData["ErrorMessage"] = errorMessage;
+            SetError(errorMessage);
         }
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -408,7 +411,8 @@ public class TeamAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnlinkResource(string slug, Guid resourceId)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound != null)
         {
             return currentUserNotFound;
         }
@@ -426,7 +430,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
 
         await _teamResourceService.UnlinkResourceAsync(resourceId);
-        TempData["SuccessMessage"] = _localizer["TeamAdmin_ResourceUnlinked"].Value;
+        SetSuccess(_localizer["TeamAdmin_ResourceUnlinked"].Value);
 
         return RedirectToAction(nameof(Resources), new { slug });
     }
@@ -435,7 +439,8 @@ public class TeamAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncResource(string slug, Guid resourceId)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } currentUserNotFound)
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound != null)
         {
             return currentUserNotFound;
         }
@@ -455,12 +460,12 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
-            TempData["SuccessMessage"] = _localizer["TeamAdmin_ResourceSynced"].Value;
+            SetSuccess(_localizer["TeamAdmin_ResourceSynced"].Value);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error syncing resource {ResourceId}", resourceId);
-            TempData["ErrorMessage"] = string.Format(_localizer["TeamAdmin_ResourceSyncFailed"].Value, ex.Message);
+            SetError(string.Format(_localizer["TeamAdmin_ResourceSyncFailed"].Value, ex.Message));
         }
 
         return RedirectToAction(nameof(Resources), new { slug });
@@ -491,7 +496,7 @@ public class TeamAdminController : HumansTeamControllerBase
             Slug = team.Slug,
             IsSystemTeam = team.IsSystemTeam,
             IsChildTeam = team.ParentTeamId.HasValue,
-            CanManage = canManage,
+            CanManage = true,
             RoleDefinitions = definitions.Select(TeamRoleDefinitionViewModel.FromEntity).ToList(),
             TeamMembers = members.Select(m => new TeamMemberViewModel
             {
@@ -530,11 +535,11 @@ public class TeamAdminController : HumansTeamControllerBase
                 team.Id, model.Name, model.Description, model.SlotCount,
                 priorities, model.SortOrder, model.Period, user.Id);
 
-            TempData["SuccessMessage"] = $"Role '{model.Name}' created.";
+            SetSuccess($"Role '{model.Name}' created.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -560,11 +565,11 @@ public class TeamAdminController : HumansTeamControllerBase
                 roleId, model.Name, model.Description, model.SlotCount,
                 priorities, model.SortOrder, model.IsManagement, model.Period, user.Id);
 
-            TempData["SuccessMessage"] = $"Role '{model.Name}' updated.";
+            SetSuccess($"Role '{model.Name}' updated.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -583,11 +588,11 @@ public class TeamAdminController : HumansTeamControllerBase
         try
         {
             await _teamService.DeleteRoleDefinitionAsync(roleId, user.Id);
-            TempData["SuccessMessage"] = "Role deleted.";
+            SetSuccess("Role deleted.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -613,13 +618,13 @@ public class TeamAdminController : HumansTeamControllerBase
             }
 
             await _teamService.SetRoleIsManagementAsync(roleId, !role.IsManagement, user.Id);
-            TempData["SuccessMessage"] = role.IsManagement
+            SetSuccess(role.IsManagement
                 ? $"'{role.Name}' is no longer the management role."
-                : $"'{role.Name}' is now the management role. Members assigned to it will become Coordinators.";
+                : $"'{role.Name}' is now the management role. Members assigned to it will become Coordinators.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -639,11 +644,11 @@ public class TeamAdminController : HumansTeamControllerBase
         {
             await _teamService.AssignToRoleAsync(roleId, model.UserId, user.Id);
             await _systemTeamSyncJob.SyncCoordinatorsMembershipForUserAsync(model.UserId);
-            TempData["SuccessMessage"] = "Member assigned to role.";
+            SetSuccess("Member assigned to role.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Roles), new { slug });
@@ -673,11 +678,11 @@ public class TeamAdminController : HumansTeamControllerBase
                 await _systemTeamSyncJob.SyncCoordinatorsMembershipForUserAsync(userId.Value);
             }
 
-            TempData["SuccessMessage"] = "Member unassigned from role.";
+            SetSuccess("Member unassigned from role.");
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Roles), new { slug });

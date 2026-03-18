@@ -17,7 +17,8 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
 
     protected async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveTeamManagementAsync(string slug)
     {
-        if (await RequireCurrentUserAsync(out var user) is { } errorResult)
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult != null)
         {
             return (errorResult, null!, null!);
         }

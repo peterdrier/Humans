@@ -576,21 +576,21 @@ public class TeamController : Controller
 
         if (team.IsSystemTeam)
         {
-            TempData["ErrorMessage"] = _localizer["Team_CannotJoinSystem"].Value;
+            SetError(_localizer["Team_CannotJoinSystem"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
         var isMember = await _teamService.IsUserMemberOfTeamAsync(team.Id, user.Id);
         if (isMember)
         {
-            TempData["ErrorMessage"] = _localizer["Team_AlreadyMember"].Value;
+            SetError(_localizer["Team_AlreadyMember"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
         var pendingRequest = await _teamService.GetUserPendingRequestAsync(team.Id, user.Id);
         if (pendingRequest != null)
         {
-            TempData["ErrorMessage"] = _localizer["Team_AlreadyPendingRequest"].Value;
+            SetError(_localizer["Team_AlreadyPendingRequest"].Value);
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -631,19 +631,19 @@ public class TeamController : Controller
             if (team.RequiresApproval)
             {
                 await _teamService.RequestToJoinTeamAsync(team.Id, user.Id, model.Message);
-                TempData["SuccessMessage"] = _localizer["Team_JoinRequestSubmitted"].Value;
+                SetSuccess(_localizer["Team_JoinRequestSubmitted"].Value);
             }
             else
             {
                 await _teamService.JoinTeamDirectlyAsync(team.Id, user.Id);
-                TempData["SuccessMessage"] = _localizer["Team_Joined"].Value;
+                SetSuccess(_localizer["Team_Joined"].Value);
             }
 
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -671,12 +671,12 @@ public class TeamController : Controller
             {
                 await _systemTeamSync.SyncCoordinatorsMembershipForUserAsync(user.Id);
             }
-            TempData["SuccessMessage"] = _localizer["Team_Left"].Value;
+            SetSuccess(_localizer["Team_Left"].Value);
             return RedirectToAction(nameof(Index));
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
             return RedirectToAction(nameof(Details), new { slug });
         }
     }
@@ -694,11 +694,11 @@ public class TeamController : Controller
         try
         {
             await _teamService.WithdrawJoinRequestAsync(id, user.Id);
-            TempData["SuccessMessage"] = _localizer["Team_RequestWithdrawn"].Value;
+            SetSuccess(_localizer["Team_RequestWithdrawn"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(MyTeams));
@@ -831,13 +831,13 @@ public class TeamController : Controller
                 {
                     _logger.LogError(ex, "Failed to create Google Group for new team {TeamId}, clearing prefix", team.Id);
                     await _teamService.UpdateTeamAsync(team.Id, team.Name, team.Description, team.RequiresApproval, team.IsActive, team.ParentTeamId, googleGroupPrefix: null);
-                    TempData["SuccessMessage"] = string.Format(_localizer["Admin_TeamCreated"].Value, team.Name);
-                    TempData["ErrorMessage"] = $"Team created but Google Group setup failed: {ex.Message}. The group prefix has been cleared.";
+                    SetSuccess(string.Format(_localizer["Admin_TeamCreated"].Value, team.Name));
+                    SetError($"Team created but Google Group setup failed: {ex.Message}. The group prefix has been cleared.");
                     return RedirectToAction(nameof(Summary));
                 }
             }
 
-            TempData["SuccessMessage"] = string.Format(_localizer["Admin_TeamCreated"].Value, team.Name);
+            SetSuccess(string.Format(_localizer["Admin_TeamCreated"].Value, team.Name));
             return RedirectToAction(nameof(Summary));
         }
         catch (DbUpdateException)
@@ -910,12 +910,12 @@ public class TeamController : Controller
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to sync Google Group for team {TeamId}", id);
-                TempData["SuccessMessage"] = _localizer["Admin_TeamUpdated"].Value;
-                TempData["ErrorMessage"] = $"Team updated but Google Group setup failed: {ex.Message}";
+                SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+                SetError($"Team updated but Google Group setup failed: {ex.Message}");
                 return RedirectToAction(nameof(Summary));
             }
 
-            TempData["SuccessMessage"] = _localizer["Admin_TeamUpdated"].Value;
+            SetSuccess(_localizer["Admin_TeamUpdated"].Value);
             return RedirectToAction(nameof(Summary));
         }
         catch (InvalidOperationException ex)
@@ -941,11 +941,11 @@ public class TeamController : Controller
             var currentUser = await _userManager.GetUserAsync(User);
             _logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
 
-            TempData["SuccessMessage"] = _localizer["Admin_TeamDeactivated"].Value;
+            SetSuccess(_localizer["Admin_TeamDeactivated"].Value);
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Summary));
