@@ -20,14 +20,28 @@ public abstract class HumansControllerBase : Controller
 
     protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserAsync()
     {
-        var user = await GetCurrentUserAsync();
-        return user is null ? (NotFound(), null!) : (null, user);
+        return await ResolveCurrentUserAsync(() => NotFound());
     }
 
     protected async Task<(IActionResult? ErrorResult, User User)> RequireCurrentUserAsync()
     {
+        return await ResolveCurrentUserAsync();
+    }
+
+    protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrChallengeAsync()
+    {
+        return await ResolveCurrentUserAsync(() => Challenge());
+    }
+
+    protected async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrUnauthorizedAsync()
+    {
+        return await ResolveCurrentUserAsync(() => Unauthorized());
+    }
+
+    private async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserAsync(Func<IActionResult> onMissing)
+    {
         var user = await GetCurrentUserAsync();
-        return user == null ? (NotFound(), null!) : (null, user);
+        return user is null ? (onMissing(), null!) : (null, user);
     }
 
     protected void SetSuccess(string message)

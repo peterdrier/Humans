@@ -477,15 +477,4 @@ public class ShiftsController : HumansControllerBase
         SetSuccess("Event settings saved.");
         return RedirectToAction(nameof(Settings));
     }
-
-    private async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrChallengeAsync()
-    {
-        var (errorResult, user) = await ResolveCurrentUserAsync();
-        if (errorResult != null)
-        {
-            return (Challenge(), user);
-        }
-
-        return (null, user);
-    }
 }

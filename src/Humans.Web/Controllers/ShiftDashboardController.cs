@@ -186,15 +186,4 @@ public class ShiftDashboardController : HumansControllerBase
 
         return results;
     }
-
-    private async Task<(IActionResult? ErrorResult, User User)> ResolveCurrentUserOrUnauthorizedAsync()
-    {
-        var (errorResult, user) = await ResolveCurrentUserAsync();
-        if (errorResult != null)
-        {
-            return (Unauthorized(), user);
-        }
-
-        return (null, user);
-    }
 }
