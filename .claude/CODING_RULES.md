@@ -68,6 +68,10 @@ public class MyData {
 - Convert UTC to user's local timezone only at final display step
 - Never send local times back to server - convert to UTC first
 
+**Web/view-model exception:**
+- `DateTime` is allowed in web-layer view models and Razor views **only after** a NodaTime value has been explicitly converted for display (for example via `.ToDateTimeUtc()`)
+- Do not introduce `DateTime` into domain logic, persistence models, APIs, or service boundaries when NodaTime can be used instead
+
 **Rationale:** NodaTime provides safer time handling. Prevents timezone bugs, ensures consistent server behavior across deployments, simplifies testing.
 
 ## String Comparisons
@@ -84,6 +88,10 @@ if (status == "submitted")
 // CORRECT
 if (string.Equals(status, "submitted", StringComparison.Ordinal))
 ```
+
+**Search/input convention:**
+- For user-entered search terms, prefer the shared helpers in `Humans.Web.Extensions` (`HasSearchTerm`, `ContainsOrdinalIgnoreCase`, `WhereAnyContainsInsensitive`) instead of open-coding whitespace/length guards or ad hoc case handling
+- Keep EF-query helpers and in-memory string helpers separate so translation behavior stays explicit
 
 ## Critical: No Enum Comparison Operators in EF Core Queries
 
@@ -138,6 +146,87 @@ await _auditLog.LogAsync(AuditLogEntityTypes.Team, ...);
 
 **Exceptions:** Localization resource keys, HTML/CSS class names, and configuration keys that don't map to code identifiers.
 
+**Auth-specific rule:**
+- Never hardcode role names in controllers, views, or authorization helpers
+- Use `RoleNames`, `RoleGroups`, or shared `RoleChecks` helpers
+
+## Controller Base Conventions
+
+Controllers that resolve the current human or set TempData messages must use the shared base classes instead of duplicating those patterns.
+
+**Rule:**
+- Inherit from `HumansControllerBase` or the appropriate specialized base when authenticated-user resolution or shared controller helpers are needed
+- Use shared helpers such as `GetCurrentUserAsync`, `ResolveCurrentUserAsync`, `FindUserByIdAsync`, `SetSuccess`, `SetError`, and `SetInfo`
+- Do not write new direct `_userManager.GetUserAsync(User)` calls in controllers when a base helper already covers the case
+- Do not write direct `TempData["SuccessMessage"]`, `TempData["ErrorMessage"]`, or `TempData["InfoMessage"]` assignments in controllers
+
+**Rationale:** This keeps PRG messaging, not-found handling, and user lookup behavior consistent across controllers.
+
+## Authorization Conventions
+
+Prefer centralized authorization declarations and shared role-check helpers over hand-written combinations.
+
+**Rule:**
+- Use `[Authorize(Roles = ...)]` with `RoleGroups`/`RoleNames` for static route guards
+- Use shared `RoleChecks` / `ShiftRoleChecks` helpers for runtime combinations that cannot be expressed cleanly as an attribute
+- Avoid repeating the same multi-role checks inline across multiple files
+
+**Examples:**
+- Use `RoleGroups.BoardOrAdmin`, not `"Board,Admin"`
+- Use `ShiftRoleChecks.CanAccessDashboard(User)`, not repeated `IsInRole` chains
+
+## Markdown Rendering
+
+Markdown rendering in Razor must go through the shared sanitized rendering path.
+
+**Rule:**
+- Do not embed local `HtmlSanitizer`, `Markdig.Markdown.ToHtml`, or `ConvertMarkdownToHtml(...)` helpers in views
+- Use `@Html.SanitizedMarkdown(...)` for one-off markdown rendering
+- If multiple pages share tabbed markdown document UI, extract or reuse a shared partial/component rather than duplicating tabs + sanitizer logic
+
+**Rationale:** This prevents inconsistent sanitization and removes duplicated Markdown boilerplate from views.
+
+## Date/Time Display Formatting
+
+Display formatting should be standardized through shared extensions instead of scattered inline format strings.
+
+**Rule:**
+- Prefer shared extensions such as `ToDisplayDate`, `ToDisplayLongDate`, `ToDisplayDateTime`, `ToDisplayCompactDate`, `ToDisplayCompactDateTime`, `ToDisplayTime`, `ToAuditTimestamp`, and `ToDisplayGeneralDateTime`
+- Avoid introducing new inline Razor format strings like `ToString("d MMM yyyy")` unless the format is genuinely one-off and not part of an established display convention
+
+**Rationale:** This keeps view formatting consistent and makes date/time policy easy to evolve.
+
+## Search Endpoint Response Shape
+
+Autocomplete/search JSON endpoints must use stable typed response models.
+
+**Rule:**
+- Return typed DTOs/records for JSON search results instead of anonymous objects
+- Reuse shared mapping helpers when converting service-layer search results into web response shapes
+- Keep property names stable once JavaScript consumers depend on them
+
+**Rationale:** Anonymous JSON payloads drift easily and make it harder to reuse search behavior safely.
+
+## Culture and Language Display
+
+Culture support and display names must be centralized.
+
+**Rule:**
+- Use `CultureCatalog` and `CultureCodeExtensions` for supported culture lists, ordering, default document language selection, and display labels
+- Do not create per-view language dictionaries or ad hoc language ordering logic when the shared helpers already cover the case
+
+**Rationale:** This prevents inconsistent language labels and tab ordering across views.
+
+## CSV and Pagination Helpers
+
+Small repeated mechanics should use the shared helpers once they exist.
+
+**Rule:**
+- Use `AppendCsvRow` / `ToCsvField` for CSV generation instead of inline escaping/string interpolation
+- Use `ClampPageSize()` for repeated page-size clamping instead of scattering `Math.Clamp(pageSize, ...)`
+
+**Rationale:** These helpers reduce noise and prevent small formatting/validation differences between endpoints.
+
 ## Icons: Font Awesome 6 Only
 
 This project uses **Font Awesome 6** (loaded via CDN in `_Layout.cshtml`). Bootstrap Icons are **not** loaded and will render as invisible/missing.
@@ -185,6 +274,13 @@ ASP.NET Core offers two reusable view mechanisms. Use the right one:
 - Examples: badge rendering, status labels, simple card layouts
 
 **The rule:** If a parent controller has to fetch data *specifically* to pass to a partial, that partial should be a View Component.
+
+**Additional reuse rule:**
+- If two or more pages share the same markup structure with only minor model/context differences, prefer a shared partial or shared page over duplicating the Razor body
+- Thin wrapper views that only exist to forward to the same page shape should usually be collapsed into a shared view
+
+**Interactive search rule:**
+- If two endpoints feed the same client-side interaction pattern, prefer a shared builder/helper for the response assembly instead of duplicating result-shaping logic in each controller
 
 **Existing View Components:** `ProfileCardViewComponent`, `NavBadgesViewComponent`, `UserAvatarViewComponent`, `TempDataAlertsViewComponent`.
 
