@@ -229,6 +229,14 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends a feedback response notification to the reporter.
+    /// </summary>
+    Task SendFeedbackResponseAsync(
+        string userEmail, string userName, string originalDescription,
+        string responseMessage, string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a facilitated message from one volunteer to another.
     /// </summary>
     Task SendFacilitatedMessageAsync(

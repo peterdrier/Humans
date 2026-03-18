@@ -229,6 +229,16 @@ public class OutboxEmailService : IEmailService
     }
 
     /// <inheritdoc />
+    public async Task SendFeedbackResponseAsync(
+        string userEmail, string userName, string originalDescription,
+        string responseMessage, string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, culture);
+        await EnqueueAsync(userEmail, userName, content, "feedback_response", cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task SendFacilitatedMessageAsync(
         string recipientEmail,
         string recipientName,

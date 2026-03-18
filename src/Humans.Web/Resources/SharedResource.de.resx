@@ -1144,4 +1144,15 @@
   <data name="Shifts_SignedUp" xml:space="preserve"><value>Angemeldet</value></data>
   <data name="Shifts_Pending" xml:space="preserve"><value>(ausstehend)</value></data>
 
+  <!-- Feedback Email -->
+  <data name="Email_FeedbackResponse_Subject" xml:space="preserve"><value>Update zu deinem Feedback</value></data>
+  <data name="Email_FeedbackResponse_Body" xml:space="preserve"><value>&lt;h2&gt;Update zu deinem Feedback&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Wir haben dein Feedback geprüft:&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Unsere Antwort:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;{2}&lt;/p&gt;
+&lt;p&gt;Danke, dass du uns hilfst, besser zu werden!&lt;/p&gt;
+&lt;p&gt;Das Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
+
 </root>

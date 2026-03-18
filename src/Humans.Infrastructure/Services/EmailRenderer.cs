@@ -322,6 +322,21 @@ public class EmailRenderer : IEmailRenderer
         return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
     }
 
+    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = _localizer["Email_FeedbackResponse_Subject"].Value;
+            var body = string.Format(
+                CultureInfo.CurrentCulture,
+                _localizer["Email_FeedbackResponse_Body"].Value,
+                HtmlEncode(userName),
+                HtmlEncode(originalDescription),
+                HtmlEncode(responseMessage));
+            return new EmailContent(subject, body);
+        }
+    }
+
     public EmailContent RenderFacilitatedMessage(
         string recipientName,
         string senderName,

@@ -228,6 +228,16 @@ public class SmtpEmailService : IEmailService
     }
 
     /// <inheritdoc />
+    public async Task SendFeedbackResponseAsync(
+        string userEmail, string userName, string originalDescription,
+        string responseMessage, string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, culture);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, null, cancellationToken);
+        _metrics.RecordEmailSent("feedback_response");
+    }
+
     public async Task SendFacilitatedMessageAsync(
         string recipientEmail,
         string recipientName,
