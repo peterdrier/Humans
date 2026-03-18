@@ -17,7 +17,7 @@ using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin},{RoleNames.Board}")]
+[Authorize(Roles = RoleGroups.TicketAdminBoardOrAdmin)]
 [Route("Tickets")]
 public class TicketController : HumansControllerBase
 {
@@ -555,7 +555,7 @@ public class TicketController : HumansControllerBase
 
     [HttpPost("Sync")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
     public IActionResult Sync()
     {
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
@@ -581,7 +581,7 @@ public class TicketController : HumansControllerBase
     }
 
     [HttpGet("Export/Attendees")]
-    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportAttendees()
     {
         var attendeeList = await _dbContext.TicketAttendees
@@ -601,7 +601,7 @@ public class TicketController : HumansControllerBase
     }
 
     [HttpGet("Export/Orders")]
-    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportOrders()
     {
         var orderList = await _dbContext.TicketOrders

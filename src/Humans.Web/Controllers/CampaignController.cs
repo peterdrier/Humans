@@ -172,7 +172,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("{id:guid}/GenerateCodes")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
     {
         var campaign = await _dbContext.Set<Campaign>().FindAsync(id);

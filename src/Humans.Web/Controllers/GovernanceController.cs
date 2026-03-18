@@ -146,7 +146,7 @@ public class GovernanceController : HumansControllerBase
         return content;
     }
 
-    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
     {

@@ -12,7 +12,7 @@ using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
+[Authorize(Roles = RoleGroups.BoardOrAdmin)]
 [Route("Board")]
 public class BoardController : HumansControllerBase
 {

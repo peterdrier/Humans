@@ -199,7 +199,7 @@ public class ApplicationController : HumansControllerBase
     }
 
     [HttpGet("Application/Admin")]
-    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     public async Task<IActionResult> Applications(string? status, string? tier, int page = 1)
     {
         var pageSize = 20;
@@ -233,7 +233,7 @@ public class ApplicationController : HumansControllerBase
     }
 
     [HttpGet("Application/Admin/{id:guid}")]
-    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     public async Task<IActionResult> ApplicationDetail(Guid id)
     {
         var application = await _applicationDecisionService.GetApplicationDetailAsync(id);

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = $"{RoleNames.CampAdmin},{RoleNames.Admin}")]
+[Authorize(Roles = RoleGroups.CampAdminOrAdmin)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
 public class CampAdminController : HumansControllerBase
