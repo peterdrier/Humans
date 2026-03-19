@@ -40,7 +40,7 @@ public class FeedbackController : Controller
         if (!ModelState.IsValid)
         {
             TempData["ErrorMessage"] = _localizer["Feedback_Error"].Value;
-            return Redirect(model.PageUrl ?? "/");
+            return LocalRedirect(Url.IsLocalUrl(model.PageUrl) ? model.PageUrl : "/");
         }
 
         try
@@ -57,6 +57,6 @@ public class FeedbackController : Controller
             TempData["ErrorMessage"] = _localizer["Feedback_Error"].Value;
         }
 
-        return Redirect(model.PageUrl ?? "/");
+        return LocalRedirect(Url.IsLocalUrl(model.PageUrl) ? model.PageUrl : "/");
     }
 }

@@ -77,7 +77,7 @@ public class FeedbackService : IFeedbackService
                 "image/jpeg" => ".jpg",
                 "image/png" => ".png",
                 "image/webp" => ".webp",
-                _ => ".bin"
+                _ => throw new InvalidOperationException($"Unexpected content type: {screenshot.ContentType}")
             };
 
             var fileName = $"{Guid.NewGuid()}{ext}";
@@ -133,7 +133,7 @@ public class FeedbackService : IFeedbackService
     }
 
     public async Task UpdateStatusAsync(
-        Guid id, FeedbackStatus status, Guid actorUserId,
+        Guid id, FeedbackStatus status, Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
         var report = await _dbContext.FeedbackReports.FindAsync(new object[] { id }, cancellationToken)
@@ -156,6 +156,18 @@ public class FeedbackService : IFeedbackService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        string actorName = "API";
+        if (actorUserId.HasValue)
+        {
+            var actor = await _dbContext.Users.FindAsync(new object[] { actorUserId.Value }, cancellationToken);
+            actorName = actor?.DisplayName ?? actorUserId.Value.ToString();
+        }
+
+        await _auditLogService.LogAsync(
+            AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
+            $"Feedback {id} status changed to {status}",
+            actorUserId ?? Guid.Empty, actorName);
 
         _logger.LogInformation("Feedback {ReportId} status changed to {Status} by {ActorId}", id, status, actorUserId);
     }
@@ -185,7 +197,7 @@ public class FeedbackService : IFeedbackService
     }
 
     public async Task SendResponseAsync(
-        Guid id, string message, Guid actorUserId,
+        Guid id, string message, Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
         var report = await _dbContext.FeedbackReports
@@ -204,11 +216,17 @@ public class FeedbackService : IFeedbackService
         report.UpdatedAt = report.AdminResponseSentAt.Value;
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        var actor = await _dbContext.Users.FindAsync(new object[] { actorUserId }, cancellationToken);
+        string actorName = "API";
+        if (actorUserId.HasValue)
+        {
+            var actor = await _dbContext.Users.FindAsync(new object[] { actorUserId.Value }, cancellationToken);
+            actorName = actor?.DisplayName ?? actorUserId.Value.ToString();
+        }
+
         await _auditLogService.LogAsync(
             AuditAction.FeedbackResponseSent, nameof(FeedbackReport), id,
             $"Response sent to {user.DisplayName} for feedback {id}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString());
+            actorUserId ?? Guid.Empty, actorName);
 
         _logger.LogInformation("Feedback response sent for {ReportId} by {ActorId}", id, actorUserId);
     }

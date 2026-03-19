@@ -79,8 +79,8 @@ public class FeedbackApiController : ControllerBase
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateFeedbackStatusModel model)
     {
-        // API has no user context — use empty GUID as actor
-        await _feedbackService.UpdateStatusAsync(id, model.Status, Guid.Empty);
+        // API has no user context — pass null actor
+        await _feedbackService.UpdateStatusAsync(id, model.Status, null);
         return Ok(new { success = true });
     }
 
@@ -104,7 +104,7 @@ public class FeedbackApiController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        await _feedbackService.SendResponseAsync(id, model.Message, Guid.Empty);
+        await _feedbackService.SendResponseAsync(id, model.Message, null);
         return Ok(new { success = true });
     }
 }

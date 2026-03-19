@@ -12,7 +12,10 @@ public class SubmitFeedbackViewModel
     [StringLength(5000)]
     public string Description { get; set; } = string.Empty;
 
+    [StringLength(2000)]
     public string PageUrl { get; set; } = string.Empty;
+
+    [StringLength(1000)]
     public string? UserAgent { get; set; }
 
     public IFormFile? Screenshot { get; set; }

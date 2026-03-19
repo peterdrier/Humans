@@ -110,7 +110,7 @@
                     <button type="submit" class="btn btn-sm btn-primary">Link</button>
                     @if (Model.GitHubIssueNumber.HasValue)
                     {
-                        <a href="https://github.com/peterdrier/Humans/issues/@Model.GitHubIssueNumber" target="_blank" class="btn btn-sm btn-outline-secondary">
+                        <a href="https://github.com/nobodies-collective/Humans/issues/@Model.GitHubIssueNumber" target="_blank" class="btn btn-sm btn-outline-secondary">
                             <i class="fa-brands fa-github me-1"></i>#@Model.GitHubIssueNumber
                         </a>
                     }
@@ -125,7 +125,7 @@
                 <form asp-action="SendResponse" asp-route-id="@Model.Id" method="post">
                     @Html.AntiForgeryToken()
                     <textarea name="Message" class="form-control mb-2" rows="4" maxlength="5000" required placeholder="Type your response to the reporter... This will be sent via email."></textarea>
-                    <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('Send this response to @Model.ReporterName via email?')">
+                    <button type="submit" class="btn btn-sm btn-primary" data-confirm="Send this response to @Model.ReporterName via email?">
                         <i class="fa-solid fa-paper-plane me-1"></i>Send Response
                     </button>
                     @if (Model.AdminResponseSentAt.HasValue)
@@ -168,3 +168,15 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('[data-confirm]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                if (!confirm(btn.dataset.confirm)) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+}

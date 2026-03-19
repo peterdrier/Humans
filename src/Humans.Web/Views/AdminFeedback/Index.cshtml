@@ -59,7 +59,7 @@ else
             <tbody>
                 @foreach (var r in Model.Reports)
                 {
-                    <tr class="@(r.Status == FeedbackStatus.Resolved || r.Status == FeedbackStatus.WontFix ? "table-light text-muted" : "")" style="cursor: pointer;" onclick="window.location='@Url.Action("Detail", new { id = r.Id })'">
+                    <tr class="@(r.Status == FeedbackStatus.Resolved || r.Status == FeedbackStatus.WontFix ? "table-light text-muted" : "")" style="cursor: pointer;" data-detail-url="@Url.Action("Detail", new { id = r.Id })">
                         <td>
                             @{
                                 var statusBadge = r.Status switch
@@ -87,7 +87,7 @@ else
                         </td>
                         <td class="text-truncate" style="max-width: 300px;">@r.Description</td>
                         <td>
-                            <a asp-controller="Human" asp-action="View" asp-route-id="@r.ReporterUserId" onclick="event.stopPropagation();">@r.ReporterName</a>
+                            <a asp-controller="Human" asp-action="View" asp-route-id="@r.ReporterUserId" class="js-stop-propagation">@r.ReporterName</a>
                         </td>
                         <td class="text-truncate small text-muted" style="max-width: 200px;">@r.PageUrl</td>
                         <td class="text-center">
@@ -102,4 +102,19 @@ else
             </tbody>
         </table>
     </div>
+
+    @section Scripts {
+        <script>
+            document.querySelectorAll('tr[data-detail-url]').forEach(function (row) {
+                row.addEventListener('click', function () {
+                    window.location = row.dataset.detailUrl;
+                });
+            });
+            document.querySelectorAll('.js-stop-propagation').forEach(function (el) {
+                el.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                });
+            });
+        </script>
+    }
 }

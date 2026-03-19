@@ -19,7 +19,7 @@ public interface IFeedbackService
         int limit = 50, CancellationToken cancellationToken = default);
 
     Task UpdateStatusAsync(
-        Guid id, FeedbackStatus status, Guid actorUserId,
+        Guid id, FeedbackStatus status, Guid? actorUserId,
         CancellationToken cancellationToken = default);
 
     Task UpdateAdminNotesAsync(
@@ -29,6 +29,6 @@ public interface IFeedbackService
         Guid id, int? issueNumber, CancellationToken cancellationToken = default);
 
     Task SendResponseAsync(
-        Guid id, string message, Guid actorUserId,
+        Guid id, string message, Guid? actorUserId,
         CancellationToken cancellationToken = default);
 }
