@@ -27,6 +27,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Camp",             // Public camps pages ([AllowAnonymous])
         "CampAdmin",        // Has its own Roles = "CampAdmin,Admin" gate
         "CampApi",          // Public API ([AllowAnonymous])
+        "Feedback",         // Feedback submission — accessible to all authenticated users
         "FeedbackApi",      // API key auth, no membership required
     };
 

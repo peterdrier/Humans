@@ -60,7 +60,15 @@
                 }
 
                 <div class="mt-3 small text-muted">
-                    <strong>Page:</strong> <a href="@Model.PageUrl" target="_blank">@Model.PageUrl</a>
+                    <strong>Page:</strong>
+                    @if (Uri.TryCreate(Model.PageUrl, UriKind.Absolute, out var pageUri) && (pageUri.Scheme == "http" || pageUri.Scheme == "https"))
+                    {
+                        <a href="@Model.PageUrl" target="_blank">@Model.PageUrl</a>
+                    }
+                    else
+                    {
+                        @Model.PageUrl
+                    }
                 </div>
                 @if (!string.IsNullOrEmpty(Model.UserAgent))
                 {
