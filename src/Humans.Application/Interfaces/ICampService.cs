@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Application.Interfaces;
@@ -13,7 +14,7 @@ public interface ICampService
         string contactEmail,
         string contactPhone,
         string? webOrSocialUrl,
-        string contactMethod,
+        List<CampLink>? links,
         bool isSwissCamp,
         int timesAtNowhere,
         CampSeasonData seasonData,
@@ -39,7 +40,7 @@ public interface ICampService
     Task ReactivateSeasonAsync(Guid seasonId, CancellationToken cancellationToken = default);
     // Camp updates
     Task UpdateCampAsync(Guid campId, string contactEmail, string contactPhone,
-        string? webOrSocialUrl, string contactMethod, bool isSwissCamp, int timesAtNowhere,
+        string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
         CancellationToken cancellationToken = default);
     Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default);
 

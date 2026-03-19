@@ -43,7 +43,7 @@ public class CampApiController : ControllerBase
                 b.TimesAtNowhere,
                 b.IsSwissCamp,
                 b.ContactEmail,
-                b.ContactMethod,
+                b.Links,
                 b.WebOrSocialUrl
             };
         }).OrderBy(b => b.Name, StringComparer.OrdinalIgnoreCase).ToList();

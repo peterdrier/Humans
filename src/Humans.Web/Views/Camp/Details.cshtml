@@ -219,23 +219,33 @@
     </div>
 
     <div class="col-md-4">
-        @* Contact info *@
+        @* Links & Contact *@
         <div class="card mb-4">
             <div class="card-header">
-                <i class="fa-solid fa-address-book me-1"></i> Contact
+                <i class="fa-solid fa-link me-1"></i> @Localizer["Camp_Links_Header"]
             </div>
             <div class="card-body">
-                <dl class="mb-0">
-                    <dt>Email</dt>
-                    <dd><a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a></dd>
-                    <dt>Preferred Contact</dt>
-                    <dd>@Model.ContactMethod</dd>
-                    @if (!string.IsNullOrEmpty(Model.WebOrSocialUrl))
-                    {
-                        <dt>Web / Social</dt>
-                        <dd><a href="@Model.WebOrSocialUrl" target="_blank" rel="noopener noreferrer">@Model.WebOrSocialUrl</a></dd>
-                    }
-                </dl>
+                @if (Model.Links.Count > 0)
+                {
+                    <div class="mb-3">
+                        @foreach (var link in Model.Links)
+                        {
+                            var platform = Humans.Domain.Helpers.PlatformDetector.Detect(link.Url);
+                            <div class="mb-2">
+                                <a href="@link.Url" target="_blank" rel="noopener noreferrer">
+                                    <i class="@platform.IconClass me-1"></i> @platform.Name
+                                </a>
+                            </div>
+                        }
+                    </div>
+                }
+                <hr />
+                <a asp-action="Contact" asp-route-slug="@Model.Slug" class="btn btn-primary w-100">
+                    <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactButton"]
+                </a>
+                <div class="text-center mt-1">
+                    <small class="text-muted">@Localizer["Camp_ContactLoginHint"]</small>
+                </div>
             </div>
         </div>
 

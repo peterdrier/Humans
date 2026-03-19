@@ -5,6 +5,8 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
+using Humans.Domain.ValueObjects;
 using Humans.Web.Models;
 using Humans.Web.Authorization;
 using Microsoft.Extensions.Localization;
@@ -151,9 +153,7 @@ public class CampController : HumansControllerBase
             Id = camp.Id,
             Slug = camp.Slug,
             Name = currentSeason?.Name ?? camp.Slug,
-            ContactEmail = camp.ContactEmail,
-            ContactMethod = camp.ContactMethod,
-            WebOrSocialUrl = camp.WebOrSocialUrl,
+            Links = (camp.Links is { Count: > 0 } ? camp.Links : camp.WebOrSocialUrl != null ? new List<CampLink> { new() { Url = camp.WebOrSocialUrl } } : new List<CampLink>()),
             IsSwissCamp = camp.IsSwissCamp,
             TimesAtNowhere = camp.TimesAtNowhere,
             HistoricalNames = camp.HistoricalNames.Select(h => h.Name).ToList(),
@@ -201,9 +201,7 @@ public class CampController : HumansControllerBase
             Id = camp.Id,
             Slug = camp.Slug,
             Name = season.Name,
-            ContactEmail = camp.ContactEmail,
-            ContactMethod = camp.ContactMethod,
-            WebOrSocialUrl = camp.WebOrSocialUrl,
+            Links = (camp.Links is { Count: > 0 } ? camp.Links : camp.WebOrSocialUrl != null ? new List<CampLink> { new() { Url = camp.WebOrSocialUrl } } : new List<CampLink>()),
             IsSwissCamp = camp.IsSwissCamp,
             TimesAtNowhere = camp.TimesAtNowhere,
             HistoricalNames = camp.HistoricalNames.Select(h => h.Name).ToList(),
@@ -277,13 +275,18 @@ public class CampController : HumansControllerBase
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .ToList();
 
+            var campLinks = model.Links
+                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
+                .ToList();
+
             var camp = await _campService.CreateCampAsync(
                 user.Id,
                 model.Name,
                 model.ContactEmail,
                 model.ContactPhone,
                 model.WebOrSocialUrl,
-                model.ContactMethod,
+                campLinks.Count > 0 ? campLinks : null,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
                 MapToSeasonData(model),
@@ -385,12 +388,17 @@ public class CampController : HumansControllerBase
 
         try
         {
+            var updateLinks = model.Links
+                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
+                .ToList();
+
             await _campService.UpdateCampAsync(
                 camp.Id,
                 model.ContactEmail,
                 model.ContactPhone,
                 model.WebOrSocialUrl,
-                model.ContactMethod,
+                updateLinks.Count > 0 ? updateLinks : null,
                 model.IsSwissCamp,
                 model.TimesAtNowhere);
 
@@ -742,7 +750,7 @@ public class CampController : HumansControllerBase
             ContactEmail = camp.ContactEmail,
             ContactPhone = camp.ContactPhone,
             WebOrSocialUrl = camp.WebOrSocialUrl,
-            ContactMethod = camp.ContactMethod,
+            Links = (camp.Links is { Count: > 0 } ? camp.Links.Select(l => l.Url).ToList() : camp.WebOrSocialUrl != null ? new List<string> { camp.WebOrSocialUrl } : new List<string>()),
             IsSwissCamp = camp.IsSwissCamp,
             TimesAtNowhere = camp.TimesAtNowhere,
             BlurbLong = season.BlurbLong,

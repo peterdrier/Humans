@@ -57,7 +57,7 @@ public class CampServiceTests : IDisposable
 
         var camp = await _service.CreateCampAsync(
             userId, "Camp Funhouse", "camp@fun.com", "+34612345678",
-            "https://instagram.com/funhouse", "DM us on Instagram",
+            "https://instagram.com/funhouse", null,
             isSwissCamp: false, timesAtNowhere: 0,
             MakeSeasonData(), historicalNames: null, year: 2026);
 
@@ -86,7 +86,7 @@ public class CampServiceTests : IDisposable
 
         var act = () => _service.CreateCampAsync(
             userId, "Register", "camp@test.com", "+34600000000",
-            null, "email", false, 0, MakeSeasonData(), null, 2026);
+            null, null, false, 0, MakeSeasonData(), null, 2026);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*reserved*");
@@ -318,7 +318,7 @@ public class CampServiceTests : IDisposable
     {
         return await _service.CreateCampAsync(
             Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
-            null, "email us", false, 1, MakeSeasonData(), null, 2026);
+            null, null, false, 1, MakeSeasonData(), null, 2026);
     }
 
     private async Task SeedSettingsAsync()
