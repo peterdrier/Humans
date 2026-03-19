@@ -6,6 +6,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
+using Humans.Web.Authorization;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -13,10 +14,9 @@ namespace Humans.Web.Controllers;
 
 [Route("Barrios")]
 [Route("Camps")]
-public class CampController : Controller
+public class CampController : HumansControllerBase
 {
     private readonly ICampService _campService;
-    private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly ILogger<CampController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -27,9 +27,9 @@ public class CampController : Controller
         IClock clock,
         ILogger<CampController> logger,
         IStringLocalizer<SharedResource> localizer)
+        : base(userManager)
     {
         _campService = campService;
-        _userManager = userManager;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
@@ -78,36 +78,33 @@ public class CampController : Controller
             cards = cards.Where(c => c.AcceptingMembers == YesNoMaybe.Yes).ToList();
 
         var myCamps = new List<CampCardViewModel>();
-        if (User.Identity?.IsAuthenticated == true)
+        var user = await GetCurrentUserAsync();
+        if (user is not null)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user is not null)
-            {
-                var allUserCamps = await _campService.GetCampsByLeadUserIdAsync(user.Id);
-                myCamps = allUserCamps
-                    .Where(b => b.Seasons.Any(s => s.Year == year &&
-                        s.Status != CampSeasonStatus.Active && s.Status != CampSeasonStatus.Full))
-                    .Where(b => !cards.Any(c => c.Id == b.Id)) // exclude already-shown
-                    .Select(b =>
+            var allUserCamps = await _campService.GetCampsByLeadUserIdAsync(user.Id);
+            myCamps = allUserCamps
+                .Where(b => b.Seasons.Any(s => s.Year == year &&
+                    s.Status != CampSeasonStatus.Active && s.Status != CampSeasonStatus.Full))
+                .Where(b => !cards.Any(c => c.Id == b.Id)) // exclude already-shown
+                .Select(b =>
+                {
+                    var season = b.Seasons.FirstOrDefault(s => s.Year == year);
+                    var firstImage = b.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
+                    return new CampCardViewModel
                     {
-                        var season = b.Seasons.FirstOrDefault(s => s.Year == year);
-                        var firstImage = b.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
-                        return new CampCardViewModel
-                        {
-                            Id = b.Id,
-                            Slug = b.Slug,
-                            Name = season?.Name ?? b.Slug,
-                            BlurbShort = season?.BlurbShort ?? string.Empty,
-                            ImageUrl = firstImage != null ? $"/{firstImage.StoragePath}" : null,
-                            Vibes = season?.Vibes ?? new List<CampVibe>(),
-                            AcceptingMembers = season?.AcceptingMembers ?? YesNoMaybe.No,
-                            KidsWelcome = season?.KidsWelcome ?? YesNoMaybe.No,
-                            SoundZone = season?.SoundZone,
-                            Status = season?.Status ?? CampSeasonStatus.Pending,
-                            TimesAtNowhere = b.TimesAtNowhere
-                        };
-                    }).ToList();
-            }
+                        Id = b.Id,
+                        Slug = b.Slug,
+                        Name = season?.Name ?? b.Slug,
+                        BlurbShort = season?.BlurbShort ?? string.Empty,
+                        ImageUrl = firstImage != null ? $"/{firstImage.StoragePath}" : null,
+                        Vibes = season?.Vibes ?? new List<CampVibe>(),
+                        AcceptingMembers = season?.AcceptingMembers ?? YesNoMaybe.No,
+                        KidsWelcome = season?.KidsWelcome ?? YesNoMaybe.No,
+                        SoundZone = season?.SoundZone,
+                        Status = season?.Status ?? CampSeasonStatus.Pending,
+                        TimesAtNowhere = b.TimesAtNowhere
+                    };
+                }).ToList();
         }
 
         var pendingSeasons = await _campService.GetPendingSeasonsAsync();
@@ -139,18 +136,14 @@ public class CampController : Controller
             .FirstOrDefault()
             ?? camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
 
-        var isAuthenticated = User.Identity?.IsAuthenticated == true;
         var isLead = false;
         var isCampAdmin = false;
+        var user = await GetCurrentUserAsync();
 
-        if (isAuthenticated)
+        if (user is not null)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user is not null)
-            {
-                isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-                isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
-            }
+            isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
+            isCampAdmin = RoleChecks.IsCampAdmin(User);
         }
 
         var viewModel = new CampDetailViewModel
@@ -193,18 +186,14 @@ public class CampController : Controller
         if (season is null)
             return NotFound();
 
-        var isAuthenticated = User.Identity?.IsAuthenticated == true;
         var isLead = false;
         var isCampAdmin = false;
+        var user = await GetCurrentUserAsync();
 
-        if (isAuthenticated)
+        if (user is not null)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user is not null)
-            {
-                isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-                isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
-            }
+            isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
+            isCampAdmin = RoleChecks.IsCampAdmin(User);
         }
 
         var viewModel = new CampDetailViewModel
@@ -266,8 +255,11 @@ public class CampController : Controller
         if (!ModelState.IsValid)
             return View(model);
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var settings = await _campService.GetSettingsAsync();
         var year = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
@@ -319,11 +311,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         var settings = await _campService.GetSettingsAsync();
@@ -352,11 +347,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         ValidatePhoneE164(model.ContactPhone, nameof(model.ContactPhone));
@@ -437,11 +435,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         try
@@ -465,11 +466,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         try
@@ -493,11 +497,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         try
@@ -525,11 +532,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         if (userId == Guid.Empty)
@@ -559,11 +569,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         try
@@ -592,11 +605,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         if (file is null || file.Length == 0)
@@ -631,11 +647,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         try
@@ -659,11 +678,14 @@ public class CampController : Controller
         var camp = await _campService.GetCampBySlugAsync(slug);
         if (camp is null) return NotFound();
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user is null) return Unauthorized();
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
+        {
+            return currentUserError;
+        }
 
         var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = User.IsInRole(RoleNames.CampAdmin) || User.IsInRole(RoleNames.Admin);
+        var isCampAdmin = RoleChecks.IsCampAdmin(User);
         if (!isLead && !isCampAdmin) return Forbid();
 
         try

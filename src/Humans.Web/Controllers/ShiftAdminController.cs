@@ -16,14 +16,13 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Teams/{slug}/Shifts")]
-public class ShiftAdminController : Controller
+public class ShiftAdminController : HumansControllerBase
 {
     private readonly ITeamService _teamService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly IProfileService _profileService;
-    private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly ILogger<ShiftAdminController> _logger;
 
@@ -36,13 +35,13 @@ public class ShiftAdminController : Controller
         UserManager<User> userManager,
         IClock clock,
         ILogger<ShiftAdminController> logger)
+        : base(userManager)
     {
         _teamService = teamService;
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
         _profileService = profileService;
-        _userManager = userManager;
         _clock = clock;
         _logger = logger;
     }
@@ -469,7 +468,7 @@ public class ShiftAdminController : Controller
                 query,
                 es,
                 ShiftRoleChecks.CanViewMedical(User),
-                _userManager,
+                UserManager,
                 _profileService,
                 _signupService,
                 _availabilityService);
@@ -515,7 +514,7 @@ public class ShiftAdminController : Controller
 
     private async Task<(Team? Team, Guid? UserId)> ResolveTeamAndUserAsync(string slug)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null) return (null, null);
 
         var team = await _teamService.GetTeamBySlugAsync(slug);

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
+using Humans.Web.Authorization;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -689,7 +690,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
 
         var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
-        var canManage = isCoordinator || User.IsInRole("Board") || User.IsInRole("Admin") || User.IsInRole("TeamsAdmin");
+        var canManage = isCoordinator || RoleChecks.IsTeamsAdminBoardOrAdmin(User);
         if (!canManage)
             return Forbid();
 
@@ -729,7 +730,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
 
         var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
-        var canManage = isCoordinator || User.IsInRole("Board") || User.IsInRole("Admin") || User.IsInRole("TeamsAdmin");
+        var canManage = isCoordinator || RoleChecks.IsTeamsAdminBoardOrAdmin(User);
         if (!canManage)
             return Forbid();
 

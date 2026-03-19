@@ -20,7 +20,6 @@ public class ShiftsController : HumansControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
-    private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
 
     public ShiftsController(
@@ -34,7 +33,6 @@ public class ShiftsController : HumansControllerBase
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
-        _userManager = userManager;
         _clock = clock;
     }
 
@@ -313,7 +311,7 @@ public class ShiftsController : HumansControllerBase
         if (user.ICalToken == null)
         {
             user.ICalToken = Guid.NewGuid();
-            await _userManager.UpdateAsync(user);
+            await UpdateCurrentUserAsync(user);
         }
         model.ICalUrl = $"{Request.Scheme}://{Request.Host}/ICal/{user.ICalToken}.ics";
 
@@ -349,7 +347,7 @@ public class ShiftsController : HumansControllerBase
         }
 
         user.ICalToken = Guid.NewGuid();
-        await _userManager.UpdateAsync(user);
+        await UpdateCurrentUserAsync(user);
 
         SetSuccess("iCal URL regenerated.");
         return RedirectToAction(nameof(Mine));

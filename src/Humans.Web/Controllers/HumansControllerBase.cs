@@ -9,6 +9,7 @@ namespace Humans.Web.Controllers;
 public abstract class HumansControllerBase : Controller
 {
     private readonly UserManager<User> _userManager;
+    protected UserManager<User> UserManager => _userManager;
 
     protected HumansControllerBase(UserManager<User> userManager)
     {

@@ -1,6 +1,5 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -11,6 +10,7 @@ using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
+using Microsoft.AspNetCore.Identity;
 
 namespace Humans.Web.Controllers;
 
@@ -19,7 +19,6 @@ namespace Humans.Web.Controllers;
 public class TeamController : HumansControllerBase
 {
     private readonly ITeamService _teamService;
-    private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService;
@@ -43,7 +42,6 @@ public class TeamController : HumansControllerBase
         : base(userManager)
     {
         _teamService = teamService;
-        _userManager = userManager;
         _profileService = profileService;
         _teamResourceService = teamResourceService;
         _googleSyncService = googleSyncService;
@@ -58,8 +56,8 @@ public class TeamController : HumansControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var user = await _userManager.GetUserAsync(User);
-        var isAuthenticated = user != null;
+        var user = await GetCurrentUserAsync();
+        var isAuthenticated = user is not null;
 
         if (!isAuthenticated)
         {
@@ -135,14 +133,14 @@ public class TeamController : HumansControllerBase
             .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        ViewBag.CanViewSync = User.IsInRole("TeamsAdmin") || User.IsInRole("Board") || User.IsInRole("Admin");
+        ViewBag.CanViewSync = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
 
         var viewModel = new TeamIndexViewModel
         {
             MyTeams = myTeams,
             Departments = departments,
             SystemTeams = systemTeams,
-            CanCreateTeam = isBoardMember || User.IsInRole("TeamsAdmin") || User.IsInRole("Admin"),
+            CanCreateTeam = isBoardMember || RoleChecks.IsTeamsAdminBoardOrAdmin(User),
             IsAuthenticated = true
         };
 
@@ -159,8 +157,8 @@ public class TeamController : HumansControllerBase
             return NotFound();
         }
 
-        var user = await _userManager.GetUserAsync(User);
-        var isAuthenticated = user != null;
+        var user = await GetCurrentUserAsync();
+        var isAuthenticated = user is not null;
 
         // Anonymous visitors can only see public teams
         if (!isAuthenticated && !team.IsPublicPage)
@@ -180,7 +178,7 @@ public class TeamController : HumansControllerBase
         string? pageContentUpdatedByDisplayName = null;
         if (team.PageContentUpdatedByUserId.HasValue)
         {
-            var editor = await _userManager.FindByIdAsync(team.PageContentUpdatedByUserId.Value.ToString());
+            var editor = await FindUserByIdAsync(team.PageContentUpdatedByUserId.Value);
             pageContentUpdatedByDisplayName = editor?.DisplayName;
         }
 
@@ -236,7 +234,7 @@ public class TeamController : HumansControllerBase
         var isBoardMember = await _teamService.IsUserBoardMemberAsync(user.Id);
         var isAdmin = await _teamService.IsUserAdminAsync(user.Id);
         var pendingRequest = await _teamService.GetUserPendingRequestAsync(team.Id, user.Id);
-        var isTeamsAdmin = User.IsInRole("TeamsAdmin");
+        var isTeamsAdmin = RoleChecks.IsTeamsAdmin(User);
         var canManage = isCoordinator || isBoardMember || isAdmin || isTeamsAdmin;
 
         var pendingRequestCount = 0;
@@ -354,10 +352,10 @@ public class TeamController : HumansControllerBase
     [HttpGet("Birthdays")]
     public async Task<IActionResult> Birthdays(int? month)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
         {
-            return NotFound();
+            return currentUserError;
         }
 
         var currentMonth = month ?? DateTime.UtcNow.Month;
@@ -503,10 +501,10 @@ public class TeamController : HumansControllerBase
     [HttpGet("My")]
     public async Task<IActionResult> MyTeams()
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
         {
-            return NotFound();
+            return currentUserError;
         }
 
         var memberships = await _teamService.GetUserTeamsAsync(user.Id);
@@ -550,10 +548,10 @@ public class TeamController : HumansControllerBase
     [HttpGet("{slug}/Join")]
     public async Task<IActionResult> Join(string slug)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
         {
-            return NotFound();
+            return currentUserError;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -597,10 +595,10 @@ public class TeamController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Join(string slug, JoinTeamViewModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
         {
-            return NotFound();
+            return currentUserError;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -640,10 +638,10 @@ public class TeamController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Leave(string slug)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
         {
-            return NotFound();
+            return currentUserError;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
@@ -673,10 +671,10 @@ public class TeamController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> WithdrawRequest(Guid id)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null)
         {
-            return NotFound();
+            return currentUserError;
         }
 
         try
@@ -693,18 +691,18 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("Sync")]
-    [Authorize(Roles = "TeamsAdmin,Board,Admin")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     public IActionResult Sync()
     {
         var viewModel = new TeamSyncViewModel
         {
-            CanExecuteActions = User.IsInRole("Admin")
+            CanExecuteActions = RoleChecks.IsAdmin(User)
         };
         return View(viewModel);
     }
 
     [HttpGet("Sync/Preview/{resourceType}")]
-    [Authorize(Roles = "TeamsAdmin,Board,Admin")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
     {
         var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview);
@@ -712,7 +710,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpPost("Sync/Execute/{resourceId}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = RoleNames.Admin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncExecute(Guid resourceId)
     {
@@ -721,7 +719,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpPost("Sync/ExecuteAll/{resourceType}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = RoleNames.Admin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncExecuteAll(GoogleResourceType resourceType)
     {
@@ -730,7 +728,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("Summary")]
-    [Authorize(Roles = "Board,Admin,TeamsAdmin")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> Summary()
     {
         var (teams, totalCount) = await _teamService.GetAllTeamsForAdminAsync(1, 500);
@@ -783,7 +781,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("Create")]
-    [Authorize(Roles = "Board,Admin,TeamsAdmin")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> CreateTeam(CancellationToken cancellationToken)
     {
         var model = new CreateTeamViewModel
@@ -794,7 +792,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpPost("Create")]
-    [Authorize(Roles = "Board,Admin,TeamsAdmin")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateTeam(CreateTeamViewModel model)
     {
@@ -806,7 +804,7 @@ public class TeamController : HumansControllerBase
         try
         {
             var team = await _teamService.CreateTeamAsync(model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix);
-            var currentUser = await _userManager.GetUserAsync(User);
+            var currentUser = await GetCurrentUserAsync();
             _logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, team.Id, team.Name);
 
             if (!string.IsNullOrEmpty(model.GoogleGroupPrefix))
@@ -842,7 +840,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("{id:guid}/Edit")]
-    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin},{RoleNames.TeamsAdmin}")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> EditTeam(Guid id, CancellationToken cancellationToken)
     {
         var team = await _teamService.GetTeamByIdAsync(id, cancellationToken);
@@ -870,7 +868,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpPost("{id:guid}/Edit")]
-    [Authorize(Roles = $"{RoleNames.Board},{RoleNames.Admin},{RoleNames.TeamsAdmin}")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditTeam(Guid id, EditTeamViewModel model)
     {
@@ -887,7 +885,7 @@ public class TeamController : HumansControllerBase
         try
         {
             await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix);
-            var currentUser = await _userManager.GetUserAsync(User);
+            var currentUser = await GetCurrentUserAsync();
             _logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
             // Handles prefix set, changed, or cleared (deactivates old resource if needed)
@@ -919,14 +917,14 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpPost("{id:guid}/Delete")]
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeam(Guid id)
     {
         try
         {
             await _teamService.DeleteTeamAsync(id);
-            var currentUser = await _userManager.GetUserAsync(User);
+            var currentUser = await GetCurrentUserAsync();
             _logger.LogInformation("Admin {AdminId} deactivated team {TeamId}", currentUser?.Id, id);
 
             SetSuccess(_localizer["Admin_TeamDeactivated"].Value);
