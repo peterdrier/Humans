@@ -169,6 +169,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         if (team == null)
         {
             _logger.LogWarning("Volunteers system team not found");
+            report?.Steps.Add(step);
             return;
         }
 
@@ -200,6 +201,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         if (team == null)
         {
             _logger.LogWarning("Coordinators system team not found");
+            report?.Steps.Add(step);
             return;
         }
 
@@ -235,6 +237,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         if (team == null)
         {
             _logger.LogWarning("Board system team not found");
+            report?.Steps.Add(step);
             return;
         }
 
@@ -283,6 +286,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         if (team == null)
         {
             _logger.LogWarning("{TeamType} system team not found", teamType);
+            report?.Steps.Add(step);
             return;
         }
 
@@ -463,6 +467,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         if (team == null)
         {
             _logger.LogWarning("Barrio Leads system team not found");
+            report?.Steps.Add(step);
             return;
         }
 
