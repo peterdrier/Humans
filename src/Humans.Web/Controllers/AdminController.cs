@@ -138,13 +138,13 @@ public class AdminController : HumansControllerBase
             ("Email", "Email:Password", true),
             ("Email", "Email:FromAddress", true),
             ("Email", "Email:BaseUrl", true),
-            ("Google Workspace", "GoogleWorkspace:ServiceAccountKeyPath", false),
-            ("Google Workspace", "GoogleWorkspace:ServiceAccountKeyJson", false),
-            ("Google Workspace", "GoogleWorkspace:Domain", false),
             ("GitHub", "GitHub:Owner", true),
             ("GitHub", "GitHub:Repository", true),
             ("GitHub", "GitHub:AccessToken", true),
             ("Google Maps", "GoogleMaps:ApiKey", true),
+            ("Google Workspace", "GoogleWorkspace:ServiceAccountKeyPath", false),
+            ("Google Workspace", "GoogleWorkspace:ServiceAccountKeyJson", false),
+            ("Google Workspace", "GoogleWorkspace:Domain", false),
             ("OpenTelemetry", "OpenTelemetry:OtlpEndpoint", false),
             ("Ticket Vendor", "TicketVendor:EventId", false),
             ("Ticket Vendor", "TicketVendor:Provider", false),
@@ -171,7 +171,19 @@ public class AdminController : HumansControllerBase
             };
         }).ToList();
 
-        // Ticket vendor API key is from env var, not configuration
+        // Env var keys (inserted in alphabetical order by section)
+        var feedbackApiKey = Environment.GetEnvironmentVariable("FEEDBACK_API_KEY");
+        items.Insert(
+            items.FindIndex(i => string.Equals(i.Section, "GitHub", StringComparison.Ordinal)),
+            new ConfigurationItemViewModel
+            {
+                Section = "Feedback API",
+                Key = "FEEDBACK_API_KEY (env)",
+                IsSet = !string.IsNullOrEmpty(feedbackApiKey),
+                Preview = !string.IsNullOrEmpty(feedbackApiKey) ? feedbackApiKey[..Math.Min(3, feedbackApiKey.Length)] + "..." : "(not set)",
+                IsRequired = false,
+            });
+
         var apiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY");
         items.Add(new ConfigurationItemViewModel
         {
@@ -179,17 +191,6 @@ public class AdminController : HumansControllerBase
             Key = "TICKET_VENDOR_API_KEY (env)",
             IsSet = !string.IsNullOrEmpty(apiKey),
             Preview = !string.IsNullOrEmpty(apiKey) ? apiKey[..Math.Min(3, apiKey.Length)] + "..." : "(not set)",
-            IsRequired = false,
-        });
-
-        // Feedback API key is from env var
-        var feedbackApiKey = Environment.GetEnvironmentVariable("FEEDBACK_API_KEY");
-        items.Add(new ConfigurationItemViewModel
-        {
-            Section = "Feedback API",
-            Key = "FEEDBACK_API_KEY (env)",
-            IsSet = !string.IsNullOrEmpty(feedbackApiKey),
-            Preview = !string.IsNullOrEmpty(feedbackApiKey) ? feedbackApiKey[..Math.Min(3, feedbackApiKey.Length)] + "..." : "(not set)",
             IsRequired = false,
         });
 
