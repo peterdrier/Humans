@@ -49,19 +49,10 @@
                                     <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
                                 </li>
                             }
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Consent" asp-action="Index">@Localizer["Nav_Consents"]</a>
-                            </li>
                             @if (isActiveMember || Humans.Web.Authorization.ShiftRoleChecks.CanAccessDashboard(User))
                             {
                                 <li class="nav-item">
                                     <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
-                                </li>
-                            }
-                            if (isActiveMember)
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Governance" asp-action="Index">@Localizer["Nav_Governance"]</a>
                                 </li>
                             }
                         }
