@@ -219,23 +219,39 @@
     </div>
 
     <div class="col-md-4">
-        @* Contact info *@
+        @* Links & Contact *@
         <div class="card mb-4">
             <div class="card-header">
-                <i class="fa-solid fa-address-book me-1"></i> Contact
+                <i class="fa-solid fa-link me-1"></i> @Localizer["Camp_Links_Header"]
             </div>
             <div class="card-body">
-                <dl class="mb-0">
-                    <dt>Email</dt>
-                    <dd><a href="mailto:@Model.ContactEmail">@Model.ContactEmail</a></dd>
-                    <dt>Preferred Contact</dt>
-                    <dd>@Model.ContactMethod</dd>
-                    @if (!string.IsNullOrEmpty(Model.WebOrSocialUrl))
-                    {
-                        <dt>Web / Social</dt>
-                        <dd><a href="@Model.WebOrSocialUrl" target="_blank" rel="noopener noreferrer">@Model.WebOrSocialUrl</a></dd>
-                    }
-                </dl>
+                @if (Model.Links.Count > 0)
+                {
+                    <div class="mb-3">
+                        @foreach (var link in Model.Links)
+                        {
+                            var platform = Humans.Domain.Helpers.PlatformDetector.Detect(link.Url);
+                            <div class="mb-2">
+                                <a href="@link.Url" target="_blank" rel="noopener noreferrer">
+                                    <i class="@platform.IconClass me-1"></i> @platform.Name
+                                </a>
+                            </div>
+                        }
+                    </div>
+                }
+                <hr />
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a asp-action="Contact" asp-route-slug="@Model.Slug" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactButton"]
+                    </a>
+                }
+                else
+                {
+                    <div class="text-center text-muted">
+                        <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactLoginHint"]
+                    </div>
+                }
             </div>
         </div>
 
@@ -261,7 +277,7 @@
                     @foreach (var lead in Model.Leads)
                     {
                         <li class="list-group-item">
-                            <a asp-controller="Human" asp-action="Detail" asp-route-id="@lead.UserId">@lead.DisplayName</a>
+                            <a asp-controller="Human" asp-action="View" asp-route-id="@lead.UserId">@lead.DisplayName</a>
                         </li>
                     }
                 </ul>

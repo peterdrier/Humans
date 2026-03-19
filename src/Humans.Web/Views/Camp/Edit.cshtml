@@ -53,13 +53,34 @@
                             <label asp-for="ContactPhone" class="form-label">Contact Phone</label>
                             <input asp-for="ContactPhone" class="form-control" type="tel" pattern="\+[\d\s\-()]{6,20}" placeholder="+34 612 345 678" />
                         </div>
-                        <div class="col-md-6">
-                            <label asp-for="ContactMethod" class="form-label">Preferred Contact Method</label>
-                            <input asp-for="ContactMethod" class="form-control" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label asp-for="WebOrSocialUrl" class="form-label">Website or Social Media</label>
-                            <input asp-for="WebOrSocialUrl" class="form-control" type="url" placeholder="https://" />
+                        <div class="col-12">
+                            <label class="form-label">@Localizer["Camp_Edit_Links"]</label>
+                            <div id="links-container">
+                                @if (Model.Links != null)
+                                {
+                                    for (var i = 0; i < Model.Links.Count; i++)
+                                    {
+                                        <div class="input-group mb-2 link-entry">
+                                            <input type="url" name="Links" class="form-control" value="@Model.Links[i]" placeholder="https://" />
+                                            <button type="button" class="btn btn-outline-danger remove-link">
+                                                <i class="fa-solid fa-times"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-link">
+                                <i class="fa-solid fa-plus me-1"></i> @Localizer["Camp_Edit_AddLink"]
+                            </button>
+                            @{
+                                var hasWebsite = Model.Links?.Any(u => !string.IsNullOrEmpty(u) && !Humans.Domain.Helpers.PlatformDetector.IsSocialMedia(u)) ?? false;
+                            }
+                            @if (!hasWebsite)
+                            {
+                                <div class="alert alert-warning mt-2 mb-0">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> @Localizer["Camp_Edit_WebsiteNudge"]
+                                </div>
+                            }
                         </div>
                         <div class="col-md-3">
                             <label asp-for="TimesAtNowhere" class="form-label">Times Participating</label>
@@ -332,3 +353,7 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_LinksEditorScripts" />
+}

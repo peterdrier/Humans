@@ -42,8 +42,7 @@ public class CampApiController : ControllerBase
                 Status = (season?.Status ?? CampSeasonStatus.Pending).ToString(),
                 b.TimesAtNowhere,
                 b.IsSwissCamp,
-                b.ContactEmail,
-                b.ContactMethod,
+                b.Links,
                 b.WebOrSocialUrl
             };
         }).OrderBy(b => b.Name, StringComparer.OrdinalIgnoreCase).ToList();

@@ -4,8 +4,12 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using System.Text.RegularExpressions;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
+using Humans.Domain.ValueObjects;
 using Humans.Web.Models;
+using Microsoft.Extensions.Caching.Memory;
 using Humans.Web.Authorization;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -20,19 +24,28 @@ public class CampController : HumansControllerBase
     private readonly IClock _clock;
     private readonly ILogger<CampController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly IEmailService _emailService;
+    private readonly IAuditLogService _auditLogService;
+    private readonly IMemoryCache _cache;
 
     public CampController(
         ICampService campService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<CampController> logger,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        IEmailService emailService,
+        IAuditLogService auditLogService,
+        IMemoryCache cache)
         : base(userManager)
     {
         _campService = campService;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
+        _emailService = emailService;
+        _auditLogService = auditLogService;
+        _cache = cache;
     }
 
     // ======================================================================
@@ -151,9 +164,7 @@ public class CampController : HumansControllerBase
             Id = camp.Id,
             Slug = camp.Slug,
             Name = currentSeason?.Name ?? camp.Slug,
-            ContactEmail = camp.ContactEmail,
-            ContactMethod = camp.ContactMethod,
-            WebOrSocialUrl = camp.WebOrSocialUrl,
+            Links = (camp.Links is { Count: > 0 } ? camp.Links : camp.WebOrSocialUrl != null ? new List<CampLink> { new() { Url = camp.WebOrSocialUrl } } : new List<CampLink>()),
             IsSwissCamp = camp.IsSwissCamp,
             TimesAtNowhere = camp.TimesAtNowhere,
             HistoricalNames = camp.HistoricalNames.Select(h => h.Name).ToList(),
@@ -201,9 +212,7 @@ public class CampController : HumansControllerBase
             Id = camp.Id,
             Slug = camp.Slug,
             Name = season.Name,
-            ContactEmail = camp.ContactEmail,
-            ContactMethod = camp.ContactMethod,
-            WebOrSocialUrl = camp.WebOrSocialUrl,
+            Links = (camp.Links is { Count: > 0 } ? camp.Links : camp.WebOrSocialUrl != null ? new List<CampLink> { new() { Url = camp.WebOrSocialUrl } } : new List<CampLink>()),
             IsSwissCamp = camp.IsSwissCamp,
             TimesAtNowhere = camp.TimesAtNowhere,
             HistoricalNames = camp.HistoricalNames.Select(h => h.Name).ToList(),
@@ -222,6 +231,89 @@ public class CampController : HumansControllerBase
         };
 
         return View(nameof(Details), viewModel);
+    }
+
+    // ======================================================================
+    // Facilitated Contact
+    // ======================================================================
+
+    [Authorize]
+    [HttpGet("{slug}/Contact")]
+    public async Task<IActionResult> Contact(string slug)
+    {
+        var camp = await _campService.GetCampBySlugAsync(slug);
+        if (camp == null) return NotFound();
+
+        var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+        var model = new CampContactViewModel
+        {
+            CampSlug = slug,
+            CampName = season?.Name ?? slug
+        };
+        return View(model);
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Contact")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Contact(string slug, CampContactViewModel model)
+    {
+        var camp = await _campService.GetCampBySlugAsync(slug);
+        if (camp == null) return NotFound();
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser == null) return Unauthorized();
+
+        // Rate limit: one message per camp per user per 10 minutes
+        var rateLimitKey = $"camp-contact:{currentUser.Id}:{camp.Id}";
+        if (_cache.TryGetValue(rateLimitKey, out _))
+        {
+            SetError(_localizer["Camp_Contact_RateLimited"].Value);
+            return RedirectToAction(nameof(Details), new { slug });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            model.CampSlug = slug;
+            var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+            model.CampName = season?.Name ?? slug;
+            return View(model);
+        }
+
+        try
+        {
+            var cleanMessage = Regex.Replace(
+                model.Message, "<[^>]+>", "", RegexOptions.None, TimeSpan.FromSeconds(1));
+
+            var season2 = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+            var campDisplayName = season2?.Name ?? slug;
+            var senderEmail = currentUser.GetEffectiveEmail() ?? currentUser.Email!;
+
+            await _emailService.SendFacilitatedMessageAsync(
+                camp.ContactEmail,
+                campDisplayName,
+                currentUser.DisplayName,
+                cleanMessage,
+                model.IncludeContactInfo,
+                senderEmail);
+
+            await _auditLogService.LogAsync(
+                AuditAction.FacilitatedMessageSent,
+                nameof(Camp), camp.Id,
+                $"Message sent to camp '{campDisplayName}' (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
+                currentUser.Id, currentUser.DisplayName);
+
+            _cache.Set(rateLimitKey, true, TimeSpan.FromMinutes(10));
+
+            SetSuccess(string.Format(_localizer["Camp_Contact_Success"].Value, campDisplayName));
+            return RedirectToAction(nameof(Details), new { slug });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
+            SetError(_localizer["Common_Error"].Value);
+            return RedirectToAction(nameof(Details), new { slug });
+        }
     }
 
     // ======================================================================
@@ -277,13 +369,20 @@ public class CampController : HumansControllerBase
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .ToList();
 
+            var campLinks = model.Links
+                .Where(u => !string.IsNullOrWhiteSpace(u)
+                    && Uri.TryCreate(u.Trim(), UriKind.Absolute, out var parsed)
+                    && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
+                .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
+                .ToList();
+
             var camp = await _campService.CreateCampAsync(
                 user.Id,
                 model.Name,
                 model.ContactEmail,
                 model.ContactPhone,
-                model.WebOrSocialUrl,
-                model.ContactMethod,
+                null, // WebOrSocialUrl legacy — new registrations/edits use Links
+                campLinks.Count > 0 ? campLinks : null,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
                 MapToSeasonData(model),
@@ -385,12 +484,19 @@ public class CampController : HumansControllerBase
 
         try
         {
+            var updateLinks = model.Links
+                .Where(u => !string.IsNullOrWhiteSpace(u)
+                    && Uri.TryCreate(u.Trim(), UriKind.Absolute, out var parsed)
+                    && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
+                .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
+                .ToList();
+
             await _campService.UpdateCampAsync(
                 camp.Id,
                 model.ContactEmail,
                 model.ContactPhone,
-                model.WebOrSocialUrl,
-                model.ContactMethod,
+                null, // WebOrSocialUrl legacy — new registrations/edits use Links
+                updateLinks.Count > 0 ? updateLinks : null,
                 model.IsSwissCamp,
                 model.TimesAtNowhere);
 
@@ -741,8 +847,7 @@ public class CampController : HumansControllerBase
             Name = season.Name,
             ContactEmail = camp.ContactEmail,
             ContactPhone = camp.ContactPhone,
-            WebOrSocialUrl = camp.WebOrSocialUrl,
-            ContactMethod = camp.ContactMethod,
+            Links = (camp.Links is { Count: > 0 } ? camp.Links.Select(l => l.Url).ToList() : camp.WebOrSocialUrl != null ? new List<string> { camp.WebOrSocialUrl } : new List<string>()),
             IsSwissCamp = camp.IsSwissCamp,
             TimesAtNowhere = camp.TimesAtNowhere,
             BlurbLong = season.BlurbLong,

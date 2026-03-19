@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 
 namespace Humans.Web.Models;
 
@@ -42,9 +43,7 @@ public class CampDetailViewModel
     public Guid Id { get; set; }
     public string Slug { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string ContactEmail { get; set; } = string.Empty;
-    public string ContactMethod { get; set; } = string.Empty;
-    public string? WebOrSocialUrl { get; set; }
+    public List<CampLink> Links { get; set; } = new();
     public bool IsSwissCamp { get; set; }
     public int TimesAtNowhere { get; set; }
     public List<string> HistoricalNames { get; set; } = new();
@@ -94,8 +93,7 @@ public class CampRegisterViewModel
     public string Name { get; set; } = string.Empty;
     public string ContactEmail { get; set; } = string.Empty;
     public string ContactPhone { get; set; } = string.Empty;
-    public string? WebOrSocialUrl { get; set; }
-    public string ContactMethod { get; set; } = string.Empty;
+    public List<string> Links { get; set; } = new();
     public bool IsSwissCamp { get; set; }
     public int TimesAtNowhere { get; set; }
     public string? HistoricalNames { get; set; }
@@ -135,6 +133,19 @@ public class CampImageViewModel
     public Guid Id { get; set; }
     public string Url { get; set; } = string.Empty;
     public int SortOrder { get; set; }
+}
+
+// Contact form
+public class CampContactViewModel
+{
+    public string CampSlug { get; set; } = string.Empty;
+    public string CampName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(2000, MinimumLength = 1)]
+    public string Message { get; set; } = string.Empty;
+
+    public bool IncludeContactInfo { get; set; } = true;
 }
 
 // Admin dashboard

@@ -24,9 +24,10 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **So that** I can learn about its community and decide whether to join
 
 **Acceptance Criteria:**
-- Shows camp name, contact info, description, images
+- Shows camp name, links (with platform icons), description, images
+- Contact email is hidden — replaced with facilitated "Contact this camp" button (login required)
 - Displays current season data (vibes, kids policy, performance space, etc.)
-- Shows leads with display names
+- Shows leads with display names (authenticated users only)
 - Shows historical names if any
 - Leads and admins see edit link
 
@@ -128,8 +129,8 @@ Camp
 ├── Slug: string [unique, URL-friendly]
 ├── ContactEmail: string
 ├── ContactPhone: string
-├── WebOrSocialUrl: string?
-├── ContactMethod: string
+├── WebOrSocialUrl: string? (legacy, read-only fallback — cleared when Links is populated)
+├── Links: List<CampLink>? (jsonb — multiple URLs with auto-detected platform)
 ├── IsSwissCamp: bool
 ├── TimesAtNowhere: int
 ├── CreatedByUserId: Guid (FK → User)

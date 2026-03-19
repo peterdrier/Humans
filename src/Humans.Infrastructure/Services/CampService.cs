@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -44,7 +45,7 @@ public class CampService : ICampService
 
     public async Task<Camp> CreateCampAsync(
         Guid createdByUserId, string name, string contactEmail, string contactPhone,
-        string? webOrSocialUrl, string contactMethod, bool isSwissCamp, int timesAtNowhere,
+        string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
         CampSeasonData seasonData, List<string>? historicalNames, int year,
         CancellationToken cancellationToken = default)
     {
@@ -68,8 +69,8 @@ public class CampService : ICampService
             Slug = slug,
             ContactEmail = contactEmail,
             ContactPhone = contactPhone,
-            WebOrSocialUrl = webOrSocialUrl,
-            ContactMethod = contactMethod,
+            WebOrSocialUrl = links is { Count: > 0 } ? null : webOrSocialUrl,
+            Links = links,
             IsSwissCamp = isSwissCamp,
             TimesAtNowhere = timesAtNowhere,
             CreatedByUserId = createdByUserId,
@@ -421,7 +422,7 @@ public class CampService : ICampService
     // ==========================================================================
 
     public async Task UpdateCampAsync(Guid campId, string contactEmail, string contactPhone,
-        string? webOrSocialUrl, string contactMethod, bool isSwissCamp, int timesAtNowhere,
+        string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
         CancellationToken cancellationToken = default)
     {
         var camp = await _dbContext.Camps.FindAsync([campId], cancellationToken)
@@ -430,7 +431,9 @@ public class CampService : ICampService
         camp.ContactEmail = contactEmail;
         camp.ContactPhone = contactPhone;
         camp.WebOrSocialUrl = webOrSocialUrl;
-        camp.ContactMethod = contactMethod;
+        camp.Links = links;
+        if (links is { Count: > 0 })
+            camp.WebOrSocialUrl = null;
         camp.IsSwissCamp = isSwissCamp;
         camp.TimesAtNowhere = timesAtNowhere;
         camp.UpdatedAt = _clock.GetCurrentInstant();

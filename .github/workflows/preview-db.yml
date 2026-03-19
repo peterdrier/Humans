@@ -14,8 +14,7 @@ jobs:
           PR_ID=${{ github.event.pull_request.number }}
           DB_NAME="humans_pr_${PR_ID}"
 
-          # Terminate connections and drop if exists (handles re-deploys on push)
-          docker exec humans-db psql -U humans -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DB_NAME}' AND pid <> pg_backend_pid();" || true
+          # Drop if exists (handles re-deploys on push)
           docker exec humans-db psql -U humans -c "DROP DATABASE IF EXISTS ${DB_NAME};"
 
           # Create empty database then restore from QA
@@ -34,7 +33,6 @@ jobs:
     steps:
       - name: Drop preview database
         run: |
-          docker exec humans-db psql -U humans -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'humans_pr_${{ github.event.pull_request.number }}' AND pid <> pg_backend_pid();" || true
           docker exec humans-db psql -U humans -c "DROP DATABASE IF EXISTS humans_pr_${{ github.event.pull_request.number }};"
 
       - name: Remove preview uploads

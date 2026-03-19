@@ -1,0 +1,17 @@
+<script>
+    document.getElementById('add-link')?.addEventListener('click', function() {
+        const container = document.getElementById('links-container');
+        if (container.querySelectorAll('.link-entry').length >= 10) return;
+        const div = document.createElement('div');
+        div.className = 'input-group mb-2 link-entry';
+        div.innerHTML = '<input type="url" name="Links" class="form-control" placeholder="https://" />' +
+            '<button type="button" class="btn btn-outline-danger remove-link"><i class="fa-solid fa-times"></i></button>';
+        container.appendChild(div);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-link')) {
+            e.target.closest('.link-entry').remove();
+        }
+    });
+</script>

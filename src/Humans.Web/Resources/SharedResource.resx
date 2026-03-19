@@ -46,6 +46,7 @@
   <data name="Common_Back" xml:space="preserve"><value>Back</value></data>
   <data name="Common_Submit" xml:space="preserve"><value>Submit</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>Not provided</value></data>
+  <data name="Common_Error" xml:space="preserve"><value>Something went wrong. Please try again later.</value></data>
 
   <!-- ======================== -->
   <!-- Navigation (_Layout)     -->
@@ -1158,6 +1159,23 @@
   <data name="Camp_SwissCampLabel" xml:space="preserve"><value>Has this camp ever been called "Swiss Camp"</value></data>
   <data name="Camp_InfoTitle" xml:space="preserve"><value>Barrio Info</value></data>
   <data name="Camp_NameLabel" xml:space="preserve"><value>Barrio Name</value></data>
+  <data name="Camp_ContactButton" xml:space="preserve"><value>Contact this barrio</value></data>
+  <data name="Camp_ContactLoginHint" xml:space="preserve"><value>Login required · Your email stays private</value></data>
+  <data name="Camp_Contact_Title" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
+  <data name="Camp_Contact_Heading" xml:space="preserve"><value>Contact {0}</value><comment>{0} = camp name</comment></data>
+  <data name="Camp_Contact_Breadcrumb" xml:space="preserve"><value>Contact</value></data>
+  <data name="Camp_Contact_MessageLabel" xml:space="preserve"><value>Your message</value></data>
+  <data name="Camp_Contact_PlainTextOnly" xml:space="preserve"><value>Plain text only. Maximum 2000 characters.</value></data>
+  <data name="Camp_Contact_IncludeContactInfo" xml:space="preserve"><value>Include my contact info</value></data>
+  <data name="Camp_Contact_IncludeContactInfoHelp" xml:space="preserve"><value>Your email will be added as reply-to so they can respond directly</value></data>
+  <data name="Camp_Contact_Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Camp_Contact_Success" xml:space="preserve"><value>Your message has been sent to {0}.</value><comment>{0} = camp name</comment></data>
+  <data name="Camp_Contact_RateLimited" xml:space="preserve"><value>You've already contacted this barrio recently. Please wait a few minutes before sending another message.</value></data>
+  <data name="Camp_Links_Header" xml:space="preserve"><value>Links &amp; Contact</value></data>
+  <data name="Camp_Edit_Links" xml:space="preserve"><value>Links</value></data>
+  <data name="Camp_Edit_AddLink" xml:space="preserve"><value>Add link</value></data>
+  <data name="Camp_Edit_RemoveLink" xml:space="preserve"><value>Remove</value></data>
+  <data name="Camp_Edit_WebsiteNudge" xml:space="preserve"><value>We strongly recommend adding a website for your barrio so visitors can learn more about you.</value></data>
   <data name="Shifts_SignedUp" xml:space="preserve"><value>Signed Up</value></data>
   <data name="Shifts_Pending" xml:space="preserve"><value>(pending)</value></data>
 
