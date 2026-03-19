@@ -182,6 +182,17 @@ public class AdminController : HumansControllerBase
             IsRequired = false,
         });
 
+        // Feedback API key is from env var
+        var feedbackApiKey = Environment.GetEnvironmentVariable("FEEDBACK_API_KEY");
+        items.Add(new ConfigurationItemViewModel
+        {
+            Section = "Feedback API",
+            Key = "FEEDBACK_API_KEY (env)",
+            IsSet = !string.IsNullOrEmpty(feedbackApiKey),
+            Preview = !string.IsNullOrEmpty(feedbackApiKey) ? feedbackApiKey[..Math.Min(3, feedbackApiKey.Length)] + "..." : "(not set)",
+            IsRequired = false,
+        });
+
         return View(new AdminConfigurationViewModel { Items = items });
     }
 
