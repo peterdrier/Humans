@@ -277,7 +277,7 @@
                     @foreach (var lead in Model.Leads)
                     {
                         <li class="list-group-item">
-                            <a asp-controller="Human" asp-action="Detail" asp-route-id="@lead.UserId">@lead.DisplayName</a>
+                            <a asp-controller="Human" asp-action="View" asp-route-id="@lead.UserId">@lead.DisplayName</a>
                         </li>
                     }
                 </ul>
