@@ -93,7 +93,6 @@ public class CampRegisterViewModel
     public string Name { get; set; } = string.Empty;
     public string ContactEmail { get; set; } = string.Empty;
     public string ContactPhone { get; set; } = string.Empty;
-    public string? WebOrSocialUrl { get; set; }
     public List<string> Links { get; set; } = new();
     public bool IsSwissCamp { get; set; }
     public int TimesAtNowhere { get; set; }

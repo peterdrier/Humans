@@ -69,7 +69,7 @@ public class CampService : ICampService
             Slug = slug,
             ContactEmail = contactEmail,
             ContactPhone = contactPhone,
-            WebOrSocialUrl = webOrSocialUrl,
+            WebOrSocialUrl = links is { Count: > 0 } ? null : webOrSocialUrl,
             Links = links,
             IsSwissCamp = isSwissCamp,
             TimesAtNowhere = timesAtNowhere,

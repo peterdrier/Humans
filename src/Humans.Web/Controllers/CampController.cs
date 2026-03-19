@@ -370,7 +370,9 @@ public class CampController : HumansControllerBase
                     .ToList();
 
             var campLinks = model.Links
-                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Where(u => !string.IsNullOrWhiteSpace(u)
+                    && Uri.TryCreate(u.Trim(), UriKind.Absolute, out var parsed)
+                    && (string.Equals(parsed.Scheme, "http", StringComparison.Ordinal) || string.Equals(parsed.Scheme, "https", StringComparison.Ordinal)))
                 .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
                 .ToList();
 
@@ -379,7 +381,7 @@ public class CampController : HumansControllerBase
                 model.Name,
                 model.ContactEmail,
                 model.ContactPhone,
-                model.WebOrSocialUrl,
+                null, // WebOrSocialUrl legacy — new registrations/edits use Links
                 campLinks.Count > 0 ? campLinks : null,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
@@ -483,7 +485,9 @@ public class CampController : HumansControllerBase
         try
         {
             var updateLinks = model.Links
-                .Where(u => !string.IsNullOrWhiteSpace(u))
+                .Where(u => !string.IsNullOrWhiteSpace(u)
+                    && Uri.TryCreate(u.Trim(), UriKind.Absolute, out var parsed)
+                    && (string.Equals(parsed.Scheme, "http", StringComparison.Ordinal) || string.Equals(parsed.Scheme, "https", StringComparison.Ordinal)))
                 .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
                 .ToList();
 
@@ -491,7 +495,7 @@ public class CampController : HumansControllerBase
                 camp.Id,
                 model.ContactEmail,
                 model.ContactPhone,
-                model.WebOrSocialUrl,
+                null, // WebOrSocialUrl legacy — new registrations/edits use Links
                 updateLinks.Count > 0 ? updateLinks : null,
                 model.IsSwissCamp,
                 model.TimesAtNowhere);
@@ -843,7 +847,6 @@ public class CampController : HumansControllerBase
             Name = season.Name,
             ContactEmail = camp.ContactEmail,
             ContactPhone = camp.ContactPhone,
-            WebOrSocialUrl = camp.WebOrSocialUrl,
             Links = (camp.Links is { Count: > 0 } ? camp.Links.Select(l => l.Url).ToList() : camp.WebOrSocialUrl != null ? new List<string> { camp.WebOrSocialUrl } : new List<string>()),
             IsSwissCamp = camp.IsSwissCamp,
             TimesAtNowhere = camp.TimesAtNowhere,

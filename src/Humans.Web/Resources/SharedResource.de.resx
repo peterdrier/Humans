@@ -46,6 +46,7 @@
   <data name="Common_Back" xml:space="preserve"><value>Zurück</value></data>
   <data name="Common_Submit" xml:space="preserve"><value>Absenden</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>Nicht angegeben</value></data>
+  <data name="Common_Error" xml:space="preserve"><value>Etwas ist schiefgelaufen. Bitte versuche es später erneut.</value></data>
 
   <!-- ======================== -->
   <!-- Navigation (_Layout)     -->

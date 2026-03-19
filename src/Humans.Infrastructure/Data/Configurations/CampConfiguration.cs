@@ -25,7 +25,7 @@ public class CampConfiguration : IEntityTypeConfiguration<Camp>
                 v => JsonSerializer.Serialize(v, JsonOptions),
                 v => JsonSerializer.Deserialize<List<CampLink>>(v, JsonOptions) ?? new(),
                 new ValueComparer<List<CampLink>>(
-                    (a, b) => a != null && b != null && JsonSerializer.Serialize(a, JsonOptions) == JsonSerializer.Serialize(b, JsonOptions),
+                    (a, b) => a == null ? b == null : b != null && JsonSerializer.Serialize(a, JsonOptions) == JsonSerializer.Serialize(b, JsonOptions),
                     v => string.GetHashCode(JsonSerializer.Serialize(v, JsonOptions), StringComparison.Ordinal),
                     v => JsonSerializer.Deserialize<List<CampLink>>(JsonSerializer.Serialize(v, JsonOptions), JsonOptions)!));
 

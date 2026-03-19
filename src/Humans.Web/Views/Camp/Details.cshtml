@@ -240,12 +240,18 @@
                     </div>
                 }
                 <hr />
-                <a asp-action="Contact" asp-route-slug="@Model.Slug" class="btn btn-primary w-100">
-                    <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactButton"]
-                </a>
-                <div class="text-center mt-1">
-                    <small class="text-muted">@Localizer["Camp_ContactLoginHint"]</small>
-                </div>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a asp-action="Contact" asp-route-slug="@Model.Slug" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactButton"]
+                    </a>
+                }
+                else
+                {
+                    <div class="text-center text-muted">
+                        <i class="fa-solid fa-envelope me-1"></i> @Localizer["Camp_ContactLoginHint"]
+                    </div>
+                }
             </div>
         </div>
 
