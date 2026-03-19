@@ -79,29 +79,24 @@ Coolify strips `.git` from the Docker build context. Do NOT use `COPY .git` in t
 
 ## Git Workflow
 
-Two-remote workflow with QA branch gating:
+Two-remote workflow:
 
-- **`origin`** = `peterdrier/Humans` (personal fork)
+- **`origin`** = `peterdrier/Humans` (peter's fork — QA deploys from `main`)
 - **`upstream`** = `nobodies-collective/Humans` (production)
-- **`main`** tracks production (`upstream/main`). Never commit directly to `main`.
-- **`qa`** is a long-lived branch on `origin`. QA server always deploys from this branch.
 
 **Development flow:**
 
-1. Create feature branches off `main`
-2. PR feature branches into `qa` on `peterdrier/Humans`
-3. QA auto-deploys via Coolify on push to `qa`. Preview environments deploy per-PR at `{pr_id}.n.burn.camp`.
-4. When a batch of features is tested, PR `qa` on `peterdrier/Humans` → `main` on `nobodies-collective/Humans`
-5. After merge: reset `main` and `qa` to `upstream/main` (rebase-merge rewrites SHAs):
-   ```bash
-   git fetch upstream main
-   git checkout main && git reset --hard upstream/main
-   git checkout qa && git reset --hard upstream/main
-   git push origin main --force-with-lease
-   git push origin qa --force-with-lease
-   ```
+- **Small changes:** commit directly to `main` on peter's fork. Coolify auto-deploys to QA.
+- **Larger changes:** feature branch → PR to `main` on peter's fork (squash merge if multiple commits). Preview environments deploy per-PR at `{pr_id}.n.burn.camp`.
+- **Promote to production:** batch changes on peter's `main`, PR to nobodies' `main` (rebase merge, since individual efforts were already squashed going into peter's `main`).
+- **After production merge:** reset peter's `main` to nobodies' `main`:
+  ```bash
+  git fetch upstream main
+  git checkout main && git reset --hard upstream/main
+  git push origin main --force-with-lease
+  ```
 
-**QA deployment:** Coolify auto-deploys on push to the `qa` branch. Coolify UI at `https://coolify.n.burn.camp`. Preview environments are created automatically when PRs are opened against `qa`, and torn down (including database) when PRs are closed.
+**QA deployment:** Coolify auto-deploys on push to `main` on peter's fork. Coolify UI at `https://coolify.n.burn.camp`.
 
 **Preview environment details:**
 - URL: `https://{pr_id}.n.burn.camp`
