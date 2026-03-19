@@ -502,14 +502,18 @@ public class ShiftAdminController : HumansControllerBase
 
     private async Task<bool> CanManageAsync(Guid userId, Guid teamId)
     {
+        // Claims-first for global roles; DB only for team-specific coordinator check
         return RoleChecks.IsAdmin(User) ||
-               await _shiftMgmt.CanManageShiftsAsync(userId, teamId);
+               User.IsInRole(RoleNames.VolunteerCoordinator) ||
+               await _shiftMgmt.IsDeptCoordinatorAsync(userId, teamId);
     }
 
     private async Task<bool> CanApproveAsync(Guid userId, Guid teamId)
     {
+        // Claims-first for global roles; DB only for team-specific coordinator check
         return ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
-               await _shiftMgmt.CanApproveSignupsAsync(userId, teamId);
+               User.IsInRole(RoleNames.VolunteerCoordinator) ||
+               await _shiftMgmt.IsDeptCoordinatorAsync(userId, teamId);
     }
 
     private async Task<(Team? Team, Guid? UserId)> ResolveTeamAndUserAsync(string slug)

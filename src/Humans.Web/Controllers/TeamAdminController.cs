@@ -264,8 +264,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
-        if (!canManage)
+        if (!await CanManageResourcesAsync(team.Id, user.Id))
         {
             return Forbid();
         }
@@ -319,8 +318,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
-        if (!canManage)
+        if (!await CanManageResourcesAsync(team.Id, user.Id))
         {
             return Forbid();
         }
@@ -366,8 +364,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
-        if (!canManage)
+        if (!await CanManageResourcesAsync(team.Id, user.Id))
         {
             return Forbid();
         }
@@ -413,8 +410,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
-        if (!canManage)
+        if (!await CanManageResourcesAsync(team.Id, user.Id))
         {
             return Forbid();
         }
@@ -441,8 +437,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        var canManage = await _teamResourceService.CanManageTeamResourcesAsync(team.Id, user.Id);
-        if (!canManage)
+        if (!await CanManageResourcesAsync(team.Id, user.Id))
         {
             return Forbid();
         }
@@ -811,4 +806,10 @@ public class TeamAdminController : HumansTeamControllerBase
         return Json(combined);
     }
 
+    private async Task<bool> CanManageResourcesAsync(Guid teamId, Guid userId)
+    {
+        // Claims-first for global roles; DB only for team-specific coordinator check
+        return RoleChecks.IsTeamsAdminBoardOrAdmin(User) ||
+               await _teamResourceService.CanManageTeamResourcesAsync(teamId, userId);
+    }
 }

@@ -175,6 +175,36 @@ Prefer centralized authorization declarations and shared role-check helpers over
 - Use `RoleGroups.BoardOrAdmin`, not `"Board,Admin"`
 - Use `ShiftRoleChecks.CanAccessDashboard(User)`, not repeated `IsInRole` chains
 
+### Claims-First Rule for Controller Authorization
+
+Controllers must use `User.IsInRole()` or `RoleChecks`/`ShiftRoleChecks` helpers (which check Identity claims) for HTTP request authorization — **never** query `RoleAssignments` or call service methods that query the database for global role checks.
+
+`RoleAssignmentClaimsTransformation` already converts active `RoleAssignment` records into claims on every request (cached 60s). Querying the DB again is redundant and can disagree with the claims the auth pipeline is using.
+
+**Two kinds of role checks:**
+- **Global roles** (Admin, Board, TeamsAdmin, etc.) → always use claims via `User.IsInRole()` or `RoleChecks.*`
+- **Team-specific roles** (coordinator of a specific team) → require DB query via service, and that's OK
+
+**Pattern:** Check claims first for global roles, fall back to a DB query only for team-specific checks:
+
+```csharp
+// CORRECT — claims-first, DB only for team-specific coordinator check
+private async Task<bool> CanManageAsync(Guid userId, Guid teamId)
+{
+    return RoleChecks.IsAdmin(User) ||
+           User.IsInRole(RoleNames.VolunteerCoordinator) ||
+           await _shiftMgmt.IsDeptCoordinatorAsync(userId, teamId);
+}
+
+// WRONG — queries DB for roles already available as claims
+private async Task<bool> CanManageAsync(Guid userId, Guid teamId)
+{
+    return await _shiftMgmt.CanManageShiftsAsync(userId, teamId);
+}
+```
+
+**Service-level role checks** (e.g., `TeamService.IsUserAdminAsync`) are acceptable for business logic decisions (what data to show, what options to offer), but must not be the sole authorization gate for controller actions.
+
 ## Markdown Rendering
 
 Markdown rendering in Razor must go through the shared sanitized rendering path.
