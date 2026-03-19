@@ -106,32 +106,34 @@ public class AdminController : HumansControllerBase
         try
         {
             var report = await systemTeamSyncJob.ExecuteAsync();
-
-            if (!report.HasChanges)
-            {
-                SetSuccess("System teams synced — no changes needed.");
-            }
-            else
-            {
-                var parts = new List<string>();
-                foreach (var step in report.Steps.Where(s => s.HasChanges))
-                {
-                    var changes = new List<string>();
-                    if (step.Added.Count > 0) changes.Add($"+{step.Added.Count} added");
-                    if (step.Removed.Count > 0) changes.Add($"-{step.Removed.Count} removed");
-                    if (step.Fixed.Count > 0) changes.Add($"{step.Fixed.Count} fixed");
-                    parts.Add($"{step.StepName}: {string.Join(", ", changes)}");
-                }
-                SetSuccess($"System teams synced. {string.Join(". ", parts)}.");
-            }
+            TempData["SyncReport"] = System.Text.Json.JsonSerializer.Serialize(report);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to sync system teams");
             SetError($"Sync failed: {ex.Message}");
+            return RedirectToAction(nameof(Index));
         }
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(SyncResults));
+    }
+
+    [HttpGet("SyncResults")]
+    public IActionResult SyncResults()
+    {
+        SyncReport? report = null;
+        if (TempData["SyncReport"] is string json)
+        {
+            report = System.Text.Json.JsonSerializer.Deserialize<SyncReport>(json);
+        }
+
+        if (report == null)
+        {
+            SetInfo("No sync results to display. Run a sync first.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(report);
     }
 
     [HttpGet("Logs")]

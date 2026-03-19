@@ -113,7 +113,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 .Select(t => t.Name)
                 .FirstOrDefaultAsync(cancellationToken) ?? "Unknown";
 
-            step.Fixed.Add($"{member.User.DisplayName} promoted to Coordinator on {teamName}");
+            step.Fixed(member.UserId, member.User.DisplayName, $"Promoted to Coordinator on {teamName}");
 
             _logger.LogInformation(
                 "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
@@ -140,7 +140,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 .Select(t => t.Name)
                 .FirstOrDefaultAsync(cancellationToken) ?? "Unknown";
 
-            step.Fixed.Add($"{member.User.DisplayName} demoted to Member on {teamName} (no IsManagement role)");
+            step.Fixed(member.UserId, member.User.DisplayName, $"Demoted to Member on {teamName} (no IsManagement role)");
 
             _logger.LogInformation(
                 "Reconciled {UserName} to Member on team {TeamId} (no IsManagement role assignment)",
@@ -549,7 +549,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             _dbContext.TeamMembers.Add(member);
 
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
-            step?.Added.Add(userName);
+            step?.Added(userId, userName);
             await _auditLogService.LogAsync(
                 AuditAction.TeamMemberAdded, nameof(Team), team.Id,
                 $"{userName} added to {team.Name} by system sync",
@@ -574,7 +574,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 member.LeftAt = now;
 
                 var userName = userNames.GetValueOrDefault(userId, userId.ToString());
-                step?.Removed.Add(userName);
+                step?.Removed(userId, userName);
                 await _auditLogService.LogAsync(
                     AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
                     $"{userName} removed from {team.Name} by system sync",
