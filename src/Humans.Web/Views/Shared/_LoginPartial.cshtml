@@ -2,26 +2,94 @@
 @inject SignInManager<User> SignInManager
 @inject UserManager<User> UserManager
 
-<ul class="navbar-nav">
 @if (SignInManager.IsSignedIn(User))
 {
     var currentUser = await UserManager.GetUserAsync(User);
     var displayName = currentUser?.DisplayName ?? User.Identity?.Name;
-    <li class="nav-item">
-        <a class="nav-link" asp-area="" asp-controller="Profile" asp-action="Index">
-            @Html.Raw(string.Format(Localizer["Login_Hello"].Value, Html.Encode(displayName)))
-        </a>
-    </li>
-    <li class="nav-item">
-        <form class="form-inline" asp-area="" asp-controller="Account" asp-action="Logout" method="post">
-            <button type="submit" class="nav-link btn btn-link border-0">@Localizer["Login_Logout"]</button>
-        </form>
-    </li>
+    var email = currentUser?.Email;
+    var isActiveMember = User.HasClaim(
+        Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
+        Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue)
+        || Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User);
+
+    <div class="dropdown">
+        <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2 text-decoration-none p-0"
+                type="button"
+                data-bs-toggle="dropdown"
+                data-bs-display="static"
+                aria-expanded="false">
+            @await Component.InvokeAsync("UserAvatar", new {
+                profilePictureUrl = currentUser?.ProfilePictureUrl,
+                displayName = displayName,
+                size = 32,
+                bgColor = "bg-secondary"
+            })
+            <span class="d-none d-md-inline profile-dropdown-name">@displayName</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end profile-dropdown-menu">
+            <!-- User info header -->
+            <li class="px-3 py-2">
+                <div class="fw-semibold small">@displayName</div>
+                @if (!string.IsNullOrEmpty(email))
+                {
+                    <div class="text-muted" style="font-size: 0.75rem;">@email</div>
+                }
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+
+            <!-- Menu items -->
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Profile" asp-action="Index">
+                    <i class="fa-solid fa-user fa-fw"></i> @Localizer["Nav_MyProfile"]
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Consent" asp-action="Index">
+                    <i class="fa-solid fa-file-contract fa-fw"></i> @Localizer["Nav_Consents"]
+                </a>
+            </li>
+            @if (isActiveMember)
+            {
+                <li>
+                    <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Governance" asp-action="Index">
+                        <i class="fa-solid fa-landmark fa-fw"></i> @Localizer["Nav_Governance"]
+                    </a>
+                </li>
+            }
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Home" asp-action="About">
+                    <i class="fa-solid fa-info-circle fa-fw"></i> @Localizer["Nav_About"]
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Home" asp-action="Privacy">
+                    <i class="fa-solid fa-shield-halved fa-fw"></i> @Localizer["Nav_Privacy"]
+                </a>
+            </li>
+
+            <li><hr class="dropdown-divider" /></li>
+
+            <!-- Logout -->
+            <li>
+                <form asp-controller="Account" asp-action="Logout" method="post">
+                    <button type="submit" class="dropdown-item d-flex align-items-center gap-2 text-danger">
+                        <i class="fa-solid fa-right-from-bracket fa-fw"></i> @Localizer["Login_Logout"]
+                    </button>
+                </form>
+            </li>
+
+            <!-- Version -->
+            <li class="px-3 py-1">
+                <partial name="_VersionInfo" />
+            </li>
+        </ul>
+    </div>
 }
 else
 {
-    <li class="nav-item">
-        <a class="nav-link" asp-area="" asp-controller="Account" asp-action="Login">@Localizer["Login_Login"]</a>
-    </li>
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link" asp-controller="Account" asp-action="Login">@Localizer["Login_Login"]</a>
+        </li>
+    </ul>
 }
-</ul>
