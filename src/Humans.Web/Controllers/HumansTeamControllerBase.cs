@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,10 +30,15 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
             return (NotFound(), user, null!);
         }
 
-        var canManage = await _teamService.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
-        if (!canManage)
+        // Claims-first: global roles grant access to all teams
+        if (!RoleChecks.IsTeamsAdminBoardOrAdmin(User))
         {
-            return (Forbid(), user, team);
+            // Fall back to team-specific coordinator check (requires DB)
+            var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
+            if (!isCoordinator)
+            {
+                return (Forbid(), user, team);
+            }
         }
 
         return (null, user, team);

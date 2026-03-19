@@ -41,21 +41,12 @@
                 <div class="card-body py-3 text-center">
                     <p class="text-muted small mb-3">Skip Google OAuth and sign in directly.</p>
                     <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
-                        <a asp-controller="DevLogin" asp-action="Volunteer" class="btn btn-sm btn-outline-secondary">
-                            Volunteer
-                        </a>
-                        <a asp-controller="DevLogin" asp-action="Board" class="btn btn-sm btn-outline-secondary">
-                            Board
-                        </a>
-                        <a asp-controller="DevLogin" asp-action="Admin" class="btn btn-sm btn-outline-secondary">
-                            Admin
-                        </a>
-                        <a asp-controller="DevLogin" asp-action="ConsentCoordinator" class="btn btn-sm btn-outline-secondary">
-                            Consent Coord
-                        </a>
-                        <a asp-controller="DevLogin" asp-action="VolunteerCoordinator" class="btn btn-sm btn-outline-secondary">
-                            Volunteer Coord
-                        </a>
+                        @foreach (var persona in Humans.Web.Controllers.DevLoginController.AllPersonas)
+                        {
+                            <a href="/dev/login/@persona.Slug" class="btn btn-sm btn-outline-secondary">
+                                @persona.DisplayName
+                            </a>
+                        }
                     </div>
                     <a asp-controller="DevLogin" asp-action="Users" class="btn btn-sm btn-outline-warning">
                         Choose any user...

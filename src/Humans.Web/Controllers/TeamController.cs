@@ -231,8 +231,8 @@ public class TeamController : HumansControllerBase
         // Authenticated path — full details
         var isMember = await _teamService.IsUserMemberOfTeamAsync(team.Id, user!.Id);
         var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
-        var isBoardMember = await _teamService.IsUserBoardMemberAsync(user.Id);
-        var isAdmin = await _teamService.IsUserAdminAsync(user.Id);
+        var isBoardMember = RoleChecks.IsBoard(User);
+        var isAdmin = RoleChecks.IsAdmin(User);
         var pendingRequest = await _teamService.GetUserPendingRequestAsync(team.Id, user.Id);
         var isTeamsAdmin = RoleChecks.IsTeamsAdmin(User);
         var canManage = isCoordinator || isBoardMember || isAdmin || isTeamsAdmin;
@@ -271,7 +271,9 @@ public class TeamController : HumansControllerBase
                 var summaryData = await _shiftMgmt.GetShiftsSummaryAsync(es.Id, team.Id);
                 if (summaryData != null)
                 {
-                    var canManageShifts = await _shiftMgmt.CanManageShiftsAsync(user.Id, team.Id);
+                    var canManageShifts = RoleChecks.IsAdmin(User) ||
+                        User.IsInRole(RoleNames.VolunteerCoordinator) ||
+                        await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
                     shiftsSummary = new ShiftsSummaryCardViewModel
                     {
                         TotalSlots = summaryData.TotalSlots,
