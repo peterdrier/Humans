@@ -136,6 +136,19 @@ public class CampImageViewModel
     public int SortOrder { get; set; }
 }
 
+// Contact form
+public class CampContactViewModel
+{
+    public string CampSlug { get; set; } = string.Empty;
+    public string CampName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(2000, MinimumLength = 1)]
+    public string Message { get; set; } = string.Empty;
+
+    public bool IncludeContactInfo { get; set; } = true;
+}
+
 // Admin dashboard
 public class CampAdminViewModel
 {
