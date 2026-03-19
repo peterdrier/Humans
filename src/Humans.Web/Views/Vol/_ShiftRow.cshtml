@@ -1,0 +1,91 @@
+@model (Humans.Web.Models.ShiftDisplayItem Item, Humans.Domain.Entities.EventSettings Es, HashSet<Guid> UserSignupShiftIds, Dictionary<Guid, Humans.Domain.Enums.SignupStatus> UserSignupStatuses, bool ShowSignups)
+@using Humans.Domain.Enums
+@using NodaTime
+
+@{
+    var item = Model.Item;
+    var es = Model.Es;
+    var shift = item.Shift;
+    var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+    var isFull = item.RemainingSlots <= 0;
+    var understaffed = item.ConfirmedCount < shift.MinVolunteers;
+    var isSignedUp = Model.UserSignupShiftIds.Contains(shift.Id);
+}
+
+<tr class="@(isFull && !isSignedUp ? "table-secondary" : "")">
+    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+    <td>
+        @if (shift.IsAllDay)
+        {
+            <text>All day</text>
+        }
+        else
+        {
+            @item.AbsoluteStart.ToDisplayTime(tz)<text>&ndash;</text>@item.AbsoluteEnd.ToDisplayTime(tz)
+        }
+    </td>
+    <td>
+        <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
+        <small class="text-muted">/ @shift.MaxVolunteers</small>
+        @if (understaffed)
+        {
+            <span class="badge bg-warning text-dark ms-1">Needs help</span>
+        }
+    </td>
+    <td>
+        @if (shift.Rota.Priority == ShiftPriority.Essential)
+        {
+            <span class="badge bg-danger">Essential</span>
+        }
+        else if (shift.Rota.Priority == ShiftPriority.Important)
+        {
+            <span class="badge bg-warning text-dark">Important</span>
+        }
+        else
+        {
+            <span class="text-muted">Normal</span>
+        }
+    </td>
+    <td>
+        @if (shift.Rota.Policy == SignupPolicy.Public)
+        {
+            <span class="badge bg-success">Instant</span>
+        }
+        else
+        {
+            <span class="badge bg-warning text-dark">Approval</span>
+        }
+    </td>
+    @if (Model.ShowSignups)
+    {
+        <td class="small">
+            @for (var i = 0; i < item.Signups.Count; i++)
+            {
+                var signup = item.Signups[i];
+                if (i > 0) { <text>, </text> }
+                <a asp-controller="Human" asp-action="View" asp-route-id="@signup.UserId"
+                   class="text-decoration-none @(signup.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")">@signup.DisplayName</a>@if (signup.Status == SignupStatus.Pending)
+                {<small class="text-muted"> (pending)</small>}
+            }
+        </td>
+    }
+    <td>
+        @if (isSignedUp)
+        {
+            var status = Model.UserSignupStatuses.GetValueOrDefault(shift.Id);
+            <span class="badge bg-info">@status</span>
+        }
+        else if (isFull)
+        {
+            <span class="badge bg-secondary">Full</span>
+        }
+        else
+        {
+            <form asp-controller="Vol" asp-action="SignUp" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="shiftId" value="@shift.Id" />
+                <button type="submit" class="btn btn-sm btn-success">Sign Up</button>
+            </form>
+        }
+    </td>
+</tr>

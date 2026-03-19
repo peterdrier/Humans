@@ -1,0 +1,88 @@
+@model (Humans.Web.Models.RotaShiftGroup RotaGroup, Humans.Domain.Entities.EventSettings Es, HashSet<Guid> UserSignupShiftIds, Dictionary<Guid, Humans.Domain.Enums.SignupStatus> UserSignupStatuses, bool ShowSignups)
+@using Humans.Domain.Enums
+@using NodaTime
+
+@{
+    var rotaGroup = Model.RotaGroup;
+    var es = Model.Es;
+    var rota = rotaGroup.Rota;
+    var collapseId = $"rota-{rota.Id:N}";
+
+    var totalConfirmed = rotaGroup.Shifts.Sum(s => s.ConfirmedCount);
+    var totalMax = rotaGroup.Shifts.Sum(s => s.Shift.MaxVolunteers);
+    var fillPercent = totalMax > 0 ? (int)Math.Round(100.0 * totalConfirmed / totalMax) : 0;
+
+    var progressClass = fillPercent switch
+    {
+        >= 80 => "bg-success",
+        >= 50 => "bg-info",
+        >= 25 => "bg-warning",
+        _ => "bg-danger"
+    };
+
+    var periodBadge = rota.Period switch
+    {
+        RotaPeriod.Build => ("bg-info", "Set-up"),
+        RotaPeriod.Strike => ("bg-secondary", "Strike"),
+        _ => ("bg-success", "Event")
+    };
+}
+
+<div class="mb-3">
+    <div class="d-flex align-items-center justify-content-between cursor-pointer"
+         data-bs-toggle="collapse" data-bs-target="#@collapseId" role="button" aria-expanded="false" aria-controls="@collapseId">
+        <div>
+            <h6 class="mb-0 d-inline">@rota.Name</h6>
+            @if (rota.Priority == ShiftPriority.Essential)
+            {
+                <span class="badge bg-danger ms-1">Essential</span>
+            }
+            else if (rota.Priority == ShiftPriority.Important)
+            {
+                <span class="badge bg-warning text-dark ms-1">Important</span>
+            }
+            <span class="badge @periodBadge.Item1 ms-1">@periodBadge.Item2</span>
+            <small class="text-muted ms-2">@rotaGroup.Shifts.Count shift@(rotaGroup.Shifts.Count != 1 ? "s" : "")</small>
+        </div>
+        <i class="fa-solid fa-chevron-down text-muted"></i>
+    </div>
+
+    @if (!string.IsNullOrEmpty(rota.PracticalInfo))
+    {
+        <p class="text-muted small mb-1 mt-1">@rota.PracticalInfo</p>
+    }
+
+    <div class="progress mt-2" style="height: 6px;">
+        <div class="progress-bar @progressClass" role="progressbar"
+             style="width: @fillPercent%;" aria-valuenow="@totalConfirmed" aria-valuemin="0" aria-valuemax="@totalMax">
+        </div>
+    </div>
+    <small class="text-muted">@totalConfirmed / @totalMax filled</small>
+
+    <div class="collapse mt-2" id="@collapseId">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Filled</th>
+                        <th>Priority</th>
+                        <th>Policy</th>
+                        @if (Model.ShowSignups)
+                        {
+                            <th>Signed Up</th>
+                        }
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in rotaGroup.Shifts)
+                    {
+                        @await Html.PartialAsync("_ShiftRow", (item, es, Model.UserSignupShiftIds, Model.UserSignupStatuses, Model.ShowSignups))
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
