@@ -59,6 +59,7 @@
   <data name="Nav_Consents" xml:space="preserve"><value>Accords</value></data>
   <data name="Nav_Governance" xml:space="preserve"><value>Gouvernance</value></data>
   <data name="Nav_Privacy" xml:space="preserve"><value>Confidentialit&#xE9;</value></data>
+  <data name="Nav_About" xml:space="preserve"><value>&#xC0; propos</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>File d'attente</value></data>
 
