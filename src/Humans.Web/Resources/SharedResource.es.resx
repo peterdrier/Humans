@@ -1162,6 +1162,23 @@
   <data name="Camp_SwissCampLabel" xml:space="preserve"><value>¿Este camp se ha llamado alguna vez "Swiss Camp"?</value></data>
   <data name="Camp_InfoTitle" xml:space="preserve"><value>Información del Barrio</value></data>
   <data name="Camp_NameLabel" xml:space="preserve"><value>Nombre del Barrio</value></data>
+  <data name="Camp_ContactButton" xml:space="preserve"><value>Contactar este barrio</value></data>
+  <data name="Camp_ContactLoginHint" xml:space="preserve"><value>Requiere iniciar sesión · Tu email se mantiene privado</value></data>
+  <data name="Camp_Contact_Title" xml:space="preserve"><value>Contactar {0}</value></data>
+  <data name="Camp_Contact_Heading" xml:space="preserve"><value>Contactar {0}</value></data>
+  <data name="Camp_Contact_Breadcrumb" xml:space="preserve"><value>Contacto</value></data>
+  <data name="Camp_Contact_MessageLabel" xml:space="preserve"><value>Tu mensaje</value></data>
+  <data name="Camp_Contact_PlainTextOnly" xml:space="preserve"><value>Solo texto plano. Máximo 2000 caracteres.</value></data>
+  <data name="Camp_Contact_IncludeContactInfo" xml:space="preserve"><value>Incluir mi información de contacto</value></data>
+  <data name="Camp_Contact_IncludeContactInfoHelp" xml:space="preserve"><value>Tu email se añadirá como respuesta para que puedan responderte directamente</value></data>
+  <data name="Camp_Contact_Send" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Camp_Contact_Success" xml:space="preserve"><value>Tu mensaje se ha enviado a {0}.</value></data>
+  <data name="Camp_Contact_RateLimited" xml:space="preserve"><value>Ya has contactado este barrio recientemente. Espera unos minutos antes de enviar otro mensaje.</value></data>
+  <data name="Camp_Links_Header" xml:space="preserve"><value>Enlaces y Contacto</value></data>
+  <data name="Camp_Edit_Links" xml:space="preserve"><value>Enlaces</value></data>
+  <data name="Camp_Edit_AddLink" xml:space="preserve"><value>Añadir enlace</value></data>
+  <data name="Camp_Edit_RemoveLink" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="Camp_Edit_WebsiteNudge" xml:space="preserve"><value>Recomendamos encarecidamente añadir una web para tu barrio para que los visitantes puedan conocerte mejor.</value></data>
   <data name="Shifts_SignedUp" xml:space="preserve"><value>Apuntados</value></data>
   <data name="Shifts_Pending" xml:space="preserve"><value>(pendiente)</value></data>
 
