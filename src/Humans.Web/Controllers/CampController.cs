@@ -372,7 +372,7 @@ public class CampController : HumansControllerBase
             var campLinks = model.Links
                 .Where(u => !string.IsNullOrWhiteSpace(u)
                     && Uri.TryCreate(u.Trim(), UriKind.Absolute, out var parsed)
-                    && (string.Equals(parsed.Scheme, "http", StringComparison.Ordinal) || string.Equals(parsed.Scheme, "https", StringComparison.Ordinal)))
+                    && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
                 .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
                 .ToList();
 
@@ -487,7 +487,7 @@ public class CampController : HumansControllerBase
             var updateLinks = model.Links
                 .Where(u => !string.IsNullOrWhiteSpace(u)
                     && Uri.TryCreate(u.Trim(), UriKind.Absolute, out var parsed)
-                    && (string.Equals(parsed.Scheme, "http", StringComparison.Ordinal) || string.Equals(parsed.Scheme, "https", StringComparison.Ordinal)))
+                    && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
                 .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
                 .ToList();
 
