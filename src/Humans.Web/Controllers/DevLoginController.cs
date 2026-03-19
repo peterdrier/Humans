@@ -90,7 +90,9 @@ public class DevLoginController : Controller
             SeedLock.Release();
         }
 
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var email = $"dev-{info.Slug}@localhost";
+        var user = await _userManager.FindByIdAsync(id.ToString())
+                   ?? await _userManager.FindByEmailAsync(email);
         if (user == null)
         {
             _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, id);
@@ -155,8 +157,17 @@ public class DevLoginController : Controller
         if (existing != null)
             return;
 
-        var now = _clock.GetCurrentInstant();
         var email = $"dev-{info.Slug}@localhost";
+
+        // Legacy personas may exist with old hardcoded GUIDs — reuse them
+        var byEmail = await _userManager.FindByEmailAsync(email);
+        if (byEmail != null)
+        {
+            _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmail.Id);
+            return;
+        }
+
+        var now = _clock.GetCurrentInstant();
         var displayName = $"Dev {info.DisplayName}";
         var nameParts = info.DisplayName.Split(' ', 2);
         var firstName = nameParts[0];
