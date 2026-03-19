@@ -105,8 +105,25 @@ public class AdminController : HumansControllerBase
     {
         try
         {
-            await systemTeamSyncJob.ExecuteAsync();
-            SetSuccess("System teams synced successfully.");
+            var report = await systemTeamSyncJob.ExecuteAsync();
+
+            if (!report.HasChanges)
+            {
+                SetSuccess("System teams synced — no changes needed.");
+            }
+            else
+            {
+                var parts = new List<string>();
+                foreach (var step in report.Steps.Where(s => s.HasChanges))
+                {
+                    var changes = new List<string>();
+                    if (step.Added.Count > 0) changes.Add($"+{step.Added.Count} added");
+                    if (step.Removed.Count > 0) changes.Add($"-{step.Removed.Count} removed");
+                    if (step.Fixed.Count > 0) changes.Add($"{step.Fixed.Count} fixed");
+                    parts.Add($"{step.StepName}: {string.Join(", ", changes)}");
+                }
+                SetSuccess($"System teams synced. {string.Join(". ", parts)}.");
+            }
         }
         catch (Exception ex)
         {

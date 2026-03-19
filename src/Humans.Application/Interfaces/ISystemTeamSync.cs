@@ -10,6 +10,6 @@ public interface ISystemTeamSync
     Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task SyncColaboradorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task SyncAsociadosMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
-    Task SyncBoardTeamAsync(CancellationToken cancellationToken = default);
+    Task SyncBoardTeamAsync(Application.DTOs.SyncReport? report = null, CancellationToken cancellationToken = default);
     Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default);
 }

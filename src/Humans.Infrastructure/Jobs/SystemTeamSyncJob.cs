@@ -7,6 +7,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Application.DTOs;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 
@@ -50,23 +51,25 @@ public class SystemTeamSyncJob : ISystemTeamSync
     }
 
     /// <summary>
-    /// Executes the system team sync job.
+    /// Executes the system team sync job and returns a report of what changed.
     /// </summary>
-    public async Task ExecuteAsync(CancellationToken cancellationToken = default)
+    public async Task<SyncReport> ExecuteAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Starting system team sync at {Time}", _clock.GetCurrentInstant());
+        var report = new SyncReport();
 
         try
         {
             // These run sequentially because they share the same DbContext instance,
             // which is not thread-safe. Parallelizing with Task.WhenAll would require
             // IServiceScopeFactory to create separate DbContext instances per task.
-            await SyncVolunteersTeamAsync(cancellationToken);
-            await SyncCoordinatorsTeamAsync(cancellationToken);
-            await SyncBoardTeamAsync(cancellationToken);
-            await SyncAsociadosTeamAsync(cancellationToken);
-            await SyncColaboradorsTeamAsync(cancellationToken);
-            await SyncBarrioLeadsTeamAsync(cancellationToken);
+            await SyncVolunteersTeamAsync(report, cancellationToken);
+            await ReconcileCoordinatorRolesAsync(report, cancellationToken);
+            await SyncCoordinatorsTeamAsync(report, cancellationToken);
+            await SyncBoardTeamAsync(report, cancellationToken);
+            await SyncAsociadosTeamAsync(report, cancellationToken);
+            await SyncColaboradorsTeamAsync(report, cancellationToken);
+            await SyncBarrioLeadsTeamAsync(report, cancellationToken);
 
             _metrics.RecordJobRun("system_team_sync", "success");
             _logger.LogInformation("Completed system team sync");
@@ -77,15 +80,90 @@ public class SystemTeamSyncJob : ISystemTeamSync
             _logger.LogError(ex, "Error during system team sync");
             throw;
         }
+
+        return report;
+    }
+
+    /// <summary>
+    /// Reconciles TeamMember.Role with IsManagement role assignments.
+    /// Members assigned to an IsManagement role definition should have Role = Coordinator.
+    /// Members not assigned to any IsManagement role should have Role = Member.
+    /// </summary>
+    public async Task ReconcileCoordinatorRolesAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Reconciling coordinator roles with IsManagement assignments");
+        var step = new SyncStepResult("Coordinator Role Reconciliation");
+
+        // Find all active team members who are assigned to an IsManagement role but have Role = Member
+        var shouldBeCoordinator = await _dbContext.TeamMembers
+            .Include(tm => tm.User)
+            .Include(tm => tm.RoleAssignments)
+                .ThenInclude(ra => ra.TeamRoleDefinition)
+            .Where(tm =>
+                tm.LeftAt == null &&
+                tm.Role == TeamMemberRole.Member &&
+                tm.RoleAssignments.Any(ra => ra.TeamRoleDefinition.IsManagement))
+            .ToListAsync(cancellationToken);
+
+        foreach (var member in shouldBeCoordinator)
+        {
+            member.Role = TeamMemberRole.Coordinator;
+            var teamName = await _dbContext.Teams
+                .Where(t => t.Id == member.TeamId)
+                .Select(t => t.Name)
+                .FirstOrDefaultAsync(cancellationToken) ?? "Unknown";
+
+            step.Fixed.Add($"{member.User.DisplayName} promoted to Coordinator on {teamName}");
+
+            _logger.LogInformation(
+                "Reconciled {UserName} to Coordinator on team {TeamId} (had IsManagement role assignment)",
+                member.User.DisplayName, member.TeamId);
+        }
+
+        // Find all active team members who have Role = Coordinator but no IsManagement role assignment
+        var shouldBeMember = await _dbContext.TeamMembers
+            .Include(tm => tm.User)
+            .Include(tm => tm.RoleAssignments)
+                .ThenInclude(ra => ra.TeamRoleDefinition)
+            .Where(tm =>
+                tm.LeftAt == null &&
+                tm.Role == TeamMemberRole.Coordinator &&
+                tm.Team.SystemTeamType == SystemTeamType.None &&
+                !tm.RoleAssignments.Any(ra => ra.TeamRoleDefinition.IsManagement))
+            .ToListAsync(cancellationToken);
+
+        foreach (var member in shouldBeMember)
+        {
+            member.Role = TeamMemberRole.Member;
+            var teamName = await _dbContext.Teams
+                .Where(t => t.Id == member.TeamId)
+                .Select(t => t.Name)
+                .FirstOrDefaultAsync(cancellationToken) ?? "Unknown";
+
+            step.Fixed.Add($"{member.User.DisplayName} demoted to Member on {teamName} (no IsManagement role)");
+
+            _logger.LogInformation(
+                "Reconciled {UserName} to Member on team {TeamId} (no IsManagement role assignment)",
+                member.User.DisplayName, member.TeamId);
+        }
+
+        if (shouldBeCoordinator.Count > 0 || shouldBeMember.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _cache.Remove(CacheKeys.ActiveTeams);
+        }
+
+        report?.Steps.Add(step);
     }
 
     /// <summary>
     /// Syncs the Volunteers team membership based on document compliance.
     /// Members: All users with all required documents signed.
     /// </summary>
-    public async Task SyncVolunteersTeamAsync(CancellationToken cancellationToken = default)
+    public async Task SyncVolunteersTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Syncing Volunteers team");
+        var step = new SyncStepResult("Volunteers");
 
         var team = await GetSystemTeamAsync(SystemTeamType.Volunteers, cancellationToken);
         if (team == null)
@@ -105,16 +183,18 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var partition = await _membershipCalculator.PartitionUsersAsync(allApprovedIds, cancellationToken);
         var eligibleUserIds = partition.Active.ToList();
 
-        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken);
+        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
+        report?.Steps.Add(step);
     }
 
     /// <summary>
     /// Syncs the Coordinators team membership based on Coordinator roles.
     /// Members: All users who are Coordinator of any team.
     /// </summary>
-    public async Task SyncCoordinatorsTeamAsync(CancellationToken cancellationToken = default)
+    public async Task SyncCoordinatorsTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Syncing Coordinators team");
+        var step = new SyncStepResult("Coordinators");
 
         var team = await GetSystemTeamAsync(SystemTeamType.Coordinators, cancellationToken);
         if (team == null)
@@ -138,16 +218,18 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var eligibleSet = await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             leadUserIds, SystemTeamIds.Coordinators, cancellationToken);
 
-        await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken);
+        await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
+        report?.Steps.Add(step);
     }
 
     /// <summary>
     /// Syncs the Board team membership based on RoleAssignment.
     /// Members: All users with active "Board" RoleAssignment.
     /// </summary>
-    public async Task SyncBoardTeamAsync(CancellationToken cancellationToken = default)
+    public async Task SyncBoardTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Syncing Board team");
+        var step = new SyncStepResult("Board");
 
         var team = await GetSystemTeamAsync(SystemTeamType.Board, cancellationToken);
         if (team == null)
@@ -173,27 +255,29 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var eligibleSet = await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             boardMemberIds, SystemTeamIds.Board, cancellationToken);
 
-        await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken);
+        await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
+        report?.Steps.Add(step);
     }
 
     /// <summary>
     /// Syncs the Asociados team membership based on approved applications.
     /// Members: All users with an approved Asociado application.
     /// </summary>
-    public Task SyncAsociadosTeamAsync(CancellationToken cancellationToken = default) =>
-        SyncTierTeamAsync(MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken);
+    public Task SyncAsociadosTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default) =>
+        SyncTierTeamAsync(MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, report, cancellationToken);
 
     /// <summary>
     /// Syncs the Colaboradors team membership based on approved Colaborador applications.
     /// Members: All users with an approved Colaborador application who are also in the Volunteers team.
     /// </summary>
-    public Task SyncColaboradorsTeamAsync(CancellationToken cancellationToken = default) =>
-        SyncTierTeamAsync(MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken);
+    public Task SyncColaboradorsTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default) =>
+        SyncTierTeamAsync(MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, report, cancellationToken);
 
     private async Task SyncTierTeamAsync(MembershipTier tier, SystemTeamType teamType, Guid teamId,
-        CancellationToken cancellationToken)
+        SyncReport? report, CancellationToken cancellationToken)
     {
         _logger.LogDebug("Syncing {TeamType} team", teamType);
+        var step = new SyncStepResult(teamType.ToString());
 
         var team = await GetSystemTeamAsync(teamType, cancellationToken);
         if (team == null)
@@ -264,7 +348,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken);
+        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
+        report?.Steps.Add(step);
     }
 
     /// <summary>
@@ -369,9 +454,10 @@ public class SystemTeamSyncJob : ISystemTeamSync
     /// Syncs the Barrio Leads team membership based on active CampLead assignments.
     /// Members: All users who are active leads of any camp.
     /// </summary>
-    public async Task SyncBarrioLeadsTeamAsync(CancellationToken cancellationToken = default)
+    public async Task SyncBarrioLeadsTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Syncing Barrio Leads team");
+        var step = new SyncStepResult("Barrio Leads");
 
         var team = await GetSystemTeamAsync(SystemTeamType.BarrioLeads, cancellationToken);
         if (team == null)
@@ -387,7 +473,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken);
+        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
+        report?.Steps.Add(step);
     }
 
     /// <summary>
@@ -419,7 +506,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     }
 
     private async Task SyncTeamMembershipAsync(Team team, List<Guid> eligibleUserIds,
-        CancellationToken cancellationToken, Guid? singleUserSync = null)
+        CancellationToken cancellationToken, Guid? singleUserSync = null, SyncStepResult? step = null)
     {
         var currentMemberIds = team.Members
             .Where(m => m.LeftAt == null)
@@ -462,6 +549,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             _dbContext.TeamMembers.Add(member);
 
             var userName = userNames.GetValueOrDefault(userId, userId.ToString());
+            step?.Added.Add(userName);
             await _auditLogService.LogAsync(
                 AuditAction.TeamMemberAdded, nameof(Team), team.Id,
                 $"{userName} added to {team.Name} by system sync",
@@ -486,6 +574,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 member.LeftAt = now;
 
                 var userName = userNames.GetValueOrDefault(userId, userId.ToString());
+                step?.Removed.Add(userName);
                 await _auditLogService.LogAsync(
                     AuditAction.TeamMemberRemoved, nameof(Team), team.Id,
                     $"{userName} removed from {team.Name} by system sync",
