@@ -234,7 +234,7 @@ public class SmtpEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, culture);
-        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, null, cancellationToken);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken: cancellationToken);
         _metrics.RecordEmailSent("feedback_response");
     }
 
