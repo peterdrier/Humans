@@ -15,7 +15,7 @@ public record SyncChange(string Action, SyncAffectedUser User, string Detail);
 /// </summary>
 public record SyncStepResult(string StepName)
 {
-    public List<SyncChange> Changes { get; } = [];
+    public List<SyncChange> Changes { get; init; } = [];
 
     public int TotalChanges => Changes.Count;
     public bool HasChanges => Changes.Count > 0;
@@ -35,7 +35,7 @@ public record SyncStepResult(string StepName)
 /// </summary>
 public class SyncReport
 {
-    public List<SyncStepResult> Steps { get; } = [];
+    public List<SyncStepResult> Steps { get; init; } = [];
 
     public int TotalChanges => Steps.Sum(s => s.TotalChanges);
     public bool HasChanges => Steps.Any(s => s.HasChanges);
