@@ -3,62 +3,110 @@
     ViewData["Title"] = Localizer["Teams_Title"].Value;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["Teams_Title"]</h1>
-    <div class="d-flex gap-2">
-        <a asp-action="Search" class="btn btn-outline-secondary"><i class="fas fa-search"></i></a>
-        <a asp-action="Roster" class="btn btn-outline-secondary">@Localizer["Nav_Roster"]</a>
-        <a asp-action="Birthdays" class="btn btn-outline-secondary">@Localizer["Birthdays_Title"]</a>
-        <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Map_Title"]</a>
-        @if (ViewBag.CanViewSync == true)
-        {
-            <a asp-action="Summary" class="btn btn-outline-secondary">Summary</a>
-            <a asp-action="Sync" class="btn btn-outline-info">Sync Status</a>
-        }
-        @if (Model.CanCreateTeam)
-        {
-            <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
-        }
-    </div>
-</div>
-
-<vc:temp-data-alerts />
-
-@if (Model.MyTeams.Any())
+@if (Model.IsAuthenticated)
 {
-    <h4 class="mb-3">@Localizer["Teams_MyTeamsSection"]</h4>
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
-        @foreach (var team in Model.MyTeams)
-        {
-            @await Html.PartialAsync("_TeamCard", team)
-        }
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>@Localizer["Teams_Title"]</h1>
+        <div class="d-flex gap-2">
+            <vc:access-matrix section="Teams" />
+            <a asp-action="Search" class="btn btn-outline-secondary"><i class="fas fa-search"></i></a>
+            <a asp-action="Roster" class="btn btn-outline-secondary">@Localizer["Nav_Roster"]</a>
+            <a asp-action="Birthdays" class="btn btn-outline-secondary">@Localizer["Birthdays_Title"]</a>
+            <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Map_Title"]</a>
+            @if (ViewBag.CanViewSync == true)
+            {
+                <a asp-action="Summary" class="btn btn-outline-secondary">Summary</a>
+                <a asp-action="Sync" class="btn btn-outline-info">Sync Status</a>
+            }
+            @if (Model.CanCreateTeam)
+            {
+                <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
+            }
+        </div>
     </div>
+
+    <vc:temp-data-alerts />
+
+    @if (Model.MyTeams.Any())
+    {
+        <h4 class="mb-3">@Localizer["Teams_MyTeamsSection"]</h4>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+            @foreach (var team in Model.MyTeams)
+            {
+                @await Html.PartialAsync("_TeamCard", team)
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light mb-4">
+            @Localizer["Teams_NotOnAnyTeam"]
+        </div>
+    }
+
+    @if (Model.Departments.Any())
+    {
+        <h4 class="mb-3">Departments</h4>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
+            @foreach (var team in Model.Departments)
+            {
+                @await Html.PartialAsync("_TeamCard", team)
+            }
+        </div>
+    }
+
+    @if (Model.SystemTeams.Any())
+    {
+        <h4 class="mb-3">System Teams</h4>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @foreach (var team in Model.SystemTeams)
+            {
+                @await Html.PartialAsync("_TeamCard", team)
+            }
+        </div>
+    }
 }
 else
 {
-    <div class="alert alert-light mb-4">
-        @Localizer["Teams_NotOnAnyTeam"]
+    <div class="text-center mb-4">
+        <h1>@Localizer["Teams_PublicDirectory"]</h1>
+        <p class="text-muted">@Localizer["Teams_PublicDirectorySubtitle"]</p>
     </div>
-}
 
-@if (Model.Departments.Any())
-{
-    <h4 class="mb-3">Departments</h4>
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4">
-        @foreach (var team in Model.Departments)
-        {
-            @await Html.PartialAsync("_TeamCard", team)
-        }
-    </div>
-}
-
-@if (Model.SystemTeams.Any())
-{
-    <h4 class="mb-3">System Teams</h4>
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-        @foreach (var team in Model.SystemTeams)
-        {
-            @await Html.PartialAsync("_TeamCard", team)
-        }
-    </div>
+    @if (Model.Departments.Any())
+    {
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @foreach (var team in Model.Departments)
+            {
+                <div class="col">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title mb-2">
+                                <a asp-action="Details" asp-route-slug="@team.Slug" class="text-decoration-none">
+                                    @team.Name
+                                </a>
+                            </h5>
+                            @if (!string.IsNullOrEmpty(team.Description))
+                            {
+                                <p class="card-text text-muted small mb-0">
+                                    @(team.Description.Length > 200 ? team.Description.Substring(0, 200) + "..." : team.Description)
+                                </p>
+                            }
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a asp-action="Details" asp-route-slug="@team.Slug" class="btn btn-sm btn-outline-primary">
+                                @Localizer["Teams_LearnMore"]
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-muted py-5">
+            <p>@Localizer["Teams_NoPublicTeams"]</p>
+        </div>
+    }
 }

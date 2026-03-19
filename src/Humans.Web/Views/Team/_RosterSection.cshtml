@@ -1,19 +1,6 @@
 @model List<Humans.Web.Models.TeamRoleDefinitionViewModel>
 @using Humans.Domain.Enums
 
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
-
 @if (Model.Any())
 {
     <div class="card mb-4">
@@ -86,7 +73,7 @@
                             <tr class="collapse" id="@collapseId">
                                 <td colspan="4">
                                     <div class="role-description small text-muted">
-                                        @Html.Raw(ConvertMarkdownToHtml(role.Description))
+                                        @Html.SanitizedMarkdown(role.Description)
                                     </div>
                                 </td>
                             </tr>

@@ -5,9 +5,6 @@
 
 @{
     ViewData["Title"] = "Shift Dashboard";
-    var antiForgeryWriter = new System.IO.StringWriter();
-    Html.AntiForgeryToken().WriteTo(antiForgeryWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
-    var antiForgeryHtml = antiForgeryWriter.ToString();
     var searchUrl = Url.Action(nameof(ShiftDashboardController.SearchVolunteers), "ShiftDashboard");
     var voluntellUrl = Url.Action(nameof(ShiftDashboardController.Voluntell), "ShiftDashboard");
 }
@@ -73,7 +70,7 @@
                     {
                         var shift = item.Shift;
                         var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
-                        var shiftDateLabel = shiftDate.DayOfWeek.ToString()[..3] + " " + shiftDate.ToString("MMM d", null);
+                        var shiftDateLabel = shiftDate.ToDisplayShiftDate();
                         var period = shift.GetShiftPeriod(Model.EventSettings);
                         var periodBadge = period switch
                         {
@@ -84,8 +81,8 @@
                         };
                         var periodLabel = period switch
                         {
-                            ShiftPeriod.Build => "Build",
-                            ShiftPeriod.Event => "Burn",
+                            ShiftPeriod.Build => "Set-up",
+                            ShiftPeriod.Event => "Event",
                             ShiftPeriod.Strike => "Strike",
                             _ => ""
                         };
@@ -147,95 +144,17 @@
 
 @section Scripts {
 <script>
-(function () {
-    var searchUrl = '@Html.Raw(searchUrl)';
-    var voluntellUrl = '@Html.Raw(voluntellUrl)';
-    var tokenHtml = '@Html.Raw(antiForgeryHtml?.Replace("'", "\\'"))';
-
-    function escapeHtml(str) {
-        if (!str) return '';
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    function renderBadges(items, cssClass) {
-        if (!items || items.length === 0) return '';
-        return items.map(function (i) {
-            return '<span class="badge ' + cssClass + ' me-1">' + escapeHtml(i) + '</span>';
-        }).join('');
-    }
-
-    function renderResults(results, shiftId, container) {
-        if (!results || results.length === 0) {
-            container.innerHTML = '<p class="text-muted small mb-0">No volunteers found.</p>';
-            return;
-        }
-
-        var html = '<ul class="list-group list-group-flush">';
-        results.forEach(function (r) {
-            var overlapWarning = r.hasOverlap
-                ? '<span class="badge bg-warning text-dark ms-2">Schedule conflict</span>'
-                : '';
-            var skillBadges = renderBadges(r.skills, 'bg-info text-dark');
-            var quirkBadges = renderBadges(r.quirks, 'bg-secondary');
-            var langBadges = renderBadges(r.languages, 'bg-primary');
-            var diet = r.dietaryPreference
-                ? '<small class="text-muted ms-2">' + escapeHtml(r.dietaryPreference) + '</small>'
-                : '';
-
-            html += '<li class="list-group-item d-flex justify-content-between align-items-start flex-wrap gap-2">';
-            html += '<div>';
-            html += '<strong>' + escapeHtml(r.displayName) + '</strong>';
-            html += overlapWarning;
-            html += ' <small class="text-muted">(' + r.bookedShiftCount + ' shifts)</small>';
-            html += diet;
-            html += '<div class="mt-1">' + skillBadges + quirkBadges + langBadges + '</div>';
-            html += '</div>';
-            html += '<form method="post" action="' + escapeHtml(voluntellUrl) + '">';
-            html += tokenHtml;
-            html += '<input type="hidden" name="shiftId" value="' + escapeHtml(shiftId) + '" />';
-            html += '<input type="hidden" name="userId" value="' + escapeHtml(r.userId) + '" />';
-            html += '<button type="submit" class="btn btn-sm btn-success"' + (r.hasOverlap ? ' title="Warning: schedule conflict"' : '') + '>Assign</button>';
-            html += '</form>';
-            html += '</li>';
-        });
-        html += '</ul>';
-        container.innerHTML = html;
-    }
-
-    function debounce(fn, delay) {
-        var timer;
-        return function () {
-            var args = arguments;
-            clearTimeout(timer);
-            timer = setTimeout(function () { fn.apply(null, args); }, delay);
-        };
-    }
-
-    document.addEventListener('input', debounce(function (e) {
-        var input = e.target;
-        if (!input.classList.contains('volunteer-search-input')) return;
-
-        var shiftId = input.dataset.shiftId;
-        var query = input.value.trim();
-        var resultsDiv = document.querySelector('.volunteer-results[data-shift-id="' + shiftId + '"]');
-        if (!resultsDiv) return;
-
-        if (query.length < 2) {
-            resultsDiv.innerHTML = '';
-            return;
-        }
-
-        var url = searchUrl + '?shiftId=' + encodeURIComponent(shiftId) + '&query=' + encodeURIComponent(query);
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-            .then(function (resp) { return resp.json(); })
-            .then(function (data) { renderResults(data, shiftId, resultsDiv); })
-            .catch(function () { resultsDiv.innerHTML = '<p class="text-danger small mb-0">Search failed.</p>'; });
-    }, 300));
-}());
+@await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
+@await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
+{
+    ["SearchUrl"] = searchUrl,
+    ["VoluntellUrl"] = voluntellUrl,
+    ["AssignButtonClass"] = "btn-success",
+    ["NoResultsText"] = "No volunteers found.",
+    ["ErrorText"] = "Search failed.",
+    ["OverlapLabel"] = "Schedule conflict",
+    ["DietaryPreferenceStyle"] = "muted",
+    ["ShowPoolBadge"] = false
+})
 </script>
 }

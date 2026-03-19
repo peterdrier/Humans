@@ -4,7 +4,10 @@
 }
 
 <div class="container-fluid px-4">
-    <h1 class="mt-4">Tickets</h1>
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <h1 class="mb-0">Tickets</h1>
+        <vc:access-matrix section="Tickets" />
+    </div>
 
     <partial name="_TicketNav" />
 
@@ -18,13 +21,7 @@
         return;
     }
 
-    @if (TempData["SuccessMessage"] is string successMsg)
-    {
-        <div class="alert alert-success alert-dismissible fade show">
-            @successMsg
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    }
+    <vc:temp-data-alerts />
 
     <!-- Summary Cards -->
     <div class="row mb-4">
@@ -157,7 +154,7 @@
                             @foreach (var order in Model.RecentOrders)
                             {
                                 <tr>
-                                    <td>@order.PurchasedAt.InUtc().Date.ToString("dd MMM", null)</td>
+                                    <td>@order.PurchasedAt.ToDisplayCompactDate()</td>
                                     <td>@order.BuyerName</td>
                                     <td>@order.TicketCount</td>
                                     <td>@order.Currency @order.Amount.ToString("N0")</td>
@@ -196,7 +193,7 @@
             <span class="text-muted">
                 @if (Model.LastSyncAt.HasValue)
                 {
-                    <text>Last synced: @Model.LastSyncAt.Value.InUtc().ToString("yyyy-MM-dd HH:mm", null) UTC</text>
+                    <text>Last synced: @Model.LastSyncAt.Value.ToAuditMinuteTimestamp() UTC</text>
                 }
                 else
                 {
@@ -211,7 +208,7 @@
                     <span class="badge bg-danger ms-2">Error</span>
                 }
             </span>
-            @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin))
+            @if (Humans.Web.Authorization.RoleChecks.CanManageTickets(User))
             {
                 <form asp-action="Sync" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
@@ -219,7 +216,7 @@
                         <i class="fa-solid fa-sync"></i> Sync Now
                     </button>
                 </form>
-                @if (User.IsInRole(Humans.Domain.Constants.RoleNames.Admin))
+                @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
                 {
                     <form asp-action="FullResync" method="post" class="d-inline ms-2"
                           onsubmit="return confirm('This will re-fetch ALL orders from the vendor. Continue?');">

@@ -172,7 +172,7 @@
                                 <strong>@year:</strong>
                                 @if (lockDate.HasValue)
                                 {
-                                    @lockDate.Value.ToString("d MMM yyyy", null)
+                                    @lockDate.Value.ToDisplayDate()
                                 }
                                 else
                                 {
@@ -209,7 +209,7 @@
     </div>
 </div>
 
-@if (User.IsInRole("Admin"))
+@if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
 {
     <div class="card mb-4 border-danger">
         <div class="card-header bg-danger text-white">

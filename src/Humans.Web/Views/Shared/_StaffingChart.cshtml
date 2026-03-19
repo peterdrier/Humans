@@ -1,27 +1,39 @@
 @using Humans.Application.Interfaces
 @model (List<DailyStaffingData> Data, string ChartId)
 
-@if (Model.Data.Count > 0)
-{
-    <div class="card mb-4">
-        <div class="card-header"><h6 class="mb-0">Build / Strike Staffing</h6></div>
-        <div class="card-body">
-            <canvas id="@Model.ChartId" height="100"></canvas>
-        </div>
-    </div>
+@{
+    var periods = Model.Data.GroupBy(d => d.Period).OrderBy(g => g.Key switch { "Set-up" => 0, "Event" => 1, "Strike" => 2, _ => 3 }).ToList();
+}
 
+@if (periods.Count > 0)
+{
     <script>
     if (typeof Chart === 'undefined') {
         var s = document.createElement('script');
         s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
-        s.onload = function() { window['render_@(Model.ChartId)'](); };
+        s.onload = function() {
+            @foreach (var group in periods)
+            {
+                <text>window['render_@(Model.ChartId)_@(group.Key.Replace("-", ""))']();</text>
+            }
+        };
         document.head.appendChild(s);
     } else {
-        document.addEventListener('DOMContentLoaded', function() { window['render_@(Model.ChartId)'](); });
+        document.addEventListener('DOMContentLoaded', function() {
+            @foreach (var group in periods)
+            {
+                <text>window['render_@(Model.ChartId)_@(group.Key.Replace("-", ""))']();</text>
+            }
+        });
     }
 
-    window['render_@(Model.ChartId)'] = function() {
-        var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+    @foreach (var group in periods)
+    {
+        var chartKey = Model.ChartId + "_" + group.Key.Replace("-", "");
+        var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+        <text>
+    window['render_@(chartKey)'] = function() {
+        var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(group.ToList(), jsonOpts));
         var labels = data.map(function(d) { return d.dateLabel; });
         var confirmed = data.map(function(d) { return d.confirmedCount; });
         var remaining = data.map(function(d) { return Math.max(0, d.totalSlots - d.confirmedCount); });
@@ -34,7 +46,7 @@
             return '#dc3545';
         });
 
-        new Chart(document.getElementById('@Model.ChartId'), {
+        new Chart(document.getElementById('@chartKey'), {
             type: 'bar',
             data: {
                 labels: labels,
@@ -56,5 +68,22 @@
             }
         });
     };
+        </text>
+    }
     </script>
+
+    @foreach (var group in periods)
+    {
+        var chartKey = Model.ChartId + "_" + group.Key.Replace("-", "");
+        var totalSlots = group.Sum(d => d.TotalSlots);
+        if (totalSlots > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h6 class="mb-0">@group.Key Staffing</h6></div>
+                <div class="card-body">
+                    <canvas id="@chartKey" height="100"></canvas>
+                </div>
+            </div>
+        }
+    }
 }

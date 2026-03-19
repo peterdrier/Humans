@@ -1,0 +1,42 @@
+name: Preview Database
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+    branches: [qa]
+
+jobs:
+  clone-db:
+    if: github.event.action != 'closed'
+    runs-on: self-hosted
+    steps:
+      - name: Create preview database (clone from QA)
+        run: |
+          PR_ID=${{ github.event.pull_request.number }}
+          DB_NAME="humans_pr_${PR_ID}"
+
+          # Terminate connections and drop if exists (handles re-deploys on push)
+          docker exec humans-db psql -U humans -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DB_NAME}' AND pid <> pg_backend_pid();" || true
+          docker exec humans-db psql -U humans -c "DROP DATABASE IF EXISTS ${DB_NAME};"
+
+          # Create empty database then restore from QA
+          docker exec humans-db psql -U humans -c "CREATE DATABASE ${DB_NAME};"
+          docker exec humans-db bash -c "pg_dump -U humans humans | psql -U humans ${DB_NAME}"
+
+          echo "Created database ${DB_NAME}"
+
+      - name: Create preview uploads directory
+        run: |
+          mkdir -p /opt/docker/human/uploads-pr-${{ github.event.pull_request.number }}
+
+  cleanup-db:
+    if: github.event.action == 'closed'
+    runs-on: self-hosted
+    steps:
+      - name: Drop preview database
+        run: |
+          docker exec humans-db psql -U humans -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'humans_pr_${{ github.event.pull_request.number }}' AND pid <> pg_backend_pid();" || true
+          docker exec humans-db psql -U humans -c "DROP DATABASE IF EXISTS humans_pr_${{ github.event.pull_request.number }};"
+
+      - name: Remove preview uploads
+        run: |
+          rm -rf /opt/docker/human/uploads-pr-${{ github.event.pull_request.number }}/

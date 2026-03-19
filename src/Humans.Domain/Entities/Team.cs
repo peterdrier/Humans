@@ -1,5 +1,6 @@
 using NodaTime;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 
 namespace Humans.Domain.Entities;
 
@@ -64,6 +65,33 @@ public class Team
     /// When the team was last updated.
     /// </summary>
     public Instant UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Whether this team has a public-facing page visible to anonymous visitors.
+    /// Only departments (no parent, non-system) can be made public.
+    /// </summary>
+    public bool IsPublicPage { get; set; }
+
+    /// <summary>
+    /// Free-form markdown content for the public team page.
+    /// </summary>
+    public string? PageContent { get; set; }
+
+    /// <summary>
+    /// When the page content was last updated.
+    /// </summary>
+    public Instant? PageContentUpdatedAt { get; set; }
+
+    /// <summary>
+    /// User ID of who last updated the page content.
+    /// </summary>
+    public Guid? PageContentUpdatedByUserId { get; set; }
+
+    /// <summary>
+    /// Call-to-action buttons displayed on the public team page (max 3).
+    /// Stored as JSONB.
+    /// </summary>
+    public List<CallToAction>? CallsToAction { get; set; }
 
     /// <summary>
     /// Optional parent team ID for one-level hierarchy (departments).

@@ -42,7 +42,7 @@
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            var isActiveMember = User.HasClaim("ActiveMember", "true") || User.IsInRole("Admin") || User.IsInRole("Board") || User.IsInRole("TeamsAdmin");
+                            var isActiveMember = User.HasClaim(Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType, Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue) || Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User);
                             if (isActiveMember)
                             {
                                 <li class="nav-item">
@@ -52,7 +52,7 @@
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Consent" asp-action="Index">@Localizer["Nav_Consents"]</a>
                             </li>
-                            @if (isActiveMember || User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator))
+                            @if (isActiveMember || Humans.Web.Authorization.ShiftRoleChecks.CanAccessDashboard(User))
                             {
                                 <li class="nav-item">
                                     <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
@@ -65,31 +65,31 @@
                                 </li>
                             }
                         }
-                        @if (User.IsInRole("ConsentCoordinator") || User.IsInRole("VolunteerCoordinator") || User.IsInRole("Admin") || User.IsInRole("Board"))
+                        @if (Humans.Web.Authorization.RoleChecks.CanAccessReviewQueue(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
                             </li>
                         }
-                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
                             </li>
                         }
-                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
                             </li>
                         }
-                        @if (User.IsInRole("Admin"))
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                             </li>
                         }
-                        @if (User.IsInRole(Humans.Domain.Constants.RoleNames.TicketAdmin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Board))
+                        @if (Humans.Web.Authorization.RoleChecks.CanAccessTickets(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
@@ -124,16 +124,20 @@
             <div class="d-flex gap-3">
                 <a asp-controller="Home" asp-action="About" class="text-muted small">About</a>
                 <a asp-controller="Home" asp-action="Privacy" class="text-muted small">@Localizer["Nav_Privacy"]</a>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a href="#" class="text-muted small" data-bs-toggle="modal" data-bs-target="#feedbackModal">@Localizer["Feedback_Button"]</a>
+                }
             </div>
             @{
                 var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
                 var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
                     Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
                 var informationalVersion = attr?.InformationalVersion ?? "";
-                var plusIndex = informationalVersion.IndexOf('+');
+                var plusIndex = informationalVersion.IndexOf("+", StringComparison.Ordinal);
                 var version = plusIndex >= 0 ? informationalVersion[..plusIndex] : informationalVersion;
                 var commitHash = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : null;
-                var isRelease = version.Length > 0 && !version.Contains('-');
+                var isRelease = version.Length > 0 && !version.Contains("-", StringComparison.Ordinal);
             }
             @if (isRelease)
             {
@@ -162,5 +166,6 @@
             crossorigin="anonymous"></script>
     <script src="~/js/site.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    @await Component.InvokeAsync("FeedbackWidget")
 </body>
 </html>

@@ -2,11 +2,13 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
+using Humans.Web.Extensions;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -14,14 +16,13 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Teams/{slug}/Shifts")]
-public class ShiftAdminController : Controller
+public class ShiftAdminController : HumansControllerBase
 {
     private readonly ITeamService _teamService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly IProfileService _profileService;
-    private readonly UserManager<User> _userManager;
     private readonly IClock _clock;
     private readonly ILogger<ShiftAdminController> _logger;
 
@@ -34,13 +35,13 @@ public class ShiftAdminController : Controller
         UserManager<User> userManager,
         IClock clock,
         ILogger<ShiftAdminController> logger)
+        : base(userManager)
     {
         _teamService = teamService;
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
         _profileService = profileService;
-        _userManager = userManager;
         _clock = clock;
         _logger = logger;
     }
@@ -85,7 +86,7 @@ public class ShiftAdminController : Controller
             .Distinct()
             .ToList();
 
-        var canViewMedical = User.IsInRole(RoleNames.NoInfoAdmin) || User.IsInRole(RoleNames.Admin);
+        var canViewMedical = ShiftRoleChecks.CanViewMedical(User);
         var profileDict = new Dictionary<Guid, VolunteerEventProfile>();
         foreach (var uid in allUserIds)
         {
@@ -148,7 +149,7 @@ public class ShiftAdminController : Controller
 
         await _shiftMgmt.CreateRotaAsync(rota);
         TempData["SuccessMessage"] = $"Rota '{model.Name}' created.";
-        return RedirectToAction(nameof(Index), new { slug });
+        return Redirect(Url.Action(nameof(Index), new { slug }) + "#rota-" + rota.Id.ToString("N"));
     }
 
     [HttpPost("Rotas/{rotaId}")]
@@ -219,12 +220,12 @@ public class ShiftAdminController : Controller
         var timeSlots = new List<(LocalTime StartTime, double DurationHours)>();
         foreach (var slot in model.TimeSlots)
         {
-            if (!TimeOnly.TryParse(slot.StartTime, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            if (!slot.StartTime.TryParseInvariantLocalTime(out var parsed))
             {
                 TempData["ErrorMessage"] = $"Invalid start time: {slot.StartTime}";
                 return RedirectToAction(nameof(Index), new { slug });
             }
-            timeSlots.Add((new LocalTime(parsed.Hour, parsed.Minute), slot.DurationHours));
+            timeSlots.Add((parsed, slot.DurationHours));
         }
 
         try
@@ -261,7 +262,7 @@ public class ShiftAdminController : Controller
         if (rota == null) return NotFound();
         if (rota.TeamId != team.Id) return NotFound();
 
-        if (!TimeOnly.TryParse(model.StartTime, System.Globalization.CultureInfo.InvariantCulture, out var parsedTime))
+        if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
             TempData["ErrorMessage"] = "Invalid start time format.";
             return RedirectToAction(nameof(Index), new { slug });
@@ -273,7 +274,7 @@ public class ShiftAdminController : Controller
             RotaId = model.RotaId,
             Description = model.Description,
             DayOffset = model.DayOffset,
-            StartTime = new LocalTime(parsedTime.Hour, parsedTime.Minute),
+            StartTime = parsedTime,
             Duration = Duration.FromHours(model.DurationHours),
             MinVolunteers = model.MinVolunteers,
             MaxVolunteers = model.MaxVolunteers,
@@ -306,7 +307,7 @@ public class ShiftAdminController : Controller
         if (shift == null) return NotFound();
         if (shift.Rota.TeamId != team.Id) return NotFound();
 
-        if (!TimeOnly.TryParse(model.StartTime, System.Globalization.CultureInfo.InvariantCulture, out var parsedTime))
+        if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
             TempData["ErrorMessage"] = "Invalid start time format.";
             return RedirectToAction(nameof(Index), new { slug });
@@ -314,7 +315,7 @@ public class ShiftAdminController : Controller
 
         shift.Description = model.Description;
         shift.DayOffset = model.DayOffset;
-        shift.StartTime = new LocalTime(parsedTime.Hour, parsedTime.Minute);
+        shift.StartTime = parsedTime;
         shift.Duration = Duration.FromHours(model.DurationHours);
         shift.MinVolunteers = model.MinVolunteers;
         shift.MaxVolunteers = model.MaxVolunteers;
@@ -450,7 +451,7 @@ public class ShiftAdminController : Controller
         if (team == null || userId == null) return NotFound();
         if (!await CanApproveAsync(userId.Value, team.Id)) return Forbid();
 
-        if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+        if (!query.HasSearchTerm())
             return Json(Array.Empty<VolunteerSearchResult>());
 
         try
@@ -462,49 +463,15 @@ public class ShiftAdminController : Controller
             var es = shift.Rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
             if (es == null) return NotFound();
 
-            var shiftStart = shift.GetAbsoluteStart(es);
-            var shiftEnd = shift.GetAbsoluteEnd(es);
-
-            var users = await _userManager.Users
-                .Where(u => EF.Functions.ILike(u.DisplayName, "%" + query + "%"))
-                .Take(10)
-                .ToListAsync();
-
-            var canViewMedical = User.IsInRole(RoleNames.NoInfoAdmin) || User.IsInRole(RoleNames.Admin);
-
-            // Load pool data for this shift's day
-            var poolVolunteers = await _availabilityService.GetAvailableForDayAsync(es.Id, shift.DayOffset);
-            var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
-
-            var results = new List<VolunteerSearchResult>();
-            foreach (var user in users)
-            {
-                var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: canViewMedical);
-                var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
-                var confirmed = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
-
-                var hasOverlap = confirmed.Any(s =>
-                {
-                    var sStart = s.Shift.GetAbsoluteStart(es);
-                    var sEnd = s.Shift.GetAbsoluteEnd(es);
-                    return shiftStart < sEnd && shiftEnd > sStart;
-                });
-
-                results.Add(new VolunteerSearchResult
-                {
-                    UserId = user.Id,
-                    DisplayName = user.DisplayName,
-                    Skills = profile?.Skills ?? [],
-                    Quirks = profile?.Quirks ?? [],
-                    Languages = profile?.Languages ?? [],
-                    DietaryPreference = profile?.DietaryPreference,
-                    BookedShiftCount = confirmed.Count,
-                    HasOverlap = hasOverlap,
-                    IsInPool = poolUserIds.Contains(user.Id),
-                    MedicalConditions = profile?.MedicalConditions
-                });
-            }
-
+            var results = await ShiftVolunteerSearchBuilder.BuildAsync(
+                shift,
+                query,
+                es,
+                ShiftRoleChecks.CanViewMedical(User),
+                UserManager,
+                _profileService,
+                _signupService,
+                _availabilityService);
             return Json(results);
         }
         catch (Exception ex)
@@ -535,20 +502,19 @@ public class ShiftAdminController : Controller
 
     private async Task<bool> CanManageAsync(Guid userId, Guid teamId)
     {
-        return User.IsInRole(RoleNames.Admin) ||
+        return RoleChecks.IsAdmin(User) ||
                await _shiftMgmt.CanManageShiftsAsync(userId, teamId);
     }
 
     private async Task<bool> CanApproveAsync(Guid userId, Guid teamId)
     {
-        return User.IsInRole(RoleNames.Admin) ||
-               User.IsInRole(RoleNames.NoInfoAdmin) ||
+        return ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                await _shiftMgmt.CanApproveSignupsAsync(userId, teamId);
     }
 
     private async Task<(Team? Team, Guid? UserId)> ResolveTeamAndUserAsync(string slug)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null) return (null, null);
 
         var team = await _teamService.GetTeamBySlugAsync(slug);

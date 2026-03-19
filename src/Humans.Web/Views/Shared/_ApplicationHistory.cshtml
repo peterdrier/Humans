@@ -14,7 +14,7 @@
                 <li class="mb-3 pb-3 border-bottom">
                     <div class="d-flex justify-content-between">
                         <strong>@entry.Status</strong>
-                        <small class="text-muted">@entry.ChangedAt.ToString("d MMM yyyy")</small>
+            <small class="text-muted">@entry.ChangedAt.ToDisplayDate()</small>
                     </div>
                     <small class="text-muted">@Localizer["ApplicationDetail_By"] @entry.ChangedBy</small>
                     @if (!string.IsNullOrEmpty(entry.Notes))

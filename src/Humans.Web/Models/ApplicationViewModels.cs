@@ -19,7 +19,7 @@ public class ApplicationSummaryViewModel
     public string StatusBadgeClass { get; set; } = "bg-secondary";
 }
 
-public class ApplicationDetailViewModel
+public abstract class ApplicationDetailViewModelBase
 {
     public Guid Id { get; set; }
     public string Status { get; set; } = string.Empty;
@@ -30,11 +30,15 @@ public class ApplicationDetailViewModel
     public MembershipTier MembershipTier { get; set; }
     public DateTime SubmittedAt { get; set; }
     public DateTime? ReviewStartedAt { get; set; }
-    public DateTime? ResolvedAt { get; set; }
     public string? ReviewerName { get; set; }
     public string? ReviewNotes { get; set; }
-    public bool CanWithdraw { get; set; }
     public List<ApplicationHistoryViewModel> History { get; set; } = [];
+}
+
+public class ApplicationDetailViewModel : ApplicationDetailViewModelBase
+{
+    public DateTime? ResolvedAt { get; set; }
+    public bool CanWithdraw { get; set; }
 }
 
 public class ApplicationHistoryViewModel

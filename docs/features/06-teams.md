@@ -99,6 +99,44 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - System generates URL-friendly slug
 - Team is immediately active
 
+### US-6.9: View Public Team Page (Anonymous)
+**As an** anonymous visitor
+**I want to** view a team's public page
+**So that** I can learn about the team before joining
+
+**Acceptance Criteria:**
+- Anonymous visitors can access `/Teams/{slug}` for public teams
+- Shows team description, page content (markdown), and call-to-action buttons
+- Shows coordinators with display name and avatar (no email or contact info)
+- Regular members are hidden from anonymous visitors
+- Non-public teams return 404 for anonymous visitors
+- System teams and sub-teams cannot be made public
+
+### US-6.10: Edit Team Page Content (Coordinator/Admin)
+**As a** team coordinator, board member, or admin
+**I want to** edit my team's public page content
+**So that** I can provide information to potential volunteers
+
+**Acceptance Criteria:**
+- Edit page at `/Teams/{slug}/EditPage`
+- Toggle public visibility (only for departments, not sub-teams or system teams)
+- Write page content in markdown format
+- Configure up to 3 call-to-action buttons (text + URL + style)
+- Only one CTA can be styled as Primary
+- Changes are audit-logged with `TeamPageContentUpdated`
+- Edit Page link appears in team management sidebar
+
+### US-6.11: Browse Public Team Directory (Anonymous)
+**As an** anonymous visitor
+**I want to** browse the public team directory
+**So that** I can discover teams I might want to join
+
+**Acceptance Criteria:**
+- Anonymous visitors can access `/Teams` and see only public teams
+- Shows team name, description snippet, and "Learn More" link
+- No My Teams section, no admin buttons, no system teams shown
+- Authenticated users see the full existing layout unchanged
+
 ## Data Model
 
 ### Team Entity
@@ -115,6 +153,11 @@ Team
 ├── GoogleGroupPrefix: string? (100) [email prefix before @nobodies.team]
 ├── CreatedAt: Instant
 ├── UpdatedAt: Instant
+├── IsPublicPage: bool [default false, opt-in public visibility]
+├── PageContent: string? (50000) [markdown content for public page]
+├── PageContentUpdatedAt: Instant? [last edit timestamp]
+├── PageContentUpdatedByUserId: Guid? [FK → User, who last edited]
+├── CallsToAction: List<CallToAction> [JSONB, max 3 items]
 ├── Computed: IsSystemTeam (SystemTeamType != None)
 ├── Computed: GoogleGroupEmail (prefix + "@nobodies.team", or null)
 └── Navigation: Members, JoinRequests, GoogleResources, ChildTeams, ParentTeam
@@ -164,6 +207,18 @@ TeamJoinRequestStatus:
   Approved = 1
   Rejected = 2
   Withdrawn = 3
+
+CallToActionStyle:
+  Primary = 0
+  Secondary = 1
+```
+
+### CallToAction Value Object
+```
+CallToAction (JSONB on Team.CallsToAction)
+├── Text: string (100) [button label]
+├── Url: string (512) [button link]
+└── Style: CallToActionStyle [Primary or Secondary]
 ```
 
 ## Team Hierarchy (Departments)
@@ -416,18 +471,19 @@ Real implementation will manage Google Drive folder permissions.
 
 ## URL Structure
 
-| Route | Description |
-|-------|-------------|
-| `/Teams` | All teams list |
-| `/Teams/{slug}` | Team details |
-| `/Teams/{slug}/Join` | Join form |
-| `/Teams/My` | User's teams |
-| `/Teams/Birthdays` | Birthday calendar |
-| `/Teams/Sync` | Sync status (TeamsAdmin, Board, Admin) |
-| `/Teams/{slug}/Admin/Members` | Manage members (includes pending requests) |
-| `/Teams/Summary` | Team summary with resource columns (Board, Admin, TeamsAdmin) |
-| `/Teams/Create` | Create team form (Board, Admin) |
-| `/Teams/{id}/Edit` | Edit team (Board, Admin) |
+| Route | Description | Auth |
+|-------|-------------|------|
+| `/Teams` | Teams directory | AllowAnonymous (anonymous: public teams only) |
+| `/Teams/{slug}` | Team details | AllowAnonymous (anonymous: public teams only, 404 for non-public) |
+| `/Teams/{slug}/Join` | Join form | Authenticated |
+| `/Teams/My` | User's teams | Authenticated |
+| `/Teams/Birthdays` | Birthday calendar | Authenticated |
+| `/Teams/Sync` | Sync status | TeamsAdmin, Board, Admin |
+| `/Teams/{slug}/Members` | Manage members | Coordinator, Board, Admin, TeamsAdmin |
+| `/Teams/{slug}/EditPage` | Edit public page content | Coordinator, Board, Admin, TeamsAdmin |
+| `/Teams/Summary` | Team summary with resource columns | Board, Admin, TeamsAdmin |
+| `/Teams/Create` | Create team form | Board, Admin, TeamsAdmin |
+| `/Teams/{id}/Edit` | Edit team settings | Board, Admin, TeamsAdmin |
 
 ## Role Slots
 

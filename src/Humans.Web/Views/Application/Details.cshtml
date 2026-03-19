@@ -24,18 +24,18 @@
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-sm-3">@Localizer["Governance_Submitted"]</dt>
-                    <dd class="col-sm-9">@Model.SubmittedAt.ToString("d MMMM yyyy 'at' HH:mm")</dd>
+                    <dd class="col-sm-9">@Model.SubmittedAt.ToDisplayLongDateTime()</dd>
 
                     @if (Model.ReviewStartedAt.HasValue)
                     {
                         <dt class="col-sm-3">@Localizer["ApplicationDetail_ReviewStarted"]</dt>
-                        <dd class="col-sm-9">@Model.ReviewStartedAt.Value.ToString("d MMMM yyyy")</dd>
+                        <dd class="col-sm-9">@Model.ReviewStartedAt.Value.ToDisplayLongDate()</dd>
                     }
 
                     @if (Model.ResolvedAt.HasValue)
                     {
                         <dt class="col-sm-3">@Localizer["Governance_Resolved"]</dt>
-                        <dd class="col-sm-9">@Model.ResolvedAt.Value.ToString("d MMMM yyyy")</dd>
+                        <dd class="col-sm-9">@Model.ResolvedAt.Value.ToDisplayLongDate()</dd>
                     }
 
                     @if (!string.IsNullOrEmpty(Model.ReviewerName))
@@ -47,52 +47,9 @@
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header">@Localizer["ApplicationDetail_YourMotivation"]</div>
-            <div class="card-body">
-                <p class="mb-0" style="white-space: pre-wrap;">@Model.Motivation</p>
-            </div>
-        </div>
-
-        @if (!string.IsNullOrEmpty(Model.AdditionalInfo))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["ApplicationDetail_AdditionalInfo"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.AdditionalInfo</p>
-                </div>
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(Model.SignificantContribution))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["Application_SignificantContribution"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.SignificantContribution</p>
-                </div>
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(Model.RoleUnderstanding))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["Application_RoleUnderstanding"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.RoleUnderstanding</p>
-                </div>
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(Model.ReviewNotes))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["ApplicationDetail_ReviewerNotes"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.ReviewNotes</p>
-                </div>
-            </div>
-        }
+        <partial name="~/Views/Shared/_ApplicationResponseSections.cshtml"
+                 model="Model"
+                 view-data='new ViewDataDictionary(ViewData) { ["MotivationTitle"] = Localizer["ApplicationDetail_YourMotivation"].Value }' />
 
         @if (Model.CanWithdraw)
         {

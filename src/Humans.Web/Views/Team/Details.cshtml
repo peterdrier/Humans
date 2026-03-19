@@ -23,17 +23,20 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">@Model.Name</h4>
                 <div>
-                    @if (Model.IsSystemTeam)
+                    @if (Model.IsAuthenticated)
                     {
-                        <span class="badge bg-secondary">@Model.SystemTeamType @Localizer["Teams_Member"]</span>
-                    }
-                    @if (Model.IsCurrentUserMember)
-                    {
-                        @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Member)
-                    }
-                    @if (Model.IsCurrentUserCoordinator)
-                    {
-                        @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)
+                        @if (Model.IsSystemTeam)
+                        {
+                            <span class="badge bg-secondary">@Model.SystemTeamType @Localizer["Teams_Member"]</span>
+                        }
+                        @if (Model.IsCurrentUserMember)
+                        {
+                            @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Member)
+                        }
+                        @if (Model.IsCurrentUserCoordinator)
+                        {
+                            @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)
+                        }
                     }
                 </div>
             </div>
@@ -47,7 +50,7 @@
                     <p class="text-muted">@Localizer["TeamDetail_NoDescription"]</p>
                 }
 
-                @if (Model.IsSystemTeam)
+                @if (Model.IsAuthenticated && Model.IsSystemTeam)
                 {
                     <div class="alert alert-info mb-0">
                         @string.Format(Localizer["TeamDetail_SystemTeamInfo"].Value, Model.SystemTeamType)
@@ -55,24 +58,89 @@
                 }
             </div>
             <div class="card-footer">
-                <small class="text-muted">@Localizer["TeamDetail_Created"] @Model.CreatedAt.ToString("MMMM d, yyyy")</small>
+                <small class="text-muted">@Localizer["TeamDetail_Created"] @Model.CreatedAt.ToDisplayLongDate()</small>
             </div>
         </div>
 
-        @await Html.PartialAsync("_RosterSection", Model.RoleDefinitions,
-            new ViewDataDictionary(ViewData) {
-                { "CanManage", Model.CanCurrentUserManage },
-                { "Slug", Model.Slug }
-            })
+        @if (!string.IsNullOrEmpty(Model.PageContentHtml))
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>@Localizer["TeamDetail_AboutTeam"]</span>
+                    @if (Model.CanEditPageContent)
+                    {
+                        <a asp-controller="TeamAdmin" asp-action="EditPage" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-secondary">
+                            <i class="fa-solid fa-pen-to-square me-1"></i>@Localizer["TeamDetail_EditPage"]
+                        </a>
+                    }
+                </div>
+                <div class="card-body">
+                    <div class="markdown-content">
+                        @Html.Raw(Model.PageContentHtml)
+                    </div>
+                    @if (Model.PageContentUpdatedAt.HasValue)
+                    {
+                        <hr />
+                        <small class="text-muted">
+                            @Localizer["TeamDetail_LastUpdated"] @Model.PageContentUpdatedAt.Value.ToString("MMMM d, yyyy")
+                            @if (!string.IsNullOrEmpty(Model.PageContentUpdatedByDisplayName))
+                            {
+                                @: &mdash; @Model.PageContentUpdatedByDisplayName
+                            }
+                        </small>
+                    }
+                </div>
+            </div>
+        }
+        else if (Model.CanEditPageContent)
+        {
+            <div class="card mb-4">
+                <div class="card-body text-center py-4">
+                    <p class="text-muted mb-3">@Localizer["TeamDetail_NoPageContent"]</p>
+                    <a asp-controller="TeamAdmin" asp-action="EditPage" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-pen-to-square me-1"></i>@Localizer["TeamDetail_AddPageContent"]
+                    </a>
+                </div>
+            </div>
+        }
+
+        @if (Model.CallsToAction?.Any() == true)
+        {
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                @foreach (var cta in Model.CallsToAction)
+                {
+                    var btnClass = cta.Style == Humans.Domain.Enums.CallToActionStyle.Primary ? "btn-primary btn-lg" : "btn-outline-secondary";
+                    <a href="@cta.Url" target="_blank" rel="noopener noreferrer" class="btn @btnClass">
+                        @cta.Text <i class="fa-solid fa-arrow-up-right-from-square ms-1"></i>
+                    </a>
+                }
+            </div>
+        }
+
+        @if (Model.IsAuthenticated)
+        {
+            @await Html.PartialAsync("_RosterSection", Model.RoleDefinitions,
+                new ViewDataDictionary(ViewData) {
+                    { "CanManage", Model.CanCurrentUserManage },
+                    { "Slug", Model.Slug }
+                })
+        }
 
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>@string.Format(Localizer["TeamDetail_Members"].Value, Model.Members.Count)</span>
-                @if (Model.CanCurrentUserManage)
+                @if (Model.IsAuthenticated)
                 {
-                    <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-primary">
-                        @Localizer["TeamDetail_ManageMembers"]
-                    </a>
+                    <span>@string.Format(Localizer["TeamDetail_Members"].Value, Model.Members.Count)</span>
+                    @if (Model.CanCurrentUserManage)
+                    {
+                        <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-sm btn-outline-primary">
+                            @Localizer["TeamDetail_ManageMembers"]
+                        </a>
+                    }
+                }
+                else
+                {
+                    <span>@Localizer["TeamDetail_TeamCoordinators"]</span>
                 }
             </div>
             <div class="card-body">
@@ -83,26 +151,43 @@
 
                     @if (coordinators.Any())
                     {
-                        <h6 class="text-muted mb-3">@Localizer["TeamDetail_TeamCoordinators"]</h6>
+                        @if (Model.IsAuthenticated)
+                        {
+                            <h6 class="text-muted mb-3">@Localizer["TeamDetail_TeamCoordinators"]</h6>
+                        }
                         <div class="row g-3 mb-4">
                             @foreach (var member in coordinators)
                             {
                                 <div class="col-6 col-sm-4 col-md-3">
-                                    <a asp-controller="Human" asp-action="View" asp-route-id="@member.UserId" class="text-center text-decoration-none d-block">
-                                        <vc:user-avatar profile-picture-url="@member.EffectiveProfilePictureUrl"
-                                                        display-name="@member.DisplayName"
-                                                        size="128"
-                                                        css-class="mb-2 mx-auto border border-primary border-3"
-                                                        bg-color="bg-primary" />
-                                        <div class="fw-semibold small">@member.DisplayName</div>
-                                        @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)
-                                    </a>
+                                    @if (Model.IsAuthenticated)
+                                    {
+                                        <a asp-controller="Human" asp-action="View" asp-route-id="@member.UserId" class="text-center text-decoration-none d-block">
+                                            <vc:user-avatar profile-picture-url="@member.EffectiveProfilePictureUrl"
+                                                            display-name="@member.DisplayName"
+                                                            size="128"
+                                                            css-class="mb-2 mx-auto border border-primary border-3"
+                                                            bg-color="bg-primary" />
+                                            <div class="fw-semibold small">@member.DisplayName</div>
+                                            @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center">
+                                            <vc:user-avatar profile-picture-url="@member.EffectiveProfilePictureUrl"
+                                                            display-name="@member.DisplayName"
+                                                            size="128"
+                                                            css-class="mb-2 mx-auto border border-primary border-3"
+                                                            bg-color="bg-primary" />
+                                            <div class="fw-semibold small">@member.DisplayName</div>
+                                        </div>
+                                    }
                                 </div>
                             }
                         </div>
                     }
 
-                    @if (regularMembers.Any())
+                    @if (Model.IsAuthenticated && regularMembers.Any())
                     {
                         @if (coordinators.Any())
                         {
@@ -133,53 +218,56 @@
     </div>
 
     <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">@Localizer["TeamDetail_Actions"]</div>
-            <div class="card-body">
-                @if (Model.CanCurrentUserJoin)
-                {
-                    <a asp-action="Join" asp-route-slug="@Model.Slug" class="btn btn-primary w-100 mb-2">
-                        @if (Model.RequiresApproval)
-                        {
-                            <span>@Localizer["TeamDetail_RequestToJoin"]</span>
-                        }
-                        else
-                        {
-                            <span>@Localizer["TeamDetail_JoinTeam"]</span>
-                        }
-                    </a>
-                }
-                else if (Model.CurrentUserPendingRequestId.HasValue)
-                {
-                    <div class="alert alert-info mb-2">
-                        @Localizer["TeamDetail_PendingApproval"]
-                    </div>
-                    <form asp-action="WithdrawRequest" asp-route-id="@Model.CurrentUserPendingRequestId" method="post">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger w-100" data-confirm="@Localizer["TeamDetail_WithdrawConfirm"].Value">
-                            @Localizer["TeamDetail_WithdrawRequest"]
-                        </button>
-                    </form>
-                }
-                else if (Model.CanCurrentUserLeave)
-                {
-                    <form asp-action="Leave" asp-route-slug="@Model.Slug" method="post">
-                        @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger w-100" data-confirm="@Localizer["TeamDetail_LeaveConfirm"].Value">
-                            @Localizer["TeamDetail_LeaveTeam"]
-                        </button>
-                    </form>
-                }
-                else if (Model.IsCurrentUserMember && Model.IsSystemTeam)
-                {
-                    <div class="alert alert-secondary mb-0">
-                        @Localizer["TeamDetail_SystemMembership"]
-                    </div>
-                }
+        @if (Model.IsAuthenticated)
+        {
+            <div class="card mb-4">
+                <div class="card-header">@Localizer["TeamDetail_Actions"]</div>
+                <div class="card-body">
+                    @if (Model.CanCurrentUserJoin)
+                    {
+                        <a asp-action="Join" asp-route-slug="@Model.Slug" class="btn btn-primary w-100 mb-2">
+                            @if (Model.RequiresApproval)
+                            {
+                                <span>@Localizer["TeamDetail_RequestToJoin"]</span>
+                            }
+                            else
+                            {
+                                <span>@Localizer["TeamDetail_JoinTeam"]</span>
+                            }
+                        </a>
+                    }
+                    else if (Model.CurrentUserPendingRequestId.HasValue)
+                    {
+                        <div class="alert alert-info mb-2">
+                            @Localizer["TeamDetail_PendingApproval"]
+                        </div>
+                        <form asp-action="WithdrawRequest" asp-route-id="@Model.CurrentUserPendingRequestId" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger w-100" data-confirm="@Localizer["TeamDetail_WithdrawConfirm"].Value">
+                                @Localizer["TeamDetail_WithdrawRequest"]
+                            </button>
+                        </form>
+                    }
+                    else if (Model.CanCurrentUserLeave)
+                    {
+                        <form asp-action="Leave" asp-route-slug="@Model.Slug" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-danger w-100" data-confirm="@Localizer["TeamDetail_LeaveConfirm"].Value">
+                                @Localizer["TeamDetail_LeaveTeam"]
+                            </button>
+                        </form>
+                    }
+                    else if (Model.IsCurrentUserMember && Model.IsSystemTeam)
+                    {
+                        <div class="alert alert-secondary mb-0">
+                            @Localizer["TeamDetail_SystemMembership"]
+                        </div>
+                    }
+                </div>
             </div>
-        </div>
+        }
 
-        @if (Model.Resources.Count > 0)
+        @if (Model.IsAuthenticated && Model.Resources.Count > 0)
         {
             <div class="card mb-4">
                 <div class="card-header">
@@ -205,7 +293,7 @@
             </div>
         }
 
-        @if (Model.ShiftsSummary != null)
+        @if (Model.IsAuthenticated && Model.ShiftsSummary != null)
         {
             @await Html.PartialAsync("_ShiftsSummaryCard", Model.ShiftsSummary)
         }
@@ -221,6 +309,9 @@
                             @Localizer["TeamDetail_EditTeam"]
                         </a>
                     }
+                    <a asp-controller="TeamAdmin" asp-action="EditPage" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
+                        @Localizer["TeamDetail_EditPage"]
+                    </a>
                     <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                         @Localizer["TeamDetail_ManageMembers"]
                         @if (Model.PendingRequestCount > 0)

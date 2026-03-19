@@ -3,7 +3,10 @@
     ViewData["Title"] = "Board Dashboard";
 }
 
-<h1>Board Dashboard</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Board Dashboard</h1>
+    <vc:access-matrix section="Board" />
+</div>
 
 <div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-3 mb-4">
     <div class="col">
@@ -151,14 +154,7 @@
                     {
                         var lang = Model.LanguageDistribution[i];
                         var percentage = totalActive > 0 ? (int)(100.0 * lang.Count / totalActive) : 0;
-                        var label = lang.Language switch {
-                            "en" => "English",
-                            "es" => "Spanish",
-                            "de" => "German",
-                            "fr" => "French",
-                            "it" => "Italian",
-                            _ => lang.Language
-                        };
+                        var label = lang.Language.ToDisplayLanguageName();
                         var color = barColors[i % barColors.Length];
                         <div class="d-flex align-items-center mb-2">
                             <span class="me-2" style="min-width: 70px;">@label</span>
@@ -194,7 +190,7 @@
                                     <span class="badge bg-secondary me-2">@activity.Type</span>
                                     @activity.Description
                                 </div>
-                                <small class="text-muted text-nowrap ms-3">@activity.Timestamp.ToString("g")</small>
+                                <small class="text-muted text-nowrap ms-3">@activity.Timestamp.ToDisplayGeneralDateTime()</small>
                             </li>
                         }
                     </ul>

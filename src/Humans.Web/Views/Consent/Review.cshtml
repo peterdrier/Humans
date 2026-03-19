@@ -2,35 +2,20 @@
 @{
     ViewData["Title"] = string.Format(Localizer["ConsentReview_Title"].Value, Model.DocumentName);
 
-    // Language display names — Spanish is canonical/legal
-    var languageNames = new Dictionary<string, string>(StringComparer.Ordinal)
+    var orderedLanguages = Model.Content
+        .OrderByDisplayLanguage(canonicalFirst: true)
+        .ToList();
+    var defaultLang = Model.Content.GetDefaultDocumentLanguage();
+    var documentTabs = new Humans.Web.Models.TabbedMarkdownDocumentsViewModel
     {
-        ["es"] = "Castellano",
-        ["en"] = "English",
-        ["de"] = "Deutsch",
-        ["fr"] = "Fran\u00e7ais",
-        ["it"] = "Italiano",
-        ["pt"] = "Portugu\u00eas",
-        ["ca"] = "Catal\u00e0"
+        Documents = orderedLanguages,
+        TabsId = "contentTabs",
+        ContentId = "contentTabsContent",
+        DefaultLanguage = defaultLang,
+        EmptyMessage = Localizer["ConsentReview_ContentNotAvailable"].Value,
+        ContentCssClass = "tab-content border border-top-0 p-4 bg-white"
     };
 
-    string GetLanguageLabel(string langCode)
-    {
-        var name = languageNames.TryGetValue(langCode, out var n) ? n : langCode.ToUpperInvariant();
-        return langCode == "es" ? $"{name} (Legal)" : name;
-    }
-
-    // Order: Spanish (canonical/legal) always first, then alphabetical
-    var orderedLanguages = Model.Content
-        .OrderByDescending(kv => kv.Key == "es")
-        .ThenBy(kv => languageNames.TryGetValue(kv.Key, out var n) ? n : kv.Key, StringComparer.Ordinal)
-        .ToList();
-
-    // Default active tab: user's language if available, else Spanish
-    var userLang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-    var defaultLang = Model.Content.ContainsKey(userLang) ? userLang : "es";
-
-    // Build per-language translations for consent checkbox text (used by tab-switch JS)
     var rm = new System.Resources.ResourceManager(typeof(SharedResource));
 
     var consentTranslations = new Dictionary<string, object>();
@@ -77,38 +62,7 @@
 
         @if (orderedLanguages.Count > 0)
         {
-            <ul class="nav nav-tabs" id="contentTabs" role="tablist">
-                @foreach (var lang in orderedLanguages)
-                {
-                    var isActive = lang.Key == defaultLang;
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link @(isActive ? "active" : "")" id="tab-@lang.Key" data-bs-toggle="tab"
-                                data-bs-target="#content-@lang.Key" type="button" role="tab"
-                                aria-controls="content-@lang.Key" aria-selected="@(isActive ? "true" : "false")">
-                            @GetLanguageLabel(lang.Key)
-                        </button>
-                    </li>
-                }
-            </ul>
-
-            <div class="tab-content border border-top-0 p-4 bg-white" id="contentTabsContent" style="max-height: 500px; overflow-y: auto;">
-                @foreach (var lang in orderedLanguages)
-                {
-                    var isActive = lang.Key == defaultLang;
-                    <div class="tab-pane fade @(isActive ? "show active" : "")" id="content-@lang.Key" role="tabpanel" aria-labelledby="tab-@lang.Key">
-                        @if (string.IsNullOrEmpty(lang.Value))
-                        {
-                            <p class="text-muted">@Localizer["ConsentReview_ContentNotAvailable"]</p>
-                        }
-                        else
-                        {
-                            <div class="document-content">
-                                @Html.Raw(ConvertMarkdownToHtml(lang.Value))
-                            </div>
-                        }
-                    </div>
-                }
-            </div>
+            @await Html.PartialAsync("~/Views/Shared/_TabbedMarkdownDocuments.cshtml", documentTabs)
         }
         else
         {
@@ -149,36 +103,12 @@
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["ConsentReview_BackToList"]</a>
                 <div class="text-end text-muted">
-                    Agreed to by <strong>@Model.ConsentedByFullName</strong> on @Model.ConsentedAt?.ToString("d MMM yyyy") at @Model.ConsentedAt?.ToString("HH:mm") UTC
+                    Agreed to by <strong>@Model.ConsentedByFullName</strong> on @Model.ConsentedAt.ToDisplayDate() at @Model.ConsentedAt.ToDisplayTime() UTC
                 </div>
             </div>
         }
     </div>
 </div>
-
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
-
-<style>
-    .document-content {
-        font-size: 0.95rem;
-        line-height: 1.7;
-    }
-
-    .document-content p {
-        margin-bottom: 1rem;
-    }
-</style>
 
 <script>
     (function () {
@@ -208,7 +138,6 @@
             }
         }
 
-        // Validation setup
         if (cb) {
             var msg = cb.dataset.valRequired;
             cb.setCustomValidity(msg);
@@ -217,17 +146,15 @@
             });
         }
 
-        // Tab switch handler
         var tabContainer = document.getElementById('contentTabs');
         if (tabContainer) {
             tabContainer.addEventListener('shown.bs.tab', function (e) {
                 var tabId = e.target.id;
-                var lang = tabId.replace('tab-', '');
+                var lang = tabId.replace('contentTabs-tab-', '');
                 updateConsentText(lang);
             });
         }
 
-        // Initialize with default tab language
         updateConsentText(defaultLang);
     })();
 </script>

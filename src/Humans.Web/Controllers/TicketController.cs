@@ -1,12 +1,16 @@
 using Hangfire;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -15,10 +19,13 @@ using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin},{RoleNames.Board}")]
+[Authorize(Roles = RoleGroups.TicketAdminBoardOrAdmin)]
 [Route("Tickets")]
-public class TicketController : Controller
+public class TicketController : HumansControllerBase
 {
+    private const string EventSummaryCacheKey = "ticket-event-summary";
+    private static readonly TimeSpan EventSummaryCacheTtl = TimeSpan.FromMinutes(15);
+
     private readonly HumansDbContext _dbContext;
     private readonly ITicketVendorService _vendorService;
     private readonly TicketVendorSettings _settings;
@@ -30,7 +37,9 @@ public class TicketController : Controller
         ITicketVendorService vendorService,
         IOptions<TicketVendorSettings> settings,
         IMemoryCache cache,
+        UserManager<User> userManager,
         ILogger<TicketController> logger)
+        : base(userManager)
     {
         _dbContext = dbContext;
         _vendorService = vendorService;
@@ -80,9 +89,9 @@ public class TicketController : Controller
         int totalCapacity = 0;
         try
         {
-            var summary = await _cache.GetOrCreateAsync("ticket-event-summary", async entry =>
+            var summary = await _cache.GetOrCreateAsync(EventSummaryCacheKey, async entry =>
             {
-                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15);
+                entry.AbsoluteExpirationRelativeToNow = EventSummaryCacheTtl;
                 return await _vendorService.GetEventSummaryAsync(_settings.EventId);
             });
             totalCapacity = summary?.TotalCapacity ?? 0;
@@ -125,7 +134,7 @@ public class TicketController : Controller
 
                 dailySalesPoints.Add(new DailySalesPoint
                 {
-                    Date = date.ToString("yyyy-MM-dd", null),
+                    Date = date.ToIsoDateString(),
                     TicketsSold = count,
                     RollingAverage = Math.Round(rollingAvg, 1)
                 });
@@ -175,48 +184,13 @@ public class TicketController : Controller
         string? filterPaymentStatus = null, string? filterTicketType = null,
         bool? filterMatched = null)
     {
-        pageSize = Math.Clamp(pageSize, 1, 250);
+        pageSize = pageSize.ClampPageSize();
 
-        var query = _dbContext.TicketOrders
-            .Include(o => o.Attendees)
-            .Include(o => o.MatchedUser)
-            .AsQueryable();
-
-        // Search
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-#pragma warning disable MA0011 // ToLower inside EF LINQ is translated to SQL LOWER()
-            var s = search.ToLower();
-            query = query.Where(o =>
-                o.BuyerName.ToLower().Contains(s) ||
-                o.BuyerEmail.ToLower().Contains(s) ||
-                o.VendorOrderId.ToLower().Contains(s) ||
-                (o.DiscountCode != null && o.DiscountCode.ToLower().Contains(s)));
-#pragma warning restore MA0011
-        }
-
-        // Filters
-        if (!string.IsNullOrEmpty(filterPaymentStatus) &&
-            Enum.TryParse<TicketPaymentStatus>(filterPaymentStatus, true, out var ps))
-            query = query.Where(o => o.PaymentStatus == ps);
-
-        if (!string.IsNullOrEmpty(filterTicketType))
-            query = query.Where(o => o.Attendees.Any(a => a.TicketTypeName == filterTicketType));
-
-        if (filterMatched == true)
-            query = query.Where(o => o.MatchedUserId != null);
-        else if (filterMatched == false)
-            query = query.Where(o => o.MatchedUserId == null);
+        var query = BuildOrdersQuery(search, filterPaymentStatus, filterTicketType, filterMatched);
 
         var totalCount = await query.CountAsync();
 
-        query = sortBy.ToLowerInvariant() switch
-        {
-            "amount" => sortDesc ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount),
-            "name" => sortDesc ? query.OrderByDescending(o => o.BuyerName) : query.OrderBy(o => o.BuyerName),
-            "tickets" => sortDesc ? query.OrderByDescending(o => o.Attendees.Count) : query.OrderBy(o => o.Attendees.Count),
-            _ => sortDesc ? query.OrderByDescending(o => o.PurchasedAt) : query.OrderBy(o => o.PurchasedAt),
-        };
+        query = ApplyOrderSorting(query, sortBy, sortDesc);
 
         var orderRows = await query
             .Skip((page - 1) * pageSize)
@@ -239,12 +213,6 @@ public class TicketController : Controller
             })
             .ToListAsync();
 
-        var ticketTypes = await _dbContext.TicketAttendees
-            .Select(a => a.TicketTypeName)
-            .Distinct()
-            .OrderBy(t => t)
-            .ToListAsync();
-
         var model = new TicketOrdersViewModel
         {
             Orders = orderRows,
@@ -257,7 +225,7 @@ public class TicketController : Controller
             FilterPaymentStatus = filterPaymentStatus,
             FilterTicketType = filterTicketType,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = ticketTypes,
+            AvailableTicketTypes = await GetAvailableTicketTypesAsync(),
         };
 
         return View(model);
@@ -270,47 +238,13 @@ public class TicketController : Controller
         string? filterTicketType = null, string? filterStatus = null,
         bool? filterMatched = null, string? filterOrderId = null)
     {
-        pageSize = Math.Clamp(pageSize, 1, 250);
+        pageSize = pageSize.ClampPageSize();
 
-        var query = _dbContext.TicketAttendees
-            .Include(a => a.MatchedUser)
-            .Include(a => a.TicketOrder)
-            .AsQueryable();
-
-        if (!string.IsNullOrEmpty(filterOrderId))
-            query = query.Where(a => a.TicketOrder.VendorOrderId == filterOrderId);
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-#pragma warning disable MA0011 // ToLower inside EF LINQ is translated to SQL LOWER()
-            var s = search.ToLower();
-            query = query.Where(a =>
-                a.AttendeeName.ToLower().Contains(s) ||
-                (a.AttendeeEmail != null && a.AttendeeEmail.ToLower().Contains(s)));
-#pragma warning restore MA0011
-        }
-
-        if (!string.IsNullOrEmpty(filterTicketType))
-            query = query.Where(a => a.TicketTypeName == filterTicketType);
-
-        if (!string.IsNullOrEmpty(filterStatus) &&
-            Enum.TryParse<TicketAttendeeStatus>(filterStatus, true, out var status))
-            query = query.Where(a => a.Status == status);
-
-        if (filterMatched == true)
-            query = query.Where(a => a.MatchedUserId != null);
-        else if (filterMatched == false)
-            query = query.Where(a => a.MatchedUserId == null);
+        var query = BuildAttendeesQuery(search, filterTicketType, filterStatus, filterMatched, filterOrderId);
 
         var totalCount = await query.CountAsync();
 
-        query = sortBy.ToLowerInvariant() switch
-        {
-            "type" => sortDesc ? query.OrderByDescending(a => a.TicketTypeName) : query.OrderBy(a => a.TicketTypeName),
-            "price" => sortDesc ? query.OrderByDescending(a => a.Price) : query.OrderBy(a => a.Price),
-            "status" => sortDesc ? query.OrderByDescending(a => a.Status) : query.OrderBy(a => a.Status),
-            _ => sortDesc ? query.OrderByDescending(a => a.AttendeeName) : query.OrderBy(a => a.AttendeeName),
-        };
+        query = ApplyAttendeeSorting(query, sortBy, sortDesc);
 
         var attendeeRows = await query
             .Skip((page - 1) * pageSize)
@@ -329,12 +263,6 @@ public class TicketController : Controller
             })
             .ToListAsync();
 
-        var ticketTypes = await _dbContext.TicketAttendees
-            .Select(a => a.TicketTypeName)
-            .Distinct()
-            .OrderBy(t => t)
-            .ToListAsync();
-
         var model = new TicketAttendeesViewModel
         {
             Attendees = attendeeRows,
@@ -347,7 +275,7 @@ public class TicketController : Controller
             FilterTicketType = filterTicketType,
             FilterStatus = filterStatus,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = ticketTypes,
+            AvailableTicketTypes = await GetAvailableTicketTypesAsync(),
         };
 
         return View(model);
@@ -380,12 +308,11 @@ public class TicketController : Controller
         }).ToList();
 
         var allGrants = campaigns.SelectMany(c => c.Grants).AsEnumerable();
-        if (!string.IsNullOrWhiteSpace(search))
+        if (search.HasSearchTerm(1))
         {
-            var s = search.ToLowerInvariant();
             allGrants = allGrants.Where(g =>
-                (g.Code?.Code?.Contains(s, StringComparison.OrdinalIgnoreCase) == true) ||
-                g.User.DisplayName.Contains(s, StringComparison.OrdinalIgnoreCase));
+                g.Code?.Code.ContainsOrdinalIgnoreCase(search) == true ||
+                g.User.DisplayName.ContainsOrdinalIgnoreCase(search));
         }
 
         // Load orders with discount codes to show who redeemed and on which order
@@ -445,21 +372,9 @@ public class TicketController : Controller
         string? filterTicketStatus = null,
         int page = 1, int pageSize = 25)
     {
-        pageSize = Math.Clamp(pageSize, 1, 250);
+        pageSize = pageSize.ClampPageSize();
 
-        var matchedFromAttendees = await _dbContext.TicketAttendees
-            .Where(a => a.MatchedUserId != null)
-            .Select(a => a.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync();
-
-        var matchedFromOrders = await _dbContext.TicketOrders
-            .Where(o => o.MatchedUserId != null)
-            .Select(o => o.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync();
-
-        var matchedUserIds = matchedFromAttendees.Union(matchedFromOrders).ToHashSet();
+        var matchedUserIds = await GetMatchedTicketUserIdsAsync();
 
         // Load ALL active humans (not just unmatched) so we can toggle between views
         var users = await _dbContext.Users
@@ -480,38 +395,16 @@ public class TicketController : Controller
                 u.TeamMemberships.Any(tm => tm.TeamId == volunteersTeamId))
             .ToList();
 
-        // Ticket status filter
-        if (string.Equals(filterTicketStatus, "bought", StringComparison.OrdinalIgnoreCase))
-            activeHumans = activeHumans.Where(u => matchedUserIds.Contains(u.Id)).ToList();
-        else if (string.Equals(filterTicketStatus, "not_bought", StringComparison.OrdinalIgnoreCase))
-            activeHumans = activeHumans.Where(u => !matchedUserIds.Contains(u.Id)).ToList();
-        // null/empty = show all
+        var filteredHumans = FilterWhoHasntBoughtHumans(
+            activeHumans,
+            matchedUserIds,
+            filterTicketStatus,
+            filterTeam,
+            filterTier,
+            search);
 
-        if (!string.IsNullOrEmpty(filterTeam))
-        {
-            activeHumans = activeHumans
-                .Where(u => u.TeamMemberships.Any(tm =>
-                    string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-        }
-
-        if (!string.IsNullOrEmpty(filterTier))
-        {
-            activeHumans = activeHumans
-                .Where(u => string.Equals(u.Profile?.MembershipTier.ToString(), filterTier, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            activeHumans = activeHumans
-                .Where(u => u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    u.UserEmails.Any(e => e.Email.Contains(search, StringComparison.OrdinalIgnoreCase)))
-                .ToList();
-        }
-
-        var totalCount = activeHumans.Count;
-        var pagedHumans = activeHumans
+        var totalCount = filteredHumans.Count;
+        var pagedHumans = filteredHumans
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(u => new WhoHasntBoughtRow
@@ -548,11 +441,11 @@ public class TicketController : Controller
 
     [HttpPost("Sync")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
     public IActionResult Sync()
     {
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
-        TempData["SuccessMessage"] = "Ticket sync triggered. Data will update shortly.";
+        SetSuccess("Ticket sync triggered. Data will update shortly.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -569,12 +462,12 @@ public class TicketController : Controller
         }
 
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
-        TempData["SuccessMessage"] = "Full re-sync triggered. All orders will be re-fetched.";
+        SetSuccess("Full re-sync triggered. All orders will be re-fetched.");
         return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("Export/Attendees")]
-    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportAttendees()
     {
         var attendeeList = await _dbContext.TicketAttendees
@@ -583,10 +476,10 @@ public class TicketController : Controller
             .ToListAsync();
 
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Name,Email,Ticket Type,Price,Status,Order ID");
+        csv.AppendCsvRow("Name", "Email", "Ticket Type", "Price", "Status", "Order ID");
         foreach (var a in attendeeList)
         {
-            csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"{CsvEscape(a.AttendeeName)},{CsvEscape(a.AttendeeEmail)},{CsvEscape(a.TicketTypeName)},{a.Price},{a.Status},{CsvEscape(a.TicketOrder.VendorOrderId)}");
+            csv.AppendCsvRow(a.AttendeeName, a.AttendeeEmail, a.TicketTypeName, a.Price, a.Status, a.TicketOrder.VendorOrderId);
         }
 
         return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
@@ -594,7 +487,7 @@ public class TicketController : Controller
     }
 
     [HttpGet("Export/Orders")]
-    [Authorize(Roles = $"{RoleNames.TicketAdmin},{RoleNames.Admin}")]
+    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportOrders()
     {
         var orderList = await _dbContext.TicketOrders
@@ -603,16 +496,226 @@ public class TicketController : Controller
             .ToListAsync();
 
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Date,Purchaser,Email,Tickets,Amount,Currency,Code,Status");
+        csv.AppendCsvRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency", "Code", "Status");
         foreach (var o in orderList)
         {
-            csv.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"{CsvEscape(o.PurchasedAt.InUtc().Date.ToString("yyyy-MM-dd", null))},{CsvEscape(o.BuyerName)},{CsvEscape(o.BuyerEmail)},{o.Attendees.Count},{o.TotalAmount},{o.Currency},{CsvEscape(o.DiscountCode)},{o.PaymentStatus}");
+            csv.AppendCsvRow(
+                o.PurchasedAt.InUtc().Date.ToIsoDateString(),
+                o.BuyerName,
+                o.BuyerEmail,
+                o.Attendees.Count,
+                o.TotalAmount,
+                o.Currency,
+                o.DiscountCode,
+                o.PaymentStatus);
         }
 
         return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
             "text/csv", "orders-export.csv");
     }
 
-    private static string CsvEscape(string? s) =>
-        $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
+    private Task<List<string>> GetAvailableTicketTypesAsync()
+    {
+        return _dbContext.TicketAttendees
+            .Select(a => a.TicketTypeName)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToListAsync();
+    }
+
+    private IQueryable<TicketOrder> BuildOrdersQuery(
+        string? search,
+        string? filterPaymentStatus,
+        string? filterTicketType,
+        bool? filterMatched)
+    {
+        var query = _dbContext.TicketOrders
+            .Include(o => o.Attendees)
+            .Include(o => o.MatchedUser)
+            .AsQueryable();
+
+        if (search.HasSearchTerm(1))
+        {
+            query = query.WhereAnyContainsInsensitive(
+                search,
+                o => o.BuyerName,
+                o => o.BuyerEmail,
+                o => o.VendorOrderId,
+                o => o.DiscountCode);
+        }
+
+        if (!string.IsNullOrEmpty(filterPaymentStatus) &&
+            Enum.TryParse<TicketPaymentStatus>(filterPaymentStatus, true, out var paymentStatus))
+        {
+            query = query.Where(o => o.PaymentStatus == paymentStatus);
+        }
+
+        if (!string.IsNullOrEmpty(filterTicketType))
+        {
+            query = query.Where(o => o.Attendees.Any(a => a.TicketTypeName == filterTicketType));
+        }
+
+        if (filterMatched == true)
+        {
+            query = query.Where(o => o.MatchedUserId != null);
+        }
+        else if (filterMatched == false)
+        {
+            query = query.Where(o => o.MatchedUserId == null);
+        }
+
+        return query;
+    }
+
+    private static IQueryable<TicketOrder> ApplyOrderSorting(
+        IQueryable<TicketOrder> query,
+        string? sortBy,
+        bool sortDesc)
+    {
+        if (string.Equals(sortBy, "amount", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(o => o.TotalAmount) : query.OrderBy(o => o.TotalAmount);
+        }
+
+        if (string.Equals(sortBy, "name", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(o => o.BuyerName) : query.OrderBy(o => o.BuyerName);
+        }
+
+        if (string.Equals(sortBy, "tickets", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(o => o.Attendees.Count) : query.OrderBy(o => o.Attendees.Count);
+        }
+
+        return sortDesc ? query.OrderByDescending(o => o.PurchasedAt) : query.OrderBy(o => o.PurchasedAt);
+    }
+
+    private IQueryable<TicketAttendee> BuildAttendeesQuery(
+        string? search,
+        string? filterTicketType,
+        string? filterStatus,
+        bool? filterMatched,
+        string? filterOrderId)
+    {
+        var query = _dbContext.TicketAttendees
+            .Include(a => a.MatchedUser)
+            .Include(a => a.TicketOrder)
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(filterOrderId))
+        {
+            query = query.Where(a => a.TicketOrder.VendorOrderId == filterOrderId);
+        }
+
+        if (search.HasSearchTerm(1))
+        {
+            query = query.WhereAnyContainsInsensitive(
+                search,
+                a => a.AttendeeName,
+                a => a.AttendeeEmail);
+        }
+
+        if (!string.IsNullOrEmpty(filterTicketType))
+        {
+            query = query.Where(a => a.TicketTypeName == filterTicketType);
+        }
+
+        if (!string.IsNullOrEmpty(filterStatus) &&
+            Enum.TryParse<TicketAttendeeStatus>(filterStatus, true, out var status))
+        {
+            query = query.Where(a => a.Status == status);
+        }
+
+        if (filterMatched == true)
+        {
+            query = query.Where(a => a.MatchedUserId != null);
+        }
+        else if (filterMatched == false)
+        {
+            query = query.Where(a => a.MatchedUserId == null);
+        }
+
+        return query;
+    }
+
+    private static IQueryable<TicketAttendee> ApplyAttendeeSorting(
+        IQueryable<TicketAttendee> query,
+        string? sortBy,
+        bool sortDesc)
+    {
+        if (string.Equals(sortBy, "type", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(a => a.TicketTypeName) : query.OrderBy(a => a.TicketTypeName);
+        }
+
+        if (string.Equals(sortBy, "price", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(a => a.Price) : query.OrderBy(a => a.Price);
+        }
+
+        if (string.Equals(sortBy, "status", StringComparison.OrdinalIgnoreCase))
+        {
+            return sortDesc ? query.OrderByDescending(a => a.Status) : query.OrderBy(a => a.Status);
+        }
+
+        return sortDesc ? query.OrderByDescending(a => a.AttendeeName) : query.OrderBy(a => a.AttendeeName);
+    }
+
+    private async Task<HashSet<Guid>> GetMatchedTicketUserIdsAsync()
+    {
+        var matchedFromAttendees = await _dbContext.TicketAttendees
+            .Where(a => a.MatchedUserId != null)
+            .Select(a => a.MatchedUserId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        var matchedFromOrders = await _dbContext.TicketOrders
+            .Where(o => o.MatchedUserId != null)
+            .Select(o => o.MatchedUserId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        return matchedFromAttendees.Union(matchedFromOrders).ToHashSet();
+    }
+
+    private static List<User> FilterWhoHasntBoughtHumans(
+        IEnumerable<User> humans,
+        HashSet<Guid> matchedUserIds,
+        string? filterTicketStatus,
+        string? filterTeam,
+        string? filterTier,
+        string? search)
+    {
+        var filteredHumans = humans;
+
+        if (string.Equals(filterTicketStatus, "bought", StringComparison.OrdinalIgnoreCase))
+        {
+            filteredHumans = filteredHumans.Where(u => matchedUserIds.Contains(u.Id));
+        }
+        else if (string.Equals(filterTicketStatus, "not_bought", StringComparison.OrdinalIgnoreCase))
+        {
+            filteredHumans = filteredHumans.Where(u => !matchedUserIds.Contains(u.Id));
+        }
+
+        if (!string.IsNullOrEmpty(filterTeam))
+        {
+            filteredHumans = filteredHumans.Where(u =>
+                u.TeamMemberships.Any(tm => string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        if (!string.IsNullOrEmpty(filterTier))
+        {
+            filteredHumans = filteredHumans.Where(u =>
+                string.Equals(u.Profile?.MembershipTier.ToString(), filterTier, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (search.HasSearchTerm(1))
+        {
+            filteredHumans = filteredHumans.Where(u =>
+                u.DisplayName.ContainsOrdinalIgnoreCase(search) ||
+                u.UserEmails.Any(e => e.Email.ContainsOrdinalIgnoreCase(search)));
+        }
+
+        return filteredHumans.ToList();
+    }
 }

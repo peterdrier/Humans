@@ -88,10 +88,6 @@
         dropdown.innerHTML = '';
     }
 
-    function escapeHtml(s) {
-        var d = document.createElement('div');
-        d.appendChild(document.createTextNode(s));
-        return d.innerHTML;
-    }
+    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 })();
 </script>

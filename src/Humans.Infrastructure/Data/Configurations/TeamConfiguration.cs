@@ -1,8 +1,12 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
@@ -10,6 +14,11 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
 {
     // Fixed seed timestamp so migrations are deterministic
     private static readonly Instant SeedTimestamp = Instant.FromUtc(2026, 2, 4, 23, 52, 37);
+
+    private static readonly JsonSerializerOptions JsonEnumOptions = new()
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     public void Configure(EntityTypeBuilder<Team> builder)
     {
@@ -45,6 +54,24 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
 
         builder.Property(t => t.UpdatedAt)
             .IsRequired();
+
+        builder.Property(t => t.IsPublicPage)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(t => t.PageContent)
+            .HasMaxLength(50000);
+
+        builder.Property(t => t.PageContentUpdatedByUserId);
+
+        builder.Property(t => t.CallsToAction).HasColumnType("jsonb")
+            .HasConversion(
+                v => v == null ? null : JsonSerializer.Serialize(v, JsonEnumOptions),
+                v => v == null ? null : JsonSerializer.Deserialize<List<CallToAction>>(v, JsonEnumOptions),
+                new ValueComparer<List<CallToAction>>(
+                    (a, b) => (a == null && b == null) || (a != null && b != null && a.SequenceEqual(b)),
+                    v => v == null ? 0 : v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item.Text, item.Url, item.Style)),
+                    v => v == null ? null! : v.Select(c => new CallToAction { Text = c.Text, Url = c.Url, Style = c.Style }).ToList()));
 
         builder.Property(t => t.ParentTeamId);
 
@@ -98,7 +125,12 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 GoogleGroupPrefix = (string?)null,
                 ParentTeamId = (Guid?)null,
                 CreatedAt = SeedTimestamp,
-                UpdatedAt = SeedTimestamp
+                UpdatedAt = SeedTimestamp,
+                IsPublicPage = false,
+                PageContent = (string?)null,
+                PageContentUpdatedAt = (Instant?)null,
+                PageContentUpdatedByUserId = (Guid?)null,
+                CallsToAction = (List<CallToAction>?)null
             },
             new
             {
@@ -112,7 +144,12 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 GoogleGroupPrefix = (string?)null,
                 ParentTeamId = (Guid?)null,
                 CreatedAt = SeedTimestamp,
-                UpdatedAt = SeedTimestamp
+                UpdatedAt = SeedTimestamp,
+                IsPublicPage = false,
+                PageContent = (string?)null,
+                PageContentUpdatedAt = (Instant?)null,
+                PageContentUpdatedByUserId = (Guid?)null,
+                CallsToAction = (List<CallToAction>?)null
             },
             new
             {
@@ -126,7 +163,12 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 GoogleGroupPrefix = (string?)null,
                 ParentTeamId = (Guid?)null,
                 CreatedAt = SeedTimestamp,
-                UpdatedAt = SeedTimestamp
+                UpdatedAt = SeedTimestamp,
+                IsPublicPage = false,
+                PageContent = (string?)null,
+                PageContentUpdatedAt = (Instant?)null,
+                PageContentUpdatedByUserId = (Guid?)null,
+                CallsToAction = (List<CallToAction>?)null
             },
             new
             {
@@ -140,7 +182,12 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 GoogleGroupPrefix = (string?)null,
                 ParentTeamId = (Guid?)null,
                 CreatedAt = SeedTimestamp,
-                UpdatedAt = SeedTimestamp
+                UpdatedAt = SeedTimestamp,
+                IsPublicPage = false,
+                PageContent = (string?)null,
+                PageContentUpdatedAt = (Instant?)null,
+                PageContentUpdatedByUserId = (Guid?)null,
+                CallsToAction = (List<CallToAction>?)null
             },
             new
             {
@@ -154,7 +201,31 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 GoogleGroupPrefix = (string?)null,
                 ParentTeamId = (Guid?)null,
                 CreatedAt = SeedTimestamp,
-                UpdatedAt = SeedTimestamp
+                UpdatedAt = SeedTimestamp,
+                IsPublicPage = false,
+                PageContent = (string?)null,
+                PageContentUpdatedAt = (Instant?)null,
+                PageContentUpdatedByUserId = (Guid?)null,
+                CallsToAction = (List<CallToAction>?)null
+            },
+            new
+            {
+                Id = Guid.Parse("00000000-0000-0000-0001-000000000006"),
+                Name = "Barrio Leads",
+                Description = "All active camp leads across all camps",
+                Slug = "barrio-leads",
+                IsActive = true,
+                RequiresApproval = false,
+                SystemTeamType = SystemTeamType.BarrioLeads,
+                GoogleGroupPrefix = (string?)null,
+                ParentTeamId = (Guid?)null,
+                CreatedAt = SeedTimestamp,
+                UpdatedAt = SeedTimestamp,
+                IsPublicPage = false,
+                PageContent = (string?)null,
+                PageContentUpdatedAt = (Instant?)null,
+                PageContentUpdatedByUserId = (Guid?)null,
+                CallsToAction = (List<CallToAction>?)null
             });
     }
 }

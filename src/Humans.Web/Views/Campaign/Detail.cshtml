@@ -180,11 +180,11 @@
                             <td>@grant.User.DisplayName</td>
                             <td class="text-muted small">@grant.User.Email</td>
                             <td><code>@grant.Code.Code</code></td>
-                            <td>@grant.AssignedAt.ToString("d MMM yyyy HH:mm", null)</td>
+                            <td>@grant.AssignedAt.ToDisplayDateTime()</td>
                             <td>
                                 @if (grant.RedeemedAt.HasValue)
                                 {
-                                    <span class="text-success">@grant.RedeemedAt.Value.ToString("d MMM yyyy", null)</span>
+                                    <span class="text-success">@grant.RedeemedAt.Value.ToDisplayDate()</span>
                                 }
                                 else
                                 {
@@ -197,7 +197,7 @@
                                     <span class="badge @emailStatusClass">@grant.LatestEmailStatus</span>
                                     @if (grant.LatestEmailAt.HasValue)
                                     {
-                                        <small class="text-muted ms-1">@grant.LatestEmailAt.Value.ToString("d MMM yyyy HH:mm", null)</small>
+                                        <small class="text-muted ms-1">@grant.LatestEmailAt.Value.ToDisplayDateTime()</small>
                                     }
                                 }
                                 else

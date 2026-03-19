@@ -54,7 +54,7 @@
   <data name="Nav_Home" xml:space="preserve"><value>Home</value></data>
   <data name="Nav_MyProfile" xml:space="preserve"><value>Il mio Profilo</value></data>
   <data name="Nav_Teams" xml:space="preserve"><value>Team</value></data>
-  <data name="Nav_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Nav_Shifts" xml:space="preserve"><value>Volunteer</value></data>
   <data name="Nav_Roster" xml:space="preserve"><value>Roster</value></data>
   <data name="Nav_Consents" xml:space="preserve"><value>Accordi</value></data>
   <data name="Nav_Governance" xml:space="preserve"><value>Governance</value></data>
@@ -846,6 +846,18 @@
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Visibile solo a te e al consiglio. Utilizzato per il calendario dei compleanni.</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinators</value></data>
 
+  <!-- Team Public Pages -->
+  <data name="TeamDetail_AboutTeam" xml:space="preserve"><value>Informazioni</value></data>
+  <data name="TeamDetail_EditPage" xml:space="preserve"><value>Modifica Pagina</value></data>
+  <data name="TeamDetail_LastUpdated" xml:space="preserve"><value>Ultimo aggiornamento</value></data>
+  <data name="TeamDetail_NoPageContent" xml:space="preserve"><value>Questo team non ha ancora una pagina. Aggiungi contenuti per raccontare agli humans di cosa si tratta.</value></data>
+  <data name="TeamDetail_AddPageContent" xml:space="preserve"><value>Aggiungi Contenuto</value></data>
+  <data name="Teams_PublicDirectory" xml:space="preserve"><value>Team</value></data>
+  <data name="Teams_PublicDirectorySubtitle" xml:space="preserve"><value>Scopri i team che fanno accadere le cose.</value></data>
+  <data name="Teams_LearnMore" xml:space="preserve"><value>Scopri di più</value></data>
+  <data name="Teams_NoPublicTeams" xml:space="preserve"><value>Nessuna pagina di team pubblica disponibile.</value></data>
+  <data name="EditTeamPage_Saved" xml:space="preserve"><value>Pagina del team aggiornata.</value></data>
+
   <!-- Emergency Contact -->
   <data name="Profile_EmergencyContact" xml:space="preserve"><value>Contatto di emergenza</value></data>
   <data name="Profile_EmergencyContactName" xml:space="preserve"><value>Nome</value></data>
@@ -1129,5 +1141,34 @@
   <data name="Camp_SwissCampLabel" xml:space="preserve"><value>Questo camp è mai stato chiamato "Swiss Camp"?</value></data>
   <data name="Camp_InfoTitle" xml:space="preserve"><value>Info del Barrio</value></data>
   <data name="Camp_NameLabel" xml:space="preserve"><value>Nome del Barrio</value></data>
+  <data name="Shifts_SignedUp" xml:space="preserve"><value>Iscritti</value></data>
+  <data name="Shifts_Pending" xml:space="preserve"><value>(in attesa)</value></data>
+
+  <!-- Feedback Email -->
+  <data name="Email_FeedbackResponse_Subject" xml:space="preserve"><value>Aggiornamento sul tuo feedback</value></data>
+  <data name="Email_FeedbackResponse_Body" xml:space="preserve"><value>&lt;h2&gt;Aggiornamento sul tuo Feedback&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Abbiamo esaminato il tuo feedback:&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
+&lt;p&gt;&lt;strong&gt;La nostra risposta:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;{2}&lt;/p&gt;
+&lt;p&gt;Grazie per aiutarci a migliorare!&lt;/p&gt;
+&lt;p&gt;Il team Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
+
+  <!-- Feedback Widget -->
+  <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
+  <data name="Feedback_Title" xml:space="preserve"><value>Invia Feedback</value></data>
+  <data name="Feedback_Category" xml:space="preserve"><value>Categoria</value></data>
+  <data name="Feedback_Category_Bug" xml:space="preserve"><value>Segnalazione bug</value></data>
+  <data name="Feedback_Category_FeatureRequest" xml:space="preserve"><value>Richiesta funzionalità</value></data>
+  <data name="Feedback_Category_Question" xml:space="preserve"><value>Domanda</value></data>
+  <data name="Feedback_Description" xml:space="preserve"><value>Descrizione</value></data>
+  <data name="Feedback_DescriptionPlaceholder" xml:space="preserve"><value>Raccontaci cosa è successo o cosa vorresti vedere...</value></data>
+  <data name="Feedback_Screenshot" xml:space="preserve"><value>Screenshot (opzionale)</value></data>
+  <data name="Feedback_ScreenshotHelp" xml:space="preserve"><value>JPEG, PNG o WebP. Max 10MB.</value></data>
+  <data name="Feedback_Cancel" xml:space="preserve"><value>Annulla</value></data>
+  <data name="Feedback_Submit" xml:space="preserve"><value>Invia</value></data>
+  <data name="Feedback_Submitted" xml:space="preserve"><value>Grazie! Il tuo feedback è stato inviato.</value></data>
+  <data name="Feedback_Error" xml:space="preserve"><value>Qualcosa è andato storto nell'invio del tuo feedback. Riprova.</value></data>
 
 </root>

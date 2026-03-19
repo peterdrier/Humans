@@ -69,7 +69,7 @@ else
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <small>@app.SubmittedAt.ToString("d MMM yyyy")</small>
+                            <small>@app.SubmittedAt.ToDisplayDate()</small>
                                 </td>
                                 @foreach (var member in Model.BoardMembers)
                                 {

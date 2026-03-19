@@ -8,25 +8,13 @@
 }
 
 @functions {
-    string FormatDate(EventSettings es, int dayOffset)
-    {
-        var date = es.GateOpeningDate.PlusDays(dayOffset);
-        return date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
-    }
-
-    string FormatTime(Instant instant, DateTimeZone tz)
-    {
-        var zoned = instant.InZone(tz);
-        return zoned.ToString("HH:mm", null);
-    }
-
     string GetPhase(Shift shift, EventSettings es)
     {
         var period = shift.GetShiftPeriod(es);
         return period switch
         {
-            ShiftPeriod.Build => "Build",
-            ShiftPeriod.Event => "Burn",
+            ShiftPeriod.Build => "Set-up",
+            ShiftPeriod.Event => "Event",
             ShiftPeriod.Strike => "Strike",
             _ => ""
         };
@@ -88,7 +76,7 @@
                                 <div>
                                     <span class="badge @GetPhaseBadge(shift, es) me-1">@GetPhase(shift, es)</span>
                                     <strong>@shift.Rota.Name</strong> —
-                                    @FormatDate(es, first.Signup.Shift.DayOffset) to @FormatDate(es, last.Signup.Shift.DayOffset)
+                                    @es.GateOpeningDate.PlusDays(first.Signup.Shift.DayOffset).ToDisplayShiftDate() to @es.GateOpeningDate.PlusDays(last.Signup.Shift.DayOffset).ToDisplayShiftDate()
                                     <small class="text-muted">(@block.Count() days)</small>
                                     <span class="ms-1">@first.DepartmentName</span>
                                 </div>
@@ -117,8 +105,8 @@
                                             <td>@item.DepartmentName</td>
                                             <td>@shift.Rota.Name</td>
                                             <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                            <td>@FormatDate(es, shift.DayOffset)</td>
-                                            <td>@FormatTime(item.AbsoluteStart, tz!)</td>
+                                            <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                                            <td>@item.AbsoluteStart.ToDisplayTime(tz!)</td>
                                             <td>@(shift.Duration.TotalHours)h</td>
                                             <td>
                                                 <form asp-action="Bail" method="post" class="d-inline">
@@ -156,8 +144,8 @@
                                         <td>@item.DepartmentName</td>
                                         <td>@shift.Rota.Name</td>
                                         <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                        <td>@FormatDate(es, shift.DayOffset)</td>
-                                        <td>@FormatTime(item.AbsoluteStart, tz!)</td>
+                                        <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                                        <td>@item.AbsoluteStart.ToDisplayTime(tz!)</td>
                                         <td>@(shift.Duration.TotalHours)h</td>
                                         <td>
                                             <form asp-action="Bail" method="post" class="d-inline">
@@ -193,8 +181,8 @@
                                         <td>@item.DepartmentName</td>
                                         <td>@shift.Rota.Name</td>
                                         <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
-                                        <td>@FormatDate(es, shift.DayOffset)</td>
-                                        <td>@FormatTime(item.AbsoluteStart, tz!)</td>
+                                        <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                                        <td>@item.AbsoluteStart.ToDisplayTime(tz!)</td>
                                         <td>@(shift.Duration.TotalHours)h</td>
                                         <td><span class="badge bg-secondary">@item.Signup.Status</span></td>
                                     </tr>
@@ -222,7 +210,7 @@
                         @for (var d = es.BuildStartOffset; d <= es.StrikeEndOffset; d++)
                         {
                             var date = es.GateOpeningDate.PlusDays(d);
-                            var dateLabel = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                            var dateLabel = date.ToDisplayShiftDate();
                             var isChecked = Model.AvailableDayOffsets.Contains(d);
                             <div class="col">
                                 <div class="form-check">

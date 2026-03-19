@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
@@ -17,9 +18,9 @@ using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = RoleNames.Admin)]
 [Route("Admin")]
-public class AdminController : Controller
+public class AdminController : HumansControllerBase
 {
     private readonly HumansDbContext _dbContext;
     private readonly UserManager<User> _userManager;
@@ -35,6 +36,7 @@ public class AdminController : Controller
         IStringLocalizer<SharedResource> localizer,
         IWebHostEnvironment environment,
         IOnboardingService onboardingService)
+        : base(userManager)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -59,17 +61,17 @@ public class AdminController : Controller
             return NotFound();
         }
 
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await FindUserByIdAsync(id);
         if (user == null)
         {
             return NotFound();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
 
         if (user.Id == currentUser?.Id)
         {
-            TempData["ErrorMessage"] = "You cannot purge your own account.";
+            SetError("You cannot purge your own account.");
             return RedirectToAction("HumanDetail", "Human", new { id });
         }
 
@@ -92,7 +94,7 @@ public class AdminController : Controller
             return NotFound();
         }
 
-        TempData["SuccessMessage"] = $"Purged {displayName}. They will get a fresh account on next login.";
+        SetSuccess($"Purged {displayName}. They will get a fresh account on next login.");
         return RedirectToAction("Humans", "Human");
     }
 
@@ -104,12 +106,12 @@ public class AdminController : Controller
         try
         {
             await systemTeamSyncJob.ExecuteAsync();
-            TempData["SuccessMessage"] = "System teams synced successfully.";
+            SetSuccess("System teams synced successfully.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to sync system teams");
-            TempData["ErrorMessage"] = $"Sync failed: {ex.Message}";
+            SetError($"Sync failed: {ex.Message}");
         }
 
         return RedirectToAction(nameof(Index));
@@ -310,7 +312,7 @@ public class AdminController : Controller
         [FromServices] ISyncSettingsService syncSettingsService,
         SyncServiceType serviceType, SyncMode mode)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null) return Unauthorized();
 
         await syncSettingsService.UpdateModeAsync(serviceType, mode, currentUser.Id);
@@ -318,7 +320,7 @@ public class AdminController : Controller
         _logger.LogInformation("Admin {AdminId} changed {ServiceType} sync mode to {Mode}",
             currentUser.Id, serviceType, mode);
 
-        TempData["SuccessMessage"] = $"Sync mode for {FormatServiceName(serviceType)} updated to {mode}.";
+        SetSuccess($"Sync mode for {FormatServiceName(serviceType)} updated to {mode}.");
         return RedirectToAction(nameof(SyncSettings));
     }
 
@@ -390,7 +392,7 @@ public class AdminController : Controller
     {
         await SetEmailPausedAsync(true);
         _logger.LogInformation("Admin {AdminId} paused email sending", User.Identity?.Name);
-        TempData["SuccessMessage"] = "Email sending paused.";
+        SetSuccess("Email sending paused.");
         return RedirectToAction(nameof(EmailOutbox));
     }
 
@@ -400,7 +402,7 @@ public class AdminController : Controller
     {
         await SetEmailPausedAsync(false);
         _logger.LogInformation("Admin {AdminId} resumed email sending", User.Identity?.Name);
-        TempData["SuccessMessage"] = "Email sending resumed.";
+        SetSuccess("Email sending resumed.");
         return RedirectToAction(nameof(EmailOutbox));
     }
 
@@ -418,7 +420,7 @@ public class AdminController : Controller
         message.PickedUpAt = null;
         await _dbContext.SaveChangesAsync();
 
-        TempData["SuccessMessage"] = $"Message to {message.RecipientEmail} queued for retry.";
+        SetSuccess($"Message to {message.RecipientEmail} queued for retry.");
         return RedirectToAction(nameof(EmailOutbox));
     }
 
@@ -433,7 +435,7 @@ public class AdminController : Controller
         _dbContext.EmailOutboxMessages.Remove(message);
         await _dbContext.SaveChangesAsync();
 
-        TempData["SuccessMessage"] = $"Message to {recipient} discarded.";
+        SetSuccess($"Message to {recipient} discarded.");
         return RedirectToAction(nameof(EmailOutbox));
     }
 
@@ -460,7 +462,7 @@ public class AdminController : Controller
         var deleted = await _dbContext.Database.ExecuteSqlRawAsync("DELETE FROM hangfire.lock");
 
         _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
-        TempData["SuccessMessage"] = $"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.";
+        SetSuccess($"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.");
         return RedirectToAction(nameof(Index));
     }
 

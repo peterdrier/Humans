@@ -8,6 +8,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
 using System.Text.RegularExpressions;
 
@@ -49,7 +50,7 @@ public partial class TeamService : ITeamService
         string? googleGroupPrefix = null,
         CancellationToken cancellationToken = default)
     {
-        var baseSlug = GenerateSlug(name);
+        var baseSlug = Helpers.SlugHelper.GenerateSlug(name);
         var now = _clock.GetCurrentInstant();
 
         // Block reserved slugs (static routes in TeamController)
@@ -219,7 +220,7 @@ public partial class TeamService : ITeamService
         // Regenerate slug if name changed
         if (!string.Equals(team.Name, name, StringComparison.Ordinal))
         {
-            var newSlug = GenerateSlug(name);
+            var newSlug = Helpers.SlugHelper.GenerateSlug(name);
             // Check slug isn't taken by another team
             var slugTaken = await _dbContext.Teams.AnyAsync(
                 t => t.Id != teamId && t.Slug == newSlug, cancellationToken);
@@ -286,6 +287,47 @@ public partial class TeamService : ITeamService
         _logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
 
         return team;
+    }
+
+    public async Task UpdateTeamPageContentAsync(
+        Guid teamId,
+        string? pageContent,
+        List<CallToAction> callsToAction,
+        bool isPublicPage,
+        Guid updatedByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var team = await _dbContext.Teams.FindAsync(new object[] { teamId }, cancellationToken)
+            ?? throw new InvalidOperationException($"Team {teamId} not found");
+
+        if (callsToAction.Count > 3)
+            throw new InvalidOperationException("A team can have at most 3 calls to action.");
+
+        if (callsToAction.Count(c => c.Style == CallToActionStyle.Primary) > 1)
+            throw new InvalidOperationException("Only one primary call to action is allowed.");
+
+        // Only departments (no parent, non-system) can be made public
+        if (isPublicPage && (team.IsSystemTeam || team.ParentTeamId.HasValue))
+            throw new InvalidOperationException("Only departments (non-system, top-level teams) can be made public.");
+
+        var now = _clock.GetCurrentInstant();
+        team.PageContent = pageContent;
+        team.CallsToAction = callsToAction;
+        team.IsPublicPage = isPublicPage;
+        team.PageContentUpdatedAt = now;
+        team.PageContentUpdatedByUserId = updatedByUserId;
+        team.UpdatedAt = now;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var actor = await _dbContext.Users.FindAsync(new object[] { updatedByUserId }, cancellationToken);
+        await _auditLogService.LogAsync(
+            AuditAction.TeamPageContentUpdated, nameof(Team), teamId,
+            $"Team page content updated. Public: {isPublicPage}",
+            updatedByUserId, actor?.DisplayName ?? updatedByUserId.ToString());
+
+        _logger.LogInformation("Team {TeamId} page content updated by {UserId}. Public: {IsPublic}",
+            teamId, updatedByUserId, isPublicPage);
     }
 
     public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
@@ -1470,8 +1512,6 @@ public partial class TeamService : ITeamService
 
     [GeneratedRegex(@"^[\p{L}\p{N} \-]+$", RegexOptions.None, matchTimeoutMilliseconds: 1000)]
     private static partial Regex RoleNameRegex();
-
-    private static string GenerateSlug(string name) => Helpers.SlugHelper.GenerateSlug(name);
 
     public async Task<IReadOnlyDictionary<Guid, int>> GetPendingRequestCountsByTeamIdsAsync(
         IEnumerable<Guid> teamIds,

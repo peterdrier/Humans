@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -11,14 +12,13 @@ using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = "Board,Admin")]
+[Authorize(Roles = RoleGroups.BoardOrAdmin)]
 [Route("Board")]
-public class BoardController : Controller
+public class BoardController : HumansControllerBase
 {
     private readonly IAuditLogService _auditLogService;
     private readonly IOnboardingService _onboardingService;
     private readonly ITeamResourceService _teamResourceService;
-    private readonly UserManager<User> _userManager;
     private readonly HumansDbContext _dbContext;
     private readonly ILogger<BoardController> _logger;
 
@@ -29,11 +29,11 @@ public class BoardController : Controller
         UserManager<User> userManager,
         HumansDbContext dbContext,
         ILogger<BoardController> logger)
+        : base(userManager)
     {
         _auditLogService = auditLogService;
         _onboardingService = onboardingService;
         _teamResourceService = teamResourceService;
-        _userManager = userManager;
         _dbContext = dbContext;
         _logger = logger;
     }
@@ -105,7 +105,7 @@ public class BoardController : Controller
             PageSize = pageSize
         };
 
-        return View(viewModel);
+        return View("~/Views/Shared/AuditLog.cshtml", viewModel);
     }
 
     [HttpPost("AuditLog/CheckDriveActivity")]
@@ -113,7 +113,7 @@ public class BoardController : Controller
     public async Task<IActionResult> CheckDriveActivity(
         [FromServices] IDriveActivityMonitorService monitorService)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
 
         try
         {
@@ -121,14 +121,14 @@ public class BoardController : Controller
             _logger.LogInformation("Board {UserId} triggered manual Drive activity check: {Count} anomalies",
                 currentUser?.Id, count);
 
-            TempData["SuccessMessage"] = count > 0
+            SetSuccess(count > 0
                 ? $"Drive activity check completed: {count} anomalous change(s) detected."
-                : "Drive activity check completed: no anomalies detected.";
+                : "Drive activity check completed: no anomalies detected.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Manual Drive activity check failed");
-            TempData["ErrorMessage"] = "Drive activity check failed. Check logs for details.";
+            SetError("Drive activity check failed. Check logs for details.");
         }
 
         return RedirectToAction(nameof(AuditLog), new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
@@ -145,28 +145,11 @@ public class BoardController : Controller
         }
 
         var entries = await _auditLogService.GetByResourceAsync(id);
-
-        var viewModel = new GoogleSyncAuditListViewModel
-        {
-            Title = $"Sync Audit: {resource.Name}",
-            BackUrl = Url.Action(nameof(TeamController.Sync), "Team"),
-            BackLabel = "Back to Sync Status",
-            Entries = entries.Select(e => new GoogleSyncAuditEntryViewModel
-            {
-                Action = e.Action.ToString(),
-                Description = e.Description,
-                UserEmail = e.UserEmail,
-                Role = e.Role,
-                SyncSource = e.SyncSource?.ToString(),
-                OccurredAt = e.OccurredAt.ToDateTimeUtc(),
-                Success = e.Success,
-                ErrorMessage = e.ErrorMessage,
-                ActorName = e.ActorName,
-                RelatedEntityId = e.RelatedEntityId
-            }).ToList()
-        };
-
-        return View("GoogleSyncAudit", viewModel);
+        return GoogleSyncAuditView(
+            $"Sync Audit: {resource.Name}",
+            Url.Action(nameof(TeamController.Sync), "Team"),
+            "Back to Sync Status",
+            entries);
     }
 
 }

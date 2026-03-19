@@ -1,13 +1,4 @@
 @model Humans.Web.Models.CampDetailViewModel
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content)) return string.Empty;
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
 @{
     ViewData["Title"] = Model.Name;
 }
@@ -99,7 +90,7 @@
                     <i class="fa-solid fa-pen-fancy me-1"></i> About
                 </div>
                 <div class="card-body">
-                    @Html.Raw(ConvertMarkdownToHtml(season.BlurbLong))
+                    @Html.SanitizedMarkdown(season.BlurbLong)
                 </div>
             </div>
 
@@ -248,13 +239,13 @@
             </div>
         </div>
 
-        @* Times at Nowhere *@
+        @* Times participating *@
         @if (Model.TimesAtNowhere > 0)
         {
             <div class="card mb-4">
                 <div class="card-body text-center">
                     <i class="fa-solid fa-fire fa-2x text-warning mb-2"></i>
-                    <h5>@Model.TimesAtNowhere year@(Model.TimesAtNowhere != 1 ? "s" : "") at Nowhere</h5>
+                    <h5>@Model.TimesAtNowhere year@(Model.TimesAtNowhere != 1 ? "s" : "") participating</h5>
                 </div>
             </div>
         }
@@ -269,16 +260,8 @@
                 <ul class="list-group list-group-flush">
                     @foreach (var lead in Model.Leads)
                     {
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            @lead.DisplayName
-                            @if (lead.Role == CampLeadRole.Primary)
-                            {
-                                <span class="badge bg-primary">Primary</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Co-Lead</span>
-                            }
+                        <li class="list-group-item">
+                            <a asp-controller="Human" asp-action="Detail" asp-route-id="@lead.UserId">@lead.DisplayName</a>
                         </li>
                     }
                 </ul>
@@ -301,15 +284,23 @@
                         var s = Model.CurrentSeason;
                         @if (Model.IsCurrentUserLead && (s.Status == CampSeasonStatus.Pending || s.Status == CampSeasonStatus.Active))
                         {
-                            <form asp-controller="Camp" asp-action="Withdraw" asp-route-slug="@Model.Slug" asp-route-seasonId="@s.Id" method="post"
-                                  onsubmit="return confirm('Are you sure you want to withdraw from this season?');">
+                            <form asp-controller="Camp" asp-action="Withdraw" asp-route-slug="@Model.Slug" asp-route-seasonId="@s.Id" method="post">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-warning w-100">
+                                <button type="submit" class="btn btn-outline-warning w-100" data-confirm="Are you sure you want to withdraw from this season?">
                                     <i class="fa-solid fa-right-from-bracket me-1"></i> Withdraw Season
                                 </button>
                             </form>
                         }
-                        @if (Model.IsCurrentUserCampAdmin && (s.Status == CampSeasonStatus.Withdrawn || s.Status == CampSeasonStatus.Full))
+                        @if ((Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin) && s.Status == CampSeasonStatus.Withdrawn)
+                        {
+                            <form asp-controller="Camp" asp-action="Rejoin" asp-route-slug="@Model.Slug" asp-route-seasonId="@s.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-success w-100">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Rejoin Season
+                                </button>
+                            </form>
+                        }
+                        @if (Model.IsCurrentUserCampAdmin && s.Status == CampSeasonStatus.Full)
                         {
                             <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@s.Id" method="post">
                                 @Html.AntiForgeryToken()

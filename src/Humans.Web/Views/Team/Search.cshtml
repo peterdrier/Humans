@@ -40,16 +40,9 @@
             {
                 <a asp-controller="Human" asp-action="View" asp-route-id="@result.UserId" class="list-group-item list-group-item-action">
                     <div class="d-flex align-items-center gap-3">
-                        @if (result.EffectiveProfilePictureUrl != null)
-                        {
-                            <img src="@result.EffectiveProfilePictureUrl" alt="" class="rounded-circle" width="48" height="48" style="object-fit: cover;" />
-                        }
-                        else
-                        {
-                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width: 48px; height: 48px; font-size: 1.2rem;">
-                                @result.DisplayName[0]
-                            </div>
-                        }
+                        <vc:user-avatar profile-picture-url="@result.EffectiveProfilePictureUrl"
+                                        display-name="@result.DisplayName"
+                                        size="48" />
                         <div class="flex-grow-1">
                             <div class="d-flex align-items-center gap-2">
                                 <strong>@result.DisplayName</strong>

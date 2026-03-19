@@ -7,7 +7,7 @@
     <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
         <div class="d-flex justify-content-between align-items-center">
             <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
-            @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+            @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
             {
                 <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary">
                     <i class="fa-solid fa-user-shield"></i> Admin
@@ -112,11 +112,11 @@
                                 <tr>
                                     <td>@grant.Campaign.Title</td>
                                     <td><code>@grant.Code.Code</code></td>
-                                    <td>@grant.AssignedAt.ToDateTimeUtc().ToString("yyyy-MM-dd")</td>
+                                    <td>@grant.AssignedAt.ToDisplayDate()</td>
                                     <td>
                                         @if (grant.RedeemedAt.HasValue)
                                         {
-                                            <span class="badge bg-success">@grant.RedeemedAt.Value.InUtc().Date.ToString("yyyy-MM-dd", null)</span>
+                                            <span class="badge bg-success">@grant.RedeemedAt.Value.ToDisplayDate()</span>
                                         }
                                         else
                                         {

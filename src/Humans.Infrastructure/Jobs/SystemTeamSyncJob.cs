@@ -66,6 +66,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             await SyncBoardTeamAsync(cancellationToken);
             await SyncAsociadosTeamAsync(cancellationToken);
             await SyncColaboradorsTeamAsync(cancellationToken);
+            await SyncBarrioLeadsTeamAsync(cancellationToken);
 
             _metrics.RecordJobRun("system_team_sync", "success");
             _logger.LogInformation("Completed system team sync");
@@ -361,6 +362,52 @@ public class SystemTeamSyncJob : ISystemTeamSync
             && await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
+        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
+    }
+
+    /// <summary>
+    /// Syncs the Barrio Leads team membership based on active CampLead assignments.
+    /// Members: All users who are active leads of any camp.
+    /// </summary>
+    public async Task SyncBarrioLeadsTeamAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Syncing Barrio Leads team");
+
+        var team = await GetSystemTeamAsync(SystemTeamType.BarrioLeads, cancellationToken);
+        if (team == null)
+        {
+            _logger.LogWarning("Barrio Leads system team not found");
+            return;
+        }
+
+        var eligibleUserIds = await _dbContext.CampLeads
+            .AsNoTracking()
+            .Where(l => l.LeftAt == null)
+            .Select(l => l.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken);
+    }
+
+    /// <summary>
+    /// Syncs Barrio Leads team membership for a single user. Call this after adding
+    /// or removing a camp lead assignment.
+    /// </summary>
+    public async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var team = await GetSystemTeamAsync(SystemTeamType.BarrioLeads, cancellationToken);
+        if (team == null)
+        {
+            _logger.LogWarning("Barrio Leads system team not found");
+            return;
+        }
+
+        var isLeadAnywhere = await _dbContext.CampLeads
+            .AsNoTracking()
+            .AnyAsync(l => l.UserId == userId && l.LeftAt == null, cancellationToken);
+
+        var eligibleUserIds = isLeadAnywhere ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }
 

@@ -1,5 +1,13 @@
 # Data Model
 
+## Contents
+
+- [Key Entities](#key-entities) | [Relationships](#relationships) | [User Entity](#user-entity) | [Profile Entity](#profile-entity)
+- [Application Entity](#application-entity) | [BoardVote Entity](#boardvote-entity) | [EmailOutboxMessage Entity](#emailoutboxmessage-entity)
+- [Campaign](#campaign-entity) | [CampaignCode](#campaigncode-entity) | [CampaignGrant](#campaigngrant-entity) | [SystemSetting](#systemsetting-entity) | [FeedbackReport](#feedbackreport-entity)
+- [Enums](#enums): MembershipTier, ConsentCheckStatus, VoteChoice, ApplicationStatus, SystemTeamType, AuditAction, RotaPeriod, RolePeriod
+- [Constants](#constants) | [ContactField Entity](#contactfield-entity) | [Term Lifecycle](#term-lifecycle) | [Camp Enums](#camp-enums)
+
 ## Key Entities
 
 | Entity | Purpose |
@@ -42,6 +50,7 @@
 | ShiftSignup | Links User to Shift with state machine (Pending/Confirmed/Refused/Bailed/Cancelled/NoShow), optional SignupBlockId for range signups |
 | GeneralAvailability | Per-user per-event day availability (AvailableDayOffsets stored as jsonb) |
 | VolunteerEventProfile | Per-event volunteer profile with skills, dietary, medical data |
+| FeedbackReport | In-app feedback from users (bug reports, feature requests, questions) with screenshot support |
 
 ## Relationships
 
@@ -280,6 +289,33 @@ Key/value store for runtime configuration flags. Currently used for:
 | Key | string | Primary key |
 | Value | string | Setting value |
 
+## FeedbackReport Entity
+
+In-app feedback submitted by authenticated users. Admins triage via the admin UI; Claude Code can manage via the REST API (`/api/feedback`).
+
+| Property | Type | Purpose |
+|----------|------|---------|
+| Id | Guid | Primary key |
+| UserId | Guid | FK → User (reporter) |
+| Category | FeedbackCategory | Bug, FeatureRequest, Question |
+| Description | string | Feedback text (max 5000) |
+| PageUrl | string | URL where feedback was submitted |
+| UserAgent | string? | Browser user agent string |
+| ScreenshotFileName | string? | Original filename |
+| ScreenshotStoragePath | string? | Relative path under wwwroot/uploads/feedback/ |
+| ScreenshotContentType | string? | MIME type (image/jpeg, image/png, image/webp) |
+| Status | FeedbackStatus | Open, Acknowledged, Resolved, WontFix |
+| AdminNotes | string? | Internal notes (max 5000) |
+| GitHubIssueNumber | int? | Linked GitHub issue |
+| AdminResponseSentAt | Instant? | When last response email was sent |
+| CreatedAt | Instant | Submission timestamp |
+| UpdatedAt | Instant | Last modification |
+| ResolvedAt | Instant? | When resolved/won't-fix |
+| ResolvedByUserId | Guid? | FK → User (resolver, SetNull on delete) |
+
+**Table:** `feedback_reports`
+**Indexes:** Status, CreatedAt, UserId
+
 ## Enums
 
 ### MembershipTier
@@ -349,6 +385,24 @@ Includes onboarding redesign actions:
 - `TierApplicationRejected` — Board rejected a tier application
 - `TierDowngraded` — Admin downgraded a member's tier
 - `MembershipsRevokedOnDeletionRequest` — GDPR deletion revoked memberships
+- `FeedbackResponseSent` — Admin sent an email response to a feedback report
+
+### FeedbackCategory
+
+| Value | Description |
+|-------|-------------|
+| Bug | Bug report |
+| FeatureRequest | Feature request |
+| Question | General question |
+
+### FeedbackStatus
+
+| Value | Description |
+|-------|-------------|
+| Open | New, unreviewed |
+| Acknowledged | Admin has seen it |
+| Resolved | Fixed or addressed |
+| WontFix | Will not be addressed |
 
 ### RotaPeriod
 

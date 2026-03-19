@@ -39,52 +39,9 @@
             </div>
         </div>
 
-        <div class="card mb-4">
-            <div class="card-header">@Localizer["AdminAppDetail_Motivation"]</div>
-            <div class="card-body">
-                <p class="mb-0" style="white-space: pre-wrap;">@Model.Motivation</p>
-            </div>
-        </div>
-
-        @if (!string.IsNullOrEmpty(Model.AdditionalInfo))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["ApplicationDetail_AdditionalInfo"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.AdditionalInfo</p>
-                </div>
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(Model.SignificantContribution))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["Application_SignificantContribution"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.SignificantContribution</p>
-                </div>
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(Model.RoleUnderstanding))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["Application_RoleUnderstanding"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.RoleUnderstanding</p>
-                </div>
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(Model.ReviewNotes))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["ApplicationDetail_ReviewerNotes"]</div>
-                <div class="card-body">
-                    <p class="mb-0" style="white-space: pre-wrap;">@Model.ReviewNotes</p>
-                </div>
-            </div>
-        }
+        <partial name="~/Views/Shared/_ApplicationResponseSections.cshtml"
+                 model="Model"
+                 view-data='new ViewDataDictionary(ViewData) { ["MotivationTitle"] = Localizer["AdminAppDetail_Motivation"].Value }' />
     </div>
 
     <div class="col-md-4">
@@ -93,31 +50,18 @@
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-5">@Localizer["Governance_Submitted"]</dt>
-                    <dd class="col-7">@Model.SubmittedAt.ToString("d MMM yyyy")</dd>
+                    <dd class="col-7">@Model.SubmittedAt.ToDisplayDate()</dd>
 
                     @if (!string.IsNullOrEmpty(Model.Language))
                     {
                         <dt class="col-5">@Localizer["AdminAppDetail_Language"]</dt>
-                        <dd class="col-7">
-                            @{
-                                var languageNames = new Dictionary<string, string>
-                                {
-                                    ["es"] = "Castellano",
-                                    ["en"] = "English",
-                                    ["de"] = "Deutsch",
-                                    ["fr"] = "Français",
-                                    ["it"] = "Italiano"
-                                };
-                                var langDisplay = languageNames.GetValueOrDefault(Model.Language, Model.Language);
-                            }
-                            @langDisplay
-                        </dd>
+                        <dd class="col-7">@Model.Language.ToDisplayLanguageName()</dd>
                     }
 
                     @if (Model.ReviewStartedAt.HasValue)
                     {
                         <dt class="col-5">@Localizer["ApplicationDetail_ReviewStarted"]</dt>
-                        <dd class="col-7">@Model.ReviewStartedAt.Value.ToString("d MMM yyyy")</dd>
+                        <dd class="col-7">@Model.ReviewStartedAt.ToDisplayDate()</dd>
                     }
 
                     @if (!string.IsNullOrEmpty(Model.ReviewerName))
@@ -146,4 +90,3 @@
         </div>
     </div>
 </div>
-

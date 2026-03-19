@@ -1,4 +1,3 @@
-using System.Globalization;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using MailKit.Net.Smtp;
@@ -9,6 +8,7 @@ using Microsoft.Extensions.Options;
 using MimeKit;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
+using Humans.Infrastructure.Helpers;
 
 namespace Humans.Infrastructure.Services;
 
@@ -151,7 +151,7 @@ public class SmtpEmailService : IEmailService
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var formattedDate = deletionDate.ToString("MMMM d, yyyy", CultureInfo.InvariantCulture);
+        var formattedDate = deletionDate.ToInvariantLongDate();
         var content = _renderer.RenderAccountDeletionRequested(userName, formattedDate, culture);
         await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken);
         _metrics.RecordEmailSent("deletion_requested");
@@ -228,6 +228,16 @@ public class SmtpEmailService : IEmailService
     }
 
     /// <inheritdoc />
+    public async Task SendFeedbackResponseAsync(
+        string userEmail, string userName, string originalDescription,
+        string responseMessage, string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, culture);
+        await SendEmailAsync(userEmail, content.Subject, content.HtmlBody, cancellationToken: cancellationToken);
+        _metrics.RecordEmailSent("feedback_response");
+    }
+
     public async Task SendFacilitatedMessageAsync(
         string recipientEmail,
         string recipientName,
@@ -241,7 +251,7 @@ public class SmtpEmailService : IEmailService
         var content = _renderer.RenderFacilitatedMessage(
             recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);
         var replyTo = includeContactInfo ? senderEmail : null;
-        await SendEmailAsync(recipientEmail, content.Subject, content.HtmlBody, replyTo, cancellationToken);
+        await SendEmailAsync(recipientEmail, content.Subject, content.HtmlBody, cancellationToken, replyTo);
         _metrics.RecordEmailSent("facilitated_message");
     }
 
@@ -249,8 +259,8 @@ public class SmtpEmailService : IEmailService
         string toAddress,
         string subject,
         string htmlBody,
-        string? replyTo,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? replyTo = null)
     {
         try
         {
@@ -264,10 +274,12 @@ public class SmtpEmailService : IEmailService
                 message.ReplyTo.Add(MailboxAddress.Parse(replyTo));
             }
 
+            var (wrappedHtml, plainText) = EmailBodyComposer.Compose(htmlBody, _settings.BaseUrl, _environmentName);
+
             var bodyBuilder = new BodyBuilder
             {
-                HtmlBody = WrapInTemplate(htmlBody),
-                TextBody = HtmlToPlainText(htmlBody)
+                HtmlBody = wrappedHtml,
+                TextBody = plainText
             };
             message.Body = bodyBuilder.ToMessageBody();
 
@@ -294,100 +306,5 @@ public class SmtpEmailService : IEmailService
             _logger.LogError(ex, "Failed to send email to {To}: {Subject}", toAddress, subject);
             throw;
         }
-    }
-
-    private async Task SendEmailAsync(
-        string toAddress,
-        string subject,
-        string htmlBody,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress(_settings.FromName, _settings.FromAddress));
-            message.To.Add(MailboxAddress.Parse(toAddress));
-            message.Subject = subject;
-
-            var bodyBuilder = new BodyBuilder
-            {
-                HtmlBody = WrapInTemplate(htmlBody),
-                TextBody = HtmlToPlainText(htmlBody)
-            };
-            message.Body = bodyBuilder.ToMessageBody();
-
-            using var client = new SmtpClient();
-
-            await client.ConnectAsync(
-                _settings.SmtpHost,
-                _settings.SmtpPort,
-                _settings.UseSsl ? SecureSocketOptions.StartTls : SecureSocketOptions.None,
-                cancellationToken);
-
-            if (!string.IsNullOrEmpty(_settings.Username))
-            {
-                await client.AuthenticateAsync(_settings.Username, _settings.Password, cancellationToken);
-            }
-
-            await client.SendAsync(message, cancellationToken);
-            await client.DisconnectAsync(true, cancellationToken);
-
-            _logger.LogInformation("Email sent to {To}: {Subject}", toAddress, subject);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send email to {To}: {Subject}", toAddress, subject);
-            throw;
-        }
-    }
-
-    private string WrapInTemplate(string content)
-    {
-        var isProduction = string.Equals(_environmentName, "Production", StringComparison.OrdinalIgnoreCase);
-        var envLabel = string.Equals(_environmentName, "Staging", StringComparison.OrdinalIgnoreCase)
-            ? "QA"
-            : _environmentName.ToUpperInvariant();
-        var envBanner = isProduction
-            ? ""
-            : $"""
-                <div style="background:#a0522d;color:#fff;text-align:center;font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;padding:4px 0;">
-                    {System.Net.WebUtility.HtmlEncode(envLabel)} &bull; {System.Net.WebUtility.HtmlEncode(envLabel)} &bull; {System.Net.WebUtility.HtmlEncode(envLabel)}
-                </div>
-                """;
-
-        return """
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                    body { font-family: 'Source Sans 3', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #3d2b1f; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #faf6f0; }
-                    h2 { color: #3d2b1f; font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; font-weight: 600; }
-                    a { color: #8b6914; }
-                    ul { padding-left: 20px; }
-                    .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #c9a96e; font-size: 12px; color: #6b5a4e; }
-                </style>
-            </head>
-            <body>
-            """ + envBanner + content + $"""
-                <div class="footer">
-                    <p>Humans &mdash; Nobodies Collective<br/>
-                    <a href="{_settings.BaseUrl}">{_settings.BaseUrl}</a></p>
-                </div>
-            </body>
-            </html>
-            """;
-    }
-
-    private static string HtmlToPlainText(string html)
-    {
-        var text = html;
-        text = System.Text.RegularExpressions.Regex.Replace(text, "<br\\s*/?>", "\n", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = System.Text.RegularExpressions.Regex.Replace(text, "</p>", "\n\n", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = System.Text.RegularExpressions.Regex.Replace(text, "</li>", "\n", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = System.Text.RegularExpressions.Regex.Replace(text, "<[^>]+>", "", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromSeconds(1));
-        text = System.Net.WebUtility.HtmlDecode(text);
-        return text.Trim();
     }
 }

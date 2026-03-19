@@ -19,6 +19,8 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
     /// Claim type indicating the user is an active member of the Volunteers team.
     /// </summary>
     public const string ActiveMemberClaimType = "ActiveMember";
+    public const string ActiveClaimValue = "true";
+    public const string ClaimsAddedMarkerType = "RoleAssignmentClaimsAdded";
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
 
@@ -47,7 +49,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         }
 
         // Avoid adding duplicate role claims on subsequent calls within the same request
-        if (principal.HasClaim(c => string.Equals(c.Type, "RoleAssignmentClaimsAdded", StringComparison.Ordinal) && string.Equals(c.Value, "true", StringComparison.Ordinal)))
+        if (principal.HasClaim(c => string.Equals(c.Type, ClaimsAddedMarkerType, StringComparison.Ordinal) && string.Equals(c.Value, ActiveClaimValue, StringComparison.Ordinal)))
         {
             return principal;
         }
@@ -66,7 +68,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         }
 
         // Marker claim to prevent duplicate processing
-        identity.AddClaim(new Claim("RoleAssignmentClaimsAdded", "true"));
+        identity.AddClaim(new Claim(ClaimsAddedMarkerType, ActiveClaimValue));
 
         principal.AddIdentity(identity);
 
@@ -105,7 +107,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
 
         if (isVolunteerMember)
         {
-            claims.Add(new Claim(ActiveMemberClaimType, "true"));
+            claims.Add(new Claim(ActiveMemberClaimType, ActiveClaimValue));
         }
 
         return claims;

@@ -61,7 +61,7 @@
                                 <tr data-bs-toggle="collapse" data-bs-target="#@collapseId" role="button" style="cursor: pointer;">
                                     <td>@msg.Subject</td>
                                     <td><span class="badge @statusClass">@msg.Status</span></td>
-                                    <td>@msg.CreatedAt.ToDateTimeUtc().ToString("d MMM yyyy HH:mm")</td>
+                                    <td>@msg.CreatedAt.ToDateTimeUtc().ToDisplayDateTime()</td>
                                 </tr>
                                 <tr class="collapse" id="@collapseId">
                                     <td colspan="3" class="p-0">

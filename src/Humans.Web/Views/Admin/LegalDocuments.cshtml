@@ -72,7 +72,7 @@
                         </td>
                         <td>@doc.GracePeriodDays days</td>
                         <td>@(doc.CurrentVersion ?? "No versions")</td>
-                        <td>@(doc.LastSyncedAt?.ToString("d MMM yyyy HH:mm") ?? "Never")</td>
+                            <td>@(doc.LastSyncedAt?.ToDisplayDateTime() ?? "Never")</td>
                         <td>
                             <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@doc.Id" class="btn btn-outline-primary btn-sm">Edit</a>
                                 @if (doc.IsActive)

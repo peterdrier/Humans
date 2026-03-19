@@ -40,16 +40,17 @@ public class RecentActivityViewModel
     public string Type { get; set; } = string.Empty;
 }
 
-public class AdminHumanListViewModel
+public class AdminHumanListViewModel : PagedListViewModel
 {
+    public AdminHumanListViewModel() : base(20)
+    {
+    }
+
     public List<AdminHumanViewModel> Humans { get; set; } = [];
     public string? SearchTerm { get; set; }
     public string? StatusFilter { get; set; }
     public string SortBy { get; set; } = "name";
     public string SortDir { get; set; } = "asc";
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
 }
 
 public class AdminHumanViewModel
@@ -110,14 +111,15 @@ public class AdminHumanApplicationViewModel
     public DateTime SubmittedAt { get; set; }
 }
 
-public class AdminApplicationListViewModel
+public class AdminApplicationListViewModel : PagedListViewModel
 {
+    public AdminApplicationListViewModel() : base(20)
+    {
+    }
+
     public List<AdminApplicationViewModel> Applications { get; set; } = [];
     public string? StatusFilter { get; set; }
     public string? TierFilter { get; set; }
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
 }
 
 public class AdminApplicationViewModel
@@ -133,26 +135,14 @@ public class AdminApplicationViewModel
     public string MembershipTier { get; set; } = string.Empty;
 }
 
-public class AdminApplicationDetailViewModel
+public class AdminApplicationDetailViewModel : ApplicationDetailViewModelBase
 {
-    public Guid Id { get; set; }
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
     public string UserDisplayName { get; set; } = string.Empty;
     public string? UserProfilePictureUrl { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public string Motivation { get; set; } = string.Empty;
-    public string? AdditionalInfo { get; set; }
-    public string? SignificantContribution { get; set; }
-    public string? RoleUnderstanding { get; set; }
-    public MembershipTier MembershipTier { get; set; }
     public string? Language { get; set; }
-    public DateTime SubmittedAt { get; set; }
-    public DateTime? ReviewStartedAt { get; set; }
-    public string? ReviewerName { get; set; }
-    public string? ReviewNotes { get; set; }
     public bool CanApproveReject { get; set; }
-    public List<ApplicationHistoryViewModel> History { get; set; } = [];
 }
 
 public class AdminApplicationActionModel
@@ -162,14 +152,15 @@ public class AdminApplicationActionModel
     public string? Notes { get; set; }
 }
 
-public class AdminRoleAssignmentListViewModel
+public class AdminRoleAssignmentListViewModel : PagedListViewModel
 {
+    public AdminRoleAssignmentListViewModel() : base(50)
+    {
+    }
+
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public string? RoleFilter { get; set; }
     public bool ShowInactive { get; set; }
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 50;
 }
 
 public class AdminRoleAssignmentViewModel
@@ -213,14 +204,15 @@ public class AuditLogEntryViewModel
     public bool IsSystemAction { get; set; }
 }
 
-public class AuditLogListViewModel
+public class AuditLogListViewModel : PagedListViewModel
 {
+    public AuditLogListViewModel() : base(50)
+    {
+    }
+
     public List<AuditLogEntryViewModel> Entries { get; set; } = [];
     public string? ActionFilter { get; set; }
     public int AnomalyCount { get; set; }
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 50;
 }
 
 public class GoogleSyncAuditEntryViewModel

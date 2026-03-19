@@ -1,0 +1,27 @@
+<script>
+    (function () {
+        const input = document.getElementById('GitHubFolderPath');
+        const feedback = document.getElementById('folder-path-feedback');
+        const ghPattern = /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)\/(.+)$/i;
+
+        if (!input || !feedback) {
+            return;
+        }
+
+        function processInput() {
+            const val = input.value.trim();
+            if (!val) { feedback.textContent = ''; return; }
+
+            const match = val.match(ghPattern);
+            if (!match) { feedback.textContent = ''; return; }
+
+            const [, owner, repo, branch, path] = match;
+            const folder = path.replace(/\/+$/, '') + '/';
+            input.value = folder;
+            feedback.innerHTML = '<span class="text-success">Extracted folder: <strong>' + folder + '</strong> from ' + owner + '/' + repo + ' (' + branch + ')</span>';
+        }
+
+        input.addEventListener('paste', function () { setTimeout(processInput, 0); });
+        input.addEventListener('blur', processInput);
+    })();
+</script>

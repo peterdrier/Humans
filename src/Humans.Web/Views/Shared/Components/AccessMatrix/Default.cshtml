@@ -1,0 +1,62 @@
+@model Humans.Web.Models.AccessMatrixData
+@using Humans.Web.Models
+
+@{
+    var modalId = "accessMatrix-" + Model.SectionName.Replace(" ", "");
+    var modalSize = Model.Roles.Count >= 3 ? "modal-lg" : "";
+}
+
+<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#@modalId"
+        title="Access Matrix">
+    <i class="fa-solid fa-circle-info"></i>
+</button>
+
+<div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="@(modalId)-label" aria-hidden="true">
+    <div class="modal-dialog @modalSize modal-dialog-centered">
+        <div class="modal-content" style="background-color: #faf5ef;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="@(modalId)-label" style="color: #5a3e2b;">Access Matrix</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-0">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-uppercase small text-muted" style="color: #5a3e2b !important;">Feature</th>
+                            @foreach (var role in Model.Roles)
+                            {
+                                <th class="text-center text-uppercase small text-muted" style="color: #5a3e2b !important;">@role</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var feature in Model.Features)
+                        {
+                            <tr>
+                                <td style="color: #3a2a1a;">@feature.Name</td>
+                                @foreach (var role in Model.Roles)
+                                {
+                                    var level = feature.RoleAccess.GetValueOrDefault(role, AccessLevel.Denied);
+                                    <td class="text-center">
+                                        @switch (level)
+                                        {
+                                            case AccessLevel.Allowed:
+                                                <i class="fa-solid fa-circle-check text-success"></i>
+                                                break;
+                                            case AccessLevel.Limited:
+                                                <i class="fa-solid fa-circle-half-stroke text-warning"></i>
+                                                break;
+                                            case AccessLevel.Denied:
+                                                <i class="fa-solid fa-lock text-muted"></i>
+                                                break;
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

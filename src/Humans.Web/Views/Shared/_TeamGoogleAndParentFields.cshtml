@@ -1,0 +1,36 @@
+@model Humans.Web.Models.TeamFormViewModelBase
+@{
+    var isReadOnly = (bool?)ViewData["IsReadOnly"] ?? false;
+    var showParentTeam = (bool?)ViewData["ShowParentTeam"] ?? true;
+    var googleGroupEmail = ViewData["GoogleGroupEmail"] as string;
+}
+
+<div class="mb-3">
+    <label asp-for="GoogleGroupPrefix" class="form-label">Google Group</label>
+    <div class="input-group">
+        <input asp-for="GoogleGroupPrefix" class="form-control" placeholder="e.g., design-crew" disabled="@isReadOnly" />
+        <span class="input-group-text">@@nobodies.team</span>
+    </div>
+    <span asp-validation-for="GoogleGroupPrefix" class="text-danger"></span>
+    @if (!string.IsNullOrEmpty(googleGroupEmail))
+    {
+        <div class="form-text text-success">
+            <i class="fas fa-check-circle"></i> Group: @googleGroupEmail
+        </div>
+    }
+    else
+    {
+        <div class="form-text">Leave empty if this team doesn't need a Google Group.</div>
+    }
+</div>
+
+@if (showParentTeam)
+{
+    <div class="mb-3">
+        <label asp-for="ParentTeamId" class="form-label">Department (optional)</label>
+        <select asp-for="ParentTeamId" asp-items="Model.EligibleParents" class="form-select">
+            <option value="">None (standalone team)</option>
+        </select>
+        <div class="form-text">Place this team under an existing team as a sub-team.</div>
+    </div>
+}

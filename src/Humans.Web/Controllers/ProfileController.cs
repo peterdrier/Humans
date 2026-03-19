@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
+using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,7 +20,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Humans.Web.Controllers;
 
 [Authorize]
-public class ProfileController : Controller
+public class ProfileController : HumansControllerBase
 {
     private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService;
@@ -66,6 +67,7 @@ public class ProfileController : Controller
         ILogger<ProfileController> logger,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext)
+        : base(userManager)
     {
         _userManager = userManager;
         _profileService = profileService;
@@ -81,7 +83,7 @@ public class ProfileController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -122,7 +124,7 @@ public class ProfileController : Controller
     [HttpGet]
     public async Task<IActionResult> Edit([FromQuery] bool preview = false)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -196,7 +198,7 @@ public class ProfileController : Controller
             EditableVolunteerHistory = volunteerHistory.Select(vh => new VolunteerHistoryEntryEditViewModel
             {
                 Id = vh.Id,
-                DateString = vh.Date.ToString("yyyy-MM-dd", null),
+                DateString = vh.Date.ToIsoDateString(),
                 EventName = vh.EventName,
                 Description = vh.Description
             }).ToList()
@@ -216,7 +218,7 @@ public class ProfileController : Controller
             return View(model);
         }
 
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -225,14 +227,14 @@ public class ProfileController : Controller
         for (var i = 0; i < model.EditableContactFields.Count; i++)
         {
             var cf = model.EditableContactFields[i];
-            if (!string.IsNullOrWhiteSpace(cf.Value) && phoneTypes.Contains(cf.FieldType) && !cf.Value.TrimStart().StartsWith('+'))
+            if (!string.IsNullOrWhiteSpace(cf.Value) && phoneTypes.Contains(cf.FieldType) && !cf.Value.TrimStart().StartsWith("+", StringComparison.Ordinal))
             {
                 ModelState.AddModelError($"EditableContactFields[{i}].Value",
                     _localizer["Validation_PhoneE164", _localizer["Profile_" + cf.FieldType].Value].Value);
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(model.EmergencyContactPhone) && !model.EmergencyContactPhone.TrimStart().StartsWith('+'))
+        if (!string.IsNullOrWhiteSpace(model.EmergencyContactPhone) && !model.EmergencyContactPhone.TrimStart().StartsWith("+", StringComparison.Ordinal))
         {
             ModelState.AddModelError(nameof(model.EmergencyContactPhone),
                 _localizer["Validation_PhoneE164", _localizer["Profile_EmergencyContactPhone"].Value].Value);
@@ -418,7 +420,7 @@ public class ProfileController : Controller
 
         await _volunteerHistoryService.SaveAsync(profileId, volunteerHistoryDtos);
 
-        TempData["SuccessMessage"] = _localizer["Profile_Updated"].Value;
+        SetSuccess(_localizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Index));
     }
 
@@ -440,7 +442,7 @@ public class ProfileController : Controller
     [HttpGet]
     public async Task<IActionResult> Emails()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -452,7 +454,7 @@ public class ProfileController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddEmail(EmailsViewModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -484,7 +486,7 @@ public class ProfileController : Controller
                 "Sent email verification to {Email} for user {UserId}",
                 model.NewEmail, user.Id);
 
-            TempData["SuccessMessage"] = string.Format(CultureInfo.CurrentCulture, _localizer["Profile_VerificationSent"].Value, model.NewEmail.Trim());
+            SetSuccess(string.Format(CultureInfo.CurrentCulture, _localizer["Profile_VerificationSent"].Value, model.NewEmail.Trim()));
         }
         catch (ValidationException ex)
         {
@@ -538,18 +540,18 @@ public class ProfileController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetNotificationTarget(Guid emailId)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
         try
         {
             await _userEmailService.SetNotificationTargetAsync(user.Id, emailId);
-            TempData["SuccessMessage"] = _localizer["Profile_NotificationTargetUpdated"].Value;
+            SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -559,7 +561,7 @@ public class ProfileController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetEmailVisibility(Guid emailId, string? visibility)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -572,11 +574,11 @@ public class ProfileController : Controller
         try
         {
             await _userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
-            TempData["SuccessMessage"] = _localizer["Profile_EmailVisibilityUpdated"].Value;
+            SetSuccess(_localizer["Profile_EmailVisibilityUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -586,18 +588,18 @@ public class ProfileController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteEmail(Guid emailId)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
         try
         {
             await _userEmailService.DeleteEmailAsync(user.Id, emailId);
-            TempData["SuccessMessage"] = _localizer["Profile_EmailDeleted"].Value;
+            SetSuccess(_localizer["Profile_EmailDeleted"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Emails));
@@ -639,7 +641,7 @@ public class ProfileController : Controller
     [HttpGet]
     public async Task<IActionResult> Outbox()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -654,7 +656,7 @@ public class ProfileController : Controller
     [HttpGet]
     public async Task<IActionResult> Privacy()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -673,7 +675,7 @@ public class ProfileController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -681,16 +683,16 @@ public class ProfileController : Controller
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = _localizer["Profile_DeletionAlreadyPending"].Value;
+                SetError(_localizer["Profile_DeletionAlreadyPending"].Value);
             return RedirectToAction(nameof(Privacy));
         }
 
         // Reload user to get updated deletion date
-        await _userManager.GetUserAsync(User);
+        await GetCurrentUserAsync();
         var deletionDate = user.DeletionScheduledFor?.ToDateTimeUtc();
-        TempData["SuccessMessage"] = string.Format(CultureInfo.CurrentCulture,
+        SetSuccess(string.Format(CultureInfo.CurrentCulture,
             _localizer["Profile_DeletionRequested"].Value,
-            deletionDate?.ToString("MMMM d, yyyy", CultureInfo.CurrentCulture) ?? "");
+            deletionDate.ToDisplayLongDate() ?? ""));
         return RedirectToAction(nameof(Privacy));
     }
 
@@ -698,7 +700,7 @@ public class ProfileController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelDeletion()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -706,11 +708,11 @@ public class ProfileController : Controller
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "NoDeletionPending", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = _localizer["Profile_NoDeletionPending"].Value;
+                SetError(_localizer["Profile_NoDeletionPending"].Value);
             return RedirectToAction(nameof(Privacy));
         }
 
-        TempData["SuccessMessage"] = _localizer["Profile_DeletionCancelled"].Value;
+        SetSuccess(_localizer["Profile_DeletionCancelled"].Value);
         return RedirectToAction(nameof(Privacy));
     }
 
@@ -719,7 +721,7 @@ public class ProfileController : Controller
     {
         try
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = await GetCurrentUserAsync();
             if (user == null)
                 return NotFound();
 
@@ -741,7 +743,7 @@ public class ProfileController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load shift info for user");
-            TempData["ErrorMessage"] = "Failed to load shift info.";
+            SetError("Failed to load shift info.");
             return RedirectToAction(nameof(Index));
         }
     }
@@ -752,7 +754,7 @@ public class ProfileController : Controller
     {
         try
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = await GetCurrentUserAsync();
             if (user == null)
                 return NotFound();
 
@@ -768,13 +770,13 @@ public class ProfileController : Controller
 
             await _profileService.UpdateShiftProfileAsync(shiftProfile);
 
-            TempData["SuccessMessage"] = _localizer["Profile_Updated"].Value;
+            SetSuccess(_localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(ShiftInfo));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save shift info for user");
-            TempData["ErrorMessage"] = "Failed to save shift info.";
+            SetError("Failed to save shift info.");
             return View(model);
         }
     }
@@ -784,7 +786,7 @@ public class ProfileController : Controller
     {
         try
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = await GetCurrentUserAsync();
             if (user == null)
                 return NotFound();
 
@@ -799,7 +801,7 @@ public class ProfileController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load notification settings");
-            TempData["ErrorMessage"] = "Failed to load notification settings.";
+            SetError("Failed to load notification settings.");
             return RedirectToAction(nameof(Index));
         }
     }
@@ -810,7 +812,7 @@ public class ProfileController : Controller
     {
         try
         {
-            var user = await _userManager.GetUserAsync(User);
+            var user = await GetCurrentUserAsync();
             if (user == null)
                 return NotFound();
 
@@ -819,13 +821,13 @@ public class ProfileController : Controller
 
             await _userManager.UpdateAsync(user);
 
-            TempData["SuccessMessage"] = _localizer["Profile_Updated"].Value;
+            SetSuccess(_localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(Notifications));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save notification settings");
-            TempData["ErrorMessage"] = "Failed to save notification settings.";
+            SetError("Failed to save notification settings.");
             return View(model);
         }
     }
@@ -834,7 +836,7 @@ public class ProfileController : Controller
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -842,7 +844,7 @@ public class ProfileController : Controller
 
         var json = System.Text.Json.JsonSerializer.Serialize(exportData, ExportJsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var fileName = $"nobodies-profiles-export-{DateTime.UtcNow:yyyy-MM-dd}.json";
+        var fileName = $"nobodies-profiles-export-{DateTime.UtcNow.ToIsoDateString()}.json";
 
         return File(bytes, "application/json", fileName);
     }

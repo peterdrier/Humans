@@ -9,6 +9,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 
@@ -16,7 +17,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Human")]
-public class HumanController : Controller
+public class HumanController : HumansControllerBase
 {
     private readonly IProfileService _profileService;
     private readonly IEmailService _emailService;
@@ -42,6 +43,7 @@ public class HumanController : Controller
         IClock clock,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext)
+        : base(userManager)
     {
         _profileService = profileService;
         _emailService = emailService;
@@ -66,7 +68,7 @@ public class HumanController : Controller
             return NotFound();
         }
 
-        var viewer = await _userManager.GetUserAsync(User);
+        var viewer = await GetCurrentUserAsync();
         if (viewer == null)
         {
             return NotFound();
@@ -79,10 +81,9 @@ public class HumanController : Controller
         if (!isOwnProfile)
         {
             var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(viewer.Id)).Count > 0;
-            var viewerIsNoInfoAdmin = User.IsInRole(RoleNames.NoInfoAdmin);
-            var viewerIsAdmin = User.IsInRole(RoleNames.Admin);
+            var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
 
-            if (viewerIsCoordinator || viewerIsNoInfoAdmin || viewerIsAdmin)
+            if (viewerCanViewShiftHistory)
             {
                 var noShows = await _shiftSignupService.GetNoShowHistoryAsync(id);
                 if (noShows.Count > 0)
@@ -97,9 +98,9 @@ public class HumanController : Controller
                         {
                             ShiftLabel = s.Shift.Rota.Name,
                             DepartmentName = s.Shift.Rota.Team?.Name ?? "",
-                            ShiftDateLabel = zoned.ToString("ddd MMM d HH:mm", null),
+                            ShiftDateLabel = zoned.ToDisplayShortDateTime(),
                             MarkedByName = s.ReviewedByUser?.DisplayName,
-                            MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToString("MMM d HH:mm", null)
+                            MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDisplayShortMonthDayTime()
                         };
                     }).ToList();
                 }
@@ -123,14 +124,14 @@ public class HumanController : Controller
     [HttpGet("{id:guid}/SendMessage")]
     public async Task<IActionResult> SendMessage(Guid id)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
         if (currentUser.Id == id)
             return RedirectToAction(nameof(View), new { id });
 
-        var targetUser = await _userManager.FindByIdAsync(id.ToString());
+        var targetUser = await FindUserByIdAsync(id);
         if (targetUser == null)
             return NotFound();
 
@@ -147,7 +148,7 @@ public class HumanController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -193,14 +194,14 @@ public class HumanController : Controller
             $"Message sent to {targetUser.DisplayName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
             currentUser.Id, currentUser.DisplayName);
 
-        TempData["SuccessMessage"] = string.Format(
+        SetSuccess(string.Format(
             _localizer["SendMessage_Success"].Value,
-            targetUser.DisplayName);
+            targetUser.DisplayName));
 
         return RedirectToAction(nameof(View), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpGet("Admin")]
     public async Task<IActionResult> Humans(string? search, string? filter, string sort = "name", string dir = "asc", int page = 1)
     {
@@ -256,7 +257,7 @@ public class HumanController : Controller
         return View(viewModel);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpGet("{id:guid}/Admin")]
     public async Task<IActionResult> HumanDetail(Guid id)
     {
@@ -333,7 +334,7 @@ public class HumanController : Controller
         return View(viewModel);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpGet("{id:guid}/Outbox")]
     public async Task<IActionResult> Outbox(Guid id)
     {
@@ -346,12 +347,12 @@ public class HumanController : Controller
         return View("~/Views/Profile/Outbox.cshtml", messages);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Suspend")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -359,16 +360,16 @@ public class HumanController : Controller
         if (!result.Success)
             return NotFound();
 
-        TempData["SuccessMessage"] = _localizer["Admin_MemberSuspended"].Value;
+        SetSuccess(_localizer["Admin_MemberSuspended"].Value);
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Unsuspend")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -376,16 +377,16 @@ public class HumanController : Controller
         if (!result.Success)
             return NotFound();
 
-        TempData["SuccessMessage"] = _localizer["Admin_MemberUnsuspended"].Value;
+        SetSuccess(_localizer["Admin_MemberUnsuspended"].Value);
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveVolunteer(Guid id)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return NotFound();
 
@@ -393,16 +394,16 @@ public class HumanController : Controller
         if (!result.Success)
             return NotFound();
 
-        TempData["SuccessMessage"] = _localizer["Admin_VolunteerApproved"].Value;
+        SetSuccess(_localizer["Admin_VolunteerApproved"].Value);
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Reject")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
     {
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
             return Unauthorized();
 
@@ -410,21 +411,21 @@ public class HumanController : Controller
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = "This human has already been rejected.";
+                SetError("This human has already been rejected.");
             else
                 return NotFound();
             return RedirectToAction(nameof(HumanDetail), new { id });
         }
 
-        TempData["SuccessMessage"] = "Signup rejected.";
+        SetSuccess("Signup rejected.");
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpGet("{id:guid}/Admin/GoogleSyncAudit")]
     public async Task<IActionResult> HumanGoogleSyncAudit(Guid id)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await FindUserByIdAsync(id);
 
         if (user == null)
         {
@@ -432,36 +433,18 @@ public class HumanController : Controller
         }
 
         var entries = await _auditLogService.GetGoogleSyncByUserAsync(id);
-
-        var viewModel = new GoogleSyncAuditListViewModel
-        {
-            Title = $"Google Sync Audit: {user.DisplayName}",
-            BackUrl = Url.Action(nameof(HumanDetail), new { id }),
-            BackLabel = "Back to Member Detail",
-            Entries = entries.Select(e => new GoogleSyncAuditEntryViewModel
-            {
-                Action = e.Action.ToString(),
-                Description = e.Description,
-                UserEmail = e.UserEmail,
-                Role = e.Role,
-                SyncSource = e.SyncSource?.ToString(),
-                OccurredAt = e.OccurredAt.ToDateTimeUtc(),
-                Success = e.Success,
-                ErrorMessage = e.ErrorMessage,
-                ActorName = e.ActorName,
-                ResourceName = e.Resource?.Name,
-                ResourceId = e.ResourceId
-            }).ToList()
-        };
-
-        return View("GoogleSyncAudit", viewModel);
+        return GoogleSyncAuditView(
+            $"Google Sync Audit: {user.DisplayName}",
+            Url.Action(nameof(HumanDetail), new { id }),
+            "Back to Member Detail",
+            entries);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpGet("{id:guid}/Admin/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await FindUserByIdAsync(id);
         if (user == null)
         {
             return NotFound();
@@ -471,20 +454,18 @@ public class HumanController : Controller
         {
             UserId = id,
             UserDisplayName = user.DisplayName,
-            AvailableRoles = User.IsInRole(RoleNames.Admin)
-                ? [RoleNames.Admin, RoleNames.Board, RoleNames.TeamsAdmin, RoleNames.CampAdmin, RoleNames.TicketAdmin, RoleNames.NoInfoAdmin, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
-                : [RoleNames.Board, RoleNames.TeamsAdmin, RoleNames.CampAdmin, RoleNames.TicketAdmin, RoleNames.NoInfoAdmin, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
+            AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
         };
 
         return View(viewModel);
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Roles/Add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
-        var user = await _userManager.FindByIdAsync(id.ToString());
+        var user = await FindUserByIdAsync(id);
         if (user == null)
         {
             return NotFound();
@@ -495,19 +476,17 @@ public class HumanController : Controller
             ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
             model.UserId = id;
             model.UserDisplayName = user.DisplayName;
-            model.AvailableRoles = User.IsInRole(RoleNames.Admin)
-                ? [RoleNames.Admin, RoleNames.Board, RoleNames.TeamsAdmin, RoleNames.CampAdmin, RoleNames.TicketAdmin, RoleNames.NoInfoAdmin, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator]
-                : [RoleNames.Board, RoleNames.TeamsAdmin, RoleNames.CampAdmin, RoleNames.TicketAdmin, RoleNames.NoInfoAdmin, RoleNames.ConsentCoordinator, RoleNames.VolunteerCoordinator];
+            model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
             return View(model);
         }
 
         // Enforce role assignment authorization
-        if (!CanManageRole(model.RoleName))
+        if (!RoleChecks.CanManageRole(User, model.RoleName))
         {
             return Forbid();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
         {
             return Unauthorized();
@@ -518,15 +497,15 @@ public class HumanController : Controller
 
         if (!result.Success)
         {
-            TempData["ErrorMessage"] = string.Format(_localizer["Admin_RoleAlreadyActive"].Value, model.RoleName);
+            SetError(string.Format(_localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
             return RedirectToAction(nameof(HumanDetail), new { id });
         }
 
-        TempData["SuccessMessage"] = string.Format(_localizer["Admin_RoleAssigned"].Value, model.RoleName);
+        SetSuccess(string.Format(_localizer["Admin_RoleAssigned"].Value, model.RoleName));
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Roles/{roleId:guid}/End")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
@@ -539,12 +518,12 @@ public class HumanController : Controller
         }
 
         // Enforce role assignment authorization
-        if (!CanManageRole(roleAssignment.RoleName))
+        if (!RoleChecks.CanManageRole(User, roleAssignment.RoleName))
         {
             return Forbid();
         }
 
-        var currentUser = await _userManager.GetUserAsync(User);
+        var currentUser = await GetCurrentUserAsync();
         if (currentUser == null)
         {
             return Unauthorized();
@@ -555,34 +534,12 @@ public class HumanController : Controller
 
         if (!result.Success)
         {
-            TempData["ErrorMessage"] = _localizer["Admin_RoleNotActive"].Value;
+            SetError(_localizer["Admin_RoleNotActive"].Value);
             return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
         }
 
-        TempData["SuccessMessage"] = string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, roleAssignment.User.DisplayName);
+        SetSuccess(string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, roleAssignment.User.DisplayName));
         return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
     }
 
-    /// <summary>
-    /// Checks whether the current user can assign/end the specified role.
-    /// Admin can manage any role. Board can manage Board and coordinator roles.
-    /// </summary>
-    private bool CanManageRole(string roleName)
-    {
-        if (User.IsInRole(RoleNames.Admin))
-        {
-            return true;
-        }
-
-        // Board members can manage Board and coordinator roles
-        if (User.IsInRole(RoleNames.Board))
-        {
-            return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal);
-        }
-
-        return false;
-    }
 }

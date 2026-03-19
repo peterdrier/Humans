@@ -1,0 +1,100 @@
+@model Humans.Web.Models.EditTeamPageViewModel
+@{
+    ViewData["Title"] = $"Edit Page — {Model.TeamName}";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@Localizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug">@Model.TeamName</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Edit Page</li>
+    </ol>
+</nav>
+
+<vc:temp-data-alerts />
+
+<h2>Edit Page &mdash; @Model.TeamName</h2>
+
+<form method="post" asp-action="EditPage" asp-route-slug="@Model.Slug">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="TeamId" />
+
+    <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+    @if (Model.CanBePublic)
+    {
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" asp-for="IsPublicPage" />
+                    <label class="form-check-label" asp-for="IsPublicPage">
+                        Make this team's page public
+                    </label>
+                </div>
+                <div class="form-text">
+                    When enabled, anonymous visitors can see this team's page, description, and coordinators.
+                    Regular members are only visible to authenticated users.
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <input type="hidden" asp-for="IsPublicPage" value="false" />
+        <div class="alert alert-info mb-4">
+            Only top-level departments (non-system, no parent team) can be made public.
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-header">Page Content</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <textarea asp-for="PageContent" class="form-control font-monospace" rows="15"
+                          placeholder="Write your team's page content here..."></textarea>
+                <div class="form-text">
+                    Markdown formatting is supported. Use headings, lists, bold, italic, and links to create rich content.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">Calls to Action</div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">
+                Add up to 3 buttons that link to external resources (sign-up forms, wikis, etc.).
+                One can be styled as primary (prominent), the rest as secondary.
+            </p>
+
+            @for (var i = 0; i < Model.CallsToAction.Count; i++)
+            {
+                <div class="row g-2 mb-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Button Text</label>
+                        <input type="text" class="form-control"
+                               asp-for="CallsToAction[i].Text"
+                               placeholder="e.g. Join Us" />
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">URL</label>
+                        <input type="url" class="form-control"
+                               asp-for="CallsToAction[i].Url"
+                               placeholder="https://..." />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Style</label>
+                        <select class="form-select" asp-for="CallsToAction[i].Style"
+                                asp-items="Html.GetEnumSelectList<Humans.Domain.Enums.CallToActionStyle>()">
+                        </select>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Save Page</button>
+        <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>

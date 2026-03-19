@@ -1,0 +1,6 @@
+@model Humans.Web.Models.AdminApplicationListViewModel
+@{
+    ViewData["Title"] = Localizer["AdminApplications_Title"].Value;
+}
+
+<partial name="~/Views/Shared/_ApplicationsListContent.cshtml" model="Model" />

@@ -6,22 +6,20 @@ using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = $"{RoleNames.CampAdmin},{RoleNames.Admin}")]
+[Authorize(Roles = RoleGroups.CampAdminOrAdmin)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
-public class CampAdminController : Controller
+public class CampAdminController : HumansControllerBase
 {
     private readonly ICampService _campService;
-    private readonly UserManager<User> _userManager;
 
     public CampAdminController(ICampService campService, UserManager<User> userManager)
+        : base(userManager)
     {
         _campService = campService;
-        _userManager = userManager;
     }
 
     [HttpGet("")]
@@ -61,17 +59,17 @@ public class CampAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Approve(Guid seasonId, string? notes)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user is null) return Unauthorized();
 
         try
         {
             await _campService.ApproveSeasonAsync(seasonId, user.Id, notes);
-            TempData["SuccessMessage"] = "Season approved.";
+            SetSuccess("Season approved.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Index));
@@ -81,23 +79,23 @@ public class CampAdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid seasonId, string notes)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user is null) return Unauthorized();
 
         if (string.IsNullOrWhiteSpace(notes))
         {
-            TempData["ErrorMessage"] = "Rejection notes are required.";
+            SetError("Rejection notes are required.");
             return RedirectToAction(nameof(Index));
         }
 
         try
         {
             await _campService.RejectSeasonAsync(seasonId, user.Id, notes);
-            TempData["SuccessMessage"] = "Season rejected.";
+            SetSuccess("Season rejected.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Index));
@@ -108,7 +106,7 @@ public class CampAdminController : Controller
     public async Task<IActionResult> OpenSeason([FromForm] int year)
     {
         await _campService.OpenSeasonAsync(year);
-        TempData["SuccessMessage"] = $"Season {year} opened for registration.";
+        SetSuccess($"Season {year} opened for registration.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -117,7 +115,7 @@ public class CampAdminController : Controller
     public async Task<IActionResult> CloseSeason(int year)
     {
         await _campService.CloseSeasonAsync(year);
-        TempData["SuccessMessage"] = $"Season {year} closed for registration.";
+        SetSuccess($"Season {year} closed for registration.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -126,7 +124,7 @@ public class CampAdminController : Controller
     public async Task<IActionResult> SetPublicYear(int year)
     {
         await _campService.SetPublicYearAsync(year);
-        TempData["SuccessMessage"] = $"Public year set to {year}.";
+        SetSuccess($"Public year set to {year}.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -137,12 +135,12 @@ public class CampAdminController : Controller
         var parseResult = NodaTime.Text.LocalDatePattern.Iso.Parse(lockDate);
         if (!parseResult.Success)
         {
-            TempData["ErrorMessage"] = "Invalid date format.";
+            SetError("Invalid date format.");
             return RedirectToAction(nameof(Index));
         }
 
         await _campService.SetNameLockDateAsync(year, parseResult.Value);
-        TempData["SuccessMessage"] = $"Name lock date for {year} set to {parseResult.Value}.";
+        SetSuccess($"Name lock date for {year} set to {parseResult.Value}.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -153,11 +151,11 @@ public class CampAdminController : Controller
         try
         {
             await _campService.ReactivateSeasonAsync(seasonId);
-            TempData["SuccessMessage"] = "Season reactivated.";
+            SetSuccess("Season reactivated.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         if (!string.IsNullOrEmpty(returnSlug))
@@ -173,11 +171,11 @@ public class CampAdminController : Controller
         try
         {
             await _campService.DeleteCampAsync(campId);
-            TempData["SuccessMessage"] = "Camp deleted.";
+            SetSuccess("Camp deleted.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Index));

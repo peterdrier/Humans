@@ -129,6 +129,7 @@ public class ShiftBrowseViewModel
     public bool ShowFullShifts { get; set; }
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
+    public bool ShowSignups { get; set; }
 }
 
 public class DepartmentOption
@@ -151,6 +152,8 @@ public class RotaShiftGroup
     public List<ShiftDisplayItem> Shifts { get; set; } = [];
 }
 
+public record ShiftSignupInfo(Guid UserId, string DisplayName, SignupStatus Status, string? ProfilePictureUrl);
+
 public class ShiftDisplayItem
 {
     public Shift Shift { get; set; } = null!;
@@ -159,6 +162,7 @@ public class ShiftDisplayItem
     public ShiftPeriod Period { get; set; }
     public int ConfirmedCount { get; set; }
     public int RemainingSlots { get; set; }
+    public IReadOnlyList<ShiftSignupInfo> Signups { get; set; } = [];
 }
 
 // === Mine ===

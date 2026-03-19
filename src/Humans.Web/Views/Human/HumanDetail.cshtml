@@ -58,7 +58,7 @@
                         <small class="text-muted">
                             @if (Model.RejectedAt.HasValue)
                             {
-                                @Model.RejectedAt.Value.ToString("d MMMM yyyy HH:mm")
+                                @Model.RejectedAt.Value.ToDisplayLongDateTime()
                             }
                             @if (!string.IsNullOrEmpty(Model.RejectedByName))
                             {
@@ -96,13 +96,13 @@
                     <dd class="col-sm-9"><code>@Model.UserId</code></dd>
 
                     <dt class="col-sm-3">@Localizer["Admin_Joined"]</dt>
-                    <dd class="col-sm-9">@Model.CreatedAt.ToString("d MMMM yyyy HH:mm")</dd>
+                    <dd class="col-sm-9">@Model.CreatedAt.ToDisplayLongDateTime()</dd>
 
                     <dt class="col-sm-3">@Localizer["Admin_LastLogin"]</dt>
                     <dd class="col-sm-9">
                         @if (Model.LastLoginAt.HasValue)
                         {
-                            @Model.LastLoginAt.Value.ToString("d MMMM yyyy HH:mm")
+                            @Model.LastLoginAt.Value.ToDisplayLongDateTime()
                         }
                         else
                         {
@@ -132,7 +132,7 @@
                     @foreach (var app in Model.Applications)
                     {
                         <a asp-controller="Application" asp-action="ApplicationDetail" asp-route-id="@app.Id" class="list-group-item list-group-item-action d-flex justify-content-between">
-                            <span>@app.SubmittedAt.ToString("d MMM yyyy")</span>
+                                    <span>@app.SubmittedAt.ToDisplayDate()</span>
                             <span class="badge bg-secondary">@app.Status</span>
                         </a>
                     }
@@ -163,10 +163,10 @@
                                 }
                                 <br />
                                 <small class="text-muted">
-                                    @Localizer["AdminHuman_From"] @role.ValidFrom.ToString("d MMM yyyy")
+                                    @Localizer["AdminHuman_From"] @role.ValidFrom.ToDisplayDate()
                                     @if (role.ValidTo.HasValue)
                                     {
-                                        <text> @Localizer["AdminHuman_To"] @role.ValidTo.Value.ToString("d MMM yyyy")</text>
+                                        <text> @Localizer["AdminHuman_To"] @role.ValidTo.Value.ToDisplayDate()</text>
                                     }
                                     @if (!string.IsNullOrEmpty(role.Notes))
                                     {
@@ -219,7 +219,7 @@
                                     </small>
                                 </div>
                                 <small class="text-muted text-nowrap ms-2">
-                                    @entry.OccurredAt.ToString("d MMM yyyy HH:mm")
+                                    @entry.OccurredAt.ToDisplayDateTime()
                                 </small>
                             </div>
                         </div>
@@ -261,7 +261,7 @@
                                 <tr>
                                     <td>@grant.Campaign.Title</td>
                                     <td><code>@grant.Code.Code</code></td>
-                                    <td>@grant.AssignedAt.ToString("d MMM yyyy", null)</td>
+                                    <td>@grant.AssignedAt.ToDisplayDate()</td>
                                     <td>
                                         @if (grant.LatestEmailStatus.HasValue)
                                         {

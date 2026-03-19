@@ -150,7 +150,7 @@ public interface IShiftManagementService
     /// </summary>
     Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(
         Guid eventSettingsId, Guid? departmentId = null, LocalDate? date = null,
-        bool includeAdminOnly = false);
+        bool includeAdminOnly = false, bool includeSignups = false);
 
     /// <summary>
     /// Calculates the urgency score for a single shift.
@@ -160,7 +160,7 @@ public interface IShiftManagementService
     // === Staffing & Summary ===
 
     /// <summary>
-    /// Gets per-day staffing data for build/strike periods.
+    /// Gets per-day staffing data for all periods (set-up, event, strike).
     /// </summary>
     Task<IReadOnlyList<DailyStaffingData>> GetStaffingDataAsync(
         Guid eventSettingsId, Guid? departmentId = null);
@@ -186,10 +186,11 @@ public record UrgentShift(
     double UrgencyScore,
     int ConfirmedCount,
     int RemainingSlots,
-    string DepartmentName);
+    string DepartmentName,
+    IReadOnlyList<(Guid UserId, string DisplayName, SignupStatus Status, bool HasProfilePicture)> Signups);
 
 /// <summary>
-/// Per-day staffing data for build/strike visualization.
+/// Per-day staffing data for set-up/event/strike visualization.
 /// </summary>
 public record DailyStaffingData(
     int DayOffset,

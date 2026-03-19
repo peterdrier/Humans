@@ -176,8 +176,128 @@ public class ShiftManagementServiceTests : IDisposable
     }
 
     // ============================================================
+    // GetBrowseShiftsAsync — includeSignups
+    // ============================================================
+
+    [Fact]
+    public async Task GetBrowseShifts_IncludeSignups_ReturnsConfirmedAndPendingOnly()
+    {
+        // Arrange
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var shift = SeedShift(rota, dayOffset: 1);
+        var confirmedUser = SeedUser("Alice");
+        var pendingUser = SeedUser("Bob");
+        var bailedUser = SeedUser("Charlie");
+
+        SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
+        SeedSignup(shift, pendingUser, SignupStatus.Pending);
+        SeedSignup(shift, bailedUser, SignupStatus.Bailed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: true);
+
+        // Assert: only Confirmed and Pending signups returned
+        results.Should().HaveCount(1);
+        var signups = results[0].Signups;
+        signups.Should().HaveCount(2);
+        signups.Select(s => s.DisplayName).Should().BeEquivalentTo(["Alice", "Bob"]);
+    }
+
+    [Fact]
+    public async Task GetBrowseShifts_IncludeSignups_ConfirmedBeforePending()
+    {
+        // Arrange
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var shift = SeedShift(rota, dayOffset: 1);
+        var confirmedUser = SeedUser("Zara");
+        var pendingUser = SeedUser("Alice");
+
+        SeedSignup(shift, confirmedUser, SignupStatus.Confirmed);
+        SeedSignup(shift, pendingUser, SignupStatus.Pending);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: true);
+
+        // Assert: Confirmed (Zara) first, then Pending (Alice), regardless of name order
+        var signups = results[0].Signups;
+        signups.Should().HaveCount(2);
+        signups[0].DisplayName.Should().Be("Zara");
+        signups[0].Status.Should().Be(SignupStatus.Confirmed);
+        signups[1].DisplayName.Should().Be("Alice");
+        signups[1].Status.Should().Be(SignupStatus.Pending);
+    }
+
+    [Fact]
+    public async Task GetBrowseShifts_WithoutIncludeSignups_ReturnsEmptySignups()
+    {
+        // Arrange
+        var (es, rota) = SeedRotaScenario(RotaPeriod.Event);
+        var shift = SeedShift(rota, dayOffset: 1);
+        var user = SeedUser("Alice");
+        SeedSignup(shift, user, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var results = await _service.GetBrowseShiftsAsync(es.Id, includeSignups: false);
+
+        // Assert: signups list is empty even though shift has signups
+        results.Should().HaveCount(1);
+        results[0].Signups.Should().BeEmpty();
+    }
+
+    // ============================================================
     // Helpers
     // ============================================================
+
+    private User SeedUser(string displayName)
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            DisplayName = displayName,
+            UserName = $"{displayName.ToLowerInvariant()}@test.com",
+            Email = $"{displayName.ToLowerInvariant()}@test.com",
+            NormalizedEmail = $"{displayName.ToUpperInvariant()}@TEST.COM",
+            NormalizedUserName = $"{displayName.ToUpperInvariant()}@TEST.COM",
+            CreatedAt = TestNow
+        };
+        _dbContext.Users.Add(user);
+        return user;
+    }
+
+    private Shift SeedShift(Rota rota, int dayOffset)
+    {
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rota.Id,
+            DayOffset = dayOffset,
+            StartTime = new LocalTime(8, 0),
+            Duration = Duration.FromHours(4),
+            MinVolunteers = 2,
+            MaxVolunteers = 5,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.Shifts.Add(shift);
+        return shift;
+    }
+
+    private void SeedSignup(Shift shift, User user, SignupStatus status)
+    {
+        var signup = new ShiftSignup
+        {
+            Id = Guid.NewGuid(),
+            ShiftId = shift.Id,
+            UserId = user.Id,
+            Status = status,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.ShiftSignups.Add(signup);
+    }
 
     private (EventSettings es, Rota rota) SeedRotaScenario(RotaPeriod period)
     {

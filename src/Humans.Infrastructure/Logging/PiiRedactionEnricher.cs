@@ -65,7 +65,7 @@ public sealed class PiiRedactionEnricher : ILogEventEnricher
             propertyName.Equals("To", StringComparison.OrdinalIgnoreCase) ||
             propertyName.Equals("UserEmail", StringComparison.OrdinalIgnoreCase))
         {
-            var atIndex = stringValue.IndexOf('@');
+            var atIndex = stringValue.IndexOf("@", StringComparison.Ordinal);
             if (atIndex > 0)
             {
                 var prefix = stringValue[..Math.Min(2, atIndex)];

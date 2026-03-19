@@ -2,20 +2,11 @@
 @{
     ViewData["Title"] = "Email Preview";
 
-    var languageNames = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["en"] = "English",
-        ["es"] = "Castellano",
-        ["de"] = "Deutsch",
-        ["fr"] = "Fran\u00e7ais",
-        ["it"] = "Italiano"
-    };
-
     var orderedLanguages = Model.Previews
-        .OrderBy(kv => languageNames.TryGetValue(kv.Key, out var n) ? n : kv.Key, StringComparer.Ordinal)
+        .OrderByDisplayLanguage()
         .ToList();
 
-    var defaultLang = "en";
+    var defaultLang = CultureCatalog.DefaultCultureCode;
 }
 
 <nav aria-label="breadcrumb">
@@ -42,7 +33,7 @@
             <button class="nav-link @(isActive ? "active" : "")" id="lang-tab-@lang.Key" data-bs-toggle="tab"
                     data-bs-target="#lang-@lang.Key" type="button" role="tab"
                     aria-controls="lang-@lang.Key" aria-selected="@(isActive ? "true" : "false")">
-                @(languageNames.TryGetValue(lang.Key, out var name) ? name : lang.Key)
+                @lang.Key.ToDisplayLanguageName()
             </button>
         </li>
     }

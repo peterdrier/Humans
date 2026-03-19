@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
@@ -13,7 +14,7 @@ using Humans.Web.Models;
 namespace Humans.Web.Controllers;
 
 [Authorize]
-public class ApplicationController : Controller
+public class ApplicationController : HumansControllerBase
 {
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly UserManager<Domain.Entities.User> _userManager;
@@ -23,6 +24,7 @@ public class ApplicationController : Controller
         IApplicationDecisionService applicationDecisionService,
         UserManager<Domain.Entities.User> userManager,
         IStringLocalizer<SharedResource> localizer)
+        : base(userManager)
     {
         _applicationDecisionService = applicationDecisionService;
         _userManager = userManager;
@@ -31,7 +33,7 @@ public class ApplicationController : Controller
 
     public async Task<IActionResult> Index()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -60,7 +62,7 @@ public class ApplicationController : Controller
     [HttpGet]
     public async Task<IActionResult> Create()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -69,7 +71,7 @@ public class ApplicationController : Controller
 
         if (hasPending)
         {
-            TempData["ErrorMessage"] = _localizer["Application_AlreadyPending"].Value;
+            SetError(_localizer["Application_AlreadyPending"].Value);
             return RedirectToAction(nameof(Index));
         }
 
@@ -90,7 +92,7 @@ public class ApplicationController : Controller
             return View(model);
         }
 
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -128,17 +130,17 @@ public class ApplicationController : Controller
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = _localizer["Application_AlreadyPending"].Value;
+                SetError(_localizer["Application_AlreadyPending"].Value);
             return RedirectToAction(nameof(Index));
         }
 
-        TempData["SuccessMessage"] = _localizer["Application_Submitted"].Value;
+        SetSuccess(_localizer["Application_Submitted"].Value);
         return RedirectToAction(nameof(Details), new { id = result.ApplicationId });
     }
 
     public async Task<IActionResult> Details(Guid id)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -179,7 +181,7 @@ public class ApplicationController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var user = await _userManager.GetUserAsync(User);
+        var user = await GetCurrentUserAsync();
         if (user == null)
             return NotFound();
 
@@ -188,16 +190,16 @@ public class ApplicationController : Controller
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "CannotWithdraw", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = _localizer["Application_CannotWithdraw"].Value;
+                SetError(_localizer["Application_CannotWithdraw"].Value);
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        TempData["SuccessMessage"] = _localizer["Application_Withdrawn"].Value;
+        SetSuccess(_localizer["Application_Withdrawn"].Value);
         return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("Application/Admin")]
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     public async Task<IActionResult> Applications(string? status, string? tier, int page = 1)
     {
         var pageSize = 20;
@@ -227,11 +229,11 @@ public class ApplicationController : Controller
             PageSize = pageSize
         };
 
-        return View(viewModel);
+        return View("~/Views/Shared/Applications.cshtml", viewModel);
     }
 
     [HttpGet("Application/Admin/{id:guid}")]
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     public async Task<IActionResult> ApplicationDetail(Guid id)
     {
         var application = await _applicationDecisionService.GetApplicationDetailAsync(id);

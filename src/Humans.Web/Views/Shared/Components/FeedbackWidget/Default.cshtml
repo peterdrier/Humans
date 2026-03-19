@@ -1,0 +1,57 @@
+@using Humans.Domain.Enums
+
+<!-- Floating feedback button -->
+<button type="button" class="btn btn-primary rounded-circle shadow position-fixed"
+        style="bottom: 24px; right: 24px; width: 56px; height: 56px; z-index: 1050;"
+        data-bs-toggle="modal" data-bs-target="#feedbackModal"
+        title="@Localizer["Feedback_Button"]">
+    <i class="fa-solid fa-comment-dots fa-lg"></i>
+</button>
+
+<!-- Feedback modal -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-controller="Feedback" asp-action="Submit" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="feedbackModalLabel">@Localizer["Feedback_Title"]</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Feedback_Category"]</label>
+                        <select name="Category" class="form-select" required>
+                            <option value="Bug">@Localizer["Feedback_Category_Bug"]</option>
+                            <option value="FeatureRequest">@Localizer["Feedback_Category_FeatureRequest"]</option>
+                            <option value="Question">@Localizer["Feedback_Category_Question"]</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Feedback_Description"]</label>
+                        <textarea name="Description" class="form-control" rows="5" required maxlength="5000"
+                                  placeholder="@Localizer["Feedback_DescriptionPlaceholder"]"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["Feedback_Screenshot"]</label>
+                        <input type="file" name="Screenshot" class="form-control" accept="image/jpeg,image/png,image/webp" />
+                        <div class="form-text">@Localizer["Feedback_ScreenshotHelp"]</div>
+                    </div>
+                    <input type="hidden" name="PageUrl" id="feedbackPageUrl" />
+                    <input type="hidden" name="UserAgent" id="feedbackUserAgent" />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@Localizer["Feedback_Cancel"]</button>
+                    <button type="submit" class="btn btn-primary">@Localizer["Feedback_Submit"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('feedbackModal').addEventListener('show.bs.modal', function () {
+        document.getElementById('feedbackPageUrl').value = window.location.href;
+        document.getElementById('feedbackUserAgent').value = navigator.userAgent;
+    });
+</script>

@@ -1,0 +1,120 @@
+@model Humans.Web.Models.FeedbackListViewModel
+@using Humans.Domain.Enums
+@{
+    ViewData["Title"] = "Feedback";
+}
+
+<h1><i class="fa-solid fa-comment-dots me-2"></i>Feedback</h1>
+
+<vc:temp-data-alerts />
+
+<!-- Filter bar -->
+<form method="get" class="row g-2 mb-4">
+    <div class="col-auto">
+        <select name="status" class="form-select form-select-sm">
+            <option value="">All Statuses</option>
+            @foreach (var s in Enum.GetValues<FeedbackStatus>())
+            {
+                <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="category" class="form-select form-select-sm">
+            <option value="">All Categories</option>
+            @foreach (var c in Enum.GetValues<FeedbackCategory>())
+            {
+                <option value="@c" selected="@(Model.CategoryFilter == c)">@c</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-outline-primary">Filter</button>
+        @if (Model.StatusFilter.HasValue || Model.CategoryFilter.HasValue)
+        {
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary ms-1">Clear</a>
+        }
+    </div>
+</form>
+
+@if (Model.Reports.Count == 0)
+{
+    <div class="alert alert-info">No feedback reports found.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Reporter</th>
+                    <th>Page</th>
+                    <th class="text-center"><i class="fa-solid fa-camera" title="Screenshot"></i></th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model.Reports)
+                {
+                    <tr class="@(r.Status == FeedbackStatus.Resolved || r.Status == FeedbackStatus.WontFix ? "table-light text-muted" : "")" style="cursor: pointer;" data-detail-url="@Url.Action("Detail", new { id = r.Id })">
+                        <td>
+                            @{
+                                var statusBadge = r.Status switch
+                                {
+                                    FeedbackStatus.Open => "bg-warning text-dark",
+                                    FeedbackStatus.Acknowledged => "bg-info text-dark",
+                                    FeedbackStatus.Resolved => "bg-success",
+                                    FeedbackStatus.WontFix => "bg-secondary",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @statusBadge">@r.Status</span>
+                        </td>
+                        <td>
+                            @{
+                                var catBadge = r.Category switch
+                                {
+                                    FeedbackCategory.Bug => "bg-danger",
+                                    FeedbackCategory.FeatureRequest => "bg-primary",
+                                    FeedbackCategory.Question => "bg-info text-dark",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @catBadge">@r.Category</span>
+                        </td>
+                        <td class="text-truncate" style="max-width: 300px;">@r.Description</td>
+                        <td>
+                            <a asp-controller="Human" asp-action="View" asp-route-id="@r.ReporterUserId" class="js-stop-propagation">@r.ReporterName</a>
+                        </td>
+                        <td class="text-truncate small text-muted" style="max-width: 200px;">@r.PageUrl</td>
+                        <td class="text-center">
+                            @if (r.HasScreenshot)
+                            {
+                                <i class="fa-solid fa-image text-success"></i>
+                            }
+                        </td>
+                        <td class="small text-nowrap">@r.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @section Scripts {
+        <script>
+            document.querySelectorAll('tr[data-detail-url]').forEach(function (row) {
+                row.addEventListener('click', function () {
+                    window.location = row.dataset.detailUrl;
+                });
+            });
+            document.querySelectorAll('.js-stop-propagation').forEach(function (el) {
+                el.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                });
+            });
+        </script>
+    }
+}

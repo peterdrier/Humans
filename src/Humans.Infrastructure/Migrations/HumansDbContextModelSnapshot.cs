@@ -985,6 +985,86 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("event_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AdminNotes")
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<Instant?>("AdminResponseSentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<int?>("GitHubIssueNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PageUrl")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Instant?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ScreenshotContentType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("ScreenshotFileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ScreenshotStoragePath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("ResolvedByUserId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("feedback_reports", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.GeneralAvailability", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1608,6 +1688,9 @@ namespace Humans.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CallsToAction")
+                        .HasColumnType("jsonb");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1622,10 +1705,25 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsPublicPage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PageContent")
+                        .HasMaxLength(50000)
+                        .HasColumnType("character varying(50000)");
+
+                    b.Property<Instant?>("PageContentUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PageContentUpdatedByUserId")
+                        .HasColumnType("uuid");
 
                     b.Property<Guid?>("ParentTeamId")
                         .HasColumnType("uuid");
@@ -1672,6 +1770,7 @@ namespace Humans.Infrastructure.Migrations
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All active volunteers with signed required documents",
                             IsActive = true,
+                            IsPublicPage = false,
                             Name = "Volunteers",
                             RequiresApproval = false,
                             Slug = "volunteers",
@@ -1684,6 +1783,7 @@ namespace Humans.Infrastructure.Migrations
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All team coordinators",
                             IsActive = true,
+                            IsPublicPage = false,
                             Name = "Coordinators",
                             RequiresApproval = false,
                             Slug = "coordinators",
@@ -1696,6 +1796,7 @@ namespace Humans.Infrastructure.Migrations
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Board members with active role assignments",
                             IsActive = true,
+                            IsPublicPage = false,
                             Name = "Board",
                             RequiresApproval = false,
                             Slug = "board",
@@ -1708,6 +1809,7 @@ namespace Humans.Infrastructure.Migrations
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Voting members with approved asociado applications",
                             IsActive = true,
+                            IsPublicPage = false,
                             Name = "Asociados",
                             RequiresApproval = false,
                             Slug = "asociados",
@@ -1720,10 +1822,24 @@ namespace Humans.Infrastructure.Migrations
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Active contributors with approved colaborador applications",
                             IsActive = true,
+                            IsPublicPage = false,
                             Name = "Colaboradors",
                             RequiresApproval = false,
                             Slug = "colaboradors",
                             SystemTeamType = "Colaboradors",
+                            UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0001-000000000006"),
+                            CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
+                            Description = "All active camp leads across all camps",
+                            IsActive = true,
+                            IsPublicPage = false,
+                            Name = "Barrio Leads",
+                            RequiresApproval = false,
+                            Slug = "barrio-leads",
+                            SystemTeamType = "BarrioLeads",
                             UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L)
                         });
                 });
@@ -2761,6 +2877,24 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("CampaignGrant");
 
                     b.Navigation("ShiftSignup");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
+                        .WithMany()
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Humans.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ResolvedByUser");
 
                     b.Navigation("User");
                 });

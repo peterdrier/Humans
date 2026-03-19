@@ -2,11 +2,13 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
+using Humans.Web.Extensions;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Text;
@@ -15,7 +17,7 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [Route("Shifts/Dashboard")]
-public class ShiftDashboardController : Controller
+public class ShiftDashboardController : HumansControllerBase
 {
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
@@ -31,6 +33,7 @@ public class ShiftDashboardController : Controller
         IProfileService profileService,
         UserManager<User> userManager,
         ILogger<ShiftDashboardController> logger)
+        : base(userManager)
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
@@ -43,13 +46,13 @@ public class ShiftDashboardController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? date)
     {
-        if (!User.IsInRole(RoleNames.NoInfoAdmin) && !User.IsInRole(RoleNames.Admin) && !User.IsInRole(RoleNames.VolunteerCoordinator))
+        if (!ShiftRoleChecks.CanAccessDashboard(User))
             return Forbid();
 
         var es = await _shiftMgmt.GetActiveAsync();
         if (es == null)
         {
-            TempData["ErrorMessage"] = "No active event settings configured.";
+            SetError("No active event settings configured.");
             return RedirectToAction(nameof(HomeController.Index), "Home");
         }
 
@@ -87,10 +90,10 @@ public class ShiftDashboardController : Controller
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
     {
-        if (!User.IsInRole(RoleNames.NoInfoAdmin) && !User.IsInRole(RoleNames.Admin) && !User.IsInRole(RoleNames.VolunteerCoordinator))
+        if (!ShiftRoleChecks.CanAccessDashboard(User))
             return Forbid();
 
-        if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+        if (!query.HasSearchTerm())
             return Json(Array.Empty<VolunteerSearchResult>());
 
         try
@@ -101,7 +104,15 @@ public class ShiftDashboardController : Controller
             var es = shift.Rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
             if (es == null) return NotFound();
 
-            var results = await BuildVolunteerSearchResultsAsync(shift, query, es);
+            var results = await ShiftVolunteerSearchBuilder.BuildAsync(
+                shift,
+                query,
+                es,
+                ShiftRoleChecks.CanViewMedical(User),
+                _userManager,
+                _profileService,
+                _signupService,
+                _availabilityService);
             return Json(results);
         }
         catch (Exception ex)
@@ -115,64 +126,25 @@ public class ShiftDashboardController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Voluntell(Guid shiftId, Guid userId)
     {
-        if (!User.IsInRole(RoleNames.NoInfoAdmin) && !User.IsInRole(RoleNames.Admin) && !User.IsInRole(RoleNames.VolunteerCoordinator))
+        if (!ShiftRoleChecks.CanAccessDashboard(User))
             return Forbid();
 
-        var currentUser = await _userManager.GetUserAsync(User);
-        if (currentUser == null) return Unauthorized();
-
-        var result = await _signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
-        TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] =
-            result.Success ? "Volunteer assigned to shift." : result.Error;
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    private async Task<List<VolunteerSearchResult>> BuildVolunteerSearchResultsAsync(
-        Shift shift, string query, EventSettings es)
-    {
-        var shiftStart = shift.GetAbsoluteStart(es);
-        var shiftEnd = shift.GetAbsoluteEnd(es);
-
-        var users = await _userManager.Users
-            .Where(u => EF.Functions.ILike(u.DisplayName, "%" + query + "%"))
-            .Take(10)
-            .ToListAsync();
-
-        var canViewMedical = User.IsInRole(RoleNames.NoInfoAdmin) || User.IsInRole(RoleNames.Admin);
-
-        var poolVolunteers = await _availabilityService.GetAvailableForDayAsync(es.Id, shift.DayOffset);
-        var poolUserIds = poolVolunteers.Select(p => p.UserId).ToHashSet();
-
-        var results = new List<VolunteerSearchResult>();
-        foreach (var user in users)
+        var (currentUserNotFound, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserNotFound != null)
         {
-            var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: canViewMedical);
-            var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
-            var confirmedSignups = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
-
-            var hasOverlap = confirmedSignups.Any(s =>
-            {
-                var sStart = s.Shift.GetAbsoluteStart(es);
-                var sEnd = s.Shift.GetAbsoluteEnd(es);
-                return shiftStart < sEnd && shiftEnd > sStart;
-            });
-
-            results.Add(new VolunteerSearchResult
-            {
-                UserId = user.Id,
-                DisplayName = user.DisplayName,
-                Skills = profile?.Skills ?? [],
-                Quirks = profile?.Quirks ?? [],
-                Languages = profile?.Languages ?? [],
-                DietaryPreference = profile?.DietaryPreference,
-                BookedShiftCount = confirmedSignups.Count,
-                HasOverlap = hasOverlap,
-                IsInPool = poolUserIds.Contains(user.Id),
-                MedicalConditions = profile?.MedicalConditions
-            });
+            return currentUserNotFound;
         }
 
-        return results;
+        var result = await _signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
+        if (result.Success)
+        {
+            SetSuccess("Volunteer assigned to shift.");
+        }
+        else
+        {
+            SetError(result.Error ?? "Failed to assign volunteer.");
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 }

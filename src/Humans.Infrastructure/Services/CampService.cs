@@ -14,21 +14,25 @@ public class CampService : ICampService
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
+    private readonly ISystemTeamSync _systemTeamSync;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<CampService> _logger;
 
     private const string CacheKeyPrefix = "camps_year_";
+    private static readonly TimeSpan CampsForYearCacheTtl = TimeSpan.FromMinutes(5);
 
     public CampService(
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
+        ISystemTeamSync systemTeamSync,
         IClock clock,
         IMemoryCache cache,
         ILogger<CampService> logger)
     {
         _dbContext = dbContext;
         _auditLogService = auditLogService;
+        _systemTeamSync = systemTeamSync;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -84,7 +88,7 @@ public class CampService : ICampService
             Id = Guid.NewGuid(),
             CampId = camp.Id,
             UserId = createdByUserId,
-            Role = CampLeadRole.Primary,
+            Role = CampLeadRole.CoLead,
             JoinedAt = now
         };
 
@@ -111,6 +115,7 @@ public class CampService : ICampService
             createdByUserId, createdByUserId.ToString());
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(createdByUserId, cancellationToken);
         InvalidateCache(year);
 
         return camp;
@@ -144,21 +149,18 @@ public class CampService : ICampService
 
     public async Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"{CacheKeyPrefix}{year}";
-        if (_cache.TryGetValue(cacheKey, out List<Camp>? cached) && cached is not null)
-            return cached;
-
-        var camps = await _dbContext.Camps
-            .Include(b => b.Seasons.Where(s => s.Year == year &&
-                (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
-            .Include(b => b.Images.OrderBy(i => i.SortOrder))
-            .Include(b => b.HistoricalNames)
-            .Where(b => b.Seasons.Any(s => s.Year == year &&
-                (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
-            .ToListAsync(cancellationToken);
-
-        _cache.Set(cacheKey, camps, TimeSpan.FromMinutes(5));
-        return camps;
+        return await _cache.GetOrCreateAsync(GetCampsForYearCacheKey(year), async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CampsForYearCacheTtl;
+            return await _dbContext.Camps
+                .Include(b => b.Seasons.Where(s => s.Year == year &&
+                    (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
+                .Include(b => b.Images.OrderBy(i => i.SortOrder))
+                .Include(b => b.HistoricalNames)
+                .Where(b => b.Seasons.Any(s => s.Year == year &&
+                    (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
+                .ToListAsync(cancellationToken);
+        }) ?? [];
     }
 
     public async Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -485,7 +487,7 @@ public class CampService : ICampService
     // Lead management
     // ==========================================================================
 
-    public async Task<CampLead> AddLeadAsync(Guid campId, Guid userId, CampLeadRole role,
+    public async Task<CampLead> AddLeadAsync(Guid campId, Guid userId,
         CancellationToken cancellationToken = default)
     {
         var alreadyLead = await _dbContext.CampLeads
@@ -504,7 +506,7 @@ public class CampService : ICampService
             Id = Guid.NewGuid(),
             CampId = campId,
             UserId = userId,
-            Role = role,
+            Role = CampLeadRole.CoLead,
             JoinedAt = now
         };
 
@@ -512,11 +514,12 @@ public class CampService : ICampService
 
         await _auditLogService.LogAsync(
             AuditAction.CampLeadAdded, nameof(CampLead), lead.Id,
-            $"Added as {role}",
+            "Added as camp lead",
             userId, userId.ToString(),
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken);
 
         return lead;
     }
@@ -525,8 +528,11 @@ public class CampService : ICampService
     {
         var lead = await _dbContext.CampLeads.FindAsync([leadId], cancellationToken)
             ?? throw new InvalidOperationException("Lead not found.");
-        if (lead.Role == CampLeadRole.Primary)
-            throw new InvalidOperationException("Cannot remove primary lead. Transfer primary role first.");
+
+        var activeCount = await _dbContext.CampLeads
+            .CountAsync(l => l.CampId == lead.CampId && l.LeftAt == null, cancellationToken);
+        if (activeCount <= 1)
+            throw new InvalidOperationException("Cannot remove the last lead. A camp must have at least one lead.");
 
         lead.LeftAt = _clock.GetCurrentInstant();
 
@@ -537,31 +543,9 @@ public class CampService : ICampService
             relatedEntityId: lead.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(lead.UserId, cancellationToken);
     }
 
-    public async Task TransferPrimaryLeadAsync(Guid campId, Guid newPrimaryUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var leads = await _dbContext.CampLeads
-            .Where(l => l.CampId == campId && l.LeftAt == null)
-            .ToListAsync(cancellationToken);
-
-        var currentPrimary = leads.FirstOrDefault(l => l.Role == CampLeadRole.Primary)
-            ?? throw new InvalidOperationException("No current primary lead found.");
-        var newPrimary = leads.FirstOrDefault(l => l.UserId == newPrimaryUserId)
-            ?? throw new InvalidOperationException("Target user is not an active lead.");
-
-        currentPrimary.Role = CampLeadRole.CoLead;
-        newPrimary.Role = CampLeadRole.Primary;
-
-        await _auditLogService.LogAsync(
-            AuditAction.CampPrimaryLeadTransferred, nameof(CampLead), campId,
-            $"Primary transferred from {currentPrimary.UserId} to {newPrimaryUserId}",
-            newPrimaryUserId, newPrimaryUserId.ToString(),
-            relatedEntityId: currentPrimary.UserId, relatedEntityType: nameof(User));
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-    }
 
     // ==========================================================================
     // Authorization checks
@@ -575,14 +559,6 @@ public class CampService : ICampService
                 cancellationToken);
     }
 
-    public async Task<bool> IsUserPrimaryLeadAsync(Guid userId, Guid campId,
-        CancellationToken cancellationToken = default)
-    {
-        return await _dbContext.CampLeads
-            .AnyAsync(l => l.CampId == campId && l.UserId == userId
-                && l.Role == CampLeadRole.Primary && l.LeftAt == null,
-                cancellationToken);
-    }
 
     // ==========================================================================
     // Images
@@ -791,8 +767,10 @@ public class CampService : ICampService
 
     private void InvalidateCache(int year)
     {
-        _cache.Remove($"{CacheKeyPrefix}{year}");
+        _cache.Remove(GetCampsForYearCacheKey(year));
     }
+
+    private static string GetCampsForYearCacheKey(int year) => $"{CacheKeyPrefix}{year}";
 
     private static CampSeason CreateSeasonFromData(Guid campId, int year, string name,
         CampSeasonData data, Instant now)

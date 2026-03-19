@@ -1,0 +1,126 @@
+@{
+    var searchUrl = (string?)ViewData["SearchUrl"] ?? string.Empty;
+    var voluntellUrl = (string?)ViewData["VoluntellUrl"] ?? string.Empty;
+    var assignButtonClass = (string?)ViewData["AssignButtonClass"] ?? "btn-success";
+    var dietaryPreferenceStyle = (string?)ViewData["DietaryPreferenceStyle"] ?? "muted";
+    var noResultsText = ((string?)ViewData["NoResultsText"] ?? "No volunteers found.")
+        .Replace("'", "\\'", StringComparison.Ordinal);
+    var errorText = ((string?)ViewData["ErrorText"] ?? "Search failed.")
+        .Replace("'", "\\'", StringComparison.Ordinal);
+    var overlapLabel = ((string?)ViewData["OverlapLabel"] ?? "Schedule conflict")
+        .Replace("'", "\\'", StringComparison.Ordinal);
+    var showPoolBadge = (bool?)ViewData["ShowPoolBadge"] ?? false;
+}
+(function () {
+    var searchUrl = '@Html.Raw(searchUrl)';
+    var voluntellUrl = '@Html.Raw(voluntellUrl)';
+    var tokenHtml = '@Html.Raw(Html.AntiForgeryTokenHtmlForJavaScript())';
+    var assignButtonClass = '@assignButtonClass';
+    var dietaryPreferenceStyle = '@dietaryPreferenceStyle';
+    var noResultsText = '@noResultsText';
+    var errorText = '@errorText';
+    var overlapLabel = '@overlapLabel';
+    var showPoolBadge = @showPoolBadge.ToString().ToLowerInvariant();
+
+    function renderBadges(items, cssClass) {
+        if (!items || items.length === 0) {
+            return '';
+        }
+
+        return items.map(function (item) {
+            return '<span class="badge ' + cssClass + ' me-1">' + escapeHtml(item) + '</span>';
+        }).join('');
+    }
+
+    function renderDietaryPreference(value) {
+        if (!value) {
+            return '';
+        }
+
+        if (dietaryPreferenceStyle === 'badge') {
+            return '<span class="badge bg-success me-1">' + escapeHtml(value) + '</span>';
+        }
+
+        return '<small class="text-muted ms-2">' + escapeHtml(value) + '</small>';
+    }
+
+    function renderResults(results, shiftId, container) {
+        if (!results || results.length === 0) {
+            container.innerHTML = '<p class="text-muted small mb-0">' + escapeHtml(noResultsText) + '</p>';
+            return;
+        }
+
+        var html = '<ul class="list-group list-group-flush">';
+        results.forEach(function (result) {
+            var poolBadge = showPoolBadge && result.isInPool
+                ? '<span class="badge bg-success ms-2">Pool</span>'
+                : '';
+            var overlapWarning = result.hasOverlap
+                ? '<span class="badge bg-warning text-dark ms-2">' + escapeHtml(overlapLabel) + '</span>'
+                : '';
+            var skillBadges = renderBadges(result.skills, 'bg-info text-dark');
+            var quirkBadges = renderBadges(result.quirks, 'bg-secondary');
+            var languageBadges = renderBadges(result.languages, 'bg-primary');
+            var dietaryPreference = renderDietaryPreference(result.dietaryPreference);
+
+            html += '<li class="list-group-item d-flex justify-content-between align-items-start flex-wrap gap-2">';
+            html += '<div>';
+            html += '<strong>' + escapeHtml(result.displayName) + '</strong>';
+            html += poolBadge;
+            html += overlapWarning;
+            html += ' <small class="text-muted">(' + result.bookedShiftCount + ' shifts)</small>';
+            html += dietaryPreference;
+            html += '<div class="mt-1">' + skillBadges + quirkBadges + languageBadges + '</div>';
+            html += '</div>';
+            html += '<form method="post" action="' + escapeHtml(voluntellUrl) + '">';
+            html += tokenHtml;
+            html += '<input type="hidden" name="shiftId" value="' + escapeHtml(shiftId) + '" />';
+            html += '<input type="hidden" name="userId" value="' + escapeHtml(result.userId) + '" />';
+            html += '<button type="submit" class="btn btn-sm ' + assignButtonClass + '"'
+                + (result.hasOverlap ? ' title="Warning: schedule conflict"' : '')
+                + '>Assign</button>';
+            html += '</form>';
+            html += '</li>';
+        });
+        html += '</ul>';
+        container.innerHTML = html;
+    }
+
+    function debounce(fn, delay) {
+        var timer;
+        return function () {
+            var args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                fn.apply(null, args);
+            }, delay);
+        };
+    }
+
+    document.addEventListener('input', debounce(function (e) {
+        var input = e.target;
+        if (!input.classList.contains('volunteer-search-input')) {
+            return;
+        }
+
+        var shiftId = input.dataset.shiftId;
+        var query = input.value.trim();
+        var resultsDiv = document.querySelector('.volunteer-results[data-shift-id="' + shiftId + '"]');
+        if (!resultsDiv) {
+            return;
+        }
+
+        if (query.length < 2) {
+            resultsDiv.innerHTML = '';
+            return;
+        }
+
+        var url = searchUrl + '?shiftId=' + encodeURIComponent(shiftId) + '&query=' + encodeURIComponent(query);
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) { renderResults(data, shiftId, resultsDiv); })
+            .catch(function () {
+                resultsDiv.innerHTML = '<p class="text-danger small mb-0">' + escapeHtml(errorText) + '</p>';
+            });
+    }, 300));
+}());

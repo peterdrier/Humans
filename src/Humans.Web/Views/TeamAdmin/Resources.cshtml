@@ -82,7 +82,7 @@
                             <td>
                                 @if (resource.LastSyncedAt.HasValue)
                                 {
-                                    @resource.LastSyncedAt.Value.ToString("MMM d, yyyy HH:mm")
+                                            @resource.LastSyncedAt.Value.ToDisplayCompactDateTime()
                                 }
                                 else
                                 {

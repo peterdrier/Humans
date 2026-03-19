@@ -39,7 +39,9 @@
     'use strict';
 
     const canExecuteActions = @Json.Serialize(Model.CanExecuteActions);
-    const antiForgeryToken = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]')?.value;
+    @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
+
+    const antiForgeryToken = getRequestVerificationToken('#antiForgeryForm input[name="__RequestVerificationToken"]');
     const loadedTabs = {};
 
     // Resource type mapping: tab data-resource-type values to API enum values
@@ -315,12 +317,7 @@
         });
     }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        var div = document.createElement('div');
-        div.appendChild(document.createTextNode(str));
-        return div.innerHTML;
-    }
+    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 
     // Rotate chevron on collapse toggle
     document.addEventListener('show.bs.collapse', function (e) {

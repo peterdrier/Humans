@@ -1,0 +1,49 @@
+@model Humans.Web.Models.TabbedMarkdownDocumentsViewModel
+
+<ul class="@Model.TabsCssClass" id="@Model.TabsId" role="tablist">
+    @foreach (var document in Model.Documents)
+    {
+        var isActive = document.Key == Model.DefaultLanguage;
+        var tabId = $"{Model.TabsId}-tab-{document.Key}";
+        var panelId = $"{Model.ContentId}-{document.Key}";
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(isActive ? "active" : "")" id="@tabId" data-bs-toggle="tab"
+                    data-bs-target="#@panelId" type="button" role="tab"
+                    aria-controls="@panelId" aria-selected="@(isActive ? "true" : "false")">
+                @(Model.UseLegalLanguageLabels ? document.Key.ToLegalLanguageLabel() : document.Key.ToDisplayLanguageName())
+            </button>
+        </li>
+    }
+</ul>
+
+<div class="@Model.ContentCssClass" id="@Model.ContentId" style="@Model.ContentStyle">
+    @foreach (var document in Model.Documents)
+    {
+        var isActive = document.Key == Model.DefaultLanguage;
+        var tabId = $"{Model.TabsId}-tab-{document.Key}";
+        var panelId = $"{Model.ContentId}-{document.Key}";
+        <div class="tab-pane fade @(isActive ? "show active" : "")" id="@panelId" role="tabpanel" aria-labelledby="@tabId">
+            @if (string.IsNullOrEmpty(document.Value))
+            {
+                <p class="text-muted">@Model.EmptyMessage</p>
+            }
+            else
+            {
+                <div class="document-content">
+                    @Html.SanitizedMarkdown(document.Value)
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .document-content {
+        font-size: 0.95rem;
+        line-height: 1.7;
+    }
+
+    .document-content p {
+        margin-bottom: 1rem;
+    }
+</style>

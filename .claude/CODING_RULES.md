@@ -68,6 +68,10 @@ public class MyData {
 - Convert UTC to user's local timezone only at final display step
 - Never send local times back to server - convert to UTC first
 
+**Web/view-model exception:**
+- `DateTime` is allowed in web-layer view models and Razor views **only after** a NodaTime value has been explicitly converted for display (for example via `.ToDateTimeUtc()`)
+- Do not introduce `DateTime` into domain logic, persistence models, APIs, or service boundaries when NodaTime can be used instead
+
 **Rationale:** NodaTime provides safer time handling. Prevents timezone bugs, ensures consistent server behavior across deployments, simplifies testing.
 
 ## String Comparisons
@@ -84,6 +88,10 @@ if (status == "submitted")
 // CORRECT
 if (string.Equals(status, "submitted", StringComparison.Ordinal))
 ```
+
+**Search/input convention:**
+- For user-entered search terms, prefer the shared helpers in `Humans.Web.Extensions` (`HasSearchTerm`, `ContainsOrdinalIgnoreCase`, `WhereAnyContainsInsensitive`) instead of open-coding whitespace/length guards or ad hoc case handling
+- Keep EF-query helpers and in-memory string helpers separate so translation behavior stays explicit
 
 ## Critical: No Enum Comparison Operators in EF Core Queries
 
@@ -103,8 +111,8 @@ var allowed = GetAllowedVisibilities(accessLevel);
 private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
     accessLevel switch
     {
-        ContactFieldVisibility.BoardOnly => [ContactFieldVisibility.BoardOnly, ContactFieldVisibility.LeadsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
-        ContactFieldVisibility.LeadsAndBoard => [ContactFieldVisibility.LeadsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
+        ContactFieldVisibility.BoardOnly => [ContactFieldVisibility.BoardOnly, ContactFieldVisibility.CoordinatorsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
+        ContactFieldVisibility.CoordinatorsAndBoard => [ContactFieldVisibility.CoordinatorsAndBoard, ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
         ContactFieldVisibility.MyTeams => [ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
         ContactFieldVisibility.AllActiveProfiles => [ContactFieldVisibility.AllActiveProfiles],
         _ => [ContactFieldVisibility.AllActiveProfiles]
@@ -138,6 +146,100 @@ await _auditLog.LogAsync(AuditLogEntityTypes.Team, ...);
 
 **Exceptions:** Localization resource keys, HTML/CSS class names, and configuration keys that don't map to code identifiers.
 
+**Auth-specific rule:**
+- Never hardcode role names in controllers, views, or authorization helpers
+- Use `RoleNames`, `RoleGroups`, or shared `RoleChecks` helpers
+
+## Controller Base Conventions
+
+Controllers that resolve the current human or set TempData messages must use the shared base classes instead of duplicating those patterns.
+
+**Rule:**
+- Inherit from `HumansControllerBase` or the appropriate specialized base when authenticated-user resolution or shared controller helpers are needed
+- Use shared helpers such as `GetCurrentUserAsync`, `ResolveCurrentUserAsync`, `FindUserByIdAsync`, `SetSuccess`, `SetError`, and `SetInfo`
+- Do not write new direct `_userManager.GetUserAsync(User)` calls in controllers when a base helper already covers the case
+- Do not write direct `TempData["SuccessMessage"]`, `TempData["ErrorMessage"]`, or `TempData["InfoMessage"]` assignments in controllers
+
+**Rationale:** This keeps PRG messaging, not-found handling, and user lookup behavior consistent across controllers.
+
+## Authorization Conventions
+
+Prefer centralized authorization declarations and shared role-check helpers over hand-written combinations.
+
+**Rule:**
+- Use `[Authorize(Roles = ...)]` with `RoleGroups`/`RoleNames` for static route guards
+- Use shared `RoleChecks` / `ShiftRoleChecks` helpers for runtime combinations that cannot be expressed cleanly as an attribute
+- Avoid repeating the same multi-role checks inline across multiple files
+
+**Examples:**
+- Use `RoleGroups.BoardOrAdmin`, not `"Board,Admin"`
+- Use `ShiftRoleChecks.CanAccessDashboard(User)`, not repeated `IsInRole` chains
+
+## Markdown Rendering
+
+Markdown rendering in Razor must go through the shared sanitized rendering path.
+
+**Rule:**
+- Do not embed local `HtmlSanitizer`, `Markdig.Markdown.ToHtml`, or `ConvertMarkdownToHtml(...)` helpers in views
+- Use `@Html.SanitizedMarkdown(...)` for one-off markdown rendering
+- If multiple pages share tabbed markdown document UI, extract or reuse a shared partial/component rather than duplicating tabs + sanitizer logic
+
+**Rationale:** This prevents inconsistent sanitization and removes duplicated Markdown boilerplate from views.
+
+## Date/Time Display Formatting
+
+Display formatting should be standardized through shared extensions instead of scattered inline format strings.
+
+**Rule:**
+- Prefer shared extensions such as `ToDisplayDate`, `ToDisplayLongDate`, `ToDisplayDateTime`, `ToDisplayCompactDate`, `ToDisplayCompactDateTime`, `ToDisplayTime`, `ToAuditTimestamp`, and `ToDisplayGeneralDateTime`
+- Avoid introducing new inline Razor format strings like `ToString("d MMM yyyy")` unless the format is genuinely one-off and not part of an established display convention
+
+**Rationale:** This keeps view formatting consistent and makes date/time policy easy to evolve.
+
+For CLR date formatting used outside display-only views (for example, outbound email payload strings), use shared helper extensions in the layer owning the content. 
+Email templates should use `Humans.Infrastructure.Helpers.EmailDateTimeExtensions` rather than repeating long-date literals.
+
+## Time Parsing Standardization
+
+Use shared parser helpers for converting time input strings into `TimeOnly`/`LocalTime`.
+
+**Rule:**
+- Use `TryParseInvariantTimeOnly` and `TryParseInvariantLocalTime` from `Humans.Web.Extensions.TimeParsingExtensions` for shift/admin time parsing.
+- Keep parsing locale-stable (`CultureInfo.InvariantCulture`) to avoid culture-dependent acceptance differences.
+
+**Rationale:** This removes repeated parsing logic and avoids subtle parse differences when the server default culture changes.
+
+## Search Endpoint Response Shape
+
+Autocomplete/search JSON endpoints must use stable typed response models.
+
+**Rule:**
+- Return typed DTOs/records for JSON search results instead of anonymous objects
+- Reuse shared mapping helpers when converting service-layer search results into web response shapes
+- Keep property names stable once JavaScript consumers depend on them
+
+**Rationale:** Anonymous JSON payloads drift easily and make it harder to reuse search behavior safely.
+
+## Culture and Language Display
+
+Culture support and display names must be centralized.
+
+**Rule:**
+- Use `CultureCatalog` and `CultureCodeExtensions` for supported culture lists, ordering, default document language selection, and display labels
+- Do not create per-view language dictionaries or ad hoc language ordering logic when the shared helpers already cover the case
+
+**Rationale:** This prevents inconsistent language labels and tab ordering across views.
+
+## CSV and Pagination Helpers
+
+Small repeated mechanics should use the shared helpers once they exist.
+
+**Rule:**
+- Use `AppendCsvRow` / `ToCsvField` for CSV generation instead of inline escaping/string interpolation
+- Use `ClampPageSize()` for repeated page-size clamping instead of scattering `Math.Clamp(pageSize, ...)`
+
+**Rationale:** These helpers reduce noise and prevent small formatting/validation differences between endpoints.
+
 ## Icons: Font Awesome 6 Only
 
 This project uses **Font Awesome 6** (loaded via CDN in `_Layout.cshtml`). Bootstrap Icons are **not** loaded and will render as invisible/missing.
@@ -154,18 +256,19 @@ This project uses **Font Awesome 6** (loaded via CDN in `_Layout.cshtml`). Boots
 
 ## Critical: Never Edit EF Core Migration Files
 
-Migration files (`Migrations/*.cs`) are **generated** by `dotnet ef migrations add`. Never manually edit, rename, or rewrite them. This includes adding `migrationBuilder.Sql()` calls for data cleanup, pre-migration fixups, or any other hand-written code.
+Migration files (`Migrations/*.cs`) are **generated** by `dotnet ef migrations add`. Two categories:
 
-**What goes wrong:** Hand-edited migrations break the Designer/snapshot consistency, cause integration test failures, and create migrations that can't be cleanly removed or regenerated. Even "harmless" SQL additions corrupt the migration because the Designer file no longer matches the actual Up/Down content.
+**Schema migrations (EF generated content in Up/Down):** Never edit. No exceptions. Don't add SQL, don't tweak columns, don't insert data fixups. Commit exactly what EF generates.
 
-**Rule — zero tolerance, no exceptions:**
-1. Run `dotnet ef migrations add <Name>` — commit exactly what it generates
-2. Never add `migrationBuilder.Sql()` calls to generated migrations
-3. Never edit the `Up`/`Down` methods of an existing migration
+**Data-only migrations (EF generates empty Up/Down):** Adding `migrationBuilder.Sql()` is the proper EF API for data migrations when there are no schema changes. However, this requires **explicit user permission** every time — it has been done once in 500+ commits. Never do this autonomously.
+
+**What goes wrong with unauthorized edits:** Hand-edited schema migrations break Designer/snapshot consistency, cause integration test failures, and create migrations that can't be cleanly removed or regenerated.
+
+**Rules:**
+1. Schema migrations: commit exactly what EF generates, never touch
+2. Data-only migrations: only with explicit user permission, never autonomously
+3. Never edit the `Up`/`Down` methods of an existing committed migration
 4. Never rename migration files (the timestamp IS the migration ID)
-5. Never manually write SQL in migration files for any reason
-
-**Data cleanup before schema changes:** If data needs to be cleaned up before a column drop (e.g., nulling out references, deleting orphans), do it as a separate operational step — a SQL script run manually before deploying, or an application startup task. Never embed it in the migration.
 
 **If a migration fails because objects already exist**, the database is out of sync with migration history. Fix the root cause (usually a missing `__EFMigrationsHistory` entry or a previously deleted migration), don't patch the migration.
 
@@ -184,6 +287,13 @@ ASP.NET Core offers two reusable view mechanisms. Use the right one:
 - Examples: badge rendering, status labels, simple card layouts
 
 **The rule:** If a parent controller has to fetch data *specifically* to pass to a partial, that partial should be a View Component.
+
+**Additional reuse rule:**
+- If two or more pages share the same markup structure with only minor model/context differences, prefer a shared partial or shared page over duplicating the Razor body
+- Thin wrapper views that only exist to forward to the same page shape should usually be collapsed into a shared view
+
+**Interactive search rule:**
+- If two endpoints feed the same client-side interaction pattern, prefer a shared builder/helper for the response assembly instead of duplicating result-shaping logic in each controller
 
 **Existing View Components:** `ProfileCardViewComponent`, `NavBadgesViewComponent`, `UserAvatarViewComponent`, `TempDataAlertsViewComponent`.
 
@@ -214,3 +324,23 @@ public class ShiftCardsViewComponent : ViewComponent
 ## Localization (i18n)
 
 **Admin pages do not require localization.** Existing localized strings in admin views can stay, but do not add new `@Localizer[...]` calls or resource keys for admin-side views (`/Admin/*`, `/TeamAdmin/*`) until further notice. Only public/user-facing views require localization.
+
+## Namespace Alias
+
+Due to namespace collision, use `MemberApplication` alias when referencing `Humans.Domain.Entities.Application`:
+
+```csharp
+using MemberApplication = Humans.Domain.Entities.Application;
+```
+
+## LSP Integration
+
+The `csharp-ls` LSP is active via the `csharp-lsp` Claude Code plugin. It provides real-time C# compiler diagnostics (type errors, missing usings, nullable warnings, etc.) on `.cs` files when they are read.
+
+**After editing any `.cs` file, re-read it before moving on.** Diagnostics appear on `Read`, not on `Edit`. This catches errors immediately without waiting for a full `dotnet build`. Always fix LSP-reported errors in the current file before editing the next one.
+
+## Debugging: Check the Log File
+
+When debugging runtime errors, **always check the log file first** before speculating about causes. Serilog console sink is always enabled via `WriteTo.Console()`.
+
+Use `Grep` on log output filtering by entity ID, error keywords, or timestamp. Write diagnostic log messages (`_logger.LogWarning`/`LogError`) that include entity IDs, actual values, and expected values — not just "operation failed". When something goes wrong, the log should tell you *why*.

@@ -3,7 +3,10 @@
     ViewData["Title"] = Localizer["OnboardingReview_Title"].Value;
 }
 
-<h1 class="mb-4">@Localizer["OnboardingReview_Title"]</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">@Localizer["OnboardingReview_Title"]</h1>
+    <vc:access-matrix section="OnboardingReview" />
+</div>
 
 <vc:temp-data-alerts />
 
@@ -51,7 +54,7 @@
                             <span class="badge bg-secondary">@Localizer["OnboardingReview_ConsentsNotStarted"]</span>
                         }
                         <br />
-                        <small class="text-muted">@item.ProfileCreatedAt.ToString("d MMM yyyy")</small>
+                                    <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
                     </div>
                 </div>
             </a>
@@ -89,7 +92,7 @@
                         }
                         <span class="badge bg-danger">@Localizer["OnboardingReview_FlaggedBadge"]</span>
                         <br />
-                        <small class="text-muted">@item.ProfileCreatedAt.ToString("d MMM yyyy")</small>
+                                    <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
                     </div>
                 </div>
             </a>

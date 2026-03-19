@@ -52,7 +52,6 @@ public class CampDetailViewModel
     public List<CampLeadViewModel> Leads { get; set; } = new();
     public CampSeasonDetailViewModel? CurrentSeason { get; set; }
     public bool IsCurrentUserLead { get; set; }
-    public bool IsCurrentUserPrimaryLead { get; set; }
     public bool IsCurrentUserCampAdmin { get; set; }
 }
 
@@ -87,7 +86,6 @@ public class CampLeadViewModel
     public Guid LeadId { get; set; }
     public Guid UserId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
-    public CampLeadRole Role { get; set; }
 }
 
 // Registration form

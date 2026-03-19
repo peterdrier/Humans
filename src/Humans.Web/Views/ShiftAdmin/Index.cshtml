@@ -2,15 +2,15 @@
 @using Humans.Application.Interfaces
 @using Humans.Domain.Entities
 @using Humans.Domain.Enums
+@using Humans.Web.Controllers
 
 @{
     ViewData["Title"] = $"Shifts - {Model.Department.Name}";
+    var searchUrl = Url.Action(nameof(ShiftAdminController.SearchVolunteers), "ShiftAdmin", new { slug = Model.Department.Slug });
+    var voluntellUrl = Url.Action(nameof(ShiftAdminController.Voluntell), "ShiftAdmin", new { slug = Model.Department.Slug });
 }
 
 @{
-    var antiForgeryWriter = new System.IO.StringWriter();
-    Html.AntiForgeryToken().WriteTo(antiForgeryWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
-    var antiForgeryHtml = antiForgeryWriter.ToString();
 }
 
 <div class="container py-4">
@@ -83,13 +83,13 @@
     @* Rotas *@
     @foreach (var rota in Model.Rotas)
     {
-        <div class="card mb-3">
+        <div class="card mb-3" id="rota-@rota.Id.ToString("N")">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div>
                     <h5 class="mb-0 d-inline">@rota.Name</h5>
                     <span class="badge bg-secondary ms-2">@rota.Priority</span>
                     <span class="badge bg-info ms-1">@rota.Policy</span>
-                    <span class="badge bg-secondary ms-1">@rota.Period</span>
+                    <span class="badge bg-secondary ms-1">@(rota.Period == RotaPeriod.Build ? "Set-up" : rota.Period.ToString())</span>
                     @if (!string.IsNullOrEmpty(rota.PracticalInfo))
                     {
                         <div class="text-muted small mt-1">@rota.PracticalInfo</div>
@@ -144,7 +144,7 @@
                                 <div class="col-md-2">
                                     <label class="form-label">Period</label>
                                     <select name="Period" class="form-select">
-                                        <option value="Build" selected="@(rota.Period == RotaPeriod.Build)">Build</option>
+                                        <option value="Build" selected="@(rota.Period == RotaPeriod.Build)">Set-up</option>
                                         <option value="Event" selected="@(rota.Period == RotaPeriod.Event)">Event</option>
                                         <option value="Strike" selected="@(rota.Period == RotaPeriod.Strike)">Strike</option>
                                     </select>
@@ -173,6 +173,10 @@
                                     <th>Start</th>
                                     <th>Hours</th>
                                     <th>Filled</th>
+                                    @if (Model.CanApproveSignups)
+                                    {
+                                        <th>@Localizer["Shifts_SignedUp"]</th>
+                                    }
                                     <th></th>
                                 </tr>
                             </thead>
@@ -192,14 +196,14 @@
                                             @{
                                                 var shiftLabel = shift.IsAllDay
                                                     ? "All day"
-                                                    : $"{shift.StartTime}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes)}";
+                                                    : $"{shift.StartTime.ToString("HH:mm", null)}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToString("HH:mm", null)}";
                                             }
                                             @shiftLabel
                                             @if (shift.AdminOnly) { <span class="badge bg-dark">Admin Only</span> }
                                         </td>
                                         @{
                                             var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
-                                            var shiftDateLabel = shiftDate.DayOfWeek.ToString()[..3] + " " + shiftDate.ToString("MMM d", null);
+                                            var shiftDateLabel = shiftDate.ToDisplayShiftDate();
                                             var phase = shift.GetShiftPeriod(Model.EventSettings);
                                             var phaseBadge = phase switch
                                             {
@@ -210,15 +214,15 @@
                                             };
                                             var phaseLabel = phase switch
                                             {
-                                                ShiftPeriod.Build => "Build",
-                                                ShiftPeriod.Event => "Burn",
+                                                ShiftPeriod.Build => "Set-up",
+                                                ShiftPeriod.Event => "Event",
                                                 ShiftPeriod.Strike => "Strike",
                                                 _ => ""
                                             };
                                         }
                                         <td><span class="badge @phaseBadge me-1">@phaseLabel</span>@shiftDateLabel</td>
-                                        <td>@shift.StartTime</td>
-                                        <td>@(shift.Duration.TotalHours)h</td>
+                                        <td>@shift.StartTime.ToString("HH:mm", null)</td>
+                                        <td>@(shift.IsAllDay ? "Full day" : $"{shift.Duration.TotalHours}h")</td>
                                         @{
                                             var confirmed = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
                                             var understaffed = confirmed < shift.MinVolunteers;
@@ -227,6 +231,42 @@
                                             <span class="@(understaffed ? "text-danger fw-bold" : "")">@confirmed</span>
                                             <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
                                         </td>
+                                        @if (Model.CanApproveSignups)
+                                        {
+                                            var activeSignups = shift.ShiftSignups
+                                                .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+                                                .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1).ThenBy(ss => ss.User?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                                .ToList();
+                                            <td class="small">
+                                                @if (rota.Period == RotaPeriod.Event)
+                                                {
+                                                    @for (var i = 0; i < activeSignups.Count; i++)
+                                                    {
+                                                        var ss = activeSignups[i];
+                                                        if (i > 0) { <text>, </text> }
+                                                        <a asp-controller="Human" asp-action="View" asp-route-id="@ss.UserId"
+                                                           class="text-decoration-none @(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")">@ss.User?.DisplayName</a>@if (ss.Status == SignupStatus.Pending)
+                                                        {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        @foreach (var ss in activeSignups)
+                                                        {
+                                                            <a asp-controller="Human" asp-action="View" asp-route-id="@ss.UserId"
+                                                               title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                               class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
+                                                               style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")">
+                                                                <vc:user-avatar profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)"
+                                                                                display-name="@(ss.User?.DisplayName)"
+                                                                                size="26" />
+                                                            </a>
+                                                        }
+                                                    </div>
+                                                }
+                                            </td>
+                                        }
                                         <td>
                                             @if (Model.CanManageShifts)
                                             {
@@ -252,7 +292,7 @@
                                     @if (Model.CanManageShifts)
                                     {
                                         <tr class="collapse" id="edit-shift-@shift.Id.ToString("N")">
-                                            <td colspan="6">
+                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <form asp-action="EditShift" asp-route-slug="@Model.Department.Slug" asp-route-shiftId="@shift.Id" method="post">
                                                     @Html.AntiForgeryToken()
                                                     <div class="row g-2 align-items-end">
@@ -262,7 +302,7 @@
                                                                 @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
                                                                 {
                                                                     var editDate = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                                    var editLabel = editDate.DayOfWeek.ToString()[..3] + " " + editDate.ToString("MMM d", null);
+                                                                    var editLabel = editDate.ToDisplayShiftDate();
                                                                     <option value="@d" selected="@(d == shift.DayOffset)">@editLabel</option>
                                                                 }
                                                             </select>
@@ -301,7 +341,7 @@
                                     {
                                         var signupsCollapseId = "signups-" + shift.Id.ToString("N");
                                         <tr>
-                                            <td colspan="6">
+                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <button class="btn btn-sm btn-outline-info" type="button"
                                                         data-bs-toggle="collapse" data-bs-target="#@signupsCollapseId">
                                                     Signups (@shiftSignups.Count)
@@ -309,7 +349,7 @@
                                             </td>
                                         </tr>
                                         <tr class="collapse" id="@signupsCollapseId">
-                                            <td colspan="6">
+                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <div class="p-2">
                                                     @foreach (var signup in shiftSignups)
                                                     {
@@ -357,14 +397,14 @@
                                     {
                                         var voluntellCollapseId = "dept-voluntell-" + shift.Id.ToString("N");
                                         <tr class="collapse" id="@voluntellCollapseId">
-                                            <td colspan="6">
+                                            <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <div class="p-3 bg-light">
                                                     <div class="input-group mb-2" style="max-width: 400px;">
-                                                        <input type="text" class="form-control dept-voluntell-search"
+                                                        <input type="text" class="form-control volunteer-search-input"
                                                                data-shift-id="@shift.Id"
                                                                placeholder="Search by name (min 2 chars)..." />
                                                     </div>
-                                                    <div class="dept-voluntell-results" data-shift-id="@shift.Id"></div>
+                                                    <div class="volunteer-results" data-shift-id="@shift.Id"></div>
                                                 </div>
                                             </td>
                                         </tr>
@@ -379,16 +419,18 @@
                     <p class="text-muted">No shifts yet.</p>
                 }
 
-                @* Staffing Grid for Build/Strike rotas without shifts *@
-                @if (Model.CanManageShifts && rota.Period != RotaPeriod.Event && rota.Shifts.Count == 0)
+                @* Staffing Grid for Build/Strike rotas *@
+                @if (Model.CanManageShifts && rota.Period != RotaPeriod.Event)
                 {
                     var periodRange = rota.Period == RotaPeriod.Build
                         ? (Start: Model.EventSettings.BuildStartOffset, End: -1)
                         : (Start: Model.EventSettings.EventEndOffset + 1, End: Model.EventSettings.StrikeEndOffset);
+                    var existingDayOffsets = rota.Shifts.Select(s => s.DayOffset).Distinct().ToHashSet();
 
-                    <div class="mt-3 border-top pt-3 staffing-grid-container" data-rota-id="@rota.Id">
-                        <h6>Configure Staffing</h6>
-                        <p class="text-muted small">Pick your date range, then set min/max humans per day.</p>
+                    <div class="mt-3 border-top pt-3 staffing-grid-container" data-rota-id="@rota.Id"
+                         data-existing-days="@System.Text.Json.JsonSerializer.Serialize(existingDayOffsets)">
+                        <h6>@(rota.Shifts.Count > 0 ? "Add More Days" : "Configure Staffing")</h6>
+                        <p class="text-muted small">Pick your date range, then set min/max humans per day. Days that already have shifts are excluded.</p>
 
                         @* Step 1: Date range picker *@
                         <div class="staffing-step1 row g-2 align-items-end mb-3">
@@ -398,7 +440,7 @@
                                     @for (var d = periodRange.Start; d <= periodRange.End; d++)
                                     {
                                         var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                        var dateLabel = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                        var dateLabel = date.ToDisplayShiftDate();
                                         <option value="@d">@dateLabel</option>
                                     }
                                 </select>
@@ -409,7 +451,7 @@
                                     @for (var d = periodRange.Start; d <= periodRange.End; d++)
                                     {
                                         var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                        var dateLabel = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                        var dateLabel = date.ToDisplayShiftDate();
                                         <option value="@d" selected="@(d == periodRange.End)">@dateLabel</option>
                                     }
                                 </select>
@@ -440,7 +482,7 @@
                             [@for (var d = periodRange.Start; d <= periodRange.End; d++)
                             {
                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                var dateLabel = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                var dateLabel = date.ToDisplayShiftDate();
                                 if (d > periodRange.Start) { @Html.Raw(",") }
                                 @Html.Raw($"{{\"offset\":{d},\"label\":\"{dateLabel}\"}}")
                             }]
@@ -466,7 +508,7 @@
                                             @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                                var label = date.ToDisplayShiftDate();
                                                 <option value="@d" selected="@(d == 0)">@label</option>
                                             }
                                         </select>
@@ -477,7 +519,7 @@
                                             @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                                var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                                var label = date.ToDisplayShiftDate();
                                                 <option value="@d" selected="@(d == Model.EventSettings.EventEndOffset)">@label</option>
                                             }
                                         </select>
@@ -525,7 +567,7 @@
                                         @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
                                         {
                                             var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
-                                            var label = date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+                                            var label = date.ToDisplayShiftDate();
                                             <option value="@d" selected="@(d == 0)">@label</option>
                                         }
                                     </select>
@@ -588,7 +630,7 @@
                         <div class="col-md-2">
                             <label class="form-label">Period</label>
                             <select name="Period" class="form-select">
-                                <option value="Build">Build</option>
+                                <option value="Build">Set-up</option>
                                 <option value="Event" selected>Event</option>
                                 <option value="Strike">Strike</option>
                             </select>
@@ -615,51 +657,18 @@
 
 <script>
 (function() {
-    var debounceTimers = {};
-    var slug = '@Model.Department.Slug';
-    var tokenHtml = '@Html.Raw(antiForgeryHtml?.Replace("'", "\\'"))';
-
-    document.querySelectorAll('.dept-voluntell-search').forEach(function(input) {
-        input.addEventListener('input', function() {
-            var shiftId = this.dataset.shiftId;
-            var query = this.value.trim();
-            var resultsDiv = document.querySelector('.dept-voluntell-results[data-shift-id="' + shiftId + '"]');
-
-            clearTimeout(debounceTimers[shiftId]);
-            if (query.length < 2) { resultsDiv.innerHTML = ''; return; }
-
-            debounceTimers[shiftId] = setTimeout(function() {
-                fetch('/Teams/' + slug + '/Shifts/SearchVolunteers?shiftId=' + encodeURIComponent(shiftId) + '&query=' + encodeURIComponent(query))
-                    .then(function(r) { return r.json(); })
-                    .then(function(data) {
-                        if (data.length === 0) { resultsDiv.innerHTML = '<p class="text-muted mb-0">No results.</p>'; return; }
-                        var html = '';
-                        data.forEach(function(v) {
-                            html += '<div class="d-flex justify-content-between align-items-center border-bottom py-2">';
-                            html += '<div><strong>' + escapeHtml(v.displayName) + '</strong>';
-                            html += ' <small class="text-muted">(' + v.bookedShiftCount + ' shifts)</small>';
-                            if (v.isInPool) html += ' <span class="badge bg-success">Pool</span>';
-                            if (v.hasOverlap) html += ' <span class="badge bg-warning text-dark">Overlap</span>';
-                            html += '<div class="mt-1">';
-                            (v.skills || []).forEach(function(s) { html += '<span class="badge bg-info me-1">' + escapeHtml(s) + '</span>'; });
-                            (v.quirks || []).forEach(function(s) { html += '<span class="badge bg-secondary me-1">' + escapeHtml(s) + '</span>'; });
-                            if (v.dietaryPreference) html += '<span class="badge bg-success me-1">' + escapeHtml(v.dietaryPreference) + '</span>';
-                            (v.languages || []).forEach(function(s) { html += '<span class="badge bg-primary me-1">' + escapeHtml(s) + '</span>'; });
-                            html += '</div></div>';
-                            html += '<form method="post" action="/Teams/' + slug + '/Shifts/Voluntell">';
-                            html += tokenHtml;
-                            html += '<input type="hidden" name="shiftId" value="' + shiftId + '" />';
-                            html += '<input type="hidden" name="userId" value="' + v.userId + '" />';
-                            html += '<button type="submit" class="btn btn-sm btn-primary">Assign</button>';
-                            html += '</form></div>';
-                        });
-                        resultsDiv.innerHTML = html;
-                    });
-            }, 300);
-        });
-    });
-
-    function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
+    @await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
+    {
+        ["SearchUrl"] = searchUrl,
+        ["VoluntellUrl"] = voluntellUrl,
+        ["AssignButtonClass"] = "btn-primary",
+        ["NoResultsText"] = "No results.",
+        ["ErrorText"] = "Search failed.",
+        ["OverlapLabel"] = "Overlap",
+        ["DietaryPreferenceStyle"] = "badge",
+        ["ShowPoolBadge"] = true
+    })
 
     // Staffing grid: two-step date range → day grid with cascade-fill
     document.querySelectorAll('.staffing-grid-container').forEach(function(container) {
@@ -670,13 +679,15 @@
         var step2 = container.querySelector('.staffing-step2');
         var tbody = container.querySelector('.staffing-tbody');
         var allDays = JSON.parse(container.querySelector('.staffing-days-data').textContent);
+        var existingDays = JSON.parse(container.dataset.existingDays || '[]');
 
         showBtn.addEventListener('click', function() {
             var startOffset = parseInt(startSelect.value);
             var endOffset = parseInt(endSelect.value);
             if (startOffset > endOffset) { alert('Start must be before end.'); return; }
 
-            var days = allDays.filter(function(d) { return d.offset >= startOffset && d.offset <= endOffset; });
+            var days = allDays.filter(function(d) { return d.offset >= startOffset && d.offset <= endOffset && existingDays.indexOf(d.offset) === -1; });
+            if (days.length === 0) { alert('All days in this range already have shifts.'); return; }
             tbody.innerHTML = '';
             days.forEach(function(day, i) {
                 var tr = document.createElement('tr');
@@ -696,12 +707,33 @@
                     var val = this.value;
                     manuallyEdited[idx + '-' + (isMin ? 'min' : 'max')] = true;
 
+                    // Min/Cap sync: when min exceeds cap on this row, bump cap
+                    if (isMin) {
+                        var row = this.closest('tr');
+                        var maxInput = row.querySelector('.staffing-max');
+                        if (parseInt(val) > parseInt(maxInput.value)) {
+                            maxInput.value = val;
+                            manuallyEdited[idx + '-max'] = true;
+                        }
+                    }
+
                     // Fill down to subsequent rows not manually edited
                     var rows = tbody.querySelectorAll(isMin ? '.staffing-min' : '.staffing-max');
                     for (var j = idx + 1; j < rows.length; j++) {
                         var key = j + '-' + (isMin ? 'min' : 'max');
                         if (!manuallyEdited[key]) {
                             rows[j].value = val;
+                        }
+                    }
+
+                    // After cascade-fill min, also sync cap on filled rows
+                    if (isMin) {
+                        var maxRows = tbody.querySelectorAll('.staffing-max');
+                        var minRows = tbody.querySelectorAll('.staffing-min');
+                        for (var j = idx + 1; j < minRows.length; j++) {
+                            if (parseInt(minRows[j].value) > parseInt(maxRows[j].value)) {
+                                maxRows[j].value = minRows[j].value;
+                            }
                         }
                     }
                 });
@@ -738,5 +770,31 @@
             });
         });
     });
+    // Min/Cap sync: when min exceeds cap, bump cap to match
+    function syncMinCap(minInput, maxInput) {
+        minInput.addEventListener('input', function() {
+            var minVal = parseInt(this.value) || 0;
+            var maxVal = parseInt(maxInput.value) || 0;
+            if (minVal > maxVal) {
+                maxInput.value = minVal;
+                maxInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+    }
+
+    // Apply to all Add Shift and Edit Shift forms
+    document.querySelectorAll('form').forEach(function(form) {
+        var minInput = form.querySelector('input[name="MinVolunteers"]');
+        var maxInput = form.querySelector('input[name="MaxVolunteers"]');
+        if (minInput && maxInput) syncMinCap(minInput, maxInput);
+    });
+
+    // Scroll to fragment on page load (for newly created rotas)
+    if (window.location.hash) {
+        var target = document.querySelector(window.location.hash);
+        if (target) {
+            setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+        }
+    }
 })();
 </script>

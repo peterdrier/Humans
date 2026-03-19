@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Helpers;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -91,7 +92,8 @@ public class AccountController : Controller
         }
 
         // If the user does not have an account, create one
-        var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+        var email = EmailNormalization.Canonicalize(
+            info.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty);
         var name = info.Principal.FindFirstValue(ClaimTypes.Name);
         var pictureUrl = info.Principal.FindFirstValue("urn:google:picture");
 

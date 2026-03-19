@@ -54,7 +54,7 @@
   <data name="Nav_Home" xml:space="preserve"><value>Home</value></data>
   <data name="Nav_MyProfile" xml:space="preserve"><value>My Profile</value></data>
   <data name="Nav_Teams" xml:space="preserve"><value>Teams</value></data>
-  <data name="Nav_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Nav_Shifts" xml:space="preserve"><value>Volunteer</value></data>
   <data name="Nav_Roster" xml:space="preserve"><value>Roster</value></data>
   <data name="Nav_Consents" xml:space="preserve"><value>Agreements</value></data>
   <data name="Nav_Governance" xml:space="preserve"><value>Governance</value></data>
@@ -844,6 +844,18 @@
   <data name="Profile_Day" xml:space="preserve"><value>Day</value></data>
   <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinators</value></data>
 
+  <!-- Team Public Pages -->
+  <data name="TeamDetail_AboutTeam" xml:space="preserve"><value>About</value></data>
+  <data name="TeamDetail_EditPage" xml:space="preserve"><value>Edit Page</value></data>
+  <data name="TeamDetail_LastUpdated" xml:space="preserve"><value>Last updated</value></data>
+  <data name="TeamDetail_NoPageContent" xml:space="preserve"><value>This team doesn't have a page yet. Add content to tell humans what you're about.</value></data>
+  <data name="TeamDetail_AddPageContent" xml:space="preserve"><value>Add Page Content</value></data>
+  <data name="Teams_PublicDirectory" xml:space="preserve"><value>Teams</value></data>
+  <data name="Teams_PublicDirectorySubtitle" xml:space="preserve"><value>Discover the teams that make things happen.</value></data>
+  <data name="Teams_LearnMore" xml:space="preserve"><value>Learn More</value></data>
+  <data name="Teams_NoPublicTeams" xml:space="preserve"><value>No public team pages available yet.</value></data>
+  <data name="EditTeamPage_Saved" xml:space="preserve"><value>Team page updated successfully.</value></data>
+
   <!-- Emergency Contact -->
   <data name="Profile_EmergencyContact" xml:space="preserve"><value>Emergency Contact</value></data>
   <data name="Profile_EmergencyContactName" xml:space="preserve"><value>Name</value></data>
@@ -1145,5 +1157,34 @@
   <data name="Camp_SwissCampLabel" xml:space="preserve"><value>Has this camp ever been called "Swiss Camp"</value></data>
   <data name="Camp_InfoTitle" xml:space="preserve"><value>Barrio Info</value></data>
   <data name="Camp_NameLabel" xml:space="preserve"><value>Barrio Name</value></data>
+  <data name="Shifts_SignedUp" xml:space="preserve"><value>Signed Up</value></data>
+  <data name="Shifts_Pending" xml:space="preserve"><value>(pending)</value></data>
+
+  <!-- Feedback Email -->
+  <data name="Email_FeedbackResponse_Subject" xml:space="preserve"><value>Update on your feedback</value></data>
+  <data name="Email_FeedbackResponse_Body" xml:space="preserve"><value>&lt;h2&gt;Update on Your Feedback&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;We've reviewed your feedback:&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Our response:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;{2}&lt;/p&gt;
+&lt;p&gt;Thank you for helping us improve!&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
+
+  <!-- Feedback Widget -->
+  <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
+  <data name="Feedback_Title" xml:space="preserve"><value>Send Feedback</value></data>
+  <data name="Feedback_Category" xml:space="preserve"><value>Category</value></data>
+  <data name="Feedback_Category_Bug" xml:space="preserve"><value>Bug Report</value></data>
+  <data name="Feedback_Category_FeatureRequest" xml:space="preserve"><value>Feature Request</value></data>
+  <data name="Feedback_Category_Question" xml:space="preserve"><value>Question</value></data>
+  <data name="Feedback_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Feedback_DescriptionPlaceholder" xml:space="preserve"><value>Tell us what happened or what you'd like to see...</value></data>
+  <data name="Feedback_Screenshot" xml:space="preserve"><value>Screenshot (optional)</value></data>
+  <data name="Feedback_ScreenshotHelp" xml:space="preserve"><value>JPEG, PNG, or WebP. Max 10MB.</value></data>
+  <data name="Feedback_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Feedback_Submit" xml:space="preserve"><value>Send</value></data>
+  <data name="Feedback_Submitted" xml:space="preserve"><value>Thank you! Your feedback has been submitted.</value></data>
+  <data name="Feedback_Error" xml:space="preserve"><value>Something went wrong submitting your feedback. Please try again.</value></data>
 
 </root>

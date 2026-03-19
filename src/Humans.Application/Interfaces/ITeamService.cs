@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Application.Interfaces;
@@ -232,6 +233,21 @@ public interface ITeamService
         Guid teamId,
         Guid targetUserId,
         Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    // ==========================================================================
+    // Team Page Content
+    // ==========================================================================
+
+    /// <summary>
+    /// Updates a team's public page content, CTAs, and visibility.
+    /// </summary>
+    Task UpdateTeamPageContentAsync(
+        Guid teamId,
+        string? pageContent,
+        List<CallToAction> callsToAction,
+        bool isPublicPage,
+        Guid updatedByUserId,
         CancellationToken cancellationToken = default);
 
     // ==========================================================================

@@ -27,6 +27,8 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Camp",             // Public camps pages ([AllowAnonymous])
         "CampAdmin",        // Has its own Roles = "CampAdmin,Admin" gate
         "CampApi",          // Public API ([AllowAnonymous])
+        "Feedback",         // Feedback submission — accessible to all authenticated users
+        "FeedbackApi",      // API key auth, no membership required
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
@@ -40,10 +42,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         }
 
         // Admin/Board/Coordinator bypass — they always have access
-        if (user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.Board) ||
-            user.IsInRole(RoleNames.TeamsAdmin) || user.IsInRole(RoleNames.CampAdmin) ||
-            user.IsInRole(RoleNames.TicketAdmin) || user.IsInRole(RoleNames.NoInfoAdmin) ||
-            user.IsInRole(RoleNames.ConsentCoordinator) || user.IsInRole(RoleNames.VolunteerCoordinator))
+        if (RoleChecks.BypassesMembershipRequirement(user))
         {
             return next();
         }
@@ -61,7 +60,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         // Check ActiveMember claim (set by RoleAssignmentClaimsTransformation)
         var isActiveMember = user.HasClaim(c =>
             string.Equals(c.Type, RoleAssignmentClaimsTransformation.ActiveMemberClaimType, StringComparison.Ordinal) &&
-            string.Equals(c.Value, "true", StringComparison.Ordinal));
+            string.Equals(c.Value, RoleAssignmentClaimsTransformation.ActiveClaimValue, StringComparison.Ordinal));
 
         if (isActiveMember)
         {

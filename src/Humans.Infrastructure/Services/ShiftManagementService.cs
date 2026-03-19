@@ -287,9 +287,17 @@ public class ShiftManagementService : IShiftManagementService
                 throw new InvalidOperationException($"Day offset {dayOffset} is outside the strike period ({es.EventEndOffset + 1} to {es.StrikeEndOffset})");
         }
 
+        // Skip days that already have shifts (additive mode)
+        var existingDayOffsets = await _dbContext.Shifts
+            .Where(s => s.RotaId == rotaId)
+            .Select(s => s.DayOffset)
+            .Distinct()
+            .ToListAsync();
+        var existingSet = existingDayOffsets.ToHashSet();
+
         var now = _clock.GetCurrentInstant();
 
-        foreach (var (dayOffset, staffing) in dailyStaffing.OrderBy(d => d.Key))
+        foreach (var (dayOffset, staffing) in dailyStaffing.Where(d => !existingSet.Contains(d.Key)).OrderBy(d => d.Key))
         {
             var shift = new Shift
             {
@@ -468,7 +476,7 @@ public class ShiftManagementService : IShiftManagementService
                 var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
                 var score = CalculateScore(s, confirmedCount);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
-                return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name);
+                return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name, []);
             })
             .Where(u => u.UrgencyScore > 0)
             .OrderByDescending(u => u.UrgencyScore)
@@ -482,17 +490,29 @@ public class ShiftManagementService : IShiftManagementService
 
     public async Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(
         Guid eventSettingsId, Guid? departmentId = null, LocalDate? date = null,
-        bool includeAdminOnly = false)
+        bool includeAdminOnly = false, bool includeSignups = false)
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
         if (es == null) return [];
 
-        var query = _dbContext.Shifts
-            .Include(s => s.Rota).ThenInclude(r => r.Team)
-            .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
-            .Include(s => s.ShiftSignups)
-            .Where(s => s.Rota.EventSettingsId == eventSettingsId);
+        IQueryable<Shift> query;
+        if (includeSignups)
+        {
+            query = _dbContext.Shifts
+                .Include(s => s.Rota).ThenInclude(r => r.Team)
+                .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+                .Include(s => s.ShiftSignups).ThenInclude(ss => ss.User);
+        }
+        else
+        {
+            query = _dbContext.Shifts
+                .Include(s => s.Rota).ThenInclude(r => r.Team)
+                .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+                .Include(s => s.ShiftSignups);
+        }
+
+        query = query.Where(s => s.Rota.EventSettingsId == eventSettingsId);
 
         if (!includeAdminOnly)
             query = query.Where(s => !s.AdminOnly);
@@ -514,7 +534,16 @@ public class ShiftManagementService : IShiftManagementService
                 var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
                 var score = CalculateScore(s, confirmedCount);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
-                return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name);
+                var signups = includeSignups
+                    ? s.ShiftSignups
+                        .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+                        .Select(ss => (ss.UserId, DisplayName: ss.User?.DisplayName ?? "", ss.Status,
+                            HasProfilePicture: ss.User?.ProfilePictureUrl != null))
+                        .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)
+                        .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                    : [];
+                return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name, signups);
             })
             .OrderByDescending(u => u.UrgencyScore)
             .ToList();
@@ -545,9 +574,10 @@ public class ShiftManagementService : IShiftManagementService
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
-        // Build period: [BuildStartOffset..-1] and Strike period: [EventEndOffset+1..StrikeEndOffset]
+        // All periods: Build [BuildStartOffset..-1], Event [0..EventEndOffset], Strike [EventEndOffset+1..StrikeEndOffset]
         var dayOffsets = new List<int>();
         for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
+        for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
         for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
 
         if (dayOffsets.Count == 0) return [];
@@ -569,7 +599,7 @@ public class ShiftManagementService : IShiftManagementService
             var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
             var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
             var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
-            var period = dayOffset < 0 ? "Build" : "Strike";
+            var period = dayOffset < 0 ? "Set-up" : dayOffset <= es.EventEndOffset ? "Event" : "Strike";
             var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
 
             var overlapping = shifts.Where(s =>

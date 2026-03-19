@@ -33,9 +33,16 @@ public class AnonymousAccessTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task TeamsPage_IsAccessibleAnonymously()
+    {
+        var response = await Client.GetAsync("/Teams");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     [Theory]
     [InlineData("/Profile")]
-    [InlineData("/Teams")]
     [InlineData("/Admin")]
     [InlineData("/Consent")]
     public async Task ProtectedEndpoint_RedirectsToLogin_WhenAnonymous(string path)

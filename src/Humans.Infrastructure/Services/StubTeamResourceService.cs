@@ -40,11 +40,7 @@ public class StubTeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
     {
-        return await _dbContext.GoogleResources
-            .Where(r => r.TeamId == teamId && r.IsActive)
-            .OrderBy(r => r.ProvisionedAt)
-            .AsNoTracking()
-            .ToListAsync(ct);
+        return await TeamResourcePersistence.GetActiveTeamResourcesAsync(_dbContext, teamId, ct);
     }
 
     /// <inheritdoc />
@@ -114,21 +110,12 @@ public class StubTeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default)
     {
-        // Try folder URL first, then file URL
-        var folderId = TeamResourceService.ParseDriveFolderId(url);
-        if (folderId != null)
-        {
-            return LinkDriveFolderAsync(teamId, url, ct);
-        }
-
-        var fileId = TeamResourceService.ParseDriveFileId(url);
-        if (fileId != null)
-        {
-            return LinkDriveFileAsync(teamId, url, ct);
-        }
-
-        return Task.FromResult(new LinkResourceResult(false,
-            ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...)."));
+        return TeamResourceInputValidation.LinkDriveResourceAsync(
+            teamId,
+            url,
+            ct,
+            LinkDriveFolderAsync,
+            LinkDriveFileAsync);
     }
 
     /// <inheritdoc />
@@ -136,10 +123,11 @@ public class StubTeamResourceService : ITeamResourceService
     {
         _logger.LogInformation("[STUB] Would link Google Group '{GroupEmail}' to team {TeamId}", groupEmail, teamId);
 
-        if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains('@'))
+        var normalizedGroupEmail = TeamResourceInputValidation.NormalizeGroupEmail(groupEmail);
+        if (normalizedGroupEmail == null)
         {
             return Task.FromResult(new LinkResourceResult(false,
-                ErrorMessage: "Please enter a valid group email address."));
+                ErrorMessage: TeamResourceValidationMessages.InvalidGroupEmail));
         }
 
         var now = _clock.GetCurrentInstant();
@@ -148,9 +136,9 @@ public class StubTeamResourceService : ITeamResourceService
             Id = Guid.NewGuid(),
             TeamId = teamId,
             ResourceType = GoogleResourceType.Group,
-            GoogleId = groupEmail,
-            Name = groupEmail,
-            Url = $"https://groups.google.com/a/nobodies.team/g/{groupEmail.Split('@')[0]}",
+            GoogleId = normalizedGroupEmail,
+            Name = normalizedGroupEmail,
+            Url = $"https://groups.google.com/a/nobodies.team/g/{normalizedGroupEmail.Split('@')[0]}",
             ProvisionedAt = now,
             LastSyncedAt = now,
             IsActive = true
@@ -165,16 +153,11 @@ public class StubTeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default)
     {
-        var resource = await _dbContext.GoogleResources
-            .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
-
+        var resource = await TeamResourcePersistence.DeactivateResourceAsync(_dbContext, resourceId, ct);
         if (resource == null)
         {
             return;
         }
-
-        resource.IsActive = false;
-        await _dbContext.SaveChangesAsync(ct);
 
         _logger.LogInformation("[STUB] Unlinked resource {ResourceId}", resourceId);
     }
@@ -182,18 +165,12 @@ public class StubTeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        var isBoardMember = await _teamService.IsUserBoardMemberAsync(userId, ct);
-        if (isBoardMember)
-        {
-            return true;
-        }
-
-        if (_resourceSettings.AllowCoordinatorsToManageResources)
-        {
-            return await _teamService.IsUserCoordinatorOfTeamAsync(teamId, userId, ct);
-        }
-
-        return false;
+        return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
+            _teamService,
+            _resourceSettings,
+            teamId,
+            userId,
+            ct);
     }
 
     /// <inheritdoc />
@@ -205,9 +182,6 @@ public class StubTeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
-        return await _dbContext.GoogleResources
-            .AsNoTracking()
-            .Include(r => r.Team)
-            .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
+        return await TeamResourcePersistence.GetResourceByIdAsync(_dbContext, resourceId, ct);
     }
 }

@@ -1,18 +1,5 @@
 @model Humans.Web.Models.RosterSummaryViewModel
 
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
-
 @{
     ViewData["Title"] = "Team Roster";
 }
@@ -49,7 +36,7 @@
         <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter })">All</a></li>
             <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "YearRound" })">Year-round</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Build" })">Build</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Build" })">Set-up</a></li>
             <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Event" })">Event</a></li>
             <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Strike" })">Strike</a></li>
         </ul>
@@ -102,7 +89,7 @@ else
                             "Strike" => "bg-secondary",
                             _ => "bg-light text-dark"
                         };
-                        var periodLabel = slot.Period == "YearRound" ? "Year-round" : slot.Period;
+                        var periodLabel = slot.Period switch { "YearRound" => "Year-round", "Build" => "Set-up", _ => slot.Period };
                     }
                     <td><span class="badge @periodBadge">@periodLabel</span></td>
                     <td>@slot.SlotNumber</td>
@@ -123,7 +110,7 @@ else
                     <tr class="collapse" id="@collapseId">
                         <td colspan="5">
                             <div class="role-description small text-muted">
-                                @Html.Raw(ConvertMarkdownToHtml(slot.RoleDescription!))
+                                @Html.SanitizedMarkdown(slot.RoleDescription)
                             </div>
                         </td>
                     </tr>

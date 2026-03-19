@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -46,7 +47,7 @@ public class SendBoardDailyDigestJob
         var yesterdayUtc = todayUtc.PlusDays(-1);
         var windowStart = yesterdayUtc.AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
         var windowEnd = todayUtc.AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
-        var dateLabel = yesterdayUtc.ToString("yyyy-MM-dd", null);
+        var dateLabel = yesterdayUtc.ToIsoDateString();
 
         _logger.LogInformation(
             "Starting Board daily digest job for {Date} (window {Start} to {End})",
