@@ -780,8 +780,31 @@ public partial class TeamService : ITeamService
         CancellationToken cancellationToken = default)
     {
         var cached = await GetCachedTeamsAsync(cancellationToken);
-        return cached.TryGetValue(teamId, out var team) &&
-               team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator);
+        if (!cached.TryGetValue(teamId, out var team))
+            return false;
+
+        // Check direct coordinator role on this team
+        if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
+            return true;
+
+        // Check IsManagement role assignment (source of truth — handles cases where
+        // TeamMember.Role hasn't been reconciled yet)
+        var hasManagementRole = await _dbContext.Set<TeamRoleAssignment>()
+            .AsNoTracking()
+            .AnyAsync(ra =>
+                ra.TeamMember.TeamId == teamId &&
+                ra.TeamMember.UserId == userId &&
+                ra.TeamMember.LeftAt == null &&
+                ra.TeamRoleDefinition.IsManagement,
+                cancellationToken);
+        if (hasManagementRole)
+            return true;
+
+        // Check if user is coordinator of the parent team (department coordinators manage child teams)
+        if (team.ParentTeamId.HasValue)
+            return await IsUserCoordinatorOfTeamAsync(team.ParentTeamId.Value, userId, cancellationToken);
+
+        return false;
     }
 
     public async Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default)
