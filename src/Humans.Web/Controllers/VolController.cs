@@ -1,5 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+using Humans.Web.Models.Vol;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -43,5 +45,67 @@ public class VolController : HumansControllerBase
     public IActionResult Index() => RedirectToAction(nameof(MyShifts));
 
     [HttpGet("MyShifts")]
-    public IActionResult MyShifts() => View();
+    public async Task<IActionResult> MyShifts()
+    {
+        try
+        {
+            var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (currentUserNotFound != null) return currentUserNotFound;
+
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es == null) return View("NoActiveEvent");
+
+            var signups = await _signupService.GetByUserAsync(user.Id, es.Id);
+
+            var model = new MyShiftsViewModel
+            {
+                EventSettings = es,
+                Shifts = signups.Select(signup => new MyShiftsViewModel.MyShiftRow
+                {
+                    SignupId = signup.Id,
+                    DutyTitle = string.IsNullOrWhiteSpace(signup.Shift.Description)
+                        ? signup.Shift.Rota.Name
+                        : $"{signup.Shift.Rota.Name} — {signup.Shift.Description}",
+                    TeamName = signup.Shift.Rota.Team.Name,
+                    AbsoluteStart = signup.Shift.GetAbsoluteStart(es),
+                    AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es),
+                    Status = signup.Status
+                }).OrderBy(s => s.AbsoluteStart).ToList()
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading My Shifts");
+            throw;
+        }
+    }
+
+    [HttpPost("Bail")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Bail(Guid signupId)
+    {
+        try
+        {
+            var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (currentUserNotFound != null) return currentUserNotFound;
+
+            var result = await _signupService.BailAsync(signupId, user.Id, null);
+
+            if (!result.Success)
+            {
+                SetError(result.Error ?? "Shift bail failed.");
+                return RedirectToAction(nameof(MyShifts));
+            }
+
+            SetSuccess("Successfully bailed from shift.");
+            return RedirectToAction(nameof(MyShifts));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error bailing from shift {SignupId}", signupId);
+            throw;
+        }
+    }
 }
