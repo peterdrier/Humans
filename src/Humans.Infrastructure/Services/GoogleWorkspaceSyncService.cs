@@ -1266,4 +1266,144 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             }
         }
     }
+
+    /// <inheritdoc />
+    public async Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
+        if (mode == SyncMode.None)
+        {
+            _logger.LogInformation("Google Groups sync is disabled — skipping settings drift check");
+            return new GroupSettingsDriftResult
+            {
+                Skipped = true,
+                SkipReason = "Google Groups sync mode is set to None"
+            };
+        }
+
+        var groupResources = await _dbContext.GoogleResources
+            .Include(r => r.Team)
+            .Where(r => r.ResourceType == GoogleResourceType.Group && r.IsActive)
+            .ToListAsync(cancellationToken);
+
+        _logger.LogInformation("Checking group settings for {Count} active Google Groups", groupResources.Count);
+
+        var reports = new List<GroupSettingsDriftReport>();
+
+        foreach (var resource in groupResources)
+        {
+            var groupEmail = resource.Team.GoogleGroupEmail;
+            if (string.IsNullOrEmpty(groupEmail))
+            {
+                // Fall back to deriving email from URL
+                var prefix = resource.Url?.Split("/g/", StringSplitOptions.None).LastOrDefault();
+                groupEmail = prefix != null ? $"{prefix}@{_settings.Domain}" : null;
+            }
+
+            if (string.IsNullOrEmpty(groupEmail))
+            {
+                reports.Add(new GroupSettingsDriftReport
+                {
+                    ResourceId = resource.Id,
+                    GroupName = resource.Name,
+                    Url = resource.Url,
+                    ErrorMessage = "Cannot determine group email address"
+                });
+                continue;
+            }
+
+            var report = await CheckSingleGroupSettingsAsync(resource, groupEmail, cancellationToken);
+            reports.Add(report);
+        }
+
+        return new GroupSettingsDriftResult { Reports = reports };
+    }
+
+    private async Task<GroupSettingsDriftReport> CheckSingleGroupSettingsAsync(
+        GoogleResource resource,
+        string groupEmail,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var groupssettingsService = await GetGroupssettingsServiceAsync();
+            var request = groupssettingsService.Groups.Get(groupEmail);
+            var actual = await request.ExecuteAsync(cancellationToken);
+
+            var drifts = new List<GroupSettingDrift>();
+
+            // Compare against the expected settings (same ones applied at group creation)
+            CompareGroupSetting(drifts, "WhoCanJoin", _settings.Groups.WhoCanJoin, actual.WhoCanJoin);
+            CompareGroupSetting(drifts, "WhoCanViewMembership", _settings.Groups.WhoCanViewMembership, actual.WhoCanViewMembership);
+            CompareGroupSetting(drifts, "WhoCanContactOwner", _settings.Groups.WhoCanContactOwner, actual.WhoCanContactOwner);
+            CompareGroupSetting(drifts, "WhoCanPostMessage", _settings.Groups.WhoCanPostMessage, actual.WhoCanPostMessage);
+            CompareGroupSetting(drifts, "WhoCanViewGroup", _settings.Groups.WhoCanViewGroup, actual.WhoCanViewGroup);
+            CompareGroupSetting(drifts, "WhoCanModerateMembers", _settings.Groups.WhoCanModerateMembers, actual.WhoCanModerateMembers);
+            CompareGroupSetting(drifts, "AllowExternalMembers",
+                _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
+
+            // Additional settings worth monitoring (not set at creation but important for group health)
+            CompareGroupSetting(drifts, "IsArchived", "false", actual.IsArchived);
+            CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
+            CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
+            CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
+            CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
+            CompareGroupSetting(drifts, "SpamModerationLevel", "MODERATE", actual.SpamModerationLevel);
+            CompareGroupSetting(drifts, "EnableCollaborativeInbox", "false", actual.EnableCollaborativeInbox);
+
+            if (drifts.Count > 0)
+            {
+                _logger.LogWarning("Group '{GroupEmail}' has {DriftCount} setting drift(s): {Drifts}",
+                    groupEmail, drifts.Count,
+                    string.Join(", ", drifts.Select(d => $"{d.SettingName}: expected={d.ExpectedValue}, actual={d.ActualValue}")));
+            }
+
+            return new GroupSettingsDriftReport
+            {
+                ResourceId = resource.Id,
+                GroupEmail = groupEmail,
+                GroupName = resource.Name,
+                Url = resource.Url,
+                Drifts = drifts
+            };
+        }
+        catch (Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
+        {
+            _logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})",
+                groupEmail, ex.Error.Code);
+            return new GroupSettingsDriftReport
+            {
+                ResourceId = resource.Id,
+                GroupEmail = groupEmail,
+                GroupName = resource.Name,
+                Url = resource.Url,
+                ErrorMessage = $"Google API error: {ex.Error.Code} — {ex.Error.Message}"
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking settings for group '{GroupEmail}'", groupEmail);
+            return new GroupSettingsDriftReport
+            {
+                ResourceId = resource.Id,
+                GroupEmail = groupEmail,
+                GroupName = resource.Name,
+                Url = resource.Url,
+                ErrorMessage = $"Error: {ex.Message}"
+            };
+        }
+    }
+
+    private static void CompareGroupSetting(
+        List<GroupSettingDrift> drifts,
+        string settingName,
+        string expectedValue,
+        string? actualValue)
+    {
+        if (actualValue == null) return;
+        if (!string.Equals(expectedValue, actualValue, StringComparison.OrdinalIgnoreCase))
+        {
+            drifts.Add(new GroupSettingDrift(settingName, expectedValue, actualValue));
+        }
+    }
 }

@@ -56,6 +56,19 @@
                 </form>
             </div>
         </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Google Group Settings</div>
+            <div class="card-body">
+                <form asp-action="CheckGroupSettings" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i>Check Group Settings
+                    </button>
+                    <small class="text-muted d-block mt-1">Checks all Google Groups for settings drift. Does not modify anything.</small>
+                </form>
+            </div>
+        </div>
     </div>
 
     <div class="col-md-6">

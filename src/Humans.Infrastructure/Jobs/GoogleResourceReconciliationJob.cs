@@ -38,6 +38,18 @@ public class GoogleResourceReconciliationJob
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, cancellationToken);
 
+            // Check Google Group settings for drift (detect only, does not fix)
+            var settingsResult = await _googleSyncService.CheckGroupSettingsAsync(cancellationToken);
+            if (!settingsResult.Skipped && settingsResult.DriftCount > 0)
+            {
+                _logger.LogWarning("Google Group settings drift detected: {DriftCount} group(s) with settings drift out of {Total}",
+                    settingsResult.DriftCount, settingsResult.TotalGroups);
+            }
+            if (settingsResult.ErrorCount > 0)
+            {
+                _logger.LogWarning("Google Group settings check had {ErrorCount} error(s)", settingsResult.ErrorCount);
+            }
+
             _metrics.RecordJobRun("google_resource_reconciliation", "success");
             _logger.LogInformation("Completed Google resource reconciliation");
         }

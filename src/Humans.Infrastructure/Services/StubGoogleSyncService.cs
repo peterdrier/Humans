@@ -112,6 +112,12 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.CompletedTask;
     }
 
+    public Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would check Google Group settings for drift");
+        return Task.FromResult(new GroupSettingsDriftResult());
+    }
+
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,

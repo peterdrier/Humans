@@ -113,4 +113,12 @@ public interface IGoogleSyncService
     /// <param name="userId">The user ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks all active Google Groups for settings drift against the expected configuration.
+    /// Detect-only: does not modify any settings.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Drift results for all groups, or a skipped result if sync is disabled.</returns>
+    Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default);
 }

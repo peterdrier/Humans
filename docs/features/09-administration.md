@@ -157,6 +157,8 @@ Approval and consent completion both trigger `SyncVolunteersMembershipForUserAsy
 | `/Admin/GoogleSync` | GoogleSync | Legacy Google resource sync status |
 | `/Admin/GoogleSync/Apply` | ApplyGoogleSync | POST: Run legacy full sync |
 | `/Admin/SyncSettings` | SyncSettings | Per-service sync mode configuration |
+| `/Admin/CheckGroupSettings` | CheckGroupSettings | POST: Check Google Group settings for drift |
+| `/Admin/GroupSettingsResults` | GroupSettingsResults | Display group settings drift results |
 | `/Admin/DbVersion` | DbVersion | Database migration version |
 
 ### Sync Status (`/Teams/Sync`) — TeamsAdmin, Board, Admin

@@ -220,6 +220,8 @@ Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a sing
 | `AddOnly` | Only adds missing members — never removes |
 | `AddAndRemove` | Full sync: adds missing + removes extra members |
 
+**Group settings drift check**: After membership reconciliation, the job also checks all active Google Groups for settings drift (e.g., someone changed WhoCanPost in Google Admin). This is detect-only — drifts are logged as warnings but not auto-fixed. Respects the GoogleGroups sync mode: skipped entirely if set to None.
+
 > **Currently disabled** in Program.cs. Use manual "Sync Now" at `/Teams/Sync` or configure sync modes at `/Admin/SyncSettings` instead.
 
 ## Hangfire Configuration

@@ -308,6 +308,21 @@ When `GoogleGroupPrefix` is cleared, the existing Group resource is deactivated 
 ### Group Settings
 Group creation now applies the configured `GoogleWorkspace:Groups` settings from appsettings. Previously, new groups received Google defaults. This ensures groups are configured consistently (e.g., `AllowExternalMembers = true` per R-04).
 
+### Group Settings Drift Detection
+Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift without auto-fixing:
+
+**Checked settings** (from `GoogleWorkspace:Groups` config):
+- WhoCanJoin, WhoCanViewMembership, WhoCanContactOwner, WhoCanPostMessage, WhoCanViewGroup, WhoCanModerateMembers, AllowExternalMembers
+
+**Additional monitored settings** (sensible defaults):
+- IsArchived (expected: false), MembersCanPostAsTheGroup (expected: false), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: false)
+
+**Nightly check:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). Drifts are logged as warnings.
+
+**Manual trigger:** Admin page at `/Admin` has a "Check Group Settings" button. Results show at `/Admin/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
+
+**SyncSettings respected:** If GoogleGroups sync mode is set to None, the check is skipped entirely.
+
 ## Resource Linking (Pre-Shared Access Model)
 
 Instead of creating resources with domain-wide delegation, admins can link existing Google resources that have been pre-shared with the service account.

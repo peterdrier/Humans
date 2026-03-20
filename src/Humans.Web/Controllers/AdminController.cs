@@ -497,4 +497,42 @@ public class AdminController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("CheckGroupSettings")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckGroupSettings(
+        [FromServices] IGoogleSyncService googleSyncService)
+    {
+        try
+        {
+            var result = await googleSyncService.CheckGroupSettingsAsync();
+            TempData["GroupSettingsResult"] = System.Text.Json.JsonSerializer.Serialize(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check Google Group settings");
+            SetError($"Settings check failed: {ex.Message}");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return RedirectToAction(nameof(GroupSettingsResults));
+    }
+
+    [HttpGet("GroupSettingsResults")]
+    public IActionResult GroupSettingsResults()
+    {
+        Application.DTOs.GroupSettingsDriftResult? result = null;
+        if (TempData["GroupSettingsResult"] is string json)
+        {
+            result = System.Text.Json.JsonSerializer.Deserialize<Application.DTOs.GroupSettingsDriftResult>(json);
+        }
+
+        if (result == null)
+        {
+            SetInfo("No group settings results to display. Run the check first.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(result);
+    }
+
 }

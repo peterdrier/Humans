@@ -1,0 +1,103 @@
+@model Humans.Application.DTOs.GroupSettingsDriftResult
+@{
+    ViewData["Title"] = "Google Group Settings Check";
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+        <h1>Group Settings Check</h1>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+        </a>
+    </div>
+
+    @if (Model.Skipped)
+    {
+        <div class="alert alert-secondary">
+            <i class="fa-solid fa-circle-pause me-1"></i>Check skipped: @Model.SkipReason
+        </div>
+    }
+    else if (Model.DriftCount == 0 && Model.ErrorCount == 0)
+    {
+        <div class="alert alert-success">
+            <i class="fa-solid fa-check-circle me-1"></i>All @Model.TotalGroups group(s) have correct settings.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="fa-solid fa-magnifying-glass me-1"></i>Checked @Model.TotalGroups group(s):
+            <strong>@Model.OkCount</strong> OK,
+            <strong>@Model.DriftCount</strong> with drift,
+            <strong>@Model.ErrorCount</strong> with errors.
+        </div>
+    }
+
+    @foreach (var report in Model.Reports.OrderByDescending(r => r.HasDrift).ThenByDescending(r => r.HasError))
+    {
+        var headerClass = report.HasDrift ? "bg-warning text-dark" : report.HasError ? "bg-danger text-white" : "bg-success text-white";
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center @headerClass">
+                <div>
+                    <strong>@report.GroupName</strong>
+                    <small class="ms-2">@report.GroupEmail</small>
+                </div>
+                @if (report.HasDrift)
+                {
+                    <span class="badge bg-dark">@report.Drifts.Count drift(s)</span>
+                }
+                else if (report.HasError)
+                {
+                    <span class="badge bg-dark">Error</span>
+                }
+                else
+                {
+                    <span class="badge bg-dark">OK</span>
+                }
+            </div>
+
+            @if (report.HasError)
+            {
+                <div class="card-body">
+                    <div class="text-danger">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>@report.ErrorMessage
+                    </div>
+                </div>
+            }
+
+            @if (report.HasDrift)
+            {
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Expected</th>
+                                <th>Actual</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var drift in report.Drifts)
+                            {
+                                <tr>
+                                    <td><code>@drift.SettingName</code></td>
+                                    <td><span class="badge bg-success">@drift.ExpectedValue</span></td>
+                                    <td><span class="badge bg-danger">@drift.ActualValue</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            @if (report.Url != null)
+            {
+                <div class="card-footer text-muted small">
+                    <a href="@report.Url" target="_blank" rel="noopener">
+                        <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>Open in Google Groups
+                    </a>
+                </div>
+            }
+        </div>
+    }
+</div>
