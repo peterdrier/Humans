@@ -36,7 +36,9 @@ public class FeedbackApiController : ControllerBase
             r.PageUrl,
             r.UserAgent,
             ReporterName = r.User.DisplayName,
+            ReporterEmail = r.User.Email,
             ReporterUserId = r.UserId,
+            ReporterLanguage = r.User.PreferredLanguage,
             r.AdminNotes,
             r.GitHubIssueNumber,
             ScreenshotUrl = r.ScreenshotStoragePath != null ? $"/{r.ScreenshotStoragePath}" : null,
@@ -57,7 +59,7 @@ public class FeedbackApiController : ControllerBase
         var r = await _feedbackService.GetFeedbackByIdAsync(id);
         if (r == null) return NotFound();
 
-        var responseCounts = await _feedbackService.GetResponseCountsAsync([id]);
+        var responseDetails = await _feedbackService.GetResponseDetailsAsync(id);
 
         return Ok(new
         {
@@ -68,7 +70,9 @@ public class FeedbackApiController : ControllerBase
             r.PageUrl,
             r.UserAgent,
             ReporterName = r.User.DisplayName,
+            ReporterEmail = r.User.Email,
             ReporterUserId = r.UserId,
+            ReporterLanguage = r.User.PreferredLanguage,
             r.AdminNotes,
             r.GitHubIssueNumber,
             ScreenshotUrl = r.ScreenshotStoragePath != null ? $"/{r.ScreenshotStoragePath}" : null,
@@ -77,7 +81,12 @@ public class FeedbackApiController : ControllerBase
             AdminResponseSentAt = r.AdminResponseSentAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = r.ResolvedByUser?.DisplayName,
-            ResponseCount = responseCounts.GetValueOrDefault(r.Id)
+            ResponseCount = responseDetails.Count,
+            Responses = responseDetails.Select(rd => new
+            {
+                rd.SentAt,
+                rd.ActorName
+            })
         });
     }
 

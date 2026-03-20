@@ -117,6 +117,7 @@ public class FeedbackService : IFeedbackService
     {
         var query = _dbContext.FeedbackReports
             .Include(f => f.User)
+            .Include(f => f.ResolvedByUser)
             .AsQueryable();
 
         if (status.HasValue)
@@ -255,5 +256,20 @@ public class FeedbackService : IFeedbackService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Feedback response sent for {ReportId} by {ActorId}", id, actorUserId);
+    }
+
+    public async Task<IReadOnlyList<FeedbackResponseDetail>> GetResponseDetailsAsync(
+        Guid reportId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.AuditLogEntries
+            .Where(a => a.Action == AuditAction.FeedbackResponseSent
+                && a.EntityType == nameof(FeedbackReport)
+                && a.EntityId == reportId)
+            .OrderByDescending(a => a.OccurredAt)
+            .Select(a => new FeedbackResponseDetail(
+                a.OccurredAt.ToDateTimeUtc(),
+                a.ActorName))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
     }
 }

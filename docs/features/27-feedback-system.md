@@ -36,13 +36,16 @@ Humans need a way to report bugs, request features, and ask questions directly f
 
 **Acceptance Criteria:**
 - `GET /api/feedback` — list with optional status/category/limit filters
-- `GET /api/feedback/{id}` — single report detail
-- `PATCH /api/feedback/{id}/status` — update status
+- `GET /api/feedback/{id}` — single report detail with response history
+- `PATCH /api/feedback/{id}/status` — update status (accepts string enum names)
 - `PATCH /api/feedback/{id}/notes` — update admin notes
 - `PATCH /api/feedback/{id}/github-issue` — link GitHub issue
-- `POST /api/feedback/{id}/respond` — send email response
+- `POST /api/feedback/{id}/respond` — send email response (supports markdown)
 - All endpoints require `X-Api-Key` header (configured via `FEEDBACK_API_KEY` env var)
 - 503 if API key not configured, 401 if key invalid
+- Enum values serialized as strings consistently (GET and PATCH)
+- Reporter context included: name, email, userId, preferred language
+- Response tracking: count on list, full history (timestamps + actor) on detail
 
 ### US-27.4: Email Response
 
@@ -52,6 +55,7 @@ Humans need a way to report bugs, request features, and ask questions directly f
 - Email sent via outbox pattern (not inline)
 - Localized in reporter's preferred language (en/es/de/fr/it)
 - Includes original description as blockquote
+- Response message rendered as markdown (supports bold, links, lists, etc.)
 - `AdminResponseSentAt` timestamp updated
 - Audit log entry created (`FeedbackResponseSent`)
 

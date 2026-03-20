@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
@@ -64,6 +65,7 @@ public class FeedbackDetailViewModel
 public class UpdateFeedbackStatusModel
 {
     [Required]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public FeedbackStatus Status { get; set; }
 }
 

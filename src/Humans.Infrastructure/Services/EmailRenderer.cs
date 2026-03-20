@@ -331,12 +331,13 @@ public class EmailRenderer : IEmailRenderer
         using (WithCulture(culture))
         {
             var subject = _localizer["Email_FeedbackResponse_Subject"].Value;
+            var responseHtml = Markdig.Markdown.ToHtml(responseMessage);
             var body = string.Format(
                 CultureInfo.CurrentCulture,
                 _localizer["Email_FeedbackResponse_Body"].Value,
                 HtmlEncode(userName),
                 HtmlEncode(originalDescription),
-                HtmlEncode(responseMessage));
+                responseHtml);
             return new EmailContent(subject, body);
         }
     }
