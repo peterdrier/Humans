@@ -43,7 +43,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>@Localizer["Governance_YourApplication"]</span>
-                    <span class="badge @Model.ApplicationStatusBadgeClass">@Localizer["ApplicationStatus_" + Model.ApplicationStatus]</span>
+                    <span class="badge @Model.ApplicationStatusBadgeClass">@Localizer["ApplicationStatus_" + Model.ApplicationStatus.ToString()]</span>
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
@@ -57,17 +57,17 @@
                         }
                     </dl>
 
-                    @if (Model.ApplicationStatus == "Submitted")
+                    @if (Model.ApplicationStatus == ApplicationStatus.Submitted)
                     {
                         <hr />
                         <p class="text-muted mb-0">@Localizer["Governance_UnderReviewMessage"]</p>
                     }
-                    else if (Model.ApplicationStatus == "Approved")
+                    else if (Model.ApplicationStatus == ApplicationStatus.Approved)
                     {
                         <hr />
                         <p class="text-success mb-0">@Localizer["Governance_ApprovedMessage"]</p>
                     }
-                    else if (Model.ApplicationStatus == "Rejected")
+                    else if (Model.ApplicationStatus == ApplicationStatus.Rejected)
                     {
                         <hr />
                         <p class="text-muted mb-0">@Localizer["Governance_RejectedMessage"]</p>

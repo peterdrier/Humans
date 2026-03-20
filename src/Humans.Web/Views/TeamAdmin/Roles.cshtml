@@ -86,7 +86,7 @@
                         <div class="d-flex flex-wrap gap-2 priorities-container" data-role-id="@role.Id">
                             @for (var i = 0; i < role.SlotCount; i++)
                             {
-                                var currentPriority = i < role.Slots.Count ? role.Slots[i].Priority : "None";
+                                var currentPriority = i < role.Slots.Count ? role.Slots[i].Priority.ToString() : "None";
                                 <div class="input-group input-group-sm" style="max-width: 200px;">
                                     <span class="input-group-text">@(i + 1)</span>
                                     <select name="Priorities" class="form-select form-select-sm">
@@ -147,7 +147,7 @@
                         {
                             <tr>
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == "NiceToHave" ? "Nice to Have" : slot.Priority)</span></td>
+                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
                                 <td>
                                     @if (slot.IsFilled)
                                     {

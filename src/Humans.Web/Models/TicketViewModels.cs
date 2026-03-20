@@ -166,5 +166,5 @@ public class WhoHasntBoughtRow
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Teams { get; set; } = string.Empty;
-    public string Tier { get; set; } = string.Empty;
+    public MembershipTier Tier { get; set; }
 }

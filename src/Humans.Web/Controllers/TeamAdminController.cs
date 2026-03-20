@@ -130,7 +130,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 ProfilePictureUrl = m.User.ProfilePictureUrl,
                 HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
                 CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
-                Role = m.Role.ToString(),
+                Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator
             }).ToList();
@@ -146,7 +146,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 UserDisplayName = r.User.DisplayName,
                 UserEmail = r.User.Email ?? "",
                 UserProfilePictureUrl = r.User.ProfilePictureUrl,
-                Status = r.Status.ToString(),
+                Status = r.Status,
                 Message = r.Message,
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
             }).ToList();
@@ -491,7 +491,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 ProfilePictureUrl = m.User.ProfilePictureUrl,
                 HasCustomProfilePicture = customPictureByUserId.ContainsKey(m.UserId),
                 CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
-                Role = m.Role.ToString(),
+                Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator
             }).ToList()

@@ -30,7 +30,7 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <a asp-action="Details" asp-route-id="@app.Id" class="text-decoration-none">@Localizer["Governance_YourApplication"]</a>
-                    <span class="badge @app.StatusBadgeClass">@Localizer["ApplicationStatus_" + app.Status]</span>
+                    <span class="badge @app.StatusBadgeClass">@Localizer["ApplicationStatus_" + app.Status.ToString()]</span>
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
@@ -44,17 +44,17 @@
                         }
                     </dl>
 
-                    @if (app.Status == "Submitted")
+                    @if (app.Status == ApplicationStatus.Submitted)
                     {
                         <hr />
                         <p class="text-muted mb-0">@Localizer["Governance_UnderReviewMessage"]</p>
                     }
-                    else if (app.Status == "Approved")
+                    else if (app.Status == ApplicationStatus.Approved)
                     {
                         <hr />
                         <p class="text-success mb-0">@Localizer["Governance_ApprovedMessage"]</p>
                     }
-                    else if (app.Status == "Rejected")
+                    else if (app.Status == ApplicationStatus.Rejected)
                     {
                         <hr />
                         <p class="text-muted mb-0">@Localizer["Governance_RejectedMessage"]</p>

@@ -37,7 +37,7 @@ public class RecentActivityViewModel
 {
     public string Description { get; set; } = string.Empty;
     public DateTime Timestamp { get; set; }
-    public string Type { get; set; } = string.Empty;
+    public AuditAction Type { get; set; }
 }
 
 public class AdminHumanListViewModel : PagedListViewModel
@@ -108,7 +108,7 @@ public class AdminHumanDetailViewModel
 public class AdminHumanApplicationViewModel
 {
     public Guid Id { get; set; }
-    public string Status { get; set; } = string.Empty;
+    public ApplicationStatus Status { get; set; }
     public DateTime SubmittedAt { get; set; }
 }
 
@@ -129,11 +129,11 @@ public class AdminApplicationViewModel
     public Guid UserId { get; set; }
     public string UserEmail { get; set; } = string.Empty;
     public string UserDisplayName { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
+    public ApplicationStatus Status { get; set; }
     public string StatusBadgeClass { get; set; } = "bg-secondary";
     public DateTime SubmittedAt { get; set; }
     public string MotivationPreview { get; set; } = string.Empty;
-    public string MembershipTier { get; set; } = string.Empty;
+    public MembershipTier MembershipTier { get; set; }
 }
 
 public class AdminApplicationDetailViewModel : ApplicationDetailViewModelBase
@@ -198,7 +198,7 @@ public class EndRoleAssignmentViewModel
 
 public class AuditLogEntryViewModel
 {
-    public string Action { get; set; } = string.Empty;
+    public AuditAction Action { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateTime OccurredAt { get; set; }
     public string ActorName { get; set; } = string.Empty;
@@ -218,11 +218,11 @@ public class AuditLogListViewModel : PagedListViewModel
 
 public class GoogleSyncAuditEntryViewModel
 {
-    public string Action { get; set; } = string.Empty;
+    public AuditAction Action { get; set; }
     public string Description { get; set; } = string.Empty;
     public string? UserEmail { get; set; }
     public string? Role { get; set; }
-    public string? SyncSource { get; set; }
+    public GoogleSyncSource? SyncSource { get; set; }
     public DateTime OccurredAt { get; set; }
     public bool? Success { get; set; }
     public string? ErrorMessage { get; set; }

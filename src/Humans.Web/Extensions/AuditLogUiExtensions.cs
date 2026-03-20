@@ -4,8 +4,6 @@ namespace Humans.Web.Extensions;
 
 public static class AuditLogUiExtensions
 {
-    private const string AnomalyActionName = nameof(AuditAction.AnomalousPermissionDetected);
-
     public static bool IsAuditFilterSelected(this string? currentFilter, string filter)
     {
         return string.Equals(currentFilter, filter, StringComparison.Ordinal);
@@ -20,23 +18,23 @@ public static class AuditLogUiExtensions
         return currentFilter.IsAuditFilterSelected(filter) ? selectedClass : defaultClass;
     }
 
-    public static bool IsAnomalousPermissionAction(this string? action)
+    public static bool IsAnomalousPermissionAction(this AuditAction action)
     {
-        return string.Equals(action, AnomalyActionName, StringComparison.Ordinal);
+        return action == AuditAction.AnomalousPermissionDetected;
     }
 
-    public static string ToAuditEntryRowClass(this string? action)
+    public static string ToAuditEntryRowClass(this AuditAction action)
     {
         return action.IsAnomalousPermissionAction() ? "table-warning" : string.Empty;
     }
 
-    public static string ToAuditBadgeClass(this string? action)
+    public static string ToAuditBadgeClass(this AuditAction action)
     {
         return action.IsAnomalousPermissionAction() ? "bg-warning text-dark" : "bg-secondary";
     }
 
-    public static string ToAuditBadgeLabel(this string? action)
+    public static string ToAuditBadgeLabel(this AuditAction action)
     {
-        return action.IsAnomalousPermissionAction() ? "Anomaly" : action ?? string.Empty;
+        return action.IsAnomalousPermissionAction() ? "Anomaly" : action.ToString();
     }
 }

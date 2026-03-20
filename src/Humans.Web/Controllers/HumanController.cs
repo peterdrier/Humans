@@ -307,7 +307,7 @@ public class HumanController : HumansControllerBase
                 .Select(a => new AdminHumanApplicationViewModel
                 {
                     Id = a.Id,
-                    Status = a.Status.ToString(),
+                    Status = a.Status,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc()
                 }).ToList(),
             RoleAssignments = data.RoleAssignments.Select(ra => new AdminRoleAssignmentViewModel
@@ -324,7 +324,7 @@ public class HumanController : HumansControllerBase
             }).ToList(),
             AuditLog = data.AuditEntries.Select(e => new AuditLogEntryViewModel
             {
-                Action = e.Action,
+                Action = Enum.TryParse<AuditAction>(e.Action, out var parsedAction) ? parsedAction : default,
                 Description = e.Description,
                 OccurredAt = e.OccurredAt,
                 ActorName = e.ActorName ?? string.Empty,

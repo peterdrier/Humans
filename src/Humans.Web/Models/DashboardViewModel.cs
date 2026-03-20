@@ -6,7 +6,7 @@ public class DashboardViewModel
 {
     public string DisplayName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
-    public string MembershipStatus { get; set; } = "None";
+    public MembershipStatus MembershipStatus { get; set; }
 
     // Profile
     public bool HasProfile { get; set; }
@@ -27,7 +27,7 @@ public class DashboardViewModel
 
     // Applications
     public bool HasPendingApplication { get; set; }
-    public string? LatestApplicationStatus { get; set; }
+    public ApplicationStatus? LatestApplicationStatus { get; set; }
     public DateTime? LatestApplicationDate { get; set; }
     public MembershipTier? LatestApplicationTier { get; set; }
 

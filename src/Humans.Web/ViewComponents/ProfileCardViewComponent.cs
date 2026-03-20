@@ -130,7 +130,7 @@ public class ProfileCardViewComponent : ViewComponent
             CustomProfilePictureUrl = pictureUrl,
             BurnerName = profile?.BurnerName ?? string.Empty,
             Pronouns = profile?.Pronouns,
-            MembershipStatus = membershipSnapshot.Status.ToString(),
+            MembershipStatus = membershipSnapshot.Status,
             IsApproved = profile?.IsApproved ?? false,
             City = profile?.City,
             CountryCode = profile?.CountryCode,

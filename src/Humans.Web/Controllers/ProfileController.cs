@@ -106,7 +106,7 @@ public class ProfileController : HumansControllerBase
         // Show tier application status (skip Withdrawn — not interesting)
         if (latestApplication != null && latestApplication.Status != ApplicationStatus.Withdrawn)
         {
-            viewModel.TierApplicationStatus = latestApplication.Status.ToString();
+            viewModel.TierApplicationStatus = latestApplication.Status;
             viewModel.TierApplicationTier = latestApplication.MembershipTier;
             viewModel.TierApplicationBadgeClass = latestApplication.Status.GetBadgeClass();
         }

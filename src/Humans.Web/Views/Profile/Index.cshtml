@@ -42,15 +42,15 @@
         {
             var alertClass = Model.TierApplicationStatus switch
             {
-                "Approved" => "alert-success",
-                "Rejected" => "alert-danger",
+                ApplicationStatus.Approved => "alert-success",
+                ApplicationStatus.Rejected => "alert-danger",
                 _ => "alert-info"
             };
             <div class="alert @alertClass" role="alert">
                 <div class="d-flex justify-content-between align-items-center">
                     <span>
                         @string.Format(Localizer["Profile_TierApplicationStatus"].Value, Model.TierApplicationTier)
-                        <span class="badge @Model.TierApplicationBadgeClass ms-1">@Localizer["ApplicationStatus_" + Model.TierApplicationStatus]</span>
+                        <span class="badge @Model.TierApplicationBadgeClass ms-1">@Localizer["ApplicationStatus_" + Model.TierApplicationStatus.ToString()]</span>
                     </span>
                     <a asp-controller="Governance" asp-action="Index" class="alert-link">@Localizer["Profile_TierApplicationDetails"]</a>
                 </div>

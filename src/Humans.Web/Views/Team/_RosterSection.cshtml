@@ -55,7 +55,7 @@
                                     </td>
                                 }
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == "NiceToHave" ? "Nice to Have" : slot.Priority)</span></td>
+                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
                                 <td>
                                     @if (slot.IsFilled)
                                     {

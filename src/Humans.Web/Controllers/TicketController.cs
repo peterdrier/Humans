@@ -414,7 +414,7 @@ public class TicketController : HumansControllerBase
                 Name = u.DisplayName,
                 Email = u.UserEmails.FirstOrDefault(e => e.IsNotificationTarget)?.Email ?? string.Empty,
                 Teams = string.Join(", ", u.TeamMemberships.Select(tm => tm.Team.Name)),
-                Tier = u.Profile?.MembershipTier.ToString() ?? "Volunteer",
+                Tier = u.Profile?.MembershipTier ?? MembershipTier.Volunteer,
             })
             .ToList();
 
@@ -703,10 +703,9 @@ public class TicketController : HumansControllerBase
                 u.TeamMemberships.Any(tm => string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)));
         }
 
-        if (!string.IsNullOrEmpty(filterTier))
+        if (!string.IsNullOrEmpty(filterTier) && Enum.TryParse<MembershipTier>(filterTier, ignoreCase: true, out var parsedTier))
         {
-            filteredHumans = filteredHumans.Where(u =>
-                string.Equals(u.Profile?.MembershipTier.ToString(), filterTier, StringComparison.OrdinalIgnoreCase));
+            filteredHumans = filteredHumans.Where(u => u.Profile?.MembershipTier == parsedTier);
         }
 
         if (search.HasSearchTerm(1))

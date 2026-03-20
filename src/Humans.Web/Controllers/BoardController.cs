@@ -65,7 +65,7 @@ public class BoardController : HumansControllerBase
             {
                 Description = e.Description,
                 Timestamp = e.OccurredAt.ToDateTimeUtc(),
-                Type = e.Action.ToString()
+                Type = e.Action
             }).ToList(),
             TotalApplications = dashboardData.TotalApplications,
             ApprovedApplications = dashboardData.ApprovedApplications,
@@ -88,7 +88,7 @@ public class BoardController : HumansControllerBase
 
         var entries = items.Select(e => new AuditLogEntryViewModel
         {
-            Action = e.Action.ToString(),
+            Action = e.Action,
             Description = e.Description,
             OccurredAt = e.OccurredAt.ToDateTimeUtc(),
             ActorName = e.ActorName,

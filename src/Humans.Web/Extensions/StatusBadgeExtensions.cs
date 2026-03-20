@@ -23,21 +23,16 @@ public static class StatusBadgeExtensions
     }
 
     /// <summary>
-    /// Gets the Bootstrap badge CSS class for an application status string.
+    /// Gets the Bootstrap badge CSS class for an application status (nullable).
     /// </summary>
-    public static string GetApplicationStatusBadgeClass(string? status)
+    public static string GetBadgeClass(this ApplicationStatus? status)
     {
-        return status switch
-        {
-            "Submitted" => "bg-primary",
-            "Approved" => "bg-success",
-            "Rejected" => "bg-danger",
-            _ => "bg-secondary"
-        };
+        return status.HasValue ? status.Value.GetBadgeClass() : "bg-secondary";
     }
 
     /// <summary>
     /// Gets the Bootstrap badge CSS class for a membership status string.
+    /// Used by the admin human list, which uses MembershipStatusLabels (not the enum).
     /// </summary>
     public static string GetMembershipStatusBadgeClass(string? status)
     {

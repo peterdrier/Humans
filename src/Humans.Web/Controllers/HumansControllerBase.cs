@@ -97,11 +97,11 @@ public abstract class HumansControllerBase : Controller
             BackLabel = backLabel,
             Entries = entries.Select(static entry => new GoogleSyncAuditEntryViewModel
             {
-                Action = entry.Action.ToString(),
+                Action = entry.Action,
                 Description = entry.Description,
                 UserEmail = entry.UserEmail,
                 Role = entry.Role,
-                SyncSource = entry.SyncSource?.ToString(),
+                SyncSource = entry.SyncSource,
                 OccurredAt = entry.OccurredAt.ToDateTimeUtc(),
                 Success = entry.Success,
                 ErrorMessage = entry.ErrorMessage,

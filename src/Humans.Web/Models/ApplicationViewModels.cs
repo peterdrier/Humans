@@ -12,7 +12,7 @@ public class ApplicationIndexViewModel
 public class ApplicationSummaryViewModel
 {
     public Guid Id { get; set; }
-    public string Status { get; set; } = string.Empty;
+    public ApplicationStatus Status { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public DateTime SubmittedAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
@@ -22,7 +22,7 @@ public class ApplicationSummaryViewModel
 public abstract class ApplicationDetailViewModelBase
 {
     public Guid Id { get; set; }
-    public string Status { get; set; } = string.Empty;
+    public ApplicationStatus Status { get; set; }
     public string Motivation { get; set; } = string.Empty;
     public string? AdditionalInfo { get; set; }
     public string? SignificantContribution { get; set; }
@@ -43,7 +43,7 @@ public class ApplicationDetailViewModel : ApplicationDetailViewModelBase
 
 public class ApplicationHistoryViewModel
 {
-    public string Status { get; set; } = string.Empty;
+    public ApplicationStatus Status { get; set; }
     public DateTime ChangedAt { get; set; }
     public string ChangedBy { get; set; } = string.Empty;
     public string? Notes { get; set; }

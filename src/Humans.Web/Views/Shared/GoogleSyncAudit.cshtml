@@ -50,7 +50,7 @@ else
                             </td>
                             <td>@(entry.UserEmail ?? "--")</td>
                             <td>@(entry.Role ?? "--")</td>
-                            <td>@(entry.SyncSource ?? "--")</td>
+                            <td>@(entry.SyncSource?.ToString() ?? "--")</td>
                             <td>
                                 @if (entry.Success == true)
                                 {

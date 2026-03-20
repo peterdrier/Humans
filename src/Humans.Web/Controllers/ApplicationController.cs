@@ -47,7 +47,7 @@ public class ApplicationController : HumansControllerBase
             Applications = applications.Select(a => new ApplicationSummaryViewModel
             {
                 Id = a.Id,
-                Status = a.Status.ToString(),
+                Status = a.Status,
                 MembershipTier = a.MembershipTier,
                 SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
                 ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
@@ -151,7 +151,7 @@ public class ApplicationController : HumansControllerBase
         var viewModel = new ApplicationDetailViewModel
         {
             Id = application.Id,
-            Status = application.Status.ToString(),
+            Status = application.Status,
             Motivation = application.Motivation,
             AdditionalInfo = application.AdditionalInfo,
             SignificantContribution = application.SignificantContribution,
@@ -167,7 +167,7 @@ public class ApplicationController : HumansControllerBase
                 .OrderByDescending(h => h.ChangedAt)
                 .Select(h => new ApplicationHistoryViewModel
                 {
-                    Status = h.Status.ToString(),
+                    Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
                     ChangedBy = h.ChangedByUser.DisplayName,
                     Notes = h.Notes
@@ -212,11 +212,11 @@ public class ApplicationController : HumansControllerBase
             UserId = a.UserId,
             UserEmail = a.User.Email ?? string.Empty,
             UserDisplayName = a.User.DisplayName,
-            Status = a.Status.ToString(),
+            Status = a.Status,
             StatusBadgeClass = a.Status.GetBadgeClass(),
             SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
             MotivationPreview = a.Motivation.Length > 100 ? a.Motivation[..100] + "..." : a.Motivation,
-            MembershipTier = a.MembershipTier.ToString()
+            MembershipTier = a.MembershipTier
         }).ToList();
 
         var viewModel = new AdminApplicationListViewModel
@@ -250,7 +250,7 @@ public class ApplicationController : HumansControllerBase
             UserEmail = application.User.Email ?? string.Empty,
             UserDisplayName = application.User.DisplayName,
             UserProfilePictureUrl = application.User.ProfilePictureUrl,
-            Status = application.Status.ToString(),
+            Status = application.Status,
             Motivation = application.Motivation,
             AdditionalInfo = application.AdditionalInfo,
             SignificantContribution = application.SignificantContribution,
@@ -266,7 +266,7 @@ public class ApplicationController : HumansControllerBase
                 .OrderByDescending(h => h.ChangedAt)
                 .Select(h => new ApplicationHistoryViewModel
                 {
-                    Status = h.Status.ToString(),
+                    Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
                     ChangedBy = h.ChangedByUser.DisplayName,
                     Notes = h.Notes

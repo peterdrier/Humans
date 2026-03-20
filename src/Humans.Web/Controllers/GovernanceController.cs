@@ -73,7 +73,7 @@ public class GovernanceController : HumansControllerBase
         {
             StatutesContent = statutesContent,
             HasApplication = latestApplication != null,
-            ApplicationStatus = latestApplication?.Status.ToString(),
+            ApplicationStatus = latestApplication?.Status,
             ApplicationSubmittedAt = latestApplication?.SubmittedAt.ToDateTimeUtc(),
             ApplicationResolvedAt = latestApplication?.ResolvedAt?.ToDateTimeUtc(),
             ApplicationStatusBadgeClass = latestApplication?.Status.GetBadgeClass(),

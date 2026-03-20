@@ -16,7 +16,7 @@ public class ProfileCardViewModel
     public string? CustomProfilePictureUrl { get; set; }
     public string BurnerName { get; set; } = string.Empty;
     public string? Pronouns { get; set; }
-    public string MembershipStatus { get; set; } = "None";
+    public MembershipStatus MembershipStatus { get; set; }
     public bool IsApproved { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }

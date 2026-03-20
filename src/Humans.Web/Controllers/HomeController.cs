@@ -95,7 +95,7 @@ public class HomeController : HumansControllerBase
         {
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
-            MembershipStatus = membershipSnapshot.Status.ToString(),
+            MembershipStatus = membershipSnapshot.Status,
             HasProfile = profile != null,
             ProfileComplete = profile != null && !string.IsNullOrEmpty(profile.FirstName),
             PendingConsents = membershipSnapshot.PendingConsentCount,
@@ -106,7 +106,7 @@ public class HomeController : HumansControllerBase
             IsRejected = profile?.RejectedAt != null,
             RejectionReason = profile?.RejectionReason,
             HasPendingApplication = hasPendingApp,
-            LatestApplicationStatus = latestApplication?.Status.ToString(),
+            LatestApplicationStatus = latestApplication?.Status,
             LatestApplicationDate = latestApplication?.SubmittedAt.ToDateTimeUtc(),
             LatestApplicationTier = latestApplication?.MembershipTier,
             TermExpiresAt = termExpiresAt,

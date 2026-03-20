@@ -120,7 +120,7 @@ public class TeamController : HumansControllerBase
             IsActive = team.IsActive,
             RequiresApproval = team.RequiresApproval,
             IsSystemTeam = team.IsSystemTeam,
-            SystemTeamType = team.SystemTeamType != SystemTeamType.None ? team.SystemTeamType.ToString() : null,
+            SystemTeamType = team.SystemTeamType != SystemTeamType.None ? team.SystemTeamType : null,
             CreatedAt = team.CreatedAt.ToDateTimeUtc(),
             IsPublicPage = team.IsPublicPage,
             PageContent = team.PageContent,
@@ -193,7 +193,7 @@ public class TeamController : HumansControllerBase
             ProfilePictureUrl = member.ProfilePictureUrl,
             HasCustomProfilePicture = customPictureByUserId.ContainsKey(member.UserId),
             CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(member.UserId),
-            Role = member.Role.ToString(),
+            Role = member.Role,
             JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
             IsCoordinator = member.Role == TeamMemberRole.Coordinator
         };
@@ -293,9 +293,9 @@ public class TeamController : HumansControllerBase
             RoleDescription = slot.RoleDescription,
             RoleDefinitionId = slot.RoleDefinitionId,
             SlotNumber = slot.SlotNumber,
-            Priority = slot.Priority,
+            Priority = Enum.TryParse<SlotPriority>(slot.Priority, out var sp) ? sp : SlotPriority.None,
             PriorityBadgeClass = slot.PriorityBadgeClass,
-            Period = slot.Period,
+            Period = Enum.TryParse<RolePeriod>(slot.Period, out var rp) ? rp : RolePeriod.Event,
             IsFilled = slot.IsFilled,
             AssignedUserName = slot.AssignedUserName
         }).ToList();
@@ -344,7 +344,7 @@ public class TeamController : HumansControllerBase
                 TeamName = m.TeamName,
                 TeamSlug = m.TeamSlug,
                 IsSystemTeam = m.IsSystemTeam,
-                Role = m.Role.ToString(),
+                Role = m.Role,
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 CanLeave = m.CanLeave,
@@ -723,7 +723,7 @@ public class TeamController : HumansControllerBase
         IsActive = team.IsActive,
         RequiresApproval = team.RequiresApproval,
         IsSystemTeam = team.IsSystemTeam,
-        SystemTeamType = team.SystemTeamType,
+        SystemTeamType = Enum.TryParse<SystemTeamType>(team.SystemTeamType, out var stt) ? stt : null,
         MemberCount = team.MemberCount,
         PendingRequestCount = team.PendingRequestCount,
         HasMailGroup = team.HasMailGroup,
