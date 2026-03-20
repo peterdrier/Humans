@@ -92,7 +92,7 @@
                     <span class="badge bg-secondary ms-1">@(rota.Period == RotaPeriod.Build ? "Set-up" : rota.Period.ToString())</span>
                     @if (!string.IsNullOrEmpty(rota.PracticalInfo))
                     {
-                        <div class="text-muted small mt-1">@rota.PracticalInfo</div>
+                        <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rota.PracticalInfo)</div>
                     }
                 </div>
                 @if (Model.CanManageShifts)

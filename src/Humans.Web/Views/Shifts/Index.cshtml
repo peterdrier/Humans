@@ -108,7 +108,7 @@
                         </h6>
                         @if (!string.IsNullOrEmpty(rotaGroup.Rota.PracticalInfo))
                         {
-                            <p class="text-muted small">@rotaGroup.Rota.PracticalInfo</p>
+                            <div class="text-muted small">@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
                         }
 
                         @if (isBuildStrike)
