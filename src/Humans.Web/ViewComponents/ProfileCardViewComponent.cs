@@ -170,6 +170,7 @@ public class ProfileCardViewComponent : ViewComponent
                 Description = vh.Description
             }).ToList(),
             Teams = displayableTeams,
+            PreferredLanguage = user.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
         };

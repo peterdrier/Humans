@@ -34,6 +34,7 @@ public class ProfileCardViewModel
     public int PendingConsentCount { get; set; }
     public ProfileCardViewMode ViewMode { get; set; }
     public bool CanViewLegalName { get; set; }
+    public string? PreferredLanguage { get; set; }
 
     public IReadOnlyList<UserEmailDisplayViewModel> UserEmails { get; set; } = [];
     public IReadOnlyList<ContactFieldViewModel> ContactFields { get; set; } = [];

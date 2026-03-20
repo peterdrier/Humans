@@ -89,6 +89,7 @@ public class AdminHumanDetailViewModel
     public string? EmergencyContactName { get; set; }
     public string? EmergencyContactPhone { get; set; }
     public string? EmergencyContactRelationship { get; set; }
+    public string? PreferredLanguage { get; set; }
 
     // Rejection
     public bool IsRejected { get; set; }

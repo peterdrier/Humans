@@ -293,6 +293,7 @@ public class HumanController : HumansControllerBase
             IsApproved = data.Profile?.IsApproved ?? false,
             HasProfile = data.Profile != null,
             AdminNotes = data.Profile?.AdminNotes,
+            PreferredLanguage = data.User.PreferredLanguage,
             MembershipTier = data.Profile?.MembershipTier ?? MembershipTier.Volunteer,
             ConsentCheckStatus = data.Profile?.ConsentCheckStatus,
             IsRejected = data.Profile?.RejectedAt != null,

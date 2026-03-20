@@ -1,4 +1,5 @@
 @model Humans.Web.Models.ProfileCardViewModel
+@using Humans.Web.Extensions
 
 @* === Card 1: Public Profile === *@
 <div class="card mb-4">
@@ -22,6 +23,12 @@
                 @if (!string.IsNullOrEmpty(Model.Pronouns))
                 {
                     <span class="text-muted me-2">@Model.Pronouns</span>
+                }
+                @if (!string.IsNullOrEmpty(Model.PreferredLanguage))
+                {
+                    <span class="badge bg-light text-dark border" title="@Model.PreferredLanguage.ToDisplayLanguageName()">
+                        <i class="fa-solid fa-language me-1"></i>@Model.PreferredLanguage.ToDisplayLanguageName()
+                    </span>
                 }
                 @if (Model.Teams.Count > 0)
                 {

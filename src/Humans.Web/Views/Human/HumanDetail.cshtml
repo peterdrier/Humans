@@ -1,6 +1,7 @@
 @model Humans.Web.Models.AdminHumanDetailViewModel
 @using Humans.Domain.Entities
 @using Humans.Domain.Enums
+@using Humans.Web.Extensions
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
     var campaignGrants = (IList<CampaignGrant>?)ViewBag.CampaignGrants;
@@ -73,6 +74,9 @@
                 <dl class="row mb-0">
                     <dt class="col-sm-3">@Localizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-9">@Model.MembershipTier</dd>
+
+                    <dt class="col-sm-3"><i class="fa-solid fa-language me-1"></i> Language</dt>
+                    <dd class="col-sm-9">@Model.PreferredLanguage.ToDisplayLanguageName()</dd>
 
                     <dt class="col-sm-3">@Localizer["AdminHuman_ConsentCheck"]</dt>
                     <dd class="col-sm-9">
