@@ -44,6 +44,12 @@ public class GoogleWorkspaceSettings
     public bool UseSharedDrives { get; set; } = false;
 
     /// <summary>
+    /// Admin user email for domain-wide delegation (required by Admin SDK / Directory API).
+    /// The service account impersonates this user to manage @nobodies.team user accounts.
+    /// </summary>
+    public string? AdminEmail { get; set; }
+
+    /// <summary>
     /// Default group settings.
     /// </summary>
     public GroupSettings Groups { get; set; } = new();

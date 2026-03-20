@@ -32,6 +32,7 @@ public class ProfileCardViewModel
     public string? EmergencyContactRelationship { get; set; }
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
+    public bool HasNobodiesTeamEmail { get; set; }
     public ProfileCardViewMode ViewMode { get; set; }
     public bool CanViewLegalName { get; set; }
     public string? PreferredLanguage { get; set; }

@@ -20,6 +20,7 @@
     <PackageReference Include="Octokit" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Serilog" />
+    <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" />
     <PackageReference Include="Google.Apis.CloudIdentity.v1" />
     <PackageReference Include="Google.Apis.Drive.v3" />
     <PackageReference Include="Google.Apis.DriveActivity.v2" />

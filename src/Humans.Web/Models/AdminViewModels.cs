@@ -64,6 +64,17 @@ public class AdminHumanViewModel
     public string MembershipStatus { get; set; } = "None";
     public bool HasProfile { get; set; }
     public bool IsApproved { get; set; }
+
+    /// <summary>
+    /// Whether this human has a verified @nobodies.team email.
+    /// </summary>
+    public bool HasNobodiesTeamEmail { get; set; }
+
+    /// <summary>
+    /// Whether the @nobodies.team email is used as their notification target.
+    /// Only meaningful when HasNobodiesTeamEmail is true.
+    /// </summary>
+    public bool NobodiesTeamEmailIsPrimary { get; set; }
 }
 
 public class AdminHumanDetailViewModel

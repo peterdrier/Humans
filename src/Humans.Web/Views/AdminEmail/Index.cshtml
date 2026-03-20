@@ -1,0 +1,205 @@
+@model Humans.Web.Models.WorkspaceEmailListViewModel
+@{
+    ViewData["Title"] = "@nobodies.team Accounts";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@@nobodies.team Accounts</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts</h1>
+</div>
+
+<vc:temp-data-alerts />
+
+@* Stats cards *@
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0">@Model.TotalAccounts</h3>
+                <small class="text-muted">Total Accounts</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-success">@Model.ActiveAccounts</h3>
+                <small class="text-muted">Active</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-danger">@Model.SuspendedAccounts</h3>
+                <small class="text-muted">Suspended</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-warning">@Model.NotPrimaryCount</h3>
+                <small class="text-muted">Not Using as Primary</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Provision new account *@
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-plus me-1"></i>Provision New Account
+    </div>
+    <div class="card-body">
+        <form asp-action="Provision" method="post" class="row g-3 align-items-end">
+            @Html.AntiForgeryToken()
+            <div class="col-md-3">
+                <label for="emailPrefix" class="form-label">Email</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="emailPrefix" name="emailPrefix"
+                           placeholder="username" required pattern="[a-z0-9._-]+"
+                           title="Lowercase letters, numbers, dots, hyphens, and underscores only">
+                    <span class="input-group-text">@@nobodies.team</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label for="firstName" class="form-label">First Name</label>
+                <input type="text" class="form-control" id="firstName" name="firstName" required>
+            </div>
+            <div class="col-md-3">
+                <label for="lastName" class="form-label">Last Name</label>
+                <input type="text" class="form-control" id="lastName" name="lastName" required>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary"
+                        onclick="return confirm('Provision a new @@nobodies.team account? A temporary password will be generated.')">
+                    <i class="fa-solid fa-user-plus me-1"></i>Provision
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@* Accounts list *@
+<div class="card">
+    <div class="card-header">
+        <i class="fa-solid fa-users me-1"></i>All Accounts
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Accounts.Count == 0)
+        {
+            <p class="text-muted text-center py-4 mb-0">No @@nobodies.team accounts found.</p>
+        }
+        else
+        {
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Linked Human</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Last Login</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var account in Model.Accounts)
+                    {
+                        <tr class="@(account.IsSuspended ? "table-secondary" : "")">
+                            <td>
+                                <code>@account.PrimaryEmail</code>
+                                @if (account.MatchedUserId.HasValue && !account.IsUsedAsPrimary)
+                                {
+                                    <span class="badge bg-warning ms-1" title="Account linked but not used as primary notification email"
+                                          data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation"></i> Not primary
+                                    </span>
+                                }
+                            </td>
+                            <td>@account.FirstName @account.LastName</td>
+                            <td>
+                                @if (account.MatchedUserId.HasValue)
+                                {
+                                    <a asp-controller="Human" asp-action="View" asp-route-id="@account.MatchedUserId">
+                                        @account.MatchedDisplayName
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Not linked</span>
+                                }
+                            </td>
+                            <td>
+                                @if (account.IsSuspended)
+                                {
+                                    <span class="badge bg-danger">Suspended</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td>@account.CreationTime.ToDisplayDate()</td>
+                            <td>
+                                @if (account.LastLoginTime.HasValue)
+                                {
+                                    @account.LastLoginTime.Value.ToDisplayDate()
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Never</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    @if (account.IsSuspended)
+                                    {
+                                        <form asp-action="Reactivate" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                            <button type="submit" class="btn btn-outline-success btn-sm"
+                                                    title="Reactivate account"
+                                                    onclick="return confirm('Reactivate @account.PrimaryEmail?')">
+                                                <i class="fa-solid fa-play"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="Suspend" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                    title="Suspend account"
+                                                    onclick="return confirm('Suspend @account.PrimaryEmail?')">
+                                                <i class="fa-solid fa-pause"></i>
+                                            </button>
+                                        </form>
+                                    }
+                                    <form asp-action="ResetPassword" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                        <button type="submit" class="btn btn-outline-warning btn-sm"
+                                                title="Reset password"
+                                                onclick="return confirm('Reset password for @account.PrimaryEmail? A new temporary password will be generated.')">
+                                            <i class="fa-solid fa-key"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

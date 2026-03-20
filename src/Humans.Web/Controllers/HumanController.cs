@@ -209,6 +209,19 @@ public class HumanController : HumansControllerBase
         var allRows = await _profileService.GetFilteredHumansAsync(search, filter);
         var totalCount = allRows.Count;
 
+        // Load @nobodies.team email status for all users (fine at ~500 users)
+        var nobodiesTeamEmails = await _dbContext.UserEmails
+            .AsNoTracking()
+            .Where(ue => ue.IsVerified && ue.Email.EndsWith("@nobodies.team"))
+            .Select(ue => new { ue.UserId, ue.IsNotificationTarget })
+            .ToListAsync();
+
+        var nobodiesTeamByUser = nobodiesTeamEmails
+            .GroupBy(e => e.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Any(e => e.IsNotificationTarget));
+
         // Materialize for flexible sorting (fine at ~500 users)
         var allMatching = allRows.Select(r => new AdminHumanViewModel
         {
@@ -220,7 +233,9 @@ public class HumanController : HumansControllerBase
             LastLoginAt = r.LastLoginAt,
             HasProfile = r.HasProfile,
             IsApproved = r.IsApproved,
-            MembershipStatus = r.MembershipStatus
+            MembershipStatus = r.MembershipStatus,
+            HasNobodiesTeamEmail = nobodiesTeamByUser.ContainsKey(r.UserId),
+            NobodiesTeamEmailIsPrimary = nobodiesTeamByUser.TryGetValue(r.UserId, out var isPrimary) && isPrimary
         }).ToList();
 
         var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);

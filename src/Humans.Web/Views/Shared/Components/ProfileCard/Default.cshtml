@@ -28,6 +28,12 @@
                 {
                     <span class="@Model.PreferredLanguage.ToFlagClass()" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>
                 }
+                @if (Model.HasNobodiesTeamEmail)
+                {
+                    <span class="badge bg-light text-dark border ms-1" title="Has a @@nobodies.team email account" data-bs-toggle="tooltip">
+                        <i class="fa-solid fa-at me-1"></i>nobodies.team
+                    </span>
+                }
                 @if (Model.Teams.Count > 0)
                 {
                     <div class="d-flex flex-wrap gap-2 mt-2">
