@@ -714,6 +714,7 @@ public class TeamAdminController : HumansTeamControllerBase
             Slug = team.Slug,
             TeamName = team.DisplayName,
             IsPublicPage = team.IsPublicPage,
+            ShowCoordinatorsOnPublicPage = team.ShowCoordinatorsOnPublicPage,
             CanBePublic = canBePublic,
             PageContent = team.PageContent,
             CallsToAction = ctas
@@ -760,6 +761,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 model.PageContent,
                 callsToAction,
                 model.IsPublicPage,
+                model.ShowCoordinatorsOnPublicPage,
                 user.Id);
 
             SetSuccess(_localizer["EditTeamPage_Saved"].Value);

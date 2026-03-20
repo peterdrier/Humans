@@ -55,9 +55,16 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
         builder.Property(t => t.UpdatedAt)
             .IsRequired();
 
+        builder.Property(t => t.CustomSlug)
+            .HasMaxLength(256);
+
         builder.Property(t => t.IsPublicPage)
             .IsRequired()
             .HasDefaultValue(false);
+
+        builder.Property(t => t.ShowCoordinatorsOnPublicPage)
+            .IsRequired()
+            .HasDefaultValue(true);
 
         builder.Property(t => t.PageContent)
             .HasMaxLength(50000);
@@ -102,6 +109,10 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
 
         builder.HasIndex(t => t.SystemTeamType);
 
+        builder.HasIndex(t => t.CustomSlug)
+            .IsUnique()
+            .HasFilter("\"CustomSlug\" IS NOT NULL");
+
         builder.HasIndex(t => t.GoogleGroupPrefix)
             .IsUnique()
             .HasFilter("\"GoogleGroupPrefix\" IS NOT NULL");
@@ -130,7 +141,9 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContent = (string?)null,
                 PageContentUpdatedAt = (Instant?)null,
                 PageContentUpdatedByUserId = (Guid?)null,
-                CallsToAction = (List<CallToAction>?)null
+                CallsToAction = (List<CallToAction>?)null,
+                CustomSlug = (string?)null,
+                ShowCoordinatorsOnPublicPage = true
             },
             new
             {
@@ -149,7 +162,9 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContent = (string?)null,
                 PageContentUpdatedAt = (Instant?)null,
                 PageContentUpdatedByUserId = (Guid?)null,
-                CallsToAction = (List<CallToAction>?)null
+                CallsToAction = (List<CallToAction>?)null,
+                CustomSlug = (string?)null,
+                ShowCoordinatorsOnPublicPage = true
             },
             new
             {
@@ -168,7 +183,9 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContent = (string?)null,
                 PageContentUpdatedAt = (Instant?)null,
                 PageContentUpdatedByUserId = (Guid?)null,
-                CallsToAction = (List<CallToAction>?)null
+                CallsToAction = (List<CallToAction>?)null,
+                CustomSlug = (string?)null,
+                ShowCoordinatorsOnPublicPage = true
             },
             new
             {
@@ -187,7 +204,9 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContent = (string?)null,
                 PageContentUpdatedAt = (Instant?)null,
                 PageContentUpdatedByUserId = (Guid?)null,
-                CallsToAction = (List<CallToAction>?)null
+                CallsToAction = (List<CallToAction>?)null,
+                CustomSlug = (string?)null,
+                ShowCoordinatorsOnPublicPage = true
             },
             new
             {
@@ -206,7 +225,9 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContent = (string?)null,
                 PageContentUpdatedAt = (Instant?)null,
                 PageContentUpdatedByUserId = (Guid?)null,
-                CallsToAction = (List<CallToAction>?)null
+                CallsToAction = (List<CallToAction>?)null,
+                CustomSlug = (string?)null,
+                ShowCoordinatorsOnPublicPage = true
             },
             new
             {
@@ -225,7 +246,9 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContent = (string?)null,
                 PageContentUpdatedAt = (Instant?)null,
                 PageContentUpdatedByUserId = (Guid?)null,
-                CallsToAction = (List<CallToAction>?)null
+                CallsToAction = (List<CallToAction>?)null,
+                CustomSlug = (string?)null,
+                ShowCoordinatorsOnPublicPage = true
             });
     }
 }

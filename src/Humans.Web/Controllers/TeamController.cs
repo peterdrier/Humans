@@ -123,6 +123,7 @@ public class TeamController : HumansControllerBase
             SystemTeamType = team.SystemTeamType != SystemTeamType.None ? team.SystemTeamType : null,
             CreatedAt = team.CreatedAt.ToDateTimeUtc(),
             IsPublicPage = team.IsPublicPage,
+            ShowCoordinatorsOnPublicPage = team.ShowCoordinatorsOnPublicPage,
             PageContent = team.PageContent,
             PageContentHtml = pageContentHtml,
             CallsToAction = team.CallsToAction ?? [],
@@ -635,6 +636,7 @@ public class TeamController : HumansControllerBase
             GoogleGroupPrefix = team.GoogleGroupPrefix,
             GoogleGroupEmail = team.GoogleGroupEmail,
             Slug = team.Slug,
+            CustomSlug = team.CustomSlug,
             RequiresApproval = team.RequiresApproval,
             IsActive = team.IsActive,
             IsSystemTeam = team.IsSystemTeam,
@@ -662,7 +664,7 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix);
+            await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug);
             var currentUser = await GetCurrentUserAsync();
             _logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
@@ -687,9 +689,17 @@ public class TeamController : HumansControllerBase
             ModelState.AddModelError("", ex.Message);
             return View(model);
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
-            ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
+            var message = ex.InnerException?.Message ?? "";
+            if (message.Contains("CustomSlug", StringComparison.OrdinalIgnoreCase))
+            {
+                ModelState.AddModelError("CustomSlug", "This custom slug is already in use by another team.");
+            }
+            else
+            {
+                ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
+            }
             return View(model);
         }
     }

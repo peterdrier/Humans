@@ -36,8 +36,21 @@
                         <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
                         <input asp-for="Name" class="form-control" disabled="@Model.IsSystemTeam" />
                         <span asp-validation-for="Name" class="text-danger"></span>
-                        <div class="form-text">Slug: <code>@Model.Slug</code> — updates automatically when name changes.</div>
+                        <div class="form-text">Auto-generated slug: <code>@Model.Slug</code> — updates automatically when name changes.</div>
                     </div>
+
+                    @if (!Model.IsSystemTeam)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="CustomSlug" class="form-label">Custom Slug</label>
+                            <input asp-for="CustomSlug" class="form-control" placeholder="e.g. comms" />
+                            <span asp-validation-for="CustomSlug" class="text-danger"></span>
+                            <div class="form-text">
+                                Optional. When set, this slug is used for the team's URL instead of the auto-generated one.
+                                Both slugs will resolve to this team. Lowercase letters, numbers, and hyphens only.
+                            </div>
+                        </div>
+                    }
 
                     <partial name="~/Views/Shared/_TeamDescriptionAndApprovalFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = Model.IsSystemTeam, ["ShowRequiresApprovalHelp"] = false }' />
                     <partial name="~/Views/Shared/_TeamGoogleAndParentFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = Model.IsSystemTeam, ["ShowParentTeam"] = !Model.IsSystemTeam, ["GoogleGroupEmail"] = Model.GoogleGroupEmail }' />

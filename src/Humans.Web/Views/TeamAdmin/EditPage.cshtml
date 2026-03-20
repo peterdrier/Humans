@@ -25,15 +25,24 @@
     {
         <div class="card mb-4">
             <div class="card-body">
-                <div class="form-check form-switch">
+                <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" asp-for="IsPublicPage" />
                     <label class="form-check-label" asp-for="IsPublicPage">
                         Make this team's page public
                     </label>
+                    <div class="form-text">
+                        When enabled, anonymous visitors can see this team's page and description.
+                        Regular members are only visible to authenticated users.
+                    </div>
                 </div>
-                <div class="form-text">
-                    When enabled, anonymous visitors can see this team's page, description, and coordinators.
-                    Regular members are only visible to authenticated users.
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" asp-for="ShowCoordinatorsOnPublicPage" />
+                    <label class="form-check-label" asp-for="ShowCoordinatorsOnPublicPage">
+                        Show coordinators on public page
+                    </label>
+                    <div class="form-text">
+                        When enabled, coordinators' names and photos are shown to anonymous visitors on the public page.
+                    </div>
                 </div>
             </div>
         </div>
@@ -41,6 +50,7 @@
     else
     {
         <input type="hidden" asp-for="IsPublicPage" value="false" />
+        <input type="hidden" asp-for="ShowCoordinatorsOnPublicPage" value="true" />
         <div class="alert alert-info mb-4">
             Only top-level departments (non-system, no parent team) can be made public.
         </div>
