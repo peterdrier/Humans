@@ -3,6 +3,8 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Humans.Web.Models.Vol;
 using Microsoft.AspNetCore.Authorization;
@@ -363,6 +365,336 @@ public class VolController : HumansControllerBase
             _logger.LogError(ex, "Error loading department detail for slug {Slug}", slug);
             SetError("Failed to load department.");
             return RedirectToAction(nameof(Teams));
+        }
+    }
+
+    [HttpGet("Teams/{parentSlug}/{childSlug}")]
+    public async Task<IActionResult> ChildTeamDetail(string parentSlug, string childSlug)
+    {
+        try
+        {
+            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (err != null) return err;
+
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es == null) return View("NoActiveEvent");
+
+            var parent = await _teamService.GetTeamBySlugAsync(parentSlug);
+            if (parent == null || parent.ParentTeamId != null) return NotFound();
+
+            var child = await _teamService.GetTeamBySlugAsync(childSlug);
+            if (child == null || child.ParentTeamId != parent.Id) return NotFound();
+
+            var isCoordinator = RoleChecks.IsAdmin(User) ||
+                                User.IsInRole(RoleNames.VolunteerCoordinator) ||
+                                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, parent.Id);
+
+            var members = await _teamService.GetTeamMembersAsync(child.Id);
+
+            var rotas = await _shiftMgmt.GetRotasByDepartmentAsync(child.Id, es.Id);
+            var rotaGroups = new List<RotaShiftGroup>();
+            foreach (var rota in rotas)
+            {
+                var shifts = await _shiftMgmt.GetShiftsByRotaAsync(rota.Id);
+                rotaGroups.Add(new RotaShiftGroup
+                {
+                    Rota = rota,
+                    Shifts = shifts.Select(s =>
+                    {
+                        var (start, end, period) = _shiftMgmt.ResolveShiftTimes(s, es);
+                        return new ShiftDisplayItem
+                        {
+                            Shift = s,
+                            AbsoluteStart = start,
+                            AbsoluteEnd = end,
+                            Period = period,
+                            ConfirmedCount = s.ShiftSignups.Count(su => su.Status == SignupStatus.Confirmed),
+                            RemainingSlots = s.MaxVolunteers - s.ShiftSignups.Count(su => su.Status == SignupStatus.Confirmed)
+                        };
+                    }).OrderBy(s => s.AbsoluteStart).ToList()
+                });
+            }
+
+            var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
+            var userSignupShiftIds = userSignups
+                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+                .Select(s => s.ShiftId).ToHashSet();
+            var userSignupStatuses = userSignups
+                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+                .ToDictionary(s => s.ShiftId, s => s.Status);
+
+            var pendingRequests = isCoordinator
+                ? (await _teamService.GetPendingRequestsForTeamAsync(child.Id)).ToList()
+                : [];
+
+            var model = new ChildTeamDetailViewModel
+            {
+                ChildTeam = child,
+                Department = parent,
+                Members = members.ToList(),
+                Rotas = rotaGroups,
+                PendingRequests = pendingRequests,
+                IsCoordinator = isCoordinator,
+                EventSettings = es,
+                UserSignupShiftIds = userSignupShiftIds,
+                UserSignupStatuses = userSignupStatuses
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading child team detail for {ParentSlug}/{ChildSlug}", parentSlug, childSlug);
+            SetError("Failed to load team detail.");
+            return RedirectToAction(nameof(Teams));
+        }
+    }
+
+    [HttpPost("Approve")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Approve(Guid signupId, string? returnUrl)
+    {
+        try
+        {
+            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (err != null) return err;
+
+            var signup = await _signupService.GetByIdAsync(signupId);
+            if (signup == null)
+            {
+                SetError("Signup not found.");
+                return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+            }
+
+            var canApprove = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
+                             await _shiftMgmt.CanApproveSignupsAsync(user.Id, signup.Shift.Rota.TeamId);
+            if (!canApprove) return Forbid();
+
+            var result = await _signupService.ApproveAsync(signupId, user.Id);
+            if (result.Success)
+                SetSuccess("Signup approved.");
+            else
+                SetError(result.Error ?? "Approval failed.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving signup {SignupId}", signupId);
+            SetError("Approval failed.");
+        }
+        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+    }
+
+    [HttpPost("Refuse")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Refuse(Guid signupId, string? reason, string? returnUrl)
+    {
+        try
+        {
+            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (err != null) return err;
+
+            var signup = await _signupService.GetByIdAsync(signupId);
+            if (signup == null)
+            {
+                SetError("Signup not found.");
+                return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+            }
+
+            var canApprove = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
+                             await _shiftMgmt.CanApproveSignupsAsync(user.Id, signup.Shift.Rota.TeamId);
+            if (!canApprove) return Forbid();
+
+            var result = await _signupService.RefuseAsync(signupId, user.Id, reason);
+            if (result.Success)
+                SetSuccess("Signup refused.");
+            else
+                SetError(result.Error ?? "Refusal failed.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refusing signup {SignupId}", signupId);
+            SetError("Refusal failed.");
+        }
+        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+    }
+
+    [HttpPost("NoShow")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> NoShow(Guid signupId, string? returnUrl)
+    {
+        try
+        {
+            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (err != null) return err;
+
+            var signup = await _signupService.GetByIdAsync(signupId);
+            if (signup == null)
+            {
+                SetError("Signup not found.");
+                return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+            }
+
+            var canApprove = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
+                             await _shiftMgmt.CanApproveSignupsAsync(user.Id, signup.Shift.Rota.TeamId);
+            if (!canApprove) return Forbid();
+
+            var result = await _signupService.MarkNoShowAsync(signupId, user.Id);
+            if (result.Success)
+                SetSuccess("Marked as no-show.");
+            else
+                SetError(result.Error ?? "No-show marking failed.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error marking no-show for signup {SignupId}", signupId);
+            SetError("No-show marking failed.");
+        }
+        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+    }
+
+    [HttpPost("ApproveJoinRequest")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveJoinRequest(Guid requestId, string? returnUrl)
+    {
+        try
+        {
+            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (err != null) return err;
+
+            await _teamService.ApproveJoinRequestAsync(requestId, user.Id, null);
+            SetSuccess("Join request approved.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            SetError(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error approving join request {RequestId}", requestId);
+            SetError("Failed to approve join request.");
+        }
+        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Teams));
+    }
+
+    [HttpPost("RejectJoinRequest")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectJoinRequest(Guid requestId, string? reason, string? returnUrl)
+    {
+        try
+        {
+            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (err != null) return err;
+
+            await _teamService.RejectJoinRequestAsync(requestId, user.Id, reason ?? "Rejected by coordinator.");
+            SetSuccess("Join request rejected.");
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            SetError(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error rejecting join request {RequestId}", requestId);
+            SetError("Failed to reject join request.");
+        }
+        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Teams));
+    }
+
+    [HttpGet("Urgent")]
+    public async Task<IActionResult> Urgent()
+    {
+        try
+        {
+            if (!ShiftRoleChecks.CanAccessDashboard(User))
+                return Forbid();
+
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es == null) return View("NoActiveEvent");
+
+            var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(es.Id);
+
+            var model = new UrgentShiftsViewModel
+            {
+                EventSettings = es,
+                Shifts = urgentShifts.Select(u => new UrgentShiftsViewModel.UrgentShiftRow
+                {
+                    ShiftId = u.Shift.Id,
+                    DutyTitle = u.Shift.Rota.Name + (string.IsNullOrEmpty(u.Shift.Description) ? "" : " — " + u.Shift.Description),
+                    TeamName = u.DepartmentName,
+                    TeamSlug = u.Shift.Rota.Team.Slug,
+                    DayOffset = u.Shift.DayOffset,
+                    StartTime = u.Shift.StartTime,
+                    Duration = u.Shift.Duration,
+                    Confirmed = u.ConfirmedCount,
+                    MaxVolunteers = u.Shift.MaxVolunteers,
+                    Priority = u.Shift.Rota.Priority,
+                    UrgencyScore = u.UrgencyScore
+                }).ToList()
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading Urgent Shifts");
+            SetError("Failed to load urgent shifts.");
+            return RedirectToAction(nameof(MyShifts));
+        }
+    }
+
+    [HttpPost("Voluntell")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Voluntell(Guid shiftId, Guid userId)
+    {
+        try
+        {
+            if (!ShiftRoleChecks.CanAccessDashboard(User))
+                return Forbid();
+
+            var (err, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
+            if (err != null) return err;
+
+            var result = await _signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
+            if (result.Success)
+                SetSuccess("Volunteer assigned to shift.");
+            else
+                SetError(result.Error ?? "Failed to assign volunteer.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error voluntelling user {UserId} for shift {ShiftId}", userId, shiftId);
+            SetError("Failed to assign volunteer.");
+        }
+        return RedirectToAction(nameof(Urgent));
+    }
+
+    [HttpGet("SearchVolunteers")]
+    public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
+    {
+        if (!ShiftRoleChecks.CanAccessDashboard(User))
+            return Forbid();
+
+        if (!query.HasSearchTerm())
+            return Json(Array.Empty<VolunteerSearchResult>());
+
+        try
+        {
+            var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
+            if (shift == null) return NotFound();
+
+            var es = shift.Rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
+            if (es == null) return NotFound();
+
+            var results = await ShiftVolunteerSearchBuilder.BuildAsync(
+                shift, query, es,
+                ShiftRoleChecks.CanViewMedical(User),
+                UserManager, _profileService, _signupService, _availabilityService);
+            return Json(results);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Volunteer search failed for shift {ShiftId}, query '{Query}'", shiftId, query);
+            return StatusCode(500, new { error = "Search failed." });
         }
     }
 }

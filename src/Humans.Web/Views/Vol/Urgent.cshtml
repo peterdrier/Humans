@@ -1,0 +1,125 @@
+@model Humans.Web.Models.Vol.UrgentShiftsViewModel
+@using Humans.Domain.Enums
+@using NodaTime
+
+@{
+    ViewData["Title"] = "Urgent Shifts";
+    ViewData["VolActiveTab"] = "Urgent";
+    var searchUrl = Url.Action(nameof(Humans.Web.Controllers.VolController.SearchVolunteers), "Vol");
+    var voluntellUrl = Url.Action(nameof(Humans.Web.Controllers.VolController.Voluntell), "Vol");
+}
+
+<vc:temp-data-alerts />
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fa-solid fa-bolt me-2"></i>Urgent Shifts</h5>
+    </div>
+    <div class="card-body">
+        @if (Model.Shifts.Count == 0)
+        {
+            <div class="text-center py-5">
+                <i class="fa-solid fa-circle-check fa-2x text-success mb-3"></i>
+                <p class="text-muted mb-0">All duties are fully staffed!</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 60px">Urgency</th>
+                            <th>Duty</th>
+                            <th>Team</th>
+                            <th>Date & Time</th>
+                            <th>Capacity</th>
+                            <th>Priority</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var shift in Model.Shifts)
+                        {
+                            var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
+                            var fillPercent = shift.MaxVolunteers > 0
+                                ? (int)(100.0 * shift.Confirmed / shift.MaxVolunteers)
+                                : 0;
+                            var urgencyPercent = Math.Min(100, (int)(shift.UrgencyScore * 10));
+                            var urgencyColor = urgencyPercent >= 70 ? "bg-danger"
+                                : urgencyPercent >= 40 ? "bg-warning"
+                                : "bg-info";
+                            var priorityBadge = shift.Priority switch
+                            {
+                                ShiftPriority.Essential => "bg-danger",
+                                ShiftPriority.Important => "bg-warning text-dark",
+                                _ => "bg-secondary"
+                            };
+                            var collapseId = "voluntell-" + shift.ShiftId.ToString("N");
+
+                            <tr>
+                                <td>
+                                    <div class="progress" style="height: 8px;" title="Urgency: @shift.UrgencyScore.ToString("F1")">
+                                        <div class="progress-bar @urgencyColor" style="width: @(urgencyPercent)%"></div>
+                                    </div>
+                                </td>
+                                <td>@shift.DutyTitle</td>
+                                <td>@shift.TeamName</td>
+                                <td>
+                                    @shiftDate.ToDisplayShiftDate()
+                                    <small class="text-muted ms-1">@shift.StartTime.ToString("HH:mm", null)</small>
+                                </td>
+                                <td>
+                                    <span class="@(fillPercent < 50 ? "text-danger fw-bold" : "")">@shift.Confirmed</span><small class="text-muted"> / @shift.MaxVolunteers</small>
+                                    <div class="progress mt-1" style="height: 4px;">
+                                        <div class="progress-bar @(fillPercent < 50 ? "bg-danger" : "bg-success")" style="width: @(fillPercent)%"></div>
+                                    </div>
+                                </td>
+                                <td><span class="badge @priorityBadge">@shift.Priority</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            type="button"
+                                            data-bs-toggle="collapse"
+                                            data-bs-target="#@collapseId"
+                                            data-shift-id="@shift.ShiftId">
+                                        <i class="fa-solid fa-magnifying-glass me-1"></i>Find
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr class="collapse" id="@collapseId">
+                                <td colspan="7">
+                                    <div class="p-3 bg-light rounded border">
+                                        <label class="form-label fw-semibold">Search humans for: @shift.DutyTitle</label>
+                                        <input type="text"
+                                               class="form-control mb-2 volunteer-search-input"
+                                               placeholder="Type a name (min 2 chars)..."
+                                               data-shift-id="@shift.ShiftId"
+                                               autocomplete="off" />
+                                        <div class="volunteer-results" data-shift-id="@shift.ShiftId"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+@await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
+@await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
+{
+    ["SearchUrl"] = searchUrl,
+    ["VoluntellUrl"] = voluntellUrl,
+    ["AssignButtonClass"] = "btn-success",
+    ["NoResultsText"] = "No humans found.",
+    ["ErrorText"] = "Search failed.",
+    ["OverlapLabel"] = "Schedule conflict",
+    ["DietaryPreferenceStyle"] = "muted",
+    ["ShowPoolBadge"] = false
+})
+</script>
+}
