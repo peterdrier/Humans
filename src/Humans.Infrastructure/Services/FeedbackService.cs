@@ -196,6 +196,21 @@ public class FeedbackService : IFeedbackService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsAsync(
+        IEnumerable<Guid> reportIds, CancellationToken cancellationToken = default)
+    {
+        var idList = reportIds.ToList();
+        if (idList.Count == 0)
+            return new Dictionary<Guid, int>();
+
+        return await _dbContext.AuditLogEntries
+            .Where(a => a.Action == AuditAction.FeedbackResponseSent
+                && a.EntityType == nameof(FeedbackReport)
+                && idList.Contains(a.EntityId))
+            .GroupBy(a => a.EntityId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count(), cancellationToken);
+    }
+
     public async Task SendResponseAsync(
         Guid id, string message, Guid? actorUserId,
         CancellationToken cancellationToken = default)

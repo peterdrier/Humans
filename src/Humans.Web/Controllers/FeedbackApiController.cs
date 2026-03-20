@@ -25,6 +25,7 @@ public class FeedbackApiController : ControllerBase
         [FromQuery] int limit = 50)
     {
         var reports = await _feedbackService.GetFeedbackListAsync(status, category, limit);
+        var responseCounts = await _feedbackService.GetResponseCountsAsync(reports.Select(r => r.Id));
 
         var result = reports.Select(r => new
         {
@@ -43,7 +44,8 @@ public class FeedbackApiController : ControllerBase
             UpdatedAt = r.UpdatedAt.ToDateTimeUtc(),
             AdminResponseSentAt = r.AdminResponseSentAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = r.ResolvedByUser?.DisplayName
+            ResolvedByName = r.ResolvedByUser?.DisplayName,
+            ResponseCount = responseCounts.GetValueOrDefault(r.Id)
         });
 
         return Ok(result);
@@ -54,6 +56,8 @@ public class FeedbackApiController : ControllerBase
     {
         var r = await _feedbackService.GetFeedbackByIdAsync(id);
         if (r == null) return NotFound();
+
+        var responseCounts = await _feedbackService.GetResponseCountsAsync([id]);
 
         return Ok(new
         {
@@ -72,7 +76,8 @@ public class FeedbackApiController : ControllerBase
             UpdatedAt = r.UpdatedAt.ToDateTimeUtc(),
             AdminResponseSentAt = r.AdminResponseSentAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = r.ResolvedByUser?.DisplayName
+            ResolvedByName = r.ResolvedByUser?.DisplayName,
+            ResponseCount = responseCounts.GetValueOrDefault(r.Id)
         });
     }
 

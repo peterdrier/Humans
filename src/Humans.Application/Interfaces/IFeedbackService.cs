@@ -31,4 +31,7 @@ public interface IFeedbackService
     Task SendResponseAsync(
         Guid id, string message, Guid? actorUserId,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsAsync(
+        IEnumerable<Guid> reportIds, CancellationToken cancellationToken = default);
 }
