@@ -700,6 +700,71 @@ public class VolController : HumansControllerBase
         }
     }
 
+    [HttpGet("Settings")]
+    public async Task<IActionResult> Settings()
+    {
+        try
+        {
+            if (!RoleChecks.IsAdmin(User))
+                return Forbid();
+
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es == null) return View("NoActiveEvent");
+
+            var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id);
+            var confirmedCount = staffingData.Sum(d => d.ConfirmedCount);
+
+            var model = new SettingsViewModel
+            {
+                Id = es.Id,
+                EventName = es.EventName,
+                TimeZoneId = es.TimeZoneId,
+                GateOpeningDate = LocalDatePattern.Iso.Format(es.GateOpeningDate),
+                BuildStartOffset = es.BuildStartOffset,
+                EventEndOffset = es.EventEndOffset,
+                StrikeEndOffset = es.StrikeEndOffset,
+                IsShiftBrowsingOpen = es.IsShiftBrowsingOpen,
+                GlobalVolunteerCap = es.GlobalVolunteerCap,
+                ConfirmedVolunteerCount = confirmedCount
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading Vol Settings");
+            SetError("Failed to load settings.");
+            return RedirectToAction(nameof(Management));
+        }
+    }
+
+    [HttpPost("Settings")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Settings(bool isShiftBrowsingOpen, int? globalVolunteerCap)
+    {
+        try
+        {
+            if (!RoleChecks.IsAdmin(User))
+                return Forbid();
+
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es == null) return View("NoActiveEvent");
+
+            es.IsShiftBrowsingOpen = isShiftBrowsingOpen;
+            es.GlobalVolunteerCap = globalVolunteerCap;
+            await _shiftMgmt.UpdateAsync(es);
+
+            SetSuccess("Settings saved.");
+            return RedirectToAction(nameof(Settings));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving Vol Settings");
+            SetError("Failed to save settings.");
+            return RedirectToAction(nameof(Settings));
+        }
+    }
+
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
     {
