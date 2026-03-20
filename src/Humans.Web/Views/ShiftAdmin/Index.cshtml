@@ -123,16 +123,16 @@
                                 <div class="col-md-2">
                                     <label class="form-label">Priority</label>
                                     <select name="Priority" class="form-select">
-                                        <option value="Normal" selected="@(rota.Priority == ShiftPriority.Normal)">Normal</option>
-                                        <option value="Important" selected="@(rota.Priority == ShiftPriority.Important)">Important</option>
-                                        <option value="Essential" selected="@(rota.Priority == ShiftPriority.Essential)">Essential</option>
+                                        <option value="Normal" selected="@(rota.Priority == ShiftPriority.Normal ? "selected" : null)">Normal</option>
+                                        <option value="Important" selected="@(rota.Priority == ShiftPriority.Important ? "selected" : null)">Important</option>
+                                        <option value="Essential" selected="@(rota.Priority == ShiftPriority.Essential ? "selected" : null)">Essential</option>
                                     </select>
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label">Policy</label>
                                     <select name="Policy" class="form-select">
-                                        <option value="Public" selected="@(rota.Policy == SignupPolicy.Public)">Public</option>
-                                        <option value="RequireApproval" selected="@(rota.Policy == SignupPolicy.RequireApproval)">Require Approval</option>
+                                        <option value="Public" selected="@(rota.Policy == SignupPolicy.Public ? "selected" : null)">Public</option>
+                                        <option value="RequireApproval" selected="@(rota.Policy == SignupPolicy.RequireApproval ? "selected" : null)">Require Approval</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
@@ -144,9 +144,9 @@
                                 <div class="col-md-2">
                                     <label class="form-label">Period</label>
                                     <select name="Period" class="form-select">
-                                        <option value="Build" selected="@(rota.Period == RotaPeriod.Build)">Set-up</option>
-                                        <option value="Event" selected="@(rota.Period == RotaPeriod.Event)">Event</option>
-                                        <option value="Strike" selected="@(rota.Period == RotaPeriod.Strike)">Strike</option>
+                                        <option value="Build" selected="@(rota.Period == RotaPeriod.Build ? "selected" : null)">Set-up</option>
+                                        <option value="Event" selected="@(rota.Period == RotaPeriod.Event ? "selected" : null)">Event</option>
+                                        <option value="Strike" selected="@(rota.Period == RotaPeriod.Strike ? "selected" : null)">Strike</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -295,6 +295,7 @@
                                             <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <form asp-action="EditShift" asp-route-slug="@Model.Department.Slug" asp-route-shiftId="@shift.Id" method="post">
                                                     @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="Description" value="@shift.Description" />
                                                     <div class="row g-2 align-items-end">
                                                         <div class="col-md-2">
                                                             <label class="form-label form-label-sm">Date</label>
@@ -303,7 +304,7 @@
                                                                 {
                                                                     var editDate = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                                                     var editLabel = editDate.ToDisplayShiftDate();
-                                                                    <option value="@d" selected="@(d == shift.DayOffset)">@editLabel</option>
+                                                                    <option value="@d" selected="@(d == shift.DayOffset ? "selected" : null)">@editLabel</option>
                                                                 }
                                                             </select>
                                                         </div>
@@ -325,7 +326,7 @@
                                                         </div>
                                                         <div class="col-md-1">
                                                             <div class="form-check">
-                                                                <input type="checkbox" name="AdminOnly" value="true" class="form-check-input" checked="@shift.AdminOnly" />
+                                                                <input type="checkbox" name="AdminOnly" value="true" class="form-check-input" checked="@(shift.AdminOnly ? "checked" : null)" />
                                                                 <label class="form-check-label form-label-sm">Admin</label>
                                                             </div>
                                                         </div>
@@ -452,7 +453,7 @@
                                     {
                                         var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                         var dateLabel = date.ToDisplayShiftDate();
-                                        <option value="@d" selected="@(d == periodRange.End)">@dateLabel</option>
+                                        <option value="@d" selected="@(d == periodRange.End ? "selected" : null)">@dateLabel</option>
                                     }
                                 </select>
                             </div>
@@ -509,7 +510,7 @@
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                                 var label = date.ToDisplayShiftDate();
-                                                <option value="@d" selected="@(d == 0)">@label</option>
+                                                <option value="@d" selected="@(d == 0 ? "selected" : null)">@label</option>
                                             }
                                         </select>
                                     </div>
@@ -520,7 +521,7 @@
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                                 var label = date.ToDisplayShiftDate();
-                                                <option value="@d" selected="@(d == Model.EventSettings.EventEndOffset)">@label</option>
+                                                <option value="@d" selected="@(d == Model.EventSettings.EventEndOffset ? "selected" : null)">@label</option>
                                             }
                                         </select>
                                     </div>
@@ -568,7 +569,7 @@
                                         {
                                             var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                             var label = date.ToDisplayShiftDate();
-                                            <option value="@d" selected="@(d == 0)">@label</option>
+                                            <option value="@d" selected="@(d == 0 ? "selected" : null)">@label</option>
                                         }
                                     </select>
                                 </div>
