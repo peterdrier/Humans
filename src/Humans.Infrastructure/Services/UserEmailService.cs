@@ -43,6 +43,15 @@ public class UserEmailService : IUserEmailService
             .ThenBy(e => e.CreatedAt)
             .ToListAsync(cancellationToken);
 
+        // Check which emails have pending merge requests
+        var emailIds = emails.Select(e => e.Id).ToList();
+        var mergePendingEmailIds = await _dbContext.AccountMergeRequests
+            .Where(r => emailIds.Contains(r.PendingEmailId)
+                && r.Status == AccountMergeRequestStatus.Pending)
+            .Select(r => r.PendingEmailId)
+            .ToListAsync(cancellationToken);
+        var mergePendingSet = mergePendingEmailIds.ToHashSet();
+
         return emails.Select(e => new UserEmailEditDto(
             e.Id,
             e.Email,
@@ -50,7 +59,8 @@ public class UserEmailService : IUserEmailService
             e.IsOAuth,
             e.IsNotificationTarget,
             e.Visibility,
-            IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue
+            IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
+            IsMergePending: mergePendingSet.Contains(e.Id)
         )).ToList();
     }
 
@@ -82,7 +92,7 @@ public class UserEmailService : IUserEmailService
         )).ToList();
     }
 
-    public async Task<string> AddEmailAsync(
+    public async Task<AddEmailResult> AddEmailAsync(
         Guid userId,
         string email,
         CancellationToken cancellationToken = default)
@@ -104,14 +114,21 @@ public class UserEmailService : IUserEmailService
             throw new ValidationException("This email address is already in your account.");
         }
 
-        // Check uniqueness among verified emails (case-insensitive)
-        var verifiedExists = await _dbContext.UserEmails
-            .AnyAsync(e => e.IsVerified && EF.Functions.ILike(e.Email, email), cancellationToken);
+        // Check if there's already a pending merge request for this email from this user
+        var pendingMerge = await _dbContext.AccountMergeRequests
+            .AnyAsync(r => r.TargetUserId == userId
+                && EF.Functions.ILike(r.Email, email)
+                && r.Status == AccountMergeRequestStatus.Pending, cancellationToken);
 
-        if (verifiedExists)
+        if (pendingMerge)
         {
-            throw new ValidationException("This email address is already in use.");
+            throw new ValidationException("A merge request is already pending for this email address.");
         }
+
+        // Check uniqueness among verified emails (case-insensitive)
+        // Instead of blocking, flag as conflict for merge flow
+        var isConflict = await _dbContext.UserEmails
+            .AnyAsync(e => e.UserId != userId && e.IsVerified && EF.Functions.ILike(e.Email, email), cancellationToken);
 
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
@@ -152,10 +169,10 @@ public class UserEmailService : IUserEmailService
             TokenOptions.DefaultEmailProvider,
             $"{EmailVerificationTokenPurpose}:{userEmail.Id}");
 
-        return token;
+        return new AddEmailResult(token, isConflict);
     }
 
-    public async Task<string> VerifyEmailAsync(
+    public async Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId,
         string token,
         CancellationToken cancellationToken = default)
@@ -184,24 +201,46 @@ public class UserEmailService : IUserEmailService
             throw new ValidationException("The verification link has expired or is invalid.");
         }
 
-        // Re-check uniqueness (guard against race conditions)
-        var emailInUse = await _dbContext.UserEmails
-            .AnyAsync(e => e.Id != pendingEmail.Id
+        // Check if this email is verified on another account
+        var conflictingEmail = await _dbContext.UserEmails
+            .FirstOrDefaultAsync(e => e.Id != pendingEmail.Id
                 && e.IsVerified
                 && EF.Functions.ILike(e.Email, pendingEmail.Email), cancellationToken);
 
-        if (emailInUse)
+        if (conflictingEmail != null)
         {
-            _dbContext.UserEmails.Remove(pendingEmail);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            throw new ValidationException("This email address has been claimed by another account.");
+            // Check for existing pending merge request to avoid duplicates
+            // (e.g. email client link prefetch, double-click)
+            var existingRequest = await _dbContext.AccountMergeRequests
+                .AnyAsync(r => r.PendingEmailId == pendingEmail.Id
+                    && r.Status == AccountMergeRequestStatus.Pending, cancellationToken);
+
+            if (!existingRequest)
+            {
+                var now = _clock.GetCurrentInstant();
+                var mergeRequest = new AccountMergeRequest
+                {
+                    Id = Guid.NewGuid(),
+                    TargetUserId = userId,
+                    SourceUserId = conflictingEmail.UserId,
+                    Email = pendingEmail.Email,
+                    PendingEmailId = pendingEmail.Id,
+                    Status = AccountMergeRequestStatus.Pending,
+                    CreatedAt = now
+                };
+
+                _dbContext.AccountMergeRequests.Add(mergeRequest);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
         }
 
         pendingEmail.IsVerified = true;
         pendingEmail.UpdatedAt = _clock.GetCurrentInstant();
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return pendingEmail.Email;
+        return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }
 
     public async Task SetNotificationTargetAsync(

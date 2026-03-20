@@ -142,10 +142,11 @@ public class OutboxEmailService : IEmailService
         string toEmail,
         string userName,
         string verificationUrl,
+        bool isConflict = false,
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderEmailVerification(userName, toEmail, verificationUrl, culture);
+        var content = _renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
         await EnqueueAsync(toEmail, userName, content, "email_verification", cancellationToken,
             triggerImmediate: true);
     }

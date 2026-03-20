@@ -64,4 +64,7 @@ public enum AuditAction
     WorkspaceAccountSuspended,
     WorkspaceAccountReactivated,
     WorkspaceAccountPasswordReset,
+    AccountMergeRequested,
+    AccountMergeAccepted,
+    AccountMergeRejected,
 }

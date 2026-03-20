@@ -114,6 +114,7 @@ public class StubEmailService : IEmailService
         string toEmail,
         string userName,
         string verificationUrl,
+        bool isConflict = false,
         string? culture = null,
         CancellationToken cancellationToken = default)
     {

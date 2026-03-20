@@ -40,7 +40,13 @@
                                         }
                                     </td>
                                     <td>
-                                        @if (email.IsVerified)
+                                        @if (email.IsMergePending)
+                                        {
+                                            <span class="badge bg-info text-dark">
+                                                <i class="fa-solid fa-code-merge me-1"></i>Merge pending
+                                            </span>
+                                        }
+                                        else if (email.IsVerified)
                                         {
                                             <span class="badge bg-success">
                                                 <i class="fa-solid fa-check me-1"></i>Verified

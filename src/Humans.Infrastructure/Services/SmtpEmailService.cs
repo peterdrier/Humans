@@ -135,10 +135,11 @@ public class SmtpEmailService : IEmailService
         string toEmail,
         string userName,
         string verificationUrl,
+        bool isConflict = false,
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderEmailVerification(userName, toEmail, verificationUrl, culture);
+        var content = _renderer.RenderEmailVerification(userName, toEmail, verificationUrl, isConflict, culture);
         await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, cancellationToken);
         _metrics.RecordEmailSent("email_verification");
     }

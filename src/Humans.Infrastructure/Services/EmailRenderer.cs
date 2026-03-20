@@ -159,14 +159,17 @@ public class EmailRenderer : IEmailRenderer
         }
     }
 
-    public EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, string? culture = null)
+    public EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, bool isConflict = false, string? culture = null)
     {
         using (WithCulture(culture))
         {
+            var templateKey = isConflict
+                ? "Email_EmailVerification_Merge_Body"
+                : "Email_EmailVerification_Body";
             var subject = _localizer["Email_VerifyEmail_Subject"].Value;
             var body = string.Format(
                 CultureInfo.CurrentCulture,
-                _localizer["Email_EmailVerification_Body"].Value,
+                _localizer[templateKey].Value,
                 HtmlEncode(userName),
                 HtmlEncode(toEmail),
                 verificationUrl);

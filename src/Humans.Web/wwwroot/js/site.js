@@ -16,10 +16,10 @@
     }
 })();
 
-// Generic confirmation handler for [data-confirm] attributes
+// Generic confirmation handler for [data-confirm] attributes on non-form elements (links, buttons)
 document.addEventListener('click', function (e) {
     var target = e.target.closest('[data-confirm]');
-    if (target) {
+    if (target && target.tagName !== 'FORM' && !target.closest('form[data-confirm]')) {
         if (!confirm(target.getAttribute('data-confirm'))) {
             e.preventDefault();
             e.stopPropagation();
@@ -27,6 +27,7 @@ document.addEventListener('click', function (e) {
     }
 });
 
+// Confirmation handler for forms with [data-confirm]
 document.addEventListener('submit', function (e) {
     var form = e.target.closest('form[data-confirm]');
     if (form) {

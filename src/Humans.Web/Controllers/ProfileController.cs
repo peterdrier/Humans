@@ -460,13 +460,13 @@ public class ProfileController : HumansControllerBase
 
         try
         {
-            var token = await _userEmailService.AddEmailAsync(user.Id, model.NewEmail);
+            var result = await _userEmailService.AddEmailAsync(user.Id, model.NewEmail);
 
             // Build verification URL
             var verificationUrl = Url.Action(
                 nameof(VerifyEmail),
                 "Profile",
-                new { userId = user.Id, token = HttpUtility.UrlEncode(token) },
+                new { userId = user.Id, token = HttpUtility.UrlEncode(result.Token) },
                 Request.Scheme);
 
             // Send verification email
@@ -474,13 +474,21 @@ public class ProfileController : HumansControllerBase
                 model.NewEmail.Trim(),
                 user.DisplayName,
                 verificationUrl!,
+                result.IsConflict,
                 user.PreferredLanguage);
 
             _logger.LogInformation(
-                "Sent email verification to {Email} for user {UserId}",
-                model.NewEmail, user.Id);
+                "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
+                model.NewEmail, user.Id, result.IsConflict);
 
-            SetSuccess(string.Format(CultureInfo.CurrentCulture, _localizer["Profile_VerificationSent"].Value, model.NewEmail.Trim()));
+            if (result.IsConflict)
+            {
+                SetInfo("This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.");
+            }
+            else
+            {
+                SetSuccess(string.Format(CultureInfo.CurrentCulture, _localizer["Profile_VerificationSent"].Value, model.NewEmail.Trim()));
+            }
         }
         catch (ValidationException ex)
         {
@@ -504,14 +512,25 @@ public class ProfileController : HumansControllerBase
         try
         {
             var decodedToken = HttpUtility.UrlDecode(token);
-            var verifiedEmail = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
+            var result = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
+
+            if (result.MergeRequestCreated)
+            {
+                _logger.LogInformation(
+                    "User {UserId} verified email {Email} — merge request created",
+                    userId, result.Email);
+
+                ViewData["Success"] = true;
+                ViewData["Message"] = $"Email verified. A merge request has been submitted for admin review. The email {result.Email} will be added to your account once approved.";
+                return View("VerifyEmailResult");
+            }
 
             _logger.LogInformation(
                 "User {UserId} verified email {Email}",
-                userId, verifiedEmail);
+                userId, result.Email);
 
             ViewData["Success"] = true;
-            ViewData["Message"] = string.Format(_localizer["Profile_EmailVerified"].Value, verifiedEmail);
+            ViewData["Message"] = string.Format(_localizer["Profile_EmailVerified"].Value, result.Email);
             return View("VerifyEmailResult");
         }
         catch (InvalidOperationException ex)
@@ -631,7 +650,8 @@ public class ProfileController : HumansControllerBase
                 IsOAuth = e.IsOAuth,
                 IsNotificationTarget = e.IsNotificationTarget,
                 Visibility = e.Visibility,
-                IsPendingVerification = e.IsPendingVerification
+                IsPendingVerification = e.IsPendingVerification,
+                IsMergePending = e.IsMergePending
             }).ToList(),
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend

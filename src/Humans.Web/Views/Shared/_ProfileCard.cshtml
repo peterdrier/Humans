@@ -1,0 +1,60 @@
+@model Humans.Web.Models.ProfileSummaryViewModel
+
+<div class="d-flex align-items-start">
+    @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
+    {
+        <img src="@Model.ProfilePictureUrl" alt="@Model.DisplayName"
+             class="rounded-circle me-3" style="width: 56px; height: 56px; object-fit: cover;" />
+    }
+    else
+    {
+        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3"
+             style="width: 56px; height: 56px; font-size: 1.4rem; flex-shrink: 0;">
+            @Model.DisplayName[..1].ToUpperInvariant()
+        </div>
+    }
+    <div class="flex-grow-1">
+        <h6 class="mb-0">
+            <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@Model.UserId">@Model.DisplayName</a>
+        </h6>
+        <small class="text-muted">@Model.Email</small>
+        <div class="mt-2">
+            @if (Model.MembershipStatus == "Active")
+            {
+                <span class="badge bg-success me-1">@Model.MembershipTier</span>
+            }
+            else if (Model.MembershipStatus == "Suspended")
+            {
+                <span class="badge bg-danger me-1">Suspended</span>
+            }
+            else
+            {
+                <span class="badge bg-warning text-dark me-1">Pending</span>
+            }
+            @if (!string.IsNullOrEmpty(Model.PreferredLanguage))
+            {
+                <span class="badge bg-light text-dark border me-1">@Model.PreferredLanguage.ToUpperInvariant()</span>
+            }
+        </div>
+        @if (Model.Teams.Count > 0)
+        {
+            <div class="mt-2">
+                <small class="text-muted">Teams:</small>
+                @foreach (var team in Model.Teams)
+                {
+                    <span class="badge bg-light text-dark border">@team</span>
+                }
+            </div>
+        }
+        <div class="mt-2 text-muted" style="font-size: 0.8rem;">
+            @if (Model.MemberSince.HasValue)
+            {
+                <span>Joined @Model.MemberSince.Value.ToString("MMM yyyy")</span>
+            }
+            @if (Model.LastLogin.HasValue)
+            {
+                <span class="ms-2">Last login @Model.LastLogin.Value.ToString("d MMM yyyy")</span>
+            }
+        </div>
+    </div>
+</div>

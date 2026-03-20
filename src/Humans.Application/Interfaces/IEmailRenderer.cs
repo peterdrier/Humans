@@ -58,7 +58,7 @@ public interface IEmailRenderer
     /// <summary>
     /// Email verification link.
     /// </summary>
-    EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, string? culture = null);
+    EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, bool isConflict = false, string? culture = null);
 
     /// <summary>
     /// Account deletion requested confirmation.

@@ -25,18 +25,21 @@ public interface IUserEmailService
 
     /// <summary>
     /// Adds a new email address and initiates verification.
-    /// Returns a verification token to build the confirmation URL.
+    /// Returns a result containing the verification token and whether the email conflicts
+    /// with another account (which will trigger a merge request on verification).
     /// </summary>
-    Task<string> AddEmailAsync(
+    Task<AddEmailResult> AddEmailAsync(
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Verifies an email address using a token.
-    /// Returns the verified email address on success.
+    /// If the email is already verified on another account, creates a merge request
+    /// instead of completing verification.
+    /// Returns a result indicating the email and whether a merge request was created.
     /// </summary>
-    Task<string> VerifyEmailAsync(
+    Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId,
         string token,
         CancellationToken cancellationToken = default);

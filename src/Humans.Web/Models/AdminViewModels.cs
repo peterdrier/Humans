@@ -279,6 +279,54 @@ public class EmailPreviewItem
     public string Body { get; set; } = string.Empty;
 }
 
+public class AccountMergeListViewModel
+{
+    public List<AccountMergeRequestViewModel> Requests { get; set; } = [];
+}
+
+public class AccountMergeRequestViewModel
+{
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string PrimaryUserDisplayName { get; set; } = string.Empty;
+    public string? PrimaryUserEmail { get; set; }
+    public Guid PrimaryUserId { get; set; }
+    public string DuplicateUserDisplayName { get; set; } = string.Empty;
+    public string? DuplicateUserEmail { get; set; }
+    public Guid DuplicateUserId { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class AccountMergeDetailViewModel
+{
+    public Guid Id { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public ProfileSummaryViewModel PrimaryUser { get; set; } = new();
+    public ProfileSummaryViewModel DuplicateUser { get; set; } = new();
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? ResolvedAt { get; set; }
+    public string? ResolvedByName { get; set; }
+    public string? AdminNotes { get; set; }
+}
+
+/// <summary>
+/// Compact profile summary for inline display ("baseball card").
+/// </summary>
+public class ProfileSummaryViewModel
+{
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? ProfilePictureUrl { get; set; }
+    public string? PreferredLanguage { get; set; }
+    public string? MembershipTier { get; set; }
+    public string? MembershipStatus { get; set; }
+    public DateTime? MemberSince { get; set; }
+    public DateTime? LastLogin { get; set; }
+    public List<string> Teams { get; set; } = [];
+}
+
 public class EmailOutboxViewModel
 {
     public int QueuedCount { get; set; }

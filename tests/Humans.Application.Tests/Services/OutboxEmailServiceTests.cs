@@ -98,10 +98,10 @@ public class OutboxEmailServiceTests : IDisposable
     [Fact]
     public async Task SendEmailVerificationAsync_CreatesOutboxRowAndEnqueuesHangfireJob()
     {
-        _renderer.RenderEmailVerification("Bob", "bob@example.com", "https://verify", "en")
+        _renderer.RenderEmailVerification("Bob", "bob@example.com", "https://verify", false, "en")
             .Returns(new EmailContent("Verify Email", "<p>Click to verify</p>"));
 
-        await _service.SendEmailVerificationAsync("bob@example.com", "Bob", "https://verify", "en");
+        await _service.SendEmailVerificationAsync("bob@example.com", "Bob", "https://verify", culture: "en");
 
         var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
         messages.Should().HaveCount(1);

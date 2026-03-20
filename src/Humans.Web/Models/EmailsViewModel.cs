@@ -44,4 +44,5 @@ public class EmailRowViewModel
     public bool IsNotificationTarget { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }
+    public bool IsMergePending { get; set; }
 }

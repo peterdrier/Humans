@@ -115,17 +115,19 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends an email verification link for the preferred email address.
+    /// Sends an email verification link.
     /// </summary>
     /// <param name="toEmail">The email address to verify.</param>
     /// <param name="userName">The user's name.</param>
     /// <param name="verificationUrl">The URL to verify the email.</param>
+    /// <param name="isConflict">True if this email belongs to another account and verifying will trigger a merge request.</param>
     /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task SendEmailVerificationAsync(
         string toEmail,
         string userName,
         string verificationUrl,
+        bool isConflict = false,
         string? culture = null,
         CancellationToken cancellationToken = default);
 

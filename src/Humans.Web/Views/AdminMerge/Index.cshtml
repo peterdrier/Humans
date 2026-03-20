@@ -1,0 +1,72 @@
+@model Humans.Web.Models.AccountMergeListViewModel
+@{
+    ViewData["Title"] = "Account Merge Requests";
+}
+
+<h1>Account Merge Requests</h1>
+
+<vc:temp-data-alerts />
+
+<p class="text-muted">
+    When a human verifies an email address that belongs to another account, a merge request is created.
+    Accepting a merge migrates all data from the source account to the target account and archives the source.
+</p>
+
+@if (Model.Requests.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-circle-info me-2"></i>No pending merge requests.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Email</th>
+                    <th>Primary account</th>
+                    <th>Duplicate account</th>
+                    <th>Requested</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var request in Model.Requests)
+                {
+                    <tr>
+                        <td><code>@request.Email</code></td>
+                        <td>
+                            <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@request.PrimaryUserId">
+                                @request.PrimaryUserDisplayName
+                            </a>
+                            @if (!string.IsNullOrEmpty(request.PrimaryUserEmail))
+                            {
+                                <small class="text-muted">(@request.PrimaryUserEmail)</small>
+                            }
+                        </td>
+                        <td>
+                            <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@request.DuplicateUserId">
+                                @request.DuplicateUserDisplayName
+                            </a>
+                            @if (!string.IsNullOrEmpty(request.DuplicateUserEmail))
+                            {
+                                <small class="text-muted">(@request.DuplicateUserEmail)</small>
+                            }
+                        </td>
+                        <td>@request.CreatedAt.ToString("g")</td>
+                        <td>
+                            <a asp-action="Detail" asp-route-id="@request.Id" class="btn btn-sm btn-outline-primary">
+                                <i class="fa-solid fa-eye me-1"></i>Review
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary mt-3">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+</a>
