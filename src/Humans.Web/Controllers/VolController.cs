@@ -668,6 +668,38 @@ public class VolController : HumansControllerBase
         return RedirectToAction(nameof(Urgent));
     }
 
+    [HttpGet("Management")]
+    public async Task<IActionResult> Management()
+    {
+        try
+        {
+            if (!ShiftRoleChecks.CanAccessDashboard(User))
+                return Forbid();
+
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es == null) return View("NoActiveEvent");
+
+            var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id);
+            var confirmedCount = staffingData.Sum(d => d.ConfirmedCount);
+
+            var model = new ManagementViewModel
+            {
+                SystemOpen = es.IsShiftBrowsingOpen,
+                VolunteerCap = es.GlobalVolunteerCap,
+                ConfirmedVolunteerCount = confirmedCount,
+                EventSettings = es
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading Management dashboard");
+            SetError("Failed to load dashboard.");
+            return RedirectToAction(nameof(MyShifts));
+        }
+    }
+
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
     {
