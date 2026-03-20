@@ -118,6 +118,36 @@ public static class AccessMatrixDefinitions
                 Feature("Discount codes", "Board", D, "TicketAdmin", A),
             ]
         },
+
+        ["Profile"] = new AccessMatrixData
+        {
+            SectionName = "Profile",
+            Roles = ["Volunteer", "Coordinator", "Board", "Admin"],
+            Features =
+            [
+                Feature("View own profile", "Volunteer", A, "Coordinator", A, "Board", A, "Admin", A),
+                Feature("Edit own profile", "Volunteer", A, "Coordinator", A, "Board", A, "Admin", A),
+                Feature("View other profiles", "Volunteer", L, "Coordinator", A, "Board", A, "Admin", A),
+                Feature("View contact fields", "Volunteer", L, "Coordinator", L, "Board", A, "Admin", A),
+                Feature("Admin view of profile", "Volunteer", D, "Coordinator", D, "Board", A, "Admin", A),
+            ]
+        },
+
+        ["Admin"] = new AccessMatrixData
+        {
+            SectionName = "Admin Tools",
+            Roles = ["Admin"],
+            Features =
+            [
+                Feature("Configuration status", "Admin", A),
+                Feature("Sync settings", "Admin", A),
+                Feature("Email outbox", "Admin", A),
+                Feature("Background jobs", "Admin", A),
+                Feature("All humans list", "Admin", A),
+                Feature("Role assignments", "Admin", A),
+                Feature("Legal documents", "Admin", A),
+            ]
+        },
     };
 
     // Shorthand aliases for readability
