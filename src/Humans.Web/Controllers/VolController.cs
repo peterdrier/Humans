@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -255,6 +256,113 @@ public class VolController : HumansControllerBase
             _logger.LogError(ex, "Error signing up for shift {ShiftId}", shiftId);
             SetError("Failed to sign up.");
             return RedirectToAction(nameof(Shifts));
+        }
+    }
+
+    [HttpGet("Teams")]
+    public async Task<IActionResult> Teams()
+    {
+        try
+        {
+            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (err != null) return err;
+
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es == null) return View("NoActiveEvent");
+
+            var deptTuples = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
+            var allTeams = await _teamService.GetAllTeamsAsync();
+
+            var departments = new List<TeamsOverviewViewModel.DepartmentCard>();
+            foreach (var (teamId, teamName) in deptTuples)
+            {
+                var team = allTeams.FirstOrDefault(t => t.Id == teamId);
+                if (team == null) continue;
+
+                var childTeamCount = allTeams.Count(t => t.ParentTeamId == teamId && t.IsActive);
+                var summary = await _shiftMgmt.GetShiftsSummaryAsync(es.Id, teamId);
+
+                departments.Add(new TeamsOverviewViewModel.DepartmentCard
+                {
+                    TeamId = teamId,
+                    Name = teamName,
+                    Slug = team.Slug,
+                    Description = team.Description,
+                    ChildTeamCount = childTeamCount,
+                    TotalSlots = summary?.TotalSlots ?? 0,
+                    FilledSlots = summary?.ConfirmedCount ?? 0
+                });
+            }
+
+            var model = new TeamsOverviewViewModel { Departments = departments };
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading Teams Overview");
+            SetError("Failed to load teams.");
+            return RedirectToAction(nameof(MyShifts));
+        }
+    }
+
+    [HttpGet("Teams/{slug}")]
+    public async Task<IActionResult> DepartmentDetail(string slug)
+    {
+        try
+        {
+            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            if (err != null) return err;
+
+            var es = await _shiftMgmt.GetActiveAsync();
+            if (es == null) return View("NoActiveEvent");
+
+            var team = await _teamService.GetTeamBySlugAsync(slug);
+            if (team == null || team.ParentTeamId != null) return NotFound();
+
+            var isCoordinator = RoleChecks.IsAdmin(User) ||
+                                User.IsInRole(RoleNames.VolunteerCoordinator) ||
+                                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
+
+            var allTeams = await _teamService.GetAllTeamsAsync();
+            var childTeams = allTeams.Where(t => t.ParentTeamId == team.Id && t.IsActive).ToList();
+
+            var pendingCounts = isCoordinator
+                ? await _teamService.GetPendingRequestCountsByTeamIdsAsync(childTeams.Select(t => t.Id))
+                : new Dictionary<Guid, int>();
+
+            var childCards = new List<DepartmentDetailViewModel.ChildTeamCard>();
+            foreach (var child in childTeams)
+            {
+                var members = await _teamService.GetTeamMembersAsync(child.Id);
+                var summary = await _shiftMgmt.GetShiftsSummaryAsync(es.Id, child.Id);
+
+                childCards.Add(new DepartmentDetailViewModel.ChildTeamCard
+                {
+                    TeamId = child.Id,
+                    Name = child.Name,
+                    Slug = child.Slug,
+                    MemberCount = members.Count,
+                    TotalSlots = summary?.TotalSlots ?? 0,
+                    FilledSlots = summary?.ConfirmedCount ?? 0,
+                    PendingRequestCount = pendingCounts.GetValueOrDefault(child.Id, 0)
+                });
+            }
+
+            var model = new DepartmentDetailViewModel
+            {
+                Department = team,
+                ChildTeams = childCards,
+                IsCoordinator = isCoordinator,
+                EventSettings = es
+            };
+
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading department detail for slug {Slug}", slug);
+            SetError("Failed to load department.");
+            return RedirectToAction(nameof(Teams));
         }
     }
 }
