@@ -174,11 +174,16 @@ public class TeamService : ITeamService
 
             return new TeamDirectoryResult(
                 IsAuthenticated: false,
-                IsBoardMember: false,
+                CanCreateTeam: false,
                 MyTeams: [],
                 Departments: publicDepartments,
                 SystemTeams: []);
         }
+
+        var isBoardMember = await IsUserBoardMemberAsync(userId.Value, cancellationToken);
+        var canCreateTeam = isBoardMember ||
+            await IsUserAdminAsync(userId.Value, cancellationToken) ||
+            await IsUserTeamsAdminAsync(userId.Value, cancellationToken);
 
         var summaries = cachedTeams.Values
             .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
@@ -201,7 +206,7 @@ public class TeamService : ITeamService
 
         return new TeamDirectoryResult(
             IsAuthenticated: true,
-            IsBoardMember: await IsUserBoardMemberAsync(userId.Value, cancellationToken),
+            CanCreateTeam: canCreateTeam,
             MyTeams: myTeams,
             Departments: departments,
             SystemTeams: systemTeams);

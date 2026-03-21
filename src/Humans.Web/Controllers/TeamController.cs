@@ -66,7 +66,7 @@ public class TeamController : HumansControllerBase
             MyTeams = directory.MyTeams.Select(MapTeamSummary).ToList(),
             Departments = directory.Departments.Select(MapTeamSummary).ToList(),
             SystemTeams = directory.SystemTeams.Select(MapTeamSummary).ToList(),
-            CanCreateTeam = directory.IsBoardMember || RoleChecks.IsTeamsAdminBoardOrAdmin(User),
+            CanCreateTeam = directory.CanCreateTeam,
             IsAuthenticated = directory.IsAuthenticated
         };
 

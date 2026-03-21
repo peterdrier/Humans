@@ -34,7 +34,7 @@ public record TeamDirectorySummary(
 
 public record TeamDirectoryResult(
     bool IsAuthenticated,
-    bool IsBoardMember,
+    bool CanCreateTeam,
     IReadOnlyList<TeamDirectorySummary> MyTeams,
     IReadOnlyList<TeamDirectorySummary> Departments,
     IReadOnlyList<TeamDirectorySummary> SystemTeams);

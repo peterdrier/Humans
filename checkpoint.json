@@ -1,10 +1,10 @@
 {
-  "iteration": 19,
+  "iteration": 20,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Moved team admin summary hierarchy and projection into TeamService behind a dedicated admin-list DTO.",
+  "summary": "Moved team directory create-permission logic into TeamService so TeamController only maps service DTOs.",
   "files_changed": [
     "src/Humans.Application/Interfaces/ITeamService.cs",
     "src/Humans.Infrastructure/Services/TeamService.cs",
