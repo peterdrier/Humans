@@ -1277,11 +1277,13 @@ public class ProfileServiceTests : IDisposable
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
+        _cache.Set(CacheKeys.ActiveTeams, new object());
         _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
         _cache.Set(CacheKeys.ShiftAuthorization(userId), new[] { Guid.NewGuid() });
 
         await _service.RequestDeletionAsync(userId);
 
+        _cache.TryGetValue(CacheKeys.ActiveTeams, out _).Should().BeFalse();
         _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
         _cache.TryGetValue(CacheKeys.ShiftAuthorization(userId), out _).Should().BeFalse();
     }

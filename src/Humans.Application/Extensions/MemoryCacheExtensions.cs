@@ -71,6 +71,13 @@ public static class MemoryCacheExtensions
     public static void InvalidateShiftAuthorization(this IMemoryCache cache, Guid userId) =>
         cache.Remove(CacheKeys.ShiftAuthorization(userId));
 
+    public static void InvalidateUserAccess(this IMemoryCache cache, Guid userId)
+    {
+        cache.InvalidateActiveTeams();
+        cache.InvalidateRoleAssignmentClaims(userId);
+        cache.InvalidateShiftAuthorization(userId);
+    }
+
     public static void SetApprovedProfile(this IMemoryCache cache, Guid userId, CachedProfile profile) =>
         cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, cached =>
             cached[userId] = profile);
@@ -78,4 +85,15 @@ public static class MemoryCacheExtensions
     public static void RemoveApprovedProfile(this IMemoryCache cache, Guid userId) =>
         cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, cached =>
             cached.TryRemove(userId, out _));
+
+    public static void UpdateApprovedProfile(this IMemoryCache cache, Guid userId, CachedProfile? profile)
+    {
+        if (profile != null)
+        {
+            cache.SetApprovedProfile(userId, profile);
+            return;
+        }
+
+        cache.RemoveApprovedProfile(userId);
+    }
 }

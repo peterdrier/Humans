@@ -320,9 +320,7 @@ public class ProfileService : IProfileService
 
         await _dbContext.SaveChangesAsync(ct);
         UpdateProfileCache(userId, null);
-        _cache.InvalidateActiveTeams();
-        _cache.InvalidateRoleAssignmentClaims(userId);
-        _cache.InvalidateShiftAuthorization(userId);
+        _cache.InvalidateUserAccess(userId);
 
         _logger.LogWarning(
             "User {UserId} requested account deletion. Scheduled for {DeletionDate}. " +
@@ -753,15 +751,7 @@ public class ProfileService : IProfileService
     }
 
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
-    {
-        if (newValue != null)
-        {
-            _cache.SetApprovedProfile(userId, newValue);
-            return;
-        }
-
-        _cache.RemoveApprovedProfile(userId);
-    }
+        => _cache.UpdateApprovedProfile(userId, newValue);
 
     private static (string? Field, string? Snippet) DetermineMatchFromCache(CachedProfile p, string query)
     {
