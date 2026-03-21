@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Encodings.Web;
 using Ganss.Xss;
+using Markdig;
 using Microsoft.AspNetCore.Html;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
@@ -26,7 +27,10 @@ public static class HtmlHelperExtensions
             return HtmlString.Empty;
         }
 
-        var rendered = Markdig.Markdown.ToHtml(markdown);
+        var pipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .Build();
+        var rendered = Markdown.ToHtml(markdown, pipeline);
         var sanitized = new HtmlSanitizer().Sanitize(rendered);
         return new HtmlString(sanitized);
     }
