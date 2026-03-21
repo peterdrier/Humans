@@ -71,6 +71,19 @@ public class ProfileService : IProfileService
         return (profile, latestApplication, snapshot.PendingConsentCount);
     }
 
+    public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        return await _dbContext.CampaignGrants
+            .AsNoTracking()
+            .Include(g => g.Campaign)
+            .Include(g => g.Code)
+            .Where(g => g.UserId == userId
+                && (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed))
+            .OrderByDescending(g => g.AssignedAt)
+            .ToListAsync(ct);
+    }
+
     public async Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
         GetProfileEditDataAsync(Guid userId, CancellationToken ct = default)
     {
@@ -741,17 +754,13 @@ public class ProfileService : IProfileService
 
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
     {
-        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, cached =>
+        if (newValue != null)
         {
-            if (newValue != null)
-            {
-                cached[userId] = newValue;
-            }
-            else
-            {
-                cached.TryRemove(userId, out _);
-            }
-        });
+            _cache.SetApprovedProfile(userId, newValue);
+            return;
+        }
+
+        _cache.RemoveApprovedProfile(userId);
     }
 
     private static (string? Field, string? Snippet) DetermineMatchFromCache(CachedProfile p, string query)

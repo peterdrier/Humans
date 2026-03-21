@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using Humans.Application.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Application.Extensions;
@@ -68,4 +70,12 @@ public static class MemoryCacheExtensions
 
     public static void InvalidateShiftAuthorization(this IMemoryCache cache, Guid userId) =>
         cache.Remove(CacheKeys.ShiftAuthorization(userId));
+
+    public static void SetApprovedProfile(this IMemoryCache cache, Guid userId, CachedProfile profile) =>
+        cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, cached =>
+            cached[userId] = profile);
+
+    public static void RemoveApprovedProfile(this IMemoryCache cache, Guid userId) =>
+        cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, cached =>
+            cached.TryRemove(userId, out _));
 }

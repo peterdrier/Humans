@@ -1,18 +1,16 @@
 {
-  "iteration": 10,
+  "iteration": 11,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Centralized auth-cache invalidation for role and team-role mutations across services.",
+  "summary": "Moved profile campaign-grant loading into ProfileService and centralized approved-profile cache mutations.",
   "files_changed": [
     "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+    "src/Humans.Application/Interfaces/IProfileService.cs",
+    "src/Humans.Infrastructure/Services/OnboardingService.cs",
     "src/Humans.Infrastructure/Services/ProfileService.cs",
-    "src/Humans.Infrastructure/Services/RoleAssignmentService.cs",
-    "src/Humans.Infrastructure/Services/TeamService.cs",
-    "tests/Humans.Application.Tests/Services/ProfileServiceTests.cs",
-    "tests/Humans.Application.Tests/Services/RoleAssignmentServiceTests.cs",
-    "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
+    "src/Humans.Web/Controllers/ProfileController.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "ec098c3450f399ce3a00eee547415aba52237f76",
@@ -172,6 +170,20 @@
         "tests/Humans.Application.Tests/Services/ProfileServiceTests.cs",
         "tests/Humans.Application.Tests/Services/RoleAssignmentServiceTests.cs",
         "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 11,
+      "phase": 2,
+      "summary": "Moved profile campaign-grant loading into ProfileService and centralized approved-profile cache mutations.",
+      "files_changed": [
+        "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+        "src/Humans.Application/Interfaces/IProfileService.cs",
+        "src/Humans.Infrastructure/Services/OnboardingService.cs",
+        "src/Humans.Infrastructure/Services/ProfileService.cs",
+        "src/Humans.Web/Controllers/ProfileController.cs",
         "checkpoint.json"
       ],
       "status": "success"

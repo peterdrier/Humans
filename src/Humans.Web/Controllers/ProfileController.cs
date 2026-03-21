@@ -89,14 +89,7 @@ public class ProfileController : HumansControllerBase
 
         var (profile, latestApplication, pendingConsentCount) =
             await _profileService.GetProfileIndexDataAsync(user.Id);
-
-        var campaignGrants = await _dbContext.CampaignGrants
-            .Include(g => g.Campaign)
-            .Include(g => g.Code)
-            .Where(g => g.UserId == user.Id
-                && (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed))
-            .OrderByDescending(g => g.AssignedAt)
-            .ToListAsync();
+        var campaignGrants = await _profileService.GetActiveOrCompletedCampaignGrantsAsync(user.Id);
 
         var viewModel = new ProfileViewModel
         {

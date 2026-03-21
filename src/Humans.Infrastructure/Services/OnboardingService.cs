@@ -179,8 +179,7 @@ public class OnboardingService : IOnboardingService
 
         // Add to profile cache (profile is now approved and not suspended)
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, profileCache =>
-            profileCache[userId] = CachedProfile.Create(profile, profile.User));
+        _cache.SetApprovedProfile(userId, CachedProfile.Create(profile, profile.User));
 
         // Sync Volunteers team membership (adds to team + sends welcome email)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
@@ -232,8 +231,7 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNavBadgeCounts();
 
         // Remove from profile cache (no longer approved)
-        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, flagCache =>
-            flagCache.TryRemove(userId, out _));
+        _cache.RemoveApprovedProfile(userId);
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
@@ -321,8 +319,7 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNavBadgeCounts();
 
         // Remove from profile cache (no longer approved)
-        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, rejectCache =>
-            rejectCache.TryRemove(userId, out _));
+        _cache.RemoveApprovedProfile(userId);
 
         // FIX: Both Admin and OnboardingReview paths now deprovision
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
@@ -372,8 +369,7 @@ public class OnboardingService : IOnboardingService
 
         // Add to profile cache (profile is now approved)
         await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, approveCache =>
-            approveCache[userId] = CachedProfile.Create(user.Profile, user));
+        _cache.SetApprovedProfile(userId, CachedProfile.Create(user.Profile, user));
 
         // Sync Volunteers team membership (adds user if they also have all required consents)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
@@ -406,8 +402,7 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
 
         // Remove from profile cache (suspended)
-        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, suspendCache =>
-            suspendCache.TryRemove(userId, out _));
+        _cache.RemoveApprovedProfile(userId);
 
         _metrics.RecordMemberSuspended("admin");
         _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", adminId, userId);
@@ -439,8 +434,7 @@ public class OnboardingService : IOnboardingService
         if (user.Profile.IsApproved)
         {
             await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-            _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, unsuspendCache =>
-                unsuspendCache[userId] = CachedProfile.Create(user.Profile, user));
+            _cache.SetApprovedProfile(userId, CachedProfile.Create(user.Profile, user));
         }
 
         _logger.LogInformation("Admin {AdminId} unsuspended human {HumanId}", adminId, userId);
