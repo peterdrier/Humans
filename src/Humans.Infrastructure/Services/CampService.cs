@@ -149,6 +149,58 @@ public class CampService : ICampService
             .FirstOrDefaultAsync(b => b.Id == campId, cancellationToken);
     }
 
+    public async Task<CampDetailData?> GetCampDetailAsync(
+        string slug,
+        int? preferredYear = null,
+        bool fallbackToLatestSeason = true,
+        CancellationToken cancellationToken = default)
+    {
+        var camp = await GetCampBySlugAsync(slug, cancellationToken);
+        if (camp is null)
+        {
+            return null;
+        }
+
+        var targetYear = preferredYear;
+        if (!targetYear.HasValue)
+        {
+            var settings = await GetSettingsAsync(cancellationToken);
+            targetYear = settings.PublicYear;
+        }
+
+        var season = camp.Seasons
+            .Where(s => s.Year == targetYear.Value)
+            .OrderByDescending(s => s.Year)
+            .FirstOrDefault();
+
+        if (season is null && fallbackToLatestSeason)
+        {
+            season = camp.Seasons
+                .OrderByDescending(s => s.Year)
+                .FirstOrDefault();
+        }
+
+        if (season is null)
+        {
+            return null;
+        }
+
+        return new CampDetailData(
+            camp.Id,
+            camp.Slug,
+            season.Name,
+            CreateCampLinks(camp),
+            camp.IsSwissCamp,
+            camp.TimesAtNowhere,
+            camp.HistoricalNames.Select(h => h.Name).ToList(),
+            camp.Images.OrderBy(i => i.SortOrder).Select(i => $"/{i.StoragePath}").ToList(),
+            camp.Leads
+                .Where(l => l.IsActive)
+                .Select(l => new CampLeadSummary(l.Id, l.UserId, l.User.DisplayName))
+                .ToList(),
+            CreateCampSeasonDetailData(season));
+    }
+
     public async Task<CampDirectoryResult> GetCampDirectoryAsync(
         Guid? userId,
         CampDirectoryFilter? filter = null,
@@ -296,6 +348,47 @@ public class CampService : ICampService
             season?.SoundZone,
             season?.Status ?? CampSeasonStatus.Pending,
             camp.TimesAtNowhere);
+    }
+
+    private IReadOnlyList<CampLink> CreateCampLinks(Camp camp)
+    {
+        if (camp.Links is { Count: > 0 })
+        {
+            return camp.Links;
+        }
+
+        return camp.WebOrSocialUrl != null
+            ? [new CampLink { Url = camp.WebOrSocialUrl }]
+            : [];
+    }
+
+    private CampSeasonDetailData CreateCampSeasonDetailData(CampSeason season)
+    {
+        var today = _clock.GetCurrentInstant().InUtc().Date;
+
+        return new CampSeasonDetailData(
+            season.Id,
+            season.Year,
+            season.Name,
+            season.Status,
+            season.BlurbLong,
+            season.BlurbShort,
+            season.Languages,
+            season.AcceptingMembers,
+            season.KidsWelcome,
+            season.KidsVisiting,
+            season.KidsAreaDescription,
+            season.HasPerformanceSpace,
+            season.PerformanceTypes,
+            season.Vibes.ToList(),
+            season.AdultPlayspace,
+            season.MemberCount,
+            season.SpaceRequirement,
+            season.SoundZone,
+            season.ContainerCount,
+            season.ContainerNotes,
+            season.ElectricalGrid,
+            season.NameLockDate.HasValue && today >= season.NameLockDate.Value);
     }
 
     private static CampPublicSummary CreateCampPublicSummary(Camp camp, int year)

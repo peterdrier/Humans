@@ -1,4 +1,5 @@
 using Hangfire;
+using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -23,7 +24,6 @@ namespace Humans.Web.Controllers;
 [Route("Tickets")]
 public class TicketController : HumansControllerBase
 {
-    private const string EventSummaryCacheKey = "ticket-event-summary";
     private static readonly TimeSpan EventSummaryCacheTtl = TimeSpan.FromMinutes(15);
 
     private readonly HumansDbContext _dbContext;
@@ -89,7 +89,7 @@ public class TicketController : HumansControllerBase
         int totalCapacity = 0;
         try
         {
-            var summary = await _cache.GetOrCreateAsync(EventSummaryCacheKey, async entry =>
+            var summary = await _cache.GetOrCreateAsync(CacheKeys.TicketEventSummary, async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = EventSummaryCacheTtl;
                 return await _vendorService.GetEventSummaryAsync(_settings.EventId);

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Octokit;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -28,7 +29,6 @@ public class GovernanceController : HumansControllerBase
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
 
-    private const string StatutesCacheKey = "StatutesContent";
     private static readonly TimeSpan StatutesCacheTtl = TimeSpan.FromHours(1);
     private static readonly Regex LanguageFilePattern = new(
         @"^(?<name>.+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$",
@@ -93,7 +93,7 @@ public class GovernanceController : HumansControllerBase
     {
         try
         {
-            return await _cache.GetOrCreateAsync(StatutesCacheKey, async entry =>
+            return await _cache.GetOrCreateAsync(CacheKeys.GovernanceStatutes, async entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = StatutesCacheTtl;
                 return await FetchStatutesContentAsync();

@@ -100,83 +100,37 @@ public class CampController : HumansCampControllerBase
     [HttpGet("{slug}")]
     public async Task<IActionResult> Details(string slug)
     {
+        var campDetail = await _campService.GetCampDetailAsync(slug);
+        if (campDetail is null)
+            return NotFound();
+
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null)
             return NotFound();
 
-        var settings = await _campService.GetSettingsAsync();
-        var currentSeason = camp.Seasons
-            .Where(s => s.Year == settings.PublicYear)
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault()
-            ?? camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
 
-        var viewModel = new CampDetailViewModel
-        {
-            Id = camp.Id,
-            Slug = camp.Slug,
-            Name = currentSeason?.Name ?? camp.Slug,
-            Links = (camp.Links is { Count: > 0 } ? camp.Links : camp.WebOrSocialUrl != null ? new List<CampLink> { new() { Url = camp.WebOrSocialUrl } } : new List<CampLink>()),
-            IsSwissCamp = camp.IsSwissCamp,
-            TimesAtNowhere = camp.TimesAtNowhere,
-            HistoricalNames = camp.HistoricalNames.Select(h => h.Name).ToList(),
-            ImageUrls = camp.Images.OrderBy(i => i.SortOrder).Select(i => $"/{i.StoragePath}").ToList(),
-            Leads = camp.Leads
-                .Where(l => l.IsActive)
-                .Select(l => new CampLeadViewModel
-                {
-                    LeadId = l.Id,
-                    UserId = l.UserId,
-                    DisplayName = l.User.DisplayName,
-                }).ToList(),
-            CurrentSeason = currentSeason != null ? MapSeasonDetail(currentSeason) : null,
-            IsCurrentUserLead = isLead,
-            IsCurrentUserCampAdmin = isCampAdmin
-        };
-
-        return View(viewModel);
+        return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
     }
 
     [AllowAnonymous]
     [HttpGet("{slug}/Season/{year:int}")]
     public async Task<IActionResult> SeasonDetails(string slug, int year)
     {
+        var campDetail = await _campService.GetCampDetailAsync(
+            slug,
+            preferredYear: year,
+            fallbackToLatestSeason: false);
+        if (campDetail is null)
+            return NotFound();
+
         var camp = await GetCampBySlugAsync(slug);
         if (camp is null)
             return NotFound();
 
-        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
-        if (season is null)
-            return NotFound();
-
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
 
-        var viewModel = new CampDetailViewModel
-        {
-            Id = camp.Id,
-            Slug = camp.Slug,
-            Name = season.Name,
-            Links = (camp.Links is { Count: > 0 } ? camp.Links : camp.WebOrSocialUrl != null ? new List<CampLink> { new() { Url = camp.WebOrSocialUrl } } : new List<CampLink>()),
-            IsSwissCamp = camp.IsSwissCamp,
-            TimesAtNowhere = camp.TimesAtNowhere,
-            HistoricalNames = camp.HistoricalNames.Select(h => h.Name).ToList(),
-            ImageUrls = camp.Images.OrderBy(i => i.SortOrder).Select(i => $"/{i.StoragePath}").ToList(),
-            Leads = camp.Leads
-                .Where(l => l.IsActive)
-                .Select(l => new CampLeadViewModel
-                {
-                    LeadId = l.Id,
-                    UserId = l.UserId,
-                    DisplayName = l.User.DisplayName,
-                }).ToList(),
-            CurrentSeason = MapSeasonDetail(season),
-            IsCurrentUserLead = isLead,
-            IsCurrentUserCampAdmin = isCampAdmin
-        };
-
-        return View(nameof(Details), viewModel);
+        return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
     }
 
     // ======================================================================
@@ -254,7 +208,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (Exception ex)
         {
-            _cache.Remove(rateLimitKey);
+            _cache.InvalidateCampContactRateLimit(currentUser.Id, camp.Id);
             _logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
             SetError(_localizer["Common_Error"].Value);
             return RedirectToAction(nameof(Details), new { slug });
@@ -761,36 +715,56 @@ public class CampController : HumansCampControllerBase
         };
     }
 
-    private CampSeasonDetailViewModel MapSeasonDetail(CampSeason season)
+    private static CampDetailViewModel MapCampDetailViewModel(
+        CampDetailData campDetail,
+        bool isLead,
+        bool isCampAdmin) => new()
     {
-        var today = _clock.GetCurrentInstant().InUtc().Date;
-
-        return new CampSeasonDetailViewModel
-        {
-            Id = season.Id,
-            Year = season.Year,
-            Name = season.Name,
-            Status = season.Status,
-            BlurbLong = season.BlurbLong,
-            BlurbShort = season.BlurbShort,
-            Languages = season.Languages,
-            AcceptingMembers = season.AcceptingMembers,
-            KidsWelcome = season.KidsWelcome,
-            KidsVisiting = season.KidsVisiting,
-            KidsAreaDescription = season.KidsAreaDescription,
-            HasPerformanceSpace = season.HasPerformanceSpace,
-            PerformanceTypes = season.PerformanceTypes,
-            Vibes = season.Vibes.ToList(),
-            AdultPlayspace = season.AdultPlayspace,
-            MemberCount = season.MemberCount,
-            SpaceRequirement = season.SpaceRequirement,
-            SoundZone = season.SoundZone,
-            ContainerCount = season.ContainerCount,
-            ContainerNotes = season.ContainerNotes,
-            ElectricalGrid = season.ElectricalGrid,
-            IsNameLocked = season.NameLockDate.HasValue && today >= season.NameLockDate.Value
-        };
-    }
+        Id = campDetail.Id,
+        Slug = campDetail.Slug,
+        Name = campDetail.Name,
+        Links = [.. campDetail.Links],
+        IsSwissCamp = campDetail.IsSwissCamp,
+        TimesAtNowhere = campDetail.TimesAtNowhere,
+        HistoricalNames = [.. campDetail.HistoricalNames],
+        ImageUrls = [.. campDetail.ImageUrls],
+        Leads = campDetail.Leads
+            .Select(lead => new CampLeadViewModel
+            {
+                LeadId = lead.LeadId,
+                UserId = lead.UserId,
+                DisplayName = lead.DisplayName
+            }).ToList(),
+        CurrentSeason = campDetail.CurrentSeason is null
+            ? null
+            : new CampSeasonDetailViewModel
+            {
+                Id = campDetail.CurrentSeason.Id,
+                Year = campDetail.CurrentSeason.Year,
+                Name = campDetail.CurrentSeason.Name,
+                Status = campDetail.CurrentSeason.Status,
+                BlurbLong = campDetail.CurrentSeason.BlurbLong,
+                BlurbShort = campDetail.CurrentSeason.BlurbShort,
+                Languages = campDetail.CurrentSeason.Languages,
+                AcceptingMembers = campDetail.CurrentSeason.AcceptingMembers,
+                KidsWelcome = campDetail.CurrentSeason.KidsWelcome,
+                KidsVisiting = campDetail.CurrentSeason.KidsVisiting,
+                KidsAreaDescription = campDetail.CurrentSeason.KidsAreaDescription,
+                HasPerformanceSpace = campDetail.CurrentSeason.HasPerformanceSpace,
+                PerformanceTypes = campDetail.CurrentSeason.PerformanceTypes,
+                Vibes = [.. campDetail.CurrentSeason.Vibes],
+                AdultPlayspace = campDetail.CurrentSeason.AdultPlayspace,
+                MemberCount = campDetail.CurrentSeason.MemberCount,
+                SpaceRequirement = campDetail.CurrentSeason.SpaceRequirement,
+                SoundZone = campDetail.CurrentSeason.SoundZone,
+                ContainerCount = campDetail.CurrentSeason.ContainerCount,
+                ContainerNotes = campDetail.CurrentSeason.ContainerNotes,
+                ElectricalGrid = campDetail.CurrentSeason.ElectricalGrid,
+                IsNameLocked = campDetail.CurrentSeason.IsNameLocked
+            },
+        IsCurrentUserLead = isLead,
+        IsCurrentUserCampAdmin = isCampAdmin
+    };
 
     private void ValidatePhoneE164(string? phone, string fieldName)
     {

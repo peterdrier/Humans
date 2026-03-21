@@ -5,6 +5,8 @@ public static class CacheKeys
     public const string NavBadgeCounts = "NavBadgeCounts";
     public const string ApprovedProfiles = "ApprovedProfiles";
     public const string ActiveTeams = "ActiveTeams";
+    public const string GovernanceStatutes = "GovernanceStatutes";
+    public const string TicketEventSummary = "TicketEventSummary";
 
     public static string CampSeasonsByYear(int year) => $"camps_year_{year}";
 

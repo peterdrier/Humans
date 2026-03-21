@@ -394,6 +394,87 @@ public class CampServiceTests : IDisposable
         placements[1].Status.Should().Be(nameof(CampSeasonStatus.Active));
     }
 
+    [Fact]
+    public async Task GetCampDetailAsync_UsesPublicYearAndFallsBackToLatestSeason()
+    {
+        await SeedSettingsAsync();
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "Camp Lead");
+
+        var camp = await _service.CreateCampAsync(
+            leadUserId,
+            "Fallback Camp",
+            "fallback@camp.com",
+            "+34600000004",
+            "https://example.com/fallback",
+            null,
+            isSwissCamp: true,
+            timesAtNowhere: 4,
+            MakeSeasonData(),
+            historicalNames: ["Old Fallback"],
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        season.NameLockDate = new LocalDate(2026, 3, 1);
+
+        _dbContext.CampImages.Add(new CampImage
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            StoragePath = "uploads/camps/fallback.jpg",
+            SortOrder = 1,
+            UploadedAt = _clock.GetCurrentInstant()
+        });
+
+        var settings = await _dbContext.CampSettings.FirstAsync();
+        settings.PublicYear = 2027;
+        await _dbContext.SaveChangesAsync();
+
+        var detail = await _service.GetCampDetailAsync(camp.Slug);
+
+        detail.Should().NotBeNull();
+        detail!.Name.Should().Be("Fallback Camp");
+        detail.Links.Should().ContainSingle(link => link.Url == "https://example.com/fallback");
+        detail.HistoricalNames.Should().Contain("Old Fallback");
+        detail.ImageUrls.Should().ContainSingle("/uploads/camps/fallback.jpg");
+        detail.Leads.Should().ContainSingle(lead => lead.DisplayName == "Camp Lead");
+        detail.CurrentSeason.Should().NotBeNull();
+        detail.CurrentSeason!.Year.Should().Be(2026);
+        detail.CurrentSeason.IsNameLocked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetCampDetailAsync_ExplicitYearWithoutFallback_ReturnsNullWhenSeasonMissing()
+    {
+        await SeedSettingsAsync();
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "No Fallback Lead");
+
+        var camp = await _service.CreateCampAsync(
+            leadUserId,
+            "No Fallback Camp",
+            "nofollow@camp.com",
+            "+34600000005",
+            null,
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            MakeSeasonData(),
+            historicalNames: null,
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        var detail = await _service.GetCampDetailAsync(
+            camp.Slug,
+            preferredYear: 2027,
+            fallbackToLatestSeason: false);
+
+        detail.Should().BeNull();
+    }
+
     // ==========================================================================
     // ChangeSeasonNameAsync
     // ==========================================================================
@@ -485,5 +566,18 @@ public class CampServiceTests : IDisposable
             });
             await _dbContext.SaveChangesAsync();
         }
+    }
+
+    private async Task SeedUserAsync(Guid userId, string displayName)
+    {
+        _dbContext.Users.Add(new User
+        {
+            Id = userId,
+            UserName = $"{displayName.Replace(" ", string.Empty, StringComparison.Ordinal)}@example.com",
+            Email = $"{displayName.Replace(" ", string.Empty, StringComparison.Ordinal)}@example.com",
+            DisplayName = displayName
+        });
+
+        await _dbContext.SaveChangesAsync();
     }
 }

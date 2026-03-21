@@ -1,15 +1,19 @@
 {
-  "iteration": 16,
+  "iteration": 17,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Moved TeamController MyTeams membership aggregation and pending-request counts into TeamService behind a shared summary DTO.",
+  "summary": "Moved camp detail season/link projection into CampService and centralized remaining controller cache keys/helpers.",
   "files_changed": [
-    "src/Humans.Application/Interfaces/ITeamService.cs",
-    "src/Humans.Infrastructure/Services/TeamService.cs",
-    "src/Humans.Web/Controllers/TeamController.cs",
-    "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
+    "src/Humans.Application/CacheKeys.cs",
+    "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+    "src/Humans.Application/Interfaces/ICampService.cs",
+    "src/Humans.Infrastructure/Services/CampService.cs",
+    "src/Humans.Web/Controllers/CampController.cs",
+    "src/Humans.Web/Controllers/GovernanceController.cs",
+    "src/Humans.Web/Controllers/TicketController.cs",
+    "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "a7294488fd62c9553030fd0634e98a022bef86ef",
@@ -301,6 +305,23 @@
         "src/Humans.Infrastructure/Services/TeamService.cs",
         "src/Humans.Web/Controllers/TeamController.cs",
         "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 17,
+      "phase": 2,
+      "summary": "Moved camp detail season/link projection into CampService and centralized remaining controller cache keys/helpers.",
+      "files_changed": [
+        "src/Humans.Application/CacheKeys.cs",
+        "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+        "src/Humans.Application/Interfaces/ICampService.cs",
+        "src/Humans.Infrastructure/Services/CampService.cs",
+        "src/Humans.Web/Controllers/CampController.cs",
+        "src/Humans.Web/Controllers/GovernanceController.cs",
+        "src/Humans.Web/Controllers/TicketController.cs",
+        "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
         "checkpoint.json"
       ],
       "status": "success"
