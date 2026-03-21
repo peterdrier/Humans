@@ -85,3 +85,9 @@
 **Summary:** Moved camp API projection and sorting logic into CampService behind shared service DTOs.
 **Files:** src/Humans.Application/Interfaces/ICampService.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Web/Controllers/CampApiController.cs, tests/Humans.Application.Tests/Services/CampServiceTests.cs, checkpoint.json
 **Commit:** 8ac5647
+
+## Iteration 14 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved team roster slot expansion, filtering, and sorting into TeamService behind shared service DTOs.
+**Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, tests/Humans.Application.Tests/Services/TeamServiceTests.cs, checkpoint.json
+**Commit:** 488b9cb
