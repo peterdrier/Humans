@@ -85,6 +85,27 @@ public record TeamRosterSlotSummary(
     bool IsFilled,
     string? AssignedUserName);
 
+public record AdminTeamSummary(
+    Guid Id,
+    string Name,
+    string Slug,
+    bool IsActive,
+    bool RequiresApproval,
+    bool IsSystemTeam,
+    string? SystemTeamType,
+    int MemberCount,
+    int PendingRequestCount,
+    bool HasMailGroup,
+    string? GoogleGroupEmail,
+    int DriveResourceCount,
+    int RoleSlotCount,
+    Instant CreatedAt,
+    bool IsChildTeam);
+
+public record AdminTeamListResult(
+    IReadOnlyList<AdminTeamSummary> Teams,
+    int TotalCount);
+
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
@@ -313,6 +334,14 @@ public interface ITeamService
     /// </summary>
     Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
         int page, int pageSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets ordered admin-team summaries ready for controller/view projection.
+    /// </summary>
+    Task<AdminTeamListResult> GetAdminTeamListAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the public roster summary with optional filters applied.

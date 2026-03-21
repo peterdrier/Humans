@@ -578,50 +578,11 @@ public class TeamController : HumansControllerBase
     [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> Summary()
     {
-        var (teams, totalCount) = await _teamService.GetAllTeamsForAdminAsync(1, 500);
-
-        AdminTeamViewModel ToViewModel(Team t, bool isChild) => new()
-        {
-            Id = t.Id,
-            Name = t.Name,
-            Slug = t.Slug,
-            IsActive = t.IsActive,
-            RequiresApproval = t.RequiresApproval,
-            IsSystemTeam = t.IsSystemTeam,
-            SystemTeamType = t.SystemTeamType != SystemTeamType.None ? t.SystemTeamType.ToString() : null,
-            MemberCount = t.Members.Count,
-            PendingRequestCount = t.JoinRequests.Count,
-            HasMailGroup = t.GoogleResources.Any(r => r.ResourceType == GoogleResourceType.Group && r.IsActive),
-            GoogleGroupEmail = t.GoogleGroupEmail,
-            DriveResourceCount = t.GoogleResources.Count(r => r.ResourceType != GoogleResourceType.Group && r.IsActive),
-            RoleSlotCount = t.RoleDefinitions.Sum(r => r.SlotCount),
-            CreatedAt = t.CreatedAt.ToDateTimeUtc(),
-            IsChildTeam = isChild
-        };
-
-        // Build hierarchy: system teams first, then user teams ordered with children below parents
-        var childIds = teams.Where(t => t.ParentTeamId.HasValue).Select(t => t.Id).ToHashSet();
-        var ordered = new List<AdminTeamViewModel>();
-        foreach (var t in teams)
-        {
-            if (t.ParentTeamId.HasValue)
-                continue; // children are inserted after their parent below
-
-            ordered.Add(ToViewModel(t, false));
-
-            // Insert child teams directly after their parent
-            var children = teams
-                .Where(c => c.ParentTeamId == t.Id)
-                .OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase);
-            foreach (var child in children)
-            {
-                ordered.Add(ToViewModel(child, true));
-            }
-        }
+        var result = await _teamService.GetAdminTeamListAsync(1, 500);
 
         var viewModel = new AdminTeamListViewModel
         {
-            Teams = ordered
+            Teams = result.Teams.Select(MapAdminTeamSummary).ToList()
         };
 
         return View(viewModel);
@@ -783,6 +744,25 @@ public class TeamController : HumansControllerBase
 
         return RedirectToAction(nameof(Summary));
     }
+
+    private static AdminTeamViewModel MapAdminTeamSummary(AdminTeamSummary team) => new()
+    {
+        Id = team.Id,
+        Name = team.Name,
+        Slug = team.Slug,
+        IsActive = team.IsActive,
+        RequiresApproval = team.RequiresApproval,
+        IsSystemTeam = team.IsSystemTeam,
+        SystemTeamType = team.SystemTeamType,
+        MemberCount = team.MemberCount,
+        PendingRequestCount = team.PendingRequestCount,
+        HasMailGroup = team.HasMailGroup,
+        GoogleGroupEmail = team.GoogleGroupEmail,
+        DriveResourceCount = team.DriveResourceCount,
+        RoleSlotCount = team.RoleSlotCount,
+        CreatedAt = team.CreatedAt.ToDateTimeUtc(),
+        IsChildTeam = team.IsChildTeam
+    };
 
     private async Task<List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> GetEligibleParentTeamsAsync(
         Guid? excludeTeamId, CancellationToken cancellationToken)

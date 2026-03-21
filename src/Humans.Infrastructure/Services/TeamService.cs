@@ -1840,6 +1840,16 @@ public class TeamService : ITeamService
         return (items, totalCount);
     }
 
+    public async Task<AdminTeamListResult> GetAdminTeamListAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var (items, totalCount) = await GetAllTeamsForAdminAsync(page, pageSize, cancellationToken);
+
+        return new AdminTeamListResult(BuildAdminTeamSummaries(items), totalCount);
+    }
+
     // ==========================================================================
     // Team Cache
     // ==========================================================================
@@ -1885,6 +1895,59 @@ public class TeamService : ITeamService
                 JoinedAt: m.JoinedAt))
             .ToList(),
         ParentTeamId: team.ParentTeamId);
+
+    private static IReadOnlyList<AdminTeamSummary> BuildAdminTeamSummaries(IReadOnlyList<Team> teams)
+    {
+        var ordered = new List<AdminTeamSummary>(teams.Count);
+
+        foreach (var team in teams)
+        {
+            if (team.ParentTeamId.HasValue)
+            {
+                continue;
+            }
+
+            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false));
+
+            var children = teams
+                .Where(child => child.ParentTeamId == team.Id)
+                .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase);
+
+            ordered.AddRange(children.Select(child => CreateAdminTeamSummary(child, isChildTeam: true)));
+        }
+
+        return ordered;
+    }
+
+    private static AdminTeamSummary CreateAdminTeamSummary(Team team, bool isChildTeam)
+    {
+        var systemTeamType = team.SystemTeamType != SystemTeamType.None
+            ? team.SystemTeamType.ToString()
+            : null;
+        var hasMailGroup = team.GoogleResources.Any(resource =>
+            resource.ResourceType == GoogleResourceType.Group &&
+            resource.IsActive);
+        var driveResourceCount = team.GoogleResources.Count(resource =>
+            resource.ResourceType != GoogleResourceType.Group &&
+            resource.IsActive);
+
+        return new AdminTeamSummary(
+            team.Id,
+            team.Name,
+            team.Slug,
+            team.IsActive,
+            team.RequiresApproval,
+            team.IsSystemTeam,
+            systemTeamType,
+            team.Members.Count,
+            team.JoinRequests.Count,
+            hasMailGroup,
+            team.GoogleGroupEmail,
+            driveResourceCount,
+            team.RoleDefinitions.Sum(role => role.SlotCount),
+            team.CreatedAt,
+            isChildTeam);
+    }
 
     private static TeamDirectorySummary CreateDirectorySummary(
         CachedTeam team,
