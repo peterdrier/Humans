@@ -1,5 +1,5 @@
 {
-  "iteration": 20,
+  "iteration": 21,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
@@ -12,7 +12,7 @@
     "src/Humans.Web/Extensions/InfrastructureServiceCollectionExtensions.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "c237754250be87e519c5c52849d6207a5e739e59",
+  "last_good_commit": "73f4c12c3fa83648f7de7588bd6f978717f87c35",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -371,6 +371,19 @@
         "src/Humans.Application/Interfaces/ITeamService.cs",
         "src/Humans.Infrastructure/Services/TeamService.cs",
         "src/Humans.Web/Controllers/TeamController.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 21,
+      "phase": 2,
+      "summary": "Moved team detail page composition into a dedicated TeamPageService so TeamController only maps service DTOs.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ITeamPageService.cs",
+        "src/Humans.Infrastructure/Services/TeamPageService.cs",
+        "src/Humans.Web/Controllers/TeamController.cs",
+        "src/Humans.Web/Extensions/InfrastructureServiceCollectionExtensions.cs",
         "checkpoint.json"
       ],
       "status": "success"

@@ -127,3 +127,9 @@
 **Summary:** Moved team directory create-permission logic into TeamService so TeamController only maps service DTOs.
 **Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, checkpoint.json
 **Commit:** c237754
+
+## Iteration 21 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved team detail page composition into a dedicated TeamPageService so TeamController only maps service DTOs.
+**Files:** src/Humans.Application/Interfaces/ITeamPageService.cs, src/Humans.Infrastructure/Services/TeamPageService.cs, src/Humans.Web/Controllers/TeamController.cs, src/Humans.Web/Extensions/InfrastructureServiceCollectionExtensions.cs, checkpoint.json
+**Commit:** 73f4c12
