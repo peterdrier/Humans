@@ -1,15 +1,15 @@
 {
-  "iteration": 12,
+  "iteration": 13,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Consolidated approved-profile and user-access cache mutations behind shared memory-cache helpers.",
+  "summary": "Moved camp API projection and sorting logic into CampService behind shared service DTOs.",
   "files_changed": [
-    "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
-    "src/Humans.Infrastructure/Services/OnboardingService.cs",
-    "src/Humans.Infrastructure/Services/ProfileService.cs",
-    "tests/Humans.Application.Tests/Services/ProfileServiceTests.cs",
+    "src/Humans.Application/Interfaces/ICampService.cs",
+    "src/Humans.Infrastructure/Services/CampService.cs",
+    "src/Humans.Web/Controllers/CampApiController.cs",
+    "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "0b585a9c3fbcdd981cd189b29cbdbcc3570bf2bf",
@@ -197,6 +197,19 @@
         "src/Humans.Infrastructure/Services/OnboardingService.cs",
         "src/Humans.Infrastructure/Services/ProfileService.cs",
         "src/Humans.Web/Controllers/ProfileController.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 13,
+      "phase": 2,
+      "summary": "Moved camp API projection and sorting logic into CampService behind shared service DTOs.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ICampService.cs",
+        "src/Humans.Infrastructure/Services/CampService.cs",
+        "src/Humans.Web/Controllers/CampApiController.cs",
+        "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
         "checkpoint.json"
       ],
       "status": "success"

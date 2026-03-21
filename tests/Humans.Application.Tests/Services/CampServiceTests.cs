@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -253,6 +254,147 @@ public class CampServiceTests : IDisposable
     }
 
     // ==========================================================================
+    // Public projections
+    // ==========================================================================
+
+    [Fact]
+    public async Task GetCampPublicSummariesForYearAsync_ReturnsSortedProjectedSummaries()
+    {
+        await SeedSettingsAsync();
+
+        var zebraCamp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Zebra Camp",
+            "zebra@camp.com",
+            "+34600000000",
+            null,
+            [new CampLink { Url = "https://example.com/zebra", Platform = "Website" }],
+            isSwissCamp: true,
+            timesAtNowhere: 3,
+            MakeSeasonData() with
+            {
+                BlurbShort = "Zebra short",
+                BlurbLong = "Zebra long",
+                AcceptingMembers = YesNoMaybe.Maybe,
+                KidsWelcome = YesNoMaybe.Yes,
+                SoundZone = SoundZone.Red,
+                Vibes = [CampVibe.LiveMusic]
+            },
+            historicalNames: null,
+            year: 2026);
+
+        var alphaCamp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Alpha Camp",
+            "alpha@camp.com",
+            "+34600000001",
+            "https://example.com/alpha",
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 1,
+            MakeSeasonData() with
+            {
+                BlurbShort = "Alpha short",
+                BlurbLong = "Alpha long",
+                AcceptingMembers = YesNoMaybe.Yes,
+                KidsWelcome = YesNoMaybe.No,
+                SoundZone = SoundZone.Green,
+                Vibes = [CampVibe.ChillOut]
+            },
+            historicalNames: null,
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(zebraCamp.Id);
+        await ApproveLatestSeasonAsync(alphaCamp.Id);
+
+        _dbContext.CampImages.Add(new CampImage
+        {
+            Id = Guid.NewGuid(),
+            CampId = zebraCamp.Id,
+            StoragePath = "uploads/camps/zebra.jpg",
+            SortOrder = 1,
+            UploadedAt = _clock.GetCurrentInstant()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var summaries = await _service.GetCampPublicSummariesForYearAsync(2026);
+
+        summaries.Select(summary => summary.Name).Should().Equal("Alpha Camp", "Zebra Camp");
+        summaries[0].BlurbShort.Should().Be("Alpha short");
+        summaries[0].Status.Should().Be(nameof(CampSeasonStatus.Active));
+        summaries[0].WebOrSocialUrl.Should().Be("https://example.com/alpha");
+        summaries[1].ImageUrl.Should().Be("/uploads/camps/zebra.jpg");
+        summaries[1].Links.Should().ContainSingle();
+        summaries[1].AcceptingMembers.Should().Be(nameof(YesNoMaybe.Maybe));
+        summaries[1].KidsWelcome.Should().Be(nameof(YesNoMaybe.Yes));
+        summaries[1].SoundZone.Should().Be(nameof(SoundZone.Red));
+        summaries[1].Vibes.Should().Equal(nameof(CampVibe.LiveMusic));
+        summaries[1].IsSwissCamp.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetCampPlacementSummariesForYearAsync_ReturnsSortedPlacementData()
+    {
+        await SeedSettingsAsync();
+
+        var bravoCamp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Bravo Camp",
+            "bravo@camp.com",
+            "+34600000002",
+            null,
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            MakeSeasonData() with
+            {
+                MemberCount = 42,
+                SpaceRequirement = SpaceSize.Sqm800,
+                SoundZone = SoundZone.Blue,
+                ContainerCount = 2,
+                ContainerNotes = "Two containers",
+                ElectricalGrid = ElectricalGrid.Red
+            },
+            historicalNames: null,
+            year: 2026);
+
+        var alphaCamp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Alpha Camp",
+            "alpha2@camp.com",
+            "+34600000003",
+            null,
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            MakeSeasonData() with
+            {
+                MemberCount = 10,
+                SpaceRequirement = SpaceSize.Sqm300,
+                SoundZone = SoundZone.Green,
+                ContainerCount = 0,
+                ContainerNotes = null,
+                ElectricalGrid = ElectricalGrid.Yellow
+            },
+            historicalNames: null,
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(bravoCamp.Id);
+        await ApproveLatestSeasonAsync(alphaCamp.Id);
+
+        var placements = await _service.GetCampPlacementSummariesForYearAsync(2026);
+
+        placements.Select(summary => summary.Name).Should().Equal("Alpha Camp", "Bravo Camp");
+        placements[1].MemberCount.Should().Be(42);
+        placements[1].SpaceRequirement.Should().Be(nameof(SpaceSize.Sqm800));
+        placements[1].SoundZone.Should().Be(nameof(SoundZone.Blue));
+        placements[1].ContainerCount.Should().Be(2);
+        placements[1].ContainerNotes.Should().Be("Two containers");
+        placements[1].ElectricalGrid.Should().Be(nameof(ElectricalGrid.Red));
+        placements[1].Status.Should().Be(nameof(CampSeasonStatus.Active));
+    }
+
+    // ==========================================================================
     // ChangeSeasonNameAsync
     // ==========================================================================
 
@@ -319,6 +461,16 @@ public class CampServiceTests : IDisposable
         return await _service.CreateCampAsync(
             Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
             null, null, false, 1, MakeSeasonData(), null, 2026);
+    }
+
+    private async Task ApproveLatestSeasonAsync(Guid campId)
+    {
+        var season = await _dbContext.CampSeasons
+            .Where(s => s.CampId == campId)
+            .OrderByDescending(s => s.Year)
+            .FirstAsync();
+
+        await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null);
     }
 
     private async Task SeedSettingsAsync()

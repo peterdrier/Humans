@@ -200,6 +200,32 @@ public class CampService : ICampService
         }) ?? [];
     }
 
+    public async Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(
+        int year,
+        CancellationToken cancellationToken = default)
+    {
+        var camps = await GetCampsForYearAsync(year, cancellationToken);
+
+        return camps
+            .Select(camp => CreateCampPublicSummary(camp, year))
+            .OrderBy(camp => camp.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(
+        int year,
+        CancellationToken cancellationToken = default)
+    {
+        var camps = await GetCampsForYearAsync(year, cancellationToken);
+
+        return camps
+            .Select(camp => CreateCampPlacementSummary(camp, year))
+            .Where(summary => summary is not null)
+            .Select(summary => summary!)
+            .OrderBy(summary => summary.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public async Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Camps
@@ -270,6 +296,50 @@ public class CampService : ICampService
             season?.SoundZone,
             season?.Status ?? CampSeasonStatus.Pending,
             camp.TimesAtNowhere);
+    }
+
+    private static CampPublicSummary CreateCampPublicSummary(Camp camp, int year)
+    {
+        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
+        var firstImage = camp.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
+
+        return new CampPublicSummary(
+            camp.Id,
+            camp.Slug,
+            season?.Name ?? camp.Slug,
+            season?.BlurbShort ?? string.Empty,
+            season?.BlurbLong ?? string.Empty,
+            firstImage != null ? $"/{firstImage.StoragePath}" : null,
+            (season?.Vibes ?? []).Select(vibe => vibe.ToString()).ToList(),
+            (season?.AcceptingMembers ?? YesNoMaybe.No).ToString(),
+            (season?.KidsWelcome ?? YesNoMaybe.No).ToString(),
+            season?.SoundZone?.ToString(),
+            (season?.Status ?? CampSeasonStatus.Pending).ToString(),
+            camp.TimesAtNowhere,
+            camp.IsSwissCamp,
+            camp.Links,
+            camp.WebOrSocialUrl);
+    }
+
+    private static CampPlacementSummary? CreateCampPlacementSummary(Camp camp, int year)
+    {
+        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
+        if (season is null)
+        {
+            return null;
+        }
+
+        return new CampPlacementSummary(
+            camp.Id,
+            camp.Slug,
+            season.Name,
+            season.MemberCount,
+            season.SpaceRequirement?.ToString(),
+            season.SoundZone?.ToString(),
+            season.ContainerCount,
+            season.ContainerNotes,
+            season.Status.ToString(),
+            season.ElectricalGrid?.ToString());
     }
 
     // ==========================================================================

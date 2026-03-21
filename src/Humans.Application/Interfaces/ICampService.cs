@@ -30,6 +30,8 @@ public interface ICampService
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
     Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<List<CampSeason>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
@@ -114,3 +116,32 @@ public record CampDirectoryResult(
     int PendingCount,
     IReadOnlyList<CampDirectoryCard> Camps,
     IReadOnlyList<CampDirectoryCard> MyCamps);
+
+public record CampPublicSummary(
+    Guid Id,
+    string Slug,
+    string Name,
+    string BlurbShort,
+    string BlurbLong,
+    string? ImageUrl,
+    IReadOnlyList<string> Vibes,
+    string AcceptingMembers,
+    string KidsWelcome,
+    string? SoundZone,
+    string Status,
+    int TimesAtNowhere,
+    bool IsSwissCamp,
+    IReadOnlyList<CampLink>? Links,
+    string? WebOrSocialUrl);
+
+public record CampPlacementSummary(
+    Guid Id,
+    string Slug,
+    string Name,
+    int MemberCount,
+    string? SpaceRequirement,
+    string? SoundZone,
+    int ContainerCount,
+    string? ContainerNotes,
+    string Status,
+    string? ElectricalGrid);
