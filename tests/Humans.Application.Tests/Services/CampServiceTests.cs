@@ -21,6 +21,7 @@ public class CampServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly CampService _service;
     private readonly IAuditLogService _auditLog;
+    private readonly string _campImagesRoot;
 
     public CampServiceTests()
     {
@@ -30,6 +31,7 @@ public class CampServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 13, 12, 0));
         _auditLog = Substitute.For<IAuditLogService>();
+        _campImagesRoot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads", "camps");
 
         _service = new CampService(
             _dbContext,
@@ -42,6 +44,11 @@ public class CampServiceTests : IDisposable
 
     public void Dispose()
     {
+        if (Directory.Exists(_campImagesRoot))
+        {
+            Directory.Delete(_campImagesRoot, recursive: true);
+        }
+
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -473,6 +480,54 @@ public class CampServiceTests : IDisposable
             fallbackToLatestSeason: false);
 
         detail.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetSettingsAsync_AfterSetPublicYearAsync_ReturnsInvalidatedSettings()
+    {
+        await SeedSettingsAsync();
+
+        var initial = await _service.GetSettingsAsync();
+
+        initial.PublicYear.Should().Be(2026);
+
+        await _service.SetPublicYearAsync(2027);
+
+        var updated = await _service.GetSettingsAsync();
+
+        updated.PublicYear.Should().Be(2027);
+    }
+
+    [Fact]
+    public async Task GetCampPublicSummariesForYearAsync_AfterUploadImageAsync_RefreshesCachedImage()
+    {
+        await SeedSettingsAsync();
+
+        var camp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Cache Image Camp",
+            "cache-image@camp.com",
+            "+34600000006",
+            null,
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            MakeSeasonData(),
+            historicalNames: null,
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        var beforeUpload = await _service.GetCampPublicSummariesForYearAsync(2026);
+
+        beforeUpload.Single(summary => summary.Id == camp.Id).ImageUrl.Should().BeNull();
+
+        await using var imageStream = new MemoryStream([1, 2, 3, 4]);
+        await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length);
+
+        var afterUpload = await _service.GetCampPublicSummariesForYearAsync(2026);
+
+        afterUpload.Single(summary => summary.Id == camp.Id).ImageUrl.Should().NotBeNull();
     }
 
     // ==========================================================================

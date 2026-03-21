@@ -4,12 +4,12 @@
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Moved team detail page composition into a dedicated TeamPageService so TeamController only maps service DTOs.",
+  "summary": "Cached camp settings via shared cache helpers and fixed camp-year cache invalidation after image changes.",
   "files_changed": [
-    "src/Humans.Application/Interfaces/ITeamPageService.cs",
-    "src/Humans.Infrastructure/Services/TeamPageService.cs",
-    "src/Humans.Web/Controllers/TeamController.cs",
-    "src/Humans.Web/Extensions/InfrastructureServiceCollectionExtensions.cs",
+    "src/Humans.Application/CacheKeys.cs",
+    "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+    "src/Humans.Infrastructure/Services/CampService.cs",
+    "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "73f4c12c3fa83648f7de7588bd6f978717f87c35",

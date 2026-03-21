@@ -23,6 +23,7 @@ public class CampService : ICampService
     private readonly ILogger<CampService> _logger;
 
     private static readonly TimeSpan CampsForYearCacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan CampSettingsCacheTtl = TimeSpan.FromMinutes(5);
 
     public CampService(
         HumansDbContext dbContext,
@@ -321,7 +322,13 @@ public class CampService : ICampService
 
     public async Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampSettings.FirstAsync(cancellationToken);
+        return await _cache.GetOrCreateAsync(CacheKeys.CampSettings, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CampSettingsCacheTtl;
+            return await _dbContext.CampSettings
+                .AsNoTracking()
+                .FirstAsync(cancellationToken);
+        }) ?? throw new InvalidOperationException("Camp settings not found.");
     }
 
     public async Task<List<CampSeason>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default)
@@ -767,19 +774,14 @@ public class CampService : ICampService
             "CampService");
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-
-        var years = await _dbContext.CampSeasons
-            .Where(s => s.CampId == campId)
-            .Select(s => s.Year)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-        foreach (var y in years) InvalidateCache(y);
+        await InvalidateCampYearCachesAsync(campId, cancellationToken);
     }
 
     public async Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default)
     {
         var camp = await _dbContext.Camps.FindAsync([campId], cancellationToken)
             ?? throw new InvalidOperationException("Camp not found.");
+        var campYears = await GetCampYearsAsync(campId, cancellationToken);
 
         // Delete images from filesystem
         var images = await _dbContext.CampImages
@@ -790,13 +792,6 @@ public class CampService : ICampService
             if (File.Exists(fullPath)) File.Delete(fullPath);
         }
 
-        // Get years for cache invalidation
-        var years = await _dbContext.CampSeasons
-            .Where(s => s.CampId == campId)
-            .Select(s => s.Year)
-            .Distinct()
-            .ToListAsync(cancellationToken);
-
         await _auditLogService.LogAsync(
             AuditAction.CampDeleted, nameof(Camp), campId,
             $"Camp '{camp.Slug}' permanently deleted",
@@ -805,8 +800,7 @@ public class CampService : ICampService
         _dbContext.Camps.Remove(camp); // cascade deletes children
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        foreach (var year in years)
-            InvalidateCache(year);
+        InvalidateCampYearCaches(campYears);
     }
 
     // ==========================================================================
@@ -942,6 +936,7 @@ public class CampService : ICampService
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await InvalidateCampYearCachesAsync(campId, cancellationToken);
 
         return image;
     }
@@ -963,6 +958,7 @@ public class CampService : ICampService
             relatedEntityId: image.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await InvalidateCampYearCachesAsync(image.CampId, cancellationToken);
     }
 
     public async Task ReorderImagesAsync(Guid campId, List<Guid> imageIdsInOrder,
@@ -980,6 +976,7 @@ public class CampService : ICampService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await InvalidateCampYearCachesAsync(campId, cancellationToken);
     }
 
     // ==========================================================================
@@ -991,6 +988,7 @@ public class CampService : ICampService
         var settings = await _dbContext.CampSettings.FirstAsync(cancellationToken);
         settings.PublicYear = year;
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _cache.InvalidateCampSettings();
     }
 
     public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
@@ -1000,6 +998,7 @@ public class CampService : ICampService
         {
             settings.OpenSeasons.Add(year);
             await _dbContext.SaveChangesAsync(cancellationToken);
+            _cache.InvalidateCampSettings();
         }
     }
 
@@ -1009,6 +1008,7 @@ public class CampService : ICampService
         if (settings.OpenSeasons.Remove(year))
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
+            _cache.InvalidateCampSettings();
         }
     }
 
@@ -1094,6 +1094,29 @@ public class CampService : ICampService
     private void InvalidateCache(int year)
     {
         _cache.InvalidateCampSeasonsByYear(year);
+    }
+
+    private async Task InvalidateCampYearCachesAsync(Guid campId, CancellationToken cancellationToken)
+    {
+        InvalidateCampYearCaches(await GetCampYearsAsync(campId, cancellationToken));
+    }
+
+    private async Task<List<int>> GetCampYearsAsync(Guid campId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.CampSeasons
+            .AsNoTracking()
+            .Where(s => s.CampId == campId)
+            .Select(s => s.Year)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
+
+    private void InvalidateCampYearCaches(IEnumerable<int> years)
+    {
+        foreach (var year in years)
+        {
+            InvalidateCache(year);
+        }
     }
 
     private static CampSeason CreateSeasonFromData(Guid campId, int year, string name,

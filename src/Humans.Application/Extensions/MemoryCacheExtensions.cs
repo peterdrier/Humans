@@ -65,6 +65,9 @@ public static class MemoryCacheExtensions
     public static void InvalidateCampSeasonsByYear(this IMemoryCache cache, int year) =>
         cache.Remove(CacheKeys.CampSeasonsByYear(year));
 
+    public static void InvalidateCampSettings(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.CampSettings);
+
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 
