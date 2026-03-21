@@ -73,3 +73,9 @@
 **Summary:** Moved profile campaign-grant loading into ProfileService and centralized approved-profile cache mutations.
 **Files:** src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Application/Interfaces/IProfileService.cs, src/Humans.Infrastructure/Services/OnboardingService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, src/Humans.Web/Controllers/ProfileController.cs, checkpoint.json
 **Commit:** 4214d00
+
+## Iteration 12 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Consolidated approved-profile and user-access cache mutations behind shared memory-cache helpers.
+**Files:** src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Services/OnboardingService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, tests/Humans.Application.Tests/Services/ProfileServiceTests.cs, checkpoint.json
+**Commit:** 0b585a9

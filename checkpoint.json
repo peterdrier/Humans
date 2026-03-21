@@ -12,7 +12,7 @@
     "tests/Humans.Application.Tests/Services/ProfileServiceTests.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "4214d0072b1850a8267c0479af64df68386e910e",
+  "last_good_commit": "0b585a9c3fbcdd981cd189b29cbdbcc3570bf2bf",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -197,6 +197,19 @@
         "src/Humans.Infrastructure/Services/OnboardingService.cs",
         "src/Humans.Infrastructure/Services/ProfileService.cs",
         "src/Humans.Web/Controllers/ProfileController.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 12,
+      "phase": 2,
+      "summary": "Consolidated approved-profile and user-access cache mutations behind shared memory-cache helpers.",
+      "files_changed": [
+        "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+        "src/Humans.Infrastructure/Services/OnboardingService.cs",
+        "src/Humans.Infrastructure/Services/ProfileService.cs",
+        "tests/Humans.Application.Tests/Services/ProfileServiceTests.cs",
         "checkpoint.json"
       ],
       "status": "success"
