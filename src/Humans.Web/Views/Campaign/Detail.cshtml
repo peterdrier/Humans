@@ -1,14 +1,14 @@
-@model Humans.Domain.Entities.Campaign
+@model Humans.Web.Models.CampaignDetailViewModel
 @{
-    ViewData["Title"] = Model.Title;
-    var totalCodes = (int)ViewBag.TotalCodes;
-    var availableCodes = (int)ViewBag.AvailableCodes;
-    var sentCount = (int)ViewBag.SentCount;
-    var failedCount = (int)ViewBag.FailedCount;
-    var codesRedeemed = (int)ViewBag.CodesRedeemed;
-    var totalGrants = (int)ViewBag.TotalGrants;
+    ViewData["Title"] = Model.Campaign.Title;
+    var totalCodes = Model.Stats.TotalCodes;
+    var availableCodes = Model.Stats.AvailableCodes;
+    var sentCount = Model.Stats.SentCount;
+    var failedCount = Model.Stats.FailedCount;
+    var codesRedeemed = Model.Stats.CodesRedeemed;
+    var totalGrants = Model.Stats.TotalGrants;
     var redemptionPct = totalGrants > 0 ? (int)Math.Round(100.0 * codesRedeemed / totalGrants) : 0;
-    var statusClass = Model.Status switch
+    var statusClass = Model.Campaign.Status switch
     {
         CampaignStatus.Draft => "bg-secondary",
         CampaignStatus.Active => "bg-success",
@@ -19,14 +19,14 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-        <h1>@Model.Title <span class="badge @statusClass fs-6">@Model.Status</span></h1>
-        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        <h1>@Model.Campaign.Title <span class="badge @statusClass fs-6">@Model.Campaign.Status</span></h1>
+        @if (!string.IsNullOrWhiteSpace(Model.Campaign.Description))
         {
-            <p class="text-muted mb-0">@Model.Description</p>
+            <p class="text-muted mb-0">@Model.Campaign.Description</p>
         }
     </div>
     <div class="d-flex gap-2">
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm">
+        <a asp-action="Edit" asp-route-id="@Model.Campaign.Id" class="btn btn-outline-primary btn-sm">
             <i class="fa-solid fa-pen me-1"></i>Edit
         </a>
         <a asp-action="Index" class="btn btn-outline-secondary">Back to Campaigns</a>
@@ -37,16 +37,16 @@
 
 @* Action buttons *@
 <div class="d-flex flex-wrap gap-2 mb-4">
-    @if (Model.Status == CampaignStatus.Active)
+    @if (Model.Campaign.Status == CampaignStatus.Active)
     {
-        <a asp-action="SendWave" asp-route-id="@Model.Id" class="btn btn-primary">
+        <a asp-action="SendWave" asp-route-id="@Model.Campaign.Id" class="btn btn-primary">
             <i class="fa-solid fa-paper-plane me-1"></i>Send Wave
         </a>
     }
 
-    @if (Model.Status == CampaignStatus.Draft || Model.Status == CampaignStatus.Active)
+    @if (Model.Campaign.Status == CampaignStatus.Draft || Model.Campaign.Status == CampaignStatus.Active)
     {
-        <form asp-action="ImportCodes" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="d-inline-flex align-items-center gap-2">
+        <form asp-action="ImportCodes" asp-route-id="@Model.Campaign.Id" method="post" enctype="multipart/form-data" class="d-inline-flex align-items-center gap-2">
             @Html.AntiForgeryToken()
             <input type="file" name="file" accept=".csv,.txt" class="form-control form-control-sm" style="max-width: 250px;" required />
             <button type="submit" class="btn btn-outline-primary btn-sm">
@@ -55,9 +55,9 @@
         </form>
     }
 
-    @if (Model.Status == CampaignStatus.Draft)
+    @if (Model.Campaign.Status == CampaignStatus.Draft)
     {
-        <form asp-action="GenerateCodes" asp-route-id="@Model.Id" method="post" class="d-inline-flex align-items-center gap-2">
+        <form asp-action="GenerateCodes" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline-flex align-items-center gap-2">
             @Html.AntiForgeryToken()
             <input type="number" name="count" min="1" placeholder="Count" class="form-control form-control-sm" style="max-width: 90px;" required />
             <select name="discountType" class="form-select form-select-sm" style="max-width: 140px;" required>
@@ -70,7 +70,7 @@
             </button>
         </form>
 
-        <form asp-action="Activate" asp-route-id="@Model.Id" method="post" class="d-inline">
+        <form asp-action="Activate" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-success btn-sm">
                 <i class="fa-solid fa-check me-1"></i>Activate
@@ -78,9 +78,9 @@
         </form>
     }
 
-    @if (Model.Status == CampaignStatus.Active)
+    @if (Model.Campaign.Status == CampaignStatus.Active)
     {
-        <form asp-action="Complete" asp-route-id="@Model.Id" method="post" class="d-inline">
+        <form asp-action="Complete" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-info btn-sm">
                 <i class="fa-solid fa-flag-checkered me-1"></i>Complete
@@ -90,7 +90,7 @@
 
     @if (failedCount > 0)
     {
-        <form asp-action="RetryAllFailed" asp-route-id="@Model.Id" method="post" class="d-inline">
+        <form asp-action="RetryAllFailed" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-warning btn-sm">
                 <i class="fa-solid fa-rotate-right me-1"></i>Retry All Failed
@@ -148,7 +148,7 @@
 <div class="card">
     <div class="card-header">Grants</div>
     <div class="card-body p-0">
-        @if (Model.Grants.Count == 0)
+        @if (Model.Campaign.Grants.Count == 0)
         {
             <p class="text-muted text-center py-4 mb-0">No grants yet. Use Send Wave to distribute codes.</p>
         }
@@ -167,7 +167,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var grant in Model.Grants.OrderByDescending(g => g.AssignedAt))
+                    @foreach (var grant in Model.Campaign.Grants.OrderByDescending(g => g.AssignedAt))
                     {
                         var emailStatusClass = grant.LatestEmailStatus switch
                         {

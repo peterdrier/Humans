@@ -155,6 +155,98 @@ public class CampaignServiceTests : IDisposable
             .WithMessage("*Draft*");
     }
 
+    [Fact]
+    public async Task UpdateAsync_ExistingCampaign_UpdatesFields()
+    {
+        var campaign = await SeedCampaignAsync();
+
+        var updated = await _service.UpdateAsync(
+            campaign.Id,
+            "  Updated Campaign  ",
+            "  Updated description  ",
+            "  Updated subject  ",
+            "  Updated body  ",
+            "  reply@example.com  ");
+
+        updated.Should().BeTrue();
+
+        var refreshed = await _dbContext.Campaigns.FindAsync(campaign.Id);
+        refreshed.Should().NotBeNull();
+        refreshed!.Title.Should().Be("Updated Campaign");
+        refreshed.Description.Should().Be("Updated description");
+        refreshed.EmailSubject.Should().Be("Updated subject");
+        refreshed.EmailBodyTemplate.Should().Be("Updated body");
+        refreshed.ReplyToAddress.Should().Be("reply@example.com");
+    }
+
+    [Fact]
+    public async Task GetDetailPageAsync_ReturnsComputedStats()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "A", "B", "C" });
+        var user = SeedUser(displayName: "Stats User");
+        var grantedCode = await _dbContext.CampaignCodes
+            .FirstAsync(c => c.CampaignId == campaign.Id && c.Code == "A");
+
+        _dbContext.CampaignGrants.Add(new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = grantedCode.Id,
+            UserId = user.Id,
+            AssignedAt = _clock.GetCurrentInstant(),
+            RedeemedAt = _clock.GetCurrentInstant(),
+            LatestEmailStatus = EmailOutboxStatus.Failed
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var page = await _service.GetDetailPageAsync(campaign.Id);
+
+        page.Should().NotBeNull();
+        page!.Campaign.Id.Should().Be(campaign.Id);
+        page.Stats.TotalCodes.Should().Be(3);
+        page.Stats.AvailableCodes.Should().Be(2);
+        page.Stats.FailedCount.Should().Be(1);
+        page.Stats.SentCount.Should().Be(0);
+        page.Stats.CodesRedeemed.Should().Be(1);
+        page.Stats.TotalGrants.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task GetSendWavePageAsync_ReturnsTeamsAndSelectedPreview()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "A1", "A2" });
+        var user = SeedUser(displayName: "Wave User");
+        var beta = SeedTeam("Beta Team");
+        var alpha = SeedTeam("Alpha Team");
+        SeedTeamMember(alpha.Id, user.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var page = await _service.GetSendWavePageAsync(campaign.Id, alpha.Id);
+
+        page.Should().NotBeNull();
+        page!.Campaign.Id.Should().Be(campaign.Id);
+        page.SelectedTeamId.Should().Be(alpha.Id);
+        page.Preview.Should().NotBeNull();
+        page.Preview!.EligibleCount.Should().Be(1);
+        page.Teams.Select(t => t.Name).Should().ContainInOrder("Alpha Team", "Beta Team");
+    }
+
+    [Fact]
+    public async Task GetCampaignIdForGrantAsync_ReturnsCampaignId()
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(new[] { "RESEND-CODE" });
+        var user = SeedUser(displayName: "Grant User");
+        var team = SeedTeam("Grant Team");
+        SeedTeamMember(team.Id, user.Id);
+        await _dbContext.SaveChangesAsync();
+        await _service.SendWaveAsync(campaign.Id, team.Id);
+        var grant = await _dbContext.CampaignGrants.SingleAsync();
+
+        var campaignId = await _service.GetCampaignIdForGrantAsync(grant.Id);
+
+        campaignId.Should().Be(campaign.Id);
+    }
+
     // ==========================================================================
     // CompleteAsync
     // ==========================================================================

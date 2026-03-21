@@ -1,4 +1,5 @@
 using System.Net;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -72,6 +73,34 @@ public class CampaignService : ICampaignService
             .FirstOrDefaultAsync(c => c.Id == id, ct);
     }
 
+    public async Task<bool> UpdateAsync(
+        Guid id,
+        string title,
+        string? description,
+        string emailSubject,
+        string emailBodyTemplate,
+        string? replyToAddress,
+        CancellationToken ct = default)
+    {
+        var campaign = await _dbContext.Campaigns
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+        if (campaign == null)
+        {
+            return false;
+        }
+
+        campaign.Title = title.Trim();
+        campaign.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        campaign.EmailSubject = emailSubject.Trim();
+        campaign.EmailBodyTemplate = emailBodyTemplate.Trim();
+        campaign.ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim();
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        _logger.LogInformation("Campaign {CampaignId} updated", id);
+        return true;
+    }
+
     public async Task<List<Campaign>> GetAllAsync(CancellationToken ct = default)
     {
         return await _dbContext.Campaigns
@@ -80,6 +109,64 @@ public class CampaignService : ICampaignService
             .AsSplitQuery()
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync(ct);
+    }
+
+    public async Task<CampaignDetailPageDto?> GetDetailPageAsync(Guid id, CancellationToken ct = default)
+    {
+        var campaign = await GetByIdAsync(id, ct);
+        if (campaign == null)
+        {
+            return null;
+        }
+
+        var totalCodes = campaign.Codes.Count;
+        var assignedCodeIds = campaign.Grants.Select(g => g.CampaignCodeId).ToHashSet();
+        var availableCodes = totalCodes - assignedCodeIds.Count;
+        var sentCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent);
+        var failedCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed);
+        var codesRedeemed = campaign.Grants.Count(g => g.RedeemedAt != null);
+        var totalGrants = campaign.Grants.Count;
+
+        return new CampaignDetailPageDto(
+            campaign,
+            new CampaignDetailStatsDto(
+                totalCodes,
+                availableCodes,
+                sentCount,
+                failedCount,
+                codesRedeemed,
+                totalGrants));
+    }
+
+    public async Task<CampaignSendWavePageDto?> GetSendWavePageAsync(
+        Guid campaignId,
+        Guid? teamId,
+        CancellationToken ct = default)
+    {
+        var campaign = await GetByIdAsync(campaignId, ct);
+        if (campaign == null)
+        {
+            return null;
+        }
+
+        var teams = await _dbContext.Teams
+            .OrderBy(t => t.Name)
+            .Select(t => new CampaignTeamOptionDto(t.Id, t.Name))
+            .ToListAsync(ct);
+
+        var preview = teamId.HasValue
+            ? await PreviewWaveSendAsync(campaignId, teamId.Value, ct)
+            : null;
+
+        return new CampaignSendWavePageDto(campaign, teams, teamId, preview);
+    }
+
+    public async Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default)
+    {
+        return await _dbContext.CampaignGrants
+            .Where(g => g.Id == grantId)
+            .Select(g => (Guid?)g.CampaignId)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default)

@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces;
@@ -14,8 +15,14 @@ public interface ICampaignService
     Task<Campaign> CreateAsync(string title, string? description,
         string emailSubject, string emailBodyTemplate, string? replyToAddress,
         Guid createdByUserId, CancellationToken ct = default);
+    Task<bool> UpdateAsync(Guid id, string title, string? description,
+        string emailSubject, string emailBodyTemplate, string? replyToAddress,
+        CancellationToken ct = default);
     Task<Campaign?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<List<Campaign>> GetAllAsync(CancellationToken ct = default);
+    Task<CampaignDetailPageDto?> GetDetailPageAsync(Guid id, CancellationToken ct = default);
+    Task<CampaignSendWavePageDto?> GetSendWavePageAsync(Guid campaignId, Guid? teamId, CancellationToken ct = default);
+    Task<Guid?> GetCampaignIdForGrantAsync(Guid grantId, CancellationToken ct = default);
     Task ImportCodesAsync(Guid campaignId, IEnumerable<string> codes, CancellationToken ct = default);
     Task ImportGeneratedCodesAsync(Guid campaignId, IReadOnlyList<string> codes, CancellationToken ct = default);
     Task ActivateAsync(Guid campaignId, CancellationToken ct = default);

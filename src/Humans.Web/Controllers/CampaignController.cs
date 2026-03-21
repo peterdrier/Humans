@@ -1,13 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
@@ -17,23 +16,15 @@ public class CampaignController : HumansControllerBase
 {
     private readonly ICampaignService _campaignService;
     private readonly ITicketVendorService _vendorService;
-    private readonly HumansDbContext _dbContext;
-    private readonly UserManager<User> _userManager;
-    private readonly ILogger<CampaignController> _logger;
 
     public CampaignController(
         ICampaignService campaignService,
         ITicketVendorService vendorService,
-        HumansDbContext dbContext,
-        UserManager<User> userManager,
-        ILogger<CampaignController> logger)
+        UserManager<User> userManager)
         : base(userManager)
     {
         _campaignService = campaignService;
         _vendorService = vendorService;
-        _dbContext = dbContext;
-        _userManager = userManager;
-        _logger = logger;
     }
 
     [HttpGet("")]
@@ -81,7 +72,7 @@ public class CampaignController : HumansControllerBase
     [HttpGet("Edit/{id:guid}")]
     public async Task<IActionResult> Edit(Guid id)
     {
-        var campaign = await _dbContext.Set<Campaign>().FindAsync(id);
+        var campaign = await _campaignService.GetByIdAsync(id);
         if (campaign == null) return NotFound();
         return View(campaign);
     }
@@ -97,21 +88,24 @@ public class CampaignController : HumansControllerBase
         if (string.IsNullOrWhiteSpace(emailBodyTemplate))
             ModelState.AddModelError(nameof(emailBodyTemplate), "Email body template is required.");
 
-        var campaign = await _dbContext.Set<Campaign>().FindAsync(id);
-        if (campaign == null) return NotFound();
-
         if (!ModelState.IsValid)
-            return View(campaign);
+        {
+            var campaign = await _campaignService.GetByIdAsync(id);
+            return campaign == null ? NotFound() : View(campaign);
+        }
 
-        campaign.Title = title.Trim();
-        campaign.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-        campaign.EmailSubject = emailSubject.Trim();
-        campaign.EmailBodyTemplate = emailBodyTemplate.Trim();
-        campaign.ReplyToAddress = string.IsNullOrWhiteSpace(replyToAddress) ? null : replyToAddress.Trim();
+        var updated = await _campaignService.UpdateAsync(
+            id,
+            title,
+            description,
+            emailSubject,
+            emailBodyTemplate,
+            replyToAddress);
+        if (!updated)
+        {
+            return NotFound();
+        }
 
-        await _dbContext.SaveChangesAsync();
-
-        _logger.LogInformation("Campaign {CampaignId} updated by {User}", id, User.Identity?.Name);
         SetSuccess("Campaign updated.");
         return RedirectToAction(nameof(Detail), new { id });
     }
@@ -119,26 +113,14 @@ public class CampaignController : HumansControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Detail(Guid id)
     {
-        var campaign = await _campaignService.GetByIdAsync(id);
-        if (campaign == null) return NotFound();
+        var page = await _campaignService.GetDetailPageAsync(id);
+        if (page == null) return NotFound();
 
-        var totalCodes = campaign.Codes.Count;
-        var assignedCodeIds = campaign.Grants.Select(g => g.CampaignCodeId).ToHashSet();
-        var availableCodes = totalCodes - assignedCodeIds.Count;
-        var sentCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent);
-        var failedCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed);
-
-        var codesRedeemed = campaign.Grants.Count(g => g.RedeemedAt != null);
-        var totalGrants = campaign.Grants.Count;
-
-        ViewBag.TotalCodes = totalCodes;
-        ViewBag.AvailableCodes = availableCodes;
-        ViewBag.SentCount = sentCount;
-        ViewBag.FailedCount = failedCount;
-        ViewBag.CodesRedeemed = codesRedeemed;
-        ViewBag.TotalGrants = totalGrants;
-
-        return View(campaign);
+        return View(new CampaignDetailViewModel
+        {
+            Campaign = page.Campaign,
+            Stats = page.Stats
+        });
     }
 
     [HttpPost("{id:guid}/ImportCodes")]
@@ -175,7 +157,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
     {
-        var campaign = await _dbContext.Set<Campaign>().FindAsync(id);
+        var campaign = await _campaignService.GetByIdAsync(id);
         if (campaign == null) return NotFound();
 
         if (campaign.Status != CampaignStatus.Draft)
@@ -225,21 +207,16 @@ public class CampaignController : HumansControllerBase
     [HttpGet("{id:guid}/SendWave")]
     public async Task<IActionResult> SendWave(Guid id, Guid? teamId)
     {
-        var campaign = await _campaignService.GetByIdAsync(id);
-        if (campaign == null) return NotFound();
+        var page = await _campaignService.GetSendWavePageAsync(id, teamId);
+        if (page == null) return NotFound();
 
-        var teams = await _dbContext.Teams.OrderBy(t => t.Name).ToListAsync();
-        ViewBag.Teams = teams;
-        ViewBag.Campaign = campaign;
-        ViewBag.SelectedTeamId = teamId;
-
-        if (teamId.HasValue)
+        return View(new CampaignSendWaveViewModel
         {
-            var preview = await _campaignService.PreviewWaveSendAsync(id, teamId.Value);
-            ViewBag.Preview = preview;
-        }
-
-        return View();
+            Campaign = page.Campaign,
+            Teams = page.Teams,
+            SelectedTeamId = page.SelectedTeamId,
+            Preview = page.Preview
+        });
     }
 
     [HttpPost("{id:guid}/SendWave")]
@@ -255,13 +232,12 @@ public class CampaignController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Resend(Guid grantId)
     {
-        // Need to find the campaign ID for redirect
-        var grant = await _dbContext.Set<CampaignGrant>().FindAsync(grantId);
-        if (grant == null) return NotFound();
+        var campaignId = await _campaignService.GetCampaignIdForGrantAsync(grantId);
+        if (!campaignId.HasValue) return NotFound();
 
         await _campaignService.ResendToGrantAsync(grantId);
         SetSuccess("Resend queued.");
-        return RedirectToAction(nameof(Detail), new { id = grant.CampaignId });
+        return RedirectToAction(nameof(Detail), new { id = campaignId.Value });
     }
 
     [HttpPost("{id:guid}/RetryAllFailed")]
