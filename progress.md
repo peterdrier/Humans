@@ -79,3 +79,9 @@
 **Summary:** Consolidated approved-profile and user-access cache mutations behind shared memory-cache helpers.
 **Files:** src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Services/OnboardingService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, tests/Humans.Application.Tests/Services/ProfileServiceTests.cs, checkpoint.json
 **Commit:** 0b585a9
+
+## Iteration 13 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved camp API projection and sorting logic into CampService behind shared service DTOs.
+**Files:** src/Humans.Application/Interfaces/ICampService.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Web/Controllers/CampApiController.cs, tests/Humans.Application.Tests/Services/CampServiceTests.cs, checkpoint.json
+**Commit:** 8ac5647

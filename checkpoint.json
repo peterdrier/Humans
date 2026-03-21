@@ -12,7 +12,7 @@
     "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "0b585a9c3fbcdd981cd189b29cbdbcc3570bf2bf",
+  "last_good_commit": "8ac564763abb2f4a947e5c8b2fb563617a3711ab",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -236,6 +236,19 @@
         "src/Humans.Infrastructure/Services/OnboardingService.cs",
         "src/Humans.Infrastructure/Services/ProfileService.cs",
         "tests/Humans.Application.Tests/Services/ProfileServiceTests.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 13,
+      "phase": 2,
+      "summary": "Moved camp API projection and sorting logic into CampService behind shared service DTOs.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ICampService.cs",
+        "src/Humans.Infrastructure/Services/CampService.cs",
+        "src/Humans.Web/Controllers/CampApiController.cs",
+        "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
         "checkpoint.json"
       ],
       "status": "success"
