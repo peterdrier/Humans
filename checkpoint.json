@@ -4,9 +4,15 @@
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Consolidated TeamService active-team cache mutations behind a single shared helper path.",
+  "summary": "Centralized auth-cache invalidation for role and team-role mutations across services.",
   "files_changed": [
+    "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+    "src/Humans.Infrastructure/Services/ProfileService.cs",
+    "src/Humans.Infrastructure/Services/RoleAssignmentService.cs",
     "src/Humans.Infrastructure/Services/TeamService.cs",
+    "tests/Humans.Application.Tests/Services/ProfileServiceTests.cs",
+    "tests/Humans.Application.Tests/Services/RoleAssignmentServiceTests.cs",
+    "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "c5b396ec04e4134f6c3f31f17595d2525f2b98b7",

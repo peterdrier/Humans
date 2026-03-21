@@ -62,4 +62,10 @@ public static class MemoryCacheExtensions
 
     public static void InvalidateCampSeasonsByYear(this IMemoryCache cache, int year) =>
         cache.Remove(CacheKeys.CampSeasonsByYear(year));
+
+    public static void InvalidateRoleAssignmentClaims(this IMemoryCache cache, Guid userId) =>
+        cache.Remove(CacheKeys.RoleAssignmentClaims(userId));
+
+    public static void InvalidateShiftAuthorization(this IMemoryCache cache, Guid userId) =>
+        cache.Remove(CacheKeys.ShiftAuthorization(userId));
 }

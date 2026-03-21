@@ -1,9 +1,11 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -19,6 +21,7 @@ public class TeamServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly TeamService _service;
+    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public TeamServiceTests()
     {
@@ -32,12 +35,13 @@ public class TeamServiceTests : IDisposable
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
             _clock,
-            new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
+            _cache,
             NullLogger<TeamService>.Instance);
     }
 
     public void Dispose()
     {
+        _cache.Dispose();
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -1084,6 +1088,23 @@ public class TeamServiceTests : IDisposable
             .WithMessage("*system team*");
     }
 
+    [Fact]
+    public async Task LeaveTeamAsync_RemovesManagementAssignments_InvalidatesShiftAuthorizationCache()
+    {
+        var user = SeedUser();
+        var team = SeedTeam("Operations");
+        var roleDefinition = SeedTeamRoleDefinition(team.Id, isManagement: true);
+        var member = SeedTeamMember(team.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedTeamRoleAssignment(roleDefinition.Id, member.Id);
+        await _dbContext.SaveChangesAsync();
+        _cache.Set(CacheKeys.ShiftAuthorization(user.Id), new[] { team.Id });
+
+        var result = await _service.LeaveTeamAsync(team.Id, user.Id);
+
+        result.Should().BeTrue();
+        _cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
+    }
+
     // --- Helpers ---
 
     private User SeedUser(Guid? id = null, string displayName = "Test User")
@@ -1161,5 +1182,37 @@ public class TeamServiceTests : IDisposable
         };
         _dbContext.TeamJoinRequests.Add(request);
         return request;
+    }
+
+    private TeamRoleDefinition SeedTeamRoleDefinition(Guid teamId, bool isManagement)
+    {
+        var definition = new TeamRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            Name = isManagement ? "Coordinator" : "Member Role",
+            IsManagement = isManagement,
+            SlotCount = 1,
+            SortOrder = 0,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.TeamRoleDefinitions.Add(definition);
+        return definition;
+    }
+
+    private TeamRoleAssignment SeedTeamRoleAssignment(Guid roleDefinitionId, Guid teamMemberId)
+    {
+        var assignment = new TeamRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            TeamRoleDefinitionId = roleDefinitionId,
+            TeamMemberId = teamMemberId,
+            SlotIndex = 0,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = Guid.NewGuid()
+        };
+        _dbContext.TeamRoleAssignments.Add(assignment);
+        return assignment;
     }
 }

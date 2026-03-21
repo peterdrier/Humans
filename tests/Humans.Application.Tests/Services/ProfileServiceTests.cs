@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -1269,6 +1270,20 @@ public class ProfileServiceTests : IDisposable
         // Should be gone from cache
         var resultsAfter = await _service.SearchHumansAsync("Test User");
         resultsAfter.Should().NotContain(r => r.UserId == userId);
+    }
+
+    [Fact]
+    public async Task RequestDeletionAsync_InvalidatesRoleAndShiftAuthorizationCaches()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
+        _cache.Set(CacheKeys.ShiftAuthorization(userId), new[] { Guid.NewGuid() });
+
+        await _service.RequestDeletionAsync(userId);
+
+        _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
+        _cache.TryGetValue(CacheKeys.ShiftAuthorization(userId), out _).Should().BeFalse();
     }
 
     // --- Helpers ---

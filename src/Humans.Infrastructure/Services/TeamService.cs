@@ -561,6 +561,8 @@ public class TeamService : ITeamService
 
         // Clean up role assignments before departure
         var roleAssignments = await _dbContext.Set<TeamRoleAssignment>()
+            .Include(a => a.TeamRoleDefinition)
+                .ThenInclude(d => d.Team)
             .Where(a => a.TeamMemberId == member.Id)
             .ToListAsync(cancellationToken);
         if (roleAssignments.Count > 0)
@@ -584,6 +586,7 @@ public class TeamService : ITeamService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         RemoveMemberFromTeamCache(teamId, userId);
+        InvalidateShiftAuthorizationIfNeeded(userId, roleAssignments);
 
         _logger.LogInformation("User {UserId} left team {TeamId}", userId, teamId);
 
@@ -912,6 +915,8 @@ public class TeamService : ITeamService
 
         // Clean up role assignments before departure
         var roleAssignments = await _dbContext.Set<TeamRoleAssignment>()
+            .Include(a => a.TeamRoleDefinition)
+                .ThenInclude(d => d.Team)
             .Where(a => a.TeamMemberId == member.Id)
             .ToListAsync(cancellationToken);
         if (roleAssignments.Count > 0)
@@ -935,6 +940,7 @@ public class TeamService : ITeamService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         RemoveMemberFromTeamCache(teamId, userId);
+        InvalidateShiftAuthorizationIfNeeded(userId, roleAssignments);
 
         _logger.LogInformation("Actor {ActorId} removed user {UserId} from team {TeamId}", actorUserId, userId, teamId);
 
@@ -1436,6 +1442,7 @@ public class TeamService : ITeamService
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
         // Update cache: if auto-added to team, add member; if promoted to Lead, update role
         if (targetUser != null)
@@ -1506,6 +1513,7 @@ public class TeamService : ITeamService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        InvalidateShiftAuthorizationIfNeeded(definition, assignment.TeamMember.UserId);
 
         // Update cache if role changed (Coordinator → Member demotion)
         if (definition.IsManagement)
@@ -1770,6 +1778,30 @@ public class TeamService : ITeamService
                 .ToList()
         });
     }
+
+    private void InvalidateShiftAuthorizationIfNeeded(Guid userId, IEnumerable<TeamRoleAssignment> roleAssignments)
+    {
+        if (roleAssignments.Any(IsShiftAuthorizationAssignment))
+        {
+            _cache.InvalidateShiftAuthorization(userId);
+        }
+    }
+
+    private void InvalidateShiftAuthorizationIfNeeded(TeamRoleDefinition definition, Guid userId)
+    {
+        if (IsShiftAuthorizationDefinition(definition))
+        {
+            _cache.InvalidateShiftAuthorization(userId);
+        }
+    }
+
+    private static bool IsShiftAuthorizationAssignment(TeamRoleAssignment assignment) =>
+        IsShiftAuthorizationDefinition(assignment.TeamRoleDefinition);
+
+    private static bool IsShiftAuthorizationDefinition(TeamRoleDefinition definition) =>
+        definition.IsManagement &&
+        definition.Team.ParentTeamId == null &&
+        definition.Team.SystemTeamType == SystemTeamType.None;
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {

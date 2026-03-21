@@ -308,6 +308,8 @@ public class ProfileService : IProfileService
         await _dbContext.SaveChangesAsync(ct);
         UpdateProfileCache(userId, null);
         _cache.InvalidateActiveTeams();
+        _cache.InvalidateRoleAssignmentClaims(userId);
+        _cache.InvalidateShiftAuthorization(userId);
 
         _logger.LogWarning(
             "User {UserId} requested account deletion. Scheduled for {DeletionDate}. " +
