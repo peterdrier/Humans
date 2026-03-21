@@ -1,5 +1,5 @@
 {
-  "iteration": 17,
+  "iteration": 18,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
@@ -11,7 +11,7 @@
     "src/Humans.Web/Controllers/CampController.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "b0a35466b49fc9bb2e288a142fb0a51703f5610b",
+  "last_good_commit": "8ddb64df3d5104f8e676da99efe042a64cc5ae83",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -334,6 +334,18 @@
         "src/Humans.Web/Controllers/GovernanceController.cs",
         "src/Humans.Web/Controllers/TicketController.cs",
         "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 18,
+      "phase": 2,
+      "summary": "Moved camp edit season selection and projection into CampService so CampController only maps service DTOs into view models.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ICampService.cs",
+        "src/Humans.Infrastructure/Services/CampService.cs",
+        "src/Humans.Web/Controllers/CampController.cs",
         "checkpoint.json"
       ],
       "status": "success"
