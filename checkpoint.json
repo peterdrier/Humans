@@ -1,5 +1,5 @@
 {
-  "iteration": 21,
+  "iteration": 22,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
@@ -12,7 +12,7 @@
     "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "73f4c12c3fa83648f7de7588bd6f978717f87c35",
+  "last_good_commit": "73141f21d702001ee4e6a7d77e6f04b9f1293b9d",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -384,6 +384,19 @@
         "src/Humans.Infrastructure/Services/TeamPageService.cs",
         "src/Humans.Web/Controllers/TeamController.cs",
         "src/Humans.Web/Extensions/InfrastructureServiceCollectionExtensions.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 22,
+      "phase": 2,
+      "summary": "Cached camp settings via shared cache helpers and fixed camp-year cache invalidation after image changes.",
+      "files_changed": [
+        "src/Humans.Application/CacheKeys.cs",
+        "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+        "src/Humans.Infrastructure/Services/CampService.cs",
+        "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
         "checkpoint.json"
       ],
       "status": "success"
