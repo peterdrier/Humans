@@ -97,3 +97,9 @@
 **Summary:** Moved team detail viewer-state and member-selection logic into TeamService behind shared service DTOs.
 **Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, tests/Humans.Application.Tests/Services/TeamServiceTests.cs, checkpoint.json
 **Commit:** 503a272
+
+## Iteration 16 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved TeamController MyTeams membership aggregation and pending-request counts into TeamService behind a shared summary DTO.
+**Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, tests/Humans.Application.Tests/Services/TeamServiceTests.cs, checkpoint.json
+**Commit:** a729448
