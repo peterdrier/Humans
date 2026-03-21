@@ -139,3 +139,9 @@
 **Summary:** Cached camp settings via shared cache helpers and fixed camp-year cache invalidation after image changes.
 **Files:** src/Humans.Application/CacheKeys.cs, src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Services/CampService.cs, tests/Humans.Application.Tests/Services/CampServiceTests.cs, checkpoint.json
 **Commit:** 73141f2
+
+## Iteration 23 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved campaign admin page composition and updates into CampaignService so CampaignController no longer queries DbContext directly.
+**Files:** src/Humans.Application/DTOs/CampaignAdminPageDtos.cs, src/Humans.Application/Interfaces/ICampaignService.cs, src/Humans.Infrastructure/Services/CampaignService.cs, src/Humans.Web/Controllers/CampaignController.cs, src/Humans.Web/Models/CampaignViewModels.cs, src/Humans.Web/Views/Campaign/Detail.cshtml, src/Humans.Web/Views/Campaign/SendWave.cshtml, tests/Humans.Application.Tests/Services/CampaignServiceTests.cs, checkpoint.json
+**Commit:** bfd564c
