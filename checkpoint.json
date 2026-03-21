@@ -3,11 +3,15 @@
   "current_phase": 1,
   "total_phases": 6,
   "phase_name": "Controller Pattern Consolidation",
-  "phase_status": "DONE",
-  "summary": "Extracted shared camp controller access helpers and standardized CampController TempData messaging.",
+  "phase_status": "IN_PROGRESS",
+  "summary": "Consolidated shared in-memory cache helpers and standardized camp contact rate-limit caching.",
   "files_changed": [
+    "src/Humans.Application/CacheKeys.cs",
+    "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+    "src/Humans.Infrastructure/Services/OnboardingService.cs",
+    "src/Humans.Infrastructure/Services/ProfileService.cs",
+    "src/Humans.Infrastructure/Services/TeamService.cs",
     "src/Humans.Web/Controllers/CampController.cs",
-    "src/Humans.Web/Controllers/HumansCampControllerBase.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "3022a6d02017fbcf7072f213820e0fd34ea732ad",

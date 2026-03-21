@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -98,7 +99,7 @@ public class TeamService : ITeamService
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 // Add to cache
-                if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached) && cached != null)
+                if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached))
                 {
                     cached[team.Id] = new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
                         team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.CreatedAt, [],
@@ -267,7 +268,7 @@ public class TeamService : ITeamService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         // Update cache
-        if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached) && cached != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached))
         {
             if (!isActive)
             {
@@ -352,7 +353,7 @@ public class TeamService : ITeamService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         // Remove from cache
-        if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached) && cached != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached))
         {
             cached.TryRemove(teamId, out _);
         }
@@ -1404,7 +1405,7 @@ public class TeamService : ITeamService
                 teamMember.Id, targetUserId, targetUser.DisplayName, targetUser.ProfilePictureUrl,
                 teamMember.Role, teamMember.JoinedAt);
             // Either add or update depending on whether they were auto-added
-            if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cachedTeams) && cachedTeams != null
+            if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cachedTeams)
                 && cachedTeams.TryGetValue(definition.TeamId, out var ct))
             {
                 var existing = ct.Members.FirstOrDefault(m => m.UserId == targetUserId);
@@ -1657,7 +1658,7 @@ public class TeamService : ITeamService
 
     private void AddMemberToTeamCache(Guid teamId, CachedTeamMember member)
     {
-        if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached) && cached != null
+        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached)
             && cached.TryGetValue(teamId, out var team))
         {
             cached[teamId] = team with { Members = [.. team.Members, member] };
@@ -1666,7 +1667,7 @@ public class TeamService : ITeamService
 
     private void RemoveMemberFromTeamCache(Guid teamId, Guid userId)
     {
-        if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached) && cached != null
+        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached)
             && cached.TryGetValue(teamId, out var team))
         {
             cached[teamId] = team with { Members = team.Members.Where(m => m.UserId != userId).ToList() };
@@ -1675,7 +1676,7 @@ public class TeamService : ITeamService
 
     private void UpdateMemberRoleInTeamCache(Guid teamId, Guid userId, TeamMemberRole role)
     {
-        if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached) && cached != null
+        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached)
             && cached.TryGetValue(teamId, out var team))
         {
             cached[teamId] = team with
@@ -1689,7 +1690,7 @@ public class TeamService : ITeamService
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
-        if (_cache.TryGetValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached) && cached != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached))
         {
             foreach (var kvp in cached)
             {

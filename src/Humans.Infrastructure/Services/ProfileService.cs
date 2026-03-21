@@ -739,12 +739,16 @@ public class ProfileService : IProfileService
 
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
     {
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? cached) && cached != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? cached))
         {
             if (newValue != null)
+            {
                 cached[userId] = newValue;
+            }
             else
+            {
                 cached.TryRemove(userId, out _);
+            }
         }
     }
 

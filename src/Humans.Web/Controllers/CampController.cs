@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Humans.Application;
 using Humans.Application.Interfaces;
+using Humans.Application.Extensions;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using System.Text.RegularExpressions;
@@ -248,8 +250,8 @@ public class CampController : HumansCampControllerBase
         if (currentUser == null) return Unauthorized();
 
         // Rate limit: one message per camp per user per 10 minutes
-        var rateLimitKey = $"camp-contact:{currentUser.Id}:{camp.Id}";
-        if (_cache.TryGetValue(rateLimitKey, out _))
+        var rateLimitKey = CacheKeys.CampContactRateLimit(currentUser.Id, camp.Id);
+        if (!await _cache.TryReserveAsync(rateLimitKey, TimeSpan.FromMinutes(10)))
         {
             SetError(_localizer["Camp_Contact_RateLimited"].Value);
             return RedirectToAction(nameof(Details), new { slug });
@@ -286,13 +288,12 @@ public class CampController : HumansCampControllerBase
                 $"Message sent to camp '{campDisplayName}' (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
                 currentUser.Id, currentUser.DisplayName);
 
-            _cache.Set(rateLimitKey, true, TimeSpan.FromMinutes(10));
-
             SetSuccess(string.Format(_localizer["Camp_Contact_Success"].Value, campDisplayName));
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)
         {
+            _cache.Remove(rateLimitKey);
             _logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
             SetError(_localizer["Common_Error"].Value);
             return RedirectToAction(nameof(Details), new { slug });

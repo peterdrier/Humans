@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -177,7 +178,7 @@ public class OnboardingService : IOnboardingService
         _cache.Remove(CacheKeys.NavBadgeCounts);
 
         // Add to profile cache (profile is now approved and not suspended)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? profileCache) && profileCache != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? profileCache))
         {
             await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
             profileCache[userId] = CachedProfile.Create(profile, profile.User);
@@ -233,7 +234,7 @@ public class OnboardingService : IOnboardingService
         _cache.Remove(CacheKeys.NavBadgeCounts);
 
         // Remove from profile cache (no longer approved)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? flagCache) && flagCache != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? flagCache))
         {
             flagCache.TryRemove(userId, out _);
         }
@@ -324,7 +325,7 @@ public class OnboardingService : IOnboardingService
         _cache.Remove(CacheKeys.NavBadgeCounts);
 
         // Remove from profile cache (no longer approved)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? rejectCache) && rejectCache != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? rejectCache))
         {
             rejectCache.TryRemove(userId, out _);
         }
@@ -376,7 +377,7 @@ public class OnboardingService : IOnboardingService
         _cache.Remove(CacheKeys.NavBadgeCounts);
 
         // Add to profile cache (profile is now approved)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? approveCache) && approveCache != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? approveCache))
         {
             await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
             approveCache[userId] = CachedProfile.Create(user.Profile, user);
@@ -413,7 +414,7 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
 
         // Remove from profile cache (suspended)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? suspendCache) && suspendCache != null)
+        if (_cache.TryGetExistingValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? suspendCache))
         {
             suspendCache.TryRemove(userId, out _);
         }
@@ -447,7 +448,7 @@ public class OnboardingService : IOnboardingService
         // Re-add to profile cache if approved
         if (user.Profile.IsApproved)
         {
-            if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? unsuspendCache) && unsuspendCache != null)
+            if (_cache.TryGetExistingValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? unsuspendCache))
             {
                 await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
                 unsuspendCache[userId] = CachedProfile.Create(user.Profile, user);
