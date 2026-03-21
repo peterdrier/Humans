@@ -242,6 +242,7 @@ public class FeedbackService : IFeedbackService
             AuditAction.FeedbackResponseSent, nameof(FeedbackReport), id,
             $"Response sent to {user.DisplayName} for feedback {id}",
             actorUserId ?? Guid.Empty, actorName);
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Feedback response sent for {ReportId} by {ActorId}", id, actorUserId);
     }
