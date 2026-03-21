@@ -53,4 +53,13 @@ public static class MemoryCacheExtensions
 
     public static void InvalidateNavBadgeCounts(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NavBadgeCounts);
+
+    public static void InvalidateApprovedProfiles(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.ApprovedProfiles);
+
+    public static void InvalidateActiveTeams(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.ActiveTeams);
+
+    public static void InvalidateCampSeasonsByYear(this IMemoryCache cache, int year) =>
+        cache.Remove(CacheKeys.CampSeasonsByYear(year));
 }

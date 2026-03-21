@@ -239,7 +239,7 @@ public class ProfileService : IProfileService
         }
 
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
 
         // Update profile cache if profile is approved
         if (profile.IsApproved && !profile.IsSuspended && user != null)
@@ -307,7 +307,7 @@ public class ProfileService : IProfileService
 
         await _dbContext.SaveChangesAsync(ct);
         UpdateProfileCache(userId, null);
-        _cache.Remove(CacheKeys.ActiveTeams);
+        _cache.InvalidateActiveTeams();
 
         _logger.LogWarning(
             "User {UserId} requested account deletion. Scheduled for {DeletionDate}. " +

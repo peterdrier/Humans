@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -770,7 +771,7 @@ public class CampService : ICampService
 
     private void InvalidateCache(int year)
     {
-        _cache.Remove(CacheKeys.CampSeasonsByYear(year));
+        _cache.InvalidateCampSeasonsByYear(year);
     }
 
     private static CampSeason CreateSeasonFromData(Guid campId, int year, string name,

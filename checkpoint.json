@@ -4,11 +4,12 @@
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Moved team directory summary/grouping into TeamService and backed it with the shared active-team cache.",
+  "summary": "Standardized shared cache invalidation helpers for active teams, nav badges, and camp season caches.",
   "files_changed": [
-    "src/Humans.Application/Interfaces/ITeamService.cs",
-    "src/Humans.Infrastructure/Services/TeamService.cs",
-    "src/Humans.Web/Controllers/TeamController.cs",
+    "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+    "src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs",
+    "src/Humans.Infrastructure/Services/CampService.cs",
+    "src/Humans.Infrastructure/Services/ProfileService.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "c7a9b83d2a1980ccf6041fcec36036e74ee283ee",
