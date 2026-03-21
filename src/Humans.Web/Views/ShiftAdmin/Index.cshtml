@@ -137,7 +137,7 @@
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Description</label>
-                                    <input type="text" name="Description" value="@rota.Description" class="form-control" />
+                                    <textarea name="Description" class="form-control" rows="2">@rota.Description</textarea>
                                 </div>
                             </div>
                             <div class="row g-2 mt-2 align-items-end">
@@ -295,7 +295,9 @@
                                             <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
                                                 <form asp-action="EditShift" asp-route-slug="@Model.Department.Slug" asp-route-shiftId="@shift.Id" method="post">
                                                     @Html.AntiForgeryToken()
-                                                    <input type="hidden" name="Description" value="@shift.Description" />
+                                                    <div class="mb-2">
+                                                        <textarea name="Description" class="form-control form-control-sm" rows="2" placeholder="Shift duties, notes...">@shift.Description</textarea>
+                                                    </div>
                                                     <div class="row g-2 align-items-end">
                                                         <div class="col-md-2">
                                                             <label class="form-label form-label-sm">Date</label>
@@ -638,7 +640,7 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Description</label>
-                            <input type="text" name="Description" class="form-control" />
+                            <textarea name="Description" class="form-control" rows="2"></textarea>
                         </div>
                     </div>
                     <div class="row g-2 mt-2 align-items-end">
