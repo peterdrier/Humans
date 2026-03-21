@@ -25,3 +25,9 @@
 **Summary:** Consolidated shared in-memory cache helpers and standardized camp contact rate-limit caching.
 **Files:** src/Humans.Application/CacheKeys.cs, src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Services/OnboardingService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/CampController.cs, checkpoint.json
 **Commit:** 658b19f
+
+## Iteration 4 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Consolidated TeamService active-team cache mutations behind shared private helpers.
+**Files:** src/Humans.Infrastructure/Services/TeamService.cs, checkpoint.json
+**Commit:** 73d18ae

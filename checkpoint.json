@@ -1,5 +1,5 @@
 {
-  "iteration": 3,
+  "iteration": 4,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
@@ -9,7 +9,7 @@
     "src/Humans.Infrastructure/Services/TeamService.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "658b19f95280cc75a5408fd77ddcd4ae46d997ea",
+  "last_good_commit": "73d18ae25e80c8f3c9e4863a414550668964dc0c",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -51,6 +51,16 @@
         "src/Humans.Infrastructure/Services/ProfileService.cs",
         "src/Humans.Infrastructure/Services/TeamService.cs",
         "src/Humans.Web/Controllers/CampController.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 4,
+      "phase": 2,
+      "summary": "Consolidated TeamService active-team cache mutations behind shared private helpers.",
+      "files_changed": [
+        "src/Humans.Infrastructure/Services/TeamService.cs",
         "checkpoint.json"
       ],
       "status": "success"
