@@ -752,7 +752,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 model.IsPublicPage,
                 user.Id);
 
-            TempData["SuccessMessage"] = _localizer["EditTeamPage_Saved"].Value;
+            SetSuccess(_localizer["EditTeamPage_Saved"].Value);
             return RedirectToAction("Details", "Team", new { slug });
         }
         catch (InvalidOperationException ex)

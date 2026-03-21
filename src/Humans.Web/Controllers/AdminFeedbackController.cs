@@ -2,28 +2,25 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = RoleNames.Admin)]
 [Route("Admin/Feedback")]
-public class AdminFeedbackController : Controller
+public class AdminFeedbackController : HumansControllerBase
 {
     private readonly IFeedbackService _feedbackService;
-    private readonly UserManager<User> _userManager;
-    private readonly ILogger<AdminFeedbackController> _logger;
 
     public AdminFeedbackController(
         IFeedbackService feedbackService,
-        UserManager<User> userManager,
-        ILogger<AdminFeedbackController> logger)
+        UserManager<User> userManager)
+        : base(userManager)
     {
         _feedbackService = feedbackService;
-        _userManager = userManager;
-        _logger = logger;
     }
 
     [HttpGet("")]
@@ -86,11 +83,11 @@ public class AdminFeedbackController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStatus(Guid id, UpdateFeedbackStatusModel model)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null) return NotFound();
+        var (userMissing, user) = await RequireCurrentUserAsync();
+        if (userMissing != null) return userMissing;
 
         await _feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
-        TempData["SuccessMessage"] = "Status updated.";
+        SetSuccess("Status updated.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -99,7 +96,7 @@ public class AdminFeedbackController : Controller
     public async Task<IActionResult> UpdateNotes(Guid id, UpdateFeedbackNotesModel model)
     {
         await _feedbackService.UpdateAdminNotesAsync(id, model.Notes);
-        TempData["SuccessMessage"] = "Notes saved.";
+        SetSuccess("Notes saved.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -108,7 +105,7 @@ public class AdminFeedbackController : Controller
     public async Task<IActionResult> SetGitHubIssue(Guid id, SetGitHubIssueModel model)
     {
         await _feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
-        TempData["SuccessMessage"] = "GitHub issue linked.";
+        SetSuccess("GitHub issue linked.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 
@@ -118,15 +115,15 @@ public class AdminFeedbackController : Controller
     {
         if (!ModelState.IsValid)
         {
-            TempData["ErrorMessage"] = "Response message is required.";
+            SetError("Response message is required.");
             return RedirectToAction(nameof(Detail), new { id });
         }
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null) return NotFound();
+        var (userMissing, user) = await RequireCurrentUserAsync();
+        if (userMissing != null) return userMissing;
 
         await _feedbackService.SendResponseAsync(id, model.Message, user.Id);
-        TempData["SuccessMessage"] = "Response sent.";
+        SetSuccess("Response sent.");
         return RedirectToAction(nameof(Detail), new { id });
     }
 }

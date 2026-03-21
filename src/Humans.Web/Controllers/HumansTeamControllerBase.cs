@@ -1,5 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -18,6 +19,35 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
 
     protected async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveTeamManagementAsync(string slug)
     {
+        return await ResolveTeamAccessAsync(
+            slug,
+            static _ => true,
+            async (team, user) =>
+            {
+                if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+                {
+                    return true;
+                }
+
+                return await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
+            });
+    }
+
+    protected Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveDepartmentAccessAsync(
+        string slug,
+        Func<Team, User, Task<bool>> canAccessAsync)
+    {
+        return ResolveTeamAccessAsync(
+            slug,
+            static team => team.ParentTeamId == null && team.SystemTeamType == SystemTeamType.None,
+            canAccessAsync);
+    }
+
+    private async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveTeamAccessAsync(
+        string slug,
+        Func<Team, bool> teamFilter,
+        Func<Team, User, Task<bool>> canAccessAsync)
+    {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult != null)
         {
@@ -25,20 +55,14 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team == null || !teamFilter(team))
         {
             return (NotFound(), user, null!);
         }
 
-        // Claims-first: global roles grant access to all teams
-        if (!RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+        if (!await canAccessAsync(team, user))
         {
-            // Fall back to team-specific coordinator check (requires DB)
-            var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
-            if (!isCoordinator)
-            {
-                return (Forbid(), user, team);
-            }
+            return (Forbid(), user, team);
         }
 
         return (null, user, team);

@@ -1,0 +1,22 @@
+{
+  "iteration": 0,
+  "current_phase": 1,
+  "total_phases": 6,
+  "phase_name": "Controller Pattern Consolidation",
+  "phase_status": "IN_PROGRESS",
+  "summary": "Consolidated controller user/team access helpers and TempData messaging across feedback, shift admin, and related team controllers.",
+  "files_changed": [
+    "src/Humans.Web/Authorization/ShiftRoleChecks.cs",
+    "src/Humans.Web/Controllers/AdminFeedbackController.cs",
+    "src/Humans.Web/Controllers/FeedbackController.cs",
+    "src/Humans.Web/Controllers/HumansTeamControllerBase.cs",
+    "src/Humans.Web/Controllers/ShiftAdminController.cs",
+    "src/Humans.Web/Controllers/TeamAdminController.cs",
+    "src/Humans.Web/Controllers/TeamController.cs"
+  ],
+  "last_good_commit": "",
+  "consecutive_no_change": 0,
+  "consecutive_failures": 0,
+  "started_at": "2026-03-21T15:51:25+00:00",
+  "history": []
+}

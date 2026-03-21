@@ -10,9 +10,14 @@ public static class ShiftRoleChecks
         return user.IsInRole(RoleNames.Admin) || user.IsInRole(RoleNames.NoInfoAdmin);
     }
 
-    public static bool CanAccessDashboard(ClaimsPrincipal user)
+    public static bool CanManageDepartment(ClaimsPrincipal user)
     {
         return IsPrivilegedSignupApprover(user) || user.IsInRole(RoleNames.VolunteerCoordinator);
+    }
+
+    public static bool CanAccessDashboard(ClaimsPrincipal user)
+    {
+        return CanManageDepartment(user);
     }
 
     public static bool CanViewMedical(ClaimsPrincipal user)

@@ -131,3 +131,15 @@ service-account-key.json
 .worktrees/
 src/Humans.Web/bin/
 src/**/bin\\Debug/
+
+# Codex loop temp files
+loop.lock
+loop.log
+codex-output.log
+build-output.log
+repair-output.log
+STOP
+
+# Build artifacts (may not be in repo's .gitignore)
+**/bin/
+**/obj/

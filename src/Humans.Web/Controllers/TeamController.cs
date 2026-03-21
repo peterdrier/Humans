@@ -271,8 +271,7 @@ public class TeamController : HumansControllerBase
                 var summaryData = await _shiftMgmt.GetShiftsSummaryAsync(es.Id, team.Id);
                 if (summaryData != null)
                 {
-                    var canManageShifts = RoleChecks.IsAdmin(User) ||
-                        User.IsInRole(RoleNames.VolunteerCoordinator) ||
+                    var canManageShifts = ShiftRoleChecks.CanManageDepartment(User) ||
                         await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
                     shiftsSummary = new ShiftsSummaryCardViewModel
                     {
