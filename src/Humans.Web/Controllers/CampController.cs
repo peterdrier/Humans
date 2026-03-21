@@ -312,22 +312,14 @@ public class CampController : HumansCampControllerBase
             return errorResult;
         }
 
-        var settings = await _campService.GetSettingsAsync();
-        var preferredYear = year ?? settings.PublicYear;
-        var season = camp.Seasons
-            .Where(s => s.Year == preferredYear)
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault()
-            ?? camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-
-        if (season is null)
+        var editData = await _campService.GetCampEditDataAsync(camp.Id, year);
+        if (editData is null)
         {
             SetError("No season found for this camp.");
             return RedirectToAction(nameof(Details), new { slug });
         }
 
-        var viewModel = MapToEditViewModel(camp, season);
-        return View(viewModel);
+        return View(MapToEditViewModel(editData));
     }
 
     [Authorize]
@@ -345,25 +337,7 @@ public class CampController : HumansCampControllerBase
 
         if (!ModelState.IsValid)
         {
-            // Re-populate read-only fields
-            var season = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
-            if (season is not null)
-            {
-                model.Leads = camp.Leads.Where(l => l.IsActive)
-                    .Select(l => new CampLeadViewModel
-                    {
-                        LeadId = l.Id,
-                        UserId = l.UserId,
-                        DisplayName = l.User.DisplayName,
-                    }).ToList();
-                model.Images = camp.Images.OrderBy(i => i.SortOrder)
-                    .Select(i => new CampImageViewModel
-                    {
-                        Id = i.Id,
-                        Url = $"/{i.StoragePath}",
-                        SortOrder = i.SortOrder
-                    }).ToList();
-            }
+            await PopulateEditReadOnlyFieldsAsync(model);
             return View(model);
         }
 
@@ -405,11 +379,7 @@ public class CampController : HumansCampControllerBase
         catch (InvalidOperationException ex)
         {
             ModelState.AddModelError(string.Empty, ex.Message);
-            var existingSeason = camp.Seasons.FirstOrDefault(s => s.Id == model.SeasonId);
-            if (existingSeason is not null)
-            {
-                model = MapToEditViewModel(camp, existingSeason);
-            }
+            await PopulateEditReadOnlyFieldsAsync(model);
             return View(model);
         }
     }
@@ -662,58 +632,80 @@ public class CampController : HumansCampControllerBase
             ElectricalGrid: model.ElectricalGrid);
     }
 
-    private CampEditViewModel MapToEditViewModel(Camp camp, CampSeason season)
+    private async Task PopulateEditReadOnlyFieldsAsync(CampEditViewModel model)
     {
-        var today = _clock.GetCurrentInstant().InUtc().Date;
-
-        return new CampEditViewModel
+        var editData = await _campService.GetCampEditDataAsync(model.CampId, model.Year);
+        if (editData is null)
         {
-            CampId = camp.Id,
-            Slug = camp.Slug,
-            SeasonId = season.Id,
-            Year = season.Year,
-            IsNameLocked = season.NameLockDate.HasValue && today >= season.NameLockDate.Value,
-            Name = season.Name,
-            ContactEmail = camp.ContactEmail,
-            ContactPhone = camp.ContactPhone,
-            Links = (camp.Links is { Count: > 0 } ? camp.Links.Select(l => l.Url).ToList() : camp.WebOrSocialUrl != null ? new List<string> { camp.WebOrSocialUrl } : new List<string>()),
-            IsSwissCamp = camp.IsSwissCamp,
-            TimesAtNowhere = camp.TimesAtNowhere,
-            BlurbLong = season.BlurbLong,
-            BlurbShort = season.BlurbShort,
-            Languages = season.Languages,
-            AcceptingMembers = season.AcceptingMembers,
-            KidsWelcome = season.KidsWelcome,
-            KidsVisiting = season.KidsVisiting,
-            KidsAreaDescription = season.KidsAreaDescription,
-            HasPerformanceSpace = season.HasPerformanceSpace,
-            PerformanceTypes = season.PerformanceTypes,
-            Vibes = season.Vibes.ToList(),
-            AdultPlayspace = season.AdultPlayspace,
-            MemberCount = season.MemberCount,
-            SpaceRequirement = season.SpaceRequirement,
-            SoundZone = season.SoundZone,
-            ContainerCount = season.ContainerCount,
-            ContainerNotes = season.ContainerNotes,
-            ElectricalGrid = season.ElectricalGrid,
-            Leads = camp.Leads
-                .Where(l => l.IsActive)
-                .Select(l => new CampLeadViewModel
+            model.Leads = [];
+            model.Images = [];
+            return;
+        }
+
+        model.Leads = editData.Leads
+            .Select(lead => new CampLeadViewModel
+            {
+                LeadId = lead.LeadId,
+                UserId = lead.UserId,
+                DisplayName = lead.DisplayName
+            })
+            .ToList();
+        model.Images = editData.Images
+            .Select(image => new CampImageViewModel
+            {
+                Id = image.Id,
+                Url = image.Url,
+                SortOrder = image.SortOrder
+            })
+            .ToList();
+    }
+
+    private static CampEditViewModel MapToEditViewModel(CampEditData editData) =>
+        new()
+        {
+            CampId = editData.CampId,
+            Slug = editData.Slug,
+            SeasonId = editData.SeasonId,
+            Year = editData.Year,
+            IsNameLocked = editData.IsNameLocked,
+            Name = editData.Name,
+            ContactEmail = editData.ContactEmail,
+            ContactPhone = editData.ContactPhone,
+            Links = [.. editData.Links],
+            IsSwissCamp = editData.IsSwissCamp,
+            TimesAtNowhere = editData.TimesAtNowhere,
+            BlurbLong = editData.BlurbLong,
+            BlurbShort = editData.BlurbShort,
+            Languages = editData.Languages,
+            AcceptingMembers = editData.AcceptingMembers,
+            KidsWelcome = editData.KidsWelcome,
+            KidsVisiting = editData.KidsVisiting,
+            KidsAreaDescription = editData.KidsAreaDescription,
+            HasPerformanceSpace = editData.HasPerformanceSpace,
+            PerformanceTypes = editData.PerformanceTypes,
+            Vibes = [.. editData.Vibes],
+            AdultPlayspace = editData.AdultPlayspace,
+            MemberCount = editData.MemberCount,
+            SpaceRequirement = editData.SpaceRequirement,
+            SoundZone = editData.SoundZone,
+            ContainerCount = editData.ContainerCount,
+            ContainerNotes = editData.ContainerNotes,
+            ElectricalGrid = editData.ElectricalGrid,
+            Leads = editData.Leads
+                .Select(lead => new CampLeadViewModel
                 {
-                    LeadId = l.Id,
-                    UserId = l.UserId,
-                    DisplayName = l.User.DisplayName,
+                    LeadId = lead.LeadId,
+                    UserId = lead.UserId,
+                    DisplayName = lead.DisplayName
                 }).ToList(),
-            Images = camp.Images
-                .OrderBy(i => i.SortOrder)
-                .Select(i => new CampImageViewModel
+            Images = editData.Images
+                .Select(image => new CampImageViewModel
                 {
-                    Id = i.Id,
-                    Url = $"/{i.StoragePath}",
-                    SortOrder = i.SortOrder
+                    Id = image.Id,
+                    Url = image.Url,
+                    SortOrder = image.SortOrder
                 }).ToList()
         };
-    }
 
     private static CampDetailViewModel MapCampDetailViewModel(
         CampDetailData campDetail,

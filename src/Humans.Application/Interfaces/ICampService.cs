@@ -30,6 +30,10 @@ public interface ICampService
         int? preferredYear = null,
         bool fallbackToLatestSeason = true,
         CancellationToken cancellationToken = default);
+    Task<CampEditData?> GetCampEditDataAsync(
+        Guid campId,
+        int? preferredYear = null,
+        CancellationToken cancellationToken = default);
     Task<CampDirectoryResult> GetCampDirectoryAsync(
         Guid? userId,
         CampDirectoryFilter? filter = null,
@@ -138,6 +142,43 @@ public record CampLeadSummary(
     Guid LeadId,
     Guid UserId,
     string DisplayName);
+
+public record CampEditData(
+    Guid CampId,
+    string Slug,
+    Guid SeasonId,
+    int Year,
+    bool IsNameLocked,
+    string Name,
+    string ContactEmail,
+    string ContactPhone,
+    IReadOnlyList<string> Links,
+    bool IsSwissCamp,
+    int TimesAtNowhere,
+    string BlurbLong,
+    string BlurbShort,
+    string Languages,
+    YesNoMaybe AcceptingMembers,
+    YesNoMaybe KidsWelcome,
+    KidsVisitingPolicy KidsVisiting,
+    string? KidsAreaDescription,
+    PerformanceSpaceStatus HasPerformanceSpace,
+    string? PerformanceTypes,
+    IReadOnlyList<CampVibe> Vibes,
+    AdultPlayspacePolicy AdultPlayspace,
+    int MemberCount,
+    SpaceSize? SpaceRequirement,
+    SoundZone? SoundZone,
+    int ContainerCount,
+    string? ContainerNotes,
+    ElectricalGrid? ElectricalGrid,
+    IReadOnlyList<CampLeadSummary> Leads,
+    IReadOnlyList<CampImageSummary> Images);
+
+public record CampImageSummary(
+    Guid Id,
+    string Url,
+    int SortOrder);
 
 public record CampSeasonDetailData(
     Guid Id,
