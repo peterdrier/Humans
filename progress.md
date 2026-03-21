@@ -55,3 +55,9 @@
 **Summary:** Moved camp directory listing, filtering, and personalized listing assembly into CampService.
 **Files:** src/Humans.Application/Interfaces/ICampService.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Web/Controllers/CampController.cs, checkpoint.json
 **Commit:** c0d06d7
+
+## Iteration 9 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Consolidated TeamService active-team cache mutations behind a single shared helper path.
+**Files:** src/Humans.Infrastructure/Services/TeamService.cs, checkpoint.json
+**Commit:** c5b396e
