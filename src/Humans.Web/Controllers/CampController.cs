@@ -57,83 +57,44 @@ public class CampController : HumansCampControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index(CampFilterViewModel? filters)
     {
-        var settings = await _campService.GetSettingsAsync();
-        var year = settings.PublicYear;
-        var camps = await _campService.GetCampsForYearAsync(year);
-
-        var cards = camps.Select(b =>
-        {
-            var season = b.Seasons.FirstOrDefault(s => s.Year == year);
-            var firstImage = b.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
-            return new CampCardViewModel
-            {
-                Id = b.Id,
-                Slug = b.Slug,
-                Name = season?.Name ?? b.Slug,
-                BlurbShort = season?.BlurbShort ?? string.Empty,
-                ImageUrl = firstImage != null ? $"/{firstImage.StoragePath}" : null,
-                Vibes = season?.Vibes ?? new List<CampVibe>(),
-                AcceptingMembers = season?.AcceptingMembers ?? YesNoMaybe.No,
-                KidsWelcome = season?.KidsWelcome ?? YesNoMaybe.No,
-                SoundZone = season?.SoundZone,
-                Status = season?.Status ?? CampSeasonStatus.Pending,
-                TimesAtNowhere = b.TimesAtNowhere
-            };
-        }).ToList();
-
-        // Apply filters
-        if (filters?.Vibe.HasValue == true)
-            cards = cards.Where(c => c.Vibes.Contains(filters.Vibe.Value)).ToList();
-        if (filters?.SoundZone.HasValue == true)
-            cards = cards.Where(c => c.SoundZone == filters.SoundZone.Value).ToList();
-        if (filters?.KidsFriendly == true)
-            cards = cards.Where(c => c.KidsWelcome == YesNoMaybe.Yes).ToList();
-        if (filters?.AcceptingMembers == true)
-            cards = cards.Where(c => c.AcceptingMembers == YesNoMaybe.Yes).ToList();
-
-        var myCamps = new List<CampCardViewModel>();
         var user = await GetCurrentUserAsync();
-        if (user is not null)
-        {
-            var allUserCamps = await _campService.GetCampsByLeadUserIdAsync(user.Id);
-            myCamps = allUserCamps
-                .Where(b => b.Seasons.Any(s => s.Year == year &&
-                    s.Status != CampSeasonStatus.Active && s.Status != CampSeasonStatus.Full))
-                .Where(b => !cards.Any(c => c.Id == b.Id)) // exclude already-shown
-                .Select(b =>
-                {
-                    var season = b.Seasons.FirstOrDefault(s => s.Year == year);
-                    var firstImage = b.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
-                    return new CampCardViewModel
-                    {
-                        Id = b.Id,
-                        Slug = b.Slug,
-                        Name = season?.Name ?? b.Slug,
-                        BlurbShort = season?.BlurbShort ?? string.Empty,
-                        ImageUrl = firstImage != null ? $"/{firstImage.StoragePath}" : null,
-                        Vibes = season?.Vibes ?? new List<CampVibe>(),
-                        AcceptingMembers = season?.AcceptingMembers ?? YesNoMaybe.No,
-                        KidsWelcome = season?.KidsWelcome ?? YesNoMaybe.No,
-                        SoundZone = season?.SoundZone,
-                        Status = season?.Status ?? CampSeasonStatus.Pending,
-                        TimesAtNowhere = b.TimesAtNowhere
-                    };
-                }).ToList();
-        }
+        var directory = await _campService.GetCampDirectoryAsync(
+            user?.Id,
+            filters == null
+                ? null
+                : new CampDirectoryFilter(
+                    filters.Vibe,
+                    filters.SoundZone,
+                    filters.KidsFriendly,
+                    filters.AcceptingMembers));
 
-        var pendingSeasons = await _campService.GetPendingSeasonsAsync();
-        ViewBag.PendingCount = pendingSeasons.Count;
+        ViewBag.PendingCount = directory.PendingCount;
 
         var viewModel = new CampIndexViewModel
         {
-            Year = year,
-            Camps = cards.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList(),
-            MyCamps = myCamps,
+            Year = directory.Year,
+            Camps = directory.Camps.Select(MapCampCard).ToList(),
+            MyCamps = directory.MyCamps.Select(MapCampCard).ToList(),
             Filters = filters ?? new CampFilterViewModel()
         };
 
         return View(viewModel);
     }
+
+    private static CampCardViewModel MapCampCard(CampDirectoryCard card) => new()
+    {
+        Id = card.Id,
+        Slug = card.Slug,
+        Name = card.Name,
+        BlurbShort = card.BlurbShort,
+        ImageUrl = card.ImageUrl,
+        Vibes = [.. card.Vibes],
+        AcceptingMembers = card.AcceptingMembers,
+        KidsWelcome = card.KidsWelcome,
+        SoundZone = card.SoundZone,
+        Status = card.Status,
+        TimesAtNowhere = card.TimesAtNowhere
+    };
 
     [AllowAnonymous]
     [HttpGet("{slug}")]

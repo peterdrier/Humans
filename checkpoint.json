@@ -1,15 +1,14 @@
 {
-  "iteration": 7,
+  "iteration": 8,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Standardized shared cache invalidation helpers for active teams, nav badges, and camp season caches.",
+  "summary": "Moved camp directory listing, filtering, and personalized listing assembly into CampService.",
   "files_changed": [
-    "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
-    "src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs",
+    "src/Humans.Application/Interfaces/ICampService.cs",
     "src/Humans.Infrastructure/Services/CampService.cs",
-    "src/Humans.Infrastructure/Services/ProfileService.cs",
+    "src/Humans.Web/Controllers/CampController.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "a5da27dbaba26cb17471771026408cd2ac90acd4",
@@ -119,6 +118,18 @@
         "src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs",
         "src/Humans.Infrastructure/Services/CampService.cs",
         "src/Humans.Infrastructure/Services/ProfileService.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 8,
+      "phase": 2,
+      "summary": "Moved camp directory listing, filtering, and personalized listing assembly into CampService.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ICampService.cs",
+        "src/Humans.Infrastructure/Services/CampService.cs",
+        "src/Humans.Web/Controllers/CampController.cs",
         "checkpoint.json"
       ],
       "status": "success"

@@ -149,6 +149,41 @@ public class CampService : ICampService
             .FirstOrDefaultAsync(b => b.Id == campId, cancellationToken);
     }
 
+    public async Task<CampDirectoryResult> GetCampDirectoryAsync(
+        Guid? userId,
+        CampDirectoryFilter? filter = null,
+        CancellationToken cancellationToken = default)
+    {
+        var settings = await GetSettingsAsync(cancellationToken);
+        var year = settings.PublicYear;
+        var camps = await GetCampsForYearAsync(year, cancellationToken);
+
+        var cards = ApplyCampDirectoryFilter(
+            camps.Select(camp => CreateCampDirectoryCard(camp, year)),
+            filter)
+            .OrderBy(card => card.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var myCamps = new List<CampDirectoryCard>();
+        if (userId.HasValue)
+        {
+            var leadCamps = await GetCampsByLeadUserIdAsync(userId.Value, cancellationToken);
+            myCamps = leadCamps
+                .Where(camp => camp.Seasons.Any(season =>
+                    season.Year == year &&
+                    season.Status != CampSeasonStatus.Active &&
+                    season.Status != CampSeasonStatus.Full))
+                .Where(camp => cards.All(card => card.Id != camp.Id))
+                .Select(camp => CreateCampDirectoryCard(camp, year))
+                .ToList();
+        }
+
+        var pendingCount = await _dbContext.CampSeasons
+            .CountAsync(season => season.Status == CampSeasonStatus.Pending, cancellationToken);
+
+        return new CampDirectoryResult(year, pendingCount, cards, myCamps);
+    }
+
     public async Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default)
     {
         return await _cache.GetOrCreateAsync(CacheKeys.CampSeasonsByYear(year), async entry =>
@@ -189,6 +224,52 @@ public class CampService : ICampService
             .Where(s => s.Status == CampSeasonStatus.Pending)
             .OrderBy(s => s.CreatedAt)
             .ToListAsync(cancellationToken);
+    }
+
+    private static IEnumerable<CampDirectoryCard> ApplyCampDirectoryFilter(
+        IEnumerable<CampDirectoryCard> camps,
+        CampDirectoryFilter? filter)
+    {
+        if (filter?.Vibe.HasValue == true)
+        {
+            camps = camps.Where(card => card.Vibes.Contains(filter.Vibe.Value));
+        }
+
+        if (filter?.SoundZone.HasValue == true)
+        {
+            camps = camps.Where(card => card.SoundZone == filter.SoundZone.Value);
+        }
+
+        if (filter?.KidsFriendly == true)
+        {
+            camps = camps.Where(card => card.KidsWelcome == YesNoMaybe.Yes);
+        }
+
+        if (filter?.AcceptingMembers == true)
+        {
+            camps = camps.Where(card => card.AcceptingMembers == YesNoMaybe.Yes);
+        }
+
+        return camps;
+    }
+
+    private static CampDirectoryCard CreateCampDirectoryCard(Camp camp, int year)
+    {
+        var season = camp.Seasons.FirstOrDefault(s => s.Year == year);
+        var firstImage = camp.Images.OrderBy(i => i.SortOrder).FirstOrDefault();
+
+        return new CampDirectoryCard(
+            camp.Id,
+            camp.Slug,
+            season?.Name ?? camp.Slug,
+            season?.BlurbShort ?? string.Empty,
+            firstImage != null ? $"/{firstImage.StoragePath}" : null,
+            season?.Vibes ?? [],
+            season?.AcceptingMembers ?? YesNoMaybe.No,
+            season?.KidsWelcome ?? YesNoMaybe.No,
+            season?.SoundZone,
+            season?.Status ?? CampSeasonStatus.Pending,
+            camp.TimesAtNowhere);
     }
 
     // ==========================================================================

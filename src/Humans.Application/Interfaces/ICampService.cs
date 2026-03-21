@@ -25,6 +25,10 @@ public interface ICampService
     // Queries
     Task<Camp?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default);
     Task<Camp?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default);
+    Task<CampDirectoryResult> GetCampDirectoryAsync(
+        Guid? userId,
+        CampDirectoryFilter? filter = null,
+        CancellationToken cancellationToken = default);
     Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
@@ -85,3 +89,28 @@ public record CampSeasonData(
     int ContainerCount,
     string? ContainerNotes,
     ElectricalGrid? ElectricalGrid);
+
+public record CampDirectoryFilter(
+    CampVibe? Vibe = null,
+    SoundZone? SoundZone = null,
+    bool KidsFriendly = false,
+    bool AcceptingMembers = false);
+
+public record CampDirectoryCard(
+    Guid Id,
+    string Slug,
+    string Name,
+    string BlurbShort,
+    string? ImageUrl,
+    IReadOnlyList<CampVibe> Vibes,
+    YesNoMaybe AcceptingMembers,
+    YesNoMaybe KidsWelcome,
+    SoundZone? SoundZone,
+    CampSeasonStatus Status,
+    int TimesAtNowhere);
+
+public record CampDirectoryResult(
+    int Year,
+    int PendingCount,
+    IReadOnlyList<CampDirectoryCard> Camps,
+    IReadOnlyList<CampDirectoryCard> MyCamps);
