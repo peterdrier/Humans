@@ -193,11 +193,19 @@
                                                     </td>
                                                 }
                                             </tr>
+                                            @if (!string.IsNullOrEmpty(item.Shift.Description))
+                                            {
+                                                <tr class="@(isFull ? "table-secondary" : "")">
+                                                    <td colspan="@(Model.ShowSignups ? 4 : 3)" class="text-muted small pt-0 pb-1 border-0">
+                                                        @Html.SanitizedMarkdown(item.Shift.Description)
+                                                    </td>
+                                                </tr>
+                                            }
                                         }
                                     </tbody>
                                 </table>
                             </div>
-                           
+
                         }
                         else
                         {
