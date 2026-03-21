@@ -4,11 +4,12 @@
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Moved team directory create-permission logic into TeamService so TeamController only maps service DTOs.",
+  "summary": "Moved team detail page composition into a dedicated TeamPageService so TeamController only maps service DTOs.",
   "files_changed": [
-    "src/Humans.Application/Interfaces/ITeamService.cs",
-    "src/Humans.Infrastructure/Services/TeamService.cs",
+    "src/Humans.Application/Interfaces/ITeamPageService.cs",
+    "src/Humans.Infrastructure/Services/TeamPageService.cs",
     "src/Humans.Web/Controllers/TeamController.cs",
+    "src/Humans.Web/Extensions/InfrastructureServiceCollectionExtensions.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "c237754250be87e519c5c52849d6207a5e739e59",
