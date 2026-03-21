@@ -31,3 +31,9 @@
 **Summary:** Consolidated TeamService active-team cache mutations behind shared private helpers.
 **Files:** src/Humans.Infrastructure/Services/TeamService.cs, checkpoint.json
 **Commit:** 73d18ae
+
+## Iteration 5 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Centralized shared cache keys and cache invalidation helpers across services and auth caching.
+**Files:** src/Humans.Application/CacheKeys.cs, src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Services/ApplicationDecisionService.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Infrastructure/Services/OnboardingService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, src/Humans.Infrastructure/Services/RoleAssignmentService.cs, src/Humans.Infrastructure/Services/ShiftManagementService.cs, src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs, checkpoint.json
+**Commit:** 141aa29
