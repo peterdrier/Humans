@@ -3,16 +3,12 @@
   "current_phase": 1,
   "total_phases": 6,
   "phase_name": "Controller Pattern Consolidation",
-  "phase_status": "IN_PROGRESS",
-  "summary": "Consolidated controller user/team access helpers and TempData messaging across feedback, shift admin, and related team controllers.",
+  "phase_status": "DONE",
+  "summary": "Extracted shared camp controller access helpers and standardized CampController TempData messaging.",
   "files_changed": [
-    "src/Humans.Web/Authorization/ShiftRoleChecks.cs",
-    "src/Humans.Web/Controllers/AdminFeedbackController.cs",
-    "src/Humans.Web/Controllers/FeedbackController.cs",
-    "src/Humans.Web/Controllers/HumansTeamControllerBase.cs",
-    "src/Humans.Web/Controllers/ShiftAdminController.cs",
-    "src/Humans.Web/Controllers/TeamAdminController.cs",
-    "src/Humans.Web/Controllers/TeamController.cs"
+    "src/Humans.Web/Controllers/CampController.cs",
+    "src/Humans.Web/Controllers/HumansCampControllerBase.cs",
+    "checkpoint.json"
   ],
   "last_good_commit": "1d7ace32d0e37783c185c441c5fa125c13f89190",
   "consecutive_no_change": 0,

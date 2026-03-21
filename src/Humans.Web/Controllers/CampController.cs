@@ -10,7 +10,6 @@ using Humans.Domain.Helpers;
 using Humans.Domain.ValueObjects;
 using Humans.Web.Models;
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Web.Authorization;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -18,7 +17,7 @@ namespace Humans.Web.Controllers;
 
 [Route("Barrios")]
 [Route("Camps")]
-public class CampController : HumansControllerBase
+public class CampController : HumansCampControllerBase
 {
     private readonly ICampService _campService;
     private readonly IClock _clock;
@@ -37,7 +36,7 @@ public class CampController : HumansControllerBase
         IEmailService emailService,
         IAuditLogService auditLogService,
         IMemoryCache cache)
-        : base(userManager)
+        : base(userManager, campService)
     {
         _campService = campService;
         _clock = clock;
@@ -138,7 +137,7 @@ public class CampController : HumansControllerBase
     [HttpGet("{slug}")]
     public async Task<IActionResult> Details(string slug)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug);
         if (camp is null)
             return NotFound();
 
@@ -149,15 +148,7 @@ public class CampController : HumansControllerBase
             .FirstOrDefault()
             ?? camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
 
-        var isLead = false;
-        var isCampAdmin = false;
-        var user = await GetCurrentUserAsync();
-
-        if (user is not null)
-        {
-            isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-            isCampAdmin = RoleChecks.IsCampAdmin(User);
-        }
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
 
         var viewModel = new CampDetailViewModel
         {
@@ -189,7 +180,7 @@ public class CampController : HumansControllerBase
     [HttpGet("{slug}/Season/{year:int}")]
     public async Task<IActionResult> SeasonDetails(string slug, int year)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug);
         if (camp is null)
             return NotFound();
 
@@ -197,15 +188,7 @@ public class CampController : HumansControllerBase
         if (season is null)
             return NotFound();
 
-        var isLead = false;
-        var isCampAdmin = false;
-        var user = await GetCurrentUserAsync();
-
-        if (user is not null)
-        {
-            isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-            isCampAdmin = RoleChecks.IsCampAdmin(User);
-        }
+        var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
 
         var viewModel = new CampDetailViewModel
         {
@@ -241,7 +224,7 @@ public class CampController : HumansControllerBase
     [HttpGet("{slug}/Contact")]
     public async Task<IActionResult> Contact(string slug)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug);
         if (camp == null) return NotFound();
 
         var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
@@ -258,7 +241,7 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Contact(string slug, CampContactViewModel model)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
+        var camp = await GetCampBySlugAsync(slug);
         if (camp == null) return NotFound();
 
         var currentUser = await GetCurrentUserAsync();
@@ -327,7 +310,7 @@ public class CampController : HumansControllerBase
         var settings = await _campService.GetSettingsAsync();
         if (settings.OpenSeasons.Count == 0)
         {
-            TempData["ErrorMessage"] = "Registration is currently closed.";
+            SetError("Registration is currently closed.");
             return RedirectToAction(nameof(Index));
         }
 
@@ -357,7 +340,7 @@ public class CampController : HumansControllerBase
         var year = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
         if (year == 0)
         {
-            TempData["ErrorMessage"] = "Registration is currently closed.";
+            SetError("Registration is currently closed.");
             return RedirectToAction(nameof(Index));
         }
 
@@ -389,7 +372,7 @@ public class CampController : HumansControllerBase
                 historicalNames,
                 year);
 
-            TempData["SuccessMessage"] = "Your camp has been registered and is pending review.";
+            SetSuccess("Your camp has been registered and is pending review.");
             return RedirectToAction(nameof(Details), new { slug = camp.Slug });
         }
         catch (InvalidOperationException ex)
@@ -407,18 +390,11 @@ public class CampController : HumansControllerBase
     [HttpGet("{slug}/Edit")]
     public async Task<IActionResult> Edit(string slug, int? year)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         var settings = await _campService.GetSettingsAsync();
         var preferredYear = year ?? settings.PublicYear;
@@ -430,7 +406,7 @@ public class CampController : HumansControllerBase
 
         if (season is null)
         {
-            TempData["ErrorMessage"] = "No season found for this camp.";
+            SetError("No season found for this camp.");
             return RedirectToAction(nameof(Details), new { slug });
         }
 
@@ -443,18 +419,11 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(string slug, CampEditViewModel model)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         ValidatePhoneE164(model.ContactPhone, nameof(model.ContactPhone));
 
@@ -514,7 +483,7 @@ public class CampController : HumansControllerBase
                 }
             }
 
-            TempData["SuccessMessage"] = "Camp updated successfully.";
+            SetSuccess("Camp updated successfully.");
             return RedirectToAction(nameof(Edit), new { slug });
         }
         catch (InvalidOperationException ex)
@@ -538,27 +507,20 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> OptIn(string slug, int year)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         try
         {
             await _campService.OptInToSeasonAsync(camp.Id, year);
-            TempData["SuccessMessage"] = $"Opted in to season {year}.";
+            SetSuccess($"Opted in to season {year}.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Edit), new { slug, year });
@@ -569,27 +531,20 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(string slug, Guid seasonId)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, _) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         try
         {
             await _campService.WithdrawSeasonAsync(seasonId);
-            TempData["SuccessMessage"] = "Season withdrawn.";
+            SetSuccess("Season withdrawn.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -600,27 +555,20 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Rejoin(string slug, Guid seasonId)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, _) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         try
         {
             await _campService.ReactivateSeasonAsync(seasonId);
-            TempData["SuccessMessage"] = "Season reactivated. Welcome back!";
+            SetSuccess("Season reactivated. Welcome back!");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Details), new { slug });
@@ -635,33 +583,26 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddLead(string slug, Guid userId)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         if (userId == Guid.Empty)
         {
-            TempData["ErrorMessage"] = "Please search and select a human first.";
+            SetError("Please search and select a human first.");
             return RedirectToAction(nameof(Edit), new { slug });
         }
 
         try
         {
             await _campService.AddLeadAsync(camp.Id, userId);
-            TempData["SuccessMessage"] = "Co-lead added.";
+            SetSuccess("Co-lead added.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -672,27 +613,20 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveLead(string slug, Guid leadId)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, _) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         try
         {
             await _campService.RemoveLeadAsync(leadId);
-            TempData["SuccessMessage"] = "Lead removed.";
+            SetSuccess("Lead removed.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -708,22 +642,15 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UploadImage(string slug, IFormFile file)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         if (file is null || file.Length == 0)
         {
-            TempData["ErrorMessage"] = "Please select a file to upload.";
+            SetError("Please select a file to upload.");
             return RedirectToAction(nameof(Edit), new { slug });
         }
 
@@ -735,11 +662,11 @@ public class CampController : HumansControllerBase
                 file.FileName,
                 file.ContentType,
                 file.Length);
-            TempData["SuccessMessage"] = "Image uploaded.";
+            SetSuccess("Image uploaded.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -750,27 +677,20 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteImage(string slug, Guid imageId)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, _) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         try
         {
             await _campService.DeleteImageAsync(imageId);
-            TempData["SuccessMessage"] = "Image deleted.";
+            SetSuccess("Image deleted.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
@@ -781,27 +701,20 @@ public class CampController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReorderImages(string slug, List<Guid> imageIds)
     {
-        var camp = await _campService.GetCampBySlugAsync(slug);
-        if (camp is null) return NotFound();
-
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserError is not null)
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
         {
-            return currentUserError;
+            return errorResult;
         }
-
-        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
-        var isCampAdmin = RoleChecks.IsCampAdmin(User);
-        if (!isLead && !isCampAdmin) return Forbid();
 
         try
         {
             await _campService.ReorderImagesAsync(camp.Id, imageIds);
-            TempData["SuccessMessage"] = "Image order updated.";
+            SetSuccess("Image order updated.");
         }
         catch (InvalidOperationException ex)
         {
-            TempData["ErrorMessage"] = ex.Message;
+            SetError(ex.Message);
         }
 
         return RedirectToAction(nameof(Edit), new { slug });
