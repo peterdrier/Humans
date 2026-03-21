@@ -1105,6 +1105,117 @@ public class TeamServiceTests : IDisposable
         _cache.TryGetValue(CacheKeys.ShiftAuthorization(user.Id), out _).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task GetRosterAsync_ExpandsSlotsAndSortsByPriorityThenName()
+    {
+        var alphaTeam = SeedTeam("Alpha");
+        var betaTeam = SeedTeam("Beta");
+        var alphaMember = SeedUser(displayName: "Assigned Human");
+        var alphaTeamMember = SeedTeamMember(alphaTeam.Id, alphaMember.Id);
+
+        var alphaDefinition = new TeamRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            TeamId = alphaTeam.Id,
+            Team = alphaTeam,
+            Name = "Lead",
+            SlotCount = 2,
+            Priorities = [SlotPriority.Important, SlotPriority.None],
+            SortOrder = 0,
+            Period = RolePeriod.YearRound,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        alphaDefinition.Assignments.Add(new TeamRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            TeamRoleDefinitionId = alphaDefinition.Id,
+            TeamMemberId = alphaTeamMember.Id,
+            TeamMember = alphaTeamMember,
+            SlotIndex = 0,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = Guid.NewGuid()
+        });
+
+        var betaDefinition = new TeamRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            TeamId = betaTeam.Id,
+            Team = betaTeam,
+            Name = "Greeter",
+            SlotCount = 1,
+            Priorities = [SlotPriority.Critical],
+            SortOrder = 0,
+            Period = RolePeriod.Event,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+
+        await _dbContext.TeamRoleDefinitions.AddRangeAsync(alphaDefinition, betaDefinition);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetRosterAsync(priority: null, status: null, period: null);
+
+        result.Select(slot => (slot.TeamName, slot.RoleName, slot.SlotNumber))
+            .Should()
+            .ContainInOrder(
+                ("Beta", "Greeter", 1),
+                ("Alpha", "Lead", 1),
+                ("Alpha", "Lead", 2));
+
+        result[0].Priority.Should().Be(nameof(SlotPriority.Critical));
+        result[0].PriorityBadgeClass.Should().Be("bg-danger");
+        result[1].AssignedUserName.Should().Be("Assigned Human");
+        result[2].Priority.Should().Be(nameof(SlotPriority.None));
+        result[2].PriorityBadgeClass.Should().Be("bg-light text-dark");
+    }
+
+    [Fact]
+    public async Task GetRosterAsync_AppliesPriorityStatusAndPeriodFilters()
+    {
+        var team = SeedTeam("Alpha");
+        var assignedUser = SeedUser(displayName: "Assigned Human");
+        var assignedTeamMember = SeedTeamMember(team.Id, assignedUser.Id);
+
+        var definition = new TeamRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            TeamId = team.Id,
+            Team = team,
+            Name = "Lead",
+            SlotCount = 3,
+            Priorities = [SlotPriority.Critical, SlotPriority.Important, SlotPriority.Important],
+            SortOrder = 0,
+            Period = RolePeriod.Event,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        definition.Assignments.Add(new TeamRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            TeamRoleDefinitionId = definition.Id,
+            TeamMemberId = assignedTeamMember.Id,
+            TeamMember = assignedTeamMember,
+            SlotIndex = 1,
+            AssignedAt = _clock.GetCurrentInstant(),
+            AssignedByUserId = Guid.NewGuid()
+        });
+
+        _dbContext.TeamRoleDefinitions.Add(definition);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetRosterAsync(
+            priority: nameof(SlotPriority.Important),
+            status: "open",
+            period: nameof(RolePeriod.Event));
+
+        result.Should().ContainSingle();
+        result[0].SlotNumber.Should().Be(3);
+        result[0].Priority.Should().Be(nameof(SlotPriority.Important));
+        result[0].Period.Should().Be(nameof(RolePeriod.Event));
+        result[0].IsFilled.Should().BeFalse();
+    }
+
     // --- Helpers ---
 
     private User SeedUser(Guid? id = null, string displayName = "Test User")
@@ -1145,7 +1256,9 @@ public class TeamServiceTests : IDisposable
         {
             Id = Guid.NewGuid(),
             TeamId = teamId,
+            Team = _dbContext.Teams.Local.Single(t => t.Id == teamId),
             UserId = userId,
+            User = _dbContext.Users.Local.Single(u => u.Id == userId),
             Role = role,
             JoinedAt = _clock.GetCurrentInstant(),
             LeftAt = leftAt

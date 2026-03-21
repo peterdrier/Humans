@@ -1338,6 +1338,76 @@ public class TeamService : ITeamService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
+        string? priority,
+        string? status,
+        string? period,
+        CancellationToken cancellationToken = default)
+    {
+        var definitions = await GetAllRoleDefinitionsAsync(cancellationToken);
+
+        var slots = new List<TeamRosterSlotSummary>();
+        foreach (var definition in definitions)
+        {
+            for (var slotIndex = 0; slotIndex < definition.SlotCount; slotIndex++)
+            {
+                var assignment = definition.Assignments.FirstOrDefault(a => a.SlotIndex == slotIndex);
+                var slotPriority = slotIndex < definition.Priorities.Count
+                    ? definition.Priorities[slotIndex]
+                    : SlotPriority.None;
+
+                slots.Add(new TeamRosterSlotSummary(
+                    definition.Team.Name,
+                    definition.Team.Slug,
+                    definition.Name,
+                    definition.Description,
+                    definition.Id,
+                    slotIndex + 1,
+                    slotPriority.ToString(),
+                    GetPriorityBadgeClass(slotPriority),
+                    definition.Period.ToString(),
+                    assignment != null,
+                    assignment?.TeamMember?.User?.DisplayName));
+            }
+        }
+
+        if (!string.IsNullOrEmpty(priority))
+        {
+            slots = slots
+                .Where(slot => string.Equals(slot.Priority, priority, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        if (string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase))
+        {
+            slots = slots.Where(slot => !slot.IsFilled).ToList();
+        }
+        else if (string.Equals(status, "Filled", StringComparison.OrdinalIgnoreCase))
+        {
+            slots = slots.Where(slot => slot.IsFilled).ToList();
+        }
+
+        if (!string.IsNullOrEmpty(period))
+        {
+            slots = slots
+                .Where(slot => string.Equals(slot.Period, period, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        return slots
+            .OrderBy(slot => slot.Priority switch
+            {
+                nameof(SlotPriority.Critical) => 0,
+                nameof(SlotPriority.Important) => 1,
+                nameof(SlotPriority.NiceToHave) => 2,
+                _ => 3
+            })
+            .ThenBy(slot => slot.TeamName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(slot => slot.RoleName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(slot => slot.SlotNumber)
+            .ToList();
+    }
+
     // ==========================================================================
     // Team Role Assignments
     // ==========================================================================
@@ -1729,6 +1799,15 @@ public class TeamService : ITeamService
             parent?.Name,
             parent?.Slug);
     }
+
+    private static string GetPriorityBadgeClass(SlotPriority priority) =>
+        priority switch
+        {
+            SlotPriority.Critical => "bg-danger",
+            SlotPriority.Important => "bg-warning text-dark",
+            SlotPriority.NiceToHave => "bg-secondary",
+            _ => "bg-light text-dark"
+        };
 
     private bool TryMutateActiveTeamsCache(Action<ConcurrentDictionary<Guid, CachedTeam>> mutate) =>
         _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedTeam>>(CacheKeys.ActiveTeams, mutate);

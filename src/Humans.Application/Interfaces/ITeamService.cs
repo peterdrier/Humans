@@ -39,6 +39,19 @@ public record TeamDirectoryResult(
     IReadOnlyList<TeamDirectorySummary> Departments,
     IReadOnlyList<TeamDirectorySummary> SystemTeams);
 
+public record TeamRosterSlotSummary(
+    string TeamName,
+    string TeamSlug,
+    string RoleName,
+    string? RoleDescription,
+    Guid RoleDefinitionId,
+    int SlotNumber,
+    string Priority,
+    string PriorityBadgeClass,
+    string Period,
+    bool IsFilled,
+    string? AssignedUserName);
+
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
@@ -254,6 +267,15 @@ public interface ITeamService
     /// </summary>
     Task<(IReadOnlyList<Team> Items, int TotalCount)> GetAllTeamsForAdminAsync(
         int page, int pageSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the public roster summary with optional filters applied.
+    /// </summary>
+    Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
+        string? priority,
+        string? status,
+        string? period,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Directly adds a user to a team (admin/lead action, bypasses join request workflow).

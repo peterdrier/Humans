@@ -359,59 +359,22 @@ public class TeamController : HumansControllerBase
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(string? priority, string? status, string? period)
     {
-        var definitions = await _teamService.GetAllRoleDefinitionsAsync();
+        var roster = await _teamService.GetRosterAsync(priority, status, period);
 
-        var slots = new List<RosterSlotViewModel>();
-        foreach (var def in definitions)
+        var slots = roster.Select(slot => new RosterSlotViewModel
         {
-            for (var i = 0; i < def.SlotCount; i++)
-            {
-                var assignment = def.Assignments.FirstOrDefault(a => a.SlotIndex == i);
-                var slotPriority = i < def.Priorities.Count ? def.Priorities[i] : SlotPriority.None;
-                var priorityStr = slotPriority.ToString();
-
-                slots.Add(new RosterSlotViewModel
-                {
-                    TeamName = def.Team.Name,
-                    TeamSlug = def.Team.Slug,
-                    RoleName = def.Name,
-                    RoleDescription = def.Description,
-                    RoleDefinitionId = def.Id,
-                    SlotNumber = i + 1,
-                    Priority = priorityStr,
-                    PriorityBadgeClass = slotPriority switch
-                    {
-                        SlotPriority.Critical => "bg-danger",
-                        SlotPriority.Important => "bg-warning text-dark",
-                        SlotPriority.NiceToHave => "bg-secondary",
-                        _ => "bg-light text-dark"
-                    },
-                    Period = def.Period.ToString(),
-                    IsFilled = assignment != null,
-                    AssignedUserName = assignment?.TeamMember?.User?.DisplayName
-                });
-            }
-        }
-
-        // Apply filters
-        if (!string.IsNullOrEmpty(priority))
-            slots = slots.Where(s => string.Equals(s.Priority, priority, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        if (string.Equals(status, "Open", StringComparison.OrdinalIgnoreCase))
-            slots = slots.Where(s => !s.IsFilled).ToList();
-        else if (string.Equals(status, "Filled", StringComparison.OrdinalIgnoreCase))
-            slots = slots.Where(s => s.IsFilled).ToList();
-
-        if (!string.IsNullOrEmpty(period))
-            slots = slots.Where(s => string.Equals(s.Period, period, StringComparison.OrdinalIgnoreCase)).ToList();
-
-        // Sort: Critical first, then by team name
-        slots = slots
-            .OrderBy(s => s.Priority switch { "Critical" => 0, "Important" => 1, "NiceToHave" => 2, _ => 3 })
-            .ThenBy(s => s.TeamName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(s => s.RoleName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(s => s.SlotNumber)
-            .ToList();
+            TeamName = slot.TeamName,
+            TeamSlug = slot.TeamSlug,
+            RoleName = slot.RoleName,
+            RoleDescription = slot.RoleDescription,
+            RoleDefinitionId = slot.RoleDefinitionId,
+            SlotNumber = slot.SlotNumber,
+            Priority = slot.Priority,
+            PriorityBadgeClass = slot.PriorityBadgeClass,
+            Period = slot.Period,
+            IsFilled = slot.IsFilled,
+            AssignedUserName = slot.AssignedUserName
+        }).ToList();
 
         return View(new RosterSummaryViewModel { Slots = slots, PriorityFilter = priority, StatusFilter = status, PeriodFilter = period });
     }
