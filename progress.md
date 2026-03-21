@@ -19,3 +19,9 @@
 **Summary:** Extracted shared camp controller access helpers and standardized CampController TempData messaging.
 **Files:** src/Humans.Web/Controllers/CampController.cs, src/Humans.Web/Controllers/HumansCampControllerBase.cs, checkpoint.json
 **Commit:** 3022a6d
+
+## Iteration 3 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Consolidated shared in-memory cache helpers and standardized camp contact rate-limit caching.
+**Files:** src/Humans.Application/CacheKeys.cs, src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Services/OnboardingService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/CampController.cs, checkpoint.json
+**Commit:** 658b19f

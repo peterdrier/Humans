@@ -1,8 +1,8 @@
 {
-  "iteration": 2,
-  "current_phase": 1,
+  "iteration": 3,
+  "current_phase": 2,
   "total_phases": 6,
-  "phase_name": "Controller Pattern Consolidation",
+  "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
   "summary": "Consolidated shared in-memory cache helpers and standardized camp contact rate-limit caching.",
   "files_changed": [
@@ -14,7 +14,7 @@
     "src/Humans.Web/Controllers/CampController.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "3022a6d02017fbcf7072f213820e0fd34ea732ad",
+  "last_good_commit": "658b19f95280cc75a5408fd77ddcd4ae46d997ea",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -41,6 +41,21 @@
       "files_changed": [
         "src/Humans.Web/Controllers/CampController.cs",
         "src/Humans.Web/Controllers/HumansCampControllerBase.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 3,
+      "phase": 2,
+      "summary": "Consolidated shared in-memory cache helpers and standardized camp contact rate-limit caching.",
+      "files_changed": [
+        "src/Humans.Application/CacheKeys.cs",
+        "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+        "src/Humans.Infrastructure/Services/OnboardingService.cs",
+        "src/Humans.Infrastructure/Services/ProfileService.cs",
+        "src/Humans.Infrastructure/Services/TeamService.cs",
+        "src/Humans.Web/Controllers/CampController.cs",
         "checkpoint.json"
       ],
       "status": "success"
