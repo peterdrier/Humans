@@ -8,12 +8,36 @@ namespace Humans.Application.Interfaces;
 public record CachedTeam(
     Guid Id, string Name, string? Description, string Slug,
     bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
-    Instant CreatedAt, List<CachedTeamMember> Members,
+    bool IsPublicPage, Instant CreatedAt, List<CachedTeamMember> Members,
     Guid? ParentTeamId = null);
 
 public record CachedTeamMember(
     Guid TeamMemberId, Guid UserId, string DisplayName,
     string? ProfilePictureUrl, TeamMemberRole Role, Instant JoinedAt);
+
+public record TeamDirectorySummary(
+    Guid Id,
+    string Name,
+    string? Description,
+    string Slug,
+    int MemberCount,
+    bool IsSystemTeam,
+    bool RequiresApproval,
+    bool IsPublicPage,
+    bool IsCurrentUserMember,
+    bool IsCurrentUserCoordinator,
+    string? ParentTeamName,
+    string? ParentTeamSlug)
+{
+    public string SortKey => ParentTeamName != null ? $"{ParentTeamName} - {Name}" : Name;
+}
+
+public record TeamDirectoryResult(
+    bool IsAuthenticated,
+    bool IsBoardMember,
+    IReadOnlyList<TeamDirectorySummary> MyTeams,
+    IReadOnlyList<TeamDirectorySummary> Departments,
+    IReadOnlyList<TeamDirectorySummary> SystemTeams);
 
 /// <summary>
 /// Service for managing teams and team membership.
@@ -50,6 +74,11 @@ public interface ITeamService
     /// Gets all user-created (non-system) teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetUserCreatedTeamsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the summarized team directory for anonymous or authenticated viewers.
+    /// </summary>
+    Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all teams the user is a member of.

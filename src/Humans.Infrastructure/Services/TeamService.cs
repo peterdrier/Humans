@@ -100,7 +100,7 @@ public class TeamService : ITeamService
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 SetCachedTeam(new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
-                    team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.CreatedAt, [],
+                    team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.IsPublicPage, team.CreatedAt, [],
                     ParentTeamId: parentTeamId));
                 _logger.LogInformation("Created team {TeamName} with slug {Slug}", name, slug);
                 return team;
@@ -157,6 +157,55 @@ public class TeamService : ITeamService
             .OrderBy(t => t.Name)
             .Include(t => t.Members.Where(m => m.LeftAt == null))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
+        Guid? userId,
+        CancellationToken cancellationToken = default)
+    {
+        var cachedTeams = await GetCachedTeamsAsync(cancellationToken);
+
+        if (!userId.HasValue)
+        {
+            var publicDepartments = cachedTeams.Values
+                .Where(t => t.IsPublicPage && !t.IsSystemTeam && t.ParentTeamId == null)
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
+                .ToList();
+
+            return new TeamDirectoryResult(
+                IsAuthenticated: false,
+                IsBoardMember: false,
+                MyTeams: [],
+                Departments: publicDepartments,
+                SystemTeams: []);
+        }
+
+        var summaries = cachedTeams.Values
+            .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
+            .ToList();
+
+        var myTeams = summaries
+            .Where(t => t.IsCurrentUserMember)
+            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var departments = summaries
+            .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam)
+            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var systemTeams = summaries
+            .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam)
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new TeamDirectoryResult(
+            IsAuthenticated: true,
+            IsBoardMember: await IsUserBoardMemberAsync(userId.Value, cancellationToken),
+            MyTeams: myTeams,
+            Departments: departments,
+            SystemTeams: systemTeams);
     }
 
     public async Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -318,6 +367,7 @@ public class TeamService : ITeamService
         team.UpdatedAt = now;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        UpdateCachedTeam(teamId, cachedTeam => cachedTeam with { IsPublicPage = isPublicPage });
 
         var actor = await _dbContext.Users.FindAsync(new object[] { updatedByUserId }, cancellationToken);
         await _auditLogService.LogAsync(
@@ -1635,6 +1685,7 @@ public class TeamService : ITeamService
         IsSystemTeam: team.IsSystemTeam,
         SystemTeamType: team.SystemTeamType,
         RequiresApproval: team.RequiresApproval,
+        IsPublicPage: team.IsPublicPage,
         CreatedAt: team.CreatedAt,
         Members: team.Members
             .Where(m => m.LeftAt == null)
@@ -1647,6 +1698,34 @@ public class TeamService : ITeamService
                 JoinedAt: m.JoinedAt))
             .ToList(),
         ParentTeamId: team.ParentTeamId);
+
+    private static TeamDirectorySummary CreateDirectorySummary(
+        CachedTeam team,
+        IReadOnlyDictionary<Guid, CachedTeam> teamById,
+        Guid? userId)
+    {
+        CachedTeam? parent = team.ParentTeamId.HasValue && teamById.TryGetValue(team.ParentTeamId.Value, out var resolvedParent)
+            ? resolvedParent
+            : null;
+        var isCurrentUserMember = userId.HasValue && team.Members.Any(m => m.UserId == userId.Value);
+        var isCurrentUserCoordinator = userId.HasValue && team.Members.Any(m =>
+            m.UserId == userId.Value &&
+            m.Role == TeamMemberRole.Coordinator);
+
+        return new TeamDirectorySummary(
+            team.Id,
+            team.Name,
+            team.Description,
+            team.Slug,
+            team.Members.Count,
+            team.IsSystemTeam,
+            team.RequiresApproval,
+            team.IsPublicPage,
+            isCurrentUserMember,
+            isCurrentUserCoordinator,
+            parent?.Name,
+            parent?.Slug);
+    }
 
     private bool TryGetActiveTeamsCache(
         [NotNullWhen(true)] out ConcurrentDictionary<Guid, CachedTeam>? cachedTeams) =>

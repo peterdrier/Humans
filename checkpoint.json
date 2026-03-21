@@ -1,20 +1,14 @@
 {
-  "iteration": 5,
+  "iteration": 6,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Centralized shared cache keys and cache invalidation helpers across services and auth caching.",
+  "summary": "Moved team directory summary/grouping into TeamService and backed it with the shared active-team cache.",
   "files_changed": [
-    "src/Humans.Application/CacheKeys.cs",
-    "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
-    "src/Humans.Infrastructure/Services/ApplicationDecisionService.cs",
-    "src/Humans.Infrastructure/Services/CampService.cs",
-    "src/Humans.Infrastructure/Services/OnboardingService.cs",
-    "src/Humans.Infrastructure/Services/ProfileService.cs",
-    "src/Humans.Infrastructure/Services/RoleAssignmentService.cs",
-    "src/Humans.Infrastructure/Services/ShiftManagementService.cs",
-    "src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs",
+    "src/Humans.Application/Interfaces/ITeamService.cs",
+    "src/Humans.Infrastructure/Services/TeamService.cs",
+    "src/Humans.Web/Controllers/TeamController.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "141aa29b1d51cea234811b4dd62d4bbe3bb01604",
@@ -87,6 +81,18 @@
         "src/Humans.Infrastructure/Services/RoleAssignmentService.cs",
         "src/Humans.Infrastructure/Services/ShiftManagementService.cs",
         "src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 6,
+      "phase": 2,
+      "summary": "Moved team directory summary/grouping into TeamService and backed it with the shared active-team cache.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ITeamService.cs",
+        "src/Humans.Infrastructure/Services/TeamService.cs",
+        "src/Humans.Web/Controllers/TeamController.cs",
         "checkpoint.json"
       ],
       "status": "success"

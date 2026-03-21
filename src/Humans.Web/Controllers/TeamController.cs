@@ -57,95 +57,37 @@ public class TeamController : HumansControllerBase
     public async Task<IActionResult> Index()
     {
         var user = await GetCurrentUserAsync();
-        var isAuthenticated = user is not null;
-
-        if (!isAuthenticated)
-        {
-            // Anonymous: show only public teams
-            var allTeams = await _teamService.GetAllTeamsAsync();
-            var teamById = allTeams.ToDictionary(t => t.Id);
-
-            var publicTeams = allTeams
-                .Where(t => t.IsPublicPage && !t.IsSystemTeam && t.ParentTeamId == null)
-                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(t => new TeamSummaryViewModel
-                {
-                    Id = t.Id,
-                    Name = t.Name,
-                    Description = t.Description,
-                    Slug = t.Slug,
-                    MemberCount = t.Members.Count(m => m.LeftAt == null),
-                    IsPublicPage = true
-                })
-                .ToList();
-
-            return View(new TeamIndexViewModel
-            {
-                Departments = publicTeams,
-                IsAuthenticated = false
-            });
-        }
-
-        var allTeamsAuth = await _teamService.GetAllTeamsAsync();
-        var userTeams = await _teamService.GetUserTeamsAsync(user!.Id);
-        var userTeamIds = userTeams.Select(ut => ut.TeamId).ToHashSet();
-        var userCoordinatorTeamIds = userTeams.Where(ut => ut.Role == TeamMemberRole.Coordinator).Select(ut => ut.TeamId).ToHashSet();
-
-        var isBoardMember = await _teamService.IsUserBoardMemberAsync(user.Id);
-
-        // Build parent lookup for sub-team display
-        var teamById2 = allTeamsAuth.ToDictionary(t => t.Id);
-
-        TeamSummaryViewModel ToSummary(Team t)
-        {
-            Team? parent = t.ParentTeamId.HasValue && teamById2.TryGetValue(t.ParentTeamId.Value, out var p) ? p : null;
-            return new()
-            {
-                Id = t.Id,
-                Name = t.Name,
-                Description = t.Description,
-                Slug = t.Slug,
-                MemberCount = t.Members.Count(m => m.LeftAt == null),
-                IsSystemTeam = t.IsSystemTeam,
-                RequiresApproval = t.RequiresApproval,
-                IsPublicPage = t.IsPublicPage,
-                IsCurrentUserMember = userTeamIds.Contains(t.Id),
-                IsCurrentUserCoordinator = userCoordinatorTeamIds.Contains(t.Id),
-                ParentTeamName = parent?.Name,
-                ParentTeamSlug = parent?.Slug
-            };
-        }
-
-        var allSummaries = allTeamsAuth.Select(ToSummary).ToList();
-
-        var myTeams = allSummaries
-            .Where(t => userTeamIds.Contains(t.Id))
-            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var departments = allSummaries
-            .Where(t => !userTeamIds.Contains(t.Id) && !t.IsSystemTeam)
-            .OrderBy(t => t.SortKey, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        var systemTeams = allSummaries
-            .Where(t => !userTeamIds.Contains(t.Id) && t.IsSystemTeam)
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var directory = await _teamService.GetTeamDirectoryAsync(user?.Id);
 
         ViewBag.CanViewSync = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
 
         var viewModel = new TeamIndexViewModel
         {
-            MyTeams = myTeams,
-            Departments = departments,
-            SystemTeams = systemTeams,
-            CanCreateTeam = isBoardMember || RoleChecks.IsTeamsAdminBoardOrAdmin(User),
-            IsAuthenticated = true
+            MyTeams = directory.MyTeams.Select(MapTeamSummary).ToList(),
+            Departments = directory.Departments.Select(MapTeamSummary).ToList(),
+            SystemTeams = directory.SystemTeams.Select(MapTeamSummary).ToList(),
+            CanCreateTeam = directory.IsBoardMember || RoleChecks.IsTeamsAdminBoardOrAdmin(User),
+            IsAuthenticated = directory.IsAuthenticated
         };
 
         return View(viewModel);
     }
+
+    private static TeamSummaryViewModel MapTeamSummary(TeamDirectorySummary team) => new()
+    {
+        Id = team.Id,
+        Name = team.Name,
+        Description = team.Description,
+        Slug = team.Slug,
+        MemberCount = team.MemberCount,
+        IsSystemTeam = team.IsSystemTeam,
+        RequiresApproval = team.RequiresApproval,
+        IsPublicPage = team.IsPublicPage,
+        IsCurrentUserMember = team.IsCurrentUserMember,
+        IsCurrentUserCoordinator = team.IsCurrentUserCoordinator,
+        ParentTeamName = team.ParentTeamName,
+        ParentTeamSlug = team.ParentTeamSlug
+    };
 
     [AllowAnonymous]
     [HttpGet("{slug}")]
