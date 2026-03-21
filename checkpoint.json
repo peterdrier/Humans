@@ -16,7 +16,7 @@
     "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "a7294488fd62c9553030fd0634e98a022bef86ef",
+  "last_good_commit": "b0a35466b49fc9bb2e288a142fb0a51703f5610b",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -305,6 +305,23 @@
         "src/Humans.Infrastructure/Services/TeamService.cs",
         "src/Humans.Web/Controllers/TeamController.cs",
         "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 17,
+      "phase": 2,
+      "summary": "Moved camp detail season/link projection into CampService and centralized remaining controller cache keys/helpers.",
+      "files_changed": [
+        "src/Humans.Application/CacheKeys.cs",
+        "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+        "src/Humans.Application/Interfaces/ICampService.cs",
+        "src/Humans.Infrastructure/Services/CampService.cs",
+        "src/Humans.Web/Controllers/CampController.cs",
+        "src/Humans.Web/Controllers/GovernanceController.cs",
+        "src/Humans.Web/Controllers/TicketController.cs",
+        "tests/Humans.Application.Tests/Services/CampServiceTests.cs",
         "checkpoint.json"
       ],
       "status": "success"

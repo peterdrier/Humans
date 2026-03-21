@@ -103,3 +103,9 @@
 **Summary:** Moved TeamController MyTeams membership aggregation and pending-request counts into TeamService behind a shared summary DTO.
 **Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, tests/Humans.Application.Tests/Services/TeamServiceTests.cs, checkpoint.json
 **Commit:** a729448
+
+## Iteration 17 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved camp detail season/link projection into CampService and centralized remaining controller cache keys/helpers.
+**Files:** src/Humans.Application/CacheKeys.cs, src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Application/Interfaces/ICampService.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Web/Controllers/CampController.cs, src/Humans.Web/Controllers/GovernanceController.cs, src/Humans.Web/Controllers/TicketController.cs, tests/Humans.Application.Tests/Services/CampServiceTests.cs, checkpoint.json
+**Commit:** b0a3546
