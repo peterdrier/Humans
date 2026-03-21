@@ -39,6 +39,29 @@ public record TeamDirectoryResult(
     IReadOnlyList<TeamDirectorySummary> Departments,
     IReadOnlyList<TeamDirectorySummary> SystemTeams);
 
+public record TeamDetailMemberSummary(
+    Guid UserId,
+    string DisplayName,
+    string? Email,
+    string? ProfilePictureUrl,
+    TeamMemberRole Role,
+    Instant JoinedAt);
+
+public record TeamDetailResult(
+    Team Team,
+    IReadOnlyList<TeamDetailMemberSummary> Members,
+    IReadOnlyList<Team> ChildTeams,
+    IReadOnlyList<TeamRoleDefinition> RoleDefinitions,
+    bool IsAuthenticated,
+    bool IsCurrentUserMember,
+    bool IsCurrentUserCoordinator,
+    bool CanCurrentUserJoin,
+    bool CanCurrentUserLeave,
+    bool CanCurrentUserManage,
+    bool CanCurrentUserEditTeam,
+    Guid? CurrentUserPendingRequestId,
+    int PendingRequestCount);
+
 public record TeamRosterSlotSummary(
     string TeamName,
     string TeamSlug,
@@ -92,6 +115,12 @@ public interface ITeamService
     /// Gets the summarized team directory for anonymous or authenticated viewers.
     /// </summary>
     Task<TeamDirectoryResult> GetTeamDirectoryAsync(Guid? userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the detail-page data for a visible team, including viewer-specific membership and management state.
+    /// Returns null when the team does not exist or is not visible to the viewer.
+    /// </summary>
+    Task<TeamDetailResult?> GetTeamDetailAsync(string slug, Guid? userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all teams the user is a member of.

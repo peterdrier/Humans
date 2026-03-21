@@ -558,6 +558,77 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
+    // GetTeamDetailAsync
+    // ==========================================================================
+
+    [Fact]
+    public async Task GetTeamDetailAsync_AnonymousViewer_OnlySeesPublicTeamCoordinatorsAndPublicChildren()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var member = SeedUser(displayName: "Member");
+        var team = SeedTeam("Alpha");
+        team.IsPublicPage = true;
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        SeedTeamMember(team.Id, member.Id, TeamMemberRole.Member);
+
+        var publicChild = SeedTeam("Public Child");
+        publicChild.ParentTeamId = team.Id;
+        publicChild.IsPublicPage = true;
+
+        var privateChild = SeedTeam("Private Child");
+        privateChild.ParentTeamId = team.Id;
+        privateChild.IsPublicPage = false;
+
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetTeamDetailAsync(team.Slug, userId: null);
+
+        result.Should().NotBeNull();
+        result!.IsAuthenticated.Should().BeFalse();
+        result.Members.Select(m => m.DisplayName).Should().BeEquivalentTo(
+            ["Coordinator"],
+            cfg => cfg.WithStrictOrdering());
+        result.ChildTeams.Select(t => t.Name).Should().BeEquivalentTo(
+            ["Public Child"],
+            cfg => cfg.WithStrictOrdering());
+        result.CanCurrentUserManage.Should().BeFalse();
+        result.RoleDefinitions.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetTeamDetailAsync_AuthenticatedCoordinator_ReturnsViewerStateMembersAndPendingCount()
+    {
+        var coordinator = SeedUser(displayName: "Coordinator");
+        var member = SeedUser(displayName: "Member");
+        var requester = SeedUser(displayName: "Requester");
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        SeedTeamMember(team.Id, member.Id, TeamMemberRole.Member);
+        var pendingRequest = SeedJoinRequest(team.Id, requester.Id);
+        var roleDefinition = SeedTeamRoleDefinition(team.Id, isManagement: true);
+
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetTeamDetailAsync(team.Slug, coordinator.Id);
+
+        result.Should().NotBeNull();
+        result!.IsAuthenticated.Should().BeTrue();
+        result.IsCurrentUserMember.Should().BeTrue();
+        result.IsCurrentUserCoordinator.Should().BeTrue();
+        result.CanCurrentUserManage.Should().BeTrue();
+        result.CanCurrentUserEditTeam.Should().BeFalse();
+        result.CanCurrentUserJoin.Should().BeFalse();
+        result.CanCurrentUserLeave.Should().BeTrue();
+        result.PendingRequestCount.Should().Be(1);
+        result.CurrentUserPendingRequestId.Should().BeNull();
+        result.Members.Select(m => (m.DisplayName, m.Role)).Should().BeEquivalentTo(
+            [("Member", TeamMemberRole.Member), ("Coordinator", TeamMemberRole.Coordinator)],
+            cfg => cfg.WithStrictOrdering());
+        result.RoleDefinitions.Select(d => d.Id).Should().ContainSingle().Which.Should().Be(roleDefinition.Id);
+        pendingRequest.Status.Should().Be(TeamJoinRequestStatus.Pending);
+    }
+
+    // ==========================================================================
     // GetPendingRequestsForApproverAsync
     // ==========================================================================
 

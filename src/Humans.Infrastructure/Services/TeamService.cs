@@ -207,6 +207,91 @@ public class TeamService : ITeamService
             SystemTeams: systemTeams);
     }
 
+    public async Task<TeamDetailResult?> GetTeamDetailAsync(
+        string slug,
+        Guid? userId,
+        CancellationToken cancellationToken = default)
+    {
+        var team = await GetTeamBySlugAsync(slug, cancellationToken);
+        if (team is null)
+        {
+            return null;
+        }
+
+        if (!userId.HasValue && !team.IsPublicPage)
+        {
+            return null;
+        }
+
+        var activeMembers = team.Members
+            .Where(m => m.LeftAt is null)
+            .ToList();
+
+        if (!userId.HasValue)
+        {
+            var coordinators = activeMembers
+                .Where(m => m.Role == TeamMemberRole.Coordinator)
+                .OrderBy(m => m.User.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamDetailMemberSummary)
+                .ToList();
+
+            return new TeamDetailResult(
+                Team: team,
+                Members: coordinators,
+                ChildTeams: team.ChildTeams
+                    .Where(c => c.IsActive && c.IsPublicPage)
+                    .OrderBy(c => c.Name, StringComparer.Ordinal)
+                    .ToList(),
+                RoleDefinitions: [],
+                IsAuthenticated: false,
+                IsCurrentUserMember: false,
+                IsCurrentUserCoordinator: false,
+                CanCurrentUserJoin: false,
+                CanCurrentUserLeave: false,
+                CanCurrentUserManage: false,
+                CanCurrentUserEditTeam: false,
+                CurrentUserPendingRequestId: null,
+                PendingRequestCount: 0);
+        }
+
+        var currentUserId = userId.Value;
+        var isCurrentUserMember = activeMembers.Any(m => m.UserId == currentUserId);
+        var isCurrentUserCoordinator = activeMembers.Any(m =>
+            m.UserId == currentUserId &&
+            m.Role == TeamMemberRole.Coordinator);
+        var isBoardMember = await IsUserBoardMemberAsync(currentUserId, cancellationToken);
+        var isAdmin = await IsUserAdminAsync(currentUserId, cancellationToken);
+        var isTeamsAdmin = await IsUserTeamsAdminAsync(currentUserId, cancellationToken);
+        var canManage = isCurrentUserCoordinator || isBoardMember || isAdmin || isTeamsAdmin;
+        var pendingRequest = await GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
+        var pendingRequestCount = canManage
+            ? (await GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
+            : 0;
+        var roleDefinitions = await GetRoleDefinitionsAsync(team.Id, cancellationToken);
+
+        return new TeamDetailResult(
+            Team: team,
+            Members: activeMembers
+                .OrderBy(m => m.Role)
+                .ThenBy(m => m.User.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(MapTeamDetailMemberSummary)
+                .ToList(),
+            ChildTeams: team.ChildTeams
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.Name, StringComparer.Ordinal)
+                .ToList(),
+            RoleDefinitions: roleDefinitions,
+            IsAuthenticated: true,
+            IsCurrentUserMember: isCurrentUserMember,
+            IsCurrentUserCoordinator: isCurrentUserCoordinator,
+            CanCurrentUserJoin: !isCurrentUserMember && !team.IsSystemTeam && pendingRequest is null,
+            CanCurrentUserLeave: isCurrentUserMember && !team.IsSystemTeam,
+            CanCurrentUserManage: canManage,
+            CanCurrentUserEditTeam: isBoardMember || isAdmin || isTeamsAdmin,
+            CurrentUserPendingRequestId: pendingRequest?.Id,
+            PendingRequestCount: pendingRequestCount);
+    }
+
     public async Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         // Still returns TeamMember entities for callers that need navigation properties (MyTeams page).
@@ -1799,6 +1884,14 @@ public class TeamService : ITeamService
             parent?.Name,
             parent?.Slug);
     }
+
+    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMember member) => new(
+        UserId: member.UserId,
+        DisplayName: member.User.DisplayName,
+        Email: member.User.Email,
+        ProfilePictureUrl: member.User.ProfilePictureUrl,
+        Role: member.Role,
+        JoinedAt: member.JoinedAt);
 
     private static string GetPriorityBadgeClass(SlotPriority priority) =>
         priority switch

@@ -1,10 +1,10 @@
 {
-  "iteration": 14,
+  "iteration": 15,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Moved team roster slot expansion, filtering, and sorting into TeamService behind shared service DTOs.",
+  "summary": "Moved team detail viewer-state and member-selection logic into TeamService behind shared service DTOs.",
   "files_changed": [
     "src/Humans.Application/Interfaces/ITeamService.cs",
     "src/Humans.Infrastructure/Services/TeamService.cs",
@@ -257,6 +257,19 @@
       "iteration": 14,
       "phase": 2,
       "summary": "Moved team roster slot expansion, filtering, and sorting into TeamService behind shared service DTOs.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ITeamService.cs",
+        "src/Humans.Infrastructure/Services/TeamService.cs",
+        "src/Humans.Web/Controllers/TeamController.cs",
+        "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 15,
+      "phase": 2,
+      "summary": "Moved team detail viewer-state and member-selection logic into TeamService behind shared service DTOs.",
       "files_changed": [
         "src/Humans.Application/Interfaces/ITeamService.cs",
         "src/Humans.Infrastructure/Services/TeamService.cs",
