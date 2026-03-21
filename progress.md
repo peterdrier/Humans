@@ -13,3 +13,9 @@
 **Summary:** Consolidated controller user/team access helpers and TempData messaging across feedback, shift admin, and related team controllers.
 **Files:** src/Humans.Web/Authorization/ShiftRoleChecks.cs, src/Humans.Web/Controllers/AdminFeedbackController.cs, src/Humans.Web/Controllers/FeedbackController.cs, src/Humans.Web/Controllers/HumansTeamControllerBase.cs, src/Humans.Web/Controllers/ShiftAdminController.cs, src/Humans.Web/Controllers/TeamAdminController.cs, src/Humans.Web/Controllers/TeamController.cs
 **Commit:** 1d7ace3
+
+## Iteration 2 — Phase 1: Controller Pattern Consolidation
+**Status:** success
+**Summary:** Extracted shared camp controller access helpers and standardized CampController TempData messaging.
+**Files:** src/Humans.Web/Controllers/CampController.cs, src/Humans.Web/Controllers/HumansCampControllerBase.cs, checkpoint.json
+**Commit:** 3022a6d

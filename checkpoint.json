@@ -1,5 +1,5 @@
 {
-  "iteration": 1,
+  "iteration": 2,
   "current_phase": 1,
   "total_phases": 6,
   "phase_name": "Controller Pattern Consolidation",
@@ -10,7 +10,7 @@
     "src/Humans.Web/Controllers/HumansCampControllerBase.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "1d7ace32d0e37783c185c441c5fa125c13f89190",
+  "last_good_commit": "3022a6d02017fbcf7072f213820e0fd34ea732ad",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -27,6 +27,17 @@
         "src/Humans.Web/Controllers/ShiftAdminController.cs",
         "src/Humans.Web/Controllers/TeamAdminController.cs",
         "src/Humans.Web/Controllers/TeamController.cs"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 2,
+      "phase": 1,
+      "summary": "Extracted shared camp controller access helpers and standardized CampController TempData messaging.",
+      "files_changed": [
+        "src/Humans.Web/Controllers/CampController.cs",
+        "src/Humans.Web/Controllers/HumansCampControllerBase.cs",
+        "checkpoint.json"
       ],
       "status": "success"
     }
