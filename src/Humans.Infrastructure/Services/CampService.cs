@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces;
+using Humans.Application;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -20,7 +21,6 @@ public class CampService : ICampService
     private readonly IMemoryCache _cache;
     private readonly ILogger<CampService> _logger;
 
-    private const string CacheKeyPrefix = "camps_year_";
     private static readonly TimeSpan CampsForYearCacheTtl = TimeSpan.FromMinutes(5);
 
     public CampService(
@@ -150,7 +150,7 @@ public class CampService : ICampService
 
     public async Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default)
     {
-        return await _cache.GetOrCreateAsync(GetCampsForYearCacheKey(year), async entry =>
+        return await _cache.GetOrCreateAsync(CacheKeys.CampSeasonsByYear(year), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CampsForYearCacheTtl;
             return await _dbContext.Camps
@@ -770,10 +770,8 @@ public class CampService : ICampService
 
     private void InvalidateCache(int year)
     {
-        _cache.Remove(GetCampsForYearCacheKey(year));
+        _cache.Remove(CacheKeys.CampSeasonsByYear(year));
     }
-
-    private static string GetCampsForYearCacheKey(int year) => $"{CacheKeyPrefix}{year}";
 
     private static CampSeason CreateSeasonFromData(Guid campId, int year, string name,
         CampSeasonData data, Instant now)

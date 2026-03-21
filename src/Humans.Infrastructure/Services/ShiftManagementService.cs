@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces;
+using Humans.Application;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -75,8 +76,7 @@ public class ShiftManagementService : IShiftManagementService
 
     public async Task<IReadOnlyList<Guid>> GetCoordinatorDepartmentIdsAsync(Guid userId)
     {
-        var cacheKey = $"shift-auth:{userId}";
-        var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        var result = await _cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = AuthCacheDuration;
             return await LoadCoordinatorDepartmentIdsAsync(userId);

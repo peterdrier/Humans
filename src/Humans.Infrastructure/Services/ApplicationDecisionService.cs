@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain;
 using Humans.Domain.Enums;
@@ -115,7 +116,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             return new ApplicationDecisionResult(false, "ConcurrencyConflict");
         }
 
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
         _metrics.RecordApplicationProcessed("approved");
         _logger.LogInformation("Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
@@ -200,7 +201,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             return new ApplicationDecisionResult(false, "ConcurrencyConflict");
         }
 
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
         _metrics.RecordApplicationProcessed("rejected");
         _logger.LogInformation("Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
@@ -272,7 +273,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         _dbContext.Applications.Add(application);
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
 
         _logger.LogInformation("User {UserId} submitted application {ApplicationId}", userId, application.Id);
 
@@ -294,7 +295,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         application.Withdraw(_clock);
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
         _metrics.RecordApplicationProcessed("withdrawn");
 
         _logger.LogInformation("User {UserId} withdrew application {ApplicationId}", userId, applicationId);

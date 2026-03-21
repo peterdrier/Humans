@@ -739,7 +739,7 @@ public class ProfileService : IProfileService
 
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
     {
-        if (_cache.TryGetExistingValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? cached))
+        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, cached =>
         {
             if (newValue != null)
             {
@@ -749,7 +749,7 @@ public class ProfileService : IProfileService
             {
                 cached.TryRemove(userId, out _);
             }
-        }
+        });
     }
 
     private static (string? Field, string? Snippet) DetermineMatchFromCache(CachedProfile p, string query)
