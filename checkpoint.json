@@ -11,7 +11,7 @@
     "src/Humans.Web/Controllers/TeamController.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "ffe65860e3dd5f84d4415ea78ffe50dd79b0852e",
+  "last_good_commit": "c237754250be87e519c5c52849d6207a5e739e59",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -354,6 +354,18 @@
       "iteration": 19,
       "phase": 2,
       "summary": "Moved team admin summary hierarchy and projection into TeamService behind a dedicated admin-list DTO.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ITeamService.cs",
+        "src/Humans.Infrastructure/Services/TeamService.cs",
+        "src/Humans.Web/Controllers/TeamController.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 20,
+      "phase": 2,
+      "summary": "Moved team directory create-permission logic into TeamService so TeamController only maps service DTOs.",
       "files_changed": [
         "src/Humans.Application/Interfaces/ITeamService.cs",
         "src/Humans.Infrastructure/Services/TeamService.cs",

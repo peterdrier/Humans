@@ -121,3 +121,9 @@
 **Summary:** Moved team admin summary hierarchy and projection into TeamService behind a dedicated admin-list DTO.
 **Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, checkpoint.json
 **Commit:** ffe6586
+
+## Iteration 20 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved team directory create-permission logic into TeamService so TeamController only maps service DTOs.
+**Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, checkpoint.json
+**Commit:** c237754
