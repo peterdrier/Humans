@@ -49,3 +49,9 @@
 **Summary:** Standardized shared cache invalidation helpers for active teams, nav badges, and camp season caches.
 **Files:** src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, checkpoint.json
 **Commit:** a5da27d
+
+## Iteration 8 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved camp directory listing, filtering, and personalized listing assembly into CampService.
+**Files:** src/Humans.Application/Interfaces/ICampService.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Web/Controllers/CampController.cs, checkpoint.json
+**Commit:** c0d06d7
