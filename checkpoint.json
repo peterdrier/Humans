@@ -12,7 +12,7 @@
     "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "488b9cb129dac3a84923b27307f640590cbafc27",
+  "last_good_commit": "503a2726cbcf2bb934c7ab8a321ac499a017be44",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -257,6 +257,19 @@
       "iteration": 14,
       "phase": 2,
       "summary": "Moved team roster slot expansion, filtering, and sorting into TeamService behind shared service DTOs.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ITeamService.cs",
+        "src/Humans.Infrastructure/Services/TeamService.cs",
+        "src/Humans.Web/Controllers/TeamController.cs",
+        "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 15,
+      "phase": 2,
+      "summary": "Moved team detail viewer-state and member-selection logic into TeamService behind shared service DTOs.",
       "files_changed": [
         "src/Humans.Application/Interfaces/ITeamService.cs",
         "src/Humans.Infrastructure/Services/TeamService.cs",
