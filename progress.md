@@ -43,3 +43,9 @@
 **Summary:** Moved team directory summary/grouping into TeamService and backed it with the shared active-team cache.
 **Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, checkpoint.json
 **Commit:** c7a9b83
+
+## Iteration 7 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Standardized shared cache invalidation helpers for active teams, nav badges, and camp season caches.
+**Files:** src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Jobs/SystemTeamSyncJob.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, checkpoint.json
+**Commit:** a5da27d
