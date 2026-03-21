@@ -62,6 +62,16 @@ public record TeamDetailResult(
     Guid? CurrentUserPendingRequestId,
     int PendingRequestCount);
 
+public record MyTeamMembershipSummary(
+    Guid TeamId,
+    string TeamName,
+    string TeamSlug,
+    bool IsSystemTeam,
+    TeamMemberRole Role,
+    Instant JoinedAt,
+    bool CanLeave,
+    int PendingRequestCount);
+
 public record TeamRosterSlotSummary(
     string TeamName,
     string TeamSlug,
@@ -126,6 +136,13 @@ public interface ITeamService
     /// Gets all teams the user is a member of.
     /// </summary>
     Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current user's team memberships with viewer-specific pending-request counts.
+    /// </summary>
+    Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates a team's details.

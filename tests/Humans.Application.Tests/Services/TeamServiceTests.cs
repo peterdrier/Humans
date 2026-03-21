@@ -558,6 +558,51 @@ public class TeamServiceTests : IDisposable
     }
 
     // ==========================================================================
+    // GetMyTeamMembershipsAsync
+    // ==========================================================================
+
+    [Fact]
+    public async Task GetMyTeamMembershipsAsync_Coordinator_GetsPendingCountsForManageableNonSystemTeams()
+    {
+        var user = SeedUser(displayName: "Coordinator");
+        var managedTeam = SeedTeam("Alpha", requiresApproval: true);
+        var systemTeam = SeedTeam("Volunteers", type: SystemTeamType.Volunteers, requiresApproval: true);
+        SeedTeamMember(managedTeam.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedTeamMember(systemTeam.Id, user.Id, TeamMemberRole.Coordinator);
+        SeedJoinRequest(managedTeam.Id, SeedUser(displayName: "Requester A").Id);
+        SeedJoinRequest(systemTeam.Id, SeedUser(displayName: "Requester B").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        result.Should().HaveCount(2);
+        result.Single(m => m.TeamId == managedTeam.Id).PendingRequestCount.Should().Be(1);
+        result.Single(m => m.TeamId == managedTeam.Id).CanLeave.Should().BeTrue();
+        result.Single(m => m.TeamId == systemTeam.Id).PendingRequestCount.Should().Be(0);
+        result.Single(m => m.TeamId == systemTeam.Id).CanLeave.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetMyTeamMembershipsAsync_BoardMember_GetsPendingCountsForRegularMemberships()
+    {
+        var user = SeedUser(displayName: "Board Human");
+        SeedRoleAssignment(
+            user.Id,
+            RoleNames.Board,
+            _clock.GetCurrentInstant() - Duration.FromDays(10));
+        var team = SeedTeam("Alpha", requiresApproval: true);
+        SeedTeamMember(team.Id, user.Id, TeamMemberRole.Member);
+        SeedJoinRequest(team.Id, SeedUser(displayName: "Requester").Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetMyTeamMembershipsAsync(user.Id);
+
+        result.Should().ContainSingle();
+        result[0].Role.Should().Be(TeamMemberRole.Member);
+        result[0].PendingRequestCount.Should().Be(1);
+    }
+
+    // ==========================================================================
     // GetTeamDetailAsync
     // ==========================================================================
 

@@ -367,31 +367,18 @@ public class TeamController : HumansControllerBase
             return currentUserError;
         }
 
-        var memberships = await _teamService.GetUserTeamsAsync(user.Id);
-        var isBoardMember = await _teamService.IsUserBoardMemberAsync(user.Id);
-
-        // Get team IDs where user can manage and team is not a system team
-        var manageableTeamIds = memberships
-            .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
-            .Select(m => m.TeamId)
-            .ToList();
-
-        // Batch load pending request counts to avoid N+1
-        var pendingCounts = manageableTeamIds.Count > 0
-            ? await _teamService.GetPendingRequestCountsByTeamIdsAsync(manageableTeamIds)
-            : new Dictionary<Guid, int>();
-
-        var membershipVMs = memberships.Select(m => new MyTeamMembershipViewModel
+        var membershipVMs = (await _teamService.GetMyTeamMembershipsAsync(user.Id))
+            .Select(m => new MyTeamMembershipViewModel
         {
             TeamId = m.TeamId,
-            TeamName = m.Team.DisplayName,
-            TeamSlug = m.Team.Slug,
-            IsSystemTeam = m.Team.IsSystemTeam,
+            TeamName = m.TeamName,
+            TeamSlug = m.TeamSlug,
+            IsSystemTeam = m.IsSystemTeam,
             Role = m.Role.ToString(),
             IsCoordinator = m.Role == TeamMemberRole.Coordinator,
             JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-            CanLeave = !m.Team.IsSystemTeam,
-            PendingRequestCount = pendingCounts.GetValueOrDefault(m.TeamId, 0)
+            CanLeave = m.CanLeave,
+            PendingRequestCount = m.PendingRequestCount
         }).ToList();
 
         // Get pending join requests for this user

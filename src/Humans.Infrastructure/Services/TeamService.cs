@@ -305,6 +305,35 @@ public class TeamService : ITeamService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var memberships = await GetUserTeamsAsync(userId, cancellationToken);
+        var isBoardMember = await IsUserBoardMemberAsync(userId, cancellationToken);
+
+        var manageableTeamIds = memberships
+            .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
+            .Select(m => m.TeamId)
+            .ToList();
+
+        var pendingCounts = manageableTeamIds.Count > 0
+            ? await GetPendingRequestCountsByTeamIdsAsync(manageableTeamIds, cancellationToken)
+            : new Dictionary<Guid, int>();
+
+        return memberships
+            .Select(m => new MyTeamMembershipSummary(
+                m.TeamId,
+                m.Team.DisplayName,
+                m.Team.Slug,
+                m.Team.IsSystemTeam,
+                m.Role,
+                m.JoinedAt,
+                CanLeave: !m.Team.IsSystemTeam,
+                PendingRequestCount: pendingCounts.GetValueOrDefault(m.TeamId, 0)))
+            .ToList();
+    }
+
     public async Task<Team> UpdateTeamAsync(
         Guid teamId,
         string name,

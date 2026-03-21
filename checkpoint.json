@@ -4,7 +4,7 @@
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Moved team detail viewer-state and member-selection logic into TeamService behind shared service DTOs.",
+  "summary": "Moved TeamController MyTeams membership aggregation and pending-request counts into TeamService behind a shared summary DTO.",
   "files_changed": [
     "src/Humans.Application/Interfaces/ITeamService.cs",
     "src/Humans.Infrastructure/Services/TeamService.cs",
