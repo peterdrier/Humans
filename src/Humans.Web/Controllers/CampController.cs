@@ -712,23 +712,23 @@ public class CampController : HumansCampControllerBase
         CampDetailData campDetail,
         bool isLead,
         bool isCampAdmin) => new()
-    {
-        Id = campDetail.Id,
-        Slug = campDetail.Slug,
-        Name = campDetail.Name,
-        Links = [.. campDetail.Links],
-        IsSwissCamp = campDetail.IsSwissCamp,
-        TimesAtNowhere = campDetail.TimesAtNowhere,
-        HistoricalNames = [.. campDetail.HistoricalNames],
-        ImageUrls = [.. campDetail.ImageUrls],
-        Leads = campDetail.Leads
+        {
+            Id = campDetail.Id,
+            Slug = campDetail.Slug,
+            Name = campDetail.Name,
+            Links = [.. campDetail.Links],
+            IsSwissCamp = campDetail.IsSwissCamp,
+            TimesAtNowhere = campDetail.TimesAtNowhere,
+            HistoricalNames = [.. campDetail.HistoricalNames],
+            ImageUrls = [.. campDetail.ImageUrls],
+            Leads = campDetail.Leads
             .Select(lead => new CampLeadViewModel
             {
                 LeadId = lead.LeadId,
                 UserId = lead.UserId,
                 DisplayName = lead.DisplayName
             }).ToList(),
-        CurrentSeason = campDetail.CurrentSeason is null
+            CurrentSeason = campDetail.CurrentSeason is null
             ? null
             : new CampSeasonDetailViewModel
             {
@@ -755,9 +755,9 @@ public class CampController : HumansCampControllerBase
                 ElectricalGrid = campDetail.CurrentSeason.ElectricalGrid,
                 IsNameLocked = campDetail.CurrentSeason.IsNameLocked
             },
-        IsCurrentUserLead = isLead,
-        IsCurrentUserCampAdmin = isCampAdmin
-    };
+            IsCurrentUserLead = isLead,
+            IsCurrentUserCampAdmin = isCampAdmin
+        };
 
     private void ValidatePhoneE164(string? phone, string fieldName)
     {

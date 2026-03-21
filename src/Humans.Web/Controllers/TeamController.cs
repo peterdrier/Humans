@@ -186,17 +186,17 @@ public class TeamController : HumansControllerBase
     private static TeamMemberViewModel MapTeamMember(
         TeamPageMemberSummary member,
         IReadOnlyDictionary<Guid, string> customPictureByUserId) => new()
-    {
-        UserId = member.UserId,
-        DisplayName = member.DisplayName,
-        Email = member.Email ?? string.Empty,
-        ProfilePictureUrl = member.ProfilePictureUrl,
-        HasCustomProfilePicture = customPictureByUserId.ContainsKey(member.UserId),
-        CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(member.UserId),
-        Role = member.Role.ToString(),
-        JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
-        IsCoordinator = member.Role == TeamMemberRole.Coordinator
-    };
+        {
+            UserId = member.UserId,
+            DisplayName = member.DisplayName,
+            Email = member.Email ?? string.Empty,
+            ProfilePictureUrl = member.ProfilePictureUrl,
+            HasCustomProfilePicture = customPictureByUserId.ContainsKey(member.UserId),
+            CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(member.UserId),
+            Role = member.Role.ToString(),
+            JoinedAt = member.JoinedAt?.ToDateTimeUtc() ?? default,
+            IsCoordinator = member.Role == TeamMemberRole.Coordinator
+        };
 
     private ShiftsSummaryCardViewModel? MapShiftsSummary(TeamPageShiftsSummary? summary, string slug)
     {
@@ -339,17 +339,17 @@ public class TeamController : HumansControllerBase
 
         var membershipVMs = (await _teamService.GetMyTeamMembershipsAsync(user.Id))
             .Select(m => new MyTeamMembershipViewModel
-        {
-            TeamId = m.TeamId,
-            TeamName = m.TeamName,
-            TeamSlug = m.TeamSlug,
-            IsSystemTeam = m.IsSystemTeam,
-            Role = m.Role.ToString(),
-            IsCoordinator = m.Role == TeamMemberRole.Coordinator,
-            JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-            CanLeave = m.CanLeave,
-            PendingRequestCount = m.PendingRequestCount
-        }).ToList();
+            {
+                TeamId = m.TeamId,
+                TeamName = m.TeamName,
+                TeamSlug = m.TeamSlug,
+                IsSystemTeam = m.IsSystemTeam,
+                Role = m.Role.ToString(),
+                IsCoordinator = m.Role == TeamMemberRole.Coordinator,
+                JoinedAt = m.JoinedAt.ToDateTimeUtc(),
+                CanLeave = m.CanLeave,
+                PendingRequestCount = m.PendingRequestCount
+            }).ToList();
 
         // Get pending join requests for this user
         // Note: We'd need a method to get user's pending requests, for now just skip
