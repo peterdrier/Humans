@@ -11,7 +11,7 @@
     "src/Humans.Web/Controllers/TeamController.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "141aa29b1d51cea234811b4dd62d4bbe3bb01604",
+  "last_good_commit": "c7a9b83d2a1980ccf6041fcec36036e74ee283ee",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -81,6 +81,18 @@
         "src/Humans.Infrastructure/Services/RoleAssignmentService.cs",
         "src/Humans.Infrastructure/Services/ShiftManagementService.cs",
         "src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 6,
+      "phase": 2,
+      "summary": "Moved team directory summary/grouping into TeamService and backed it with the shared active-team cache.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ITeamService.cs",
+        "src/Humans.Infrastructure/Services/TeamService.cs",
+        "src/Humans.Web/Controllers/TeamController.cs",
         "checkpoint.json"
       ],
       "status": "success"

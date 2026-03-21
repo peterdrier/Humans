@@ -37,3 +37,9 @@
 **Summary:** Centralized shared cache keys and cache invalidation helpers across services and auth caching.
 **Files:** src/Humans.Application/CacheKeys.cs, src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Services/ApplicationDecisionService.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Infrastructure/Services/OnboardingService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, src/Humans.Infrastructure/Services/RoleAssignmentService.cs, src/Humans.Infrastructure/Services/ShiftManagementService.cs, src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs, checkpoint.json
 **Commit:** 141aa29
+
+## Iteration 6 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved team directory summary/grouping into TeamService and backed it with the shared active-team cache.
+**Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, checkpoint.json
+**Commit:** c7a9b83
