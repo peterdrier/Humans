@@ -264,7 +264,7 @@ public class ShiftAdminController : HumansControllerBase
 
         if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
-            TempData["ErrorMessage"] = "Invalid start time format.";
+            SetError("Invalid start time format.");
             return RedirectToAction(nameof(Index), new { slug });
         }
 
@@ -309,7 +309,7 @@ public class ShiftAdminController : HumansControllerBase
 
         if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
-            TempData["ErrorMessage"] = "Invalid start time format.";
+            SetError("Invalid start time format.");
             return RedirectToAction(nameof(Index), new { slug });
         }
 

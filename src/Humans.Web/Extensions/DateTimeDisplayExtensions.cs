@@ -99,13 +99,16 @@ public static class DateTimeDisplayExtensions
         value?.ToDisplayDayMonth();
 
     public static string ToDisplayTime(this DateTime value) =>
-        value.ToString("HH:mm", CultureInfo.InvariantCulture);
+        value.ToString("H:mm", CultureInfo.InvariantCulture);
 
     public static string? ToDisplayTime(this DateTime? value) =>
         value?.ToDisplayTime();
 
     public static string ToDisplayTime(this Instant value, DateTimeZone timeZone) =>
-        value.InZone(timeZone).ToString("HH:mm", null);
+        value.InZone(timeZone).ToString("H:mm", null);
+
+    public static string ToDisplayTime(this LocalTime value) =>
+        value.ToString("H:mm", null);
 
     public static string ToDisplayShortDateTime(this ZonedDateTime value) =>
         value.ToString("ddd MMM d HH:mm", null);

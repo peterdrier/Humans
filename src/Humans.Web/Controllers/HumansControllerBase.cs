@@ -59,6 +59,9 @@ public abstract class HumansControllerBase : Controller
 
     protected void SetError(string message)
     {
+        var logger = HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger(GetType());
+        logger.LogWarning("Error toast: {Message} (Action: {Action})", message, ControllerContext.ActionDescriptor.ActionName);
         TempData["ErrorMessage"] = message;
     }
 

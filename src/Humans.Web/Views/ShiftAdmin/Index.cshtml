@@ -196,7 +196,7 @@
                                             @{
                                                 var shiftLabel = shift.IsAllDay
                                                     ? "All day"
-                                                    : $"{shift.StartTime.ToString("HH:mm", null)}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToString("HH:mm", null)}";
+                                                    : $"{shift.StartTime.ToDisplayTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToDisplayTime()}";
                                             }
                                             @shiftLabel
                                             @if (shift.AdminOnly) { <span class="badge bg-dark">Admin Only</span> }
@@ -221,7 +221,7 @@
                                             };
                                         }
                                         <td><span class="badge @phaseBadge me-1">@phaseLabel</span>@shiftDateLabel</td>
-                                        <td>@shift.StartTime.ToString("HH:mm", null)</td>
+                                        <td>@shift.StartTime.ToDisplayTime()</td>
                                         <td>@(shift.IsAllDay ? "Full day" : $"{shift.Duration.TotalHours}h")</td>
                                         @{
                                             var confirmed = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
@@ -310,7 +310,7 @@
                                                         </div>
                                                         <div class="col-md-1">
                                                             <label class="form-label form-label-sm">Start</label>
-                                                            <input type="time" name="StartTime" value="@shift.StartTime" class="form-control form-control-sm" />
+                                                            <input type="time" name="StartTime" value="@shift.StartTime.ToString("HH:mm", null)" class="form-control form-control-sm" />
                                                         </div>
                                                         <div class="col-md-1">
                                                             <label class="form-label form-label-sm">Hours</label>
