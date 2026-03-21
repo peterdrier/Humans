@@ -164,20 +164,21 @@ public class CampController : HumansCampControllerBase
         var currentUser = await GetCurrentUserAsync();
         if (currentUser == null) return Unauthorized();
 
-        // Rate limit: one message per camp per user per 10 minutes
-        var rateLimitKey = CacheKeys.CampContactRateLimit(currentUser.Id, camp.Id);
-        if (!await _cache.TryReserveAsync(rateLimitKey, TimeSpan.FromMinutes(10)))
-        {
-            SetError(_localizer["Camp_Contact_RateLimited"].Value);
-            return RedirectToAction(nameof(Details), new { slug });
-        }
-
         if (!ModelState.IsValid)
         {
             model.CampSlug = slug;
             var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
             model.CampName = season?.Name ?? slug;
             return View(model);
+        }
+
+        // Rate limit: one message per camp per user per 10 minutes
+        // Must be AFTER ModelState check so validation errors don't consume the slot
+        var rateLimitKey = CacheKeys.CampContactRateLimit(currentUser.Id, camp.Id);
+        if (!await _cache.TryReserveAsync(rateLimitKey, TimeSpan.FromMinutes(10)))
+        {
+            SetError(_localizer["Camp_Contact_RateLimited"].Value);
+            return RedirectToAction(nameof(Details), new { slug });
         }
 
         try

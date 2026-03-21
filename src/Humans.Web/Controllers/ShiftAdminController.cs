@@ -1,4 +1,5 @@
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -534,13 +535,18 @@ public class ShiftAdminController : HumansTeamControllerBase
 
     private async Task<bool> CanManageDepartmentAsync(User user, Team team)
     {
-        return ShiftRoleChecks.CanManageDepartment(User) ||
+        // Management: Admin + VolunteerCoordinator + dept coordinator
+        // Explicitly excludes NoInfoAdmin — they can approve signups but not manage rotas/shifts
+        return RoleChecks.IsAdmin(User) ||
+               User.IsInRole(RoleNames.VolunteerCoordinator) ||
                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
     }
 
     private async Task<bool> CanApproveDepartmentAsync(User user, Team team)
     {
-        return ShiftRoleChecks.CanManageDepartment(User) ||
+        // Approval: Admin + NoInfoAdmin + VolunteerCoordinator + dept coordinator
+        return ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
+               User.IsInRole(RoleNames.VolunteerCoordinator) ||
                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
     }
 }
