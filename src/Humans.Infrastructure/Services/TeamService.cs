@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -98,13 +99,9 @@ public class TeamService : ITeamService
             try
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                // Add to cache
-                if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached))
-                {
-                    cached[team.Id] = new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
-                        team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.CreatedAt, [],
-                        ParentTeamId: parentTeamId);
-                }
+                SetCachedTeam(new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
+                    team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.CreatedAt, [],
+                    ParentTeamId: parentTeamId));
                 _logger.LogInformation("Created team {TeamName} with slug {Slug}", name, slug);
                 return team;
             }
@@ -267,22 +264,23 @@ public class TeamService : ITeamService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        // Update cache
-        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached))
+        if (!isActive)
         {
-            if (!isActive)
+            RemoveCachedTeam(teamId);
+        }
+        else if (TryGetCachedTeam(teamId, out _, out var existing))
+        {
+            SetCachedTeam(existing with
             {
-                cached.TryRemove(teamId, out _);
-            }
-            else if (cached.TryGetValue(teamId, out var existing))
-            {
-                cached[teamId] = existing with { Name = name, Description = description, RequiresApproval = requiresApproval, ParentTeamId = parentTeamId };
-            }
-            else
-            {
-                // Team reactivated — re-add to cache
-                cached[teamId] = BuildCachedTeam(team);
-            }
+                Name = name,
+                Description = description,
+                RequiresApproval = requiresApproval,
+                ParentTeamId = parentTeamId
+            });
+        }
+        else
+        {
+            SetCachedTeam(BuildCachedTeam(team));
         }
 
         _logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
@@ -352,11 +350,7 @@ public class TeamService : ITeamService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        // Remove from cache
-        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached))
-        {
-            cached.TryRemove(teamId, out _);
-        }
+        RemoveCachedTeam(teamId);
 
         _logger.LogInformation("Deactivated team {TeamId} ({TeamName})", teamId, team.Name);
     }
@@ -1405,15 +1399,13 @@ public class TeamService : ITeamService
                 teamMember.Id, targetUserId, targetUser.DisplayName, targetUser.ProfilePictureUrl,
                 teamMember.Role, teamMember.JoinedAt);
             // Either add or update depending on whether they were auto-added
-            if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cachedTeams)
-                && cachedTeams.TryGetValue(definition.TeamId, out var ct))
+            UpdateCachedTeam(definition.TeamId, ct =>
             {
                 var existing = ct.Members.FirstOrDefault(m => m.UserId == targetUserId);
-                if (existing != null)
-                    cachedTeams[definition.TeamId] = ct with { Members = ct.Members.Select(m => m.UserId == targetUserId ? cachedMember : m).ToList() };
-                else
-                    cachedTeams[definition.TeamId] = ct with { Members = [.. ct.Members, cachedMember] };
-            }
+                return existing != null
+                    ? ct with { Members = ct.Members.Select(m => m.UserId == targetUserId ? cachedMember : m).ToList() }
+                    : ct with { Members = [.. ct.Members, cachedMember] };
+            });
         }
 
         _logger.LogInformation("Assigned user {UserId} to role '{RoleName}' (slot {SlotIndex}) in team {TeamId}",
@@ -1656,41 +1648,73 @@ public class TeamService : ITeamService
             .ToList(),
         ParentTeamId: team.ParentTeamId);
 
+    private bool TryGetActiveTeamsCache(
+        [NotNullWhen(true)] out ConcurrentDictionary<Guid, CachedTeam>? cachedTeams) =>
+        _cache.TryGetExistingValue(CacheKeys.ActiveTeams, out cachedTeams);
+
+    private bool TryGetCachedTeam(
+        Guid teamId,
+        [NotNullWhen(true)] out ConcurrentDictionary<Guid, CachedTeam>? cachedTeams,
+        [NotNullWhen(true)] out CachedTeam? team)
+    {
+        team = null;
+
+        if (!TryGetActiveTeamsCache(out cachedTeams) || !cachedTeams.TryGetValue(teamId, out var cachedTeam))
+        {
+            return false;
+        }
+
+        team = cachedTeam;
+        return true;
+    }
+
+    private void SetCachedTeam(CachedTeam team)
+    {
+        if (TryGetActiveTeamsCache(out var cachedTeams))
+        {
+            cachedTeams[team.Id] = team;
+        }
+    }
+
+    private void RemoveCachedTeam(Guid teamId)
+    {
+        if (TryGetActiveTeamsCache(out var cachedTeams))
+        {
+            cachedTeams.TryRemove(teamId, out _);
+        }
+    }
+
+    private void UpdateCachedTeam(Guid teamId, Func<CachedTeam, CachedTeam> update)
+    {
+        if (TryGetCachedTeam(teamId, out var cachedTeams, out var team))
+        {
+            cachedTeams[teamId] = update(team);
+        }
+    }
+
     private void AddMemberToTeamCache(Guid teamId, CachedTeamMember member)
     {
-        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached)
-            && cached.TryGetValue(teamId, out var team))
-        {
-            cached[teamId] = team with { Members = [.. team.Members, member] };
-        }
+        UpdateCachedTeam(teamId, team => team with { Members = [.. team.Members, member] });
     }
 
     private void RemoveMemberFromTeamCache(Guid teamId, Guid userId)
     {
-        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached)
-            && cached.TryGetValue(teamId, out var team))
-        {
-            cached[teamId] = team with { Members = team.Members.Where(m => m.UserId != userId).ToList() };
-        }
+        UpdateCachedTeam(teamId, team => team with { Members = team.Members.Where(m => m.UserId != userId).ToList() });
     }
 
     private void UpdateMemberRoleInTeamCache(Guid teamId, Guid userId, TeamMemberRole role)
     {
-        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached)
-            && cached.TryGetValue(teamId, out var team))
+        UpdateCachedTeam(teamId, team => team with
         {
-            cached[teamId] = team with
-            {
-                Members = team.Members
-                    .Select(m => m.UserId == userId ? m with { Role = role } : m)
-                    .ToList()
-            };
-        }
+            Members = team.Members
+                .Select(m => m.UserId == userId ? m with { Role = role } : m)
+                .ToList()
+        });
     }
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
-        if (_cache.TryGetExistingValue(CacheKeys.ActiveTeams, out ConcurrentDictionary<Guid, CachedTeam>? cached))
+        if (TryGetActiveTeamsCache(out var cached))
         {
             foreach (var kvp in cached)
             {
