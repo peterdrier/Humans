@@ -4,11 +4,9 @@
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
   "phase_status": "IN_PROGRESS",
-  "summary": "Moved camp directory listing, filtering, and personalized listing assembly into CampService.",
+  "summary": "Consolidated TeamService active-team cache mutations behind a single shared helper path.",
   "files_changed": [
-    "src/Humans.Application/Interfaces/ICampService.cs",
-    "src/Humans.Infrastructure/Services/CampService.cs",
-    "src/Humans.Web/Controllers/CampController.cs",
+    "src/Humans.Infrastructure/Services/TeamService.cs",
     "checkpoint.json"
   ],
   "last_good_commit": "c0d06d76a4b3fa70b6ad2da8b59e519684f81a95",

@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -99,7 +98,7 @@ public class TeamService : ITeamService
             try
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
-                SetCachedTeam(new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
+                UpsertCachedTeam(new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
                     team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.IsPublicPage, team.CreatedAt, [],
                     ParentTeamId: parentTeamId));
                 _logger.LogInformation("Created team {TeamName} with slug {Slug}", name, slug);
@@ -317,19 +316,15 @@ public class TeamService : ITeamService
         {
             RemoveCachedTeam(teamId);
         }
-        else if (TryGetCachedTeam(teamId, out _, out var existing))
+        else if (!TryUpdateCachedTeam(teamId, existing => existing with
         {
-            SetCachedTeam(existing with
-            {
-                Name = name,
-                Description = description,
-                RequiresApproval = requiresApproval,
-                ParentTeamId = parentTeamId
-            });
-        }
-        else
+            Name = name,
+            Description = description,
+            RequiresApproval = requiresApproval,
+            ParentTeamId = parentTeamId
+        }))
         {
-            SetCachedTeam(BuildCachedTeam(team));
+            UpsertCachedTeam(BuildCachedTeam(team));
         }
 
         _logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
@@ -367,7 +362,7 @@ public class TeamService : ITeamService
         team.UpdatedAt = now;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        UpdateCachedTeam(teamId, cachedTeam => cachedTeam with { IsPublicPage = isPublicPage });
+        TryUpdateCachedTeam(teamId, cachedTeam => cachedTeam with { IsPublicPage = isPublicPage });
 
         var actor = await _dbContext.Users.FindAsync(new object[] { updatedByUserId }, cancellationToken);
         await _auditLogService.LogAsync(
@@ -1449,7 +1444,7 @@ public class TeamService : ITeamService
                 teamMember.Id, targetUserId, targetUser.DisplayName, targetUser.ProfilePictureUrl,
                 teamMember.Role, teamMember.JoinedAt);
             // Either add or update depending on whether they were auto-added
-            UpdateCachedTeam(definition.TeamId, ct =>
+            TryUpdateCachedTeam(definition.TeamId, ct =>
             {
                 var existing = ct.Members.FirstOrDefault(m => m.UserId == targetUserId);
                 return existing != null
@@ -1727,63 +1722,48 @@ public class TeamService : ITeamService
             parent?.Slug);
     }
 
-    private bool TryGetActiveTeamsCache(
-        [NotNullWhen(true)] out ConcurrentDictionary<Guid, CachedTeam>? cachedTeams) =>
-        _cache.TryGetExistingValue(CacheKeys.ActiveTeams, out cachedTeams);
+    private bool TryMutateActiveTeamsCache(Action<ConcurrentDictionary<Guid, CachedTeam>> mutate) =>
+        _cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedTeam>>(CacheKeys.ActiveTeams, mutate);
 
-    private bool TryGetCachedTeam(
-        Guid teamId,
-        [NotNullWhen(true)] out ConcurrentDictionary<Guid, CachedTeam>? cachedTeams,
-        [NotNullWhen(true)] out CachedTeam? team)
-    {
-        team = null;
-
-        if (!TryGetActiveTeamsCache(out cachedTeams) || !cachedTeams.TryGetValue(teamId, out var cachedTeam))
-        {
-            return false;
-        }
-
-        team = cachedTeam;
-        return true;
-    }
-
-    private void SetCachedTeam(CachedTeam team)
-    {
-        if (TryGetActiveTeamsCache(out var cachedTeams))
-        {
-            cachedTeams[team.Id] = team;
-        }
-    }
+    private void UpsertCachedTeam(CachedTeam team) =>
+        TryMutateActiveTeamsCache(cachedTeams => cachedTeams[team.Id] = team);
 
     private void RemoveCachedTeam(Guid teamId)
     {
-        if (TryGetActiveTeamsCache(out var cachedTeams))
-        {
-            cachedTeams.TryRemove(teamId, out _);
-        }
+        TryMutateActiveTeamsCache(cachedTeams => cachedTeams.TryRemove(teamId, out _));
     }
 
-    private void UpdateCachedTeam(Guid teamId, Func<CachedTeam, CachedTeam> update)
+    private bool TryUpdateCachedTeam(Guid teamId, Func<CachedTeam, CachedTeam> update)
     {
-        if (TryGetCachedTeam(teamId, out var cachedTeams, out var team))
+        var updated = false;
+
+        TryMutateActiveTeamsCache(cachedTeams =>
         {
+            if (!cachedTeams.TryGetValue(teamId, out var team))
+            {
+                return;
+            }
+
             cachedTeams[teamId] = update(team);
-        }
+            updated = true;
+        });
+
+        return updated;
     }
 
     private void AddMemberToTeamCache(Guid teamId, CachedTeamMember member)
     {
-        UpdateCachedTeam(teamId, team => team with { Members = [.. team.Members, member] });
+        TryUpdateCachedTeam(teamId, team => team with { Members = [.. team.Members, member] });
     }
 
     private void RemoveMemberFromTeamCache(Guid teamId, Guid userId)
     {
-        UpdateCachedTeam(teamId, team => team with { Members = team.Members.Where(m => m.UserId != userId).ToList() });
+        TryUpdateCachedTeam(teamId, team => team with { Members = team.Members.Where(m => m.UserId != userId).ToList() });
     }
 
     private void UpdateMemberRoleInTeamCache(Guid teamId, Guid userId, TeamMemberRole role)
     {
-        UpdateCachedTeam(teamId, team => team with
+        TryUpdateCachedTeam(teamId, team => team with
         {
             Members = team.Members
                 .Select(m => m.UserId == userId ? m with { Role = role } : m)
@@ -1793,7 +1773,7 @@ public class TeamService : ITeamService
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
-        if (TryGetActiveTeamsCache(out var cached))
+        TryMutateActiveTeamsCache(cached =>
         {
             foreach (var kvp in cached)
             {
@@ -1802,6 +1782,6 @@ public class TeamService : ITeamService
                     cached[kvp.Key] = kvp.Value with { Members = kvp.Value.Members.Where(m => m.UserId != userId).ToList() };
                 }
             }
-        }
+        });
     }
 }
