@@ -67,3 +67,9 @@
 **Summary:** Centralized auth-cache invalidation for role and team-role mutations across services.
 **Files:** src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Infrastructure/Services/ProfileService.cs, src/Humans.Infrastructure/Services/RoleAssignmentService.cs, src/Humans.Infrastructure/Services/TeamService.cs, tests/Humans.Application.Tests/Services/ProfileServiceTests.cs, tests/Humans.Application.Tests/Services/RoleAssignmentServiceTests.cs, tests/Humans.Application.Tests/Services/TeamServiceTests.cs, checkpoint.json
 **Commit:** ec098c3
+
+## Iteration 11 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved profile campaign-grant loading into ProfileService and centralized approved-profile cache mutations.
+**Files:** src/Humans.Application/Extensions/MemoryCacheExtensions.cs, src/Humans.Application/Interfaces/IProfileService.cs, src/Humans.Infrastructure/Services/OnboardingService.cs, src/Humans.Infrastructure/Services/ProfileService.cs, src/Humans.Web/Controllers/ProfileController.cs, checkpoint.json
+**Commit:** 4214d00

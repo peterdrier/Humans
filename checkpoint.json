@@ -13,7 +13,7 @@
     "src/Humans.Web/Controllers/ProfileController.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "ec098c3450f399ce3a00eee547415aba52237f76",
+  "last_good_commit": "4214d0072b1850a8267c0479af64df68386e910e",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -170,6 +170,20 @@
         "tests/Humans.Application.Tests/Services/ProfileServiceTests.cs",
         "tests/Humans.Application.Tests/Services/RoleAssignmentServiceTests.cs",
         "tests/Humans.Application.Tests/Services/TeamServiceTests.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 11,
+      "phase": 2,
+      "summary": "Moved profile campaign-grant loading into ProfileService and centralized approved-profile cache mutations.",
+      "files_changed": [
+        "src/Humans.Application/Extensions/MemoryCacheExtensions.cs",
+        "src/Humans.Application/Interfaces/IProfileService.cs",
+        "src/Humans.Infrastructure/Services/OnboardingService.cs",
+        "src/Humans.Infrastructure/Services/ProfileService.cs",
+        "src/Humans.Web/Controllers/ProfileController.cs",
         "checkpoint.json"
       ],
       "status": "success"
