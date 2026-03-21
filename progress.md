@@ -115,3 +115,9 @@
 **Summary:** Moved camp edit season selection and projection into CampService so CampController only maps service DTOs into view models.
 **Files:** src/Humans.Application/Interfaces/ICampService.cs, src/Humans.Infrastructure/Services/CampService.cs, src/Humans.Web/Controllers/CampController.cs, checkpoint.json
 **Commit:** 8ddb64d
+
+## Iteration 19 — Phase 2: Service & Caching Consolidation
+**Status:** success
+**Summary:** Moved team admin summary hierarchy and projection into TeamService behind a dedicated admin-list DTO.
+**Files:** src/Humans.Application/Interfaces/ITeamService.cs, src/Humans.Infrastructure/Services/TeamService.cs, src/Humans.Web/Controllers/TeamController.cs, checkpoint.json
+**Commit:** ffe6586

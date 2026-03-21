@@ -1,5 +1,5 @@
 {
-  "iteration": 18,
+  "iteration": 19,
   "current_phase": 2,
   "total_phases": 6,
   "phase_name": "Service & Caching Consolidation",
@@ -11,7 +11,7 @@
     "src/Humans.Web/Controllers/TeamController.cs",
     "checkpoint.json"
   ],
-  "last_good_commit": "8ddb64df3d5104f8e676da99efe042a64cc5ae83",
+  "last_good_commit": "ffe65860e3dd5f84d4415ea78ffe50dd79b0852e",
   "consecutive_no_change": 0,
   "consecutive_failures": 0,
   "started_at": "2026-03-21T15:51:25+00:00",
@@ -346,6 +346,18 @@
         "src/Humans.Application/Interfaces/ICampService.cs",
         "src/Humans.Infrastructure/Services/CampService.cs",
         "src/Humans.Web/Controllers/CampController.cs",
+        "checkpoint.json"
+      ],
+      "status": "success"
+    },
+    {
+      "iteration": 19,
+      "phase": 2,
+      "summary": "Moved team admin summary hierarchy and projection into TeamService behind a dedicated admin-list DTO.",
+      "files_changed": [
+        "src/Humans.Application/Interfaces/ITeamService.cs",
+        "src/Humans.Infrastructure/Services/TeamService.cs",
+        "src/Humans.Web/Controllers/TeamController.cs",
         "checkpoint.json"
       ],
       "status": "success"
