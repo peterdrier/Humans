@@ -57,7 +57,7 @@ public static class AccessMatrixDefinitions
 
         ["Camps"] = new AccessMatrixData
         {
-            SectionName = "Camps",
+            SectionName = "Barrios",
             Roles = ["Volunteer", "Camp Lead", "CampAdmin"],
             Features =
             [

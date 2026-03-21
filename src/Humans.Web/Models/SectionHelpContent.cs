@@ -140,36 +140,36 @@ public static class SectionHelpContent
             """,
 
         ["Camps"] = """
-            ## How Camps Work
+            ## How Barrios Work
 
-            Camps are themed villages or spaces at events. Any human can register a camp, and camp admins approve them for the event.
+            Barrios are themed villages or spaces at events. Any human can register a barrio, and barrio admins approve them for the event.
 
-            ### Registering a Camp
+            ### Registering a Barrio
 
-            1. Go to the **Camps** page
-            2. Click **Register a Camp**
-            3. Fill in camp details: name, description, theme, requirements
-            4. Submit for review — a camp admin will approve or request changes
+            1. Go to the **Barrios** page
+            2. Click **Register a Barrio**
+            3. Fill in barrio details: name, description, theme, requirements
+            4. Submit for review — a barrio admin will approve or request changes
 
-            ### Camp Lifecycle
+            ### Barrio Lifecycle
 
-            1. **Draft** — you are building your camp registration
+            1. **Draft** — you are building your barrio registration
             2. **Submitted** — awaiting admin review
-            3. **Approved** — your camp is confirmed for the event
+            3. **Approved** — your barrio is confirmed for the event
             4. **Rejected** — admin has declined (with feedback)
 
-            ### Camp Leads
+            ### Barrio Leads
 
-            The human who registers a camp becomes the **Camp Lead**. Camp leads can:
+            The human who registers a barrio becomes the **Barrio Lead**. Barrio leads can:
 
-            - Edit their camp details
-            - Manage camp members and roles
-            - Update camp status and requirements
+            - Edit their barrio details
+            - Manage barrio members and roles
+            - Update barrio status and requirements
 
             ### What Happens Automatically
 
-            - Camp admins are notified when new camps are submitted for review
-            - Camp leads are notified when their camp is approved or rejected
+            - Barrio admins are notified when new barrios are submitted for review
+            - Barrio leads are notified when their barrio is approved or rejected
             """,
 
         ["Governance"] = """
@@ -260,135 +260,135 @@ public static class SectionHelpContent
     private static readonly Dictionary<string, string> Glossaries = new(StringComparer.Ordinal)
     {
         ["Teams"] = """
-            ## Teams Glossary
+## Teams Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Team** | A group of humans organised around a shared purpose or responsibility. |
-            | **Coordinator** | A human who manages a team — can add/remove members and assign roles. |
-            | **TeamsAdmin** | A system role that can create/delete teams and manage all team settings. |
-            | **Google Group** | An email distribution list linked to a team. Membership syncs automatically. |
-            | **Shared Drive** | A Google Drive folder linked to a team. Access syncs automatically. |
-            | **Roster** | A flat list of all active humans across all teams. |
-            | **System Team Sync** | The hourly background job that syncs team memberships to Google resources. |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Team** | A group of humans organised around a shared purpose or responsibility. |
+| **Coordinator** | A human who manages a team — can add/remove members and assign roles. |
+| **TeamsAdmin** | A system role that can create/delete teams and manage all team settings. |
+| **Google Group** | An email distribution list linked to a team. Membership syncs automatically. |
+| **Shared Drive** | A Google Drive folder linked to a team. Access syncs automatically. |
+| **Roster** | A flat list of all active humans across all teams. |
+| **System Team Sync** | The hourly background job that syncs team memberships to Google resources. |
+""",
 
         ["Profile"] = """
-            ## Profile Glossary
+## Profile Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Display Name** | The name shown to other humans across the system. |
-            | **Birthday** | Month and day only (no year). Used for birthday celebrations. |
-            | **Contact Field** | A piece of contact information (phone, email, social media link) with visibility controls. |
-            | **Visibility** | Controls who can see a contact field: all humans, team members, coordinators, or Board only. |
-            | **Active Human** | A human who has completed their profile and signed all required consent documents. |
-            | **Consent** | Legal document agreement required for data processing (GDPR compliance). |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Display Name** | The name shown to other humans across the system. |
+| **Birthday** | Month and day only (no year). Used for birthday celebrations. |
+| **Contact Field** | A piece of contact information (phone, email, social media link) with visibility controls. |
+| **Visibility** | Controls who can see a contact field: all humans, team members, coordinators, or Board only. |
+| **Active Human** | A human who has completed their profile and signed all required consent documents. |
+| **Consent** | Legal document agreement required for data processing (GDPR compliance). |
+""",
 
         ["Admin"] = """
-            ## Admin Glossary
+## Admin Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Role Assignment** | A time-bound assignment of a governance or system role to a human. |
-            | **Sync Settings** | Per-service controls for Google sync: None, Add Only, or Add and Remove. |
-            | **Reconciliation** | Daily job that compares expected vs actual Google permissions and reports drift. |
-            | **Drift** | A discrepancy between what the system expects and what Google actually has. |
-            | **Legal Document** | A consent document (e.g., privacy policy) that humans must agree to. |
-            | **Document Version** | A specific revision of a legal document. New versions require re-consent. |
-            | **Audit Log** | An append-only record of significant system actions for accountability. |
-            | **Hangfire** | The background job processing system used for scheduled and recurring tasks. |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Role Assignment** | A time-bound assignment of a governance or system role to a human. |
+| **Sync Settings** | Per-service controls for Google sync: None, Add Only, or Add and Remove. |
+| **Reconciliation** | Daily job that compares expected vs actual Google permissions and reports drift. |
+| **Drift** | A discrepancy between what the system expects and what Google actually has. |
+| **Legal Document** | A consent document (e.g., privacy policy) that humans must agree to. |
+| **Document Version** | A specific revision of a legal document. New versions require re-consent. |
+| **Audit Log** | An append-only record of significant system actions for accountability. |
+| **Hangfire** | The background job processing system used for scheduled and recurring tasks. |
+""",
 
         ["Shifts"] = """
-            ## Shifts Glossary
+## Shifts Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Shift** | A time slot that needs to be staffed during an event. |
-            | **Rota** | A recurring pattern of shifts for a department or area. |
-            | **Signup** | A human's request to work a specific shift. May require approval. |
-            | **Voluntell** | When a coordinator directly assigns a human to a shift (no signup needed). |
-            | **Set-up (Build)** | The event phase before the event — building and preparing. |
-            | **Event** | The main event phase. |
-            | **Strike** | The post-event phase — teardown and cleanup. |
-            | **Staffing Dashboard** | An overview of shift coverage for coordinators and admins. |
-            | **NoInfoAdmin** | A shift admin role with access to shift management and the staffing dashboard. |
-            | **VolunteerCoordinator** | A role that manages volunteer assignments and shift staffing across departments. |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Shift** | A time slot that needs to be staffed during an event. |
+| **Rota** | A recurring pattern of shifts for a department or area. |
+| **Signup** | A human's request to work a specific shift. May require approval. |
+| **Voluntell** | When a coordinator directly assigns a human to a shift (no signup needed). |
+| **Set-up (Build)** | The event phase before the event — building and preparing. |
+| **Event** | The main event phase. |
+| **Strike** | The post-event phase — teardown and cleanup. |
+| **Staffing Dashboard** | An overview of shift coverage for coordinators and admins. |
+| **NoInfoAdmin** | A shift admin role with access to shift management and the staffing dashboard. |
+| **VolunteerCoordinator** | A role that manages volunteer assignments and shift staffing across departments. |
+""",
 
         ["Camps"] = """
-            ## Camps Glossary
+## Barrios Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Camp** | A themed village or space at an event. |
-            | **Camp Lead** | The human who registered the camp and manages it. |
-            | **CampAdmin** | A system role that can approve, reject, and manage all camps. |
-            | **Draft** | A camp registration that is still being prepared. |
-            | **Submitted** | A camp registration awaiting admin review. |
-            | **Approved** | A camp that has been confirmed for the event. |
-            | **Rejected** | A camp that has been declined by an admin. |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Barrio** | A themed village or space at an event. |
+| **Barrio Lead** | The human who registered the barrio and manages it. |
+| **CampAdmin** | A system role that can approve, reject, and manage all barrios. |
+| **Draft** | A barrio registration that is still being prepared. |
+| **Submitted** | A barrio registration awaiting admin review. |
+| **Approved** | A barrio that has been confirmed for the event. |
+| **Rejected** | A barrio that has been declined by an admin. |
+""",
 
         ["Governance"] = """
-            ## Governance Glossary
+## Governance Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Volunteer** | The standard membership tier. ~100% of humans. Auto-approved after onboarding. |
-            | **Colaborador** | Active contributor tier with project/event responsibilities. 2-year term. Requires Board vote. |
-            | **Asociado** | Voting member tier with governance rights (assemblies, elections). 2-year term. Requires Board vote. |
-            | **Estatutos** | The bylaws of Nobodies Collective, defining governance structure and membership tiers. |
-            | **Board** | The governing body that votes on tier applications and manages the collective. |
-            | **Application** | A formal request to move to a higher membership tier (Colaborador or Asociado). |
-            | **Board Vote** | The Board's decision on a tier application — approve or reject. |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Volunteer** | The standard membership tier. ~100% of humans. Auto-approved after onboarding. |
+| **Colaborador** | Active contributor tier with project/event responsibilities. 2-year term. Requires Board vote. |
+| **Asociado** | Voting member tier with governance rights (assemblies, elections). 2-year term. Requires Board vote. |
+| **Estatutos** | The bylaws of Nobodies Collective, defining governance structure and membership tiers. |
+| **Board** | The governing body that votes on tier applications and manages the collective. |
+| **Application** | A formal request to move to a higher membership tier (Colaborador or Asociado). |
+| **Board Vote** | The Board's decision on a tier application — approve or reject. |
+""",
 
         ["OnboardingReview"] = """
-            ## Onboarding Review Glossary
+## Onboarding Review Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Onboarding** | The process a new human goes through: signup, profile, consent, review, activation. |
-            | **Consent Coordinator** | A role that reviews consent documents submitted by new humans. |
-            | **Clear** | Approving a new human's consent review, making them eligible for activation. |
-            | **Flag** | Marking a signup for additional review or follow-up. |
-            | **Active** | A human who has passed onboarding review and is a full participant. |
-            | **Volunteers Team** | The default team all active humans are added to automatically. |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Onboarding** | The process a new human goes through: signup, profile, consent, review, activation. |
+| **Consent Coordinator** | A role that reviews consent documents submitted by new humans. |
+| **Clear** | Approving a new human's consent review, making them eligible for activation. |
+| **Flag** | Marking a signup for additional review or follow-up. |
+| **Active** | A human who has passed onboarding review and is a full participant. |
+| **Volunteers Team** | The default team all active humans are added to automatically. |
+""",
 
         ["Board"] = """
-            ## Board Dashboard Glossary
+## Board Dashboard Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Board** | The governing body of Nobodies Collective. |
-            | **Audit Log** | An append-only record of significant system actions for accountability and compliance. |
-            | **Data Export** | A GDPR-compliant export of a specific human's data. |
-            | **GDPR** | General Data Protection Regulation — EU data protection law that governs how member data is handled. |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Board** | The governing body of Nobodies Collective. |
+| **Audit Log** | An append-only record of significant system actions for accountability and compliance. |
+| **Data Export** | A GDPR-compliant export of a specific human's data. |
+| **GDPR** | General Data Protection Regulation — EU data protection law that governs how member data is handled. |
+""",
 
         ["Tickets"] = """
-            ## Tickets Glossary
+## Tickets Glossary
 
-            | Term | Definition |
-            |------|-----------|
-            | **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
-            | **Ticket Vendor** | The external service that handles ticket sales (e.g., Pretix). |
-            | **Order** | A ticket purchase from the vendor, linked to a human where possible. |
-            | **Sync** | The process of pulling ticket data from the vendor into the system. |
-            | **Discount Code** | A promotional code that provides a discount on ticket purchases. |
-            | **TicketAdmin** | A role with access to ticket management, sync operations, and discount codes. |
-            """,
+| Term | Definition |
+|------|-----------|
+| **Human** | A member of Nobodies Collective. We say "humans", not "members" or "volunteers". |
+| **Ticket Vendor** | The external service that handles ticket sales (e.g., Pretix). |
+| **Order** | A ticket purchase from the vendor, linked to a human where possible. |
+| **Sync** | The process of pulling ticket data from the vendor into the system. |
+| **Discount Code** | A promotional code that provides a discount on ticket purchases. |
+| **TicketAdmin** | A role with access to ticket management, sync operations, and discount codes. |
+""",
     };
 }
