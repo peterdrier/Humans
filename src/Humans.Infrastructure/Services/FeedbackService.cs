@@ -238,10 +238,20 @@ public class FeedbackService : IFeedbackService
             actorName = actor?.DisplayName ?? actorUserId.Value.ToString();
         }
 
-        await _auditLogService.LogAsync(
-            AuditAction.FeedbackResponseSent, nameof(FeedbackReport), id,
-            $"Response sent to {user.DisplayName} for feedback {id}",
-            actorUserId ?? Guid.Empty, actorName);
+        if (actorUserId.HasValue)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.FeedbackResponseSent, nameof(FeedbackReport), id,
+                $"Response sent to {user.DisplayName} for feedback {id}",
+                actorUserId.Value, actorName);
+        }
+        else
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.FeedbackResponseSent, nameof(FeedbackReport), id,
+                $"Response sent to {user.DisplayName} for feedback {id}",
+                actorName);
+        }
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Feedback response sent for {ReportId} by {ActorId}", id, actorUserId);

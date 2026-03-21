@@ -8,25 +8,6 @@ You are working on a ~50k-line ASP.NET Core 10 Clean Architecture codebase (memb
 
 ---
 
-## Git Workflow
-
-**Before making any changes**, create and check out a feature branch:
-
-```bash
-git checkout -b tech-debt/consolidation
-```
-
-Commit after each coherent, self-contained improvement with a descriptive message. Keep commits atomic — one logical change per commit so the branch can be reviewed and individual changes cherry-picked or reverted if needed.
-
-Example commit messages:
-- `refactor: extract HumansControllerBase with shared user resolution`
-- `refactor: consolidate caching to GetOrCreateAsync pattern`
-- `refactor: split TeamService into TeamService + TeamRoleService`
-
-Do **not** push. Do **not** merge. Just commit locally to the branch.
-
----
-
 ## Architecture (4 layers)
 
 ```
@@ -85,34 +66,17 @@ Also do not modify:
 
 ---
 
-## TECH DEBT CATEGORIES — What to Look For and Fix
+## Build Command
 
-Work through these categories in priority order. Within each category, pick the highest-impact opportunity, fix it, run `dotnet build Humans.slnx` to verify, and move on.
+```
+dotnet build Humans.slnx && dotnet test Humans.slnx --filter "FullyQualifiedName~Application"
+```
 
-### Replay Checklist for This Refactor Wave (for QA re-alignment)
+---
 
-- [ ] Controller ownership now routes through shared auth/user helpers (`GetCurrentUserAsync`, `ResolveCurrentUserOrUnauthorizedAsync`, `FindUserByIdAsync`) and avoids raw `UserManager` lookups in each action.
-- [ ] Authorization checks in controllers use `RoleChecks`, `RoleGroups`, and `RoleNames` consistently instead of scattered string literals.
-- [ ] TempData status messaging has a single convention: `SuccessMessage` + `ErrorMessage` via helper methods, and controllers stop mixing response-style error patterns.
-- [ ] Team and campaign access paths use shared authorization helpers (team access/capability checks) instead of duplicated in-controller logic.
-- [ ] View/partial reuse is preferred over repeated Razor markup, especially for shared badges/sections, tables, avatars, and admin wrapper forms.
-- [ ] Team/shift/admin search and filtering UIs reuse shared scripts/markup and do not carry duplicated markup or JS.
-- [ ] Email code paths consistently share body composition/rendering and transport wrappers instead of per-call boilerplate.
-- [ ] Date/time formatting and parsing use shared helper methods with explicit culture/invariant handling; no duplicated application/date display logic remains.
-- [ ] String comparison hardening is consistent (`StringComparison` on all sensitive string operations, explicit replacement/contains/equals variants).
-- [ ] Role and claim marker constants are centralized (`auth claim marker constants`, `role groups`, `role names`) and reused by controllers and views.
-- [ ] Caching and simple in-memory lookups follow a consistent helper pattern where practical, avoiding mixed ad-hoc `TryGetValue`/manual set shapes.
-- [ ] HTML escaping, anti-forgery helpers, and html-to-text helpers are used from shared extension points and not duplicated inline.
-- [ ] Team resource persistence/validation and access-rule checks are centralized and reused (including shared scripts/messages and helper methods).
-- [ ] Shift-role checks and access rules for coordinator/admin flows are standardized across controller and view layers.
-- [ ] Audit log display sections and scripts are consolidated to shared partials/components.
-- [ ] Input validation and mapping helpers for complex forms (applications, tickets, resources, team settings) are shared instead of copy-pasted.
-- [ ] Controllers that only add role-filtering/redirect behavior now inherit from `HumansControllerBase`.
-- [ ] Admin/TeamAdmin surface is pruned of unused wrapper views; shared pages are preferred where behavior is unchanged.
-- [ ] Route/access entrypoints are consistent (for example role actions through canonical controllers) and not duplicated.
-- [ ] PR/rebase conflicts from other branches are treated by replaying these categories against newly changed files, not just old ones.
+## Phase 1: Controller Pattern Consolidation
 
-### Priority 1: Extract Repeated Controller Patterns
+### Extract Repeated Controller Patterns
 
 **Problem:** 108 occurrences across 19 controllers of this exact pattern:
 ```csharp
@@ -144,7 +108,7 @@ if (!canManage) return Forbid();
 ```
 Extract to a shared helper method on the base class or a team-specific base class.
 
-### Priority 2: Consolidate Error Handling Patterns
+### Consolidate Error Handling Patterns
 
 **Problem:** Three different patterns used across controllers:
 
@@ -159,7 +123,20 @@ protected void SetError(string message) => TempData["ErrorMessage"] = message;
 ```
 These can go in `HumansControllerBase`. Then consolidate existing usages.
 
-### Priority 3: Consolidate Caching Patterns
+### Consolidate Authorization Patterns
+
+**Problem:** Three authorization mechanisms used inconsistently:
+1. `[Authorize(Roles = "Admin")]` attributes (best for static checks)
+2. `User.IsInRole()` manual checks inside action methods
+3. `await _teamService.IsUserBoardMemberAsync(user.Id)` service calls
+
+**Fix:** Use `[Authorize(Roles = "...")]` for controller/action-level gates. Use policy-based authorization for complex checks (team membership, management rights). Reduce manual `IsInRole` checks in method bodies where an attribute would suffice.
+
+---
+
+## Phase 2: Service & Caching Consolidation
+
+### Consolidate Caching Patterns
 
 **Problem:** 16 files use `IMemoryCache` with three different patterns:
 1. `GetOrCreateAsync` (best)
@@ -170,16 +147,7 @@ These can go in `HumansControllerBase`. Then consolidate existing usages.
 
 **Also:** Cache invalidation is scattered. Consider a `CacheKeys` static class with all cache key templates and a helper for invalidation, so it's harder to forget to invalidate.
 
-### Priority 4: Consolidate Authorization Patterns
-
-**Problem:** Three authorization mechanisms used inconsistently:
-1. `[Authorize(Roles = "Admin")]` attributes (best for static checks)
-2. `User.IsInRole()` manual checks inside action methods
-3. `await _teamService.IsUserBoardMemberAsync(user.Id)` service calls
-
-**Fix:** Use `[Authorize(Roles = "...")]` for controller/action-level gates. Use policy-based authorization for complex checks (team membership, management rights). Reduce manual `IsInRole` checks in method bodies where an attribute would suffice.
-
-### Priority 5: Break Up God Classes
+### Break Up God Classes
 
 **TeamService.cs (1,639 lines, 40+ methods)** handles:
 - Team CRUD
@@ -202,13 +170,26 @@ These can go in `HumansControllerBase`. Then consolidate existing usages.
 
 **Fix:** Extract `TeamRoleAdminController` for role definition and role assignment endpoints.
 
-### Priority 6: Standardize Email Rendering
+### Move Business Logic Out of Controllers
+
+**Problem:** Several controllers do LINQ transformations, ViewModel construction from raw entities, and business decisions that belong in services:
+- `TeamController` lines 70-101: LINQ transforms to build team list
+- `ProfileController`: inline mapping from entities to ViewModels
+- `CampController`: complex query composition
+
+**Fix:** For each controller, if it does more than "call service → map to ViewModel → return View", extract the logic to the appropriate service and return a DTO/ViewModel-ready result.
+
+---
+
+## Phase 3: View & Email Consolidation
+
+### Standardize Email Rendering
 
 **Problem:** `EmailRenderer` (401 lines) has repetitive render methods — `RenderApplicationSubmitted`, `RenderApplicationApproved`, `RenderApplicationRejected` etc. all follow the same structure: build model → pick template → render.
 
 **Fix:** If there's a clear template pattern, extract a generic `RenderEmailAsync<TModel>(string templateName, TModel model)` method and reduce the boilerplate per email type.
 
-### Priority 7: Consolidate View Patterns
+### Consolidate View Patterns
 
 **Problem:**
 - List/table views repeat the same pattern (loop, render row, sort links) without a shared partial
@@ -219,7 +200,11 @@ These can go in `HumansControllerBase`. Then consolidate existing usages.
 - Find inline avatar `<img>` tags and replace with `@await Component.InvokeAsync("UserAvatar", ...)` calls
 - Consolidate badge rendering where feasible
 
-### Priority 8: Standardize Background Job Patterns
+---
+
+## Phase 4: Code Quality Sweep
+
+### Standardize Background Job Patterns
 
 **Problem:** 14 jobs with:
 - No shared base class or interface
@@ -235,34 +220,9 @@ public interface IRecurringJob
 ```
 Rename all job entry points to `ExecuteAsync`. Add consistent structured logging at job start/end.
 
-### Priority 9: Move Business Logic Out of Controllers
+### General Code Quality
 
-**Problem:** Several controllers do LINQ transformations, ViewModel construction from raw entities, and business decisions that belong in services:
-- `TeamController` lines 70-101: LINQ transforms to build team list
-- `ProfileController`: inline mapping from entities to ViewModels
-- `CampController`: complex query composition
-
-**Fix:** For each controller, if it does more than "call service → map to ViewModel → return View", extract the logic to the appropriate service and return a DTO/ViewModel-ready result.
-
----
-
-## ITERATION LOOP
-
-For each iteration:
-
-1. **Scan**: Pick the highest-priority unfixed category above. Within that category, find the specific file(s) to change.
-
-2. **Plan**: Decide the minimal change. Don't refactor everything at once — make one coherent, self-contained improvement.
-
-3. **Implement**: Make the change. Follow the coding rules above.
-
-4. **Verify**: Run `dotnet build Humans.slnx`. If it fails, fix the build errors before moving on. If you introduced a new file, make sure it's properly referenced.
-
-5. **Test**: Run `dotnet test Humans.slnx`. If tests fail, fix them or revert.
-
-6. **Next**: Move to the next opportunity. Don't stop to report.
-
-**If you finish all categories**, look for:
+Look for and fix:
 - Methods longer than 60 lines that can be decomposed
 - Classes with more than 15 public methods that can be split
 - Copy-pasted LINQ queries that appear in 2+ places
@@ -270,6 +230,26 @@ For each iteration:
 - `string` parameters that should be `enum` or constants
 - Missing `ConfigureAwait(false)` consistency (pick one convention and apply it)
 - Nullable reference type warnings that can be resolved
+
+---
+
+## Phase 5: Test Coverage
+
+Write tests for any new services, helpers, or base classes extracted in earlier phases. Focus on:
+- Unit tests for extracted base class methods (HumansControllerBase helpers)
+- Unit tests for extracted services (TeamRoleService, etc.)
+- Integration tests for cache invalidation patterns
+
+Use the existing test project at `tests/Humans.Application.Tests/`.
+
+---
+
+## Phase 6: Documentation Review
+
+Review and update feature docs in `docs/features/` that were affected by refactoring. Focus on:
+- Any BRDs that reference moved or renamed services/controllers
+- Authorization rule changes documented in feature specs
+- Updated file paths in architectural references
 
 ---
 
@@ -287,23 +267,25 @@ Before every change, verify:
 
 ---
 
-## WHAT SUCCESS LOOKS LIKE
+### Replay Checklist for This Refactor Wave (for QA re-alignment)
 
-After your session, the codebase should have:
-- Fewer ways to do the same thing (auth, caching, error handling, user resolution)
-- Shared base classes or helpers where patterns were repeated 5+ times
-- Smaller files (especially TeamService, TeamAdminController)
-- More consistent naming and structure
-- **Zero** changes to the EF/database layer
-- A green build and all tests passing
-
----
-
-## BUILD & TEST COMMANDS
-
-```bash
-dotnet build Humans.slnx        # Must pass after every change
-dotnet test Humans.slnx         # Must pass after every change
-```
-
-The solution file is `Humans.slnx` (not `.sln`) in the repo root.
+- [ ] Controller ownership now routes through shared auth/user helpers (`GetCurrentUserAsync`, `ResolveCurrentUserOrUnauthorizedAsync`, `FindUserByIdAsync`) and avoids raw `UserManager` lookups in each action.
+- [ ] Authorization checks in controllers use `RoleChecks`, `RoleGroups`, and `RoleNames` consistently instead of scattered string literals.
+- [ ] TempData status messaging has a single convention: `SuccessMessage` + `ErrorMessage` via helper methods, and controllers stop mixing response-style error patterns.
+- [ ] Team and campaign access paths use shared authorization helpers (team access/capability checks) instead of duplicated in-controller logic.
+- [ ] View/partial reuse is preferred over repeated Razor markup, especially for shared badges/sections, tables, avatars, and admin wrapper forms.
+- [ ] Team/shift/admin search and filtering UIs reuse shared scripts/markup and do not carry duplicated markup or JS.
+- [ ] Email code paths consistently share body composition/rendering and transport wrappers instead of per-call boilerplate.
+- [ ] Date/time formatting and parsing use shared helper methods with explicit culture/invariant handling; no duplicated application/date display logic remains.
+- [ ] String comparison hardening is consistent (`StringComparison` on all sensitive string operations, explicit replacement/contains/equals variants).
+- [ ] Role and claim marker constants are centralized (`auth claim marker constants`, `role groups`, `role names`) and reused by controllers and views.
+- [ ] Caching and simple in-memory lookups follow a consistent helper pattern where practical, avoiding mixed ad-hoc `TryGetValue`/manual set shapes.
+- [ ] HTML escaping, anti-forgery helpers, and html-to-text helpers are used from shared extension points and not duplicated inline.
+- [ ] Team resource persistence/validation and access-rule checks are centralized and reused (including shared scripts/messages and helper methods).
+- [ ] Shift-role checks and access rules for coordinator/admin flows are standardized across controller and view layers.
+- [ ] Audit log display sections and scripts are consolidated to shared partials/components.
+- [ ] Input validation and mapping helpers for complex forms (applications, tickets, resources, team settings) are shared instead of copy-pasted.
+- [ ] Controllers that only add role-filtering/redirect behavior now inherit from `HumansControllerBase`.
+- [ ] Admin/TeamAdmin surface is pruned of unused wrapper views; shared pages are preferred where behavior is unchanged.
+- [ ] Route/access entrypoints are consistent (for example role actions through canonical controllers) and not duplicated.
+- [ ] PR/rebase conflicts from other branches are treated by replaying these categories against newly changed files, not just old ones.
