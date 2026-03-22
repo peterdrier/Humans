@@ -1095,6 +1095,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 ResourceType = primary.ResourceType.ToString(),
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
+                PermissionLevel = primary.DrivePermissionLevel.ToString(),
                 LinkedTeams = linkedTeams,
                 Members = members
             };
@@ -1116,6 +1117,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 ResourceType = primary.ResourceType.ToString(),
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
+                PermissionLevel = primary.DrivePermissionLevel.ToString(),
                 LinkedTeams = resources.Select(r => r.Team.Name).Distinct(StringComparer.Ordinal).ToList(),
                 ErrorMessage = ex.Message
             };

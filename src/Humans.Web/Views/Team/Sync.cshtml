@@ -209,6 +209,9 @@
         html += '<i class="fa-solid fa-chevron-right collapse-icon"></i>';
         html += '</button>';
         html += '<span>' + nameHtml + '</span> ' + statusBadge;
+        if (diff.permissionLevel) {
+            html += ' <span class="badge bg-light text-dark border">' + escapeHtml(diff.permissionLevel) + '</span>';
+        }
         html += '</div>';
         html += '<div class="d-flex align-items-center gap-2">';
         html += '<small class="text-muted">' + teamsHtml + '</small>';
