@@ -299,7 +299,9 @@ public class TeamAdminController : HumansTeamControllerBase
                 ProvisionedAt = r.ProvisionedAt.ToDateTimeUtc(),
                 LastSyncedAt = r.LastSyncedAt?.ToDateTimeUtc(),
                 IsActive = r.IsActive,
-                ErrorMessage = r.ErrorMessage
+                ErrorMessage = r.ErrorMessage,
+                DrivePermissionLevel = r.DrivePermissionLevel,
+                IsDriveResource = r.ResourceType is GoogleResourceType.DriveFolder or GoogleResourceType.DriveFile or GoogleResourceType.SharedDrive
             }).ToList()
         };
 
@@ -333,7 +335,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Resources), new { slug });
         }
 
-        var result = await _teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl);
+        var result = await _teamResourceService.LinkDriveResourceAsync(team.Id, model.ResourceUrl, model.PermissionLevel);
 
         if (result.Success)
         {

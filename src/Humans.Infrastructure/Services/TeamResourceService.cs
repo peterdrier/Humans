@@ -58,7 +58,7 @@ public partial class TeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public async Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, CancellationToken ct = default)
+    public async Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
         var folderId = ParseDriveFolderId(folderUrl);
         if (folderId == null)
@@ -126,15 +126,21 @@ public partial class TeamResourceService : ITeamResourceService
                     Url = file.WebViewLink,
                     ProvisionedAt = now,
                     LastSyncedAt = now,
-                    IsActive = true
+                    IsActive = true,
+                    DrivePermissionLevel = permissionLevel
                 };
                 _dbContext.GoogleResources.Add(resource);
             }
 
+            if (inactive != null)
+            {
+                inactive.DrivePermissionLevel = permissionLevel;
+            }
+
             await _dbContext.SaveChangesAsync(ct);
 
-            _logger.LogInformation("Linked Drive folder {FolderId} ({FolderName}) to team {TeamId}",
-                file.Id, file.Name, teamId);
+            _logger.LogInformation("Linked Drive folder {FolderId} ({FolderName}) to team {TeamId} with permission {Permission}",
+                file.Id, file.Name, teamId, permissionLevel);
 
             return new LinkResourceResult(true, Resource: resource);
         }
@@ -156,7 +162,7 @@ public partial class TeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public async Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, CancellationToken ct = default)
+    public async Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
         var fileId = ParseDriveFileId(fileUrl);
         if (fileId == null)
@@ -224,15 +230,21 @@ public partial class TeamResourceService : ITeamResourceService
                     Url = file.WebViewLink,
                     ProvisionedAt = now,
                     LastSyncedAt = now,
-                    IsActive = true
+                    IsActive = true,
+                    DrivePermissionLevel = permissionLevel
                 };
                 _dbContext.GoogleResources.Add(resource);
             }
 
+            if (inactive != null)
+            {
+                inactive.DrivePermissionLevel = permissionLevel;
+            }
+
             await _dbContext.SaveChangesAsync(ct);
 
-            _logger.LogInformation("Linked Drive file {FileId} ({FileName}) to team {TeamId}",
-                file.Id, file.Name, teamId);
+            _logger.LogInformation("Linked Drive file {FileId} ({FileName}) to team {TeamId} with permission {Permission}",
+                file.Id, file.Name, teamId, permissionLevel);
 
             return new LinkResourceResult(true, Resource: resource);
         }
@@ -254,11 +266,12 @@ public partial class TeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public async Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default)
+    public async Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
         return await TeamResourceInputValidation.LinkDriveResourceAsync(
             teamId,
             url,
+            permissionLevel,
             ct,
             LinkDriveFolderAsync,
             LinkDriveFileAsync);

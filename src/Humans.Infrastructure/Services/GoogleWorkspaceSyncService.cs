@@ -443,10 +443,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         var drive = await GetDriveServiceAsync();
+        var apiRole = resource.DrivePermissionLevel.ToApiRole();
         var permission = new Google.Apis.Drive.v3.Data.Permission
         {
             Type = "user",
-            Role = "writer",
+            Role = apiRole,
             EmailAddress = userEmail
         };
 
@@ -458,9 +459,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             await _auditLogService.LogGoogleSyncAsync(
                 AuditAction.GoogleResourceAccessGranted, resource.Id,
-                $"Granted Drive access to {userEmail} ({resource.Name})",
+                $"Granted Drive access ({resource.DrivePermissionLevel}) to {userEmail} ({resource.Name})",
                 nameof(GoogleWorkspaceSyncService),
-                userEmail, "writer", GoogleSyncSource.ManualSync, success: true);
+                userEmail, apiRole, GoogleSyncSource.ManualSync, success: true);
 
             _logger.LogInformation("Granted Drive access to {Email} on {GoogleId}", userEmail, resource.GoogleId);
         }
@@ -497,7 +498,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             AuditAction.GoogleResourceAccessRevoked, resource.Id,
             $"Removed Drive access for {userEmail} ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
-            userEmail, "writer", GoogleSyncSource.ManualSync, success: true);
+            userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: true);
 
         _logger.LogInformation("Removed Drive access for {Email} on {GoogleId}", userEmail, resource.GoogleId);
     }
