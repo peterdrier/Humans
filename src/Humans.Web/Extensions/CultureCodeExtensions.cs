@@ -29,24 +29,27 @@ public static class CultureCodeExtensions
                CultureCatalog.SupportedCultureCodes.Contains(cultureCode, StringComparer.Ordinal);
     }
 
-    private static readonly IReadOnlyDictionary<string, string> FlagEmojis =
+    private static readonly IReadOnlyDictionary<string, string> FlagCountryCodes =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["en"] = "\U0001F1EC\U0001F1E7",
-            ["es"] = "\U0001F1EA\U0001F1F8",
-            ["de"] = "\U0001F1E9\U0001F1EA",
-            ["fr"] = "\U0001F1EB\U0001F1F7",
-            ["it"] = "\U0001F1EE\U0001F1F9",
-            ["pt"] = "\U0001F1F5\U0001F1F9",
-            ["ca"] = "\U0001F1EA\U0001F1F8",
+            ["en"] = "gb",
+            ["es"] = "es",
+            ["de"] = "de",
+            ["fr"] = "fr",
+            ["it"] = "it",
+            ["pt"] = "pt",
+            ["ca"] = "es-ct",
         };
 
-    public static string? ToFlagEmoji(this string? cultureCode)
+    /// <summary>
+    /// Returns the flag-icons CSS class for the culture (e.g. "fi fi-gb").
+    /// </summary>
+    public static string? ToFlagClass(this string? cultureCode)
     {
         if (string.IsNullOrWhiteSpace(cultureCode))
             return null;
 
-        return FlagEmojis.TryGetValue(cultureCode, out var flag) ? flag : null;
+        return FlagCountryCodes.TryGetValue(cultureCode, out var code) ? $"fi fi-{code}" : null;
     }
 
     public static string ToDisplayLanguageName(this string? cultureCode)
