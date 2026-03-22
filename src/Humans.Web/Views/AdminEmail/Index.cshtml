@@ -1,0 +1,132 @@
+@model Humans.Web.Models.WorkspaceEmailListViewModel
+@{
+    ViewData["Title"] = "@nobodies.team Accounts";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@@nobodies.team Accounts</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts</h1>
+</div>
+
+<vc:temp-data-alerts />
+
+@* Stats cards *@
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0">@Model.TotalAccounts</h3>
+                <small class="text-muted">Total Accounts</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-success">@Model.ActiveAccounts</h3>
+                <small class="text-muted">Active</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-danger">@Model.SuspendedAccounts</h3>
+                <small class="text-muted">Suspended</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h3 class="mb-0 text-warning">@Model.NotPrimaryCount</h3>
+                <small class="text-muted">Not Using as Primary</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Accounts list *@
+<div class="card">
+    <div class="card-header">
+        <i class="fa-solid fa-users me-1"></i>All Accounts
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Accounts.Count == 0)
+        {
+            <p class="text-muted text-center py-4 mb-0">No @@nobodies.team accounts found.</p>
+        }
+        else
+        {
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Linked Human</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Last Login</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var account in Model.Accounts)
+                    {
+                        <tr class="@(account.IsSuspended ? "table-secondary" : "")">
+                            <td>
+                                <code>@account.PrimaryEmail</code>
+                                @if (account.MatchedUserId.HasValue && !account.IsUsedAsPrimary)
+                                {
+                                    <span class="badge bg-warning ms-1" title="Account linked but not used as primary notification email"
+                                          data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-triangle-exclamation"></i> Not primary
+                                    </span>
+                                }
+                            </td>
+                            <td>@account.FirstName @account.LastName</td>
+                            <td>
+                                @if (account.MatchedUserId.HasValue)
+                                {
+                                    <a asp-controller="Human" asp-action="View" asp-route-id="@account.MatchedUserId">
+                                        @account.MatchedDisplayName
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Not linked</span>
+                                }
+                            </td>
+                            <td>
+                                @if (account.IsSuspended)
+                                {
+                                    <span class="badge bg-danger">Suspended</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">Active</span>
+                                }
+                            </td>
+                            <td>@account.CreationTime.ToDisplayDate()</td>
+                            <td>
+                                @if (account.LastLoginTime.HasValue)
+                                {
+                                    @account.LastLoginTime.Value.ToDisplayDate()
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Never</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

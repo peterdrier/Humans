@@ -42,6 +42,8 @@ public static class InfrastructureServiceCollectionExtensions
             services.AddScoped<IGoogleSyncService, GoogleWorkspaceSyncService>();
             services.AddScoped<ITeamResourceService, TeamResourceService>();
             services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>();
+
+            services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
         }
         else if (environment.IsProduction())
         {
@@ -54,6 +56,7 @@ public static class InfrastructureServiceCollectionExtensions
             services.AddScoped<IGoogleSyncService, StubGoogleSyncService>();
             services.AddScoped<ITeamResourceService, StubTeamResourceService>();
             services.AddScoped<IDriveActivityMonitorService, StubDriveActivityMonitorService>();
+            services.AddScoped<IGoogleWorkspaceUserService, StubGoogleWorkspaceUserService>();
         }
 
         var hasSmtpConfig = !string.IsNullOrEmpty(configuration["Email:SmtpHost"]);
