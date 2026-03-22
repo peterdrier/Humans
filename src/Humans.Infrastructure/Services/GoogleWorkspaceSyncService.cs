@@ -1328,6 +1328,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             var groupssettingsService = await GetGroupssettingsServiceAsync();
             var request = groupssettingsService.Groups.Get(groupEmail);
+            request.Alt = Google.Apis.Groupssettings.v1.GroupssettingsBaseServiceRequest<Google.Apis.Groupssettings.v1.Data.Groups>.AltEnum.Json;
             var actual = await request.ExecuteAsync(cancellationToken);
 
             var drifts = new List<GroupSettingDrift>();
