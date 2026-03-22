@@ -11,8 +11,8 @@ namespace Humans.Infrastructure.Services;
 
 /// <summary>
 /// Manages @nobodies.team user accounts via Google Workspace Admin SDK (Directory API).
-/// Requires domain-wide delegation on the service account with the Admin SDK scope,
-/// and an AdminEmail configured to impersonate.
+/// The service account authenticates as itself (no delegation or impersonation)
+/// and must be assigned the User Management Admin role in Google Workspace Admin Console.
 /// </summary>
 public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
 {
@@ -33,6 +33,19 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
         if (_directoryService != null)
             return _directoryService;
 
+        var credential = await GetCredentialAsync();
+
+        _directoryService = new DirectoryService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Humans"
+        });
+
+        return _directoryService;
+    }
+
+    private async Task<GoogleCredential> GetCredentialAsync()
+    {
         GoogleCredential credential;
 
         if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
@@ -51,28 +64,10 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
         else
         {
             throw new InvalidOperationException(
-                "Google Workspace credentials not configured.");
+                "Google Workspace credentials not configured. Set ServiceAccountKeyPath or ServiceAccountKeyJson.");
         }
 
-        // Admin SDK requires domain-wide delegation — impersonate an admin user
-        if (string.IsNullOrEmpty(_settings.AdminEmail))
-        {
-            throw new InvalidOperationException(
-                "GoogleWorkspace:AdminEmail must be set for Admin SDK operations. " +
-                "This should be an admin user email for domain-wide delegation.");
-        }
-
-        credential = credential
-            .CreateScoped(DirectoryService.Scope.AdminDirectoryUser)
-            .CreateWithUser(_settings.AdminEmail);
-
-        _directoryService = new DirectoryService(new BaseClientService.Initializer
-        {
-            HttpClientInitializer = credential,
-            ApplicationName = "Humans"
-        });
-
-        return _directoryService;
+        return credential.CreateScoped(DirectoryService.Scope.AdminDirectoryUserReadonly);
     }
 
     public async Task<IReadOnlyList<WorkspaceUserAccount>> ListAccountsAsync(

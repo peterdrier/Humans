@@ -83,7 +83,7 @@ Go to **APIs & Services** > **Library** and enable:
 | API | Purpose |
 |-----|---------|
 | **Google Drive API** | Create folders, manage sharing permissions |
-| **Admin SDK API** | Manage Google Groups and group membership |
+| **Admin SDK API** | Manage Google Groups, group membership, and list user accounts |
 | **Google Drive Activity API** | Monitor permission changes on shared resources |
 
 ### 3b. Create the Service Account
@@ -97,15 +97,22 @@ Go to **APIs & Services** > **Library** and enable:
 
 The service account email will look like: `humans-sync@humans-prod.iam.gserviceaccount.com`
 
-### 3c. Assign Groups Admin Role
+### 3c. Assign Admin Roles
 
-The service account needs admin-level access to manage Google Groups:
+The service account needs admin roles to manage Google Groups and list user accounts:
 
 1. Go to [Google Workspace Admin Console](https://admin.google.com/) (not Cloud Console)
-2. **Account** > **Admin roles** > **Groups Admin**
-3. Click **Assign service accounts**
+2. **Account** > **Admin roles**
+
+**Groups Admin** (required for group management):
+3. Select **Groups Admin** > **Assign service accounts**
 4. Enter the service account email from step 3b
-5. This grants Admin SDK access for group management without impersonation
+
+**User Management Admin** (required for listing @nobodies.team accounts):
+5. Select **User Management Admin** > **Assign service accounts**
+6. Enter the same service account email
+
+Both roles grant Admin SDK access without domain-wide delegation or impersonation.
 
 ### 3d. Share Resources with the Service Account
 
@@ -139,6 +146,7 @@ The app requests these scopes automatically — no manual configuration needed:
 | `https://www.googleapis.com/auth/admin.directory.group` | GoogleWorkspaceSyncService | Create groups, manage members |
 | `https://www.googleapis.com/auth/admin.directory.group.member` | GoogleWorkspaceSyncService | Add/remove group members |
 | `https://www.googleapis.com/auth/admin.directory.group.readonly` | TeamResourceService, Health Check | Validate group access |
+| `https://www.googleapis.com/auth/admin.directory.user.readonly` | GoogleWorkspaceUserService | List @nobodies.team user accounts |
 | `https://www.googleapis.com/auth/drive.activity.readonly` | DriveActivityMonitorService | Monitor permission changes |
 
 ### API Operations Reference
@@ -159,6 +167,11 @@ The app requests these scopes automatically — no manual configuration needed:
 | Add user to group | `Members.Insert` | Service account is group Manager |
 | Remove user from group | `Members.Delete` | Service account is group Manager |
 | Sync group members | `Members.List` | Service account is group Manager |
+
+#### User Account Listing (GoogleWorkspaceUserService)
+| Operation | API Call | Required Access |
+|-----------|----------|-----------------|
+| List domain accounts | `Users.List` | User Management Admin role |
 
 #### Drive Activity Monitoring
 | Operation | API Call | Required Access |
@@ -305,6 +318,7 @@ The `.env.example` at the repo root has the Docker Compose variables. Copy to `.
 | Maps API key referrer restriction | `localhost:*`, `humans.n.burn.camp/*` | `humans.nobodies.team/*` |
 | Service account | `humans-sync@humans-dev.iam.gserviceaccount.com` | `humans-sync@humans-prod.iam.gserviceaccount.com` |
 | Service account Groups Admin role | Assign in Workspace Admin | Assign in Workspace Admin |
+| Service account User Management Admin role | Assign in Workspace Admin | Assign in Workspace Admin |
 | Shared Drive folders | Share with dev service account | Share with prod service account |
 | Google Groups | Add dev service account as Manager | Add prod service account as Manager |
 | GitHub token | Can share with dev | Separate token recommended |

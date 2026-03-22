@@ -43,16 +43,7 @@ public static class InfrastructureServiceCollectionExtensions
             services.AddScoped<ITeamResourceService, TeamResourceService>();
             services.AddScoped<IDriveActivityMonitorService, DriveActivityMonitorService>();
 
-            // Admin SDK user management — requires AdminEmail for domain-wide delegation
-            var hasAdminEmail = !string.IsNullOrEmpty(googleWorkspaceConfig["AdminEmail"]);
-            if (hasAdminEmail)
-            {
-                services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
-            }
-            else
-            {
-                services.AddScoped<IGoogleWorkspaceUserService, StubGoogleWorkspaceUserService>();
-            }
+            services.AddScoped<IGoogleWorkspaceUserService, GoogleWorkspaceUserService>();
         }
         else if (environment.IsProduction())
         {
