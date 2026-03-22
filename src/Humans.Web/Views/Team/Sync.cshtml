@@ -234,7 +234,7 @@
         } else if (diff.members && diff.members.length > 0) {
             html += '<table class="table table-sm mb-0">';
             var showPermission = diff.permissionLevel != null;
-            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th>' + (showPermission ? '<th>Permission</th>' : '') + '<th>Teams</th></tr></thead>';
+            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th>' + (showPermission ? '<th>Current Role</th>' : '') + '<th>Teams</th></tr></thead>';
             html += '<tbody>';
             for (let j = 0; j < diff.members.length; j++) {
                 const m = diff.members[j];
@@ -261,7 +261,8 @@
                 html += '<td>' + escapeHtml(nameDisplay) + '</td>';
                 html += '<td><span class="badge ' + badgeClass + '">' + stateLabel + '</span></td>';
                 if (showPermission) {
-                    html += '<td><span class="badge bg-light text-dark border">' + escapeHtml(diff.permissionLevel) + '</span></td>';
+                    var role = m.currentRole || '—';
+                    html += '<td>' + escapeHtml(role) + '</td>';
                 }
                 html += '<td>' + memberTeams + '</td>';
                 html += '</tr>';

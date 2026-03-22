@@ -1000,10 +1000,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var allEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             // Only direct managed permissions — for detecting removable extras
             var directEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // Email → current Google role (reader, writer, etc.)
+            var roleByEmail = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var perm in permissions)
             {
                 if (IsAnyUserPermission(perm))
+                {
                     allEmails.Add(perm.EmailAddress);
+                    roleByEmail[perm.EmailAddress] = perm.Role;
+                }
                 if (IsDirectManagedPermission(perm))
                     directEmails.Add(perm.EmailAddress);
             }
@@ -1016,7 +1021,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 var state = allEmails.Contains(email)
                     ? MemberSyncState.Correct
                     : MemberSyncState.Missing;
-                members.Add(new MemberSyncStatus(email, displayName, state, teamNames));
+                roleByEmail.TryGetValue(email, out var currentRole);
+                members.Add(new MemberSyncStatus(email, displayName, state, teamNames, currentRole));
             }
 
             var saEmail = await GetServiceAccountEmailAsync();
@@ -1031,7 +1037,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     var state = directEmails.Contains(email)
                         ? MemberSyncState.Extra
                         : MemberSyncState.Inherited;
-                    members.Add(new MemberSyncStatus(email, email, state, []));
+                    roleByEmail.TryGetValue(email, out var extraRole);
+                    members.Add(new MemberSyncStatus(email, email, state, [], extraRole));
                 }
             }
 

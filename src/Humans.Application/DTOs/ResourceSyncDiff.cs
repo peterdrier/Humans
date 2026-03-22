@@ -9,7 +9,8 @@ public record MemberSyncStatus(
     string Email,
     string DisplayName,
     MemberSyncState State,
-    List<string> TeamNames);
+    List<string> TeamNames,
+    string? CurrentRole = null);
 
 /// <summary>
 /// Whether a member is correctly synced, missing, or extra.
