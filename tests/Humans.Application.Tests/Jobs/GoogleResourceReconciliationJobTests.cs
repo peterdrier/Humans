@@ -5,6 +5,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces;
+using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
@@ -43,6 +44,9 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_SyncsBothResourceTypes()
     {
+        _googleSyncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(new GroupSettingsDriftResult());
+
         await _job.ExecuteAsync();
 
         await _googleSyncService.Received(1)
