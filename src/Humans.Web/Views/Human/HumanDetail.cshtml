@@ -75,8 +75,8 @@
                     <dt class="col-sm-3">@Localizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-9">@Model.MembershipTier</dd>
 
-                    <dt class="col-sm-3"><i class="fa-solid fa-language me-1"></i> Language</dt>
-                    <dd class="col-sm-9">@Model.PreferredLanguage.ToDisplayLanguageName()</dd>
+                    <dt class="col-sm-3">Language</dt>
+                    <dd class="col-sm-9">@Model.PreferredLanguage.ToFlagEmoji() @Model.PreferredLanguage.ToDisplayLanguageName()</dd>
 
                     <dt class="col-sm-3">@Localizer["AdminHuman_ConsentCheck"]</dt>
                     <dd class="col-sm-9">

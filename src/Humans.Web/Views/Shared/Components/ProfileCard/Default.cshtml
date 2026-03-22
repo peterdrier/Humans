@@ -24,11 +24,9 @@
                 {
                     <span class="text-muted me-2">@Model.Pronouns</span>
                 }
-                @if (!string.IsNullOrEmpty(Model.PreferredLanguage))
+                @if (!string.IsNullOrEmpty(Model.PreferredLanguage?.ToFlagEmoji()))
                 {
-                    <span class="badge bg-light text-dark border" title="@Model.PreferredLanguage.ToDisplayLanguageName()">
-                        <i class="fa-solid fa-language me-1"></i>@Model.PreferredLanguage.ToDisplayLanguageName()
-                    </span>
+                    <span title="@Model.PreferredLanguage.ToDisplayLanguageName()">@Model.PreferredLanguage.ToFlagEmoji()</span>
                 }
                 @if (Model.Teams.Count > 0)
                 {

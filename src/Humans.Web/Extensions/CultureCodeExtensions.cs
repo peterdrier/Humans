@@ -29,6 +29,26 @@ public static class CultureCodeExtensions
                CultureCatalog.SupportedCultureCodes.Contains(cultureCode, StringComparer.Ordinal);
     }
 
+    private static readonly IReadOnlyDictionary<string, string> FlagEmojis =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["en"] = "\U0001F1EC\U0001F1E7",
+            ["es"] = "\U0001F1EA\U0001F1F8",
+            ["de"] = "\U0001F1E9\U0001F1EA",
+            ["fr"] = "\U0001F1EB\U0001F1F7",
+            ["it"] = "\U0001F1EE\U0001F1F9",
+            ["pt"] = "\U0001F1F5\U0001F1F9",
+            ["ca"] = "\U0001F1EA\U0001F1F8",
+        };
+
+    public static string? ToFlagEmoji(this string? cultureCode)
+    {
+        if (string.IsNullOrWhiteSpace(cultureCode))
+            return null;
+
+        return FlagEmojis.TryGetValue(cultureCode, out var flag) ? flag : null;
+    }
+
     public static string ToDisplayLanguageName(this string? cultureCode)
     {
         if (string.IsNullOrWhiteSpace(cultureCode))
