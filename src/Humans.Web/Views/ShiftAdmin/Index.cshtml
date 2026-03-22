@@ -90,9 +90,13 @@
                     <span class="badge bg-secondary ms-2">@rota.Priority</span>
                     <span class="badge bg-info ms-1">@rota.Policy</span>
                     <span class="badge bg-secondary ms-1">@(rota.Period == RotaPeriod.Build ? "Set-up" : rota.Period.ToString())</span>
+                    @if (!string.IsNullOrEmpty(rota.Description))
+                    {
+                        <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rota.Description)</div>
+                    }
                     @if (!string.IsNullOrEmpty(rota.PracticalInfo))
                     {
-                        <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rota.PracticalInfo)</div>
+                        <div class="text-muted small mt-1"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rota.PracticalInfo)</div>
                     }
                 </div>
                 @if (Model.CanManageShifts)
