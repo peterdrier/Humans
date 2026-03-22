@@ -598,6 +598,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
             // Invalidate team cache — sync job runs infrequently, cache rebuilds on next access
             _cache.InvalidateActiveTeams();
+            InvalidateUserCachesForSystemTeamMembershipChanges(team.SystemTeamType, affectedUserIds);
 
             _logger.LogInformation(
                 "Synced {TeamName} team: added {AddCount}, removed {RemoveCount}",
@@ -634,6 +635,21 @@ public class SystemTeamSyncJob : ISystemTeamSync
                         user.Id, team.Id);
                 }
             }
+        }
+    }
+
+    private void InvalidateUserCachesForSystemTeamMembershipChanges(
+        SystemTeamType systemTeamType,
+        IEnumerable<Guid> userIds)
+    {
+        if (systemTeamType != SystemTeamType.Volunteers)
+        {
+            return;
+        }
+
+        foreach (var userId in userIds)
+        {
+            _cache.InvalidateRoleAssignmentClaims(userId);
         }
     }
 }

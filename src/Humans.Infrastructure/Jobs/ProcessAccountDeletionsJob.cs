@@ -76,6 +76,8 @@ public class ProcessAccountDeletionsJob
                 "Found {Count} accounts to process for deletion",
                 usersToDelete.Count);
 
+            var processedUserIds = new List<Guid>();
+
             foreach (var user in usersToDelete)
             {
                 try
@@ -85,10 +87,6 @@ public class ProcessAccountDeletionsJob
                     var originalName = user.DisplayName;
 
                     await AnonymizeUserAsync(user, now, cancellationToken);
-
-                    // Remove from caches
-                    _profileService.UpdateProfileCache(user.Id, null);
-                    _teamService.RemoveMemberFromAllTeamsCache(user.Id);
 
                     await _auditLogService.LogAsync(
                         AuditAction.AccountAnonymized, nameof(User), user.Id,
@@ -108,6 +106,8 @@ public class ProcessAccountDeletionsJob
                     _logger.LogInformation(
                         "Successfully anonymized account {UserId}",
                         user.Id);
+
+                    processedUserIds.Add(user.Id);
                 }
                 catch (Exception ex)
                 {
@@ -119,6 +119,12 @@ public class ProcessAccountDeletionsJob
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            foreach (var userId in processedUserIds)
+            {
+                _profileService.UpdateProfileCache(userId, null);
+                _teamService.RemoveMemberFromAllTeamsCache(userId);
+            }
 
             _metrics.RecordJobRun("process_account_deletions", "success");
             _logger.LogInformation(

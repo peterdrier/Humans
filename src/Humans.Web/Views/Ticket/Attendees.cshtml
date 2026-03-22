@@ -17,23 +17,23 @@
                 <option value="">All Types</option>
                 @foreach (var tt in Model.AvailableTicketTypes)
                 {
-                    <option value="@tt" selected="@(Model.FilterTicketType == tt)">@tt</option>
+                    <option value="@tt" selected="@(Model.FilterTicketType == tt ? "selected" : null)">@tt</option>
                 }
             </select>
         </div>
         <div class="col-md-2">
             <select name="filterStatus" class="form-select">
                 <option value="">All Statuses</option>
-                <option value="Valid" selected="@(Model.FilterStatus == "Valid")">Valid</option>
-                <option value="Void" selected="@(Model.FilterStatus == "Void")">Void</option>
-                <option value="CheckedIn" selected="@(Model.FilterStatus == "CheckedIn")">Checked In</option>
+                <option value="Valid" selected="@(Model.FilterStatus == "Valid" ? "selected" : null)">Valid</option>
+                <option value="Void" selected="@(Model.FilterStatus == "Void" ? "selected" : null)">Void</option>
+                <option value="CheckedIn" selected="@(Model.FilterStatus == "CheckedIn" ? "selected" : null)">Checked In</option>
             </select>
         </div>
         <div class="col-md-2">
             <select name="filterMatched" class="form-select">
                 <option value="">All</option>
-                <option value="true" selected="@(Model.FilterMatched == true)">Matched</option>
-                <option value="false" selected="@(Model.FilterMatched == false)">Unmatched</option>
+                <option value="true" selected="@(Model.FilterMatched == true ? "selected" : null)">Matched</option>
+                <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
             </select>
         </div>
         <div class="col-auto">

@@ -88,7 +88,7 @@
                     <select name="Status" class="form-select form-select-sm" style="width: auto;">
                         @foreach (var s in Enum.GetValues<FeedbackStatus>())
                         {
-                            <option value="@s" selected="@(Model.Status == s)">@s</option>
+                            <option value="@s" selected="@(Model.Status == s ? "selected" : null)">@s</option>
                         }
                     </select>
                     <button type="submit" class="btn btn-sm btn-primary">Save</button>

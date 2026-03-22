@@ -130,13 +130,15 @@ public class CampService : ICampService
 
     public async Task<Camp?> GetCampBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
+        var normalizedSlug = slug.ToLowerInvariant();
+
         return await _dbContext.Camps
             .Include(b => b.Seasons)
             .Include(b => b.Leads.Where(l => l.LeftAt == null))
                 .ThenInclude(l => l.User)
             .Include(b => b.HistoricalNames)
             .Include(b => b.Images.OrderBy(i => i.SortOrder))
-            .FirstOrDefaultAsync(b => b.Slug == slug, cancellationToken);
+            .FirstOrDefaultAsync(b => b.Slug == normalizedSlug, cancellationToken);
     }
 
     public async Task<Camp?> GetCampByIdAsync(Guid campId, CancellationToken cancellationToken = default)

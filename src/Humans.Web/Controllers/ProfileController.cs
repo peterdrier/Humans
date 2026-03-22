@@ -564,7 +564,7 @@ public class ProfileController : HumansControllerBase
             return NotFound();
 
         ContactFieldVisibility? parsedVisibility = null;
-        if (!string.IsNullOrEmpty(visibility) && Enum.TryParse<ContactFieldVisibility>(visibility, out var v))
+        if (!string.IsNullOrEmpty(visibility) && Enum.TryParse<ContactFieldVisibility>(visibility, ignoreCase: true, out var v))
         {
             parsedVisibility = v;
         }

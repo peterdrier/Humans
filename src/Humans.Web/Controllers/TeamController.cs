@@ -580,6 +580,7 @@ public class TeamController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
+            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
         }
 
@@ -612,12 +613,14 @@ public class TeamController : HumansControllerBase
         {
             _logger.LogWarning(ex, "Failed to create team with Google group prefix {GoogleGroupPrefix}", model.GoogleGroupPrefix);
             ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
+            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating team");
             ModelState.AddModelError("", _localizer["Admin_TeamCreateError"].Value);
+            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
         }
     }
@@ -663,6 +666,7 @@ public class TeamController : HumansControllerBase
 
         if (!ModelState.IsValid)
         {
+            await PopulateEligibleParentsAsync(model, id);
             return View(model);
         }
 
@@ -692,6 +696,7 @@ public class TeamController : HumansControllerBase
         {
             _logger.LogWarning(ex, "Failed to update team {TeamId}", id);
             ModelState.AddModelError("", ex.Message);
+            await PopulateEligibleParentsAsync(model, id);
             return View(model);
         }
         catch (DbUpdateException ex)
@@ -706,6 +711,7 @@ public class TeamController : HumansControllerBase
             {
                 ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
             }
+            await PopulateEligibleParentsAsync(model, id);
             return View(model);
         }
     }
@@ -762,6 +768,11 @@ public class TeamController : HumansControllerBase
             .OrderBy(t => t.Name, StringComparer.Ordinal)
             .Select(t => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(t.Name, t.Id.ToString()))
             .ToList();
+    }
+
+    private async Task PopulateEligibleParentsAsync(TeamFormViewModelBase model, Guid? excludeTeamId)
+    {
+        model.EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId, CancellationToken.None);
     }
 
 }

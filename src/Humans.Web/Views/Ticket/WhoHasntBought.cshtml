@@ -16,9 +16,9 @@
         </div>
         <div class="col-md-2">
             <select name="filterTicketStatus" class="form-select">
-                <option value="" selected="@(string.IsNullOrEmpty(Model.FilterTicketStatus))">All</option>
-                <option value="bought" selected="@(Model.FilterTicketStatus == "bought")">Has ticket</option>
-                <option value="not_bought" selected="@(Model.FilterTicketStatus == "not_bought")">No ticket</option>
+                <option value="" selected="@(string.IsNullOrEmpty(Model.FilterTicketStatus) ? "selected" : null)">All</option>
+                <option value="bought" selected="@(Model.FilterTicketStatus == "bought" ? "selected" : null)">Has ticket</option>
+                <option value="not_bought" selected="@(Model.FilterTicketStatus == "not_bought" ? "selected" : null)">No ticket</option>
             </select>
         </div>
         <div class="col-md-2">
@@ -26,16 +26,16 @@
                 <option value="">All Teams</option>
                 @foreach (var team in Model.AvailableTeams)
                 {
-                    <option value="@team" selected="@(Model.FilterTeam == team)">@team</option>
+                    <option value="@team" selected="@(Model.FilterTeam == team ? "selected" : null)">@team</option>
                 }
             </select>
         </div>
         <div class="col-md-2">
             <select name="filterTier" class="form-select">
                 <option value="">All Tiers</option>
-                <option value="Volunteer" selected="@(Model.FilterTier == "Volunteer")">Volunteer</option>
-                <option value="Colaborador" selected="@(Model.FilterTier == "Colaborador")">Colaborador</option>
-                <option value="Asociado" selected="@(Model.FilterTier == "Asociado")">Asociado</option>
+                <option value="Volunteer" selected="@(Model.FilterTier == "Volunteer" ? "selected" : null)">Volunteer</option>
+                <option value="Colaborador" selected="@(Model.FilterTier == "Colaborador" ? "selected" : null)">Colaborador</option>
+                <option value="Asociado" selected="@(Model.FilterTier == "Asociado" ? "selected" : null)">Asociado</option>
             </select>
         </div>
         <div class="col-auto">

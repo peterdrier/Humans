@@ -19,7 +19,7 @@
                 <option value="">-- Select a team --</option>
                 @foreach (var team in Model.Teams)
                 {
-                    <option value="@team.Id" selected="@(Model.SelectedTeamId == team.Id)">@team.Name</option>
+                    <option value="@team.Id" selected="@(Model.SelectedTeamId == team.Id ? "selected" : null)">@team.Name</option>
                 }
             </select>
             <button type="submit" class="btn btn-outline-primary">Preview</button>

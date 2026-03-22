@@ -71,10 +71,10 @@
                         <div class="col-md-2">
                             <label class="form-label">Period</label>
                             <select name="Period" class="form-select">
-                                <option value="YearRound" selected="@(role.Period == RolePeriod.YearRound)">Year-round</option>
-                                <option value="Build" selected="@(role.Period == RolePeriod.Build)">Set-up</option>
-                                <option value="Event" selected="@(role.Period == RolePeriod.Event)">Event</option>
-                                <option value="Strike" selected="@(role.Period == RolePeriod.Strike)">Strike</option>
+                                <option value="YearRound" selected="@(role.Period == RolePeriod.YearRound ? "selected" : null)">Year-round</option>
+                                <option value="Build" selected="@(role.Period == RolePeriod.Build ? "selected" : null)">Set-up</option>
+                                <option value="Event" selected="@(role.Period == RolePeriod.Event ? "selected" : null)">Event</option>
+                                <option value="Strike" selected="@(role.Period == RolePeriod.Strike ? "selected" : null)">Strike</option>
                             </select>
                         </div>
                         <div class="col-md-1 d-flex align-items-end">
@@ -92,7 +92,7 @@
                                     <select name="Priorities" class="form-select form-select-sm">
                                         @foreach (var opt in priorityOptions)
                                         {
-                                            <option value="@opt" selected="@(string.Equals(opt, currentPriority, StringComparison.OrdinalIgnoreCase))">
+                                            <option value="@opt" selected="@(string.Equals(opt, currentPriority, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
                                                 @(opt == "NiceToHave" ? "Nice to Have" : opt)
                                             </option>
                                         }

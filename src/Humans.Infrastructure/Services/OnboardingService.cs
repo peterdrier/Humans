@@ -526,6 +526,8 @@ public class OnboardingService : IOnboardingService
         user.LockoutEnd = DateTimeOffset.MaxValue;
 
         await _dbContext.SaveChangesAsync(ct);
+        _cache.InvalidateActiveTeams();
+        _cache.InvalidateApprovedProfiles();
 
         _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
 

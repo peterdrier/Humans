@@ -31,7 +31,7 @@
                         <option value="">All departments</option>
                         @foreach (var dept in Model.Departments)
                         {
-                            <option value="@dept.TeamId" selected="@(Model.SelectedDepartmentId == dept.TeamId)">@dept.Name</option>
+                            <option value="@dept.TeamId" selected="@(Model.SelectedDepartmentId == dept.TeamId ? "selected" : null)">@dept.Name</option>
                         }
                     </select>
                 </div>

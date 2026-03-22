@@ -81,6 +81,7 @@ public class SuspendNonCompliantMembersJob
 
             var now = _clock.GetCurrentInstant();
             var suspendedCount = 0;
+            var suspendedUserIds = new List<Guid>();
 
             foreach (var user in users)
             {
@@ -131,17 +132,20 @@ public class SuspendNonCompliantMembersJob
                     "User {UserId} ({Email}) suspended and removed from {Count} teams",
                     user.Id, effectiveEmail, user.TeamMemberships.Count);
 
-                // Remove from profile and team caches (suspended)
-                _profileService.UpdateProfileCache(user.Id, null);
-                _teamService.RemoveMemberFromAllTeamsCache(user.Id);
-
                 _metrics.RecordMemberSuspended("job");
                 suspendedCount++;
+                suspendedUserIds.Add(user.Id);
             }
 
             if (suspendedCount > 0)
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
+
+                foreach (var userId in suspendedUserIds)
+                {
+                    _profileService.UpdateProfileCache(userId, null);
+                    _teamService.RemoveMemberFromAllTeamsCache(userId);
+                }
             }
 
             _metrics.RecordJobRun("suspend_noncompliant_members", "success");

@@ -320,11 +320,11 @@
                             <div class="form-check mb-3">
                                 @if (Model.IsTierLocked)
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@isVolunteer" disabled />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@(isVolunteer ? "checked" : null)" disabled />
                                 }
                                 else
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@isVolunteer" />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@(isVolunteer ? "checked" : null)" />
                                 }
                                 <label class="form-check-label" for="tierVolunteer">
                                     <strong>Volunteer</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierVolunteerDesc"]</span>
@@ -333,11 +333,11 @@
                             <div class="form-check mb-3">
                                 @if (Model.IsTierLocked)
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@isColaborador" disabled />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@(isColaborador ? "checked" : null)" disabled />
                                 }
                                 else
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@isColaborador" />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@(isColaborador ? "checked" : null)" />
                                 }
                                 <label class="form-check-label" for="tierColaborador">
                                     <strong>Colaborador</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierColaboradorDesc"]</span>
@@ -346,11 +346,11 @@
                             <div class="form-check mb-3">
                                 @if (Model.IsTierLocked)
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@isAsociado" disabled />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@(isAsociado ? "checked" : null)" disabled />
                                 }
                                 else
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@isAsociado" />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@(isAsociado ? "checked" : null)" />
                                 }
                                 <label class="form-check-label" for="tierAsociado">
                                     <strong>Asociado</strong> <span class="text-muted">(@Localizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@Localizer["ProfileEdit_TierAsociadoDesc"]</span>

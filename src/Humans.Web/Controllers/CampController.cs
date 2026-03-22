@@ -96,6 +96,12 @@ public class CampController : HumansCampControllerBase
         TimesAtNowhere = card.TimesAtNowhere
     };
 
+    private async Task PopulateRegisterSeasonYearAsync()
+    {
+        var settings = await _campService.GetSettingsAsync();
+        ViewData["SeasonYear"] = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
+    }
+
     [AllowAnonymous]
     [HttpGet("{slug}")]
     public async Task<IActionResult> Details(string slug)
@@ -224,15 +230,12 @@ public class CampController : HumansCampControllerBase
     [HttpGet("Register")]
     public async Task<IActionResult> Register()
     {
-        var settings = await _campService.GetSettingsAsync();
-        if (settings.OpenSeasons.Count == 0)
+        await PopulateRegisterSeasonYearAsync();
+        if ((int?)ViewData["SeasonYear"] == 0)
         {
             SetError("Registration is currently closed.");
             return RedirectToAction(nameof(Index));
         }
-
-        var year = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
-        ViewData["SeasonYear"] = year;
 
         return View(new CampRegisterViewModel());
     }
@@ -245,7 +248,10 @@ public class CampController : HumansCampControllerBase
         ValidatePhoneE164(model.ContactPhone, nameof(model.ContactPhone));
 
         if (!ModelState.IsValid)
+        {
+            await PopulateRegisterSeasonYearAsync();
             return View(model);
+        }
 
         var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (currentUserError is not null)
@@ -296,6 +302,7 @@ public class CampController : HumansCampControllerBase
         {
             _logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, ex.Message);
+            await PopulateRegisterSeasonYearAsync();
             return View(model);
         }
     }

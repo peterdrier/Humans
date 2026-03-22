@@ -1,4 +1,5 @@
 @model Humans.Web.Models.CampaignDetailViewModel
+@using Humans.Domain.Constants
 @{
     ViewData["Title"] = Model.Campaign.Title;
     var totalCodes = Model.Stats.TotalCodes;
@@ -15,6 +16,8 @@
         CampaignStatus.Completed => "bg-info",
         _ => "bg-secondary"
     };
+    var isAdmin = User.IsInRole(RoleNames.Admin);
+    var canGenerateCodes = isAdmin || User.IsInRole(RoleNames.TicketAdmin);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -26,10 +29,17 @@
         }
     </div>
     <div class="d-flex gap-2">
-        <a asp-action="Edit" asp-route-id="@Model.Campaign.Id" class="btn btn-outline-primary btn-sm">
-            <i class="fa-solid fa-pen me-1"></i>Edit
-        </a>
-        <a asp-action="Index" class="btn btn-outline-secondary">Back to Campaigns</a>
+        @if (isAdmin)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Campaign.Id" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-pen me-1"></i>Edit
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary">Back to Campaigns</a>
+        }
+        else
+        {
+            <a asp-controller="Ticket" asp-action="Codes" class="btn btn-outline-secondary">Back to Code Tracking</a>
+        }
     </div>
 </div>
 
@@ -37,14 +47,14 @@
 
 @* Action buttons *@
 <div class="d-flex flex-wrap gap-2 mb-4">
-    @if (Model.Campaign.Status == CampaignStatus.Active)
+    @if (isAdmin && Model.Campaign.Status == CampaignStatus.Active)
     {
         <a asp-action="SendWave" asp-route-id="@Model.Campaign.Id" class="btn btn-primary">
             <i class="fa-solid fa-paper-plane me-1"></i>Send Wave
         </a>
     }
 
-    @if (Model.Campaign.Status == CampaignStatus.Draft || Model.Campaign.Status == CampaignStatus.Active)
+    @if (isAdmin && (Model.Campaign.Status == CampaignStatus.Draft || Model.Campaign.Status == CampaignStatus.Active))
     {
         <form asp-action="ImportCodes" asp-route-id="@Model.Campaign.Id" method="post" enctype="multipart/form-data" class="d-inline-flex align-items-center gap-2">
             @Html.AntiForgeryToken()
@@ -55,7 +65,7 @@
         </form>
     }
 
-    @if (Model.Campaign.Status == CampaignStatus.Draft)
+    @if (canGenerateCodes && Model.Campaign.Status == CampaignStatus.Draft)
     {
         <form asp-action="GenerateCodes" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline-flex align-items-center gap-2">
             @Html.AntiForgeryToken()
@@ -70,15 +80,18 @@
             </button>
         </form>
 
-        <form asp-action="Activate" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline">
-            @Html.AntiForgeryToken()
-            <button type="submit" class="btn btn-success btn-sm">
-                <i class="fa-solid fa-check me-1"></i>Activate
-            </button>
-        </form>
+        @if (isAdmin)
+        {
+            <form asp-action="Activate" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success btn-sm">
+                    <i class="fa-solid fa-check me-1"></i>Activate
+                </button>
+            </form>
+        }
     }
 
-    @if (Model.Campaign.Status == CampaignStatus.Active)
+    @if (isAdmin && Model.Campaign.Status == CampaignStatus.Active)
     {
         <form asp-action="Complete" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()
@@ -88,7 +101,7 @@
         </form>
     }
 
-    @if (failedCount > 0)
+    @if (isAdmin && failedCount > 0)
     {
         <form asp-action="RetryAllFailed" asp-route-id="@Model.Campaign.Id" method="post" class="d-inline">
             @Html.AntiForgeryToken()

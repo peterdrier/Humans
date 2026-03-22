@@ -15,23 +15,23 @@
         <div class="col-md-2">
             <select name="filterPaymentStatus" class="form-select">
                 <option value="">All Statuses</option>
-                <option value="Paid" selected="@(Model.FilterPaymentStatus == "Paid")">Paid</option>
-                <option value="Pending" selected="@(Model.FilterPaymentStatus == "Pending")">Pending</option>
-                <option value="Refunded" selected="@(Model.FilterPaymentStatus == "Refunded")">Refunded</option>
+                <option value="Paid" selected="@(Model.FilterPaymentStatus == "Paid" ? "selected" : null)">Paid</option>
+                <option value="Pending" selected="@(Model.FilterPaymentStatus == "Pending" ? "selected" : null)">Pending</option>
+                <option value="Refunded" selected="@(Model.FilterPaymentStatus == "Refunded" ? "selected" : null)">Refunded</option>
             </select>
         </div>
         <div class="col-md-2">
             <select name="filterMatched" class="form-select">
                 <option value="">All</option>
-                <option value="true" selected="@(Model.FilterMatched == true)">Matched</option>
-                <option value="false" selected="@(Model.FilterMatched == false)">Unmatched</option>
+                <option value="true" selected="@(Model.FilterMatched == true ? "selected" : null)">Matched</option>
+                <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
             </select>
         </div>
         <div class="col-md-2">
             <select name="pageSize" class="form-select">
-                <option value="25" selected="@(Model.PageSize == 25)">25 per page</option>
-                <option value="50" selected="@(Model.PageSize == 50)">50 per page</option>
-                <option value="100" selected="@(Model.PageSize == 100)">100 per page</option>
+                <option value="25" selected="@(Model.PageSize == 25 ? "selected" : null)">25 per page</option>
+                <option value="50" selected="@(Model.PageSize == 50 ? "selected" : null)">50 per page</option>
+                <option value="100" selected="@(Model.PageSize == 100 ? "selected" : null)">100 per page</option>
             </select>
         </div>
         <div class="col-auto">

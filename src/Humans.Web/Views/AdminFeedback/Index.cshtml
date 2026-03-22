@@ -15,7 +15,7 @@
             <option value="">All Statuses</option>
             @foreach (var s in Enum.GetValues<FeedbackStatus>())
             {
-                <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>
+                <option value="@s" selected="@(Model.StatusFilter == s ? "selected" : null)">@s</option>
             }
         </select>
     </div>
@@ -24,7 +24,7 @@
             <option value="">All Categories</option>
             @foreach (var c in Enum.GetValues<FeedbackCategory>())
             {
-                <option value="@c" selected="@(Model.CategoryFilter == c)">@c</option>
+                <option value="@c" selected="@(Model.CategoryFilter == c ? "selected" : null)">@c</option>
             }
         </select>
     </div>

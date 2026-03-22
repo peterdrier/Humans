@@ -34,7 +34,7 @@
 
                     <div class="mb-3">
                         <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
-                        <input asp-for="Name" class="form-control" disabled="@Model.IsSystemTeam" />
+                        <input asp-for="Name" class="form-control" disabled="@(Model.IsSystemTeam ? "disabled" : null)" />
                         <span asp-validation-for="Name" class="text-danger"></span>
                         <div class="form-text">Auto-generated slug: <code>@Model.Slug</code> — updates automatically when name changes.</div>
                     </div>
@@ -56,7 +56,7 @@
                     <partial name="~/Views/Shared/_TeamGoogleAndParentFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = Model.IsSystemTeam, ["ShowParentTeam"] = !Model.IsSystemTeam, ["GoogleGroupEmail"] = Model.GoogleGroupEmail }' />
 
                     <div class="mb-3 form-check">
-                        <input asp-for="IsActive" type="checkbox" class="form-check-input" disabled="@Model.IsSystemTeam" />
+                        <input asp-for="IsActive" type="checkbox" class="form-check-input" disabled="@(Model.IsSystemTeam ? "disabled" : null)" />
                         <label asp-for="IsActive" class="form-check-label">@Localizer["AdminEditTeam_TeamIsActive"]</label>
                     </div>
 

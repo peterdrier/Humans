@@ -178,7 +178,7 @@ public class CampaignService : ICampaignService
 
         var existingCodes = campaign.Codes
             .Select(c => c.Code)
-            .ToHashSet(StringComparer.Ordinal);
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         var now = _clock.GetCurrentInstant();
         var imported = 0;

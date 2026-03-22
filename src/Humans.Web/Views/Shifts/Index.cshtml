@@ -58,7 +58,7 @@
                 <option value="">All Departments</option>
                 @foreach (var dept in Model.AllDepartments)
                 {
-                    <option value="@dept.TeamId" selected="@(Model.FilterDepartmentId == dept.TeamId)">@dept.Name</option>
+                    <option value="@dept.TeamId" selected="@(Model.FilterDepartmentId == dept.TeamId ? "selected" : null)">@dept.Name</option>
                 }
             </select>
         </div>
@@ -139,7 +139,7 @@
                                         <select name="endDayOffset" class="form-select form-select-sm">
                                             @foreach (var s in availableShifts)
                                             {
-                                                <option value="@s.Shift.DayOffset" selected="@(s == availableShifts.Last())">@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()</option>
+                                                <option value="@s.Shift.DayOffset" selected="@(s == availableShifts.Last() ? "selected" : null)">@es.GateOpeningDate.PlusDays(s.Shift.DayOffset).ToDisplayShiftDate()</option>
                                             }
                                         </select>
                                     </div>

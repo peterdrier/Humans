@@ -1,6 +1,7 @@
 @model Humans.Web.Models.CampIndexViewModel
 @{
     ViewData["Title"] = $"{Localizer["Camp_Plural"]} {Model.Year}";
+    var pendingCount = (int?)ViewBag.PendingCount ?? 0;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -11,9 +12,9 @@
         {
             <a asp-controller="CampAdmin" asp-action="Index" class="btn btn-outline-secondary">
                 <i class="fa-solid fa-shield-halved me-1"></i> @Localizer["Camp_AdminTitle"]
-                @if (ViewBag.PendingCount > 0)
+                @if (pendingCount > 0)
                 {
-                    <span class="badge bg-danger ms-1">@ViewBag.PendingCount</span>
+                    <span class="badge bg-danger ms-1">@pendingCount</span>
                 }
             </a>
         }

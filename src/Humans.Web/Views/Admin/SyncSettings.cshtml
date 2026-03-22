@@ -32,9 +32,9 @@
                         <div class="mb-3">
                             <label class="form-label">Sync Mode</label>
                             <select name="mode" class="form-select">
-                                <option value="None" selected="@(setting.CurrentMode == SyncMode.None)">None — Jobs skip this service</option>
-                                <option value="AddOnly" selected="@(setting.CurrentMode == SyncMode.AddOnly)">Add Only — Jobs add missing members</option>
-                                <option value="AddAndRemove" selected="@(setting.CurrentMode == SyncMode.AddAndRemove)">Add & Remove — Jobs add + remove</option>
+                                <option value="None" selected="@(setting.CurrentMode == SyncMode.None ? "selected" : null)">None — Jobs skip this service</option>
+                                <option value="AddOnly" selected="@(setting.CurrentMode == SyncMode.AddOnly ? "selected" : null)">Add Only — Jobs add missing members</option>
+                                <option value="AddAndRemove" selected="@(setting.CurrentMode == SyncMode.AddAndRemove ? "selected" : null)">Add & Remove — Jobs add + remove</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm">Save</button>

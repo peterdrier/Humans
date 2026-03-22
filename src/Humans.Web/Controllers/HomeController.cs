@@ -162,12 +162,18 @@ public class HomeController : HumansControllerBase
                     {
                         try
                         {
+                            if (s.Shift == null)
+                            {
+                                _logger.LogWarning("Skipping signup {SignupId} on dashboard because shift data was missing", s.Id);
+                                continue;
+                            }
+
                             var item = new MySignupItem
                             {
                                 Signup = s,
-                                DepartmentName = s.Shift?.Rota?.Team?.Name ?? "Unknown",
-                                AbsoluteStart = s.Shift!.GetAbsoluteStart(activeEvent),
-                                AbsoluteEnd = s.Shift!.GetAbsoluteEnd(activeEvent)
+                                DepartmentName = s.Shift.Rota?.Team?.Name ?? "Unknown",
+                                AbsoluteStart = s.Shift.GetAbsoluteStart(activeEvent),
+                                AbsoluteEnd = s.Shift.GetAbsoluteEnd(activeEvent)
                             };
                             if (item.AbsoluteEnd > now)
                                 nextShifts.Add(item);

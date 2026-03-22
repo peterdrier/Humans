@@ -311,7 +311,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.User)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(statusFilter) && Enum.TryParse<ApplicationStatus>(statusFilter, out var statusEnum))
+        if (!string.IsNullOrWhiteSpace(statusFilter) && Enum.TryParse<ApplicationStatus>(statusFilter, ignoreCase: true, out var statusEnum))
         {
             query = query.Where(a => a.Status == statusEnum);
         }
@@ -321,7 +321,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             query = query.Where(a => a.Status == ApplicationStatus.Submitted);
         }
 
-        if (!string.IsNullOrWhiteSpace(tierFilter) && Enum.TryParse<MembershipTier>(tierFilter, out var tierEnum))
+        if (!string.IsNullOrWhiteSpace(tierFilter) && Enum.TryParse<MembershipTier>(tierFilter, ignoreCase: true, out var tierEnum))
         {
             query = query.Where(a => a.MembershipTier == tierEnum);
         }

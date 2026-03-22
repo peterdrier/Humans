@@ -104,6 +104,17 @@ public class TeamService : ITeamService
             try
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
+
+                if (!requiresApproval)
+                {
+                    // RequiresApproval has a store default of true, so persist explicit false
+                    // after insert instead of relying on EF's insert sentinel handling.
+                    var requiresApprovalEntry = _dbContext.Entry(team).Property(t => t.RequiresApproval);
+                    requiresApprovalEntry.CurrentValue = false;
+                    requiresApprovalEntry.IsModified = true;
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+
                 UpsertCachedTeam(new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
                     team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.IsPublicPage, team.CreatedAt, [],
                     ParentTeamId: parentTeamId));
@@ -123,13 +134,15 @@ public class TeamService : ITeamService
 
     public async Task<Team?> GetTeamBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
+        var normalizedSlug = slug.ToLowerInvariant();
+
         return await _dbContext.Teams
             .AsNoTracking()
             .Include(t => t.Members.Where(m => m.LeftAt == null))
                 .ThenInclude(m => m.User)
             .Include(t => t.ParentTeam)
             .Include(t => t.ChildTeams)
-            .FirstOrDefaultAsync(t => t.Slug == slug || t.CustomSlug == slug, cancellationToken);
+            .FirstOrDefaultAsync(t => t.Slug == normalizedSlug || t.CustomSlug == normalizedSlug, cancellationToken);
     }
 
     public async Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default)
@@ -408,6 +421,13 @@ public class TeamService : ITeamService
 
         // If team is becoming a sub-team, clear IsManagement and demote coordinators
         var becomingChild = parentTeamId.HasValue && !team.ParentTeamId.HasValue;
+        var usersNeedingShiftAuthorizationInvalidation = becomingChild
+            ? await _dbContext.Set<TeamRoleAssignment>()
+                .Where(a => a.TeamRoleDefinition.TeamId == teamId && a.TeamRoleDefinition.IsManagement)
+                .Select(a => a.TeamMember.UserId)
+                .Distinct()
+                .ToListAsync(cancellationToken)
+            : [];
 
         // Regenerate slug if name changed
         if (!string.Equals(team.Name, name, StringComparison.Ordinal))
@@ -459,20 +479,8 @@ public class TeamService : ITeamService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        if (!isActive)
-        {
-            RemoveCachedTeam(teamId);
-        }
-        else if (!TryUpdateCachedTeam(teamId, existing => existing with
-        {
-            Name = name,
-            Description = description,
-            RequiresApproval = requiresApproval,
-            ParentTeamId = parentTeamId
-        }))
-        {
-            UpsertCachedTeam(BuildCachedTeam(team));
-        }
+        _cache.InvalidateActiveTeams();
+        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         _logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
 
@@ -1332,6 +1340,19 @@ public class TeamService : ITeamService
         definition.SlotCount = slotCount;
         definition.Priorities = priorities;
         definition.SortOrder = sortOrder;
+        var invalidatedActiveTeams = false;
+        var usersNeedingShiftAuthorizationInvalidation =
+            definition.Team.ParentTeamId == null &&
+            definition.Team.SystemTeamType == SystemTeamType.None &&
+            definition.IsManagement != isManagement &&
+            definition.Assignments.Count > 0
+                ? await _dbContext.TeamMembers
+                    .Where(m => definition.Assignments.Select(a => a.TeamMemberId).Contains(m.Id))
+                    .Select(m => m.UserId)
+                    .Distinct()
+                    .ToListAsync(cancellationToken)
+                : [];
+
         // If clearing IsManagement, demote any coordinators who have no other management assignments
         if (definition.IsManagement && !isManagement)
         {
@@ -1352,6 +1373,7 @@ public class TeamService : ITeamService
                     if (!hasOtherManagement)
                     {
                         member.Role = TeamMemberRole.Member;
+                        invalidatedActiveTeams = true;
                     }
                 }
             }
@@ -1369,6 +1391,13 @@ public class TeamService : ITeamService
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        if (invalidatedActiveTeams)
+        {
+            _cache.InvalidateActiveTeams();
+        }
+
+        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         _logger.LogInformation("Updated role definition {RoleDefinitionId} '{RoleName}'", roleDefinitionId, name);
 
@@ -2089,6 +2118,14 @@ public class TeamService : ITeamService
     private void InvalidateShiftAuthorizationIfNeeded(TeamRoleDefinition definition, Guid userId)
     {
         if (IsShiftAuthorizationDefinition(definition))
+        {
+            _cache.InvalidateShiftAuthorization(userId);
+        }
+    }
+
+    private void InvalidateShiftAuthorization(IEnumerable<Guid> userIds)
+    {
+        foreach (var userId in userIds.Distinct())
         {
             _cache.InvalidateShiftAuthorization(userId);
         }
