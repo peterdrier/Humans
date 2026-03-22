@@ -57,6 +57,14 @@
         <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
                 <h1 class="mb-1">@Model.Name</h1>
+                @if (Model.CurrentSeason != null)
+                {
+                    <p class="mb-1">
+                        <a asp-action="SeasonDetails" asp-route-slug="@Model.Slug" asp-route-year="@Model.CurrentSeason.Year" class="link-secondary">
+                            View @Model.CurrentSeason.Year season page
+                        </a>
+                    </p>
+                }
                 @if (Model.HistoricalNames.Count > 0)
                 {
                     <p class="text-muted mb-0">

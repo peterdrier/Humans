@@ -196,6 +196,11 @@
         const teamsHtml = diff.linkedTeams && diff.linkedTeams.length > 0
             ? diff.linkedTeams.map(function (t) { return '<span class="badge bg-light text-dark border me-1">' + escapeHtml(t) + '</span>'; }).join('')
             : '<span class="text-muted">None</span>';
+        const auditUrl = '@Url.Action("GoogleSyncResourceAudit", "Board", new { id = "__RESOURCE_ID__" })';
+        const canViewAudit = @Json.Serialize(Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User));
+        const auditLinkHtml = canViewAudit
+            ? '<a class="btn btn-sm btn-outline-secondary" href="' + auditUrl.replace('__RESOURCE_ID__', diff.resourceId) + '">Audit</a>'
+            : '';
 
         let html = '<div class="card mb-2' + (isInSync ? ' resource-in-sync' : '') + '">';
         html += '<div class="card-header d-flex justify-content-between align-items-center py-2">';
@@ -207,6 +212,9 @@
         html += '</div>';
         html += '<div class="d-flex align-items-center gap-2">';
         html += '<small class="text-muted">' + teamsHtml + '</small>';
+        if (auditLinkHtml) {
+            html += auditLinkHtml;
+        }
         if (canExecuteActions && !isInSync && !hasError) {
             html += '<button class="btn btn-sm btn-outline-success" data-action="executeSingle" data-resource-id="' + diff.resourceId + '" data-sync-action="1" data-resource-name="' + escapeHtml(diff.resourceName) + '">Add Missing</button>';
             html += '<button class="btn btn-sm btn-outline-primary" data-action="executeSingle" data-resource-id="' + diff.resourceId + '" data-sync-action="2" data-resource-name="' + escapeHtml(diff.resourceName) + '">Sync All</button>';

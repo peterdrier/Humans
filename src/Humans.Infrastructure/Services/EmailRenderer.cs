@@ -4,6 +4,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Infrastructure.Services;
@@ -16,13 +17,16 @@ public class EmailRenderer : IEmailRenderer
 {
     private readonly EmailSettings _settings;
     private readonly IStringLocalizer _localizer;
+    private readonly ILogger<EmailRenderer> _logger;
 
     public EmailRenderer(
         IOptions<EmailSettings> settings,
-        IStringLocalizerFactory localizerFactory)
+        IStringLocalizerFactory localizerFactory,
+        ILogger<EmailRenderer> logger)
     {
         _settings = settings.Value;
         _localizer = localizerFactory.Create("SharedResource", "Humans.Web");
+        _logger = logger;
     }
 
     public EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName)
@@ -370,9 +374,9 @@ public class EmailRenderer : IEmailRenderer
         }
     }
 
-    private static CultureScope WithCulture(string? culture)
+    private CultureScope WithCulture(string? culture)
     {
-        return new CultureScope(culture);
+        return new CultureScope(culture, _logger);
     }
 
     private sealed class CultureScope : IDisposable
@@ -380,7 +384,7 @@ public class EmailRenderer : IEmailRenderer
         private readonly CultureInfo? _originalCulture;
         private readonly CultureInfo? _originalUICulture;
 
-        public CultureScope(string? culture)
+        public CultureScope(string? culture, ILogger<EmailRenderer> logger)
         {
             if (string.IsNullOrWhiteSpace(culture)) return;
 
@@ -392,8 +396,9 @@ public class EmailRenderer : IEmailRenderer
                 CultureInfo.CurrentUICulture = targetCulture;
                 CultureInfo.CurrentCulture = targetCulture;
             }
-            catch (CultureNotFoundException)
+            catch (CultureNotFoundException ex)
             {
+                logger.LogWarning(ex, "Invalid email culture '{Culture}', using current culture fallback", culture);
                 _originalCulture = null;
                 _originalUICulture = null;
             }
