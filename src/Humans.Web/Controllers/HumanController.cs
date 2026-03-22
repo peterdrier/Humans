@@ -176,8 +176,19 @@ public class HumanController : HumansControllerBase
             .Include(u => u.UserEmails)
             .FirstAsync(u => u.Id == currentUser.Id);
 
-        var recipientEmail = targetUser.GetEffectiveEmail() ?? targetUser.Email!;
-        var senderEmail = sender.GetEffectiveEmail() ?? sender.Email!;
+        var recipientEmail = targetUser.GetEffectiveEmail() ?? targetUser.Email;
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
+            return View(model);
+        }
+
+        var senderEmail = sender.GetEffectiveEmail() ?? sender.Email;
+        if (string.IsNullOrWhiteSpace(senderEmail))
+        {
+            ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
+            return View(model);
+        }
 
         await _emailService.SendFacilitatedMessageAsync(
             recipientEmail,
@@ -212,7 +223,7 @@ public class HumanController : HumansControllerBase
         // Load @nobodies.team email status for all users (fine at ~500 users)
         var nobodiesTeamEmails = await _dbContext.UserEmails
             .AsNoTracking()
-            .Where(ue => ue.IsVerified && ue.Email.EndsWith("@nobodies.team"))
+            .Where(ue => ue.IsVerified && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
             .Select(ue => new { ue.UserId, ue.IsNotificationTarget })
             .ToListAsync();
 

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Humans.Application.Extensions;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -20,6 +22,7 @@ public class ProcessAccountDeletionsJob
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
+    private readonly IMemoryCache _cache;
     private readonly HumansMetricsService _metrics;
     private readonly ILogger<ProcessAccountDeletionsJob> _logger;
     private readonly IClock _clock;
@@ -30,6 +33,7 @@ public class ProcessAccountDeletionsJob
         IAuditLogService auditLogService,
         IProfileService profileService,
         ITeamService teamService,
+        IMemoryCache cache,
         HumansMetricsService metrics,
         ILogger<ProcessAccountDeletionsJob> logger,
         IClock clock)
@@ -39,6 +43,7 @@ public class ProcessAccountDeletionsJob
         _auditLogService = auditLogService;
         _profileService = profileService;
         _teamService = teamService;
+        _cache = cache;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -124,6 +129,8 @@ public class ProcessAccountDeletionsJob
             {
                 _profileService.UpdateProfileCache(userId, null);
                 _teamService.RemoveMemberFromAllTeamsCache(userId);
+                _cache.InvalidateRoleAssignmentClaims(userId);
+                _cache.InvalidateShiftAuthorization(userId);
             }
 
             _metrics.RecordJobRun("process_account_deletions", "success");

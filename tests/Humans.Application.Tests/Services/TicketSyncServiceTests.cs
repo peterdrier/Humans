@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -45,7 +46,8 @@ public class TicketSyncServiceTests : IDisposable
             _vendorService,
             _clock,
             settings,
-            NullLogger<TicketSyncService>.Instance);
+            NullLogger<TicketSyncService>.Instance,
+            new MemoryCache(new MemoryCacheOptions()));
 
         // Seed the singleton TicketSyncState row
         _dbContext.TicketSyncStates.Add(new TicketSyncState
@@ -266,7 +268,8 @@ public class TicketSyncServiceTests : IDisposable
             _vendorService,
             _clock,
             settings,
-            NullLogger<TicketSyncService>.Instance);
+            NullLogger<TicketSyncService>.Instance,
+            new MemoryCache(new MemoryCacheOptions()));
 
         var result = await service.SyncOrdersAndAttendeesAsync();
 

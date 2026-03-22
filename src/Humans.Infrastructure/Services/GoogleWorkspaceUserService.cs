@@ -179,6 +179,7 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
         }
         catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
         {
+            _logger.LogDebug("Workspace account not found for email {Email}", primaryEmail);
             return null;
         }
     }

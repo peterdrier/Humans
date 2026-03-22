@@ -493,6 +493,8 @@ public class ShiftSignupService : IShiftSignupService
     {
         return await _dbContext.ShiftSignups
             .Include(d => d.User)
+            .Include(d => d.Shift)
+                .ThenInclude(s => s.Rota)
             .Where(d => d.ShiftId == shiftId)
             .OrderBy(d => d.CreatedAt)
             .ToListAsync();

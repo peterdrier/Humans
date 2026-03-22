@@ -81,7 +81,7 @@ public class ShiftManagementService : IShiftManagementService
             entry.AbsoluteExpirationRelativeToNow = AuthCacheDuration;
             return await LoadCoordinatorDepartmentIdsAsync(userId);
         });
-        return result!;
+        return result ?? [];
     }
 
     private async Task<IReadOnlyList<Guid>> LoadCoordinatorDepartmentIdsAsync(Guid userId)
@@ -416,6 +416,8 @@ public class ShiftManagementService : IShiftManagementService
         return await _dbContext.Shifts
             .Include(s => s.Rota)
                 .ThenInclude(r => r.Team)
+            .Include(s => s.Rota)
+                .ThenInclude(r => r.EventSettings)
             .Include(s => s.ShiftSignups)
             .FirstOrDefaultAsync(s => s.Id == shiftId);
     }

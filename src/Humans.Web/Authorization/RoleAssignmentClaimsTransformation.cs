@@ -59,10 +59,10 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
             return await LoadClaimsFromDbAsync(userId);
-        });
+        }) ?? [];
 
         var identity = new ClaimsIdentity();
-        foreach (var claim in claims!)
+        foreach (var claim in claims)
         {
             identity.AddClaim(claim);
         }

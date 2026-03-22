@@ -1,9 +1,11 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -16,6 +18,7 @@ public class TicketSyncService : ITicketSyncService
     private readonly ITicketVendorService _vendorService;
     private readonly IClock _clock;
     private readonly TicketVendorSettings _settings;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TicketSyncService> _logger;
 
     public TicketSyncService(
@@ -23,12 +26,14 @@ public class TicketSyncService : ITicketSyncService
         ITicketVendorService vendorService,
         IClock clock,
         IOptions<TicketVendorSettings> settings,
-        ILogger<TicketSyncService> logger)
+        ILogger<TicketSyncService> logger,
+        IMemoryCache cache)
     {
         _dbContext = dbContext;
         _vendorService = vendorService;
         _clock = clock;
         _settings = settings.Value;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -100,6 +105,9 @@ public class TicketSyncService : ITicketSyncService
             syncState.LastSyncAt = now;
             syncState.LastError = null;
             await _dbContext.SaveChangesAsync(ct);
+
+            // Dashboard event summary is cached separately; refresh it after successful sync.
+            _cache.Remove(CacheKeys.TicketEventSummary);
 
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,
                 ordersMatched, attendeesMatched, codesRedeemed);

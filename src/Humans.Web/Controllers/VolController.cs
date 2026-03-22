@@ -566,6 +566,7 @@ public class VolController : HumansControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
+            _logger.LogWarning(ex, "Invalid join request approval attempt for request {RequestId}", requestId);
             SetError(ex.Message);
         }
         catch (Exception ex)
@@ -590,6 +591,7 @@ public class VolController : HumansControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {
+            _logger.LogWarning(ex, "Invalid join request rejection attempt for request {RequestId}", requestId);
             SetError(ex.Message);
         }
         catch (Exception ex)
@@ -701,13 +703,11 @@ public class VolController : HumansControllerBase
     }
 
     [HttpGet("Settings")]
+    [Authorize(Roles = RoleNames.Admin)]
     public async Task<IActionResult> Settings()
     {
         try
         {
-            if (!RoleChecks.IsAdmin(User))
-                return Forbid();
-
             var es = await _shiftMgmt.GetActiveAsync();
             if (es == null) return View("NoActiveEvent");
 
@@ -740,13 +740,11 @@ public class VolController : HumansControllerBase
 
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = RoleNames.Admin)]
     public async Task<IActionResult> Settings(bool isShiftBrowsingOpen, int? globalVolunteerCap)
     {
         try
         {
-            if (!RoleChecks.IsAdmin(User))
-                return Forbid();
-
             var es = await _shiftMgmt.GetActiveAsync();
             if (es == null) return View("NoActiveEvent");
 

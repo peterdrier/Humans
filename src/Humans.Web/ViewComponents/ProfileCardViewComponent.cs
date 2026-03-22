@@ -98,7 +98,7 @@ public class ProfileCardViewComponent : ViewComponent
             .AsNoTracking()
             .AnyAsync(ue => ue.UserId == userId
                 && ue.IsVerified
-                && ue.Email.EndsWith("@nobodies.team"));
+                && EF.Functions.ILike(ue.Email, "%@nobodies.team"));
 
         // Get volunteer history entries
         var volunteerHistory = profile != null

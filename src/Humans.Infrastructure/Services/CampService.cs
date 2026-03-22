@@ -1027,6 +1027,7 @@ public class CampService : ICampService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        InvalidateCache(year);
     }
 
     public async Task<Dictionary<int, LocalDate?>> GetNameLockDatesAsync(List<int> years,

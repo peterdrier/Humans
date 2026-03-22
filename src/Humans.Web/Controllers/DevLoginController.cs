@@ -1,9 +1,11 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -44,6 +46,7 @@ public class DevLoginController : Controller
     private readonly IClock _clock;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<DevLoginController> _logger;
 
     public DevLoginController(
@@ -53,6 +56,7 @@ public class DevLoginController : Controller
         IClock clock,
         IWebHostEnvironment env,
         IConfiguration config,
+        IMemoryCache cache,
         ILogger<DevLoginController> logger)
     {
         _userManager = userManager;
@@ -61,6 +65,7 @@ public class DevLoginController : Controller
         _clock = clock;
         _env = env;
         _config = config;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -254,6 +259,8 @@ public class DevLoginController : Controller
         }
 
         await _db.SaveChangesAsync();
+        _cache.InvalidateApprovedProfiles();
+        _cache.InvalidateUserAccess(id);
 
         _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
             email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
