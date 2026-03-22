@@ -132,3 +132,18 @@ service-account-key.json
 local/
 src/Humans.Web/bin/
 src/**/bin\\Debug/
+
+# Codex loop — all state lives in local/
+/local/
+checkpoint.json
+progress.md
+loop.lock
+loop.log
+codex-output.log
+build-output.log
+repair-output.log
+STOP
+
+# Build artifacts (may not be in repo's .gitignore)
+**/bin/
+**/obj/
