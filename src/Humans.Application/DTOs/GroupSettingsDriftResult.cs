@@ -28,6 +28,7 @@ public class GroupSettingsDriftReport
 public class GroupSettingsDriftResult
 {
     public List<GroupSettingsDriftReport> Reports { get; init; } = [];
+    public Dictionary<string, string> ExpectedSettings { get; init; } = [];
     public int TotalGroups => Reports.Count;
     public int OkCount => Reports.Count(r => r.IsOk);
     public int DriftCount => Reports.Count(r => r.HasDrift);

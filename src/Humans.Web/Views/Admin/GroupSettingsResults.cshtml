@@ -100,4 +100,32 @@
             }
         </div>
     }
+
+    @if (Model.ExpectedSettings.Count > 0)
+    {
+        <div class="card mt-4 mb-4">
+            <div class="card-header bg-light">
+                <i class="fa-solid fa-list-check me-1"></i><strong>Expected Settings Reference</strong>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Setting</th>
+                            <th>Expected Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var setting in Model.ExpectedSettings)
+                        {
+                            <tr>
+                                <td><code>@setting.Key</code></td>
+                                <td><span class="badge bg-success">@setting.Value</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
 </div>

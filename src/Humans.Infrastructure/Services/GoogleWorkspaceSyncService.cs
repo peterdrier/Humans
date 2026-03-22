@@ -1316,8 +1316,30 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             reports.Add(report);
         }
 
-        return new GroupSettingsDriftResult { Reports = reports };
+        return new GroupSettingsDriftResult
+        {
+            Reports = reports,
+            ExpectedSettings = BuildExpectedSettingsDictionary()
+        };
     }
+
+    private Dictionary<string, string> BuildExpectedSettingsDictionary() => new(StringComparer.Ordinal)
+    {
+        ["WhoCanJoin"] = _settings.Groups.WhoCanJoin,
+        ["WhoCanViewMembership"] = _settings.Groups.WhoCanViewMembership,
+        ["WhoCanContactOwner"] = _settings.Groups.WhoCanContactOwner,
+        ["WhoCanPostMessage"] = _settings.Groups.WhoCanPostMessage,
+        ["WhoCanViewGroup"] = _settings.Groups.WhoCanViewGroup,
+        ["WhoCanModerateMembers"] = _settings.Groups.WhoCanModerateMembers,
+        ["AllowExternalMembers"] = _settings.Groups.AllowExternalMembers ? "true" : "false",
+        ["IsArchived"] = "false",
+        ["MembersCanPostAsTheGroup"] = "false",
+        ["IncludeInGlobalAddressList"] = "true",
+        ["AllowWebPosting"] = "true",
+        ["MessageModerationLevel"] = "MODERATE_NONE",
+        ["SpamModerationLevel"] = "MODERATE",
+        ["EnableCollaborativeInbox"] = "false"
+    };
 
     private async Task<GroupSettingsDriftReport> CheckSingleGroupSettingsAsync(
         GoogleResource resource,
