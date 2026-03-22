@@ -52,41 +52,6 @@
     </div>
 </div>
 
-@* Provision new account *@
-<div class="card mb-4">
-    <div class="card-header">
-        <i class="fa-solid fa-plus me-1"></i>Provision New Account
-    </div>
-    <div class="card-body">
-        <form asp-action="Provision" method="post" class="row g-3 align-items-end">
-            @Html.AntiForgeryToken()
-            <div class="col-md-3">
-                <label for="emailPrefix" class="form-label">Email</label>
-                <div class="input-group">
-                    <input type="text" class="form-control" id="emailPrefix" name="emailPrefix"
-                           placeholder="username" required pattern="[a-z0-9._-]+"
-                           title="Lowercase letters, numbers, dots, hyphens, and underscores only">
-                    <span class="input-group-text">@@nobodies.team</span>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <label for="firstName" class="form-label">First Name</label>
-                <input type="text" class="form-control" id="firstName" name="firstName" required>
-            </div>
-            <div class="col-md-3">
-                <label for="lastName" class="form-label">Last Name</label>
-                <input type="text" class="form-control" id="lastName" name="lastName" required>
-            </div>
-            <div class="col-md-3">
-                <button type="submit" class="btn btn-primary"
-                        onclick="return confirm('Provision a new @@nobodies.team account? A temporary password will be generated.')">
-                    <i class="fa-solid fa-user-plus me-1"></i>Provision
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 @* Accounts list *@
 <div class="card">
     <div class="card-header">
@@ -108,7 +73,6 @@
                         <th>Status</th>
                         <th>Created</th>
                         <th>Last Login</th>
-                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -158,43 +122,6 @@
                                 {
                                     <span class="text-muted">Never</span>
                                 }
-                            </td>
-                            <td class="text-end">
-                                <div class="btn-group btn-group-sm">
-                                    @if (account.IsSuspended)
-                                    {
-                                        <form asp-action="Reactivate" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                            <button type="submit" class="btn btn-outline-success btn-sm"
-                                                    title="Reactivate account"
-                                                    onclick="return confirm('Reactivate @account.PrimaryEmail?')">
-                                                <i class="fa-solid fa-play"></i>
-                                            </button>
-                                        </form>
-                                    }
-                                    else
-                                    {
-                                        <form asp-action="Suspend" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                                    title="Suspend account"
-                                                    onclick="return confirm('Suspend @account.PrimaryEmail?')">
-                                                <i class="fa-solid fa-pause"></i>
-                                            </button>
-                                        </form>
-                                    }
-                                    <form asp-action="ResetPassword" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="email" value="@account.PrimaryEmail" />
-                                        <button type="submit" class="btn btn-outline-warning btn-sm"
-                                                title="Reset password"
-                                                onclick="return confirm('Reset password for @account.PrimaryEmail? A new temporary password will be generated.')">
-                                            <i class="fa-solid fa-key"></i>
-                                        </button>
-                                    </form>
-                                </div>
                             </td>
                         </tr>
                     }
