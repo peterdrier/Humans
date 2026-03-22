@@ -62,4 +62,11 @@ public class GoogleResource
     /// Error message if provisioning or sync failed.
     /// </summary>
     public string? ErrorMessage { get; set; }
+
+    /// <summary>
+    /// Permission level for team members on this Drive resource.
+    /// Only applicable to Drive resources (folders, files, shared drives), not Groups.
+    /// Default is Contributor (writer) for backward compatibility.
+    /// </summary>
+    public DrivePermissionLevel DrivePermissionLevel { get; set; } = DrivePermissionLevel.Contributor;
 }

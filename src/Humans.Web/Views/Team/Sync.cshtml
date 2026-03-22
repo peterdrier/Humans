@@ -209,6 +209,9 @@
         html += '<i class="fa-solid fa-chevron-right collapse-icon"></i>';
         html += '</button>';
         html += '<span>' + nameHtml + '</span> ' + statusBadge;
+        if (diff.permissionLevel) {
+            html += ' <span class="badge bg-light text-dark border">' + escapeHtml(diff.permissionLevel) + '</span>';
+        }
         html += '</div>';
         html += '<div class="d-flex align-items-center gap-2">';
         html += '<small class="text-muted">' + teamsHtml + '</small>';
@@ -230,7 +233,8 @@
             html += '<div class="alert alert-danger m-3 mb-0">' + escapeHtml(diff.errorMessage) + '</div>';
         } else if (diff.members && diff.members.length > 0) {
             html += '<table class="table table-sm mb-0">';
-            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th><th>Teams</th></tr></thead>';
+            var showPermission = diff.permissionLevel != null;
+            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th>' + (showPermission ? '<th>Current Role</th>' : '') + '<th>Teams</th></tr></thead>';
             html += '<tbody>';
             for (let j = 0; j < diff.members.length; j++) {
                 const m = diff.members[j];
@@ -256,6 +260,10 @@
                 var nameDisplay = m.displayName && m.displayName !== m.email ? m.displayName : '';
                 html += '<td>' + escapeHtml(nameDisplay) + '</td>';
                 html += '<td><span class="badge ' + badgeClass + '">' + stateLabel + '</span></td>';
+                if (showPermission) {
+                    var role = m.currentRole || '—';
+                    html += '<td>' + escapeHtml(role) + '</td>';
+                }
                 html += '<td>' + memberTeams + '</td>';
                 html += '</tr>';
             }

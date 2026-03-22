@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Services;
 
@@ -7,18 +8,19 @@ internal static class TeamResourceInputValidation
     public static Task<LinkResourceResult> LinkDriveResourceAsync(
         Guid teamId,
         string url,
+        DrivePermissionLevel permissionLevel,
         CancellationToken ct,
-        Func<Guid, string, CancellationToken, Task<LinkResourceResult>> linkDriveFolderAsync,
-        Func<Guid, string, CancellationToken, Task<LinkResourceResult>> linkDriveFileAsync)
+        Func<Guid, string, DrivePermissionLevel, CancellationToken, Task<LinkResourceResult>> linkDriveFolderAsync,
+        Func<Guid, string, DrivePermissionLevel, CancellationToken, Task<LinkResourceResult>> linkDriveFileAsync)
     {
         if (TeamResourceService.ParseDriveFolderId(url) != null)
         {
-            return linkDriveFolderAsync(teamId, url, ct);
+            return linkDriveFolderAsync(teamId, url, permissionLevel, ct);
         }
 
         if (TeamResourceService.ParseDriveFileId(url) != null)
         {
-            return linkDriveFileAsync(teamId, url, ct);
+            return linkDriveFileAsync(teamId, url, permissionLevel, ct);
         }
 
         return Task.FromResult(new LinkResourceResult(false,

@@ -443,10 +443,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         var drive = await GetDriveServiceAsync();
+        var apiRole = resource.DrivePermissionLevel.ToApiRole();
         var permission = new Google.Apis.Drive.v3.Data.Permission
         {
             Type = "user",
-            Role = "writer",
+            Role = apiRole,
             EmailAddress = userEmail
         };
 
@@ -458,9 +459,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             await _auditLogService.LogGoogleSyncAsync(
                 AuditAction.GoogleResourceAccessGranted, resource.Id,
-                $"Granted Drive access to {userEmail} ({resource.Name})",
+                $"Granted Drive access ({resource.DrivePermissionLevel}) to {userEmail} ({resource.Name})",
                 nameof(GoogleWorkspaceSyncService),
-                userEmail, "writer", GoogleSyncSource.ManualSync, success: true);
+                userEmail, apiRole, GoogleSyncSource.ManualSync, success: true);
 
             _logger.LogInformation("Granted Drive access to {Email} on {GoogleId}", userEmail, resource.GoogleId);
         }
@@ -497,7 +498,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             AuditAction.GoogleResourceAccessRevoked, resource.Id,
             $"Removed Drive access for {userEmail} ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
-            userEmail, "writer", GoogleSyncSource.ManualSync, success: true);
+            userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: true);
 
         _logger.LogInformation("Removed Drive access for {Email} on {GoogleId}", userEmail, resource.GoogleId);
     }
@@ -999,10 +1000,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var allEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             // Only direct managed permissions — for detecting removable extras
             var directEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // Email → current Google role (reader, writer, etc.)
+            var roleByEmail = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var perm in permissions)
             {
                 if (IsAnyUserPermission(perm))
+                {
                     allEmails.Add(perm.EmailAddress);
+                    roleByEmail[perm.EmailAddress] = perm.Role;
+                }
                 if (IsDirectManagedPermission(perm))
                     directEmails.Add(perm.EmailAddress);
             }
@@ -1015,7 +1021,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 var state = allEmails.Contains(email)
                     ? MemberSyncState.Correct
                     : MemberSyncState.Missing;
-                members.Add(new MemberSyncStatus(email, displayName, state, teamNames));
+                roleByEmail.TryGetValue(email, out var currentRole);
+                members.Add(new MemberSyncStatus(email, displayName, state, teamNames, currentRole));
             }
 
             var saEmail = await GetServiceAccountEmailAsync();
@@ -1030,7 +1037,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     var state = directEmails.Contains(email)
                         ? MemberSyncState.Extra
                         : MemberSyncState.Inherited;
-                    members.Add(new MemberSyncStatus(email, email, state, []));
+                    roleByEmail.TryGetValue(email, out var extraRole);
+                    members.Add(new MemberSyncStatus(email, email, state, [], extraRole));
                 }
             }
 
@@ -1094,6 +1102,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 ResourceType = primary.ResourceType.ToString(),
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
+                PermissionLevel = primary.DrivePermissionLevel.ToString(),
                 LinkedTeams = linkedTeams,
                 Members = members
             };
@@ -1115,6 +1124,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 ResourceType = primary.ResourceType.ToString(),
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
+                PermissionLevel = primary.DrivePermissionLevel.ToString(),
                 LinkedTeams = resources.Select(r => r.Team.Name).Distinct(StringComparer.Ordinal).ToList(),
                 ErrorMessage = ex.Message
             };

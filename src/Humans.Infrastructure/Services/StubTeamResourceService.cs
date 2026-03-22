@@ -44,7 +44,7 @@ public class StubTeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, CancellationToken ct = default)
+    public Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
         _logger.LogInformation("[STUB] Would link Drive folder from URL '{FolderUrl}' to team {TeamId}", folderUrl, teamId);
 
@@ -66,7 +66,8 @@ public class StubTeamResourceService : ITeamResourceService
             Url = folderUrl,
             ProvisionedAt = now,
             LastSyncedAt = now,
-            IsActive = true
+            IsActive = true,
+            DrivePermissionLevel = permissionLevel
         };
 
         _dbContext.GoogleResources.Add(resource);
@@ -76,7 +77,7 @@ public class StubTeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, CancellationToken ct = default)
+    public Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
         _logger.LogInformation("[STUB] Would link Drive file from URL '{FileUrl}' to team {TeamId}", fileUrl, teamId);
 
@@ -98,7 +99,8 @@ public class StubTeamResourceService : ITeamResourceService
             Url = fileUrl,
             ProvisionedAt = now,
             LastSyncedAt = now,
-            IsActive = true
+            IsActive = true,
+            DrivePermissionLevel = permissionLevel
         };
 
         _dbContext.GoogleResources.Add(resource);
@@ -108,11 +110,12 @@ public class StubTeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default)
+    public Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
         return TeamResourceInputValidation.LinkDriveResourceAsync(
             teamId,
             url,
+            permissionLevel,
             ct,
             LinkDriveFolderAsync,
             LinkDriveFileAsync);

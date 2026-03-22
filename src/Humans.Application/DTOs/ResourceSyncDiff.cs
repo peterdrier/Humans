@@ -9,7 +9,8 @@ public record MemberSyncStatus(
     string Email,
     string DisplayName,
     MemberSyncState State,
-    List<string> TeamNames);
+    List<string> TeamNames,
+    string? CurrentRole = null);
 
 /// <summary>
 /// Whether a member is correctly synced, missing, or extra.
@@ -33,6 +34,9 @@ public class ResourceSyncDiff
     public string? GoogleId { get; init; }
     public string? Url { get; init; }
     public string? ErrorMessage { get; init; }
+
+    /// <summary>The permission level team members will get on this resource.</summary>
+    public string? PermissionLevel { get; init; }
 
     /// <summary>All teams that link to this resource.</summary>
     public List<string> LinkedTeams { get; init; } = [];

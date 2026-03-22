@@ -1,5 +1,6 @@
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces;
 
@@ -19,19 +20,19 @@ public interface ITeamResourceService
     /// Links an existing Google Drive folder to a team by URL.
     /// The folder must be pre-shared with the service account as Editor.
     /// </summary>
-    Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, CancellationToken ct = default);
+    Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default);
 
     /// <summary>
     /// Links an existing Google Drive file (Sheet, Doc, etc.) to a team by URL.
     /// The file must be on a Shared Drive pre-shared with the service account.
     /// </summary>
-    Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, CancellationToken ct = default);
+    Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default);
 
     /// <summary>
     /// Links a Google Drive resource (folder or file) to a team by URL.
     /// Automatically detects the resource type from the URL and routes accordingly.
     /// </summary>
-    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default);
+    Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default);
 
     /// <summary>
     /// Links an existing Google Group to a team by email address.
