@@ -176,6 +176,7 @@ public interface ITeamService
         bool isActive,
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
+        string? customSlug = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -373,6 +374,7 @@ public interface ITeamService
         string? pageContent,
         List<CallToAction> callsToAction,
         bool isPublicPage,
+        bool showCoordinatorsOnPublicPage,
         Guid updatedByUserId,
         CancellationToken cancellationToken = default);
 

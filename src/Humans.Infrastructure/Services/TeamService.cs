@@ -73,10 +73,16 @@ public class TeamService : ITeamService
                 throw new InvalidOperationException("Cannot nest more than one level — the parent team already has a parent");
         }
 
-        // Retry with incrementing suffix on unique constraint violation
+        // Retry with incrementing suffix on unique constraint violation or custom slug collision
         for (var attempt = 0; attempt < 10; attempt++)
         {
             var slug = attempt == 0 ? baseSlug : $"{baseSlug}-{attempt + 1}";
+
+            // Check if slug collides with another team's custom slug
+            var collidesWithCustomSlug = await _dbContext.Teams.AnyAsync(
+                t => t.CustomSlug == slug, cancellationToken);
+            if (collidesWithCustomSlug)
+                continue;
 
             var team = new Team
             {
@@ -123,7 +129,7 @@ public class TeamService : ITeamService
                 .ThenInclude(m => m.User)
             .Include(t => t.ParentTeam)
             .Include(t => t.ChildTeams)
-            .FirstOrDefaultAsync(t => t.Slug == slug, cancellationToken);
+            .FirstOrDefaultAsync(t => t.Slug == slug || t.CustomSlug == slug, cancellationToken);
     }
 
     public async Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default)
@@ -347,6 +353,7 @@ public class TeamService : ITeamService
         bool isActive,
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
+        string? customSlug = null,
         CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams.FindAsync(new object[] { teamId }, cancellationToken)
@@ -379,6 +386,26 @@ public class TeamService : ITeamService
                 throw new InvalidOperationException("Cannot nest more than one level — the parent team already has a parent");
         }
 
+        // Validate custom slug if provided
+        if (!string.IsNullOrWhiteSpace(customSlug))
+        {
+            var normalized = Helpers.SlugHelper.GenerateSlug(customSlug);
+            if (string.IsNullOrEmpty(normalized))
+                throw new InvalidOperationException("Custom slug is not valid. Use lowercase letters, numbers, and hyphens.");
+
+            // Check custom slug doesn't collide with another team's Slug or CustomSlug
+            var customSlugTaken = await _dbContext.Teams.AnyAsync(
+                t => t.Id != teamId && (t.Slug == normalized || t.CustomSlug == normalized), cancellationToken);
+            if (customSlugTaken)
+                throw new InvalidOperationException($"The slug '{normalized}' is already in use by another team.");
+
+            customSlug = normalized;
+        }
+        else
+        {
+            customSlug = null;
+        }
+
         // If team is becoming a sub-team, clear IsManagement and demote coordinators
         var becomingChild = parentTeamId.HasValue && !team.ParentTeamId.HasValue;
 
@@ -386,9 +413,9 @@ public class TeamService : ITeamService
         if (!string.Equals(team.Name, name, StringComparison.Ordinal))
         {
             var newSlug = Helpers.SlugHelper.GenerateSlug(name);
-            // Check slug isn't taken by another team
+            // Check slug isn't taken by another team (also check custom slugs)
             var slugTaken = await _dbContext.Teams.AnyAsync(
-                t => t.Id != teamId && t.Slug == newSlug, cancellationToken);
+                t => t.Id != teamId && (t.Slug == newSlug || t.CustomSlug == newSlug), cancellationToken);
             if (!slugTaken)
             {
                 team.Slug = newSlug;
@@ -401,6 +428,7 @@ public class TeamService : ITeamService
         team.IsActive = isActive;
         team.ParentTeamId = parentTeamId;
         team.GoogleGroupPrefix = googleGroupPrefix;
+        team.CustomSlug = customSlug;
         team.UpdatedAt = _clock.GetCurrentInstant();
 
         if (becomingChild)
@@ -456,6 +484,7 @@ public class TeamService : ITeamService
         string? pageContent,
         List<CallToAction> callsToAction,
         bool isPublicPage,
+        bool showCoordinatorsOnPublicPage,
         Guid updatedByUserId,
         CancellationToken cancellationToken = default)
     {
@@ -476,6 +505,7 @@ public class TeamService : ITeamService
         team.PageContent = pageContent;
         team.CallsToAction = callsToAction;
         team.IsPublicPage = isPublicPage;
+        team.ShowCoordinatorsOnPublicPage = showCoordinatorsOnPublicPage;
         team.PageContentUpdatedAt = now;
         team.PageContentUpdatedByUserId = updatedByUserId;
         team.UpdatedAt = now;

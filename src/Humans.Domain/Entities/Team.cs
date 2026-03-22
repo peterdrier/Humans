@@ -67,10 +67,21 @@ public class Team
     public Instant UpdatedAt { get; set; }
 
     /// <summary>
+    /// Optional custom slug that overrides the auto-generated slug for external URL stability.
+    /// When set, both the custom slug and the auto-generated slug resolve to this team.
+    /// </summary>
+    public string? CustomSlug { get; set; }
+
+    /// <summary>
     /// Whether this team has a public-facing page visible to anonymous visitors.
     /// Only departments (no parent, non-system) can be made public.
     /// </summary>
     public bool IsPublicPage { get; set; }
+
+    /// <summary>
+    /// Whether coordinators are shown on the public page. Default true.
+    /// </summary>
+    public bool ShowCoordinatorsOnPublicPage { get; set; } = true;
 
     /// <summary>
     /// Free-form markdown content for the public team page.

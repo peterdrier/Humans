@@ -56,6 +56,7 @@ public class TeamDetailViewModel
 
     // Public page content
     public bool IsPublicPage { get; set; }
+    public bool ShowCoordinatorsOnPublicPage { get; set; }
     public string? PageContent { get; set; }
     public string? PageContentHtml { get; set; }
     public List<CallToAction>? CallsToAction { get; set; }
@@ -179,6 +180,13 @@ public class EditTeamViewModel : TeamFormViewModelBase
     public string? GoogleGroupEmail { get; set; }
     public string Slug { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Optional custom slug that overrides the auto-generated slug for external URL stability.
+    /// </summary>
+    [StringLength(256)]
+    [RegularExpression(@"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", ErrorMessage = "Only lowercase letters, numbers, and hyphens allowed")]
+    public string? CustomSlug { get; set; }
+
     public bool IsActive { get; set; }
     public bool IsSystemTeam { get; set; }
 }
@@ -189,6 +197,7 @@ public class EditTeamPageViewModel
     public string Slug { get; set; } = string.Empty;
     public string TeamName { get; set; } = string.Empty;
     public bool IsPublicPage { get; set; }
+    public bool ShowCoordinatorsOnPublicPage { get; set; } = true;
     public bool CanBePublic { get; set; }
 
     [StringLength(50000)]
