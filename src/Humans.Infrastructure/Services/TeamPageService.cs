@@ -40,8 +40,17 @@ public class TeamPageService : ITeamPageService
             return null;
         }
 
-        var customPictures = await GetCustomPicturesByUserIdAsync(detail.Members, cancellationToken);
-        var members = detail.Members
+        // For anonymous users, filter members based on coordinator visibility setting
+        var visibleMembers = detail.IsAuthenticated
+            ? detail.Members
+            : detail.Team.ShowCoordinatorsOnPublicPage
+                ? detail.Members.Where(m => m.Role == TeamMemberRole.Coordinator).ToList()
+                : [];
+
+        var customPictures = await GetCustomPicturesByUserIdAsync(
+            visibleMembers as IReadOnlyList<TeamDetailMemberSummary> ?? visibleMembers.ToList(),
+            cancellationToken);
+        var members = visibleMembers
             .Select(member => new TeamPageMemberSummary(
                 member.UserId,
                 member.DisplayName,
