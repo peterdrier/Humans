@@ -1,0 +1,62 @@
+@model Humans.Web.Models.Vol.TeamsOverviewViewModel
+
+@{
+    ViewData["Title"] = "Teams";
+    ViewData["VolActiveTab"] = "Teams";
+}
+
+<vc:temp-data-alerts />
+
+@if (Model.Departments.Count == 0)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fa-solid fa-users fa-2x text-muted mb-3"></i>
+            <p class="text-muted">No departments with shifts configured yet.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var dept in Model.Departments)
+        {
+            var fillPct = dept.TotalSlots > 0
+                ? (int)Math.Round(100.0 * dept.FilledSlots / dept.TotalSlots)
+                : 0;
+            var barClass = fillPct >= 80 ? "bg-success" : fillPct >= 50 ? "bg-warning" : "bg-danger";
+
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <a asp-action="DepartmentDetail" asp-route-slug="@dept.Slug" class="text-decoration-none">
+                                @dept.Name
+                            </a>
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrWhiteSpace(dept.Description))
+                        {
+                            <p class="card-text text-muted small">@dept.Description</p>
+                        }
+                        <div class="d-flex justify-content-between text-muted small mb-2">
+                            <span><i class="fa-solid fa-users me-1"></i>@dept.ChildTeamCount team@(dept.ChildTeamCount != 1 ? "s" : "")</span>
+                            <span>@dept.FilledSlots / @dept.TotalSlots slots filled</span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar @barClass" role="progressbar"
+                                 style="width: @(fillPct)%"
+                                 aria-valuenow="@fillPct" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                    <div class="card-footer text-end">
+                        <a asp-action="DepartmentDetail" asp-route-slug="@dept.Slug" class="btn btn-sm btn-outline-primary">
+                            View Teams <i class="fa-solid fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

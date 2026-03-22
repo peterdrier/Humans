@@ -54,6 +54,12 @@
                                     <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
                                 </li>
                             }
+                            @if (Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-area="" asp-controller="Vol" asp-action="Index">V</a>
+                                </li>
+                            }
                         }
                         @if (Humans.Web.Authorization.RoleChecks.CanAccessReviewQueue(User))
                         {

@@ -39,7 +39,7 @@ Port the full `/volunteer-management` section from the Figma Make prototype into
 New "V" link in `_Layout.cshtml`:
 - Position: alongside existing nav items
 - Label: "V" (short, non-confusing test label)
-- Visibility: `IsAdmin || IsBoard || IsTeamsAdminBoardOrAdmin || VolunteerCoordinator || ConsentCoordinator`
+- Visibility: `IsTeamsAdminBoardOrAdmin || VolunteerCoordinator` (covers Admin, Board, TeamsAdmin, VolunteerCoordinator)
 - Existing `/Shifts` nav stays untouched — both coexist
 
 ### Shared Layout
@@ -94,15 +94,13 @@ Current user's shift signups in a Bootstrap card with table layout.
 
 Shift browser with filters and rota cards grouped by department.
 
-**Filter panel (collapsible Bootstrap card):**
-- Text search (rota name, duty title, team name)
-- Department dropdown (multi-select)
-- Team dropdown (multi-select, filtered by department selection)
-- Period chips (Build/Event/Strike)
-- Day selector (buttons for each day offset, filtered by period)
-- Priority chips (Normal/Important/Essential)
+**Filter panel — Phase 1 (matches existing `GetBrowseShiftsAsync` params):**
+- Department dropdown (single select)
+- Date filter (single day)
 - Open Only toggle (default: on)
-- Clear all button with active filter count
+
+**Filter panel — Future phases (requires new service params or in-memory filtering + JS):**
+- Text search, multi-select departments/teams, period/priority chips, day selector, cascading filters, active filter count
 
 **Summary bar:** X rotas, Y shifts, Z open slots, W essential.
 
@@ -112,7 +110,7 @@ Shift browser with filters and rota cards grouped by department.
 - Expandable "Show shifts" → shift rows:
   - Date (from DayOffset), Time, Volunteers (filled/total), Priority badge, Policy (Public=Instant, RequireApproval=Approval), Sign Up / Bail button
 
-**Data:** `IShiftManagementService.GetBrowseShiftsAsync()` with filters. Rota metadata from `GetRotasByDepartmentAsync()`.
+**Data:** `IShiftManagementService.GetBrowseShiftsAsync()` with existing filter params. Rota metadata from `GetRotasByDepartmentAsync()`.
 
 **POST actions:**
 - `POST /Vol/SignUp` → `IShiftSignupService.SignUpAsync`
@@ -122,9 +120,9 @@ Shift browser with filters and rota cards grouped by department.
 
 Grid of department (parent team) cards.
 
-Each card: name, accent color (from team metadata or hardcoded per-team), description, child team count, aggregate shift fill stats, lead name.
+Each card: name, description, child team count, aggregate shift fill stats (from existing staffing data).
 
-**Data:** `ITeamService` for teams, `IShiftManagementService.GetStaffingDataAsync()` for fill stats.
+**Data:** `ITeamService` for teams, `IShiftManagementService.GetStaffingDataAsync()` for fill stats. Team accent colors and lead names are not in the data model — use uniform card styling for Phase 1.
 
 ### Department Detail (`GET /Vol/Teams/{slug}`)
 
@@ -134,7 +132,7 @@ Lists child teams as cards with:
 - Team name, member count
 - Rota fill rates per rota
 - Pending join requests count (if coordinator)
-- Coordinator actions (if authorized): create rota, manage members
+- Coordinator actions (if authorized): create rota (department-level — rotas belong to parent teams, not child teams), manage members
 
 **Data:** `ITeamService.GetTeamBySlugAsync()`, `IShiftManagementService.GetRotasByDepartmentAsync()`, `IShiftManagementService.GetStaffingDataAsync()`.
 
@@ -143,9 +141,9 @@ Lists child teams as cards with:
 Full team view:
 - Team info header (name, description, member count)
 - Member roster with role assignments
-- Rotas section: each rota as a card with shift grid (day × time), fill indicators, rota metadata (description, practical info)
+- Rotas section: shows rotas from the parent department filtered to shifts relevant to this child team, with shift grid (day × time), fill indicators, rota metadata (description, practical info)
 - Pending join requests (if coordinator)
-- Coordinator actions: create/edit rota, create/edit/delete shift, approve/refuse signups, voluntell, manage members
+- Coordinator actions: create/edit shift within existing rotas, approve/refuse signups, voluntell, manage members. Rota CRUD is at department level (see Department Detail).
 
 **Data:** Same services as Department Detail, plus `IShiftSignupService` for signup management.
 
@@ -167,13 +165,13 @@ Table of unfilled shifts sorted by urgency score.
 | Priority | Badge (Normal/Important/Essential) |
 | Action | "Find volunteer" button |
 
-**"Find volunteer" flow:**
-1. Modal with volunteer search (name, skill, team filters)
-2. Results list with availability indicators
-3. Click → volunteer profile modal (skills, teams, quirks, medical [restricted to NoInfoAdmin/Admin], booked shifts)
-4. "Assign" button → `IShiftSignupService.VoluntellAsync()`
+**"Find volunteer" flow — Phase 1:**
+Reuse existing `ShiftVolunteerSearchBuilder` pattern: single search endpoint returning results with inline assign buttons. The existing `VolunteerSearchResult` record already includes skills, quirks, languages, dietary, booked shift count, overlap detection, and medical (when authorized).
 
-**Data:** `IShiftManagementService.GetUrgentShiftsAsync()`. Volunteer search via user/profile queries.
+**"Find volunteer" flow — Future phase:**
+Nested modals (search → profile detail → assign) with richer filtering by skill and team.
+
+**Data:** `IShiftManagementService.GetUrgentShiftsAsync()`. Volunteer search via existing `ShiftVolunteerSearchBuilder`.
 
 ### Management (`GET /Vol/Management`)
 
@@ -181,9 +179,9 @@ Manager dashboard:
 - System status banner (Open/Closed link to Settings)
 - Global Volunteer Cap indicator (progress bar, amber at 75%, red at 90%)
 - Actions grid:
-  - Export All Rotas CSV → `GET /Vol/Export/Rotas`
-  - Export Early Entry CSV → `GET /Vol/Export/EarlyEntry`
-  - Export Cantina CSV → `GET /Vol/Export/Cantina`
+  - Export All Rotas CSV → `GET /Vol/Export/Rotas` (placeholder — column definitions in Phase 3)
+  - Export Early Entry CSV → `GET /Vol/Export/EarlyEntry` (placeholder — column definitions in Phase 3)
+  - Export Cantina CSV → `GET /Vol/Export/Cantina` (placeholder — column definitions in Phase 3)
   - Link to Event Settings
 
 **Data:** `EventSettings` for system status and cap. Confirmed volunteer count from signup queries.
@@ -197,24 +195,15 @@ Manager dashboard:
 
 **Data:** `EventSettings` entity — read and update.
 
-### Registration (`GET /Vol/Register`, `POST /Vol/Register`)
+### Registration (`GET /Vol/Register`) — PLACEHOLDER
 
-Multi-step wizard (server-side with form state in TempData or hidden fields):
+**Status:** UI only, not wired to backend. Page renders the wizard screens but the submit action is disabled with a "Coming soon" message.
 
-1. **Welcome** — period overview (Build/Event/Strike info cards), "Start Registration" button
-2. **Availability** — on-site only vs year-round (radio cards)
-3. **Period selection** — Build/Event/Strike checkboxes (styled as cards)
-4. **Path choice** — "General Volunteer" (assigned by coordinators) vs "Apply for Specific Roles" (choose teams)
-5. **If general:** Confirmation summary + optional notes textarea → submit
-6. **If specific:** Team picker (accordion by department with checkboxes) + notes → submit
-7. **Done** — confirmation message with links to dashboard and shift browser
+The Figma prototype has a multi-step registration wizard (welcome → availability → periods → path choice → team picker → confirmation). The existing app handles volunteer registration differently (profile + consent + auto-approval to Volunteers team, with `GeneralAvailability` for day-level availability).
 
-**Data:**
-- **General path:** Creates `GeneralAvailability` with `AvailableDayOffsets` derived from selected periods (e.g., Build → all day offsets in Build range from EventSettings). The availability type (on-site/year-round) and "general volunteer" preference are not captured by existing entities — store as a note in the `TeamJoinRequest.Message` field by creating a join request to the Volunteer Coordination team.
-- **Specific path:** Creates `TeamJoinRequest` per selected team, with the notes field populated from the wizard textarea.
-- No new entities or schema changes required. Period selection maps to concrete day offsets via EventSettings period boundaries.
+This page will be built as a visual placeholder to match the Figma design, with a prominent subtext: *"Volunteer registration is being redesigned — use the existing signup flow for now."* The backend integration requires design decisions about how the wizard maps to existing entities, which is deferred.
 
-**Note:** This supplements (does not replace) existing membership onboarding. It captures shift volunteering interest and team preferences.
+**Note:** This supplements (does not replace) existing membership onboarding.
 
 ## Data Flow
 
@@ -238,7 +227,7 @@ Each page gets a dedicated view model in `Models/Vol/`:
 - `UrgentShiftsViewModel` — urgency-sorted shift list
 - `ManagementViewModel` — system status, cap data, export links
 - `SettingsViewModel` — event settings form
-- `RegistrationViewModel` — wizard state
+- `RegistrationViewModel` — placeholder (static page, no backend wiring)
 
 ### Authorization
 
@@ -266,10 +255,10 @@ All POST endpoints require `[ValidateAntiForgeryToken]` per codebase convention.
 | Voluntell | `POST /Vol/Voluntell` | `CanAccessDashboard` (Admin, NoInfoAdmin, VolCoord) | `IShiftSignupService.VoluntellAsync` |
 | Mark no-show | `POST /Vol/NoShow` | `CanApproveSignupsAsync` (VolCoord, DeptCoordinator, Admin) | `IShiftSignupService.MarkNoShowAsync` |
 | Update settings | `POST /Vol/Settings` | Admin only | Update `EventSettings` |
-| Register | `POST /Vol/Register` | Authenticated | Create `GeneralAvailability` / `TeamJoinRequest` |
-| Export Rotas | `GET /Vol/Export/Rotas` | Admin or VolunteerCoordinator | FileResult CSV |
-| Export Early Entry | `GET /Vol/Export/EarlyEntry` | Admin or VolunteerCoordinator | FileResult CSV |
-| Export Cantina | `GET /Vol/Export/Cantina` | Admin or VolunteerCoordinator | FileResult CSV |
+| Register | `POST /Vol/Register` | Deferred (placeholder page) | — |
+| Export Rotas | `GET /Vol/Export/Rotas` | Deferred (Phase 3 — column defs TBD) | — |
+| Export Early Entry | `GET /Vol/Export/EarlyEntry` | Deferred (Phase 3 — column defs TBD) | — |
+| Export Cantina | `GET /Vol/Export/Cantina` | Deferred (Phase 3 — column defs TBD) | — |
 
 ## Empty States & Edge Cases
 
@@ -283,11 +272,11 @@ All POST endpoints require `[ValidateAntiForgeryToken]` per codebase convention.
 
 ## Implementation Notes
 
-- **Controller size:** If `VolController` exceeds ~500 lines, split into `VolShiftsController`, `VolTeamsController`, `VolAdminController` — all sharing `_VolLayout.cshtml`
+- **Controller size:** Single `VolController` is fine even at 1000+ lines. Split only if it becomes genuinely hard to navigate, not for arbitrary line count thresholds
 - **`_ViewStart.cshtml`:** Use `Views/Vol/_ViewStart.cshtml` to set `Layout = "_VolLayout"` so individual views don't need to declare it
 - **NodaTime:** View models should use `LocalDate`, `LocalTime`, `Duration` from NodaTime for date/time fields; formatting happens in the Razor views
 - **Localization:** Vol pages are user-facing — use existing localization patterns (`IStringLocalizer<SharedResource>`) for display strings
-- **Icons:** Use existing icon approach (Bootstrap Icons / Font Awesome as used elsewhere in the app)
+- **Icons:** Font Awesome 6 only (`fa-solid fa-*`). Bootstrap Icons are NOT loaded in this project (per CODING_RULES). Map Figma's Lucide icons to FA6 equivalents
 
 ## New Files
 
@@ -316,5 +305,5 @@ All POST endpoints require `[ValidateAntiForgeryToken]` per codebase convention.
 ## Future Phases
 
 - **Phase 2:** Tailwind CSS + Figma earth-tone palette reskin (CSS-only change, same Razor views)
-- **Phase 3 (optional):** React/Blazor interactivity for specific components
+- **Phase 3:** CSV export column definitions + implementation; advanced filter panel (multi-select, cascading, JS); nested volunteer search modals; registration backend integration; React/Blazor interactivity (optional)
 - **Swap:** When `/Vol` is validated, replace `/Shifts` nav link → `/Vol`, remove "V" label, make `/Vol` the primary volunteering section
