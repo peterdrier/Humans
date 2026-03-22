@@ -42,15 +42,12 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
+                        </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             var isActiveMember = User.HasClaim(Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType, Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue) || Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User);
-                            if (isActiveMember)
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
-                                </li>
-                            }
                             @if (isActiveMember || Humans.Web.Authorization.ShiftRoleChecks.CanAccessDashboard(User))
                             {
                                 <li class="nav-item">
