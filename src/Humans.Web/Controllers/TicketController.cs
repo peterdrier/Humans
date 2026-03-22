@@ -275,6 +275,7 @@ public class TicketController : HumansControllerBase
             FilterTicketType = filterTicketType,
             FilterStatus = filterStatus,
             FilterMatched = filterMatched,
+            FilterOrderId = filterOrderId,
             AvailableTicketTypes = await GetAvailableTicketTypesAsync(),
         };
 

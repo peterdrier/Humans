@@ -294,6 +294,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, ex.Message);
             return View(model);
         }
@@ -379,6 +380,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Camp update failed for camp {CampId} and slug {Slug}", camp.Id, slug);
             ModelState.AddModelError(string.Empty, ex.Message);
             await PopulateEditReadOnlyFieldsAsync(model);
             return View(model);
@@ -407,6 +409,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Camp opt-in failed for camp {CampId}, slug {Slug}, and year {Year}", camp.Id, slug, year);
             SetError(ex.Message);
         }
 
@@ -418,7 +421,7 @@ public class CampController : HumansCampControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(string slug, Guid seasonId)
     {
-        var (errorResult, _, _) = await ResolveCampManagementAsync(slug);
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
@@ -431,6 +434,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Camp season withdrawal failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
             SetError(ex.Message);
         }
 
@@ -442,7 +446,7 @@ public class CampController : HumansCampControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Rejoin(string slug, Guid seasonId)
     {
-        var (errorResult, _, _) = await ResolveCampManagementAsync(slug);
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
@@ -455,6 +459,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Camp season reactivation failed for camp {CampId}, slug {Slug}, and season {SeasonId}", camp.Id, slug, seasonId);
             SetError(ex.Message);
         }
 
@@ -489,6 +494,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Adding lead {LeadUserId} failed for camp {CampId} and slug {Slug}", userId, camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -500,7 +506,7 @@ public class CampController : HumansCampControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemoveLead(string slug, Guid leadId)
     {
-        var (errorResult, _, _) = await ResolveCampManagementAsync(slug);
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
@@ -513,6 +519,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Removing lead {LeadId} failed for camp {CampId} and slug {Slug}", leadId, camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -553,6 +560,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Image upload failed for camp {CampId} and slug {Slug}", camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -564,7 +572,7 @@ public class CampController : HumansCampControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteImage(string slug, Guid imageId)
     {
-        var (errorResult, _, _) = await ResolveCampManagementAsync(slug);
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
         if (errorResult is not null)
         {
             return errorResult;
@@ -577,6 +585,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Deleting image {ImageId} failed for camp {CampId} and slug {Slug}", imageId, camp.Id, slug);
             SetError(ex.Message);
         }
 
@@ -601,6 +610,7 @@ public class CampController : HumansCampControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Reordering images failed for camp {CampId} and slug {Slug}", camp.Id, slug);
             SetError(ex.Message);
         }
 

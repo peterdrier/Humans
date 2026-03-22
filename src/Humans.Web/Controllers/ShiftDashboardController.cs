@@ -15,7 +15,7 @@ using NodaTime.Text;
 
 namespace Humans.Web.Controllers;
 
-[Authorize]
+[Authorize(Roles = RoleNames.Admin + "," + RoleNames.NoInfoAdmin + "," + RoleNames.VolunteerCoordinator)]
 [Route("Shifts/Dashboard")]
 public class ShiftDashboardController : HumansControllerBase
 {
@@ -46,9 +46,6 @@ public class ShiftDashboardController : HumansControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? date)
     {
-        if (!ShiftRoleChecks.CanAccessDashboard(User))
-            return Forbid();
-
         var es = await _shiftMgmt.GetActiveAsync();
         if (es == null)
         {
@@ -90,9 +87,6 @@ public class ShiftDashboardController : HumansControllerBase
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
     {
-        if (!ShiftRoleChecks.CanAccessDashboard(User))
-            return Forbid();
-
         if (!query.HasSearchTerm())
             return Json(Array.Empty<VolunteerSearchResult>());
 
@@ -126,9 +120,6 @@ public class ShiftDashboardController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Voluntell(Guid shiftId, Guid userId)
     {
-        if (!ShiftRoleChecks.CanAccessDashboard(User))
-            return Forbid();
-
         var (currentUserNotFound, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (currentUserNotFound != null)
         {

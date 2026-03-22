@@ -395,6 +395,7 @@ public class ProfileController : HumansControllerBase
         }
         catch (ValidationException ex)
         {
+            _logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", user.Id, profileId);
             ModelState.AddModelError(string.Empty, ex.Message);
             ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
             return View(model);
@@ -483,6 +484,7 @@ public class ProfileController : HumansControllerBase
         }
         catch (ValidationException ex)
         {
+            _logger.LogWarning(ex, "Failed to add email address for user {UserId}", user.Id);
             ModelState.AddModelError(nameof(model.NewEmail), ex.Message);
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
@@ -512,12 +514,14 @@ public class ProfileController : HumansControllerBase
             ViewData["Message"] = string.Format(_localizer["Profile_EmailVerified"].Value, verifiedEmail);
             return View("VerifyEmailResult");
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Email verification failed for user {UserId}", userId);
             return VerifyEmailError(_localizer["Profile_InvalidVerificationLink"].Value);
         }
         catch (ValidationException ex)
         {
+            _logger.LogWarning(ex, "Email verification validation failed for user {UserId}", userId);
             return VerifyEmailError(ex.Message);
         }
     }
@@ -544,6 +548,7 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
+            _logger.LogWarning(ex, "Failed to set notification target {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -571,6 +576,7 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
+            _logger.LogWarning(ex, "Failed to set email visibility for email {EmailId} and user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 
@@ -592,6 +598,7 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
         {
+            _logger.LogWarning(ex, "Failed to delete email {EmailId} for user {UserId}", emailId, user.Id);
             SetError(ex.Message);
         }
 

@@ -127,20 +127,26 @@ public class HomeController : HumansControllerBase
                 var urgentItems = new List<UrgentShiftItem>();
                 foreach (var u in urgentShifts)
                 {
+                    if (u.Shift == null)
+                    {
+                        _logger.LogWarning("Skipping urgent shift item because shift data was missing");
+                        continue;
+                    }
+
                     try
                     {
                         urgentItems.Add(new UrgentShiftItem
                         {
-                            Shift = u.Shift!,
+                            Shift = u.Shift,
                             DepartmentName = u.DepartmentName ?? "Unknown",
-                            AbsoluteStart = u.Shift!.GetAbsoluteStart(activeEvent),
+                            AbsoluteStart = u.Shift.GetAbsoluteStart(activeEvent),
                             RemainingSlots = u.RemainingSlots,
                             UrgencyScore = u.UrgencyScore
                         });
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to build urgent shift item for shift {ShiftId}", u.Shift!.Id);
+                        _logger.LogError(ex, "Failed to build urgent shift item for shift {ShiftId}", u.Shift.Id);
                     }
                 }
 

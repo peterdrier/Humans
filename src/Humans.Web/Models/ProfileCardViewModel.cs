@@ -68,6 +68,7 @@ public class ProfileCardViewModel
             }
             catch (ArgumentOutOfRangeException)
             {
+                // Invalid persisted month/day combinations should render as no birthday rather than break the profile card.
                 return null;
             }
         }

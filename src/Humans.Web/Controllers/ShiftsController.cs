@@ -21,19 +21,22 @@ public class ShiftsController : HumansControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly IClock _clock;
+    private readonly ILogger<ShiftsController> _logger;
 
     public ShiftsController(
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
         UserManager<User> userManager,
-        IClock clock)
+        IClock clock,
+        ILogger<ShiftsController> logger)
         : base(userManager)
     {
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
         _clock = clock;
+        _logger = logger;
     }
 
     [HttpGet("")]
@@ -225,6 +228,7 @@ public class ShiftsController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Failed to bail shift range {SignupBlockId} for user {UserId}", signupBlockId, user.Id);
             SetError(ex.Message);
         }
 
@@ -273,12 +277,21 @@ public class ShiftsController : HumansControllerBase
 
         foreach (var signup in signups)
         {
+            if (signup.Shift?.Rota?.Team == null || es == null)
+            {
+                _logger.LogWarning(
+                    "Skipping shift signup {SignupId} for user {UserId} because related shift data was missing",
+                    signup.Id,
+                    user.Id);
+                continue;
+            }
+
             var item = new MySignupItem
             {
                 Signup = signup,
                 DepartmentName = signup.Shift.Rota.Team.Name,
-                AbsoluteStart = signup.Shift.GetAbsoluteStart(es!),
-                AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es!)
+                AbsoluteStart = signup.Shift.GetAbsoluteStart(es),
+                AbsoluteEnd = signup.Shift.GetAbsoluteEnd(es)
             };
 
             switch (signup.Status)
@@ -354,11 +367,9 @@ public class ShiftsController : HumansControllerBase
     }
 
     [HttpGet("Settings")]
+    [Authorize(Roles = RoleNames.Admin)]
     public async Task<IActionResult> Settings()
     {
-        if (!RoleChecks.IsAdmin(User))
-            return Forbid();
-
         var es = await _shiftMgmt.GetActiveAsync();
         var model = new EventSettingsViewModel();
 
@@ -389,11 +400,9 @@ public class ShiftsController : HumansControllerBase
 
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
+    [Authorize(Roles = RoleNames.Admin)]
     public async Task<IActionResult> Settings(EventSettingsViewModel model)
     {
-        if (!RoleChecks.IsAdmin(User))
-            return Forbid();
-
         if (!ModelState.IsValid)
             return View(model);
 

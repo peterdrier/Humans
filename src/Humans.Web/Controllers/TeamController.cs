@@ -447,6 +447,7 @@ public class TeamController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Failed to join team {TeamId} for user {UserId}", team.Id, user.Id);
             SetError(ex.Message);
             return RedirectToAction(nameof(Details), new { slug });
         }
@@ -480,6 +481,7 @@ public class TeamController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Failed to leave team {TeamId} for user {UserId}", team.Id, user.Id);
             SetError(ex.Message);
             return RedirectToAction(nameof(Details), new { slug });
         }
@@ -502,6 +504,7 @@ public class TeamController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Failed to withdraw join request {RequestId} for user {UserId}", id, user.Id);
             SetError(ex.Message);
         }
 
@@ -605,8 +608,9 @@ public class TeamController : HumansControllerBase
             SetSuccess(string.Format(_localizer["Admin_TeamCreated"].Value, team.Name));
             return RedirectToAction(nameof(Summary));
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex)
         {
+            _logger.LogWarning(ex, "Failed to create team with Google group prefix {GoogleGroupPrefix}", model.GoogleGroupPrefix);
             ModelState.AddModelError("GoogleGroupPrefix", "This Google Group prefix is already in use by another team.");
             return View(model);
         }
@@ -686,11 +690,13 @@ public class TeamController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Failed to update team {TeamId}", id);
             ModelState.AddModelError("", ex.Message);
             return View(model);
         }
         catch (DbUpdateException ex)
         {
+            _logger.LogWarning(ex, "Failed to update team {TeamId}", id);
             var message = ex.InnerException?.Message ?? "";
             if (message.Contains("CustomSlug", StringComparison.OrdinalIgnoreCase))
             {
@@ -719,6 +725,7 @@ public class TeamController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Failed to deactivate team {TeamId}", id);
             SetError(ex.Message);
         }
 

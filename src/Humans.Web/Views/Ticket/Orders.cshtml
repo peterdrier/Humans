@@ -39,6 +39,7 @@
         </div>
         <input type="hidden" name="sortBy" value="@Model.SortBy" />
         <input type="hidden" name="sortDesc" value="@Model.SortDesc" />
+        <input type="hidden" name="filterTicketType" value="@Model.FilterTicketType" />
     </form>
 
     <p class="text-muted">@Model.TotalCount orders found</p>
@@ -48,11 +49,11 @@
             <thead>
                 <tr>
                     <th>Order ID</th>
-                    <th><a asp-action="Orders" asp-route-sortBy="date" asp-route-sortDesc="@(Model.SortBy == "date" ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize">Date</a></th>
-                    <th><a asp-action="Orders" asp-route-sortBy="name" asp-route-sortDesc="@(Model.SortBy == "name" ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize">Purchaser</a></th>
+                    <th><a asp-action="Orders" asp-route-sortBy="date" asp-route-sortDesc="@(string.Equals(Model.SortBy, "date", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Date</a></th>
+                    <th><a asp-action="Orders" asp-route-sortBy="name" asp-route-sortDesc="@(string.Equals(Model.SortBy, "name", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Purchaser</a></th>
                     <th>Email</th>
-                    <th><a asp-action="Orders" asp-route-sortBy="tickets" asp-route-sortDesc="@(Model.SortBy == "tickets" ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize">Tickets</a></th>
-                    <th><a asp-action="Orders" asp-route-sortBy="amount" asp-route-sortDesc="@(Model.SortBy == "amount" ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize">Amount</a></th>
+                    <th><a asp-action="Orders" asp-route-sortBy="tickets" asp-route-sortDesc="@(string.Equals(Model.SortBy, "tickets", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Tickets</a></th>
+                    <th><a asp-action="Orders" asp-route-sortBy="amount" asp-route-sortDesc="@(string.Equals(Model.SortBy, "amount", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Amount</a></th>
                     <th>Code</th>
                     <th>Status</th>
                     <th>Matched</th>
@@ -109,16 +110,16 @@
         <nav>
             <ul class="pagination">
                 <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
-                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterMatched="@Model.FilterMatched">Previous</a>
+                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Previous</a>
                 </li>
                 @for (var i = 1; i <= Model.TotalPages; i++)
                 {
                     <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" asp-action="Orders" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterMatched="@Model.FilterMatched">@i</a>
+                        <a class="page-link" asp-action="Orders" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">@i</a>
                     </li>
                 }
                 <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
-                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterMatched="@Model.FilterMatched">Next</a>
+                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Next</a>
                 </li>
             </ul>
         </nav>

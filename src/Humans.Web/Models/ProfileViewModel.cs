@@ -127,7 +127,8 @@ public class ProfileViewModel
             }
             catch (ArgumentOutOfRangeException)
             {
-                return null; // e.g. Feb 30
+                // Invalid month/day combinations from posted form values are treated as no birthday.
+                return null;
             }
         }
     }
