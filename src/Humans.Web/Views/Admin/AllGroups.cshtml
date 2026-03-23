@@ -73,7 +73,7 @@
                         var rowClass = group.ErrorMessage is not null ? "table-danger" : group.HasDrift ? "table-warning" : "";
                         <tr class="@rowClass">
                             <td>
-                                <code class="small">@group.GroupEmail</code>
+                                <code class="small">@(group.GroupEmail.Split('@')[0])@@</code>
                             </td>
                             <td>@group.DisplayName</td>
                             <td>
@@ -140,17 +140,17 @@
                         {
                             <tr class="@rowClass">
                                 <td colspan="6" class="py-0 ps-4">
-                                    <div class="d-flex flex-wrap gap-2 py-1">
+                                    <ul class="list-unstyled mb-0 py-1">
                                         @foreach (var drift in group.Drifts)
                                         {
-                                            <span class="small">
+                                            <li class="small">
                                                 <code>@drift.SettingName</code>:
                                                 <span class="badge bg-danger">@drift.ActualValue</span>
                                                 <i class="fa-solid fa-arrow-right text-muted mx-1 small"></i>
                                                 <span class="badge bg-success">@drift.ExpectedValue</span>
-                                            </span>
+                                            </li>
                                         }
-                                    </div>
+                                    </ul>
                                 </td>
                             </tr>
                         }

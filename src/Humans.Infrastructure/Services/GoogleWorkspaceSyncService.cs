@@ -1409,7 +1409,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         ["WhoCanViewGroup"] = _settings.Groups.WhoCanViewGroup,
         ["WhoCanModerateMembers"] = _settings.Groups.WhoCanModerateMembers,
         ["AllowExternalMembers"] = _settings.Groups.AllowExternalMembers ? "true" : "false",
-        ["IsArchived"] = "false",
+        ["IsArchived"] = "true",
         ["MembersCanPostAsTheGroup"] = "false",
         ["IncludeInGlobalAddressList"] = "true",
         ["AllowWebPosting"] = "true",
@@ -1443,7 +1443,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
 
             // Additional settings worth monitoring (not set at creation but important for group health)
-            CompareGroupSetting(drifts, "IsArchived", "false", actual.IsArchived);
+            CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
             CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
             CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
             CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
@@ -1651,15 +1651,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             var directory = await GetDirectoryServiceAsync();
 
-            // Build lookup: group URL → linked GoogleResource (active, type=Group)
-            var linkedResources = await _dbContext.GoogleResources
-                .Include(r => r.Team)
-                .Where(r => r.ResourceType == GoogleResourceType.Group && r.IsActive && r.Url != null)
-                .ToListAsync(cancellationToken);
-
-            var linkedByUrl = linkedResources
-                .Where(r => r.Url is not null)
-                .ToDictionary(r => r.Url!, r => r, StringComparer.OrdinalIgnoreCase);
+            // Build lookup: group email prefix → linked Team (active, with GoogleGroupPrefix set)
+            var teamsWithGroups = await _dbContext.Teams
+                .Where(t => t.IsActive && t.GoogleGroupPrefix != null)
+                .ToDictionaryAsync(t => t.GoogleGroupPrefix!, t => t, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
             // List all groups on the domain (paginated)
             var allGroups = new List<Google.Apis.Admin.Directory.directory_v1.Data.Group>();
@@ -1692,9 +1687,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     continue;
 
                 var prefix = email.Split('@')[0];
-                var url = $"https://groups.google.com/a/{_settings.Domain}/g/{prefix}";
-
-                linkedByUrl.TryGetValue(url, out var linkedResource);
+                teamsWithGroups.TryGetValue(prefix, out var linkedTeam);
 
                 // Fetch settings and detect drift for this group
                 string? errorMessage = null;
@@ -1734,7 +1727,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     CompareGroupSetting(drifts, "WhoCanModerateMembers", _settings.Groups.WhoCanModerateMembers, actual.WhoCanModerateMembers);
                     CompareGroupSetting(drifts, "AllowExternalMembers",
                         _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
-                    CompareGroupSetting(drifts, "IsArchived", "false", actual.IsArchived);
+                    CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
                     CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
                     CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
                     CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
@@ -1759,8 +1752,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     DisplayName = group.Name ?? email,
                     GoogleId = group.Id,
                     MemberCount = (int)(group.DirectMembersCount ?? 0),
-                    LinkedTeamName = linkedResource?.Team?.Name,
-                    LinkedTeamId = linkedResource?.TeamId,
+                    LinkedTeamName = linkedTeam?.Name,
+                    LinkedTeamId = linkedTeam?.Id,
                     ActualSettings = actualSettings,
                     Drifts = drifts,
                     ErrorMessage = errorMessage
