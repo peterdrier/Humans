@@ -560,6 +560,30 @@ public class ShiftAdminController : HumansTeamControllerBase
         return RedirectToAction(nameof(Index), new { slug });
     }
 
+    [HttpPost("VoluntellRange")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> VoluntellRange(string slug, Guid rotaId, int startDayOffset, int endDayOffset, Guid userId)
+    {
+        var (teamError, currentUser, team) = await ResolveDepartmentApprovalAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        if (rota is null) return NotFound();
+        if (rota.TeamId != team.Id) return NotFound();
+
+        var result = await _signupService.VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
+        if (result.Success)
+        {
+            SetSuccess("Volunteer assigned to shift range.");
+        }
+        else
+        {
+            SetError(result.Error ?? "Range assignment failed.");
+        }
+
+        return RedirectToAction(nameof(Index), new { slug });
+    }
+
     private async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveDepartmentManagementAsync(string slug)
     {
         return await ResolveDepartmentAccessAsync(
