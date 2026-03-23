@@ -267,6 +267,76 @@ public class ShiftSignupService : IShiftSignupService
         return SignupResult.Ok(signup);
     }
 
+    public async Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId)
+    {
+        var rota = await _dbContext.Rotas
+            .Include(r => r.EventSettings)
+            .Include(r => r.Shifts)
+            .FirstOrDefaultAsync(r => r.Id == rotaId);
+
+        if (rota is null) return SignupResult.Fail("Rota not found.");
+
+        // Find all-day shifts in the range
+        var shiftsInRange = rota.Shifts
+            .Where(s => s.IsAllDay && s.DayOffset >= startDayOffset && s.DayOffset <= endDayOffset)
+            .OrderBy(s => s.DayOffset)
+            .ToList();
+
+        if (shiftsInRange.Count == 0)
+            return SignupResult.Fail("No shifts found in the specified date range.");
+
+        // Check for existing signups to skip (Confirmed or Pending)
+        var shiftIdsInRange = shiftsInRange.Select(s => s.Id).ToHashSet();
+        var existingShiftIds = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == userId && shiftIdsInRange.Contains(s.ShiftId) &&
+                         (s.Status == SignupStatus.Pending || s.Status == SignupStatus.Confirmed))
+            .Select(s => s.ShiftId)
+            .ToHashSetAsync();
+
+        var shiftsToAssign = shiftsInRange
+            .Where(s => !existingShiftIds.Contains(s.Id))
+            .ToList();
+
+        if (shiftsToAssign.Count == 0)
+            return SignupResult.Fail("Already signed up for all shifts in this range.");
+
+        // Create confirmed signups with shared SignupBlockId
+        var blockId = Guid.NewGuid();
+        var now = _clock.GetCurrentInstant();
+        ShiftSignup? firstSignup = null;
+
+        foreach (var shift in shiftsToAssign)
+        {
+            var signup = new ShiftSignup
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ShiftId = shift.Id,
+                SignupBlockId = blockId,
+                Status = SignupStatus.Confirmed,
+                Enrolled = true,
+                EnrolledByUserId = enrollerUserId,
+                ReviewedByUserId = enrollerUserId,
+                ReviewedAt = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            _dbContext.ShiftSignups.Add(signup);
+            firstSignup ??= signup;
+
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
+                $"Voluntold range for '{rota.Name}' day {shift.DayOffset} (block {blockId})",
+                enrollerUserId, "Enroller",
+                userId, nameof(User));
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        return SignupResult.Ok(firstSignup!);
+    }
+
     public async Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId)
     {
         var signup = await LoadSignupWithShiftAsync(signupId);
