@@ -1673,87 +1673,107 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             _logger.LogInformation("Found {Count} Google Groups on domain {Domain}", allGroups.Count, _settings.Domain);
 
             var expectedSettings = BuildExpectedSettingsDictionary();
-            var groupInfos = new List<DomainGroupInfo>();
 
-            foreach (var group in allGroups)
-            {
-                var email = group.Email;
-                if (string.IsNullOrEmpty(email))
-                    continue;
+            var semaphore = new SemaphoreSlim(5);
+            var groupssettingsService = await GetGroupssettingsServiceAsync();
 
-                var prefix = email.Split('@')[0];
-                teamsWithGroups.TryGetValue(prefix, out var linkedTeam);
-
-                // Fetch settings and detect drift for this group
-                string? errorMessage = null;
-                var drifts = new List<GroupSettingDrift>();
-                var actualSettings = new Dictionary<string, string>(StringComparer.Ordinal);
-
-                try
+            var tasks = allGroups
+                .Where(g => !string.IsNullOrEmpty(g.Email))
+                .Select(async group =>
                 {
-                    var groupssettingsService = await GetGroupssettingsServiceAsync();
-                    var req = groupssettingsService.Groups.Get(email);
-                    req.Alt = Google.Apis.Groupssettings.v1.GroupssettingsBaseServiceRequest<Google.Apis.Groupssettings.v1.Data.Groups>.AltEnum.Json;
-                    var actual = await req.ExecuteAsync(cancellationToken);
+                    var email = group.Email!;
+                    var prefix = email.Split('@')[0];
+                    teamsWithGroups.TryGetValue(prefix, out var linkedTeam);
 
-                    // Collect actual values
-                    void AddIfNotNull(string key, string? val) { if (val is not null) actualSettings[key] = val; }
-                    AddIfNotNull("WhoCanJoin", actual.WhoCanJoin);
-                    AddIfNotNull("WhoCanViewMembership", actual.WhoCanViewMembership);
-                    AddIfNotNull("WhoCanContactOwner", actual.WhoCanContactOwner);
-                    AddIfNotNull("WhoCanPostMessage", actual.WhoCanPostMessage);
-                    AddIfNotNull("WhoCanViewGroup", actual.WhoCanViewGroup);
-                    AddIfNotNull("WhoCanModerateMembers", actual.WhoCanModerateMembers);
-                    AddIfNotNull("AllowExternalMembers", actual.AllowExternalMembers);
-                    AddIfNotNull("IsArchived", actual.IsArchived);
-                    AddIfNotNull("MembersCanPostAsTheGroup", actual.MembersCanPostAsTheGroup);
-                    AddIfNotNull("IncludeInGlobalAddressList", actual.IncludeInGlobalAddressList);
-                    AddIfNotNull("AllowWebPosting", actual.AllowWebPosting);
-                    AddIfNotNull("MessageModerationLevel", actual.MessageModerationLevel);
-                    AddIfNotNull("SpamModerationLevel", actual.SpamModerationLevel);
-                    AddIfNotNull("EnableCollaborativeInbox", actual.EnableCollaborativeInbox);
+                    string? errorMessage = null;
+                    var drifts = new List<GroupSettingDrift>();
+                    var actualSettings = new Dictionary<string, string>(StringComparer.Ordinal);
 
-                    // Compare against expected
-                    CompareGroupSetting(drifts, "WhoCanJoin", _settings.Groups.WhoCanJoin, actual.WhoCanJoin);
-                    CompareGroupSetting(drifts, "WhoCanViewMembership", _settings.Groups.WhoCanViewMembership, actual.WhoCanViewMembership);
-                    CompareGroupSetting(drifts, "WhoCanContactOwner", _settings.Groups.WhoCanContactOwner, actual.WhoCanContactOwner);
-                    CompareGroupSetting(drifts, "WhoCanPostMessage", _settings.Groups.WhoCanPostMessage, actual.WhoCanPostMessage);
-                    CompareGroupSetting(drifts, "WhoCanViewGroup", _settings.Groups.WhoCanViewGroup, actual.WhoCanViewGroup);
-                    CompareGroupSetting(drifts, "WhoCanModerateMembers", _settings.Groups.WhoCanModerateMembers, actual.WhoCanModerateMembers);
-                    CompareGroupSetting(drifts, "AllowExternalMembers",
-                        _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
-                    CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
-                    CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
-                    CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
-                    CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
-                    CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
-                    CompareGroupSetting(drifts, "SpamModerationLevel", "MODERATE", actual.SpamModerationLevel);
-                    CompareGroupSetting(drifts, "EnableCollaborativeInbox", "false", actual.EnableCollaborativeInbox);
-                }
-                catch (Google.GoogleApiException ex)
-                {
-                    _logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", email, ex.Error?.Code);
-                    errorMessage = $"Google API error: {ex.Error?.Code} — {ex.Error?.Message}";
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error fetching settings for group '{GroupEmail}'", email);
-                    errorMessage = $"Error: {ex.Message}";
-                }
+                    await semaphore.WaitAsync(cancellationToken);
+                    try
+                    {
+                        var req = groupssettingsService.Groups.Get(email);
+                        req.Alt = Google.Apis.Groupssettings.v1.GroupssettingsBaseServiceRequest<Google.Apis.Groupssettings.v1.Data.Groups>.AltEnum.Json;
+                        var actual = await req.ExecuteAsync(cancellationToken);
 
-                groupInfos.Add(new DomainGroupInfo
-                {
-                    GroupEmail = email,
-                    DisplayName = group.Name ?? email,
-                    GoogleId = group.Id,
-                    MemberCount = (int)(group.DirectMembersCount ?? 0),
-                    LinkedTeamName = linkedTeam?.Name,
-                    LinkedTeamId = linkedTeam?.Id,
-                    ActualSettings = actualSettings,
-                    Drifts = drifts,
-                    ErrorMessage = errorMessage
+                        // Collect ALL non-deprecated actual values
+                        void Add(string key, string? val) { if (val is not null) actualSettings[key] = val; }
+                        Add("WhoCanJoin", actual.WhoCanJoin);
+                        Add("WhoCanViewMembership", actual.WhoCanViewMembership);
+                        Add("WhoCanContactOwner", actual.WhoCanContactOwner);
+                        Add("WhoCanPostMessage", actual.WhoCanPostMessage);
+                        Add("WhoCanViewGroup", actual.WhoCanViewGroup);
+                        Add("WhoCanModerateMembers", actual.WhoCanModerateMembers);
+                        Add("WhoCanModerateContent", actual.WhoCanModerateContent);
+                        Add("WhoCanAssistContent", actual.WhoCanAssistContent);
+                        Add("WhoCanDiscoverGroup", actual.WhoCanDiscoverGroup);
+                        Add("WhoCanLeaveGroup", actual.WhoCanLeaveGroup);
+                        Add("AllowExternalMembers", actual.AllowExternalMembers);
+                        Add("AllowWebPosting", actual.AllowWebPosting);
+                        Add("IsArchived", actual.IsArchived);
+                        Add("ArchiveOnly", actual.ArchiveOnly);
+                        Add("MembersCanPostAsTheGroup", actual.MembersCanPostAsTheGroup);
+                        Add("IncludeInGlobalAddressList", actual.IncludeInGlobalAddressList);
+                        Add("EnableCollaborativeInbox", actual.EnableCollaborativeInbox);
+                        Add("MessageModerationLevel", actual.MessageModerationLevel);
+                        Add("SpamModerationLevel", actual.SpamModerationLevel);
+                        Add("ReplyTo", actual.ReplyTo);
+                        Add("CustomReplyTo", actual.CustomReplyTo);
+                        Add("IncludeCustomFooter", actual.IncludeCustomFooter);
+                        Add("CustomFooterText", actual.CustomFooterText);
+                        Add("SendMessageDenyNotification", actual.SendMessageDenyNotification);
+                        Add("DefaultMessageDenyNotificationText", actual.DefaultMessageDenyNotificationText);
+                        Add("FavoriteRepliesOnTop", actual.FavoriteRepliesOnTop);
+                        Add("DefaultSender", actual.DefaultSender);
+                        Add("PrimaryLanguage", actual.PrimaryLanguage);
+
+                        // Compare against expected (only the enforced settings)
+                        CompareGroupSetting(drifts, "WhoCanJoin", _settings.Groups.WhoCanJoin, actual.WhoCanJoin);
+                        CompareGroupSetting(drifts, "WhoCanViewMembership", _settings.Groups.WhoCanViewMembership, actual.WhoCanViewMembership);
+                        CompareGroupSetting(drifts, "WhoCanContactOwner", _settings.Groups.WhoCanContactOwner, actual.WhoCanContactOwner);
+                        CompareGroupSetting(drifts, "WhoCanPostMessage", _settings.Groups.WhoCanPostMessage, actual.WhoCanPostMessage);
+                        CompareGroupSetting(drifts, "WhoCanViewGroup", _settings.Groups.WhoCanViewGroup, actual.WhoCanViewGroup);
+                        CompareGroupSetting(drifts, "WhoCanModerateMembers", _settings.Groups.WhoCanModerateMembers, actual.WhoCanModerateMembers);
+                        CompareGroupSetting(drifts, "AllowExternalMembers",
+                            _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
+                        CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
+                        CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
+                        CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
+                        CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
+                        CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
+                        CompareGroupSetting(drifts, "SpamModerationLevel", "MODERATE", actual.SpamModerationLevel);
+                        CompareGroupSetting(drifts, "EnableCollaborativeInbox", "false", actual.EnableCollaborativeInbox);
+                    }
+                    catch (Google.GoogleApiException ex)
+                    {
+                        _logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", email, ex.Error?.Code);
+                        errorMessage = $"Google API error: {ex.Error?.Code} — {ex.Error?.Message}";
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error fetching settings for group '{GroupEmail}'", email);
+                        errorMessage = $"Error: {ex.Message}";
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+
+                    return new DomainGroupInfo
+                    {
+                        GroupEmail = email,
+                        DisplayName = group.Name ?? email,
+                        GoogleId = group.Id,
+                        MemberCount = (int)(group.DirectMembersCount ?? 0),
+                        LinkedTeamName = linkedTeam?.Name,
+                        LinkedTeamId = linkedTeam?.Id,
+                        ActualSettings = actualSettings,
+                        Drifts = drifts,
+                        ErrorMessage = errorMessage
+                    };
                 });
-            }
+
+            var groupInfos = (await Task.WhenAll(tasks)).ToList();
 
             // Sort: linked groups first, then alphabetically by email
             var sorted = groupInfos

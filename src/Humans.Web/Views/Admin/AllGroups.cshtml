@@ -4,6 +4,15 @@
     ViewData["Title"] = "All Domain Groups";
     var teams = ViewBag.Teams as List<Team> ?? [];
     var driftedGroups = Model.Groups.Where(g => g.HasDrift).ToList();
+
+    // Collect all setting keys: enforced first (in order), then any extra keys found in actual settings
+    var enforcedKeys = Model.ExpectedSettings.Keys.ToList();
+    var allSettingKeys = enforcedKeys
+        .Concat(Model.Groups
+            .SelectMany(g => g.ActualSettings.Keys)
+            .Distinct()
+            .Where(k => !enforcedKeys.Contains(k)))
+        .ToList();
 }
 
 <div class="container-fluid px-4">
@@ -55,27 +64,34 @@
             <strong>@driftedGroups.Count</strong> with drift@(errorCount > 0 ? $", {errorCount} with errors" : "").
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-hover table-sm align-middle">
+        <div style="overflow-x: auto;">
+            <table class="table table-sm table-hover" style="white-space: nowrap;">
                 <thead class="table-light">
                     <tr>
-                        <th>Group Email</th>
-                        <th>Display Name</th>
+                        <th style="position: sticky; left: 0; background: inherit; z-index: 1;">Group Email</th>
+                        <th style="position: sticky; left: 0; background: inherit; z-index: 1;">Display Name</th>
                         <th>Team</th>
                         <th class="text-end">Members</th>
-                        <th>Status</th>
+                        @foreach (var key in allSettingKeys)
+                        {
+                            var isEnforced = enforcedKeys.Contains(key);
+                            <th title="@(isEnforced ? "Enforced setting" : "Informational")">
+                                @key@(isEnforced ? "" : " *")
+                            </th>
+                        }
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var group in Model.Groups)
                     {
-                        var rowClass = group.ErrorMessage is not null ? "table-danger" : group.HasDrift ? "table-warning" : "";
-                        <tr class="@rowClass">
-                            <td>
+                        <tr class="@(group.ErrorMessage is not null ? "table-danger" : "")">
+                            <td style="position: sticky; left: 0; background: white; z-index: 1;">
                                 <code class="small">@(group.GroupEmail.Split('@')[0])@@</code>
                             </td>
-                            <td>@group.DisplayName</td>
+                            <td style="position: sticky; left: 0; background: white; z-index: 1;">
+                                @group.DisplayName
+                            </td>
                             <td>
                                 @if (group.LinkedTeamId is not null)
                                 {
@@ -90,26 +106,33 @@
                                 }
                             </td>
                             <td class="text-end">@group.MemberCount</td>
-                            <td>
-                                @if (group.ErrorMessage is not null)
+                            @if (group.ErrorMessage is not null)
+                            {
+                                <td colspan="@allSettingKeys.Count" class="text-danger small">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>@group.ErrorMessage
+                                </td>
+                            }
+                            else
+                            {
+                                @foreach (var key in allSettingKeys)
                                 {
-                                    <span class="badge bg-danger" title="@group.ErrorMessage">
-                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>Error
-                                    </span>
+                                    var hasActual = group.ActualSettings.TryGetValue(key, out var actual);
+                                    var isEnforced = Model.ExpectedSettings.TryGetValue(key, out var expected);
+                                    var hasDrift = isEnforced && hasActual && actual != expected;
+                                    if (hasDrift)
+                                    {
+                                        <td style="background-color: #f8d7da; color: #842029;" title="Expected: @expected">
+                                            <small>@actual</small>
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td>
+                                            <small class="text-muted">@(hasActual ? actual : "—")</small>
+                                        </td>
+                                    }
                                 }
-                                else if (group.HasDrift)
-                                {
-                                    <span class="badge bg-warning text-dark">
-                                        <i class="fa-solid fa-exclamation me-1"></i>@group.Drifts.Count drift(s)
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-success">
-                                        <i class="fa-solid fa-check me-1"></i>OK
-                                    </span>
-                                }
-                            </td>
+                            }
                             <td>
                                 <div class="d-flex gap-1">
                                     @if (group.HasDrift)
@@ -136,56 +159,12 @@
                                 </div>
                             </td>
                         </tr>
-                        @if (group.HasDrift)
-                        {
-                            <tr class="@rowClass">
-                                <td colspan="6" class="py-0 ps-4">
-                                    <ul class="list-unstyled mb-0 py-1">
-                                        @foreach (var drift in group.Drifts)
-                                        {
-                                            <li class="small">
-                                                <code>@drift.SettingName</code>:
-                                                <span class="badge bg-danger">@drift.ActualValue</span>
-                                                <i class="fa-solid fa-arrow-right text-muted mx-1 small"></i>
-                                                <span class="badge bg-success">@drift.ExpectedValue</span>
-                                            </li>
-                                        }
-                                    </ul>
-                                </td>
-                            </tr>
-                        }
                     }
                 </tbody>
             </table>
         </div>
-    }
 
-    @if (Model.ExpectedSettings.Count > 0)
-    {
-        <div class="card mt-4 mb-4">
-            <div class="card-header bg-light">
-                <i class="fa-solid fa-list-check me-1"></i><strong>Expected Settings Reference</strong>
-            </div>
-            <div class="card-body p-0">
-                <table class="table table-sm table-striped mb-0">
-                    <thead>
-                        <tr>
-                            <th>Setting</th>
-                            <th>Expected Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var setting in Model.ExpectedSettings)
-                        {
-                            <tr>
-                                <td><code>@setting.Key</code></td>
-                                <td><span class="badge bg-success">@setting.Value</span></td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <p class="text-muted small mt-1">* Informational setting (not enforced by sync)</p>
     }
 </div>
 
