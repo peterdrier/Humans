@@ -300,12 +300,31 @@ public class ShiftSignupService : IShiftSignupService
         if (shiftsToAssign.Count == 0)
             return SignupResult.Fail("Already signed up for all shifts in this range.");
 
+        // Overlap check — skip shifts that conflict with existing confirmed signups in other rotas
+        var es = rota.EventSettings;
+        var skippedOverlaps = new List<string>();
+        var assignable = new List<Shift>();
+        foreach (var shift in shiftsToAssign)
+        {
+            var overlapWarning = await CheckOverlapAsync(userId, shift, es);
+            if (overlapWarning is not null)
+                skippedOverlaps.Add(overlapWarning);
+            else
+                assignable.Add(shift);
+        }
+
+        if (assignable.Count == 0)
+            return SignupResult.Fail("All shifts in range have time conflicts with existing signups.");
+
         // Create confirmed signups with shared SignupBlockId
         var blockId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
         ShiftSignup? firstSignup = null;
+        string? warning = skippedOverlaps.Count > 0
+            ? $"Skipped {skippedOverlaps.Count} shift(s) due to time conflicts."
+            : null;
 
-        foreach (var shift in shiftsToAssign)
+        foreach (var shift in assignable)
         {
             var signup = new ShiftSignup
             {
@@ -334,7 +353,7 @@ public class ShiftSignupService : IShiftSignupService
 
         await _dbContext.SaveChangesAsync();
 
-        return SignupResult.Ok(firstSignup!);
+        return SignupResult.Ok(firstSignup!, warning);
     }
 
     public async Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId)
