@@ -30,7 +30,7 @@ Four locations:
 - Change: always render the Shifts card for department teams (parent teams that aren't system teams)
 - When no `ShiftsSummary` data exists, show just the "Manage Shifts" button without the progress bar
 - Requires the controller to always provide a `ShiftsUrl` even when there are no shifts yet
-- May need a minimal `ShiftsSummaryCardViewModel` with just the URL and `CanManageShifts` flag
+- Controller must always populate a `ShiftsSummaryCardViewModel` for departments — with zero counts if no shifts exist, plus the URL and `CanManageShifts` flag
 
 #### Nav_Shifts resource key
 
@@ -88,7 +88,7 @@ Logic combines `SignUpRangeAsync` (date range iteration, `SignupBlockId` for gro
 - Create confirmed signups with shared `SignupBlockId`
 - Set `Enrolled = true` and `EnrolledByUserId = enrollerUserId`
 - Skip shifts where user is already signed up (don't error, just skip)
-- Check for overlap conflicts (error if any)
+- Check for overlap conflicts — same semantics as existing `VoluntellAsync` (error if user already has a confirmed/pending signup on the same shift)
 - Return `SignupResult` with count of assigned shifts
 
 #### New controller action: `VoluntellRange`
@@ -163,7 +163,7 @@ public class LegalController : Controller
 ```
 
 - Add `"Legal"` to `MembershipRequiredFilter` exempt list
-- Single action: `GET /Legal/{slug?}` defaults to first document
+- Single action: `GET /Legal/{slug?}` defaults to first document; returns 404 for invalid slugs
 
 **View model:**
 
