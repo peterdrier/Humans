@@ -124,6 +124,12 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(new EmailBackfillResult());
     }
 
+    public Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would remediate settings for Google Group {GroupEmail}", groupEmail);
+        return Task.FromResult(true);
+    }
+
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,

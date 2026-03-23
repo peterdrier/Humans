@@ -130,4 +130,10 @@ public interface IGoogleSyncService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Mismatch results for all users checked.</returns>
     Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies expected settings to a Google Group, fixing any drift.
+    /// Respects SyncSettings mode — returns without action if sync is disabled.
+    /// </summary>
+    Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
 }

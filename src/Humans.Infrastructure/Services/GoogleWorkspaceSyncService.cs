@@ -1506,6 +1506,58 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
+    public async Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
+    {
+        var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
+        if (mode == SyncMode.None)
+        {
+            _logger.LogWarning("Google Groups sync is disabled — cannot remediate settings for {GroupEmail}", groupEmail);
+            return false;
+        }
+
+        try
+        {
+            var groupssettingsService = await GetGroupssettingsServiceAsync();
+            var expected = BuildExpectedSettingsDictionary();
+
+            var settings = new Google.Apis.Groupssettings.v1.Data.Groups
+            {
+                WhoCanJoin = expected["WhoCanJoin"],
+                WhoCanViewMembership = expected["WhoCanViewMembership"],
+                WhoCanContactOwner = expected["WhoCanContactOwner"],
+                WhoCanPostMessage = expected["WhoCanPostMessage"],
+                WhoCanViewGroup = expected["WhoCanViewGroup"],
+                WhoCanModerateMembers = expected["WhoCanModerateMembers"],
+                AllowExternalMembers = expected["AllowExternalMembers"],
+                IsArchived = expected["IsArchived"],
+                MembersCanPostAsTheGroup = expected["MembersCanPostAsTheGroup"],
+                IncludeInGlobalAddressList = expected["IncludeInGlobalAddressList"],
+                AllowWebPosting = expected["AllowWebPosting"],
+                MessageModerationLevel = expected["MessageModerationLevel"],
+                SpamModerationLevel = expected["SpamModerationLevel"],
+                EnableCollaborativeInbox = expected["EnableCollaborativeInbox"]
+            };
+
+            var request = groupssettingsService.Groups.Update(settings, groupEmail);
+            await request.ExecuteAsync(cancellationToken);
+
+            _logger.LogInformation("Remediated settings for Google Group {GroupEmail}", groupEmail);
+
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
+                $"Remediated settings for Google Group '{groupEmail}'",
+                nameof(GoogleWorkspaceSyncService));
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remediate settings for Google Group {GroupEmail}", groupEmail);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
     {
         try
