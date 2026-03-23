@@ -683,7 +683,7 @@ public class AdminController : HumansControllerBase
             _logger.LogError(ex, "Failed to remediate settings for {GroupEmail}", groupEmail);
             SetError($"Remediation failed for {groupEmail}: {ex.Message}");
         }
-        return Redirect(returnUrl ?? Url.Action(nameof(AllGroups))!);
+        return Redirect(Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action(nameof(AllGroups))!);
     }
 
     [HttpPost("RemediateAllGroupSettings")]

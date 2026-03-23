@@ -8,27 +8,27 @@ public class EmailNormalizationTests
 {
     [Theory]
     [InlineData("user@googlemail.com", "user@gmail.com")]
-    [InlineData("User@GoogleMail.COM", "User@gmail.com")]
+    [InlineData("User@GoogleMail.COM", "user@gmail.com")]
     [InlineData("foo.bar@googlemail.com", "foo.bar@gmail.com")]
-    public void Canonicalize_GooglemailToGmail(string input, string expected)
+    public void NormalizeForComparison_GooglemailToGmail(string input, string expected)
     {
-        EmailNormalization.Canonicalize(input).Should().Be(expected);
+        EmailNormalization.NormalizeForComparison(input).Should().Be(expected);
     }
 
     [Theory]
-    [InlineData("user@gmail.com")]
-    [InlineData("user@outlook.com")]
-    [InlineData("user@nobodies.team")]
-    public void Canonicalize_NonGooglemail_Unchanged(string input)
+    [InlineData("user@gmail.com", "user@gmail.com")]
+    [InlineData("user@outlook.com", "user@outlook.com")]
+    [InlineData("user@nobodies.team", "user@nobodies.team")]
+    public void NormalizeForComparison_NonGooglemail_LowercasedUnchanged(string input, string expected)
     {
-        EmailNormalization.Canonicalize(input).Should().Be(input);
+        EmailNormalization.NormalizeForComparison(input).Should().Be(expected);
     }
 
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    public void Canonicalize_NullOrEmpty_ReturnsInput(string? input)
+    public void NormalizeForComparison_NullOrEmpty_ReturnsInput(string? input)
     {
-        EmailNormalization.Canonicalize(input!).Should().Be(input);
+        EmailNormalization.NormalizeForComparison(input!).Should().Be(input);
     }
 }

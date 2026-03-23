@@ -1566,8 +1566,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             var directory = await GetDirectoryServiceAsync();
 
-            // Load all Google Workspace users for the domain
-            var googleUsersByEmail = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            // Load all Google Workspace users for the domain.
+            // Key by normalized email (lowercase + googlemail→gmail) so that lookups match regardless of
+            // case or googlemail↔gmail aliasing. Value is the actual primary email from Google (for reporting).
+            var googleUsersByNormalizedEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
 
             string? pageToken = null;
             do
@@ -1586,7 +1588,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     {
                         var primaryEmail = googleUser.PrimaryEmail;
                         if (!string.IsNullOrEmpty(primaryEmail))
-                            googleUsersByEmail[primaryEmail] = primaryEmail;
+                            googleUsersByNormalizedEmail[primaryEmail] = primaryEmail;
                     }
                 }
 
@@ -1605,13 +1607,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 if (dbUser.Email is null) continue;
 
-                // Find a matching Google user by normalized email
-                var matchedGoogleEmail = googleUsersByEmail.Keys
-                    .FirstOrDefault(k => string.Equals(k, dbUser.Email, StringComparison.OrdinalIgnoreCase));
+                // Find the matching Google user by normalized email (handles case and googlemail↔gmail)
+                if (!googleUsersByNormalizedEmail.TryGetValue(dbUser.Email, out var matchedGoogleEmail))
+                    continue; // User not in Google — not a mismatch we handle here
 
-                if (matchedGoogleEmail is null) continue; // User not in Google — not a mismatch we handle here
-
-                // Check if stored email differs from Google's canonical form (case difference)
+                // Report if stored email differs from Google's primary email (case difference or googlemail↔gmail)
                 if (!string.Equals(dbUser.Email, matchedGoogleEmail, StringComparison.Ordinal))
                 {
                     mismatches.Add(new Application.DTOs.EmailMismatch
