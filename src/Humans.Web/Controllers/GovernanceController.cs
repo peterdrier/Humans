@@ -69,16 +69,21 @@ public class GovernanceController : HumansControllerBase
         // Tier member counts for the sidebar
         var (colaboradorCount, asociadoCount) = await _profileService.GetTierCountsAsync();
 
+        var isApprovedColaborador = applications.Any(a =>
+            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+
         var viewModel = new GovernanceIndexViewModel
         {
             StatutesContent = statutesContent,
             HasApplication = latestApplication is not null,
             ApplicationStatus = latestApplication?.Status,
+            ApplicationTier = latestApplication?.MembershipTier,
             ApplicationSubmittedAt = latestApplication?.SubmittedAt.ToDateTimeUtc(),
             ApplicationResolvedAt = latestApplication?.ResolvedAt?.ToDateTimeUtc(),
             ApplicationStatusBadgeClass = latestApplication?.Status.GetBadgeClass(),
             CanApply = latestApplication is null ||
                 latestApplication.Status != ApplicationStatus.Submitted,
+            IsApprovedColaborador = isApprovedColaborador,
             ColaboradorCount = colaboradorCount,
             AsociadoCount = asociadoCount
         };
