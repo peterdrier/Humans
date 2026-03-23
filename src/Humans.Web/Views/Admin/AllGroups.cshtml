@@ -5,14 +5,28 @@
     var teams = ViewBag.Teams as List<Team> ?? [];
     var driftedGroups = Model.Groups.Where(g => g.HasDrift).ToList();
 
-    // Collect all setting keys: enforced first (in order), then any extra keys found in actual settings
-    var enforcedKeys = Model.ExpectedSettings.Keys.ToList();
-    var allSettingKeys = enforcedKeys
-        .Concat(Model.Groups
-            .SelectMany(g => g.ActualSettings.Keys)
-            .Distinct()
-            .Where(k => !enforcedKeys.Contains(k)))
+    // Standard = settings we enforce (from ExpectedSettings)
+    var standardKeys = Model.ExpectedSettings.Keys.ToList();
+
+    // Extra = non-deprecated settings we show but don't enforce
+    var extraKeys = new List<string> {
+        "WhoCanModerateContent", "WhoCanAssistContent", "WhoCanDiscoverGroup",
+        "WhoCanLeaveGroup", "ArchiveOnly", "ReplyTo", "CustomReplyTo",
+        "IncludeCustomFooter", "CustomFooterText", "SendMessageDenyNotification",
+        "DefaultMessageDenyNotificationText", "FavoriteRepliesOnTop",
+        "DefaultSender", "PrimaryLanguage"
+    };
+
+    // Deprecated = everything else found in actual settings
+    var knownKeys = new HashSet<string>(standardKeys.Concat(extraKeys));
+    var deprecatedKeys = Model.Groups
+        .SelectMany(g => g.ActualSettings.Keys)
+        .Distinct()
+        .Where(k => !knownKeys.Contains(k))
+        .OrderBy(k => k)
         .ToList();
+
+    var allSettingKeys = standardKeys.Concat(extraKeys).Concat(deprecatedKeys).ToList();
 }
 
 <div class="container-fluid px-4">
@@ -74,10 +88,20 @@
                         <th class="text-end">Members</th>
                         @foreach (var key in allSettingKeys)
                         {
-                            var isEnforced = enforcedKeys.Contains(key);
-                            <th title="@(isEnforced ? "Enforced setting" : "Informational")">
-                                @key@(isEnforced ? "" : " *")
-                            </th>
+                            var isStandard = standardKeys.Contains(key);
+                            var isDeprecated = deprecatedKeys.Contains(key);
+                            if (isStandard)
+                            {
+                                <th title="Standard: enforced by sync">@key</th>
+                            }
+                            else if (isDeprecated)
+                            {
+                                <th title="Deprecated by Google (shown for reference)" class="text-muted" style="text-decoration: line-through; font-weight: normal;">@key&#8203;&#8225;</th>
+                            }
+                            else
+                            {
+                                <th title="Extra: not enforced by sync" class="text-muted" style="font-weight: normal;">@key&#8203;&dagger;</th>
+                            }
                         }
                         <th>Actions</th>
                     </tr>
@@ -119,10 +143,17 @@
                                     var hasActual = group.ActualSettings.TryGetValue(key, out var actual);
                                     var isEnforced = Model.ExpectedSettings.TryGetValue(key, out var expected);
                                     var hasDrift = isEnforced && hasActual && actual != expected;
+                                    var isCellDeprecated = deprecatedKeys.Contains(key);
                                     if (hasDrift)
                                     {
                                         <td style="background-color: #f8d7da; color: #842029;" title="Expected: @expected">
                                             <small>@actual</small>
+                                        </td>
+                                    }
+                                    else if (isCellDeprecated)
+                                    {
+                                        <td style="opacity: 0.5;">
+                                            <small class="text-muted">@(hasActual ? actual : "—")</small>
                                         </td>
                                     }
                                     else
@@ -164,7 +195,7 @@
             </table>
         </div>
 
-        <p class="text-muted small mt-1">* Informational setting (not enforced by sync)</p>
+        <p class="text-muted small mt-1">&dagger; Extra setting (not enforced) &nbsp;|&nbsp; &#8225; Deprecated by Google (shown for reference)</p>
     }
 </div>
 

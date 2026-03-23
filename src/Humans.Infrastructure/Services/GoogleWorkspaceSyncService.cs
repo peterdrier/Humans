@@ -1727,6 +1727,37 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         Add("DefaultSender", actual.DefaultSender);
                         Add("PrimaryLanguage", actual.PrimaryLanguage);
 
+                        // Deprecated settings (still returned by API, shown for visibility)
+                        Add("WhoCanInvite", actual.WhoCanInvite);
+                        Add("WhoCanAdd", actual.WhoCanAdd);
+                        Add("ShowInGroupDirectory", actual.ShowInGroupDirectory);
+                        Add("AllowGoogleCommunication", actual.AllowGoogleCommunication);
+                        Add("WhoCanApproveMembers", actual.WhoCanApproveMembers);
+                        Add("WhoCanBanUsers", actual.WhoCanBanUsers);
+                        Add("WhoCanModifyMembers", actual.WhoCanModifyMembers);
+                        Add("WhoCanApproveMessages", actual.WhoCanApproveMessages);
+                        Add("WhoCanDeleteAnyPost", actual.WhoCanDeleteAnyPost);
+                        Add("WhoCanDeleteTopics", actual.WhoCanDeleteTopics);
+                        Add("WhoCanLockTopics", actual.WhoCanLockTopics);
+                        Add("WhoCanMoveTopicsIn", actual.WhoCanMoveTopicsIn);
+                        Add("WhoCanMoveTopicsOut", actual.WhoCanMoveTopicsOut);
+                        Add("WhoCanPostAnnouncements", actual.WhoCanPostAnnouncements);
+                        Add("WhoCanHideAbuse", actual.WhoCanHideAbuse);
+                        Add("WhoCanMakeTopicsSticky", actual.WhoCanMakeTopicsSticky);
+                        Add("WhoCanAssignTopics", actual.WhoCanAssignTopics);
+                        Add("WhoCanUnassignTopic", actual.WhoCanUnassignTopic);
+                        Add("WhoCanTakeTopics", actual.WhoCanTakeTopics);
+                        Add("WhoCanMarkDuplicate", actual.WhoCanMarkDuplicate);
+                        Add("WhoCanMarkNoResponseNeeded", actual.WhoCanMarkNoResponseNeeded);
+                        Add("WhoCanMarkFavoriteReplyOnAnyTopic", actual.WhoCanMarkFavoriteReplyOnAnyTopic);
+                        Add("WhoCanMarkFavoriteReplyOnOwnTopic", actual.WhoCanMarkFavoriteReplyOnOwnTopic);
+                        Add("WhoCanUnmarkFavoriteReplyOnAnyTopic", actual.WhoCanUnmarkFavoriteReplyOnAnyTopic);
+                        Add("WhoCanEnterFreeFormTags", actual.WhoCanEnterFreeFormTags);
+                        Add("WhoCanModifyTagsAndCategories", actual.WhoCanModifyTagsAndCategories);
+                        Add("WhoCanAddReferences", actual.WhoCanAddReferences);
+                        Add("MessageDisplayFont", actual.MessageDisplayFont);
+                        Add("MaxMessageBytes", actual.MaxMessageBytes?.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
                         // Compare against expected (only the enforced settings)
                         CompareGroupSetting(drifts, "WhoCanJoin", _settings.Groups.WhoCanJoin, actual.WhoCanJoin);
                         CompareGroupSetting(drifts, "WhoCanViewMembership", _settings.Groups.WhoCanViewMembership, actual.WhoCanViewMembership);
