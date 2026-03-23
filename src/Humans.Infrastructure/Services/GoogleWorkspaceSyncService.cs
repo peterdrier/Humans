@@ -1510,13 +1510,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     /// <inheritdoc />
     public async Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
     {
-        var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
-        if (mode == SyncMode.None)
-        {
-            _logger.LogWarning("Google Groups sync is disabled — cannot remediate settings for {GroupEmail}", groupEmail);
-            return false;
-        }
-
+        // Settings remediation is always allowed — it doesn't add/remove members,
+        // so it's not gated by the sync mode (which controls membership changes).
         try
         {
             var groupssettingsService = await GetGroupssettingsServiceAsync();
