@@ -78,10 +78,10 @@ public class TeamService : ITeamService
         {
             var slug = attempt == 0 ? baseSlug : $"{baseSlug}-{attempt + 1}";
 
-            // Check if slug collides with another team's custom slug
-            var collidesWithCustomSlug = await _dbContext.Teams.AnyAsync(
-                t => t.CustomSlug == slug, cancellationToken);
-            if (collidesWithCustomSlug)
+            // Check if slug collides with another team's slug or custom slug
+            var collidesWithExistingSlug = await _dbContext.Teams.AnyAsync(
+                t => t.Slug == slug || t.CustomSlug == slug, cancellationToken);
+            if (collidesWithExistingSlug)
                 continue;
 
             var team = new Team
