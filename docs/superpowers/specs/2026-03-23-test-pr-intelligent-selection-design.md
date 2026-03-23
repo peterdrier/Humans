@@ -47,33 +47,42 @@ public class HumanController : Controller
 
 **2. Convention-based inference (fallback):**
 
-Extract the section name from the file path:
+Extract the section name from the file path. Controller and view directory names are **singular** in this codebase (except `Shifts`).
 
 | Path pattern | Section | Spec file |
 |---|---|---|
-| `Controllers/TicketsController.cs` | tickets | tickets.spec.ts |
-| `Controllers/CampsController.cs` | camps | camps.spec.ts |
+| `Controllers/TicketController.cs` | tickets | tickets.spec.ts |
+| `Controllers/CampController.cs` | camps | camps.spec.ts |
 | `Controllers/TeamController.cs` | teams | teams.spec.ts |
 | `Controllers/ProfileController.cs` | profile | profile.spec.ts |
 | `Controllers/ShiftsController.cs` | shifts | shifts.spec.ts |
 | `Controllers/AdminController.cs` | admin | admin.spec.ts |
 | `Controllers/BoardController.cs` | board | board.spec.ts |
 | `Controllers/OnboardingReviewController.cs` | onboarding | onboarding.spec.ts |
+| `Controllers/FeedbackController.cs` | feedback | feedback.spec.ts |
 | `Controllers/FeedbackApiController.cs` | feedback | feedback.spec.ts |
-| `Views/Tickets/**` | tickets | tickets.spec.ts |
-| `Views/Camps/**` | camps | camps.spec.ts |
-| `Views/Teams/**` | teams | teams.spec.ts |
+| `Controllers/AdminFeedbackController.cs` | feedback | feedback.spec.ts |
+| `Controllers/CampAdminController.cs` | camps | camps.spec.ts |
+| `Controllers/ShiftAdminController.cs` | shifts | shifts.spec.ts |
+| `Controllers/AccountController.cs` | login | login.spec.ts |
+| `Controllers/DevLoginController.cs` | login | login.spec.ts |
+| `Views/Ticket/**` | tickets | tickets.spec.ts |
+| `Views/Camp/**` | camps | camps.spec.ts |
+| `Views/CampAdmin/**` | camps | camps.spec.ts |
+| `Views/Team/**`, `Views/TeamAdmin/**` | teams | teams.spec.ts |
 | `Views/Profile/**` | profile | profile.spec.ts |
-| `Views/Shifts/**` | shifts | shifts.spec.ts |
-| `Views/Admin/**` | admin | admin.spec.ts |
+| `Views/Shifts/**`, `Views/ShiftAdmin/**`, `Views/ShiftDashboard/**` | shifts | shifts.spec.ts |
+| `Views/Admin/**`, `Views/AdminEmail/**` | admin | admin.spec.ts |
+| `Views/AdminFeedback/**` | feedback | feedback.spec.ts |
 | `Views/Board/**` | board | board.spec.ts |
 | `Views/OnboardingReview/**` | onboarding | onboarding.spec.ts |
-| `Views/Feedback/**` | feedback | feedback.spec.ts |
-| `Views/Home/**` | login | login.spec.ts |
+| `Views/Home/**`, `Views/Account/**`, `Views/DevLogin/**` | login | login.spec.ts |
 | `Domain/**`, `Application/**`, `Infrastructure/**` | (none) | smoke only |
 | `Views/Shared/**`, `wwwroot/**` | (all) | run full suite |
 
-Convention logic: extract controller/view directory name, lowercase it, map to `{name}.spec.ts`. If the spec file doesn't exist, flag as unmapped.
+**Controllers/views without spec coverage** (no corresponding spec file — flagged as unmapped): `HumanController` (needs `@e2e:` annotation → board.spec.ts + profile.spec.ts), `VolController`, `GovernanceController`, `ApplicationController`, `ConsentController`, `CampaignController`.
+
+Convention logic: strip `Controller` suffix, lowercase, try `{name}.spec.ts` and `{name}s.spec.ts` (to handle singular→plural like `camp`→`camps.spec.ts`). If neither exists, flag as unmapped.
 
 **3. Shared/layout changes → run everything:**
 
@@ -81,9 +90,10 @@ If the diff touches `Views/Shared/_Layout.cshtml`, `wwwroot/` assets, or auth mi
 
 ### Build test set
 
-- Deduplicate spec files into a set
+- The final test set is the **union** of all spec files mapped from all changed files
+- Deduplicate into a set
 - Always include `login.spec.ts` as baseline smoke
-- If no sections matched (infrastructure-only PR), run only `login.spec.ts`
+- If no files match any pattern (infrastructure-only PR, docs-only PR, empty diff), run only `login.spec.ts`
 
 ---
 
@@ -91,8 +101,10 @@ If the diff touches `Views/Shared/_Layout.cshtml`, `wwwroot/` assets, or auth mi
 
 ```bash
 cd tests/e2e
-BASE_URL=https://{pr_id}.n.burn.camp npx playwright test {selected_spec_files} --workers=2
+BASE_URL=https://{pr_id}.n.burn.camp npx playwright test tests/login.spec.ts tests/tickets.spec.ts ... --workers=2
 ```
+
+Spec files must be passed as `tests/{name}.spec.ts` (relative to `tests/e2e/`, matching the `testDir: './tests'` config).
 
 Use `--workers=2` to avoid overwhelming the preview environment (learned from implementation — 6 workers causes flaky timeouts).
 
@@ -122,6 +134,8 @@ Report format:
 ```
 
 This is advisory only — no tests are auto-created.
+
+**Limitation:** Only new/added actions are detected. Renamed or deleted actions are not flagged — existing tests referencing removed routes will fail at runtime, which is the correct signal.
 
 ---
 
@@ -183,7 +197,11 @@ Annotations are optional. Files without annotations fall back to convention-base
 4. Run `npx playwright test` with selected specs
 5. Parse output and report
 
-**One-time setup:** Add `// @e2e:` annotations to controllers where convention fails (HumanController, VolunteerController, HomeController). Most controllers map cleanly by convention.
+**One-time setup:** Add `// @e2e:` annotations to controllers where convention fails. Required annotations:
+- `HumanController.cs` → `@e2e: board.spec.ts` + `@e2e: profile.spec.ts`
+- `VolController.cs` → `@e2e: shifts.spec.ts` (volunteer shift management)
+
+Other unmapped controllers (`GovernanceController`, `ApplicationController`, `ConsentController`, `CampaignController`) don't have spec files yet — they'll be flagged as unmapped, which is correct.
 
 ---
 
