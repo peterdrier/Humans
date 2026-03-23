@@ -324,22 +324,26 @@
                                                                 }
                                                             </select>
                                                         </div>
-                                                        <div class="col-md-1">
-                                                            <label class="form-label form-label-sm">Start</label>
-                                                            @if (shift.IsAllDay)
-                                                            {
-                                                                <input type="time" name="StartTime" value="00:00" class="form-control form-control-sm" disabled />
+                                                        @if (shift.IsAllDay)
+                                                        {
+                                                            <div class="col-md-2">
+                                                                <label class="form-label form-label-sm">Time</label>
+                                                                <span class="form-control form-control-sm text-muted bg-light">All day</span>
                                                                 <input type="hidden" name="StartTime" value="00:00" />
-                                                            }
-                                                            else
-                                                            {
+                                                                <input type="hidden" name="DurationHours" value="@shift.Duration.TotalHours" />
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="col-md-1">
+                                                                <label class="form-label form-label-sm">Start</label>
                                                                 <input type="time" name="StartTime" value="@shift.StartTime.ToString("HH:mm", null)" class="form-control form-control-sm" />
-                                                            }
-                                                        </div>
-                                                        <div class="col-md-1">
-                                                            <label class="form-label form-label-sm">Hours</label>
-                                                            <input type="number" name="DurationHours" value="@shift.Duration.TotalHours" class="form-control form-control-sm" step="0.5" min="0.5" />
-                                                        </div>
+                                                            </div>
+                                                            <div class="col-md-1">
+                                                                <label class="form-label form-label-sm">Hours</label>
+                                                                <input type="number" name="DurationHours" value="@shift.Duration.TotalHours" class="form-control form-control-sm" step="0.5" min="0.5" />
+                                                            </div>
+                                                        }
                                                         <div class="col-md-1">
                                                             <label class="form-label form-label-sm">Need</label>
                                                             <input type="number" name="MinVolunteers" value="@shift.MinVolunteers" class="form-control form-control-sm" min="0" />
