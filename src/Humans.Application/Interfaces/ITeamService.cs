@@ -387,7 +387,7 @@ public interface ITeamService
     /// </summary>
     Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, RolePeriod period, bool isPublic, Guid actorUserId,
+        List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -395,8 +395,8 @@ public interface ITeamService
     /// </summary>
     Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, bool isPublic,
-        Guid actorUserId, CancellationToken cancellationToken = default);
+        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a role definition and its assignments.

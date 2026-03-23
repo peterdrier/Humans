@@ -64,9 +64,5 @@ public class TeamRoleDefinitionConfiguration : IEntityTypeConfiguration<TeamRole
         builder.Property(d => d.IsManagement)
             .IsRequired();
 
-        builder.Property(d => d.IsPublic)
-            .IsRequired()
-            .HasDefaultValue(true)
-            .HasSentinel(true);
     }
 }

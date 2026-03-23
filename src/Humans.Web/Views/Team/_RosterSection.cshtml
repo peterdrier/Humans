@@ -1,17 +1,12 @@
 @model List<Humans.Web.Models.TeamRoleDefinitionViewModel>
 @using Humans.Domain.Enums
 
-@{
-    var canManage = (bool)(ViewData["CanManage"] ?? false);
-    var visibleRoles = canManage ? Model : Model.Where(r => r.IsPublic).ToList();
-}
-
-@if (visibleRoles.Any())
+@if (Model.Any())
 {
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Roles</h5>
-            @if (canManage)
+            @if ((bool)(ViewData["CanManage"] ?? false))
             {
                 <a href="@Url.Action("Roles", "TeamAdmin", new { slug = ViewData["Slug"] })"
                    class="btn btn-sm btn-outline-primary">Edit Roles</a>
@@ -28,7 +23,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var role in visibleRoles)
+                    @foreach (var role in Model)
                     {
                         var collapseId = $"role-desc-{role.Id:N}";
                         @foreach (var slot in role.Slots)

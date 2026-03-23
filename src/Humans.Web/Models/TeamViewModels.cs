@@ -287,7 +287,6 @@ public class TeamRoleDefinitionViewModel
     public List<TeamRoleSlotViewModel> Slots { get; set; } = [];
     public int SortOrder { get; set; }
     public bool IsManagement { get; set; }
-    public bool IsPublic { get; set; }
     public RolePeriod Period { get; set; }
 
     /// <summary>
@@ -334,7 +333,6 @@ public class TeamRoleDefinitionViewModel
             Slots = slots,
             SortOrder = d.SortOrder,
             IsManagement = d.IsManagement,
-            IsPublic = d.IsPublic,
             Period = d.Period,
             AssignedUserIds = assignedUserIds
         };
@@ -374,7 +372,6 @@ public class CreateRoleDefinitionModel
     public int SlotCount { get; set; } = 1;
     public List<string> Priorities { get; set; } = ["None"];
     public int SortOrder { get; set; }
-    public bool IsPublic { get; set; }
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 }
 
@@ -388,7 +385,6 @@ public class EditRoleDefinitionModel
     public List<string> Priorities { get; set; } = [];
     public int SortOrder { get; set; }
     public bool IsManagement { get; set; }
-    public bool IsPublic { get; set; }
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 }
 
