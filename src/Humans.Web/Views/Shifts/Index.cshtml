@@ -101,6 +101,8 @@
                 <div class="card-body">
                     @foreach (var rotaGroup in dept.Rotas)
                     {
+                        var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
+                        var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
                         var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
                         <h6 class="mt-3">@rotaGroup.Rota.Name
                             @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
@@ -122,9 +124,9 @@
                             <div class="text-muted small"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
                         }
 
-                        @if (isBuildStrike)
+                        @if (isBuildStrike || hasAllDayShifts)
                         {
-                            @* Build/Strike: show date range with per-day fill rates and range signup *@
+                            @* Build/Strike/All: show date range with per-day fill rates and range signup *@
                             var allDayShifts = rotaGroup.Shifts.Where(s => s.Shift.IsAllDay).OrderBy(s => s.Shift.DayOffset).ToList();
                             var availableShifts = allDayShifts.Where(s => s.RemainingSlots > 0 && !Model.UserSignupShiftIds.Contains(s.Shift.Id)).ToList();
                             @if (availableShifts.Count > 0)
@@ -218,9 +220,10 @@
                             </div>
 
                         }
-                        else
+                        @if (!isBuildStrike || hasTimedShifts)
                         {
-                            @* Event: standard per-shift signup *@
+                            @* Event/timed shifts: standard per-shift signup *@
+                            var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
@@ -239,7 +242,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var item in rotaGroup.Shifts)
+                                        @foreach (var item in timedShifts)
                                         {
                                             var shift = item.Shift;
                                             var isFull = item.RemainingSlots <= 0;
