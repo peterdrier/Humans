@@ -37,12 +37,12 @@
         var labels = data.map(function(d) { return d.dateLabel; });
         var confirmed = data.map(function(d) { return d.confirmedCount; });
         var remaining = data.map(function(d) { return Math.max(0, d.totalSlots - d.confirmedCount); });
+        var minLine = data.map(function(d) { return d.minSlots; });
 
         var confirmedColors = data.map(function(d) {
             if (d.totalSlots === 0) return '#198754';
-            var pct = d.confirmedCount / d.totalSlots;
-            if (pct >= 0.8) return '#198754';
-            if (pct >= 0.5) return '#ffc107';
+            if (d.confirmedCount >= d.minSlots) return '#198754';
+            if (d.minSlots > 0 && d.confirmedCount >= d.minSlots * 0.5) return '#ffc107';
             return '#dc3545';
         });
 
@@ -52,7 +52,8 @@
                 labels: labels,
                 datasets: [
                     { label: 'Confirmed', data: confirmed, backgroundColor: confirmedColors },
-                    { label: 'Remaining', data: remaining, backgroundColor: '#e9ecef' }
+                    { label: 'Remaining', data: remaining, backgroundColor: '#e9ecef' },
+                    { label: 'Min needed', data: minLine, type: 'line', borderColor: '#dc3545', borderDash: [5, 5], pointRadius: 0, fill: false, order: 0 }
                 ]
             },
             options: {

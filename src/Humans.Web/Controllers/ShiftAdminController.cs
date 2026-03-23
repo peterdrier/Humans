@@ -270,6 +270,23 @@ public class ShiftAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
+        var es = rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
+        if (es is not null)
+        {
+            var (periodStart, periodEnd) = rota.Period switch
+            {
+                RotaPeriod.Build => (es.BuildStartOffset, -1),
+                RotaPeriod.Event => (0, es.EventEndOffset),
+                RotaPeriod.Strike => (es.EventEndOffset + 1, es.StrikeEndOffset),
+                _ => (es.BuildStartOffset, es.StrikeEndOffset)
+            };
+            if (model.DayOffset < periodStart || model.DayOffset > periodEnd)
+            {
+                SetError("Shift date must fall within the rota's period.");
+                return RedirectToAction(nameof(Index), new { slug });
+            }
+        }
+
         var shift = new Shift
         {
             Id = Guid.NewGuid(),
@@ -313,6 +330,24 @@ public class ShiftAdminController : HumansTeamControllerBase
         {
             SetError("Invalid start time format.");
             return RedirectToAction(nameof(Index), new { slug });
+        }
+
+        var rota = shift.Rota;
+        var editEs = rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
+        if (editEs is not null)
+        {
+            var (periodStart, periodEnd) = rota.Period switch
+            {
+                RotaPeriod.Build => (editEs.BuildStartOffset, -1),
+                RotaPeriod.Event => (0, editEs.EventEndOffset),
+                RotaPeriod.Strike => (editEs.EventEndOffset + 1, editEs.StrikeEndOffset),
+                _ => (editEs.BuildStartOffset, editEs.StrikeEndOffset)
+            };
+            if (model.DayOffset < periodStart || model.DayOffset > periodEnd)
+            {
+                SetError("Shift date must fall within the rota's period.");
+                return RedirectToAction(nameof(Index), new { slug });
+            }
         }
 
         shift.Description = model.Description;

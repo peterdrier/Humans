@@ -612,11 +612,12 @@ public class ShiftManagementService : IShiftManagementService
             }).ToList();
 
             var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
+            var minSlots = overlapping.Sum(s => s.MinVolunteers);
             var confirmedCount = overlapping
                 .SelectMany(s => s.ShiftSignups)
                 .Count(su => su.Status == SignupStatus.Confirmed);
 
-            results.Add(new DailyStaffingData(dayOffset, dateLabel, confirmedCount, totalSlots, period));
+            results.Add(new DailyStaffingData(dayOffset, dateLabel, confirmedCount, totalSlots, minSlots, period));
         }
 
         return results;

@@ -17,7 +17,7 @@
 <form method="get" class="row g-2 mb-4 align-items-end">
     <div class="col-auto">
         <label class="form-label mb-1">Department</label>
-        <select name="departmentId" class="form-select form-select-sm" onchange="this.form.submit()">
+        <select name="departmentId" class="form-select form-select-sm">
             <option value="">All Departments</option>
             @foreach (var dept in Model.AllDepartments)
             {
@@ -34,7 +34,9 @@
     </div>
     <div class="col-auto">
         <label class="form-label mb-1">Date</label>
-        <input type="date" name="date" class="form-control form-control-sm" value="@Model.FilterDate" onchange="this.form.submit()" />
+        <input type="date" name="date" class="form-control form-control-sm" value="@Model.FilterDate"
+               min="@es.GateOpeningDate.PlusDays(es.BuildStartOffset).ToString("yyyy-MM-dd", null)"
+               max="@es.GateOpeningDate.PlusDays(es.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
     </div>
     @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterDate))
     {
@@ -43,6 +45,11 @@
         </div>
     }
 </form>
+<script>
+    document.querySelectorAll('[name="departmentId"], [name="date"]').forEach(function(el) {
+        el.addEventListener('change', function() { this.form.submit(); });
+    });
+</script>
 
 @if (!es.IsShiftBrowsingOpen)
 {

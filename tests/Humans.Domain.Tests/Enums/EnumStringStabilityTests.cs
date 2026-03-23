@@ -142,7 +142,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(RotaPeriod),
-            new[] { "Build", "Event", "Strike" }
+            new[] { "Build", "Event", "Strike", "All" }
         },
         {
             typeof(RolePeriod),

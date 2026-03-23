@@ -54,7 +54,7 @@
     <form method="get" class="row g-2 mb-4 align-items-end">
         <div class="col-auto">
             <label class="form-label mb-1">Department</label>
-            <select name="departmentId" class="form-select form-select-sm" onchange="this.form.submit()">
+            <select name="departmentId" class="form-select form-select-sm">
                 <option value="">All Departments</option>
                 @foreach (var dept in Model.AllDepartments)
                 {
@@ -64,7 +64,9 @@
         </div>
         <div class="col-auto">
             <label class="form-label mb-1">Date</label>
-            <input type="date" name="date" class="form-control form-control-sm" value="@Model.FilterDate" onchange="this.form.submit()" />
+            <input type="date" name="date" class="form-control form-control-sm" value="@Model.FilterDate"
+                   min="@Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.BuildStartOffset).ToString("yyyy-MM-dd", null)"
+                   max="@Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
         </div>
         @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterDate))
         {
@@ -73,6 +75,11 @@
             </div>
         }
     </form>
+    <script>
+        document.querySelectorAll('[name="departmentId"], [name="date"]').forEach(function(el) {
+            el.addEventListener('change', function() { this.form.submit(); });
+        });
+    </script>
 
     @if (!Model.EventSettings.IsShiftBrowsingOpen)
     {
@@ -104,7 +111,7 @@
                             {
                                 <span class="badge bg-warning text-dark ms-1">Important</span>
                             }
-                            <span class="badge @(rotaGroup.Rota.Period == RotaPeriod.Build ? "bg-info" : rotaGroup.Rota.Period == RotaPeriod.Strike ? "bg-secondary" : "bg-success") ms-1">@(rotaGroup.Rota.Period == RotaPeriod.Build ? "Set-up" : rotaGroup.Rota.Period.ToString())</span>
+                            <span class="badge @(rotaGroup.Rota.Period switch { RotaPeriod.Build => "bg-info", RotaPeriod.Strike => "bg-secondary", RotaPeriod.All => "bg-primary", _ => "bg-success" }) ms-1">@(rotaGroup.Rota.Period switch { RotaPeriod.Build => "Set-up", RotaPeriod.All => "All Phases", _ => rotaGroup.Rota.Period.ToString() })</span>
                         </h6>
                         @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
                         {

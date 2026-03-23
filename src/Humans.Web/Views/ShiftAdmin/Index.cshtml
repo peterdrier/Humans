@@ -151,6 +151,7 @@
                                         <option value="Build" selected="@(rota.Period == RotaPeriod.Build ? "selected" : null)">Set-up</option>
                                         <option value="Event" selected="@(rota.Period == RotaPeriod.Event ? "selected" : null)">Event</option>
                                         <option value="Strike" selected="@(rota.Period == RotaPeriod.Strike ? "selected" : null)">Strike</option>
+                                        <option value="All" selected="@(rota.Period == RotaPeriod.All ? "selected" : null)">All Phases</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -302,11 +303,20 @@
                                                     <div class="mb-2">
                                                         <textarea name="Description" class="form-control form-control-sm" rows="2" placeholder="Shift duties, notes...">@shift.Description</textarea>
                                                     </div>
+                                                    @{
+                                                        var (editPeriodStart, editPeriodEnd) = rota.Period switch
+                                                        {
+                                                            RotaPeriod.Build => (Model.EventSettings.BuildStartOffset, -1),
+                                                            RotaPeriod.Event => (0, Model.EventSettings.EventEndOffset),
+                                                            RotaPeriod.Strike => (Model.EventSettings.EventEndOffset + 1, Model.EventSettings.StrikeEndOffset),
+                                                            _ => (Model.EventSettings.BuildStartOffset, Model.EventSettings.StrikeEndOffset)
+                                                        };
+                                                    }
                                                     <div class="row g-2 align-items-end">
                                                         <div class="col-md-2">
                                                             <label class="form-label form-label-sm">Date</label>
                                                             <select name="DayOffset" class="form-select form-select-sm">
-                                                                @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
+                                                                @for (var d = editPeriodStart; d <= editPeriodEnd; d++)
                                                                 {
                                                                     var editDate = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                                                     var editLabel = editDate.ToDisplayShiftDate();
@@ -316,7 +326,15 @@
                                                         </div>
                                                         <div class="col-md-1">
                                                             <label class="form-label form-label-sm">Start</label>
-                                                            <input type="time" name="StartTime" value="@shift.StartTime.ToString("HH:mm", null)" class="form-control form-control-sm" />
+                                                            @if (shift.IsAllDay)
+                                                            {
+                                                                <input type="time" name="StartTime" value="00:00" class="form-control form-control-sm" disabled />
+                                                                <input type="hidden" name="StartTime" value="00:00" />
+                                                            }
+                                                            else
+                                                            {
+                                                                <input type="time" name="StartTime" value="@shift.StartTime.ToString("HH:mm", null)" class="form-control form-control-sm" />
+                                                            }
                                                         </div>
                                                         <div class="col-md-1">
                                                             <label class="form-label form-label-sm">Hours</label>
@@ -508,26 +526,41 @@
                         <div class="collapse mt-2" id="@genCollapseId">
                             <form asp-action="GenerateShifts" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post">
                                 @Html.AntiForgeryToken()
+                                @{
+                                    var (genPeriodStart, genPeriodEnd) = rota.Period switch
+                                    {
+                                        RotaPeriod.Build => (Model.EventSettings.BuildStartOffset, -1),
+                                        RotaPeriod.Event => (0, Model.EventSettings.EventEndOffset),
+                                        RotaPeriod.Strike => (Model.EventSettings.EventEndOffset + 1, Model.EventSettings.StrikeEndOffset),
+                                        _ => (Model.EventSettings.BuildStartOffset, Model.EventSettings.StrikeEndOffset)
+                                    };
+                                    var genDefaultEnd = rota.Period switch
+                                    {
+                                        RotaPeriod.Build => -1,
+                                        RotaPeriod.Strike => Model.EventSettings.StrikeEndOffset,
+                                        _ => Model.EventSettings.EventEndOffset
+                                    };
+                                }
                                 <div class="row g-2 align-items-end mb-2">
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">Start Day</label>
                                         <select name="StartDayOffset" class="form-select form-select-sm">
-                                            @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
+                                            @for (var d = genPeriodStart; d <= genPeriodEnd; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                                 var label = date.ToDisplayShiftDate();
-                                                <option value="@d" selected="@(d == 0 ? "selected" : null)">@label</option>
+                                                <option value="@d" selected="@(d == genPeriodStart ? "selected" : null)">@label</option>
                                             }
                                         </select>
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">End Day</label>
                                         <select name="EndDayOffset" class="form-select form-select-sm">
-                                            @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
+                                            @for (var d = genPeriodStart; d <= genPeriodEnd; d++)
                                             {
                                                 var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                                 var label = date.ToDisplayShiftDate();
-                                                <option value="@d" selected="@(d == Model.EventSettings.EventEndOffset ? "selected" : null)">@label</option>
+                                                <option value="@d" selected="@(d == genDefaultEnd ? "selected" : null)">@label</option>
                                             }
                                         </select>
                                     </div>
@@ -567,15 +600,30 @@
                         <form asp-action="CreateShift" asp-route-slug="@Model.Department.Slug" method="post">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="RotaId" value="@rota.Id" />
+                            @{
+                                var (createPeriodStart, createPeriodEnd) = rota.Period switch
+                                {
+                                    RotaPeriod.Build => (Model.EventSettings.BuildStartOffset, -1),
+                                    RotaPeriod.Event => (0, Model.EventSettings.EventEndOffset),
+                                    RotaPeriod.Strike => (Model.EventSettings.EventEndOffset + 1, Model.EventSettings.StrikeEndOffset),
+                                    _ => (Model.EventSettings.BuildStartOffset, Model.EventSettings.StrikeEndOffset)
+                                };
+                                var createDefaultDay = rota.Period switch
+                                {
+                                    RotaPeriod.Build => Model.EventSettings.BuildStartOffset,
+                                    RotaPeriod.Strike => Model.EventSettings.EventEndOffset + 1,
+                                    _ => 0
+                                };
+                            }
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-2">
                                     <label class="form-label form-label-sm">Date</label>
                                     <select name="DayOffset" class="form-select form-select-sm">
-                                        @for (var d = Model.EventSettings.BuildStartOffset; d <= Model.EventSettings.StrikeEndOffset; d++)
+                                        @for (var d = createPeriodStart; d <= createPeriodEnd; d++)
                                         {
                                             var date = Model.EventSettings.GateOpeningDate.PlusDays(d);
                                             var label = date.ToDisplayShiftDate();
-                                            <option value="@d" selected="@(d == 0 ? "selected" : null)">@label</option>
+                                            <option value="@d" selected="@(d == createDefaultDay ? "selected" : null)">@label</option>
                                         }
                                     </select>
                                 </div>
