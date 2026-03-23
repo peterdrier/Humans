@@ -45,6 +45,9 @@ public class ApplicationController : HumansControllerBase
         var hasPendingApplication = applications.Any(a =>
             a.Status == ApplicationStatus.Submitted);
 
+        var isApprovedColaborador = applications.Any(a =>
+            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+
         var viewModel = new ApplicationIndexViewModel
         {
             Applications = applications.Select(a => new ApplicationSummaryViewModel
@@ -56,7 +59,8 @@ public class ApplicationController : HumansControllerBase
                 ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
                 StatusBadgeClass = a.Status.GetBadgeClass()
             }).ToList(),
-            CanSubmitNew = !hasPendingApplication
+            CanSubmitNew = !hasPendingApplication,
+            IsApprovedColaborador = isApprovedColaborador
         };
 
         return View(viewModel);
@@ -78,7 +82,13 @@ public class ApplicationController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        return View(new ApplicationCreateViewModel());
+        var isApprovedColaborador = applications.Any(a =>
+            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+
+        return View(new ApplicationCreateViewModel
+        {
+            MembershipTier = isApprovedColaborador ? MembershipTier.Asociado : MembershipTier.Colaborador
+        });
     }
 
     [HttpPost]

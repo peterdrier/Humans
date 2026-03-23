@@ -49,6 +49,16 @@ public class VolunteerEventProfile
     public List<string> Intolerances { get; set; } = [];
 
     /// <summary>
+    /// Free text specifying "Other" allergy when "Other" is selected.
+    /// </summary>
+    public string? AllergyOtherText { get; set; }
+
+    /// <summary>
+    /// Free text specifying "Other" intolerance when "Other" is selected.
+    /// </summary>
+    public string? IntoleranceOtherText { get; set; }
+
+    /// <summary>
     /// Medical conditions (restricted visibility — owner/NoInfoAdmin/Admin only).
     /// </summary>
     public string? MedicalConditions { get; set; }

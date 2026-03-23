@@ -72,6 +72,12 @@ public class TeamRoleDefinition
     public bool IsManagement { get; set; }
 
     /// <summary>
+    /// Whether this role is visible to volunteers in roster views.
+    /// Non-public roles are only visible to coordinators and admins.
+    /// </summary>
+    public bool IsPublic { get; set; } = true;
+
+    /// <summary>
     /// Navigation property to role slot assignments.
     /// </summary>
     public ICollection<TeamRoleAssignment> Assignments { get; } = new List<TeamRoleAssignment>();

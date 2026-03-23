@@ -113,11 +113,16 @@
                             <div class="col-md-4 mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" name="SelectedAllergies" value="@allergy" class="form-check-input"
-                                           @(Model.SelectedAllergies.Contains(allergy) ? "checked" : "") />
+                                           @(Model.SelectedAllergies.Contains(allergy) ? "checked" : "")
+                                           @(string.Equals(allergy, "Other", StringComparison.Ordinal) ? "data-toggle-target=allergyOtherText" : "") />
                                     <label class="form-check-label">@allergy</label>
                                 </div>
                             </div>
                         }
+                    </div>
+                    <div id="allergyOtherText" class="mt-2" style="display: @(Model.SelectedAllergies.Contains("Other") ? "block" : "none");">
+                        <input type="text" name="AllergyOtherText" class="form-control" maxlength="500"
+                               value="@Model.AllergyOtherText" placeholder="Please specify your other allergy" />
                     </div>
                 </div>
             </div>
@@ -132,11 +137,16 @@
                             <div class="col-md-4 mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" name="SelectedIntolerances" value="@intolerance" class="form-check-input"
-                                           @(Model.SelectedIntolerances.Contains(intolerance) ? "checked" : "") />
+                                           @(Model.SelectedIntolerances.Contains(intolerance) ? "checked" : "")
+                                           @(string.Equals(intolerance, "Other", StringComparison.Ordinal) ? "data-toggle-target=intoleranceOtherText" : "") />
                                     <label class="form-check-label">@intolerance</label>
                                 </div>
                             </div>
                         }
+                    </div>
+                    <div id="intoleranceOtherText" class="mt-2" style="display: @(Model.SelectedIntolerances.Contains("Other") ? "block" : "none");">
+                        <input type="text" name="IntoleranceOtherText" class="form-control" maxlength="500"
+                               value="@Model.IntoleranceOtherText" placeholder="Please specify your other intolerance" />
                     </div>
                 </div>
             </div>
@@ -158,3 +168,20 @@
         </form>
     </div>
 </div>
+
+@section Scripts {
+<script>
+document.querySelectorAll('[data-toggle-target]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        var target = document.getElementById(this.dataset.toggleTarget);
+        if (target) {
+            target.style.display = this.checked ? 'block' : 'none';
+            if (!this.checked) {
+                var input = target.querySelector('input');
+                if (input) input.value = '';
+            }
+        }
+    });
+});
+</script>
+}

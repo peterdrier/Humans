@@ -755,7 +755,9 @@ public class ProfileController : HumansControllerBase
                 SelectedIntolerances = profile?.Intolerances ?? [],
                 SelectedLanguages = profile?.Languages ?? [],
                 DietaryPreference = profile?.DietaryPreference,
-                MedicalConditions = profile?.MedicalConditions
+                MedicalConditions = profile?.MedicalConditions,
+                AllergyOtherText = profile?.AllergyOtherText,
+                IntoleranceOtherText = profile?.IntoleranceOtherText
             };
 
             return View(viewModel);
@@ -784,6 +786,8 @@ public class ProfileController : HumansControllerBase
             shiftProfile.Quirks = model.SelectedQuirks ?? [];
             shiftProfile.Allergies = model.SelectedAllergies ?? [];
             shiftProfile.Intolerances = model.SelectedIntolerances ?? [];
+            shiftProfile.AllergyOtherText = model.SelectedAllergies?.Contains("Other", StringComparer.Ordinal) == true ? model.AllergyOtherText : null;
+            shiftProfile.IntoleranceOtherText = model.SelectedIntolerances?.Contains("Other", StringComparer.Ordinal) == true ? model.IntoleranceOtherText : null;
             shiftProfile.Languages = model.SelectedLanguages ?? [];
             shiftProfile.DietaryPreference = model.DietaryPreference;
             shiftProfile.MedicalConditions = model.MedicalConditions;

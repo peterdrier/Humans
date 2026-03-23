@@ -56,7 +56,7 @@ public class TeamRoleServiceTests : IDisposable
 
         var act = () => _service.CreateRoleDefinitionAsync(
             team.Id, "Designer", null, 2,
-            [SlotPriority.Critical, SlotPriority.Important], 1, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical, SlotPriority.Important], 1, RolePeriod.YearRound, true, admin.Id);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*system team*");
@@ -72,7 +72,7 @@ public class TeamRoleServiceTests : IDisposable
 
         var result = await _service.CreateRoleDefinitionAsync(
             team.Id, "Designer", "Designs things", 2,
-            [SlotPriority.Critical, SlotPriority.Important], 1, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical, SlotPriority.Important], 1, RolePeriod.YearRound, true, admin.Id);
 
         result.Should().NotBeNull();
         result.Name.Should().Be("Designer");
@@ -130,7 +130,7 @@ public class TeamRoleServiceTests : IDisposable
 
         var act = () => _service.UpdateRoleDefinitionAsync(
             role.Id, "Designer", null, 1,
-            [SlotPriority.Critical], 1, false, RolePeriod.YearRound, admin.Id);
+            [SlotPriority.Critical], 1, false, RolePeriod.YearRound, true, admin.Id);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Cannot reduce slot count*");

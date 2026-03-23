@@ -329,6 +329,9 @@
   <data name="Governance_AsociadoDescription" xml:space="preserve"><value>Asociados sind die formellen stimmberechtigten Mitglieder von Nobodies Collective. Als Asociado können Sie an Mitgliederversammlungen teilnehmen, über kollektive Entscheidungen abstimmen und an Wahlen teilnehmen.</value></data>
   <data name="Governance_Optional" xml:space="preserve"><value>Dies ist freiwillig. Die meisten Freiwilligen müssen keine Asociados werden. Sie haben bereits Zugang zu Ressourcen, sobald Sie Ihr Profil und Ihre Einwilligungen abgeschlossen haben.</value></data>
   <data name="Governance_ApplyButton" xml:space="preserve"><value>Als Asociado bewerben</value></data>
+  <data name="Governance_ColaboradorUpgradeTitle" xml:space="preserve"><value>Ready to become an Asociado?</value></data>
+  <data name="Governance_ColaboradorUpgradeDescription" xml:space="preserve"><value>Als Colaborador k&#xF6;nnen Sie den Asociado-Status beantragen, um Stimmrecht zu erhalten, an Mitgliederversammlungen teilzunehmen und an Wahlen teilzunehmen.</value></data>
+  <data name="Governance_ApplyForAsociado" xml:space="preserve"><value>Als Asociado bewerben</value></data>
   <data name="Governance_YourApplication" xml:space="preserve"><value>Ihr Antrag</value></data>
   <data name="Governance_Submitted" xml:space="preserve"><value>Eingereicht</value></data>
   <data name="Governance_Resolved" xml:space="preserve"><value>Abgeschlossen</value></data>

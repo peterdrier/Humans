@@ -1211,7 +1211,7 @@ public class TeamService : ITeamService
 
     public async Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
+        List<SlotPriority> priorities, int sortOrder, RolePeriod period, bool isPublic, Guid actorUserId,
         CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams.FindAsync(new object[] { teamId }, cancellationToken)
@@ -1263,6 +1263,7 @@ public class TeamService : ITeamService
             Priorities = priorities,
             SortOrder = sortOrder,
             Period = period,
+            IsPublic = isPublic,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -1285,8 +1286,8 @@ public class TeamService : ITeamService
 
     public async Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
-        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
-        CancellationToken cancellationToken = default)
+        List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, bool isPublic,
+        Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var definition = await _dbContext.Set<TeamRoleDefinition>()
             .Include(d => d.Team)
@@ -1380,6 +1381,7 @@ public class TeamService : ITeamService
         }
 
         definition.IsManagement = isManagement;
+        definition.IsPublic = isPublic;
         definition.Period = period;
         definition.UpdatedAt = _clock.GetCurrentInstant();
 
