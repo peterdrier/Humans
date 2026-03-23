@@ -28,12 +28,10 @@
         {
             @if (Model.IsApprovedColaborador && Model.CanSubmitNew)
             {
-                <div class="alert alert-info mb-3">
-                    <i class="fa-solid fa-arrow-up-right-dots me-2"></i>
-                    <strong>@Localizer["Governance_ColaboradorUpgradeTitle"]</strong>
-                    <p class="mb-2 mt-1">@Localizer["Governance_ColaboradorUpgradeDescription"]</p>
-                    <a asp-action="Create" class="btn btn-primary btn-sm">@Localizer["Governance_ApplyForAsociado"]</a>
-                </div>
+                <p class="text-muted small mb-3">
+                    @Localizer["Governance_ColaboradorCanApply"]
+                    <a asp-action="Create">@Localizer["Governance_ApplyForAsociado"]</a>
+                </p>
             }
 
             @foreach (var app in Model.Applications)

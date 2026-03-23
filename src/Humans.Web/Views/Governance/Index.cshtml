@@ -40,16 +40,6 @@
         }
         else
         {
-            @if (Model.IsApprovedColaborador && Model.CanApply)
-            {
-                <div class="alert alert-info mb-3">
-                    <i class="fa-solid fa-arrow-up-right-dots me-2"></i>
-                    <strong>@Localizer["Governance_ColaboradorUpgradeTitle"]</strong>
-                    <p class="mb-2 mt-1">@Localizer["Governance_ColaboradorUpgradeDescription"]</p>
-                    <a asp-controller="Application" asp-action="Create" class="btn btn-primary btn-sm">@Localizer["Governance_ApplyForAsociado"]</a>
-                </div>
-            }
-
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div>
@@ -165,5 +155,14 @@
                 </dl>
             </div>
         </div>
+        @if (Model.IsApprovedColaborador && Model.CanApply)
+        {
+            <div class="card mt-3 border-info">
+                <div class="card-body text-info-emphasis bg-info-subtle">
+                    <p class="mb-2">@Localizer["Governance_ColaboradorCanApply"]</p>
+                    <a asp-controller="Application" asp-action="Create" class="btn btn-sm btn-outline-info">@Localizer["Governance_ApplyForAsociado"]</a>
+                </div>
+            </div>
+        }
     </div>
 </div>

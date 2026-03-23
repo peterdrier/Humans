@@ -329,8 +329,7 @@
   <data name="Governance_AsociadoDescription" xml:space="preserve"><value>Les asociados sont les membres votants de Nobodies Collective. En tant qu'asociado, vous pouvez assister aux assembl&#xE9;es g&#xE9;n&#xE9;rales, voter sur les d&#xE9;cisions collectives et participer aux &#xE9;lections.</value></data>
   <data name="Governance_Optional" xml:space="preserve"><value>Cela est facultatif. La plupart des b&#xE9;n&#xE9;voles n'ont pas besoin de devenir asociados. Vous avez d&#xE9;j&#xE0; acc&#xE8;s aux ressources une fois votre profil et vos consentements compl&#xE9;t&#xE9;s.</value></data>
   <data name="Governance_ApplyButton" xml:space="preserve"><value>Postuler pour devenir asociado</value></data>
-  <data name="Governance_ColaboradorUpgradeTitle" xml:space="preserve"><value>Ready to become an Asociado?</value></data>
-  <data name="Governance_ColaboradorUpgradeDescription" xml:space="preserve"><value>En tant que Colaborador, vous pouvez postuler pour le statut d'Asociado afin d'obtenir le droit de vote, d'assister aux assembl&#xE9;es g&#xE9;n&#xE9;rales et de participer aux &#xE9;lections.</value></data>
+  <data name="Governance_ColaboradorCanApply" xml:space="preserve"><value>Les Colaboradores peuvent &#xE9;galement postuler pour le statut d'Asociado s'ils souhaitent participer &#xE0; la gouvernance.</value></data>
   <data name="Governance_ApplyForAsociado" xml:space="preserve"><value>Postuler pour Asociado</value></data>
   <data name="Governance_YourApplication" xml:space="preserve"><value>Votre candidature</value></data>
   <data name="Governance_Submitted" xml:space="preserve"><value>Envoy&#xE9;e</value></data>
