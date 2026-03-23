@@ -612,7 +612,7 @@ public class TeamController : HumansControllerBase
         catch (InvalidOperationException ex)
         {
             _logger.LogWarning(ex, "Failed to create team: {Message}", ex.Message);
-            SetError("A team with that name already exists. Please choose a different name.");
+            SetError(ex.Message);
             await PopulateEligibleParentsAsync(model, excludeTeamId: null);
             return View(model);
         }
