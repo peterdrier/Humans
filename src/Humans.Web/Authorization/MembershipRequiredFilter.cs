@@ -29,6 +29,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "CampApi",          // Public API ([AllowAnonymous])
         "Feedback",         // Feedback submission — accessible to all authenticated users
         "FeedbackApi",      // API key auth, no membership required
+        "Legal",            // Public legal documents ([AllowAnonymous])
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)

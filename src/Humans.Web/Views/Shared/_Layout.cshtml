@@ -45,6 +45,12 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
                         </li>
+                        @if (User.Identity?.IsAuthenticated != true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
+                            </li>
+                        }
                         @if (User.Identity?.IsAuthenticated == true)
                         {
                             var isActiveMember = User.HasClaim(Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType, Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue) || Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User);
