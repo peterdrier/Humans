@@ -120,8 +120,9 @@ The `/Admin/GroupSettingsResults` page detects Google Groups settings drift but:
 1. Has no way to fix drifted settings (admin must fix manually in Google Admin console)
 2. Shows only a subset of the 14 expected settings in the reference table
 3. Has an incorrect expected value for `WhoCanViewMembership`
+4. Only checks groups linked to teams — groups created outside the system (manually in Google Admin, by other tools) are invisible
 
-#### Fix — Three Parts
+#### Fix — Four Parts
 
 **Part 1: Add remediation capability**
 
@@ -132,11 +133,25 @@ The `/Admin/GroupSettingsResults` page detects Google Groups settings drift but:
 - New POST action `RemediateGroupSettings` on `AdminController`
 - Per-group "Fix" button on the results page, plus "Fix All" for bulk remediation
 
-**Part 2: Expand expected settings reference**
+**Part 2: Domain-wide "All Groups" table**
+
+New view mode that queries the Google Admin SDK Directory API for **all groups on the domain**, not just team-linked ones. Flat table, no pagination (~500 user org, group count is small):
+
+- One row per group
+- Columns: group email, display name, linked team (name if linked, blank if unlinked), member count, and each of the 14 expected settings as individual columns
+- Drift indicator per-setting (highlight cells that don't match expected values)
+- Per-row "Fix" button (same remediation as Part 1)
+- Groups not linked to any team are clearly visible — most are pre-existing groups created before Humans, not rogue
+- Per-row "Link to Team" action on unlinked groups: team dropdown → calls `EnsureTeamGroupAsync` (with #173 validation guards) to bring legacy groups under management
+- This makes the all-groups view the single place to discover unlinked groups and fold them into the team system
+
+This replaces or augments the existing per-team drift view. The team-linked view can remain as a filtered subset.
+
+**Part 3: Expand expected settings reference**
 
 Update the reference table to show all 14 expected settings, including the currently hardcoded ones (`IsArchived`, `MembersCanPostAsTheGroup`, etc.).
 
-**Part 3: Correct default value**
+**Part 4: Correct default value**
 
 - `WhoCanViewMembership`: change from current value to `OWNERS_AND_MANAGERS`
 - `IsArchived`: keep at `false` (current value is correct — `true` would make groups read-only/archived, preventing new posts)
@@ -144,10 +159,10 @@ Update the reference table to show all 14 expected settings, including the curre
 Update consistently in all three locations: `BuildExpectedSettingsDictionary()`, `GoogleWorkspaceSettings.cs` default, and `appsettings.json`.
 
 **Files involved:**
-- `src/Humans.Infrastructure/Services/GoogleWorkspaceSyncService.cs` — add `RemediateGroupSettingsAsync`, update `BuildExpectedSettingsDictionary()`
-- `src/Humans.Application/Interfaces/IGoogleSyncService.cs` — add interface method
-- `src/Humans.Web/Controllers/AdminController.cs` — add POST action
-- `src/Humans.Web/Views/Admin/GroupSettingsResults.cshtml` — add Fix buttons, expand reference table
+- `src/Humans.Infrastructure/Services/GoogleWorkspaceSyncService.cs` — add `RemediateGroupSettingsAsync`, add `GetAllDomainGroupsWithSettingsAsync`, update `BuildExpectedSettingsDictionary()`
+- `src/Humans.Application/Interfaces/IGoogleSyncService.cs` — add interface methods
+- `src/Humans.Web/Controllers/AdminController.cs` — add POST action, add all-groups GET action
+- `src/Humans.Web/Views/Admin/GroupSettingsResults.cshtml` — add Fix buttons, expand reference table, add domain-wide groups table
 
 ---
 
