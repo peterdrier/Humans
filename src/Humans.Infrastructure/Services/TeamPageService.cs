@@ -149,20 +149,20 @@ public class TeamPageService : ITeamPageService
             return null;
         }
 
+        var canManageShifts = canManageShiftsByRole ||
+            await _shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id);
+
         var activeEvent = await _shiftManagementService.GetActiveAsync();
         if (activeEvent is null)
         {
-            return null;
+            return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
         }
 
         var summaryData = await _shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, team.Id);
         if (summaryData is null)
         {
-            return null;
+            return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
         }
-
-        var canManageShifts = canManageShiftsByRole ||
-            await _shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id);
 
         return new TeamPageShiftsSummary(
             summaryData.TotalSlots,

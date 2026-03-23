@@ -34,7 +34,7 @@
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Browse Shifts</h2>
+        <h2>Browse Volunteer Options</h2>
         <div class="d-flex gap-2">
             <vc:access-matrix section="Shifts" />
             @if (User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator))
@@ -153,7 +153,7 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
-                                        <button type="submit" class="btn btn-sm btn-success">Sign Up for Range</button>
+                                        <button type="submit" class="btn btn-sm btn-success">Sign up for @(rotaGroup.Rota.Period == RotaPeriod.Build ? "set-up" : "strike") dates</button>
                                     </div>
                                 </form>
                             }

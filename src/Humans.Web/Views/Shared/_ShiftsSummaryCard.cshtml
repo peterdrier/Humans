@@ -5,25 +5,30 @@
         <h6 class="mb-0"><i class="fa-solid fa-clock me-1"></i> Shifts</h6>
     </div>
     <div class="card-body">
-        @{
-            var fillPct = Model.TotalSlots > 0 ? (int)(100.0 * Model.ConfirmedCount / Model.TotalSlots) : 0;
-            var barClass = fillPct >= 80 ? "bg-success" : fillPct >= 50 ? "bg-warning" : "bg-danger";
-        }
-        <div class="progress mb-3" style="height: 20px;">
-            <div class="progress-bar @barClass" role="progressbar"
-                 style="width: @fillPct%;" aria-valuenow="@fillPct" aria-valuemin="0" aria-valuemax="100">
-                @fillPct%
-            </div>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <span>@Model.ConfirmedCount / @Model.TotalSlots slots filled</span>
-            <span>@Model.UniqueVolunteerCount humans signed up</span>
-        </div>
-        @if (Model.PendingCount > 0)
+        @if (Model.TotalSlots > 0)
         {
-            <a href="@Model.ShiftsUrl" class="badge bg-warning text-dark text-decoration-none">
-                @Model.PendingCount pending
-            </a>
+            var fillPct = (int)(100.0 * Model.ConfirmedCount / Model.TotalSlots);
+            var barClass = fillPct >= 80 ? "bg-success" : fillPct >= 50 ? "bg-warning" : "bg-danger";
+            <div class="progress mb-3" style="height: 20px;">
+                <div class="progress-bar @barClass" role="progressbar"
+                     style="width: @fillPct%;" aria-valuenow="@fillPct" aria-valuemin="0" aria-valuemax="100">
+                    @fillPct%
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span>@Model.ConfirmedCount / @Model.TotalSlots slots filled</span>
+                <span>@Model.UniqueVolunteerCount humans signed up</span>
+            </div>
+            @if (Model.PendingCount > 0)
+            {
+                <a href="@Model.ShiftsUrl" class="badge bg-warning text-dark text-decoration-none">
+                    @Model.PendingCount pending
+                </a>
+            }
+        }
+        else
+        {
+            <p class="text-muted mb-0">No shifts configured yet.</p>
         }
         @if (Model.CanManageShifts)
         {
