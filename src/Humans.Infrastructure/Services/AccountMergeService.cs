@@ -116,12 +116,11 @@ public class AccountMergeService : IAccountMergeService
 
         // 5. Verify the pending email on the primary account
         var pendingEmail = await _dbContext.UserEmails
-            .FirstOrDefaultAsync(e => e.Id == request.PendingEmailId, ct);
-        if (pendingEmail != null)
-        {
-            pendingEmail.IsVerified = true;
-            pendingEmail.UpdatedAt = now;
-        }
+            .FirstOrDefaultAsync(e => e.Id == request.PendingEmailId, ct)
+            ?? throw new InvalidOperationException(
+                $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
+        pendingEmail.IsVerified = true;
+        pendingEmail.UpdatedAt = now;
 
         // 6. Anonymize the duplicate account
         await AnonymizeSourceAccountAsync(sourceUser, now, ct);
