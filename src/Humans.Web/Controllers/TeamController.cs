@@ -679,7 +679,19 @@ public class TeamController : HumansControllerBase
             // Handles prefix set, changed, or cleared (deactivates old resource if needed)
             try
             {
-                await _googleSyncService.EnsureTeamGroupAsync(id);
+                var groupResult = await _googleSyncService.EnsureTeamGroupAsync(id);
+                if (!groupResult.Success)
+                {
+                    if (groupResult.RequiresConfirmation)
+                    {
+                        SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+                        SetError(groupResult.WarningMessage ?? "Confirmation required for group reactivation.");
+                        return RedirectToAction(nameof(Summary));
+                    }
+                    SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+                    SetError(groupResult.ErrorMessage ?? "Google Group linking failed.");
+                    return RedirectToAction(nameof(Summary));
+                }
             }
             catch (Exception ex)
             {

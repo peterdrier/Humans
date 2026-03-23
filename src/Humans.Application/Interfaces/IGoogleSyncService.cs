@@ -67,7 +67,7 @@ public interface IGoogleSyncService
     /// Ensures a team has a linked Google Group. If GoogleGroupPrefix is set but no Group
     /// resource exists, creates or links the group. Called when prefix is set on a team.
     /// </summary>
-    Task EnsureTeamGroupAsync(Guid teamId, CancellationToken cancellationToken = default);
+    Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Provisions a new Google Group for a team.

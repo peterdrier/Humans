@@ -1153,7 +1153,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task EnsureTeamGroupAsync(Guid teamId, CancellationToken cancellationToken = default)
+    public async Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams
             .Include(t => t.GoogleResources)
@@ -1162,7 +1162,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         if (team is null)
         {
             _logger.LogWarning("Team {TeamId} not found for EnsureTeamGroupAsync", teamId);
-            return;
+            return GroupLinkResult.Ok();
         }
 
         var existingGroup = team.GoogleResources
@@ -1189,7 +1189,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 _logger.LogDebug("Team {TeamId} has no GoogleGroupPrefix and no active group, nothing to do", teamId);
             }
-            return;
+            return GroupLinkResult.Ok();
         }
 
         var expectedUrl = $"https://groups.google.com/a/{_settings.Domain}/g/{team.GoogleGroupPrefix}";
@@ -1200,7 +1200,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             _logger.LogDebug("Team {TeamId} already has active Group resource {ResourceId} matching prefix",
                 teamId, existingGroup.Id);
-            return;
+            return GroupLinkResult.Ok();
         }
 
         // If existing group doesn't match (prefix changed), deactivate old resource
@@ -1220,6 +1220,48 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         var email = $"{team.GoogleGroupPrefix}@{_settings.Domain}";
+
+        // Check for existing active GoogleResource with this group URL (any team)
+        var existingActiveByEmail = await _dbContext.GoogleResources
+            .Include(r => r.Team)
+            .Where(r => r.IsActive && r.ResourceType == GoogleResourceType.Group)
+            .Where(r => r.Url != null && r.Url.EndsWith($"/g/{team.GoogleGroupPrefix}"))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existingActiveByEmail is not null)
+        {
+            if (existingActiveByEmail.TeamId == teamId)
+                return GroupLinkResult.Error("This group is already linked to this team.");
+            else
+                return GroupLinkResult.Error($"This group is already linked to team \"{existingActiveByEmail.Team!.Name}\".");
+        }
+
+        // Check for inactive resource for this team (reactivation scenario)
+        var inactiveForTeam = await _dbContext.GoogleResources
+            .Where(r => !r.IsActive && r.ResourceType == GoogleResourceType.Group && r.TeamId == teamId)
+            .Where(r => r.Url != null && r.Url.EndsWith($"/g/{team.GoogleGroupPrefix}"))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (inactiveForTeam is not null && !confirmReactivation)
+            return GroupLinkResult.NeedsConfirmation(
+                "This group was previously linked to this team. Reactivate it?",
+                inactiveForTeam.Id);
+
+        if (inactiveForTeam is not null && confirmReactivation)
+        {
+            inactiveForTeam.IsActive = true;
+            inactiveForTeam.LastSyncedAt = _clock.GetCurrentInstant();
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Reactivated Google Group resource {ResourceId} for team {TeamId}",
+                inactiveForTeam.Id, teamId);
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,
+                "Reactivated Google Group resource for team",
+                nameof(GoogleWorkspaceSyncService),
+                relatedEntityId: teamId, relatedEntityType: nameof(Team));
+            return GroupLinkResult.Ok();
+        }
+
         var now = _clock.GetCurrentInstant();
 
         // Try to find an existing Google Group with this email via Cloud Identity
@@ -1267,6 +1309,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 email, ex.Error.Code, teamId);
             await ProvisionTeamGroupAsync(teamId, email, team.Name, cancellationToken);
         }
+
+        return GroupLinkResult.Ok();
     }
 
     /// <inheritdoc />
