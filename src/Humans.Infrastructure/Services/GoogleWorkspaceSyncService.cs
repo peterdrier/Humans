@@ -13,6 +13,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 
@@ -815,14 +816,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 .Select(tm => new { tm.User.Email, tm.User.DisplayName })
                 .ToList();
             var expectedEmails = new HashSet<string>(
-                expectedMembers.Select(m => m.Email!), StringComparer.OrdinalIgnoreCase);
+                expectedMembers.Select(m => m.Email!), NormalizingEmailComparer.Instance);
 
             // Current: Google Group members via Cloud Identity
             var cloudIdentity = await GetCloudIdentityServiceAsync();
             var saEmail = await GetServiceAccountEmailAsync();
-            var currentEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var currentEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
             // Track membership resource names for deletion (email → "groups/{id}/memberships/{id}")
-            var membershipNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var membershipNames = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
 
             try
             {
@@ -970,7 +971,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             // Expected: union of all linked teams' active members
             var membersByEmail = new Dictionary<string, (string DisplayName, List<string> TeamNames)>(
-                StringComparer.OrdinalIgnoreCase);
+                NormalizingEmailComparer.Instance);
 
             foreach (var resource in resources)
             {
@@ -997,11 +998,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var drive = await GetDriveServiceAsync();
             var permissions = await ListDrivePermissionsAsync(drive, primary.GoogleId, cancellationToken);
             // All user permissions (direct + inherited) — for checking if member already has access
-            var allEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
             // Only direct managed permissions — for detecting removable extras
-            var directEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
             // Email → current Google role (reader, writer, etc.)
-            var roleByEmail = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var roleByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
             foreach (var perm in permissions)
             {
                 if (IsAnyUserPermission(perm))

@@ -92,8 +92,7 @@ public class AccountController : Controller
         }
 
         // If the user does not have an account, create one
-        var email = EmailNormalization.Canonicalize(
-            info.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty);
+        var email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
         var name = info.Principal.FindFirstValue(ClaimTypes.Name);
         var pictureUrl = info.Principal.FindFirstValue("urn:google:picture");
 

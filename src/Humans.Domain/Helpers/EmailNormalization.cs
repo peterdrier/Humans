@@ -32,7 +32,7 @@ public static class EmailNormalization
 
         var lower = email.ToLowerInvariant();
 
-        if (lower.EndsWith("@googlemail.com"))
+        if (lower.EndsWith("@googlemail.com", StringComparison.Ordinal))
             return string.Concat(lower.AsSpan(0, lower.Length - "@googlemail.com".Length), "@gmail.com");
 
         return lower;
@@ -43,7 +43,7 @@ public static class EmailNormalization
     /// </summary>
     public static bool EmailsMatch(string? a, string? b)
     {
-        if (a is null || b is null) return a == b;
+        if (a is null || b is null) return string.Equals(a, b, StringComparison.Ordinal);
         return string.Equals(NormalizeForComparison(a), NormalizeForComparison(b), StringComparison.Ordinal);
     }
 }
@@ -57,5 +57,5 @@ public sealed class NormalizingEmailComparer : IEqualityComparer<string>
 
     public bool Equals(string? x, string? y) => EmailNormalization.EmailsMatch(x, y);
 
-    public int GetHashCode(string obj) => EmailNormalization.NormalizeForComparison(obj).GetHashCode();
+    public int GetHashCode(string obj) => StringComparer.Ordinal.GetHashCode(EmailNormalization.NormalizeForComparison(obj));
 }

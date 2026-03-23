@@ -97,7 +97,7 @@ public class UserEmailService : IUserEmailService
         string email,
         CancellationToken cancellationToken = default)
     {
-        email = EmailNormalization.Canonicalize(email.Trim());
+        email = email.Trim();
 
         // Validate email format
         if (!new EmailAddressAttribute().IsValid(email))
@@ -333,7 +333,6 @@ public class UserEmailService : IUserEmailService
         string email,
         CancellationToken cancellationToken = default)
     {
-        email = EmailNormalization.Canonicalize(email);
         var now = _clock.GetCurrentInstant();
 
         var userEmail = new UserEmail
