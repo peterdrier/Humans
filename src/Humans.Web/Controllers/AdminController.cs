@@ -755,16 +755,26 @@ public class AdminController : HumansControllerBase
             var team = await _dbContext.Teams.FindAsync(teamId);
             if (team is null) return NotFound();
 
-            team.GoogleGroupPrefix = groupPrefix.Trim().ToLowerInvariant();
-            await _dbContext.SaveChangesAsync();
+            var normalizedPrefix = groupPrefix.Trim().ToLowerInvariant();
+            var previousPrefix = team.GoogleGroupPrefix;
+            team.GoogleGroupPrefix = normalizedPrefix;
 
             var linkResult = await googleSyncService.EnsureTeamGroupAsync(teamId);
             if (linkResult.RequiresConfirmation)
+            {
+                await _dbContext.SaveChangesAsync();
                 SetInfo($"Linked group for team \"{team.Name}\". Note: {linkResult.WarningMessage}");
+            }
             else if (linkResult.ErrorMessage is not null)
+            {
+                team.GoogleGroupPrefix = previousPrefix;
                 SetError($"Could not link group: {linkResult.ErrorMessage}");
+            }
             else
-                SetSuccess($"Successfully linked {groupPrefix}@nobodies.team to team \"{team.Name}\".");
+            {
+                await _dbContext.SaveChangesAsync();
+                SetSuccess($"Successfully linked {normalizedPrefix}@nobodies.team to team \"{team.Name}\".");
+            }
         }
         catch (Exception ex)
         {

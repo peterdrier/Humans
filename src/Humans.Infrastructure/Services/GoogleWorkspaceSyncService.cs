@@ -1205,25 +1205,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return GroupLinkResult.Ok();
         }
 
-        // If existing group doesn't match (prefix changed), deactivate old resource
-        if (existingGroup is not null)
-        {
-            existingGroup.IsActive = false;
-            _logger.LogInformation("Deactivated Group resource {ResourceId} for team {TeamId} (prefix changed to '{Prefix}')",
-                existingGroup.Id, teamId, team.GoogleGroupPrefix);
-
-            await _auditLogService.LogAsync(
-                AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
-                $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
-                nameof(GoogleWorkspaceSyncService),
-                relatedEntityId: teamId, relatedEntityType: nameof(Team));
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-
         var email = $"{team.GoogleGroupPrefix}@{_settings.Domain}";
 
-        // Check for existing active GoogleResource with this group URL (any team)
+        // Check for existing active GoogleResource with this group URL (any team) BEFORE deactivating anything
         var existingActiveByEmail = await _dbContext.GoogleResources
             .Include(r => r.Team)
             .Where(r => r.IsActive && r.ResourceType == GoogleResourceType.Group)
@@ -1238,7 +1222,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 return GroupLinkResult.Error($"This group is already linked to team \"{existingActiveByEmail.Team!.Name}\".");
         }
 
-        // Check for inactive resource for this team (reactivation scenario)
+        // Check for inactive resource for this team (reactivation scenario) BEFORE deactivating anything
         var inactiveForTeam = await _dbContext.GoogleResources
             .Where(r => !r.IsActive && r.ResourceType == GoogleResourceType.Group && r.TeamId == teamId)
             .Where(r => r.Url != null && r.Url.EndsWith($"/g/{team.GoogleGroupPrefix}"))
@@ -1262,6 +1246,22 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 nameof(GoogleWorkspaceSyncService),
                 relatedEntityId: teamId, relatedEntityType: nameof(Team));
             return GroupLinkResult.Ok();
+        }
+
+        // Validation passed — now safe to deactivate the old resource if prefix changed
+        if (existingGroup is not null)
+        {
+            existingGroup.IsActive = false;
+            _logger.LogInformation("Deactivated Group resource {ResourceId} for team {TeamId} (prefix changed to '{Prefix}')",
+                existingGroup.Id, teamId, team.GoogleGroupPrefix);
+
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
+                $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
+                nameof(GoogleWorkspaceSyncService),
+                relatedEntityId: teamId, relatedEntityType: nameof(Team));
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         var now = _clock.GetCurrentInstant();
