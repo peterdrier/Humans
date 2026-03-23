@@ -1,3 +1,4 @@
+// @e2e: shifts.spec.ts
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;

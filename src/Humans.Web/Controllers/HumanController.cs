@@ -1,3 +1,5 @@
+// @e2e: board.spec.ts
+// @e2e: profile.spec.ts
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
