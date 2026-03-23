@@ -538,4 +538,115 @@ public class AdminController : HumansControllerBase
         return View(result);
     }
 
+    [HttpPost("CheckEmailMismatches")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckEmailMismatches(
+        [FromServices] IGoogleSyncService googleSyncService)
+    {
+        try
+        {
+            var result = await googleSyncService.GetEmailMismatchesAsync();
+            TempData["EmailBackfillResult"] = System.Text.Json.JsonSerializer.Serialize(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check email mismatches");
+            SetError($"Email mismatch check failed: {ex.Message}");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return RedirectToAction(nameof(EmailBackfillReview));
+    }
+
+    [HttpGet("EmailBackfillReview")]
+    public IActionResult EmailBackfillReview()
+    {
+        Application.DTOs.EmailBackfillResult? result = null;
+        if (TempData["EmailBackfillResult"] is string json)
+        {
+            result = System.Text.Json.JsonSerializer.Deserialize<Application.DTOs.EmailBackfillResult>(json);
+        }
+
+        if (result is null)
+        {
+            SetInfo("No email mismatch results to display. Run the check first.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(result);
+    }
+
+    [HttpPost("ApplyEmailBackfill")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyEmailBackfill(
+        [FromForm] List<Guid> selectedUserIds,
+        [FromForm] Dictionary<string, string> corrections)
+    {
+        if (selectedUserIds.Count == 0)
+        {
+            SetInfo("No users selected.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var updated = 0;
+        var errors = new List<string>();
+
+        foreach (var userId in selectedUserIds)
+        {
+            if (!corrections.TryGetValue(userId.ToString(), out var googleEmail) || string.IsNullOrEmpty(googleEmail))
+                continue;
+
+            try
+            {
+                var user = await _dbContext.Users
+                    .Include(u => u.UserEmails)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
+                if (user is null)
+                {
+                    errors.Add($"User {userId} not found.");
+                    continue;
+                }
+
+                var oldEmail = user.Email;
+
+                user.Email = googleEmail;
+                user.UserName = googleEmail;
+                user.NormalizedEmail = googleEmail.ToUpperInvariant();
+                user.NormalizedUserName = googleEmail.ToUpperInvariant();
+
+                // Update OAuth UserEmail record if it exists
+                var oauthEmail = user.UserEmails.FirstOrDefault(e => e.IsOAuth);
+                if (oauthEmail is not null)
+                {
+                    oauthEmail.Email = googleEmail;
+                }
+
+                _logger.LogInformation(
+                    "Admin {AdminId} applying email backfill for user {UserId}: '{OldEmail}' → '{NewEmail}'",
+                    currentUser.Id, userId, oldEmail, googleEmail);
+
+                updated++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update email for user {UserId}", userId);
+                errors.Add($"Error updating user {userId}: {ex.Message}");
+            }
+        }
+
+        if (updated > 0)
+            await _dbContext.SaveChangesAsync();
+
+        if (errors.Count > 0)
+            SetError($"Applied {updated} correction(s) with {errors.Count} error(s): {string.Join("; ", errors)}");
+        else
+            SetSuccess($"Applied {updated} email correction(s) successfully.");
+
+        return RedirectToAction(nameof(Index));
+    }
+
 }

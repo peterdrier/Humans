@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.CloudIdentity.v1;
 using Google.Apis.CloudIdentity.v1.Data;
 using Google.Apis.Auth.OAuth2;
@@ -32,6 +33,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
     private CloudIdentityService? _cloudIdentityService;
+    private DirectoryService? _directoryService;
     private DriveService? _driveService;
     private GroupssettingsService? _groupssettingsService;
     private string? _serviceAccountEmail;
@@ -105,6 +107,24 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         });
 
         return _groupssettingsService;
+    }
+
+    private async Task<DirectoryService> GetDirectoryServiceAsync()
+    {
+        if (_directoryService is not null)
+        {
+            return _directoryService;
+        }
+
+        var credential = await GetCredentialAsync(DirectoryService.Scope.AdminDirectoryUserReadonly);
+
+        _directoryService = new DirectoryService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Humans"
+        });
+
+        return _directoryService;
     }
 
     private async Task<GoogleCredential> GetCredentialAsync(params string[] scopes)
@@ -1438,6 +1458,91 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         if (!string.Equals(expectedValue, actualValue, StringComparison.OrdinalIgnoreCase))
         {
             drifts.Add(new GroupSettingDrift(settingName, expectedValue, actualValue));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var directory = await GetDirectoryServiceAsync();
+
+            // Load all Google Workspace users for the domain
+            var googleUsersByEmail = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            string? pageToken = null;
+            do
+            {
+                var listRequest = directory.Users.List();
+                listRequest.Domain = _settings.Domain;
+                listRequest.MaxResults = 500;
+                if (pageToken is not null)
+                    listRequest.PageToken = pageToken;
+
+                var response = await listRequest.ExecuteAsync(cancellationToken);
+
+                if (response.UsersValue is not null)
+                {
+                    foreach (var googleUser in response.UsersValue)
+                    {
+                        var primaryEmail = googleUser.PrimaryEmail;
+                        if (!string.IsNullOrEmpty(primaryEmail))
+                            googleUsersByEmail[primaryEmail] = primaryEmail;
+                    }
+                }
+
+                pageToken = response.NextPageToken;
+            } while (!string.IsNullOrEmpty(pageToken));
+
+            // Load all DB users with a non-null email
+            var dbUsers = await _dbContext.Users
+                .Where(u => u.Email != null)
+                .Select(u => new { u.Id, u.DisplayName, u.Email })
+                .ToListAsync(cancellationToken);
+
+            var mismatches = new List<Application.DTOs.EmailMismatch>();
+
+            foreach (var dbUser in dbUsers)
+            {
+                if (dbUser.Email is null) continue;
+
+                // Find a matching Google user by normalized email
+                var matchedGoogleEmail = googleUsersByEmail.Keys
+                    .FirstOrDefault(k => string.Equals(k, dbUser.Email, StringComparison.OrdinalIgnoreCase));
+
+                if (matchedGoogleEmail is null) continue; // User not in Google — not a mismatch we handle here
+
+                // Check if stored email differs from Google's canonical form (case difference)
+                if (!string.Equals(dbUser.Email, matchedGoogleEmail, StringComparison.Ordinal))
+                {
+                    mismatches.Add(new Application.DTOs.EmailMismatch
+                    {
+                        UserId = dbUser.Id,
+                        DisplayName = dbUser.DisplayName,
+                        StoredEmail = dbUser.Email,
+                        GoogleEmail = matchedGoogleEmail
+                    });
+                }
+            }
+
+            _logger.LogInformation(
+                "Email mismatch check complete: {Total} DB users checked, {Count} mismatches found",
+                dbUsers.Count, mismatches.Count);
+
+            return new Application.DTOs.EmailBackfillResult
+            {
+                Mismatches = mismatches,
+                TotalUsersChecked = dbUsers.Count
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check email mismatches via Admin SDK");
+            return new Application.DTOs.EmailBackfillResult
+            {
+                ErrorMessage = ex.Message
+            };
         }
     }
 }

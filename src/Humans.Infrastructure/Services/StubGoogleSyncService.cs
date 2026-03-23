@@ -118,6 +118,12 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(new GroupSettingsDriftResult());
     }
 
+    public Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would check email mismatches against Admin SDK");
+        return Task.FromResult(new EmailBackfillResult());
+    }
+
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,

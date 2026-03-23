@@ -84,6 +84,22 @@
                 </a>
             </div>
         </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Email Backfill</div>
+            <div class="card-body">
+                <form asp-action="CheckEmailMismatches" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-envelope-circle-check me-1"></i>Check Email Mismatches
+                    </button>
+                    <small class="text-muted d-block mt-1">Compares stored emails against Google Admin SDK. Detects case differences in @@nobodies.team addresses.</small>
+                </form>
+                <a asp-action="EmailBackfillReview" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Results
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="col-md-6">
