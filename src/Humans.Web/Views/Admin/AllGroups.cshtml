@@ -1,0 +1,249 @@
+@model Humans.Application.DTOs.AllGroupsResult
+@using Humans.Domain.Entities
+@{
+    ViewData["Title"] = "All Domain Groups";
+    var teams = ViewBag.Teams as List<Team> ?? [];
+    var driftedGroups = Model.Groups.Where(g => g.HasDrift).ToList();
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+        <h1>All Domain Groups</h1>
+        <div class="d-flex gap-2">
+            @if (driftedGroups.Count > 0)
+            {
+                <form asp-action="RemediateAllGroupSettings" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-warning btn-sm"
+                            onclick="return confirm('Fix settings on all @driftedGroups.Count drifted group(s)?')">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Fix All (@driftedGroups.Count)
+                    </button>
+                </form>
+            }
+            <a asp-action="GroupSettingsResults" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-list-check me-1"></i>Per-Team Drift View
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+            </a>
+        </div>
+    </div>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i>@Model.ErrorMessage
+        </div>
+    }
+    else if (Model.Groups.Count == 0)
+    {
+        <div class="alert alert-info">
+            <i class="fa-solid fa-circle-info me-1"></i>No groups found on the domain.
+        </div>
+    }
+    else
+    {
+        var linkedCount = Model.Groups.Count(g => g.LinkedTeamId is not null);
+        var unlinkedCount = Model.Groups.Count(g => g.LinkedTeamId is null);
+        var errorCount = Model.Groups.Count(g => g.ErrorMessage is not null);
+
+        <div class="alert alert-info mb-3">
+            <i class="fa-solid fa-layer-group me-1"></i>
+            <strong>@Model.Groups.Count</strong> group(s) total —
+            <strong>@linkedCount</strong> linked to teams,
+            <strong>@unlinkedCount</strong> unlinked,
+            <strong>@driftedGroups.Count</strong> with drift@(errorCount > 0 ? $", {errorCount} with errors" : "").
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover table-sm align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Group Email</th>
+                        <th>Display Name</th>
+                        <th>Team</th>
+                        <th class="text-end">Members</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in Model.Groups)
+                    {
+                        var rowClass = group.ErrorMessage is not null ? "table-danger" : group.HasDrift ? "table-warning" : "";
+                        <tr class="@rowClass">
+                            <td>
+                                <code class="small">@group.GroupEmail</code>
+                            </td>
+                            <td>@group.DisplayName</td>
+                            <td>
+                                @if (group.LinkedTeamId is not null)
+                                {
+                                    <a asp-controller="Team" asp-action="Detail" asp-route-id="@group.LinkedTeamId"
+                                       class="badge bg-primary text-decoration-none">
+                                        @group.LinkedTeamName
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td class="text-end">@group.MemberCount</td>
+                            <td>
+                                @if (group.ErrorMessage is not null)
+                                {
+                                    <span class="badge bg-danger" title="@group.ErrorMessage">
+                                        <i class="fa-solid fa-triangle-exclamation me-1"></i>Error
+                                    </span>
+                                }
+                                else if (group.HasDrift)
+                                {
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fa-solid fa-exclamation me-1"></i>@group.Drifts.Count drift(s)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">
+                                        <i class="fa-solid fa-check me-1"></i>OK
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    @if (group.HasDrift)
+                                    {
+                                        <form asp-action="RemediateGroupSettings" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="groupEmail" value="@group.GroupEmail" />
+                                            <input type="hidden" name="returnUrl" value="@Url.Action("AllGroups")" />
+                                            <button type="submit" class="btn btn-warning btn-sm py-0">
+                                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Fix
+                                            </button>
+                                        </form>
+                                    }
+                                    @if (group.LinkedTeamId is null && teams.Count > 0)
+                                    {
+                                        <button type="button" class="btn btn-outline-primary btn-sm py-0"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#linkModal"
+                                                data-group-email="@group.GroupEmail"
+                                                data-group-prefix="@group.GroupEmail.Split('@')[0]">
+                                            <i class="fa-solid fa-link me-1"></i>Link
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                        @if (group.HasDrift)
+                        {
+                            <tr class="@rowClass">
+                                <td colspan="6" class="py-0 ps-4">
+                                    <div class="d-flex flex-wrap gap-2 py-1">
+                                        @foreach (var drift in group.Drifts)
+                                        {
+                                            <span class="small">
+                                                <code>@drift.SettingName</code>:
+                                                <span class="badge bg-danger">@drift.ActualValue</span>
+                                                <i class="fa-solid fa-arrow-right text-muted mx-1 small"></i>
+                                                <span class="badge bg-success">@drift.ExpectedValue</span>
+                                            </span>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Model.ExpectedSettings.Count > 0)
+    {
+        <div class="card mt-4 mb-4">
+            <div class="card-header bg-light">
+                <i class="fa-solid fa-list-check me-1"></i><strong>Expected Settings Reference</strong>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Setting</th>
+                            <th>Expected Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var setting in Model.ExpectedSettings)
+                        {
+                            <tr>
+                                <td><code>@setting.Key</code></td>
+                                <td><span class="badge bg-success">@setting.Value</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@if (teams.Count > 0)
+{
+    <!-- Link to Team Modal -->
+    <div class="modal fade" id="linkModal" tabindex="-1" aria-labelledby="linkModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="LinkGroupToTeam" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="linkModalLabel">Link Group to Team</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Linking sets the team's Google Group prefix and creates the resource record.
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Group</label>
+                            <input type="text" class="form-control" id="modalGroupEmail" readonly />
+                            <input type="hidden" name="groupPrefix" id="modalGroupPrefix" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="modalTeamId" class="form-label fw-semibold">Team</label>
+                            <select name="teamId" id="modalTeamId" class="form-select" required>
+                                <option value="">Select a team…</option>
+                                @foreach (var team in teams)
+                                {
+                                    <option value="@team.Id">@team.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-link me-1"></i>Link Group
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var linkModal = document.getElementById('linkModal');
+            if (linkModal) {
+                linkModal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget;
+                    var email = button.getAttribute('data-group-email');
+                    var prefix = button.getAttribute('data-group-prefix');
+                    document.getElementById('modalGroupEmail').value = email;
+                    document.getElementById('modalGroupPrefix').value = prefix;
+                });
+            }
+        });
+    </script>
+}

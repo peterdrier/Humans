@@ -136,4 +136,10 @@ public interface IGoogleSyncService
     /// Respects SyncSettings mode — returns without action if sync is disabled.
     /// </summary>
     Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists all Google Groups on the domain and cross-references with the local database.
+    /// Returns drift status for each group relative to the expected settings.
+    /// </summary>
+    Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default);
 }

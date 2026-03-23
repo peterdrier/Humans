@@ -130,6 +130,12 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(true);
     }
 
+    public Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would enumerate all domain groups");
+        return Task.FromResult(new AllGroupsResult());
+    }
+
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,

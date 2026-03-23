@@ -116,7 +116,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return _directoryService;
         }
 
-        var credential = await GetCredentialAsync(DirectoryService.Scope.AdminDirectoryUserReadonly);
+        var credential = await GetCredentialAsync(
+            DirectoryService.Scope.AdminDirectoryUserReadonly,
+            DirectoryService.Scope.AdminDirectoryGroupReadonly);
 
         _directoryService = new DirectoryService(new BaseClientService.Initializer
         {
@@ -1636,6 +1638,151 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             _logger.LogError(ex, "Failed to check email mismatches via Admin SDK");
             return new Application.DTOs.EmailBackfillResult
+            {
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var directory = await GetDirectoryServiceAsync();
+
+            // Build lookup: group URL → linked GoogleResource (active, type=Group)
+            var linkedResources = await _dbContext.GoogleResources
+                .Include(r => r.Team)
+                .Where(r => r.ResourceType == GoogleResourceType.Group && r.IsActive && r.Url != null)
+                .ToListAsync(cancellationToken);
+
+            var linkedByUrl = linkedResources
+                .Where(r => r.Url is not null)
+                .ToDictionary(r => r.Url!, r => r, StringComparer.OrdinalIgnoreCase);
+
+            // List all groups on the domain (paginated)
+            var allGroups = new List<Google.Apis.Admin.Directory.directory_v1.Data.Group>();
+            string? pageToken = null;
+            do
+            {
+                var listRequest = directory.Groups.List();
+                listRequest.Domain = _settings.Domain;
+                listRequest.MaxResults = 200;
+                if (pageToken is not null)
+                    listRequest.PageToken = pageToken;
+
+                var response = await listRequest.ExecuteAsync(cancellationToken);
+
+                if (response.GroupsValue is not null)
+                    allGroups.AddRange(response.GroupsValue);
+
+                pageToken = response.NextPageToken;
+            } while (!string.IsNullOrEmpty(pageToken));
+
+            _logger.LogInformation("Found {Count} Google Groups on domain {Domain}", allGroups.Count, _settings.Domain);
+
+            var expectedSettings = BuildExpectedSettingsDictionary();
+            var groupInfos = new List<DomainGroupInfo>();
+
+            foreach (var group in allGroups)
+            {
+                var email = group.Email;
+                if (string.IsNullOrEmpty(email))
+                    continue;
+
+                var prefix = email.Split('@')[0];
+                var url = $"https://groups.google.com/a/{_settings.Domain}/g/{prefix}";
+
+                linkedByUrl.TryGetValue(url, out var linkedResource);
+
+                // Fetch settings and detect drift for this group
+                string? errorMessage = null;
+                var drifts = new List<GroupSettingDrift>();
+                var actualSettings = new Dictionary<string, string>(StringComparer.Ordinal);
+
+                try
+                {
+                    var groupssettingsService = await GetGroupssettingsServiceAsync();
+                    var req = groupssettingsService.Groups.Get(email);
+                    req.Alt = Google.Apis.Groupssettings.v1.GroupssettingsBaseServiceRequest<Google.Apis.Groupssettings.v1.Data.Groups>.AltEnum.Json;
+                    var actual = await req.ExecuteAsync(cancellationToken);
+
+                    // Collect actual values
+                    void AddIfNotNull(string key, string? val) { if (val is not null) actualSettings[key] = val; }
+                    AddIfNotNull("WhoCanJoin", actual.WhoCanJoin);
+                    AddIfNotNull("WhoCanViewMembership", actual.WhoCanViewMembership);
+                    AddIfNotNull("WhoCanContactOwner", actual.WhoCanContactOwner);
+                    AddIfNotNull("WhoCanPostMessage", actual.WhoCanPostMessage);
+                    AddIfNotNull("WhoCanViewGroup", actual.WhoCanViewGroup);
+                    AddIfNotNull("WhoCanModerateMembers", actual.WhoCanModerateMembers);
+                    AddIfNotNull("AllowExternalMembers", actual.AllowExternalMembers);
+                    AddIfNotNull("IsArchived", actual.IsArchived);
+                    AddIfNotNull("MembersCanPostAsTheGroup", actual.MembersCanPostAsTheGroup);
+                    AddIfNotNull("IncludeInGlobalAddressList", actual.IncludeInGlobalAddressList);
+                    AddIfNotNull("AllowWebPosting", actual.AllowWebPosting);
+                    AddIfNotNull("MessageModerationLevel", actual.MessageModerationLevel);
+                    AddIfNotNull("SpamModerationLevel", actual.SpamModerationLevel);
+                    AddIfNotNull("EnableCollaborativeInbox", actual.EnableCollaborativeInbox);
+
+                    // Compare against expected
+                    CompareGroupSetting(drifts, "WhoCanJoin", _settings.Groups.WhoCanJoin, actual.WhoCanJoin);
+                    CompareGroupSetting(drifts, "WhoCanViewMembership", _settings.Groups.WhoCanViewMembership, actual.WhoCanViewMembership);
+                    CompareGroupSetting(drifts, "WhoCanContactOwner", _settings.Groups.WhoCanContactOwner, actual.WhoCanContactOwner);
+                    CompareGroupSetting(drifts, "WhoCanPostMessage", _settings.Groups.WhoCanPostMessage, actual.WhoCanPostMessage);
+                    CompareGroupSetting(drifts, "WhoCanViewGroup", _settings.Groups.WhoCanViewGroup, actual.WhoCanViewGroup);
+                    CompareGroupSetting(drifts, "WhoCanModerateMembers", _settings.Groups.WhoCanModerateMembers, actual.WhoCanModerateMembers);
+                    CompareGroupSetting(drifts, "AllowExternalMembers",
+                        _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
+                    CompareGroupSetting(drifts, "IsArchived", "false", actual.IsArchived);
+                    CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
+                    CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
+                    CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
+                    CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
+                    CompareGroupSetting(drifts, "SpamModerationLevel", "MODERATE", actual.SpamModerationLevel);
+                    CompareGroupSetting(drifts, "EnableCollaborativeInbox", "false", actual.EnableCollaborativeInbox);
+                }
+                catch (Google.GoogleApiException ex)
+                {
+                    _logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", email, ex.Error?.Code);
+                    errorMessage = $"Google API error: {ex.Error?.Code} — {ex.Error?.Message}";
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error fetching settings for group '{GroupEmail}'", email);
+                    errorMessage = $"Error: {ex.Message}";
+                }
+
+                groupInfos.Add(new DomainGroupInfo
+                {
+                    GroupEmail = email,
+                    DisplayName = group.Name ?? email,
+                    GoogleId = group.Id,
+                    MemberCount = (int)(group.DirectMembersCount ?? 0),
+                    LinkedTeamName = linkedResource?.Team?.Name,
+                    LinkedTeamId = linkedResource?.TeamId,
+                    ActualSettings = actualSettings,
+                    Drifts = drifts,
+                    ErrorMessage = errorMessage
+                });
+            }
+
+            // Sort: linked groups first, then alphabetically by email
+            var sorted = groupInfos
+                .OrderBy(g => g.LinkedTeamId is null ? 1 : 0)
+                .ThenBy(g => g.GroupEmail, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return new AllGroupsResult
+            {
+                Groups = sorted,
+                ExpectedSettings = expectedSettings
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to enumerate domain groups");
+            return new AllGroupsResult
             {
                 ErrorMessage = ex.Message
             };

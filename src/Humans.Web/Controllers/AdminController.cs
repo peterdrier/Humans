@@ -649,4 +649,130 @@ public class AdminController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpGet("AllGroups")]
+    public async Task<IActionResult> AllGroups([FromServices] IGoogleSyncService googleSyncService)
+    {
+        try
+        {
+            var result = await googleSyncService.GetAllDomainGroupsAsync();
+            ViewBag.Teams = await _dbContext.Teams.Where(t => t.IsActive).OrderBy(t => t.Name).ToListAsync();
+            return View(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load domain groups");
+            SetError($"Failed to load domain groups: {ex.Message}");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("RemediateGroupSettings")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemediateGroupSettings(
+        [FromServices] IGoogleSyncService googleSyncService,
+        [FromForm] string groupEmail, [FromForm] string? returnUrl)
+    {
+        try
+        {
+            var success = await googleSyncService.RemediateGroupSettingsAsync(groupEmail);
+            if (success) SetSuccess($"Settings remediated for {groupEmail}.");
+            else SetError($"Remediation skipped for {groupEmail} — sync may be disabled.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remediate settings for {GroupEmail}", groupEmail);
+            SetError($"Remediation failed for {groupEmail}: {ex.Message}");
+        }
+        return Redirect(returnUrl ?? Url.Action(nameof(AllGroups))!);
+    }
+
+    [HttpPost("RemediateAllGroupSettings")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemediateAllGroupSettings(
+        [FromServices] IGoogleSyncService googleSyncService)
+    {
+        try
+        {
+            var result = await googleSyncService.GetAllDomainGroupsAsync();
+            if (result.ErrorMessage is not null)
+            {
+                SetError($"Failed to enumerate groups: {result.ErrorMessage}");
+                return RedirectToAction(nameof(AllGroups));
+            }
+
+            var drifted = result.Groups.Where(g => g.HasDrift).ToList();
+            if (drifted.Count == 0)
+            {
+                SetInfo("No drifted groups found — nothing to remediate.");
+                return RedirectToAction(nameof(AllGroups));
+            }
+
+            var fixed_ = 0;
+            var errors = new List<string>();
+
+            foreach (var group in drifted)
+            {
+                try
+                {
+                    var success = await googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail);
+                    if (success) fixed_++;
+                    else errors.Add($"{group.GroupEmail}: sync disabled");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to remediate {GroupEmail}", group.GroupEmail);
+                    errors.Add($"{group.GroupEmail}: {ex.Message}");
+                }
+            }
+
+            if (errors.Count > 0)
+                SetError($"Remediated {fixed_} group(s) with {errors.Count} error(s): {string.Join("; ", errors)}");
+            else
+                SetSuccess($"Remediated {fixed_} drifted group(s) successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remediate all group settings");
+            SetError($"Batch remediation failed: {ex.Message}");
+        }
+        return RedirectToAction(nameof(AllGroups));
+    }
+
+    [HttpPost("LinkGroupToTeam")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkGroupToTeam(
+        [FromServices] IGoogleSyncService googleSyncService,
+        [FromForm] Guid teamId, [FromForm] string groupPrefix)
+    {
+        if (string.IsNullOrWhiteSpace(groupPrefix))
+        {
+            SetError("Group prefix is required.");
+            return RedirectToAction(nameof(AllGroups));
+        }
+
+        try
+        {
+            var team = await _dbContext.Teams.FindAsync(teamId);
+            if (team is null) return NotFound();
+
+            team.GoogleGroupPrefix = groupPrefix.Trim().ToLowerInvariant();
+            await _dbContext.SaveChangesAsync();
+
+            var linkResult = await googleSyncService.EnsureTeamGroupAsync(teamId);
+            if (linkResult.RequiresConfirmation)
+                SetInfo($"Linked group for team \"{team.Name}\". Note: {linkResult.WarningMessage}");
+            else if (linkResult.ErrorMessage is not null)
+                SetError($"Could not link group: {linkResult.ErrorMessage}");
+            else
+                SetSuccess($"Successfully linked {groupPrefix}@nobodies.team to team \"{team.Name}\".");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
+            SetError($"Failed to link group: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(AllGroups));
+    }
+
 }
