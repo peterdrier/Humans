@@ -1410,7 +1410,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         ["WhoCanModerateMembers"] = _settings.Groups.WhoCanModerateMembers,
         ["AllowExternalMembers"] = _settings.Groups.AllowExternalMembers ? "true" : "false",
         ["IsArchived"] = "true",
-        ["MembersCanPostAsTheGroup"] = "false",
+        ["MembersCanPostAsTheGroup"] = "true",
         ["IncludeInGlobalAddressList"] = "true",
         ["AllowWebPosting"] = "true",
         ["MessageModerationLevel"] = "MODERATE_NONE",
@@ -1444,7 +1444,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             // Additional settings worth monitoring (not set at creation but important for group health)
             CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
-            CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
+            CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "true", actual.MembersCanPostAsTheGroup);
             CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
             CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
             CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
@@ -1768,7 +1768,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         CompareGroupSetting(drifts, "AllowExternalMembers",
                             _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
                         CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
-                        CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
+                        CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "true", actual.MembersCanPostAsTheGroup);
                         CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
                         CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
                         CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
