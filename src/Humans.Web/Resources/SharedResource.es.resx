@@ -86,6 +86,7 @@
   <data name="Login_Title" xml:space="preserve"><value>Iniciar sesi&#xF3;n</value></data>
   <data name="Login_Description" xml:space="preserve"><value>Inicie sesi&#xF3;n con su cuenta de Google para acceder a Humans.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Iniciar sesi&#xF3;n con Google</value></data>
+  <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Acceso denegado</value></data>
   <data name="AccessDenied_Description" xml:space="preserve"><value>No tiene permiso para acceder a esta p&#xE1;gina.</value></data>
 

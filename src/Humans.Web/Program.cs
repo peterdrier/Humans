@@ -131,6 +131,19 @@ builder.Services.AddAuthentication()
         options.Scope.Add("profile");
         options.Scope.Add("email");
         options.SaveTokens = false;
+        options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
+        {
+            OnRemoteFailure = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("GoogleOAuth");
+                logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", context.Failure?.Message);
+
+                context.Response.Redirect("/Account/Login?error=sign-in-failed");
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Configure Authorization

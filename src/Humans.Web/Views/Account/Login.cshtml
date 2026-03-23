@@ -6,6 +6,16 @@
 }
 
 <div class="row justify-content-center">
+    @if (Context.Request.Query.ContainsKey("error"))
+    {
+        <div class="col-md-6 mb-0">
+            <div class="alert alert-warning alert-dismissible fade show mt-5 mb-0" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                @Localizer["Login_SignInFailed"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    }
     <div class="col-md-6">
         <div class="card mt-5">
             <div class="card-body text-center">
