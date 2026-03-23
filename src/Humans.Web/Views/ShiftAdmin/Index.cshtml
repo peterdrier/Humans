@@ -919,6 +919,13 @@
             var input = e.target;
             if (!input.classList.contains('voluntell-range-search')) return;
 
+            // Reset selection when input changes to prevent stale userId submission
+            var rotaIdForReset = input.dataset.rotaId;
+            var hiddenInput = document.querySelector('.voluntell-range-userId[data-rota-id="' + rotaIdForReset + '"]');
+            if (hiddenInput) hiddenInput.value = '';
+            var submitBtn = input.closest('form')?.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+
             clearTimeout(rangeDebounceTimer);
             rangeDebounceTimer = setTimeout(function() {
                 var shiftId = input.dataset.shiftId;

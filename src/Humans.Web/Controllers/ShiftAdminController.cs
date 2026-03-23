@@ -574,7 +574,9 @@ public class ShiftAdminController : HumansTeamControllerBase
         var result = await _signupService.VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
         if (result.Success)
         {
-            SetSuccess("Volunteer assigned to shift range.");
+            SetSuccess(result.Warning is not null
+                ? $"Volunteer assigned to shift range. Note: {result.Warning}"
+                : "Volunteer assigned to shift range.");
         }
         else
         {
