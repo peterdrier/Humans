@@ -328,6 +328,10 @@
   <data name="Governance_Resolved" xml:space="preserve"><value>Resolved</value></data>
   <data name="Governance_UnderReviewMessage" xml:space="preserve"><value>Your application is being reviewed. We'll notify you by email once a decision is made.</value></data>
   <data name="Governance_ApprovedMessage" xml:space="preserve"><value>Welcome! You are now an asociado of Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve"><value>You are an approved Colaborador of Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve"><value>Welcome! You are now an Asociado of Nobodies Collective.</value></data>
+  <data name="Governance_Tier" xml:space="preserve"><value>Tier</value></data>
+  <data name="Governance_TermExpiry" xml:space="preserve"><value>Term expires</value></data>
   <data name="Governance_RejectedMessage" xml:space="preserve"><value>Your application was not approved. If you have questions, please contact the board.</value></data>
   <data name="Governance_WhatIsAsociado" xml:space="preserve"><value>What is an Asociado?</value></data>
   <data name="Governance_AsociadoLawDescription" xml:space="preserve"><value>Asociados are the formal voting members of the association under Spanish law.</value></data>

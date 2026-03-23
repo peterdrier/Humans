@@ -337,6 +337,10 @@
   <data name="Governance_Resolved" xml:space="preserve"><value>Conclusa</value></data>
   <data name="Governance_UnderReviewMessage" xml:space="preserve"><value>La Sua domanda è in fase di esame. La informeremo via email non appena verrà presa una decisione.</value></data>
   <data name="Governance_ApprovedMessage" xml:space="preserve"><value>Benvenuto/a! Ora è asociado di Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve"><value>&#xC8; un/a Colaborador/a approvato/a di Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve"><value>Benvenuto/a! Ora &#xE8; Asociado/a di Nobodies Collective.</value></data>
+  <data name="Governance_Tier" xml:space="preserve"><value>Livello</value></data>
+  <data name="Governance_TermExpiry" xml:space="preserve"><value>Il mandato scade</value></data>
   <data name="Governance_RejectedMessage" xml:space="preserve"><value>La Sua domanda non è stata approvata. Per domande, contatti il Consiglio.</value></data>
   <data name="Governance_WhatIsAsociado" xml:space="preserve"><value>Cos'è un Asociado?</value></data>
   <data name="Governance_AsociadoLawDescription" xml:space="preserve"><value>Gli asociados sono i membri votanti formali dell'associazione secondo il diritto spagnolo.</value></data>

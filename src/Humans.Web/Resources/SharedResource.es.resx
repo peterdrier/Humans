@@ -339,6 +339,10 @@
   <data name="Governance_Resolved" xml:space="preserve"><value>Resuelta</value></data>
   <data name="Governance_UnderReviewMessage" xml:space="preserve"><value>Su solicitud est&#xE1; siendo revisada. Le notificaremos por correo electr&#xF3;nico cuando se tome una decisi&#xF3;n.</value></data>
   <data name="Governance_ApprovedMessage" xml:space="preserve"><value>&#xA1;Bienvenido/a! Ahora es asociado de Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve"><value>Es un/a Colaborador/a aprobado/a de Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve"><value>&#xA1;Bienvenido/a! Ahora es Asociado/a de Nobodies Collective.</value></data>
+  <data name="Governance_Tier" xml:space="preserve"><value>Nivel</value></data>
+  <data name="Governance_TermExpiry" xml:space="preserve"><value>El mandato expira</value></data>
   <data name="Governance_RejectedMessage" xml:space="preserve"><value>Su solicitud no fue aprobada. Si tiene preguntas, por favor contacte con la junta directiva.</value></data>
   <data name="Governance_WhatIsAsociado" xml:space="preserve"><value>&#xBF;Qu&#xE9; es un asociado?</value></data>
   <data name="Governance_AsociadoLawDescription" xml:space="preserve"><value>Los asociados son los miembros con derecho a voto de la asociaci&#xF3;n seg&#xFA;n la legislaci&#xF3;n espa&#xF1;ola.</value></data>
