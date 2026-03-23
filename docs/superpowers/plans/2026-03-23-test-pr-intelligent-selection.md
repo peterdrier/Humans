@@ -12,6 +12,8 @@
 
 **Working directory:** `/home/drierp/source/humans/.worktrees/playwright-e2e`
 
+**Important:** The skill file (`.claude/skills/test-pr/SKILL.md`) is **untracked** and lives only in the main working directory at `/home/drierp/source/humans/.claude/skills/test-pr/SKILL.md`. Task 2 must modify it there — it is not part of the worktree branch.
+
 ---
 
 ### Task 1: Add @e2e annotations to controllers with non-obvious mappings
@@ -54,7 +56,9 @@ git commit -m "chore: add @e2e annotations for non-obvious controller-to-test ma
 ### Task 2: Rewrite the test-pr SKILL.md
 
 **Files:**
-- Modify: `.claude/skills/test-pr/SKILL.md`
+- Modify: `/home/drierp/source/humans/.claude/skills/test-pr/SKILL.md` (absolute path — NOT in the worktree)
+
+**Note:** This file is untracked and not committed to git. No git commit needed for this task.
 
 - [ ] **Step 1: Rewrite SKILL.md with the enhanced flow**
 
@@ -130,15 +134,43 @@ gh pr diff {n} --repo peterdrier/Humans --name-only
 
 For each changed file, determine which spec file(s) to run:
 
-**First: check for @e2e annotations.** Grep the changed file for `// @e2e: <spec-file>` comments. These take precedence over convention.
+**First: check for @e2e annotations.** Grep the file in the local working tree for `// @e2e: <spec-file>` comments. These take precedence over convention. The path from `gh pr diff --name-only` is repo-relative (e.g., `src/Humans.Web/Controllers/HumanController.cs`), so grep it relative to the repo root.
 
 ```bash
-grep -h "// @e2e:" {changed_file} 2>/dev/null | sed 's|.*// @e2e: ||'
+grep -h "// @e2e:" src/Humans.Web/Controllers/HumanController.cs 2>/dev/null | sed 's|.*// @e2e: ||'
 ```
 
-**Second: convention-based inference (if no @e2e annotation found).** Strip `Controller` suffix, lowercase the name, try `{name}.spec.ts` and `{name}s.spec.ts` (handles singular→plural like `camp`→`camps.spec.ts`). Check if the spec file exists in `tests/e2e/tests/`.
+**Second: convention-based inference (if no @e2e annotation found).** Use this explicit mapping table:
 
-Convention mapping for views: extract the directory name from `Views/{DirName}/`, lowercase it, apply the same `{name}.spec.ts` / `{name}s.spec.ts` logic.
+| Path contains | Spec file |
+|---|---|
+| `Controllers/TicketController` | tickets.spec.ts |
+| `Controllers/CampController` | camps.spec.ts |
+| `Controllers/CampAdminController` | camps.spec.ts |
+| `Controllers/TeamController` | teams.spec.ts |
+| `Controllers/ProfileController` | profile.spec.ts |
+| `Controllers/ShiftsController` | shifts.spec.ts |
+| `Controllers/ShiftAdminController` | shifts.spec.ts |
+| `Controllers/AdminController` | admin.spec.ts |
+| `Controllers/BoardController` | board.spec.ts |
+| `Controllers/OnboardingReviewController` | onboarding.spec.ts |
+| `Controllers/FeedbackController` | feedback.spec.ts |
+| `Controllers/FeedbackApiController` | feedback.spec.ts |
+| `Controllers/AdminFeedbackController` | feedback.spec.ts |
+| `Controllers/AccountController` | login.spec.ts |
+| `Controllers/DevLoginController` | login.spec.ts |
+| `Views/Ticket/` | tickets.spec.ts |
+| `Views/Camp/`, `Views/CampAdmin/` | camps.spec.ts |
+| `Views/Team/`, `Views/TeamAdmin/` | teams.spec.ts |
+| `Views/Profile/` | profile.spec.ts |
+| `Views/Shifts/`, `Views/ShiftAdmin/`, `Views/ShiftDashboard/` | shifts.spec.ts |
+| `Views/Admin/`, `Views/AdminEmail/` | admin.spec.ts |
+| `Views/AdminFeedback/` | feedback.spec.ts |
+| `Views/Board/` | board.spec.ts |
+| `Views/OnboardingReview/` | onboarding.spec.ts |
+| `Views/Home/`, `Views/Account/`, `Views/DevLogin/` | login.spec.ts |
+
+For any controller/view not in this table: strip prefixes (`Admin`, `Camp`, `Shift`), strip `Controller` suffix, lowercase, try `{name}.spec.ts` and `{name}s.spec.ts`. If neither exists in `tests/e2e/tests/`, flag as unmapped in the report.
 
 **Special rules:**
 - `Views/Shared/**`, `wwwroot/**`, auth middleware → run ALL spec files (full suite)
@@ -250,12 +282,9 @@ If coverage gaps exist: note them but don't block — they're advisory.
 
 Read back the file and confirm the frontmatter, headings, and code blocks are well-formed.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: No commit needed**
 
-```bash
-git add .claude/skills/test-pr/SKILL.md
-git commit -m "feat: enhance test-pr with intelligent Playwright test selection and coverage gap detection"
-```
+The skill file is untracked (`.claude/skills/` is in `.gitignore`). The file is saved locally and takes effect immediately when `/test-pr` is invoked.
 
 ---
 
