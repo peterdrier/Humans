@@ -447,9 +447,12 @@
                 @* Staffing Grid for Build/Strike rotas *@
                 @if (Model.CanManageShifts && rota.Period != RotaPeriod.Event)
                 {
-                    var periodRange = rota.Period == RotaPeriod.Build
-                        ? (Start: Model.EventSettings.BuildStartOffset, End: -1)
-                        : (Start: Model.EventSettings.EventEndOffset + 1, End: Model.EventSettings.StrikeEndOffset);
+                    var periodRange = rota.Period switch
+                    {
+                        RotaPeriod.Build => (Start: Model.EventSettings.BuildStartOffset, End: -1),
+                        RotaPeriod.Strike => (Start: Model.EventSettings.EventEndOffset + 1, End: Model.EventSettings.StrikeEndOffset),
+                        _ => (Start: Model.EventSettings.BuildStartOffset, End: Model.EventSettings.StrikeEndOffset) // All
+                    };
                     var existingDayOffsets = rota.Shifts.Select(s => s.DayOffset).Distinct().ToHashSet();
 
                     <div class="mt-3 border-top pt-3 staffing-grid-container" data-rota-id="@rota.Id"
