@@ -99,7 +99,27 @@
                     <h5 class="mb-0">@dept.TeamName</h5>
                 </div>
                 <div class="card-body">
-                    @foreach (var rotaGroup in dept.Rotas)
+                    @{
+                        var rotasByPeriod = dept.Rotas
+                            .GroupBy(r => r.Rota.Period)
+                            .OrderBy(g => g.Key)
+                            .ToList();
+                    }
+                    @foreach (var periodGroup in rotasByPeriod)
+                    {
+                        var periodName = periodGroup.Key == RotaPeriod.Build ? "Set-up"
+                            : periodGroup.Key == RotaPeriod.Strike ? "Strike"
+                            : "Event";
+                        <h5 class="mt-4 mb-2 border-bottom pb-1">
+                            <span class="badge @(periodGroup.Key == RotaPeriod.Build ? "bg-info" : periodGroup.Key == RotaPeriod.Strike ? "bg-secondary" : "bg-success") me-1">@periodName</span>
+                            @periodName
+                        </h5>
+                        var hasAvailable = periodGroup.Any(r => r.Shifts.Any(s => s.RemainingSlots > 0));
+                        @if (!hasAvailable)
+                        {
+                            <p class="text-muted fst-italic">All @periodName.ToLowerInvariant() shifts are full.</p>
+                        }
+                    @foreach (var rotaGroup in periodGroup)
                     {
                         var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
                         var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
@@ -303,6 +323,7 @@
                                 </table>
                             </div>
                         }
+                    }
                     }
                 </div>
             </div>
