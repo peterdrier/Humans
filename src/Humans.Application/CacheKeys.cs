@@ -17,4 +17,6 @@ public static class CacheKeys
     public static string RoleAssignmentClaims(Guid userId) => $"claims:{userId:N}";
 
     public static string ShiftAuthorization(Guid userId) => $"shift-auth:{userId:N}";
+
+    public static string LegalDocument(string slug) => $"Legal:{slug}";
 }
