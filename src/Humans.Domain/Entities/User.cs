@@ -115,4 +115,9 @@ public class User : IdentityUser<Guid>
     /// Whether to suppress email notifications for schedule changes.
     /// </summary>
     public bool SuppressScheduleChangeEmails { get; set; }
+
+    /// <summary>
+    /// Navigation property to communication preferences.
+    /// </summary>
+    public ICollection<CommunicationPreference> CommunicationPreferences { get; } = new List<CommunicationPreference>();
 }

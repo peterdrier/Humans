@@ -52,6 +52,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(u => u.CommunicationPreferences)
+            .WithOne(cp => cp.User)
+            .HasForeignKey(cp => cp.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(u => u.Email);
 
         // Ignore GetEffectiveEmail (method, not property - EF won't map it, but defensive)

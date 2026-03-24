@@ -27,6 +27,7 @@ public class OutboxEmailService : IEmailService
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly IBackgroundJobClient _backgroundJobClient;
+    private readonly ICommunicationPreferenceService _commPrefService;
     private readonly ILogger<OutboxEmailService> _logger;
     private readonly EmailSettings _settings;
     private readonly string _environmentName;
@@ -39,6 +40,7 @@ public class OutboxEmailService : IEmailService
         IHostEnvironment hostEnvironment,
         IOptions<EmailSettings> settings,
         IBackgroundJobClient backgroundJobClient,
+        ICommunicationPreferenceService commPrefService,
         ILogger<OutboxEmailService> logger)
     {
         _dbContext = dbContext;
@@ -46,6 +48,7 @@ public class OutboxEmailService : IEmailService
         _metrics = metrics;
         _clock = clock;
         _backgroundJobClient = backgroundJobClient;
+        _commPrefService = commPrefService;
         _logger = logger;
         _settings = settings.Value;
         _environmentName = hostEnvironment.EnvironmentName;
@@ -187,7 +190,8 @@ public class OutboxEmailService : IEmailService
     {
         var resourceList = resources.ToList();
         var content = _renderer.RenderAddedToTeam(userName, teamName, teamSlug, resourceList, culture);
-        await EnqueueAsync(userEmail, userName, content, "added_to_team", cancellationToken);
+        await EnqueueAsync(userEmail, userName, content, "added_to_team", cancellationToken,
+            category: MessageCategory.EventOperations);
     }
 
     /// <inheritdoc />
@@ -264,15 +268,42 @@ public class OutboxEmailService : IEmailService
         string templateName,
         CancellationToken cancellationToken,
         bool triggerImmediate = false,
-        string? replyTo = null)
+        string? replyTo = null,
+        MessageCategory? category = null)
     {
-        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(content.HtmlBody, _settings.BaseUrl, _environmentName);
-
         // Look up user by email to set UserId for profile email history
         var userId = await _dbContext.UserEmails
             .Where(ue => ue.Email == recipientEmail && ue.IsVerified)
             .Select(ue => (Guid?)ue.UserId)
             .FirstOrDefaultAsync(cancellationToken);
+
+        // Check opt-out for non-System categories
+        if (category is not null && category != MessageCategory.System && userId.HasValue)
+        {
+            if (await _commPrefService.IsOptedOutAsync(userId.Value, category.Value, cancellationToken))
+            {
+                _logger.LogInformation(
+                    "Email suppressed: {TemplateName} to {Recipient} — opted out of {Category}",
+                    templateName, recipientEmail, category.Value);
+                return;
+            }
+        }
+
+        // Generate unsubscribe URL and headers for opt-outable categories
+        string? unsubscribeUrl = null;
+        string? extraHeadersJson = null;
+        if (category is not null && category != MessageCategory.System && userId.HasValue)
+        {
+            var headers = _commPrefService.GenerateUnsubscribeHeaders(userId.Value, category.Value);
+            extraHeadersJson = System.Text.Json.JsonSerializer.Serialize(headers);
+
+            // Extract URL for footer link (strip angle brackets from List-Unsubscribe header)
+            if (headers.TryGetValue("List-Unsubscribe", out var listUnsub))
+                unsubscribeUrl = listUnsub.Trim('<', '>');
+        }
+
+        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(
+            content.HtmlBody, _settings.BaseUrl, _environmentName, unsubscribeUrl);
 
         var message = new EmailOutboxMessage
         {
@@ -285,6 +316,7 @@ public class OutboxEmailService : IEmailService
             TemplateName = templateName,
             UserId = userId,
             ReplyTo = replyTo,
+            ExtraHeaders = extraHeadersJson,
             Status = EmailOutboxStatus.Queued,
             CreatedAt = _clock.GetCurrentInstant()
         };

@@ -1,16 +1,17 @@
 @{
-    ViewData["Title"] = "Unsubscribe from Campaign Emails";
+    ViewData["Title"] = "Unsubscribe from Emails";
     var displayName = ViewData["DisplayName"] as string;
+    var categoryName = ViewData["CategoryName"] as string ?? "these";
 }
 
-<h1>Unsubscribe from campaign emails?</h1>
+<h1>Unsubscribe from @categoryName emails?</h1>
 
 @if (!string.IsNullOrEmpty(displayName))
 {
     <p>Hi <strong>@displayName</strong>,</p>
 }
 
-<p>If you confirm, you will no longer receive campaign emails from Humans.</p>
+<p>If you confirm, you will no longer receive @categoryName emails from Humans.</p>
 
 <form method="post">
     @Html.AntiForgeryToken()

@@ -53,6 +53,7 @@ public class OutboxEmailServiceTests : IDisposable
             hostEnvironment,
             emailSettings,
             _backgroundJobClient,
+            Substitute.For<ICommunicationPreferenceService>(),
             NullLogger<OutboxEmailService>.Instance);
     }
 

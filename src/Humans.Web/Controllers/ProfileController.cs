@@ -28,6 +28,7 @@ public class ProfileController : HumansControllerBase
     private readonly VolunteerHistoryService _volunteerHistoryService;
     private readonly IEmailService _emailService;
     private readonly IUserEmailService _userEmailService;
+    private readonly ICommunicationPreferenceService _commPrefService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ProfileController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -63,6 +64,7 @@ public class ProfileController : HumansControllerBase
         VolunteerHistoryService volunteerHistoryService,
         IEmailService emailService,
         IUserEmailService userEmailService,
+        ICommunicationPreferenceService commPrefService,
         IConfiguration configuration,
         ILogger<ProfileController> logger,
         IStringLocalizer<SharedResource> localizer,
@@ -75,6 +77,7 @@ public class ProfileController : HumansControllerBase
         _volunteerHistoryService = volunteerHistoryService;
         _emailService = emailService;
         _userEmailService = userEmailService;
+        _commPrefService = commPrefService;
         _configuration = configuration;
         _logger = logger;
         _localizer = localizer;
@@ -814,10 +817,17 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            var viewModel = new NotificationSettingsViewModel
+            var prefs = await _commPrefService.GetPreferencesAsync(user.Id);
+            var viewModel = new CommunicationPreferencesViewModel
             {
-                SuppressScheduleChangeEmails = user.SuppressScheduleChangeEmails,
-                UnsubscribedFromCampaigns = user.UnsubscribedFromCampaigns
+                Categories = prefs.Select(p => new CategoryPreferenceItem
+                {
+                    Category = p.Category,
+                    DisplayName = GetCategoryDisplayName(p.Category),
+                    Description = GetCategoryDescription(p.Category),
+                    OptedOut = p.OptedOut,
+                    IsEditable = p.Category != MessageCategory.System,
+                }).ToList()
             };
 
             return View(viewModel);
@@ -832,7 +842,7 @@ public class ProfileController : HumansControllerBase
 
     [HttpPost("Notifications")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Notifications(NotificationSettingsViewModel model)
+    public async Task<IActionResult> Notifications(CommunicationPreferencesViewModel model)
     {
         try
         {
@@ -840,10 +850,14 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            user.SuppressScheduleChangeEmails = model.SuppressScheduleChangeEmails;
-            user.UnsubscribedFromCampaigns = model.UnsubscribedFromCampaigns;
+            foreach (var item in model.Categories)
+            {
+                if (item.Category == MessageCategory.System)
+                    continue;
 
-            await _userManager.UpdateAsync(user);
+                await _commPrefService.UpdatePreferenceAsync(
+                    user.Id, item.Category, item.OptedOut, "Profile");
+            }
 
             SetSuccess(_localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(Notifications));
@@ -855,6 +869,24 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
     }
+
+    private static string GetCategoryDisplayName(MessageCategory category) => category switch
+    {
+        MessageCategory.System => "System",
+        MessageCategory.EventOperations => "Event Operations",
+        MessageCategory.CommunityUpdates => "Community Updates",
+        MessageCategory.Marketing => "Marketing",
+        _ => category.ToString(),
+    };
+
+    private static string GetCategoryDescription(MessageCategory category) => category switch
+    {
+        MessageCategory.System => "Critical account, consent, and security notifications. Always on.",
+        MessageCategory.EventOperations => "Shift changes, schedule updates, and team notifications.",
+        MessageCategory.CommunityUpdates => "General community news and facilitated messages.",
+        MessageCategory.Marketing => "Campaign emails and promotions.",
+        _ => string.Empty,
+    };
 
     [HttpGet]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

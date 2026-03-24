@@ -68,4 +68,5 @@ public enum AuditAction
     AccountMergeAccepted,
     AccountMergeRejected,
     GoogleResourceSettingsRemediated,
+    CommunicationPreferenceChanged,
 }

@@ -4,12 +4,16 @@ namespace Humans.Infrastructure.Helpers;
 
 public static class BrandedEmailTemplate
 {
-    public static string Wrap(string content, string baseUrl, string environmentName)
+    public static string Wrap(string content, string baseUrl, string environmentName, string? unsubscribeUrl = null)
     {
         var isProduction = string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase);
         var envLabel = string.Equals(environmentName, "Staging", StringComparison.OrdinalIgnoreCase)
             ? "QA"
             : environmentName.ToUpperInvariant();
+        var unsubscribeFooter = unsubscribeUrl is not null
+            ? $"""<p style="font-size: 11px; color: #8b7355; margin: 8px 0 0 0;"><a href="{WebUtility.HtmlEncode(unsubscribeUrl)}" style="color: #8b7355;">Unsubscribe from these emails</a></p>"""
+            : "";
+
         var envBanner = isProduction
             ? ""
             : $"""
@@ -45,6 +49,7 @@ public static class BrandedEmailTemplate
                     Humans &mdash; Nobodies Collective<br>
                     <a href="{{baseUrl}}" style="color: #8b6914;">{{baseUrl}}</a>
                 </p>
+                {{unsubscribeFooter}}
             </div>
             </body>
             </html>

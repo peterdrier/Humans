@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -19,6 +20,7 @@ public class CampaignService : ICampaignService
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
     private readonly IHumansMetrics _metrics;
+    private readonly ICommunicationPreferenceService _commPrefService;
     private readonly EmailSettings _settings;
     private readonly string _environmentName;
     private readonly ILogger<CampaignService> _logger;
@@ -27,6 +29,7 @@ public class CampaignService : ICampaignService
         HumansDbContext dbContext,
         IClock clock,
         IHumansMetrics metrics,
+        ICommunicationPreferenceService commPrefService,
         IOptions<EmailSettings> settings,
         IHostEnvironment hostEnvironment,
         ILogger<CampaignService> logger)
@@ -34,6 +37,7 @@ public class CampaignService : ICampaignService
         _dbContext = dbContext;
         _clock = clock;
         _metrics = metrics;
+        _commPrefService = commPrefService;
         _settings = settings.Value;
         _environmentName = hostEnvironment.EnvironmentName;
         _logger = logger;
@@ -489,8 +493,20 @@ public class CampaignService : ICampaignService
             .Replace("{{Code}}", code, StringComparison.Ordinal)
             .Replace("{{Name}}", name, StringComparison.Ordinal);
 
+        // Generate unsubscribe headers and footer link for Marketing category
+        var unsubHeaders = _commPrefService.GenerateUnsubscribeHeaders(user.Id, MessageCategory.Marketing);
+        string? unsubscribeUrl = null;
+        string? extraHeadersJson = null;
+        if (unsubHeaders is not null)
+        {
+            if (unsubHeaders.TryGetValue("List-Unsubscribe", out var listUnsub))
+                unsubscribeUrl = listUnsub.Trim('<', '>');
+            extraHeadersJson = JsonSerializer.Serialize(unsubHeaders);
+        }
+
         // Wrap in email template
-        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(renderedBody, _settings.BaseUrl, _environmentName);
+        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(
+            renderedBody, _settings.BaseUrl, _environmentName, unsubscribeUrl);
 
         return new EmailOutboxMessage
         {
@@ -504,6 +520,7 @@ public class CampaignService : ICampaignService
             UserId = user.Id,
             CampaignGrantId = grantId,
             ReplyTo = campaign.ReplyToAddress,
+            ExtraHeaders = extraHeadersJson,
             Status = EmailOutboxStatus.Queued,
             CreatedAt = now
         };

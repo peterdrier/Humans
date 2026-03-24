@@ -63,6 +63,7 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
+    public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

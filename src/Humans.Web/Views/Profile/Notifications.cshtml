@@ -1,4 +1,4 @@
-@model Humans.Web.Models.NotificationSettingsViewModel
+@model Humans.Web.Models.CommunicationPreferencesViewModel
 @{
     ViewData["Title"] = "Notification Settings";
 }
@@ -22,19 +22,36 @@
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <div class="form-check mb-3">
-                        <input type="checkbox" id="SuppressScheduleChangeEmails" name="SuppressScheduleChangeEmails" value="true" class="form-check-input"
-                               @(Model.SuppressScheduleChangeEmails ? "checked" : "") />
-                        <label for="SuppressScheduleChangeEmails" class="form-check-label">Suppress schedule change emails</label>
-                        <div class="form-text">Disable notifications when your shift schedule is updated.</div>
-                    </div>
+                    @for (var i = 0; i < Model.Categories.Count; i++)
+                    {
+                        var item = Model.Categories[i];
+                        <input type="hidden" name="Categories[@i].Category" value="@item.Category" />
 
-                    <div class="form-check mb-3">
-                        <input type="checkbox" id="UnsubscribedFromCampaigns" name="UnsubscribedFromCampaigns" value="true" class="form-check-input"
-                               @(Model.UnsubscribedFromCampaigns ? "checked" : "") />
-                        <label for="UnsubscribedFromCampaigns" class="form-check-label">Unsubscribe from campaign emails</label>
-                        <div class="form-text">Stop receiving promotional and campaign emails.</div>
-                    </div>
+                        <div class="form-check mb-3">
+                            @if (item.IsEditable)
+                            {
+                                <input type="hidden" name="Categories[@i].OptedOut" value="false" />
+                                <input type="checkbox"
+                                       id="Categories_@(i)_OptedOut"
+                                       name="Categories[@i].OptedOut"
+                                       value="true"
+                                       class="form-check-input"
+                                       @(item.OptedOut ? "checked" : "") />
+                            }
+                            else
+                            {
+                                <input type="checkbox"
+                                       id="Categories_@(i)_OptedOut"
+                                       class="form-check-input"
+                                       disabled
+                                       @(item.OptedOut ? "checked" : "") />
+                            }
+                            <label for="Categories_@(i)_OptedOut" class="form-check-label">
+                                Unsubscribe from @item.DisplayName
+                            </label>
+                            <div class="form-text">@item.Description</div>
+                        </div>
+                    }
                 </div>
             </div>
 

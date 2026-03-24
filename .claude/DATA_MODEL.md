@@ -5,7 +5,8 @@
 - [Key Entities](#key-entities) | [Relationships](#relationships) | [User Entity](#user-entity) | [Profile Entity](#profile-entity)
 - [Application Entity](#application-entity) | [BoardVote Entity](#boardvote-entity) | [EmailOutboxMessage Entity](#emailoutboxmessage-entity)
 - [Campaign](#campaign-entity) | [CampaignCode](#campaigncode-entity) | [CampaignGrant](#campaigngrant-entity) | [SystemSetting](#systemsetting-entity) | [FeedbackReport](#feedbackreport-entity)
-- [Enums](#enums): MembershipTier, ConsentCheckStatus, VoteChoice, ApplicationStatus, SystemTeamType, AuditAction, RotaPeriod, RolePeriod
+- [CommunicationPreference Entity](#communicationpreference-entity)
+- [Enums](#enums): MembershipTier, ConsentCheckStatus, VoteChoice, ApplicationStatus, SystemTeamType, AuditAction, MessageCategory, RotaPeriod, RolePeriod
 - [Constants](#constants) | [ContactField Entity](#contactfield-entity) | [Term Lifecycle](#term-lifecycle) | [Camp Enums](#camp-enums)
 
 ## Key Entities
@@ -316,6 +317,25 @@ In-app feedback submitted by authenticated users. Admins triage via the admin UI
 **Table:** `feedback_reports`
 **Indexes:** Status, CreatedAt, UserId
 
+## CommunicationPreference Entity
+
+Per-user, per-category email opt-in/opt-out preferences. One row per user per category. Used for CAN-SPAM/GDPR compliance.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| Id | Guid | PK |
+| UserId | Guid | FK → User (Cascade) |
+| Category | MessageCategory | Enum stored as string |
+| OptedOut | bool | true = user opted out |
+| UpdatedAt | Instant | Last change |
+| UpdateSource | string (100) | "Profile", "MagicLink", "OneClick", "Default", "DataMigration" |
+
+**Table:** `communication_preferences`
+**Unique constraint:** `(UserId, Category)`
+**Indexes:** UserId
+
+Defaults are created lazily: System=on, EventOperations=on, CommunityUpdates=off, Marketing=off.
+
 ## Enums
 
 ### MembershipTier
@@ -341,6 +361,19 @@ Status of the consent check performed by a Consent Coordinator during onboarding
 | Flagged | 2 | Safety concern flagged — blocks Volunteer access |
 
 Stored as string via `HasConversion<string>()`. Nullable on Profile (null until all consents signed).
+
+### MessageCategory
+
+Categories of system communications for preference management.
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| System | 0 | Critical account/consent/security notifications. Always on. |
+| EventOperations | 1 | Shift changes, schedule updates, team additions. Default: on. |
+| CommunityUpdates | 2 | Community news, facilitated messages. Default: off. |
+| Marketing | 3 | Campaign emails, promotions. Default: off. |
+
+Stored as string via `HasConversion<string>()`.
 
 ### VoteChoice
 
