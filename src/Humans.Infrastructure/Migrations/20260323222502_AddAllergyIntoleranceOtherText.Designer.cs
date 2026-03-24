@@ -10,7 +10,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Humans.Infrastructure.Data.Migrations
+namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
     [Migration("20260323222502_AddAllergyIntoleranceOtherText")]
