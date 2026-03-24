@@ -4,7 +4,7 @@ using NodaTime;
 
 #nullable disable
 
-namespace Humans.Infrastructure.Data.Migrations
+namespace Humans.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class FeedbackUpgrade : Migration
@@ -12,6 +12,33 @@ namespace Humans.Infrastructure.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            // Migrate existing admin notes to feedback_messages before dropping column
+            migrationBuilder.Sql("""
+                INSERT INTO feedback_messages (id, feedback_report_id, sender_user_id, content, created_at)
+                SELECT gen_random_uuid(), id, COALESCE(resolved_by_user_id, user_id), admin_notes, updated_at
+                FROM feedback_reports
+                WHERE admin_notes IS NOT NULL AND admin_notes <> ''
+                """);
+
+            migrationBuilder.Sql("""
+                UPDATE feedback_reports SET last_admin_message_at = updated_at
+                WHERE admin_notes IS NOT NULL AND admin_notes <> ''
+                """);
+
+            migrationBuilder.DropColumn(
+                name: "AdminNotes",
+                table: "feedback_reports");
+
+            migrationBuilder.DropColumn(
+                name: "AdminResponseSentAt",
+                table: "feedback_reports");
+
+            migrationBuilder.AddColumn<Instant>(
+                name: "LastReporterMessageAt",
+                table: "feedback_reports",
+                type: "timestamp with time zone",
+                nullable: true);
+
             migrationBuilder.AddColumn<string>(
                 name: "AdditionalContext",
                 table: "feedback_reports",
@@ -21,12 +48,6 @@ namespace Humans.Infrastructure.Data.Migrations
 
             migrationBuilder.AddColumn<Instant>(
                 name: "LastAdminMessageAt",
-                table: "feedback_reports",
-                type: "timestamp with time zone",
-                nullable: true);
-
-            migrationBuilder.AddColumn<Instant>(
-                name: "LastReporterMessageAt",
                 table: "feedback_reports",
                 type: "timestamp with time zone",
                 nullable: true);
@@ -72,27 +93,6 @@ namespace Humans.Infrastructure.Data.Migrations
                 name: "IX_feedback_messages_SenderUserId",
                 table: "feedback_messages",
                 column: "SenderUserId");
-
-            // Migrate existing admin notes to feedback_messages
-            migrationBuilder.Sql("""
-                INSERT INTO feedback_messages (id, feedback_report_id, sender_user_id, content, created_at)
-                SELECT gen_random_uuid(), id, COALESCE(resolved_by_user_id, user_id), admin_notes, updated_at
-                FROM feedback_reports
-                WHERE admin_notes IS NOT NULL AND admin_notes <> ''
-                """);
-
-            migrationBuilder.Sql("""
-                UPDATE feedback_reports SET last_admin_message_at = updated_at
-                WHERE admin_notes IS NOT NULL AND admin_notes <> ''
-                """);
-
-            migrationBuilder.DropColumn(
-                name: "AdminNotes",
-                table: "feedback_reports");
-
-            migrationBuilder.DropColumn(
-                name: "AdminResponseSentAt",
-                table: "feedback_reports");
         }
 
         /// <inheritdoc />
