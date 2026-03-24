@@ -30,4 +30,6 @@ public class FeedbackReport
 
     public Guid? ResolvedByUserId { get; set; }
     public User? ResolvedByUser { get; set; }
+
+    public ICollection<FeedbackMessage> Messages { get; set; } = new List<FeedbackMessage>();
 }
