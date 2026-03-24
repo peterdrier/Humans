@@ -63,6 +63,7 @@
   <data name="Nav_About" xml:space="preserve"><value>&#xDC;ber uns</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Pr&#xFC;fwarteschlange</value></data>
+  <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
 
 
   <!-- ======================== -->

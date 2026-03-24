@@ -63,6 +63,7 @@
   <data name="Nav_About" xml:space="preserve"><value>Acerca de</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Cola de revisi&#xF3;n</value></data>
+  <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
 
 
   <!-- ======================== -->
