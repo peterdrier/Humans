@@ -739,7 +739,7 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Privacy));
     }
 
-    [HttpGet("ShiftInfo")]
+    [HttpGet("/Profile/ShiftInfo")]
     public async Task<IActionResult> ShiftInfo()
     {
         try
@@ -773,7 +773,7 @@ public class ProfileController : HumansControllerBase
         }
     }
 
-    [HttpPost("ShiftInfo")]
+    [HttpPost("/Profile/ShiftInfo")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ShiftInfo(ShiftInfoViewModel model)
     {
