@@ -50,4 +50,10 @@ public static class RoleNames
     /// Has access to volunteer event profile medical data.
     /// </summary>
     public const string NoInfoAdmin = "NoInfoAdmin";
+
+    /// <summary>
+    /// Feedback Administrator — can view all feedback reports, respond to reporters,
+    /// manage feedback status, and link GitHub issues.
+    /// </summary>
+    public const string FeedbackAdmin = "FeedbackAdmin";
 }

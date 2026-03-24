@@ -13,6 +13,7 @@ public static class RoleChecks
         RoleNames.CampAdmin,
         RoleNames.TicketAdmin,
         RoleNames.NoInfoAdmin,
+        RoleNames.FeedbackAdmin,
         RoleNames.ConsentCoordinator,
         RoleNames.VolunteerCoordinator
     ];
@@ -24,6 +25,7 @@ public static class RoleChecks
         RoleNames.CampAdmin,
         RoleNames.TicketAdmin,
         RoleNames.NoInfoAdmin,
+        RoleNames.FeedbackAdmin,
         RoleNames.ConsentCoordinator,
         RoleNames.VolunteerCoordinator
     ];
@@ -88,6 +90,11 @@ public static class RoleChecks
     public static IReadOnlyList<string> GetAssignableRoles(ClaimsPrincipal user)
     {
         return IsAdmin(user) ? AdminAssignableRoles : BoardAssignableRoles;
+    }
+
+    public static bool IsFeedbackAdmin(ClaimsPrincipal user)
+    {
+        return IsAdmin(user) || user.IsInRole(RoleNames.FeedbackAdmin);
     }
 
     public static bool CanManageRole(ClaimsPrincipal user, string roleName)
