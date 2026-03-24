@@ -24,10 +24,17 @@
             <div class="d-flex gap-2 align-items-center">
                 <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
-                    <select name="Status" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                    <select name="Status" class="form-select form-select-sm detail-auto-submit" style="width: auto;">
                         @foreach (var s in Enum.GetValues<Humans.Domain.Enums.FeedbackStatus>())
                         {
-                            <option value="@s" selected="@(Model.Status == s)">@s</option>
+                            if (Model.Status == s)
+                            {
+                                <option value="@s" selected>@s</option>
+                            }
+                            else
+                            {
+                                <option value="@s">@s</option>
+                            }
                         }
                     </select>
                 </form>
@@ -36,8 +43,7 @@
                     <div class="input-group input-group-sm" style="width: 120px;">
                         <span class="input-group-text">GH #</span>
                         <input type="number" name="IssueNumber" value="@Model.GitHubIssueNumber"
-                               class="form-control form-control-sm" placeholder="#"
-                               onchange="this.form.submit()">
+                               class="form-control form-control-sm detail-auto-submit" placeholder="#">
                     </div>
                 </form>
             </div>
@@ -114,3 +120,9 @@
         }
     </div>
 }
+
+<script nonce="@Context.Items["CspNonce"]">
+document.querySelectorAll('.detail-auto-submit').forEach(el => {
+    el.addEventListener('change', () => el.form.submit());
+});
+</script>

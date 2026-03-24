@@ -27,7 +27,7 @@ public interface IFeedbackService
         Guid id, int? issueNumber, CancellationToken cancellationToken = default);
 
     Task<FeedbackMessage> PostMessageAsync(
-        Guid reportId, Guid senderUserId, string content, bool isAdmin,
+        Guid reportId, Guid? senderUserId, string content, bool isAdmin,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<FeedbackMessage>> GetMessagesAsync(

@@ -194,7 +194,7 @@ public class FeedbackService : IFeedbackService
     }
 
     public async Task<FeedbackMessage> PostMessageAsync(
-        Guid reportId, Guid senderUserId, string content, bool isAdmin,
+        Guid reportId, Guid? senderUserId, string content, bool isAdmin,
         CancellationToken cancellationToken = default)
     {
         var report = await _dbContext.FeedbackReports

@@ -109,7 +109,8 @@ public static class RoleChecks
             return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal);
+                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.FeedbackAdmin, StringComparison.Ordinal);
         }
 
         return false;

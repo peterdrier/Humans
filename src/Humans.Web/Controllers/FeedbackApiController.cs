@@ -123,7 +123,7 @@ public class FeedbackApiController : ControllerBase
 
         try
         {
-            var message = await _feedbackService.PostMessageAsync(id, Guid.Empty, model.Content, isAdmin: true);
+            var message = await _feedbackService.PostMessageAsync(id, null, model.Content, isAdmin: true);
             return Ok(new
             {
                 message.Id,

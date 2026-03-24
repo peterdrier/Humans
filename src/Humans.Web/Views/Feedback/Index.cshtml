@@ -8,19 +8,33 @@
     <h2 class="mb-3">Feedback</h2>
 
     <!-- Filter bar -->
-    <form method="get" class="d-flex gap-2 mb-3">
-        <select name="status" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+    <form method="get" class="feedback-filter-form d-flex gap-2 mb-3">
+        <select name="status" class="form-select form-select-sm" style="width: auto;">
             <option value="">All Statuses</option>
             @foreach (var s in Enum.GetValues<Humans.Domain.Enums.FeedbackStatus>())
             {
-                <option value="@s" selected="@(Model.StatusFilter == s)">@s</option>
+                if (Model.StatusFilter == s)
+                {
+                    <option value="@s" selected>@s</option>
+                }
+                else
+                {
+                    <option value="@s">@s</option>
+                }
             }
         </select>
-        <select name="category" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+        <select name="category" class="form-select form-select-sm" style="width: auto;">
             <option value="">All Categories</option>
             @foreach (var c in Enum.GetValues<Humans.Domain.Enums.FeedbackCategory>())
             {
-                <option value="@c" selected="@(Model.CategoryFilter == c)">@c</option>
+                if (Model.CategoryFilter == c)
+                {
+                    <option value="@c" selected>@c</option>
+                }
+                else
+                {
+                    <option value="@c">@c</option>
+                }
             }
         </select>
         @if (Model.StatusFilter.HasValue || Model.CategoryFilter.HasValue)
@@ -41,8 +55,7 @@
                 var isSelected = report.Id == Model.SelectedReportId;
                 <div class="feedback-list-item p-3 border-bottom @(isSelected ? "bg-body-tertiary border-start border-3 border-primary" : "")"
                      data-report-id="@report.Id"
-                     style="cursor: pointer;"
-                     onclick="loadDetail('@report.Id')">
+                     style="cursor: pointer;">
                     <div class="d-flex justify-content-between align-items-start mb-1">
                         <span class="fw-semibold small">@report.Category on @(report.PageUrl.Length > 30 ? report.PageUrl[..30] + "..." : report.PageUrl)</span>
                         @{
@@ -114,6 +127,15 @@
             // Update URL without reload
             history.replaceState(null, '', `/Feedback?selected=${reportId}`);
         }
+
+        // Auto-submit filter forms
+        document.querySelectorAll('.feedback-filter-form select').forEach(sel => {
+            sel.addEventListener('change', () => sel.form.submit());
+        });
+        // Click handler for report list items
+        document.querySelectorAll('[data-report-id]').forEach(el => {
+            el.addEventListener('click', () => loadDetail(el.dataset.reportId));
+        });
 
         // Auto-load selected report on page load
         @if (Model.SelectedReportId.HasValue)
