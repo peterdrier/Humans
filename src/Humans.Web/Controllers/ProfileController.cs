@@ -808,7 +808,7 @@ public class ProfileController : HumansControllerBase
         }
     }
 
-    [HttpGet("Notifications")]
+    [HttpGet("/Profile/Notifications")]
     public async Task<IActionResult> Notifications()
     {
         try
@@ -840,7 +840,7 @@ public class ProfileController : HumansControllerBase
         }
     }
 
-    [HttpPost("Notifications")]
+    [HttpPost("/Profile/Notifications")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Notifications(CommunicationPreferencesViewModel model)
     {
