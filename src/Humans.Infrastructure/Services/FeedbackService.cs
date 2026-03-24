@@ -44,8 +44,8 @@ public class FeedbackService : IFeedbackService
 
     public async Task<FeedbackReport> SubmitFeedbackAsync(
         Guid userId, FeedbackCategory category, string description,
-        string pageUrl, string? userAgent, IFormFile? screenshot,
-        CancellationToken cancellationToken = default)
+        string pageUrl, string? userAgent, string? additionalContext,
+        IFormFile? screenshot, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
         var reportId = Guid.NewGuid();
@@ -58,6 +58,7 @@ public class FeedbackService : IFeedbackService
             Description = description,
             PageUrl = pageUrl,
             UserAgent = userAgent,
+            AdditionalContext = additionalContext,
             Status = FeedbackStatus.Open,
             CreatedAt = now,
             UpdatedAt = now
@@ -108,16 +109,20 @@ public class FeedbackService : IFeedbackService
         return await _dbContext.FeedbackReports
             .Include(f => f.User)
             .Include(f => f.ResolvedByUser)
+            .Include(f => f.Messages.OrderBy(m => m.CreatedAt))
+                .ThenInclude(m => m.SenderUser)
             .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
     }
 
     public async Task<IReadOnlyList<FeedbackReport>> GetFeedbackListAsync(
         FeedbackStatus? status = null, FeedbackCategory? category = null,
-        int limit = 50, CancellationToken cancellationToken = default)
+        Guid? reporterUserId = null, int limit = 50,
+        CancellationToken cancellationToken = default)
     {
         var query = _dbContext.FeedbackReports
             .Include(f => f.User)
             .Include(f => f.ResolvedByUser)
+            .Include(f => f.Messages)
             .AsQueryable();
 
         if (status.HasValue)
@@ -125,6 +130,9 @@ public class FeedbackService : IFeedbackService
 
         if (category.HasValue)
             query = query.Where(f => f.Category == category.Value);
+
+        if (reporterUserId.HasValue)
+            query = query.Where(f => f.UserId == reporterUserId.Value);
 
         return await query
             .OrderByDescending(f => f.CreatedAt)
@@ -173,19 +181,6 @@ public class FeedbackService : IFeedbackService
         _logger.LogInformation("Feedback {ReportId} status changed to {Status} by {ActorId}", id, status, actorUserId);
     }
 
-    public async Task UpdateAdminNotesAsync(
-        Guid id, string? notes, CancellationToken cancellationToken = default)
-    {
-        var report = await _dbContext.FeedbackReports.FindAsync(new object[] { id }, cancellationToken)
-            ?? throw new InvalidOperationException($"Feedback report {id} not found");
-
-        // TODO: removed in feedback upgrade - will be replaced by FeedbackMessage
-        // report.AdminNotes = notes;
-        report.UpdatedAt = _clock.GetCurrentInstant();
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-    }
-
     public async Task SetGitHubIssueNumberAsync(
         Guid id, int? issueNumber, CancellationToken cancellationToken = default)
     {
@@ -198,80 +193,66 @@ public class FeedbackService : IFeedbackService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, int>> GetResponseCountsAsync(
-        IEnumerable<Guid> reportIds, CancellationToken cancellationToken = default)
-    {
-        var idList = reportIds.ToList();
-        if (idList.Count == 0)
-            return new Dictionary<Guid, int>();
-
-        return await _dbContext.AuditLogEntries
-            .Where(a => a.Action == AuditAction.FeedbackResponseSent
-                && a.EntityType == nameof(FeedbackReport)
-                && idList.Contains(a.EntityId))
-            .GroupBy(a => a.EntityId)
-            .ToDictionaryAsync(g => g.Key, g => g.Count(), cancellationToken);
-    }
-
-    public async Task SendResponseAsync(
-        Guid id, string message, Guid? actorUserId,
+    public async Task<FeedbackMessage> PostMessageAsync(
+        Guid reportId, Guid senderUserId, string content, bool isAdmin,
         CancellationToken cancellationToken = default)
     {
         var report = await _dbContext.FeedbackReports
             .Include(f => f.User)
-            .FirstOrDefaultAsync(f => f.Id == id, cancellationToken)
-            ?? throw new InvalidOperationException($"Feedback report {id} not found");
+            .FirstOrDefaultAsync(f => f.Id == reportId, cancellationToken)
+            ?? throw new InvalidOperationException($"Feedback report {reportId} not found");
 
-        var user = report.User;
-
-        await _emailService.SendFeedbackResponseAsync(
-            user.Email!, user.DisplayName,
-            report.Description, message,
-            user.PreferredLanguage, cancellationToken);
-
-        // TODO: removed in feedback upgrade - will be replaced by LastAdminMessageAt
         var now = _clock.GetCurrentInstant();
-        report.UpdatedAt = now;
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        string actorName = "API";
-        if (actorUserId.HasValue)
+        var message = new FeedbackMessage
         {
-            var actor = await _dbContext.Users.FindAsync(new object[] { actorUserId.Value }, cancellationToken);
-            actorName = actor?.DisplayName ?? actorUserId.Value.ToString();
-        }
+            Id = Guid.NewGuid(),
+            FeedbackReportId = reportId,
+            SenderUserId = senderUserId,
+            Content = content,
+            CreatedAt = now
+        };
+        _dbContext.FeedbackMessages.Add(message);
 
-        if (actorUserId.HasValue)
+        if (isAdmin)
         {
-            await _auditLogService.LogAsync(
-                AuditAction.FeedbackResponseSent, nameof(FeedbackReport), id,
-                $"Response sent to {user.DisplayName} for feedback {id}",
-                actorUserId.Value, actorName);
+            report.LastAdminMessageAt = now;
+            var user = report.User;
+            var reportLink = $"/Feedback/{reportId}";
+            await _emailService.SendFeedbackResponseAsync(
+                user.Email!, user.DisplayName,
+                report.Description, content, reportLink,
+                user.PreferredLanguage, cancellationToken);
         }
         else
         {
-            await _auditLogService.LogAsync(
-                AuditAction.FeedbackResponseSent, nameof(FeedbackReport), id,
-                $"Response sent to {user.DisplayName} for feedback {id}",
-                actorName);
+            report.LastReporterMessageAt = now;
         }
-        await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Feedback response sent for {ReportId} by {ActorId}", id, actorUserId);
+        report.UpdatedAt = now;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Feedback message posted on {ReportId} by {UserId} (admin: {IsAdmin})", reportId, senderUserId, isAdmin);
+        return message;
     }
 
-    public async Task<IReadOnlyList<FeedbackResponseDetail>> GetResponseDetailsAsync(
+    public async Task<IReadOnlyList<FeedbackMessage>> GetMessagesAsync(
         Guid reportId, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.AuditLogEntries
-            .Where(a => a.Action == AuditAction.FeedbackResponseSent
-                && a.EntityType == nameof(FeedbackReport)
-                && a.EntityId == reportId)
-            .OrderByDescending(a => a.OccurredAt)
-            .Select(a => new FeedbackResponseDetail(
-                a.OccurredAt.ToDateTimeUtc(),
-                a.ActorName))
+        return await _dbContext.FeedbackMessages
+            .Include(m => m.SenderUser)
+            .Where(m => m.FeedbackReportId == reportId)
+            .OrderBy(m => m.CreatedAt)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> GetActionableCountAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.FeedbackReports
+            .Where(f => f.Status != FeedbackStatus.Resolved && f.Status != FeedbackStatus.WontFix)
+            .CountAsync(f =>
+                (f.Status == FeedbackStatus.Open && f.LastAdminMessageAt == null) ||
+                (f.LastReporterMessageAt != null && (f.LastAdminMessageAt == null || f.LastReporterMessageAt > f.LastAdminMessageAt)),
+                cancellationToken);
     }
 }
