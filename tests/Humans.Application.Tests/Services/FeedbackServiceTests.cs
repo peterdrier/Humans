@@ -123,7 +123,8 @@ public class FeedbackServiceTests : IDisposable
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
 
         var updated = await _dbContext.FeedbackReports.FindAsync(report.Id);
-        updated!.AdminResponseSentAt.Should().NotBeNull();
+        // TODO: AdminResponseSentAt removed in feedback upgrade
+        updated.Should().NotBeNull();
     }
 
     private async Task<FeedbackReport> CreateTestReport(FeedbackStatus status = FeedbackStatus.Open)

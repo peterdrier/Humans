@@ -70,11 +70,11 @@ public class AdminFeedbackController : HumansControllerBase
             ScreenshotUrl = report.ScreenshotStoragePath is not null ? $"/{report.ScreenshotStoragePath}" : null,
             ReporterName = report.User.DisplayName,
             ReporterUserId = report.UserId,
-            AdminNotes = report.AdminNotes,
+            // TODO: AdminNotes removed in feedback upgrade
             GitHubIssueNumber = report.GitHubIssueNumber,
             CreatedAt = report.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = report.UpdatedAt.ToDateTimeUtc(),
-            AdminResponseSentAt = report.AdminResponseSentAt?.ToDateTimeUtc(),
+            // TODO: AdminResponseSentAt removed in feedback upgrade
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = report.ResolvedByUser?.DisplayName
         };

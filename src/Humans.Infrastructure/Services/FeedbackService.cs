@@ -179,7 +179,8 @@ public class FeedbackService : IFeedbackService
         var report = await _dbContext.FeedbackReports.FindAsync(new object[] { id }, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {id} not found");
 
-        report.AdminNotes = notes;
+        // TODO: removed in feedback upgrade - will be replaced by FeedbackMessage
+        // report.AdminNotes = notes;
         report.UpdatedAt = _clock.GetCurrentInstant();
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -228,8 +229,9 @@ public class FeedbackService : IFeedbackService
             report.Description, message,
             user.PreferredLanguage, cancellationToken);
 
-        report.AdminResponseSentAt = _clock.GetCurrentInstant();
-        report.UpdatedAt = report.AdminResponseSentAt.Value;
+        // TODO: removed in feedback upgrade - will be replaced by LastAdminMessageAt
+        var now = _clock.GetCurrentInstant();
+        report.UpdatedAt = now;
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         string actorName = "API";

@@ -43,12 +43,12 @@ public class FeedbackApiController : ControllerBase
             ReporterEmail = r.User.Email,
             ReporterUserId = r.UserId,
             ReporterLanguage = r.User.PreferredLanguage,
-            r.AdminNotes,
+            // TODO: AdminNotes removed in feedback upgrade
             r.GitHubIssueNumber,
             ScreenshotUrl = r.ScreenshotStoragePath is not null ? $"/{r.ScreenshotStoragePath}" : null,
             CreatedAt = r.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = r.UpdatedAt.ToDateTimeUtc(),
-            AdminResponseSentAt = r.AdminResponseSentAt?.ToDateTimeUtc(),
+            // TODO: AdminResponseSentAt removed in feedback upgrade
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = r.ResolvedByUser?.DisplayName,
             ResponseCount = responseCounts.GetValueOrDefault(r.Id)
@@ -77,12 +77,12 @@ public class FeedbackApiController : ControllerBase
             ReporterEmail = r.User.Email,
             ReporterUserId = r.UserId,
             ReporterLanguage = r.User.PreferredLanguage,
-            r.AdminNotes,
+            // TODO: AdminNotes removed in feedback upgrade
             r.GitHubIssueNumber,
             ScreenshotUrl = r.ScreenshotStoragePath is not null ? $"/{r.ScreenshotStoragePath}" : null,
             CreatedAt = r.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = r.UpdatedAt.ToDateTimeUtc(),
-            AdminResponseSentAt = r.AdminResponseSentAt?.ToDateTimeUtc(),
+            // TODO: AdminResponseSentAt removed in feedback upgrade
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = r.ResolvedByUser?.DisplayName,
             ResponseCount = responseDetails.Count,
