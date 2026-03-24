@@ -28,8 +28,7 @@ public class FeedbackApiController : ControllerBase
         [FromQuery] FeedbackCategory? category,
         [FromQuery] int limit = 50)
     {
-        var reports = await _feedbackService.GetFeedbackListAsync(status, category, limit);
-        var responseCounts = await _feedbackService.GetResponseCountsAsync(reports.Select(r => r.Id));
+        var reports = await _feedbackService.GetFeedbackListAsync(status, category, limit: limit);
 
         var result = reports.Select(r => new
         {
@@ -39,19 +38,20 @@ public class FeedbackApiController : ControllerBase
             r.Description,
             r.PageUrl,
             r.UserAgent,
+            r.AdditionalContext,
             ReporterName = r.User.DisplayName,
             ReporterEmail = r.User.Email,
             ReporterUserId = r.UserId,
             ReporterLanguage = r.User.PreferredLanguage,
-            // TODO: AdminNotes removed in feedback upgrade
             r.GitHubIssueNumber,
             ScreenshotUrl = r.ScreenshotStoragePath is not null ? $"/{r.ScreenshotStoragePath}" : null,
             CreatedAt = r.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = r.UpdatedAt.ToDateTimeUtc(),
-            // TODO: AdminResponseSentAt removed in feedback upgrade
+            LastReporterMessageAt = r.LastReporterMessageAt?.ToDateTimeUtc(),
+            LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = r.ResolvedByUser?.DisplayName,
-            ResponseCount = responseCounts.GetValueOrDefault(r.Id)
+            MessageCount = r.Messages.Count
         });
 
         return Ok(result);
@@ -63,8 +63,6 @@ public class FeedbackApiController : ControllerBase
         var r = await _feedbackService.GetFeedbackByIdAsync(id);
         if (r is null) return NotFound();
 
-        var responseDetails = await _feedbackService.GetResponseDetailsAsync(id);
-
         return Ok(new
         {
             r.Id,
@@ -73,25 +71,71 @@ public class FeedbackApiController : ControllerBase
             r.Description,
             r.PageUrl,
             r.UserAgent,
+            r.AdditionalContext,
             ReporterName = r.User.DisplayName,
             ReporterEmail = r.User.Email,
             ReporterUserId = r.UserId,
             ReporterLanguage = r.User.PreferredLanguage,
-            // TODO: AdminNotes removed in feedback upgrade
             r.GitHubIssueNumber,
             ScreenshotUrl = r.ScreenshotStoragePath is not null ? $"/{r.ScreenshotStoragePath}" : null,
             CreatedAt = r.CreatedAt.ToDateTimeUtc(),
             UpdatedAt = r.UpdatedAt.ToDateTimeUtc(),
-            // TODO: AdminResponseSentAt removed in feedback upgrade
+            LastReporterMessageAt = r.LastReporterMessageAt?.ToDateTimeUtc(),
+            LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = r.ResolvedByUser?.DisplayName,
-            ResponseCount = responseDetails.Count,
-            Responses = responseDetails.Select(rd => new
+            Messages = r.Messages.Select(m => new
             {
-                rd.SentAt,
-                rd.ActorName
+                m.Id,
+                SenderName = m.SenderUser?.DisplayName ?? "Unknown",
+                m.SenderUserId,
+                m.Content,
+                CreatedAt = m.CreatedAt.ToDateTimeUtc(),
+                IsReporter = m.SenderUserId.HasValue && m.SenderUserId == r.UserId
             })
         });
+    }
+
+    [HttpGet("{id}/messages")]
+    public async Task<IActionResult> GetMessages(Guid id)
+    {
+        var report = await _feedbackService.GetFeedbackByIdAsync(id);
+        if (report is null) return NotFound();
+
+        var messages = await _feedbackService.GetMessagesAsync(id);
+
+        return Ok(messages.Select(m => new
+        {
+            m.Id,
+            SenderName = m.SenderUser?.DisplayName ?? "Unknown",
+            m.SenderUserId,
+            m.Content,
+            CreatedAt = m.CreatedAt.ToDateTimeUtc(),
+            IsReporter = m.SenderUserId.HasValue && m.SenderUserId == report.UserId
+        }));
+    }
+
+    [HttpPost("{id}/messages")]
+    public async Task<IActionResult> PostMessage(Guid id, [FromBody] PostFeedbackMessageModel model)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
+        {
+            var message = await _feedbackService.PostMessageAsync(id, Guid.Empty, model.Content, isAdmin: true);
+            return Ok(new
+            {
+                message.Id,
+                message.Content,
+                CreatedAt = message.CreatedAt.ToDateTimeUtc()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to post message on feedback {FeedbackId}", id);
+            return StatusCode(500, new { error = "Failed to post message" });
+        }
     }
 
     [HttpPatch("{id}/status")]
@@ -99,7 +143,6 @@ public class FeedbackApiController : ControllerBase
     {
         try
         {
-            // API has no user context — pass null actor
             await _feedbackService.UpdateStatusAsync(id, model.Status, null);
             return Ok(new { success = true });
         }
@@ -107,21 +150,6 @@ public class FeedbackApiController : ControllerBase
         {
             _logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
             return StatusCode(500, new { error = "Failed to update status" });
-        }
-    }
-
-    [HttpPatch("{id}/notes")]
-    public async Task<IActionResult> UpdateNotes(Guid id, [FromBody] UpdateFeedbackNotesModel model)
-    {
-        try
-        {
-            await _feedbackService.UpdateAdminNotesAsync(id, model.Notes);
-            return Ok(new { success = true });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to update feedback {FeedbackId} notes", id);
-            return StatusCode(500, new { error = "Failed to update notes" });
         }
     }
 
@@ -137,24 +165,6 @@ public class FeedbackApiController : ControllerBase
         {
             _logger.LogError(ex, "Failed to set GitHub issue for feedback {FeedbackId}", id);
             return StatusCode(500, new { error = "Failed to set GitHub issue" });
-        }
-    }
-
-    [HttpPost("{id}/respond")]
-    public async Task<IActionResult> SendResponse(Guid id, [FromBody] SendFeedbackResponseModel model)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        try
-        {
-            await _feedbackService.SendResponseAsync(id, model.Message, null);
-            return Ok(new { success = true });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send response for feedback {FeedbackId}", id);
-            return StatusCode(500, new { error = "Failed to send response" });
         }
     }
 }
