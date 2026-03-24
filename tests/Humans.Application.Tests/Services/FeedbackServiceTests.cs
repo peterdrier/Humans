@@ -125,9 +125,14 @@ public class FeedbackServiceTests : IDisposable
 
         var report = new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = userId, Category = FeedbackCategory.Bug,
-            Description = "Test", PageUrl = "/test", Status = FeedbackStatus.Open,
-            CreatedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = FeedbackCategory.Bug,
+            Description = "Test",
+            PageUrl = "/test",
+            Status = FeedbackStatus.Open,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         };
         _dbContext.FeedbackReports.Add(report);
         await _dbContext.SaveChangesAsync();
@@ -156,9 +161,14 @@ public class FeedbackServiceTests : IDisposable
 
         var report = new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = userId, Category = FeedbackCategory.Bug,
-            Description = "Test", PageUrl = "/test", Status = FeedbackStatus.Open,
-            CreatedAt = _clock.GetCurrentInstant(), UpdatedAt = _clock.GetCurrentInstant()
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = FeedbackCategory.Bug,
+            Description = "Test",
+            PageUrl = "/test",
+            Status = FeedbackStatus.Open,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         };
         _dbContext.FeedbackReports.Add(report);
         await _dbContext.SaveChangesAsync();
@@ -187,26 +197,43 @@ public class FeedbackServiceTests : IDisposable
         // Open, no admin message -> actionable
         _dbContext.FeedbackReports.Add(new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = userId, Category = FeedbackCategory.Bug,
-            Description = "a", PageUrl = "/a", Status = FeedbackStatus.Open,
-            CreatedAt = now, UpdatedAt = now
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = FeedbackCategory.Bug,
+            Description = "a",
+            PageUrl = "/a",
+            Status = FeedbackStatus.Open,
+            CreatedAt = now,
+            UpdatedAt = now
         });
 
         // Reporter replied after admin -> actionable
         _dbContext.FeedbackReports.Add(new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = userId, Category = FeedbackCategory.Bug,
-            Description = "b", PageUrl = "/b", Status = FeedbackStatus.Acknowledged,
-            CreatedAt = now, UpdatedAt = now,
-            LastAdminMessageAt = now, LastReporterMessageAt = now + Duration.FromMinutes(5)
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = FeedbackCategory.Bug,
+            Description = "b",
+            PageUrl = "/b",
+            Status = FeedbackStatus.Acknowledged,
+            CreatedAt = now,
+            UpdatedAt = now,
+            LastAdminMessageAt = now,
+            LastReporterMessageAt = now + Duration.FromMinutes(5)
         });
 
         // Resolved -> not actionable
         _dbContext.FeedbackReports.Add(new FeedbackReport
         {
-            Id = Guid.NewGuid(), UserId = userId, Category = FeedbackCategory.Bug,
-            Description = "c", PageUrl = "/c", Status = FeedbackStatus.Resolved,
-            CreatedAt = now, UpdatedAt = now, ResolvedAt = now
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Category = FeedbackCategory.Bug,
+            Description = "c",
+            PageUrl = "/c",
+            Status = FeedbackStatus.Resolved,
+            CreatedAt = now,
+            UpdatedAt = now,
+            ResolvedAt = now
         });
 
         await _dbContext.SaveChangesAsync();
