@@ -28,6 +28,9 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
         builder.Property(f => f.UserAgent)
             .HasMaxLength(1000);
 
+        builder.Property(f => f.AdditionalContext)
+            .HasMaxLength(2000);
+
         builder.Property(f => f.ScreenshotFileName)
             .HasMaxLength(256);
 
@@ -41,9 +44,6 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
             .HasConversion<string>()
             .HasMaxLength(50)
             .IsRequired();
-
-        builder.Property(f => f.AdminNotes)
-            .HasMaxLength(5000);
 
         builder.Property(f => f.CreatedAt).IsRequired();
         builder.Property(f => f.UpdatedAt).IsRequired();

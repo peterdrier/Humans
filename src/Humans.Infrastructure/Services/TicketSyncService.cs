@@ -88,7 +88,7 @@ public class TicketSyncService : ITicketSyncService
             foreach (var ticketDto in tickets)
             {
                 var attendee = await UpsertAttendeeAsync(ticketDto, eventId, emailLookup, now, ct);
-                if (attendee == null) continue; // Skipped — parent order not found
+                if (attendee is null) continue; // Skipped — parent order not found
                 attendeesSynced++;
                 if (attendee.MatchedUserId.HasValue)
                     attendeesMatched++;
@@ -157,7 +157,7 @@ public class TicketSyncService : ITicketSyncService
             {
                 // Multiple users share this email — prefer OAuth
                 var oauthEntry = entries.FirstOrDefault(e => e.IsOAuth);
-                if (oauthEntry != null)
+                if (oauthEntry is not null)
                 {
                     lookup[group.Key] = oauthEntry.UserId;
                 }
@@ -180,7 +180,7 @@ public class TicketSyncService : ITicketSyncService
         var existing = await _dbContext.TicketOrders
             .FirstOrDefaultAsync(o => o.VendorOrderId == dto.VendorOrderId, ct);
 
-        if (existing != null)
+        if (existing is not null)
         {
             existing.BuyerName = dto.BuyerName;
             existing.BuyerEmail = dto.BuyerEmail;
@@ -223,11 +223,11 @@ public class TicketSyncService : ITicketSyncService
         var existing = await _dbContext.TicketAttendees
             .FirstOrDefaultAsync(a => a.VendorTicketId == dto.VendorTicketId, ct);
 
-        Guid? matchedUserId = dto.AttendeeEmail != null
+        Guid? matchedUserId = dto.AttendeeEmail is not null
             ? LookupUserId(emailLookup, dto.AttendeeEmail)
             : null;
 
-        if (existing != null)
+        if (existing is not null)
         {
             existing.AttendeeName = dto.AttendeeName;
             existing.AttendeeEmail = dto.AttendeeEmail;
@@ -243,7 +243,7 @@ public class TicketSyncService : ITicketSyncService
         var parentOrder = await _dbContext.TicketOrders
             .FirstOrDefaultAsync(o => o.VendorOrderId == dto.VendorOrderId, ct);
 
-        if (parentOrder == null)
+        if (parentOrder is null)
         {
             _logger.LogWarning("Attendee {VendorTicketId} references unknown order {VendorOrderId}, skipping",
                 dto.VendorTicketId, dto.VendorOrderId);
@@ -297,14 +297,14 @@ public class TicketSyncService : ITicketSyncService
         var codesRedeemed = 0;
         foreach (var order in ordersWithCodes)
         {
-            if (order.DiscountCode == null) continue;
+            if (order.DiscountCode is null) continue;
 
             var grant = unredeemed
                 .Where(g => string.Equals(g.Code!.Code, order.DiscountCode, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(g => g.Campaign.CreatedAt)
                 .FirstOrDefault();
 
-            if (grant != null)
+            if (grant is not null)
             {
                 grant.RedeemedAt = order.PurchasedAt;
                 unredeemed.Remove(grant);
@@ -319,7 +319,7 @@ public class TicketSyncService : ITicketSyncService
     }
 
     private static Guid? LookupUserId(Dictionary<string, Guid> lookup, string? email) =>
-        email != null && lookup.TryGetValue(email, out var userId) ? userId : null;
+        email is not null && lookup.TryGetValue(email, out var userId) ? userId : null;
 
     private TicketPaymentStatus ParsePaymentStatus(string status)
     {

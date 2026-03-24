@@ -235,7 +235,7 @@ public interface IEmailService
     /// </summary>
     Task SendFeedbackResponseAsync(
         string userEmail, string userName, string originalDescription,
-        string responseMessage, string? culture = null,
+        string responseMessage, string reportLink, string? culture = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

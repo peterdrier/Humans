@@ -26,7 +26,7 @@ internal static class TeamResourcePersistence
         var resource = await dbContext.GoogleResources
             .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
 
-        if (resource == null)
+        if (resource is null)
         {
             return null;
         }

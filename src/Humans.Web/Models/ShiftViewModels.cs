@@ -239,7 +239,10 @@ public class ShiftInfoViewModel
     // Defined options from spec
     public static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
     public static readonly string[] QuirkOptions = ["Sober Shift", "Work In Shade", "Night Owl", "Early Bird", "Quiet Work", "Physical Work OK", "No Heights"];
-    public static readonly string[] AllergyOptions = ["Celiac", "Shellfish", "Nuts", "Tree Nuts", "Soy", "Egg"];
+    public string? AllergyOtherText { get; set; }
+    public string? IntoleranceOtherText { get; set; }
+
+    public static readonly string[] AllergyOptions = ["Celiac", "Shellfish", "Nuts", "Tree Nuts", "Soy", "Egg", "Other"];
     public static readonly string[] IntoleranceOptions = ["Gluten", "Peppers", "Shellfish", "Nuts", "Egg", "Lactose", "Other"];
     public static readonly string[] DietaryOptions = ["Omnivore", "Vegetarian", "Vegan", "Pescatarian"];
     public static readonly string[] LanguageOptions = ["English", "Spanish", "German", "French", "Italian", "Portuguese", "Other"];

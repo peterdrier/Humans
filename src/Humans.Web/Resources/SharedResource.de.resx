@@ -63,6 +63,7 @@
   <data name="Nav_About" xml:space="preserve"><value>&#xDC;ber uns</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Pr&#xFC;fwarteschlange</value></data>
+  <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
 
 
   <!-- ======================== -->
@@ -86,6 +87,7 @@
   <data name="Login_Title" xml:space="preserve"><value>Anmelden</value></data>
   <data name="Login_Description" xml:space="preserve"><value>Melden Sie sich mit Ihrem Google-Konto an, um auf Humans zuzugreifen.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Mit Google anmelden</value></data>
+  <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Zugriff verweigert</value></data>
   <data name="AccessDenied_Description" xml:space="preserve"><value>Sie haben keine Berechtigung, auf diese Seite zuzugreifen.</value></data>
 
@@ -328,11 +330,17 @@
   <data name="Governance_AsociadoDescription" xml:space="preserve"><value>Asociados sind die formellen stimmberechtigten Mitglieder von Nobodies Collective. Als Asociado können Sie an Mitgliederversammlungen teilnehmen, über kollektive Entscheidungen abstimmen und an Wahlen teilnehmen.</value></data>
   <data name="Governance_Optional" xml:space="preserve"><value>Dies ist freiwillig. Die meisten Freiwilligen müssen keine Asociados werden. Sie haben bereits Zugang zu Ressourcen, sobald Sie Ihr Profil und Ihre Einwilligungen abgeschlossen haben.</value></data>
   <data name="Governance_ApplyButton" xml:space="preserve"><value>Als Asociado bewerben</value></data>
+  <data name="Governance_ColaboradorCanApply" xml:space="preserve"><value>Colaboradores k&#xF6;nnen sich auch f&#xFC;r den Asociado-Status bewerben, wenn sie an der Governance teilnehmen m&#xF6;chten.</value></data>
+  <data name="Governance_ApplyForAsociado" xml:space="preserve"><value>Als Asociado bewerben</value></data>
   <data name="Governance_YourApplication" xml:space="preserve"><value>Ihr Antrag</value></data>
   <data name="Governance_Submitted" xml:space="preserve"><value>Eingereicht</value></data>
   <data name="Governance_Resolved" xml:space="preserve"><value>Abgeschlossen</value></data>
   <data name="Governance_UnderReviewMessage" xml:space="preserve"><value>Ihr Antrag wird geprüft. Wir benachrichtigen Sie per E-Mail, sobald eine Entscheidung getroffen wurde.</value></data>
   <data name="Governance_ApprovedMessage" xml:space="preserve"><value>Willkommen! Sie sind jetzt Asociado von Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve"><value>Sie sind ein/e genehmigte/r Colaborador/a von Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve"><value>Willkommen! Sie sind jetzt Asociado/a von Nobodies Collective.</value></data>
+  <data name="Governance_Tier" xml:space="preserve"><value>Stufe</value></data>
+  <data name="Governance_TermExpiry" xml:space="preserve"><value>Amtszeit endet</value></data>
   <data name="Governance_RejectedMessage" xml:space="preserve"><value>Ihr Antrag wurde nicht genehmigt. Bei Fragen wenden Sie sich bitte an den Vorstand.</value></data>
   <data name="Governance_WhatIsAsociado" xml:space="preserve"><value>Was ist ein Asociado?</value></data>
   <data name="Governance_AsociadoLawDescription" xml:space="preserve"><value>Asociados sind die formellen stimmberechtigten Mitglieder des Vereins nach spanischem Recht.</value></data>
@@ -405,6 +413,7 @@
   <data name="Application_InvalidTier" xml:space="preserve"><value>Bitte w&#xE4;hlen Sie Colaborador oder Asociado f&#xFC;r Ihren Antrag.</value></data>
   <data name="Application_ConfirmAccuracy" xml:space="preserve"><value>Sie müssen die Richtigkeit Ihrer Angaben bestätigen.</value></data>
   <data name="Application_Submitted" xml:space="preserve"><value>Ihr Antrag wurde erfolgreich eingereicht!</value></data>
+  <data name="Application_SubmitError" xml:space="preserve"><value>Beim Einreichen Ihres Antrags ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.</value></data>
   <data name="Application_CannotWithdraw" xml:space="preserve"><value>Dieser Antrag kann nicht zurückgezogen werden.</value></data>
   <data name="Application_Withdrawn" xml:space="preserve"><value>Ihr Antrag wurde zurückgezogen.</value></data>
 
@@ -448,6 +457,7 @@
   <data name="Consent_MustCheck" xml:space="preserve"><value>Sie müssen das Einwilligungsfeld ankreuzen, um fortzufahren.</value></data>
   <data name="Consent_AlreadyConsented" xml:space="preserve"><value>Sie haben diesem Dokument bereits zugestimmt.</value></data>
   <data name="Consent_ThankYou" xml:space="preserve"><value>Vielen Dank für Ihre Einwilligung zu {0}.</value><comment>{0} = document name</comment></data>
+  <data name="Consent_SubmitError" xml:space="preserve"><value>Beim Speichern Ihrer Einwilligung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.</value></data>
 
   <!-- ======================== -->
   <!-- Teams                    -->

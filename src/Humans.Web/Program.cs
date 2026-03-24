@@ -131,6 +131,19 @@ builder.Services.AddAuthentication()
         options.Scope.Add("profile");
         options.Scope.Add("email");
         options.SaveTokens = false;
+        options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
+        {
+            OnRemoteFailure = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("GoogleOAuth");
+                logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", context.Failure?.Message);
+
+                context.Response.Redirect("/Account/Login?error=sign-in-failed");
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Configure Authorization
@@ -280,7 +293,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
         {
             var userManager = context.RequestServices.GetRequiredService<UserManager<User>>();
             var user = await userManager.GetUserAsync(context.User);
-            if (user != null && !string.IsNullOrEmpty(user.PreferredLanguage))
+            if (user is not null && !string.IsNullOrEmpty(user.PreferredLanguage))
             {
                 return new ProviderCultureResult(user.PreferredLanguage);
             }

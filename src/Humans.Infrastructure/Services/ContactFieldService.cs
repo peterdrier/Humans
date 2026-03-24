@@ -42,7 +42,7 @@ public class ContactFieldService : IContactFieldService
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == profileId, cancellationToken);
 
-        if (profile == null)
+        if (profile is null)
         {
             return [];
         }
@@ -173,7 +173,7 @@ public class ContactFieldService : IContactFieldService
         }
 
         // Check if viewer is a lead of any team
-        if (_cachedViewerTeamIds == null)
+        if (_cachedViewerTeamIds is null)
         {
             var viewerTeams = await _teamService.GetUserTeamsAsync(viewerUserId, cancellationToken);
             _cachedIsAnyCoordinator = viewerTeams.Any(tm => tm.Role == TeamMemberRole.Coordinator);

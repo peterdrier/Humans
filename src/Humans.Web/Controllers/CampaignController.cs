@@ -70,7 +70,7 @@ public class CampaignController : HumansControllerBase
         }
 
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null) return Unauthorized();
+        if (currentUser is null) return Unauthorized();
 
         var campaign = await _campaignService.CreateAsync(title, description, emailSubject, emailBodyTemplate, replyToAddress, currentUser.Id);
         SetSuccess("Campaign created.");
@@ -82,7 +82,7 @@ public class CampaignController : HumansControllerBase
     public async Task<IActionResult> Edit(Guid id)
     {
         var campaign = await _campaignService.GetByIdAsync(id);
-        if (campaign == null) return NotFound();
+        if (campaign is null) return NotFound();
         return View(campaign);
     }
 
@@ -101,7 +101,7 @@ public class CampaignController : HumansControllerBase
         if (!ModelState.IsValid)
         {
             var campaign = await _campaignService.GetByIdAsync(id);
-            if (campaign == null)
+            if (campaign is null)
             {
                 return NotFound();
             }
@@ -137,7 +137,7 @@ public class CampaignController : HumansControllerBase
     public async Task<IActionResult> Detail(Guid id)
     {
         var page = await _campaignService.GetDetailPageAsync(id);
-        if (page == null) return NotFound();
+        if (page is null) return NotFound();
 
         return View(new CampaignDetailViewModel
         {
@@ -151,7 +151,7 @@ public class CampaignController : HumansControllerBase
     [Authorize(Roles = RoleNames.Admin)]
     public async Task<IActionResult> ImportCodes(Guid id, IFormFile file)
     {
-        if (file == null || file.Length == 0)
+        if (file is null || file.Length == 0)
         {
             SetError("Please select a CSV file.");
             return RedirectToAction(nameof(Detail), new { id });
@@ -182,7 +182,7 @@ public class CampaignController : HumansControllerBase
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
     {
         var campaign = await _campaignService.GetByIdAsync(id);
-        if (campaign == null) return NotFound();
+        if (campaign is null) return NotFound();
 
         if (campaign.Status != CampaignStatus.Draft)
         {
@@ -235,7 +235,7 @@ public class CampaignController : HumansControllerBase
     public async Task<IActionResult> SendWave(Guid id, Guid? teamId)
     {
         var page = await _campaignService.GetSendWavePageAsync(id, teamId);
-        if (page == null) return NotFound();
+        if (page is null) return NotFound();
 
         return View(new CampaignSendWaveViewModel
         {

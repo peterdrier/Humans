@@ -251,7 +251,7 @@ public class ProfileViewModel
         get
         {
             var parsed = ParsedBirthday;
-            if (parsed == null)
+            if (parsed is null)
                 return null;
 
             var pattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("MMMM d");

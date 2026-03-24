@@ -331,12 +331,6 @@
                     <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" asp-route-teamId="@Model.Id" class="list-group-item list-group-item-action">
                         @Localizer["TeamDetail_ManageConsents"]
                     </a>
-                    @if (Model.ParentTeam == null && !Model.IsSystemTeam)
-                    {
-                        <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                            @Localizer["Nav_Shifts"]
-                        </a>
-                    }
                 </div>
             </div>
         }

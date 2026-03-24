@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application;
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
@@ -10,13 +11,15 @@ namespace Humans.Web.ViewComponents;
 public class NavBadgesViewComponent : ViewComponent
 {
     private readonly HumansDbContext _dbContext;
+    private readonly IFeedbackService _feedbackService;
     private readonly IMemoryCache _cache;
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 
-    public NavBadgesViewComponent(HumansDbContext dbContext, IMemoryCache cache)
+    public NavBadgesViewComponent(HumansDbContext dbContext, IFeedbackService feedbackService, IMemoryCache cache)
     {
         _dbContext = dbContext;
+        _feedbackService = feedbackService;
         _cache = cache;
     }
 
@@ -32,11 +35,15 @@ public class NavBadgesViewComponent : ViewComponent
             var votingCount = await _dbContext.Applications
                 .CountAsync(a => a.Status == ApplicationStatus.Submitted);
 
-            return (Review: reviewCount, Voting: votingCount);
+            var feedbackCount = await _feedbackService.GetActionableCountAsync();
+
+            return (Review: reviewCount, Voting: votingCount, Feedback: feedbackCount);
         });
 
         var count = string.Equals(queue, "review", StringComparison.OrdinalIgnoreCase)
             ? counts.Review
+            : string.Equals(queue, "feedback", StringComparison.OrdinalIgnoreCase)
+            ? counts.Feedback
             : counts.Voting;
 
         return View(count);

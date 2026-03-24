@@ -167,7 +167,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var step = new SyncStepResult("Volunteers");
 
         var team = await GetSystemTeamAsync(SystemTeamType.Volunteers, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("Volunteers system team not found");
             report?.Steps.Add(step);
@@ -199,7 +199,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var step = new SyncStepResult("Coordinators");
 
         var team = await GetSystemTeamAsync(SystemTeamType.Coordinators, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("Coordinators system team not found");
             report?.Steps.Add(step);
@@ -235,7 +235,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var step = new SyncStepResult("Board");
 
         var team = await GetSystemTeamAsync(SystemTeamType.Board, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("Board system team not found");
             report?.Steps.Add(step);
@@ -284,7 +284,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var step = new SyncStepResult(teamType.ToString());
 
         var team = await GetSystemTeamAsync(teamType, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("{TeamType} system team not found", teamType);
             report?.Steps.Add(step);
@@ -364,7 +364,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     public async Task SyncVolunteersMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await GetSystemTeamAsync(SystemTeamType.Volunteers, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("Volunteers system team not found");
             return;
@@ -389,7 +389,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     public async Task SyncCoordinatorsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await GetSystemTeamAsync(SystemTeamType.Coordinators, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("Coordinators system team not found");
             return;
@@ -426,7 +426,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
     {
         var team = await GetSystemTeamAsync(teamType, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("{TeamType} system team not found", teamType);
             return;
@@ -465,7 +465,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         var step = new SyncStepResult("Barrio Leads");
 
         var team = await GetSystemTeamAsync(SystemTeamType.BarrioLeads, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("Barrio Leads system team not found");
             report?.Steps.Add(step);
@@ -490,7 +490,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     public async Task SyncBarrioLeadsMembershipForUserAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await GetSystemTeamAsync(SystemTeamType.BarrioLeads, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("Barrio Leads system team not found");
             return;
@@ -515,7 +515,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         CancellationToken cancellationToken, Guid? singleUserSync = null, SyncStepResult? step = null)
     {
         var currentMemberIds = team.Members
-            .Where(m => m.LeftAt == null)
+            .Where(m => m.LeftAt is null)
             .Select(m => m.UserId)
             .ToHashSet();
 
@@ -568,8 +568,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
         // Remove members who are no longer eligible
         foreach (var userId in toRemove)
         {
-            var member = team.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt == null);
-            if (member != null)
+            var member = team.Members.FirstOrDefault(m => m.UserId == userId && m.LeftAt is null);
+            if (member is not null)
             {
                 // Clean up role slot assignments before ending membership
                 var roleAssignments = await _dbContext.Set<TeamRoleAssignment>()

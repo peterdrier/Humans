@@ -381,7 +381,7 @@ public class CampService : ICampService
             camp.Slug,
             season?.Name ?? camp.Slug,
             season?.BlurbShort ?? string.Empty,
-            firstImage != null ? $"/{firstImage.StoragePath}" : null,
+            firstImage is not null ? $"/{firstImage.StoragePath}" : null,
             season?.Vibes ?? [],
             season?.AcceptingMembers ?? YesNoMaybe.No,
             season?.KidsWelcome ?? YesNoMaybe.No,
@@ -397,7 +397,7 @@ public class CampService : ICampService
             return camp.Links;
         }
 
-        return camp.WebOrSocialUrl != null
+        return camp.WebOrSocialUrl is not null
             ? [new CampLink { Url = camp.WebOrSocialUrl }]
             : [];
     }
@@ -446,7 +446,7 @@ public class CampService : ICampService
             camp.ContactPhone,
             camp.Links is { Count: > 0 }
                 ? camp.Links.Select(l => l.Url).ToList()
-                : camp.WebOrSocialUrl != null
+                : camp.WebOrSocialUrl is not null
                     ? [camp.WebOrSocialUrl]
                     : [],
             camp.IsSwissCamp,
@@ -489,7 +489,7 @@ public class CampService : ICampService
             season?.Name ?? camp.Slug,
             season?.BlurbShort ?? string.Empty,
             season?.BlurbLong ?? string.Empty,
-            firstImage != null ? $"/{firstImage.StoragePath}" : null,
+            firstImage is not null ? $"/{firstImage.StoragePath}" : null,
             (season?.Vibes ?? []).Select(vibe => vibe.ToString()).ToList(),
             (season?.AcceptingMembers ?? YesNoMaybe.No).ToString(),
             (season?.KidsWelcome ?? YesNoMaybe.No).ToString(),

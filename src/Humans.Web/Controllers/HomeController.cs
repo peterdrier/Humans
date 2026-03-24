@@ -50,7 +50,7 @@ public class HomeController : HumansControllerBase
 
         // Show dashboard for logged in users
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
         {
             return View();
         }
@@ -63,7 +63,7 @@ public class HomeController : HumansControllerBase
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
         var latestApplication = applications.Count > 0 ? applications[0] : null;
 
-        var hasPendingApp = latestApplication != null &&
+        var hasPendingApp = latestApplication is not null &&
             latestApplication.Status == ApplicationStatus.Submitted;
 
         // Get term expiry from latest approved application for the user's current tier
@@ -77,11 +77,11 @@ public class HomeController : HumansControllerBase
             var latestApprovedApp = applications
                 .Where(a => a.Status == ApplicationStatus.Approved
                     && a.MembershipTier == currentTier
-                    && a.TermExpiresAt != null)
+                    && a.TermExpiresAt is not null)
                 .OrderByDescending(a => a.TermExpiresAt)
                 .FirstOrDefault();
 
-            if (latestApprovedApp?.TermExpiresAt != null)
+            if (latestApprovedApp?.TermExpiresAt is not null)
             {
                 var today = _clock.GetCurrentInstant().InUtc().Date;
                 var expiryDate = latestApprovedApp.TermExpiresAt.Value;
@@ -96,14 +96,14 @@ public class HomeController : HumansControllerBase
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
             MembershipStatus = membershipSnapshot.Status,
-            HasProfile = profile != null,
-            ProfileComplete = profile != null && !string.IsNullOrEmpty(profile.FirstName),
+            HasProfile = profile is not null,
+            ProfileComplete = profile is not null && !string.IsNullOrEmpty(profile.FirstName),
             PendingConsents = membershipSnapshot.PendingConsentCount,
             TotalRequiredConsents = membershipSnapshot.RequiredConsentCount,
             IsVolunteerMember = membershipSnapshot.IsVolunteerMember,
             MembershipTier = currentTier,
             ConsentCheckStatus = profile?.ConsentCheckStatus,
-            IsRejected = profile?.RejectedAt != null,
+            IsRejected = profile?.RejectedAt is not null,
             RejectionReason = profile?.RejectionReason,
             HasPendingApplication = hasPendingApp,
             LatestApplicationStatus = latestApplication?.Status,
@@ -120,14 +120,14 @@ public class HomeController : HumansControllerBase
         try
         {
             var activeEvent = await _shiftMgmt.GetActiveAsync();
-            if (activeEvent != null && activeEvent.IsShiftBrowsingOpen)
+            if (activeEvent is not null && activeEvent.IsShiftBrowsingOpen)
             {
                 var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
 
                 var urgentItems = new List<UrgentShiftItem>();
                 foreach (var u in urgentShifts)
                 {
-                    if (u.Shift == null)
+                    if (u.Shift is null)
                     {
                         _logger.LogWarning("Skipping urgent shift item because shift data was missing");
                         continue;
@@ -162,7 +162,7 @@ public class HomeController : HumansControllerBase
                     {
                         try
                         {
-                            if (s.Shift == null)
+                            if (s.Shift is null)
                             {
                                 _logger.LogWarning("Skipping signup {SignupId} on dashboard because shift data was missing", s.Id);
                                 continue;
@@ -204,7 +204,7 @@ public class HomeController : HumansControllerBase
                     try
                     {
                         var shiftProfile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: false);
-                        if (shiftProfile == null || IsShiftProfileEmpty(shiftProfile))
+                        if (shiftProfile is null || IsShiftProfileEmpty(shiftProfile))
                         {
                             ViewData["NeedsShiftInfo"] = true;
                         }

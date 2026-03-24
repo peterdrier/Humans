@@ -280,7 +280,7 @@ public class EmailRenderer : IEmailRenderer
 
     private string BuildOutstandingSection(BoardDigestOutstandingCounts? counts)
     {
-        if (counts == null) return "";
+        if (counts is null) return "";
 
         var hasAny = counts.OnboardingReview > 0 || counts.StillOnboarding > 0
             || counts.BoardVotingTotal > 0 || counts.TeamJoinRequests > 0
@@ -329,7 +329,7 @@ public class EmailRenderer : IEmailRenderer
         return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
     }
 
-    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string? culture = null)
+    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
     {
         using (WithCulture(culture))
         {
@@ -340,7 +340,8 @@ public class EmailRenderer : IEmailRenderer
                 _localizer["Email_FeedbackResponse_Body"].Value,
                 HtmlEncode(userName),
                 HtmlEncode(originalDescription),
-                responseHtml);
+                responseHtml,
+                HtmlEncode(reportLink));
             return new EmailContent(subject, body);
         }
     }
@@ -410,7 +411,7 @@ public class EmailRenderer : IEmailRenderer
 
         public void Dispose()
         {
-            if (_originalUICulture != null)
+            if (_originalUICulture is not null)
             {
                 CultureInfo.CurrentUICulture = _originalUICulture;
                 CultureInfo.CurrentCulture = _originalCulture!;

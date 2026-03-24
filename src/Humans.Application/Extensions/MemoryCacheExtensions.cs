@@ -94,7 +94,7 @@ public static class MemoryCacheExtensions
 
     public static void UpdateApprovedProfile(this IMemoryCache cache, Guid userId, CachedProfile? profile)
     {
-        if (profile != null)
+        if (profile is not null)
         {
             cache.SetApprovedProfile(userId, profile);
             return;

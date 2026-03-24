@@ -34,6 +34,13 @@ public interface IShiftSignupService
     Task<SignupResult> VoluntellAsync(Guid userId, Guid shiftId, Guid enrollerUserId);
 
     /// <summary>
+    /// Creates confirmed signups across a date range on behalf of a volunteer (batch voluntell).
+    /// Skips shifts where the user already has an active signup.
+    /// All signups share a SignupBlockId for grouped bail.
+    /// </summary>
+    Task<SignupResult> VoluntellRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid enrollerUserId);
+
+    /// <summary>
     /// Marks a confirmed signup as no-show (post-shift only).
     /// </summary>
     Task<SignupResult> MarkNoShowAsync(Guid signupId, Guid reviewerUserId);

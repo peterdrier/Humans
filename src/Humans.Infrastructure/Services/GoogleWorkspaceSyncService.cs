@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.CloudIdentity.v1;
 using Google.Apis.CloudIdentity.v1.Data;
 using Google.Apis.Auth.OAuth2;
@@ -13,6 +14,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 
@@ -31,6 +33,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
     private CloudIdentityService? _cloudIdentityService;
+    private DirectoryService? _directoryService;
     private DriveService? _driveService;
     private GroupssettingsService? _groupssettingsService;
     private string? _serviceAccountEmail;
@@ -53,7 +56,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
     private async Task<CloudIdentityService> GetCloudIdentityServiceAsync()
     {
-        if (_cloudIdentityService != null)
+        if (_cloudIdentityService is not null)
         {
             return _cloudIdentityService;
         }
@@ -72,7 +75,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
     private async Task<DriveService> GetDriveServiceAsync()
     {
-        if (_driveService != null)
+        if (_driveService is not null)
         {
             return _driveService;
         }
@@ -90,7 +93,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
     private async Task<GroupssettingsService> GetGroupssettingsServiceAsync()
     {
-        if (_groupssettingsService != null)
+        if (_groupssettingsService is not null)
         {
             return _groupssettingsService;
         }
@@ -104,6 +107,26 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         });
 
         return _groupssettingsService;
+    }
+
+    private async Task<DirectoryService> GetDirectoryServiceAsync()
+    {
+        if (_directoryService is not null)
+        {
+            return _directoryService;
+        }
+
+        var credential = await GetCredentialAsync(
+            DirectoryService.Scope.AdminDirectoryUserReadonly,
+            DirectoryService.Scope.AdminDirectoryGroupReadonly);
+
+        _directoryService = new DirectoryService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Humans"
+        });
+
+        return _directoryService;
     }
 
     private async Task<GoogleCredential> GetCredentialAsync(params string[] scopes)
@@ -134,14 +157,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
     private async Task<string> GetServiceAccountEmailAsync()
     {
-        if (_serviceAccountEmail != null)
+        if (_serviceAccountEmail is not null)
             return _serviceAccountEmail;
 
         string? json = _settings.ServiceAccountKeyJson;
         if (string.IsNullOrEmpty(json) && !string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
             json = await File.ReadAllTextAsync(_settings.ServiceAccountKeyPath);
 
-        if (json != null)
+        if (json is not null)
         {
             using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("client_email", out var emailElement))
@@ -164,7 +187,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 && r.ResourceType == GoogleResourceType.DriveFolder
                 && r.IsActive, cancellationToken);
 
-        if (existing != null)
+        if (existing is not null)
         {
             _logger.LogInformation("Team {TeamId} already has active Drive folder {FolderId}", teamId, existing.GoogleId);
             return existing;
@@ -324,7 +347,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var resource = await _dbContext.GoogleResources
             .FirstOrDefaultAsync(r => r.Id == groupResourceId, cancellationToken);
 
-        if (resource == null || resource.ResourceType != GoogleResourceType.Group)
+        if (resource is null || resource.ResourceType != GoogleResourceType.Group)
         {
             _logger.LogWarning("Group resource {ResourceId} not found", groupResourceId);
             return;
@@ -379,7 +402,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var resource = await _dbContext.GoogleResources
             .FirstOrDefaultAsync(r => r.Id == groupResourceId, cancellationToken);
 
-        if (resource == null || resource.ResourceType != GoogleResourceType.Group)
+        if (resource is null || resource.ResourceType != GoogleResourceType.Group)
         {
             _logger.LogWarning("Group resource {ResourceId} not found", groupResourceId);
             return;
@@ -399,15 +422,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             var match = membersResponse.Memberships?.FirstOrDefault(m =>
                 string.Equals(m.PreferredMemberKey?.Id, userEmail, StringComparison.OrdinalIgnoreCase));
-            if (match != null)
+            if (match is not null)
             {
                 membershipName = match.Name;
                 break;
             }
             nextPageToken = membersResponse.NextPageToken;
-        } while (nextPageToken != null);
+        } while (nextPageToken is not null);
 
-        if (membershipName == null)
+        if (membershipName is null)
         {
             _logger.LogDebug("User {UserEmail} not found in group {GroupId}", userEmail, resource.GoogleId);
             return;
@@ -512,7 +535,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             .FirstOrDefaultAsync(r => r.TeamId == teamId && r.ResourceType == GoogleResourceType.Group && r.IsActive,
                 cancellationToken);
 
-        if (groupResource == null)
+        if (groupResource is null)
         {
             _logger.LogWarning("No active Google Group found for team {TeamId}", teamId);
             return;
@@ -537,14 +560,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 var membersRequest = cloudIdentity.Groups.Memberships.List($"groups/{groupResource.GoogleId}");
                 membersRequest.PageSize = 200;
-                if (pageToken != null)
+                if (pageToken is not null)
                 {
                     membersRequest.PageToken = pageToken;
                 }
 
                 var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
 
-                if (membersResponse.Memberships != null)
+                if (membersResponse.Memberships is not null)
                 {
                     foreach (var membership in membersResponse.Memberships)
                     {
@@ -599,7 +622,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], cancellationToken);
-        if (user?.Email == null)
+        if (user?.Email is null)
         {
             _logger.LogWarning("User {UserId} not found or has no email", userId);
             return;
@@ -671,7 +694,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         // On Shared Drives, permissionDetails contains inheritance info.
         // A permission is inherited if ALL its detail entries are inherited.
-        if (perm.PermissionDetails != null && perm.PermissionDetails.Count > 0)
+        if (perm.PermissionDetails is not null && perm.PermissionDetails.Count > 0)
         {
             if (perm.PermissionDetails.All(d => d.Inherited == true))
                 return false;
@@ -691,13 +714,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var listReq = drive.Permissions.List(fileId);
             listReq.SupportsAllDrives = true;
             listReq.Fields = "nextPageToken, permissions(id, emailAddress, role, type, permissionDetails)";
-            if (pageToken != null)
+            if (pageToken is not null)
             {
                 listReq.PageToken = pageToken;
             }
 
             var response = await listReq.ExecuteAsync(cancellationToken);
-            if (response.Permissions != null)
+            if (response.Permissions is not null)
             {
                 permissions.AddRange(response.Permissions);
             }
@@ -766,7 +789,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     .ThenInclude(tm => tm.User)
             .FirstOrDefaultAsync(r => r.Id == resourceId, cancellationToken);
 
-        if (resource == null)
+        if (resource is null)
         {
             return new ResourceSyncDiff
             {
@@ -811,18 +834,18 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             // Expected: team's active members
             var expectedMembers = resource.Team.Members
-                .Where(tm => tm.User.Email != null)
+                .Where(tm => tm.User.Email is not null)
                 .Select(tm => new { tm.User.Email, tm.User.DisplayName })
                 .ToList();
             var expectedEmails = new HashSet<string>(
-                expectedMembers.Select(m => m.Email!), StringComparer.OrdinalIgnoreCase);
+                expectedMembers.Select(m => m.Email!), NormalizingEmailComparer.Instance);
 
             // Current: Google Group members via Cloud Identity
             var cloudIdentity = await GetCloudIdentityServiceAsync();
             var saEmail = await GetServiceAccountEmailAsync();
-            var currentEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var currentEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
             // Track membership resource names for deletion (email → "groups/{id}/memberships/{id}")
-            var membershipNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var membershipNames = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
 
             try
             {
@@ -831,12 +854,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 {
                     var membersRequest = cloudIdentity.Groups.Memberships.List($"groups/{resource.GoogleId}");
                     membersRequest.PageSize = 200;
-                    if (pageToken != null)
+                    if (pageToken is not null)
                         membersRequest.PageToken = pageToken;
 
                     var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
 
-                    if (membersResponse.Memberships != null)
+                    if (membersResponse.Memberships is not null)
                     {
                         foreach (var membership in membersResponse.Memberships)
                         {
@@ -970,14 +993,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             // Expected: union of all linked teams' active members
             var membersByEmail = new Dictionary<string, (string DisplayName, List<string> TeamNames)>(
-                StringComparer.OrdinalIgnoreCase);
+                NormalizingEmailComparer.Instance);
 
             foreach (var resource in resources)
             {
                 var teamName = resource.Team.Name;
                 foreach (var tm in resource.Team.Members)
                 {
-                    if (tm.User.Email == null) continue;
+                    if (tm.User.Email is null) continue;
 
                     if (membersByEmail.TryGetValue(tm.User.Email, out var existing))
                     {
@@ -997,11 +1020,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var drive = await GetDriveServiceAsync();
             var permissions = await ListDrivePermissionsAsync(drive, primary.GoogleId, cancellationToken);
             // All user permissions (direct + inherited) — for checking if member already has access
-            var allEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
             // Only direct managed permissions — for detecting removable extras
-            var directEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var directEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
             // Email → current Google role (reader, writer, etc.)
-            var roleByEmail = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var roleByEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
             foreach (var perm in permissions)
             {
                 if (IsAnyUserPermission(perm))
@@ -1067,7 +1090,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                             IsDirectManagedPermission(p) &&
                             string.Equals(p.EmailAddress, member.Email, StringComparison.OrdinalIgnoreCase));
 
-                        if (permToRemove == null)
+                        if (permToRemove is null)
                         {
                             _logger.LogInformation(
                                 "Skipping removal of {Email} from {GoogleId} — permission is inherited, not direct",
@@ -1132,25 +1155,25 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task EnsureTeamGroupAsync(Guid teamId, CancellationToken cancellationToken = default)
+    public async Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams
             .Include(t => t.GoogleResources)
             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
 
-        if (team == null)
+        if (team is null)
         {
             _logger.LogWarning("Team {TeamId} not found for EnsureTeamGroupAsync", teamId);
-            return;
+            return GroupLinkResult.Ok();
         }
 
         var existingGroup = team.GoogleResources
             .FirstOrDefault(r => r.ResourceType == GoogleResourceType.Group && r.IsActive);
 
         // If prefix was cleared, deactivate any active group resource
-        if (team.GoogleGroupPrefix == null)
+        if (team.GoogleGroupPrefix is null)
         {
-            if (existingGroup != null)
+            if (existingGroup is not null)
             {
                 existingGroup.IsActive = false;
                 _logger.LogInformation("Deactivated Group resource {ResourceId} for team {TeamId} (prefix cleared)",
@@ -1168,22 +1191,65 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 _logger.LogDebug("Team {TeamId} has no GoogleGroupPrefix and no active group, nothing to do", teamId);
             }
-            return;
+            return GroupLinkResult.Ok();
         }
 
         var expectedUrl = $"https://groups.google.com/a/{_settings.Domain}/g/{team.GoogleGroupPrefix}";
 
         // If existing group matches current prefix, nothing to do
-        if (existingGroup != null &&
+        if (existingGroup is not null &&
             string.Equals(existingGroup.Url, expectedUrl, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogDebug("Team {TeamId} already has active Group resource {ResourceId} matching prefix",
                 teamId, existingGroup.Id);
-            return;
+            return GroupLinkResult.Ok();
         }
 
-        // If existing group doesn't match (prefix changed), deactivate old resource
-        if (existingGroup != null)
+        var email = $"{team.GoogleGroupPrefix}@{_settings.Domain}";
+
+        // Check for existing active GoogleResource with this group URL (any team) BEFORE deactivating anything
+        var existingActiveByEmail = await _dbContext.GoogleResources
+            .Include(r => r.Team)
+            .Where(r => r.IsActive && r.ResourceType == GoogleResourceType.Group)
+            .Where(r => r.Url != null && r.Url.EndsWith($"/g/{team.GoogleGroupPrefix}"))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existingActiveByEmail is not null)
+        {
+            if (existingActiveByEmail.TeamId == teamId)
+                return GroupLinkResult.Error("This group is already linked to this team.");
+            else
+                return GroupLinkResult.Error($"This group is already linked to team \"{existingActiveByEmail.Team!.Name}\".");
+        }
+
+        // Check for inactive resource for this team (reactivation scenario) BEFORE deactivating anything
+        var inactiveForTeam = await _dbContext.GoogleResources
+            .Where(r => !r.IsActive && r.ResourceType == GoogleResourceType.Group && r.TeamId == teamId)
+            .Where(r => r.Url != null && r.Url.EndsWith($"/g/{team.GoogleGroupPrefix}"))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (inactiveForTeam is not null && !confirmReactivation)
+            return GroupLinkResult.NeedsConfirmation(
+                "This group was previously linked to this team. Reactivate it?",
+                inactiveForTeam.Id);
+
+        if (inactiveForTeam is not null && confirmReactivation)
+        {
+            inactiveForTeam.IsActive = true;
+            inactiveForTeam.LastSyncedAt = _clock.GetCurrentInstant();
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Reactivated Google Group resource {ResourceId} for team {TeamId}",
+                inactiveForTeam.Id, teamId);
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,
+                "Reactivated Google Group resource for team",
+                nameof(GoogleWorkspaceSyncService),
+                relatedEntityId: teamId, relatedEntityType: nameof(Team));
+            return GroupLinkResult.Ok();
+        }
+
+        // Validation passed — now safe to deactivate the old resource if prefix changed
+        if (existingGroup is not null)
         {
             existingGroup.IsActive = false;
             _logger.LogInformation("Deactivated Group resource {ResourceId} for team {TeamId} (prefix changed to '{Prefix}')",
@@ -1198,7 +1264,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        var email = $"{team.GoogleGroupPrefix}@{_settings.Domain}";
         var now = _clock.GetCurrentInstant();
 
         // Try to find an existing Google Group with this email via Cloud Identity
@@ -1246,6 +1311,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 email, ex.Error.Code, teamId);
             await ProvisionTeamGroupAsync(teamId, email, team.Name, cancellationToken);
         }
+
+        return GroupLinkResult.Ok();
     }
 
     /// <inheritdoc />
@@ -1257,7 +1324,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             .Include(u => u.TeamMemberships.Where(tm => tm.LeftAt == null))
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
-        if (user == null)
+        if (user is null)
         {
             _logger.LogWarning("User {UserId} not found for access restoration", userId);
             return;
@@ -1307,7 +1374,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 // Fall back to deriving email from URL
                 var prefix = resource.Url?.Split("/g/", StringSplitOptions.None).LastOrDefault();
-                groupEmail = prefix != null ? $"{prefix}@{_settings.Domain}" : null;
+                groupEmail = prefix is not null ? $"{prefix}@{_settings.Domain}" : null;
             }
 
             if (string.IsNullOrEmpty(groupEmail))
@@ -1342,8 +1409,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         ["WhoCanViewGroup"] = _settings.Groups.WhoCanViewGroup,
         ["WhoCanModerateMembers"] = _settings.Groups.WhoCanModerateMembers,
         ["AllowExternalMembers"] = _settings.Groups.AllowExternalMembers ? "true" : "false",
-        ["IsArchived"] = "false",
-        ["MembersCanPostAsTheGroup"] = "false",
+        ["IsArchived"] = "true",
+        ["MembersCanPostAsTheGroup"] = "true",
         ["IncludeInGlobalAddressList"] = "true",
         ["AllowWebPosting"] = "true",
         ["MessageModerationLevel"] = "MODERATE_NONE",
@@ -1376,8 +1443,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
 
             // Additional settings worth monitoring (not set at creation but important for group health)
-            CompareGroupSetting(drifts, "IsArchived", "false", actual.IsArchived);
-            CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "false", actual.MembersCanPostAsTheGroup);
+            CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
+            CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "true", actual.MembersCanPostAsTheGroup);
             CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
             CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
             CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
@@ -1433,10 +1500,331 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         string expectedValue,
         string? actualValue)
     {
-        if (actualValue == null) return;
+        if (actualValue is null) return;
         if (!string.Equals(expectedValue, actualValue, StringComparison.OrdinalIgnoreCase))
         {
             drifts.Add(new GroupSettingDrift(settingName, expectedValue, actualValue));
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
+    {
+        // Settings remediation is always allowed — it doesn't add/remove members,
+        // so it's not gated by the sync mode (which controls membership changes).
+        try
+        {
+            var groupssettingsService = await GetGroupssettingsServiceAsync();
+            var expected = BuildExpectedSettingsDictionary();
+
+            var settings = new Google.Apis.Groupssettings.v1.Data.Groups
+            {
+                WhoCanJoin = expected["WhoCanJoin"],
+                WhoCanViewMembership = expected["WhoCanViewMembership"],
+                WhoCanContactOwner = expected["WhoCanContactOwner"],
+                WhoCanPostMessage = expected["WhoCanPostMessage"],
+                WhoCanViewGroup = expected["WhoCanViewGroup"],
+                WhoCanModerateMembers = expected["WhoCanModerateMembers"],
+                AllowExternalMembers = expected["AllowExternalMembers"],
+                IsArchived = expected["IsArchived"],
+                MembersCanPostAsTheGroup = expected["MembersCanPostAsTheGroup"],
+                IncludeInGlobalAddressList = expected["IncludeInGlobalAddressList"],
+                AllowWebPosting = expected["AllowWebPosting"],
+                MessageModerationLevel = expected["MessageModerationLevel"],
+                SpamModerationLevel = expected["SpamModerationLevel"],
+                EnableCollaborativeInbox = expected["EnableCollaborativeInbox"]
+            };
+
+            var request = groupssettingsService.Groups.Update(settings, groupEmail);
+            await request.ExecuteAsync(cancellationToken);
+
+            _logger.LogInformation("Remediated settings for Google Group {GroupEmail}", groupEmail);
+
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
+                $"Remediated settings for Google Group '{groupEmail}'",
+                nameof(GoogleWorkspaceSyncService));
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remediate settings for Google Group {GroupEmail}", groupEmail);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var directory = await GetDirectoryServiceAsync();
+
+            // Load all Google Workspace users for the domain.
+            // Key by normalized email (lowercase + googlemail→gmail) so that lookups match regardless of
+            // case or googlemail↔gmail aliasing. Value is the actual primary email from Google (for reporting).
+            var googleUsersByNormalizedEmail = new Dictionary<string, string>(NormalizingEmailComparer.Instance);
+
+            string? pageToken = null;
+            do
+            {
+                var listRequest = directory.Users.List();
+                listRequest.Domain = _settings.Domain;
+                listRequest.MaxResults = 500;
+                if (pageToken is not null)
+                    listRequest.PageToken = pageToken;
+
+                var response = await listRequest.ExecuteAsync(cancellationToken);
+
+                if (response.UsersValue is not null)
+                {
+                    foreach (var googleUser in response.UsersValue)
+                    {
+                        var primaryEmail = googleUser.PrimaryEmail;
+                        if (!string.IsNullOrEmpty(primaryEmail))
+                            googleUsersByNormalizedEmail[primaryEmail] = primaryEmail;
+                    }
+                }
+
+                pageToken = response.NextPageToken;
+            } while (!string.IsNullOrEmpty(pageToken));
+
+            // Load all DB users with a non-null email
+            var dbUsers = await _dbContext.Users
+                .Where(u => u.Email != null)
+                .Select(u => new { u.Id, u.DisplayName, u.Email })
+                .ToListAsync(cancellationToken);
+
+            var mismatches = new List<Application.DTOs.EmailMismatch>();
+
+            foreach (var dbUser in dbUsers)
+            {
+                if (dbUser.Email is null) continue;
+
+                // Find the matching Google user by normalized email (handles case and googlemail↔gmail)
+                if (!googleUsersByNormalizedEmail.TryGetValue(dbUser.Email, out var matchedGoogleEmail))
+                    continue; // User not in Google — not a mismatch we handle here
+
+                // Report if stored email differs from Google's primary email (case difference or googlemail↔gmail)
+                if (!string.Equals(dbUser.Email, matchedGoogleEmail, StringComparison.Ordinal))
+                {
+                    mismatches.Add(new Application.DTOs.EmailMismatch
+                    {
+                        UserId = dbUser.Id,
+                        DisplayName = dbUser.DisplayName,
+                        StoredEmail = dbUser.Email,
+                        GoogleEmail = matchedGoogleEmail
+                    });
+                }
+            }
+
+            _logger.LogInformation(
+                "Email mismatch check complete: {Total} DB users checked, {Count} mismatches found",
+                dbUsers.Count, mismatches.Count);
+
+            return new Application.DTOs.EmailBackfillResult
+            {
+                Mismatches = mismatches,
+                TotalUsersChecked = dbUsers.Count
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check email mismatches via Admin SDK");
+            return new Application.DTOs.EmailBackfillResult
+            {
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var directory = await GetDirectoryServiceAsync();
+
+            // Build lookup: group email prefix → linked Team (active, with GoogleGroupPrefix set)
+            var teamsWithGroups = await _dbContext.Teams
+                .Where(t => t.IsActive && t.GoogleGroupPrefix != null)
+                .ToDictionaryAsync(t => t.GoogleGroupPrefix!, t => t, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
+            // List all groups on the domain (paginated)
+            var allGroups = new List<Google.Apis.Admin.Directory.directory_v1.Data.Group>();
+            string? pageToken = null;
+            do
+            {
+                var listRequest = directory.Groups.List();
+                listRequest.Domain = _settings.Domain;
+                listRequest.MaxResults = 200;
+                if (pageToken is not null)
+                    listRequest.PageToken = pageToken;
+
+                var response = await listRequest.ExecuteAsync(cancellationToken);
+
+                if (response.GroupsValue is not null)
+                    allGroups.AddRange(response.GroupsValue);
+
+                pageToken = response.NextPageToken;
+            } while (!string.IsNullOrEmpty(pageToken));
+
+            _logger.LogInformation("Found {Count} Google Groups on domain {Domain}", allGroups.Count, _settings.Domain);
+
+            var expectedSettings = BuildExpectedSettingsDictionary();
+
+            var semaphore = new SemaphoreSlim(5);
+            var groupssettingsService = await GetGroupssettingsServiceAsync();
+
+            var tasks = allGroups
+                .Where(g => !string.IsNullOrEmpty(g.Email))
+                .Select(async group =>
+                {
+                    var email = group.Email!;
+                    var prefix = email.Split('@')[0];
+                    teamsWithGroups.TryGetValue(prefix, out var linkedTeam);
+
+                    string? errorMessage = null;
+                    var drifts = new List<GroupSettingDrift>();
+                    var actualSettings = new Dictionary<string, string>(StringComparer.Ordinal);
+
+                    await semaphore.WaitAsync(cancellationToken);
+                    try
+                    {
+                        var req = groupssettingsService.Groups.Get(email);
+                        req.Alt = Google.Apis.Groupssettings.v1.GroupssettingsBaseServiceRequest<Google.Apis.Groupssettings.v1.Data.Groups>.AltEnum.Json;
+                        var actual = await req.ExecuteAsync(cancellationToken);
+
+                        // Collect ALL non-deprecated actual values
+                        void Add(string key, string? val) { if (val is not null) actualSettings[key] = val; }
+                        Add("WhoCanJoin", actual.WhoCanJoin);
+                        Add("WhoCanViewMembership", actual.WhoCanViewMembership);
+                        Add("WhoCanContactOwner", actual.WhoCanContactOwner);
+                        Add("WhoCanPostMessage", actual.WhoCanPostMessage);
+                        Add("WhoCanViewGroup", actual.WhoCanViewGroup);
+                        Add("WhoCanModerateMembers", actual.WhoCanModerateMembers);
+                        Add("WhoCanModerateContent", actual.WhoCanModerateContent);
+                        Add("WhoCanAssistContent", actual.WhoCanAssistContent);
+                        Add("WhoCanDiscoverGroup", actual.WhoCanDiscoverGroup);
+                        Add("WhoCanLeaveGroup", actual.WhoCanLeaveGroup);
+                        Add("AllowExternalMembers", actual.AllowExternalMembers);
+                        Add("AllowWebPosting", actual.AllowWebPosting);
+                        Add("IsArchived", actual.IsArchived);
+                        Add("ArchiveOnly", actual.ArchiveOnly);
+                        Add("MembersCanPostAsTheGroup", actual.MembersCanPostAsTheGroup);
+                        Add("IncludeInGlobalAddressList", actual.IncludeInGlobalAddressList);
+                        Add("EnableCollaborativeInbox", actual.EnableCollaborativeInbox);
+                        Add("MessageModerationLevel", actual.MessageModerationLevel);
+                        Add("SpamModerationLevel", actual.SpamModerationLevel);
+                        Add("ReplyTo", actual.ReplyTo);
+                        Add("CustomReplyTo", actual.CustomReplyTo);
+                        Add("IncludeCustomFooter", actual.IncludeCustomFooter);
+                        Add("CustomFooterText", actual.CustomFooterText);
+                        Add("SendMessageDenyNotification", actual.SendMessageDenyNotification);
+                        Add("DefaultMessageDenyNotificationText", actual.DefaultMessageDenyNotificationText);
+                        Add("FavoriteRepliesOnTop", actual.FavoriteRepliesOnTop);
+                        Add("DefaultSender", actual.DefaultSender);
+                        Add("PrimaryLanguage", actual.PrimaryLanguage);
+
+                        // Deprecated settings (still returned by API, shown for visibility)
+                        Add("WhoCanInvite", actual.WhoCanInvite);
+                        Add("WhoCanAdd", actual.WhoCanAdd);
+                        Add("ShowInGroupDirectory", actual.ShowInGroupDirectory);
+                        Add("AllowGoogleCommunication", actual.AllowGoogleCommunication);
+                        Add("WhoCanApproveMembers", actual.WhoCanApproveMembers);
+                        Add("WhoCanBanUsers", actual.WhoCanBanUsers);
+                        Add("WhoCanModifyMembers", actual.WhoCanModifyMembers);
+                        Add("WhoCanApproveMessages", actual.WhoCanApproveMessages);
+                        Add("WhoCanDeleteAnyPost", actual.WhoCanDeleteAnyPost);
+                        Add("WhoCanDeleteTopics", actual.WhoCanDeleteTopics);
+                        Add("WhoCanLockTopics", actual.WhoCanLockTopics);
+                        Add("WhoCanMoveTopicsIn", actual.WhoCanMoveTopicsIn);
+                        Add("WhoCanMoveTopicsOut", actual.WhoCanMoveTopicsOut);
+                        Add("WhoCanPostAnnouncements", actual.WhoCanPostAnnouncements);
+                        Add("WhoCanHideAbuse", actual.WhoCanHideAbuse);
+                        Add("WhoCanMakeTopicsSticky", actual.WhoCanMakeTopicsSticky);
+                        Add("WhoCanAssignTopics", actual.WhoCanAssignTopics);
+                        Add("WhoCanUnassignTopic", actual.WhoCanUnassignTopic);
+                        Add("WhoCanTakeTopics", actual.WhoCanTakeTopics);
+                        Add("WhoCanMarkDuplicate", actual.WhoCanMarkDuplicate);
+                        Add("WhoCanMarkNoResponseNeeded", actual.WhoCanMarkNoResponseNeeded);
+                        Add("WhoCanMarkFavoriteReplyOnAnyTopic", actual.WhoCanMarkFavoriteReplyOnAnyTopic);
+                        Add("WhoCanMarkFavoriteReplyOnOwnTopic", actual.WhoCanMarkFavoriteReplyOnOwnTopic);
+                        Add("WhoCanUnmarkFavoriteReplyOnAnyTopic", actual.WhoCanUnmarkFavoriteReplyOnAnyTopic);
+                        Add("WhoCanEnterFreeFormTags", actual.WhoCanEnterFreeFormTags);
+                        Add("WhoCanModifyTagsAndCategories", actual.WhoCanModifyTagsAndCategories);
+                        Add("WhoCanAddReferences", actual.WhoCanAddReferences);
+                        Add("MessageDisplayFont", actual.MessageDisplayFont);
+                        Add("MaxMessageBytes", actual.MaxMessageBytes?.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+                        // Compare against expected (only the enforced settings)
+                        CompareGroupSetting(drifts, "WhoCanJoin", _settings.Groups.WhoCanJoin, actual.WhoCanJoin);
+                        CompareGroupSetting(drifts, "WhoCanViewMembership", _settings.Groups.WhoCanViewMembership, actual.WhoCanViewMembership);
+                        CompareGroupSetting(drifts, "WhoCanContactOwner", _settings.Groups.WhoCanContactOwner, actual.WhoCanContactOwner);
+                        CompareGroupSetting(drifts, "WhoCanPostMessage", _settings.Groups.WhoCanPostMessage, actual.WhoCanPostMessage);
+                        CompareGroupSetting(drifts, "WhoCanViewGroup", _settings.Groups.WhoCanViewGroup, actual.WhoCanViewGroup);
+                        CompareGroupSetting(drifts, "WhoCanModerateMembers", _settings.Groups.WhoCanModerateMembers, actual.WhoCanModerateMembers);
+                        CompareGroupSetting(drifts, "AllowExternalMembers",
+                            _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
+                        CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
+                        CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "true", actual.MembersCanPostAsTheGroup);
+                        CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
+                        CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
+                        CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
+                        CompareGroupSetting(drifts, "SpamModerationLevel", "MODERATE", actual.SpamModerationLevel);
+                        CompareGroupSetting(drifts, "EnableCollaborativeInbox", "false", actual.EnableCollaborativeInbox);
+                    }
+                    catch (Google.GoogleApiException ex)
+                    {
+                        _logger.LogWarning("Cannot read settings for group '{GroupEmail}' (HTTP {Code})", email, ex.Error?.Code);
+                        errorMessage = $"Google API error: {ex.Error?.Code} — {ex.Error?.Message}";
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error fetching settings for group '{GroupEmail}'", email);
+                        errorMessage = $"Error: {ex.Message}";
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+
+                    return new DomainGroupInfo
+                    {
+                        GroupEmail = email,
+                        DisplayName = group.Name ?? email,
+                        GoogleId = group.Id,
+                        MemberCount = (int)(group.DirectMembersCount ?? 0),
+                        LinkedTeamName = linkedTeam?.Name,
+                        LinkedTeamId = linkedTeam?.Id,
+                        ActualSettings = actualSettings,
+                        Drifts = drifts,
+                        ErrorMessage = errorMessage
+                    };
+                });
+
+            var groupInfos = (await Task.WhenAll(tasks)).ToList();
+
+            // Sort: linked groups first, then alphabetically by email
+            var sorted = groupInfos
+                .OrderBy(g => g.LinkedTeamId is null ? 1 : 0)
+                .ThenBy(g => g.GroupEmail, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return new AllGroupsResult
+            {
+                Groups = sorted,
+                ExpectedSettings = expectedSettings
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to enumerate domain groups");
+            return new AllGroupsResult
+            {
+                ErrorMessage = ex.Message
+            };
         }
     }
 }

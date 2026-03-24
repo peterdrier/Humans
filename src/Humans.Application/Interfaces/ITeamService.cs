@@ -29,7 +29,7 @@ public record TeamDirectorySummary(
     string? ParentTeamName,
     string? ParentTeamSlug)
 {
-    public string SortKey => ParentTeamName != null ? $"{ParentTeamName} - {Name}" : Name;
+    public string SortKey => ParentTeamName is not null ? $"{ParentTeamName} - {Name}" : Name;
 }
 
 public record TeamDirectoryResult(

@@ -44,7 +44,7 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         }
 
         var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
             return principal;
         }

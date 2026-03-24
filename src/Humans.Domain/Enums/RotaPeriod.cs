@@ -9,5 +9,6 @@ public enum RotaPeriod
 {
     Build = 0,
     Event = 1,
-    Strike = 2
+    Strike = 2,
+    All = 3
 }

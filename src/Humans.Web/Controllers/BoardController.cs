@@ -92,7 +92,7 @@ public class BoardController : HumansControllerBase
             Description = e.Description,
             OccurredAt = e.OccurredAt.ToDateTimeUtc(),
             ActorName = e.ActorName,
-            IsSystemAction = e.ActorUserId == null
+            IsSystemAction = e.ActorUserId is null
         }).ToList();
 
         var viewModel = new AuditLogListViewModel
@@ -139,7 +139,7 @@ public class BoardController : HumansControllerBase
     {
         var resource = await _teamResourceService.GetResourceByIdAsync(id);
 
-        if (resource == null)
+        if (resource is null)
         {
             return NotFound();
         }

@@ -386,6 +386,81 @@ public class ShiftSignupServiceTests : IDisposable
     }
 
     // ============================================================
+    // VoluntellRange
+    // ============================================================
+
+    [Fact]
+    public async Task VoluntellRange_CreatesConfirmedSignupsAcrossDateRange()
+    {
+        // Arrange: rota with 3 all-day shifts (days -3 to -1)
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var volunteerId = Guid.NewGuid();
+        var enrollerId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        var signups = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == volunteerId)
+            .ToListAsync();
+        signups.Should().HaveCount(3);
+        signups.Should().AllSatisfy(s =>
+        {
+            s.Status.Should().Be(SignupStatus.Confirmed);
+            s.Enrolled.Should().BeTrue();
+            s.EnrolledByUserId.Should().Be(enrollerId);
+            s.SignupBlockId.Should().NotBeNull();
+        });
+        signups.Select(s => s.SignupBlockId).Distinct().Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task VoluntellRange_SkipsShiftsWhereUserAlreadySignedUp()
+    {
+        // Arrange: rota with 3 all-day shifts, user already signed up on day -2
+        var (es, rota, _) = SeedShiftScenario(SignupPolicy.RequireApproval);
+        rota.Period = RotaPeriod.Build;
+        for (var day = -3; day <= -1; day++)
+            SeedAllDayShift(rota, day);
+        var volunteerId = Guid.NewGuid();
+        var enrollerId = Guid.NewGuid();
+        await _dbContext.SaveChangesAsync();
+
+        // Pre-existing signup on day -2
+        var dayMinus2Shift = await _dbContext.Shifts
+            .FirstAsync(s => s.RotaId == rota.Id && s.DayOffset == -2);
+        SeedSignup(volunteerId, dayMinus2Shift.Id, SignupStatus.Confirmed);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var result = await _service.VoluntellRangeAsync(volunteerId, rota.Id, -3, -1, enrollerId);
+
+        // Assert: only 2 new signups (day -3 and day -1), skipping day -2
+        result.Success.Should().BeTrue();
+        var newSignups = await _dbContext.ShiftSignups
+            .Where(s => s.UserId == volunteerId && s.Enrolled)
+            .ToListAsync();
+        newSignups.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task VoluntellRange_ReturnsError_WhenRotaNotFound()
+    {
+        // Act
+        var result = await _service.VoluntellRangeAsync(Guid.NewGuid(), Guid.NewGuid(), -3, -1, Guid.NewGuid());
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("Rota not found");
+    }
+
+    // ============================================================
     // Helpers
     // ============================================================
 

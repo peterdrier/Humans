@@ -13,12 +13,12 @@ internal static class TeamResourceInputValidation
         Func<Guid, string, DrivePermissionLevel, CancellationToken, Task<LinkResourceResult>> linkDriveFolderAsync,
         Func<Guid, string, DrivePermissionLevel, CancellationToken, Task<LinkResourceResult>> linkDriveFileAsync)
     {
-        if (TeamResourceService.ParseDriveFolderId(url) != null)
+        if (TeamResourceService.ParseDriveFolderId(url) is not null)
         {
             return linkDriveFolderAsync(teamId, url, permissionLevel, ct);
         }
 
-        if (TeamResourceService.ParseDriveFileId(url) != null)
+        if (TeamResourceService.ParseDriveFileId(url) is not null)
         {
             return linkDriveFileAsync(teamId, url, permissionLevel, ct);
         }

@@ -101,7 +101,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
             try
             {
                 var result = await _adminLegalDocumentService.SyncLegalDocumentAsync(document.Id);
-                SetSuccess(result != null
+                SetSuccess(result is not null
                     ? $"Legal document '{document.Name}' created. {result}"
                     : $"Legal document '{document.Name}' created. GitHub content is already up to date.");
             }
@@ -125,7 +125,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
     {
         var document = await _adminLegalDocumentService.GetLegalDocumentWithVersionsAsync(id);
 
-        if (document == null)
+        if (document is null)
         {
             return NotFound();
         }
@@ -189,7 +189,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
             id,
             ToUpsertRequest(model, folderPath));
 
-        if (document == null)
+        if (document is null)
         {
             return NotFound();
         }
@@ -206,7 +206,7 @@ public class AdminLegalDocumentsController : HumansControllerBase
     public async Task<IActionResult> ArchiveLegalDocument(Guid id)
     {
         var document = await _adminLegalDocumentService.ArchiveLegalDocumentAsync(id);
-        if (document == null)
+        if (document is null)
         {
             return NotFound();
         }

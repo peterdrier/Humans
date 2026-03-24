@@ -42,18 +42,38 @@
         {
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>@Localizer["Governance_YourApplication"]</span>
+                    <div>
+                        <span>@Localizer["Governance_YourApplication"]</span>
+                        @if (Model.ApplicationTier.HasValue)
+                        {
+                            <span class="badge bg-primary ms-2">@Model.ApplicationTier.Value</span>
+                        }
+                    </div>
                     <span class="badge @Model.ApplicationStatusBadgeClass">@Localizer["ApplicationStatus_" + Model.ApplicationStatus.ToString()]</span>
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-sm-3">@Localizer["Governance_Submitted"]</dt>
-                        <dd class="col-sm-9">@Model.ApplicationSubmittedAt.ToDisplayLongDate()</dd>
+                        @if (Model.ApplicationTier.HasValue)
+                        {
+                            <dt class="col-sm-4">@Localizer["Governance_Tier"]</dt>
+                            <dd class="col-sm-8">@Model.ApplicationTier.Value</dd>
+                        }
+
+                        <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
+                        <dd class="col-sm-8">@Model.ApplicationSubmittedAt.ToDisplayLongDate()</dd>
 
                         @if (Model.ApplicationResolvedAt.HasValue)
                         {
-                            <dt class="col-sm-3">@Localizer["Governance_Resolved"]</dt>
-                            <dd class="col-sm-9">@Model.ApplicationResolvedAt.ToDisplayLongDate()</dd>
+                            <dt class="col-sm-4">@Localizer["Governance_Resolved"]</dt>
+                            <dd class="col-sm-8">@Model.ApplicationResolvedAt.ToDisplayLongDate()</dd>
+                        }
+
+                        @if (Model.ApplicationStatus == ApplicationStatus.Approved && Model.ApplicationResolvedAt.HasValue)
+                        {
+                            var resolvedYear = Model.ApplicationResolvedAt.Value.Year;
+                            var expiryYear = resolvedYear % 2 == 0 ? resolvedYear + 1 : resolvedYear + 2;
+                            <dt class="col-sm-4">@Localizer["Governance_TermExpiry"]</dt>
+                            <dd class="col-sm-8">31 December @expiryYear</dd>
                         }
                     </dl>
 
@@ -65,7 +85,11 @@
                     else if (Model.ApplicationStatus == ApplicationStatus.Approved)
                     {
                         <hr />
-                        <p class="text-success mb-0">@Localizer["Governance_ApprovedMessage"]</p>
+                        <p class="text-success mb-0">
+                            @(Model.ApplicationTier == MembershipTier.Asociado
+                                ? Localizer["Governance_ApprovedMessageAsociado"]
+                                : Localizer["Governance_ApprovedMessageColaborador"])
+                        </p>
                     }
                     else if (Model.ApplicationStatus == ApplicationStatus.Rejected)
                     {
@@ -92,31 +116,34 @@
     </div>
 
     <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">@Localizer["Governance_WhatIsAsociado"]</div>
-            <div class="card-body">
-                <p class="mb-2">@Localizer["Governance_AsociadoLawDescription"]</p>
-                <p class="mb-2"><strong>@Localizer["Governance_AsociadoCanDo"]</strong></p>
-                <ul class="mb-0">
-                    <li>@Localizer["Governance_AttendAssemblies"]</li>
-                    <li>@Localizer["Governance_VoteOnDecisions"]</li>
-                    <li>@Localizer["Governance_ParticipateElections"]</li>
-                </ul>
+        @if (Model.ApplicationStatus != ApplicationStatus.Approved)
+        {
+            <div class="card mb-3">
+                <div class="card-header">@Localizer["Governance_WhatIsAsociado"]</div>
+                <div class="card-body">
+                    <p class="mb-2">@Localizer["Governance_AsociadoLawDescription"]</p>
+                    <p class="mb-2"><strong>@Localizer["Governance_AsociadoCanDo"]</strong></p>
+                    <ul class="mb-0">
+                        <li>@Localizer["Governance_AttendAssemblies"]</li>
+                        <li>@Localizer["Governance_VoteOnDecisions"]</li>
+                        <li>@Localizer["Governance_ParticipateElections"]</li>
+                    </ul>
+                </div>
             </div>
-        </div>
-        <div class="card">
-            <div class="card-header">@Localizer["Governance_WhoShouldApply"]</div>
-            <div class="card-body">
-                <p class="mb-2">@Localizer["Governance_WhoShouldApplyDescription"]</p>
-                <ul class="mb-2">
-                    <li>@Localizer["Governance_CampLeads"]</li>
-                    <li>@Localizer["Governance_MetaVolunteers"]</li>
-                    <li>@Localizer["Governance_LongTermMembers"]</li>
-                </ul>
-                <p class="mb-2 text-muted"><small>@Localizer["Governance_BoardReviews"]</small></p>
-                <p class="mb-0 text-muted"><small>@Localizer["Governance_NoteNotRequired"]</small></p>
+            <div class="card mb-3">
+                <div class="card-header">@Localizer["Governance_WhoShouldApply"]</div>
+                <div class="card-body">
+                    <p class="mb-2">@Localizer["Governance_WhoShouldApplyDescription"]</p>
+                    <ul class="mb-2">
+                        <li>@Localizer["Governance_CampLeads"]</li>
+                        <li>@Localizer["Governance_MetaVolunteers"]</li>
+                        <li>@Localizer["Governance_LongTermMembers"]</li>
+                    </ul>
+                    <p class="mb-2 text-muted"><small>@Localizer["Governance_BoardReviews"]</small></p>
+                    <p class="mb-0 text-muted"><small>@Localizer["Governance_NoteNotRequired"]</small></p>
+                </div>
             </div>
-        </div>
+        }
         <div class="card mt-3">
             <div class="card-header">@Localizer["Governance_MemberCounts"]</div>
             <div class="card-body">
@@ -128,5 +155,14 @@
                 </dl>
             </div>
         </div>
+        @if (Model.IsApprovedColaborador && Model.CanApply)
+        {
+            <div class="card mt-3 border-info">
+                <div class="card-body text-info-emphasis bg-info-subtle">
+                    <p class="mb-2">@Localizer["Governance_ColaboradorCanApply"]</p>
+                    <a asp-controller="Application" asp-action="Create" class="btn btn-sm btn-outline-info">@Localizer["Governance_ApplyForAsociado"]</a>
+                </div>
+            </div>
+        }
     </div>
 </div>

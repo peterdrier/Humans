@@ -7,6 +7,7 @@ public class ApplicationIndexViewModel
 {
     public List<ApplicationSummaryViewModel> Applications { get; set; } = [];
     public bool CanSubmitNew { get; set; }
+    public bool IsApprovedColaborador { get; set; }
 }
 
 public class ApplicationSummaryViewModel

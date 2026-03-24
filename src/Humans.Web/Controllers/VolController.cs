@@ -56,10 +56,10 @@ public class VolController : HumansControllerBase
         try
         {
             var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (currentUserNotFound != null) return currentUserNotFound;
+            if (currentUserNotFound is not null) return currentUserNotFound;
 
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             var signups = await _signupService.GetByUserAsync(user.Id, es.Id);
 
@@ -95,7 +95,7 @@ public class VolController : HumansControllerBase
         try
         {
             var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (currentUserNotFound != null) return currentUserNotFound;
+            if (currentUserNotFound is not null) return currentUserNotFound;
 
             var result = await _signupService.BailAsync(signupId, user.Id, null);
 
@@ -121,10 +121,10 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                                (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(user.Id)).Count > 0;
@@ -236,7 +236,7 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var privileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User);
             var result = await _signupService.SignUpAsync(user.Id, shiftId, isPrivileged: privileged);
@@ -247,7 +247,7 @@ public class VolController : HumansControllerBase
                 return RedirectToAction(nameof(Shifts));
             }
 
-            SetSuccess(result.Warning != null
+            SetSuccess(result.Warning is not null
                 ? $"Signed up successfully. Note: {result.Warning}"
                 : "Signed up successfully!");
 
@@ -267,10 +267,10 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             var deptTuples = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
             var allTeams = await _teamService.GetAllTeamsAsync();
@@ -279,7 +279,7 @@ public class VolController : HumansControllerBase
             foreach (var (teamId, teamName) in deptTuples)
             {
                 var team = allTeams.FirstOrDefault(t => t.Id == teamId);
-                if (team == null) continue;
+                if (team is null) continue;
 
                 var childTeamCount = allTeams.Count(t => t.ParentTeamId == teamId && t.IsActive);
                 var summary = await _shiftMgmt.GetShiftsSummaryAsync(es.Id, teamId);
@@ -313,13 +313,13 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             var team = await _teamService.GetTeamBySlugAsync(slug);
-            if (team == null || team.ParentTeamId != null) return NotFound();
+            if (team is null || team.ParentTeamId is not null) return NotFound();
 
             var isCoordinator = RoleChecks.IsAdmin(User) ||
                                 User.IsInRole(RoleNames.VolunteerCoordinator) ||
@@ -374,16 +374,16 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             var parent = await _teamService.GetTeamBySlugAsync(parentSlug);
-            if (parent == null || parent.ParentTeamId != null) return NotFound();
+            if (parent is null || parent.ParentTeamId is not null) return NotFound();
 
             var child = await _teamService.GetTeamBySlugAsync(childSlug);
-            if (child == null || child.ParentTeamId != parent.Id) return NotFound();
+            if (child is null || child.ParentTeamId != parent.Id) return NotFound();
 
             var isCoordinator = RoleChecks.IsAdmin(User) ||
                                 User.IsInRole(RoleNames.VolunteerCoordinator) ||
@@ -457,13 +457,13 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var signup = await _signupService.GetByIdAsync(signupId);
-            if (signup == null)
+            if (signup is null)
             {
                 SetError("Signup not found.");
-                return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+                return returnUrl is not null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
             }
 
             var canApprove = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
@@ -481,7 +481,7 @@ public class VolController : HumansControllerBase
             _logger.LogError(ex, "Error approving signup {SignupId}", signupId);
             SetError("Approval failed.");
         }
-        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+        return returnUrl is not null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
     }
 
     [HttpPost("Refuse")]
@@ -491,13 +491,13 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var signup = await _signupService.GetByIdAsync(signupId);
-            if (signup == null)
+            if (signup is null)
             {
                 SetError("Signup not found.");
-                return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+                return returnUrl is not null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
             }
 
             var canApprove = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
@@ -515,7 +515,7 @@ public class VolController : HumansControllerBase
             _logger.LogError(ex, "Error refusing signup {SignupId}", signupId);
             SetError("Refusal failed.");
         }
-        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+        return returnUrl is not null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
     }
 
     [HttpPost("NoShow")]
@@ -525,13 +525,13 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var signup = await _signupService.GetByIdAsync(signupId);
-            if (signup == null)
+            if (signup is null)
             {
                 SetError("Signup not found.");
-                return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+                return returnUrl is not null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
             }
 
             var canApprove = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
@@ -549,7 +549,7 @@ public class VolController : HumansControllerBase
             _logger.LogError(ex, "Error marking no-show for signup {SignupId}", signupId);
             SetError("No-show marking failed.");
         }
-        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
+        return returnUrl is not null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(MyShifts));
     }
 
     [HttpPost("ApproveJoinRequest")]
@@ -559,7 +559,7 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             await _teamService.ApproveJoinRequestAsync(requestId, user.Id, null);
             SetSuccess("Join request approved.");
@@ -574,7 +574,7 @@ public class VolController : HumansControllerBase
             _logger.LogError(ex, "Error approving join request {RequestId}", requestId);
             SetError("Failed to approve join request.");
         }
-        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Teams));
+        return returnUrl is not null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Teams));
     }
 
     [HttpPost("RejectJoinRequest")]
@@ -584,7 +584,7 @@ public class VolController : HumansControllerBase
         try
         {
             var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             await _teamService.RejectJoinRequestAsync(requestId, user.Id, reason ?? "Rejected by coordinator.");
             SetSuccess("Join request rejected.");
@@ -599,7 +599,7 @@ public class VolController : HumansControllerBase
             _logger.LogError(ex, "Error rejecting join request {RequestId}", requestId);
             SetError("Failed to reject join request.");
         }
-        return returnUrl != null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Teams));
+        return returnUrl is not null ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Teams));
     }
 
     [HttpGet("Urgent")]
@@ -611,7 +611,7 @@ public class VolController : HumansControllerBase
                 return Forbid();
 
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(es.Id);
 
@@ -654,7 +654,7 @@ public class VolController : HumansControllerBase
                 return Forbid();
 
             var (err, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
-            if (err != null) return err;
+            if (err is not null) return err;
 
             var result = await _signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
             if (result.Success)
@@ -679,7 +679,7 @@ public class VolController : HumansControllerBase
                 return Forbid();
 
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id);
             var confirmedCount = staffingData.Sum(d => d.ConfirmedCount);
@@ -709,7 +709,7 @@ public class VolController : HumansControllerBase
         try
         {
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id);
             var confirmedCount = staffingData.Sum(d => d.ConfirmedCount);
@@ -746,7 +746,7 @@ public class VolController : HumansControllerBase
         try
         {
             var es = await _shiftMgmt.GetActiveAsync();
-            if (es == null) return View("NoActiveEvent");
+            if (es is null) return View("NoActiveEvent");
 
             es.IsShiftBrowsingOpen = isShiftBrowsingOpen;
             es.GlobalVolunteerCap = globalVolunteerCap;
@@ -779,10 +779,10 @@ public class VolController : HumansControllerBase
         try
         {
             var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
-            if (shift == null) return NotFound();
+            if (shift is null) return NotFound();
 
             var es = shift.Rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
-            if (es == null) return NotFound();
+            if (es is null) return NotFound();
 
             var results = await ShiftVolunteerSearchBuilder.BuildAsync(
                 shift, query, es,

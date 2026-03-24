@@ -536,6 +536,7 @@
         (function() {
             const container = document.getElementById('contactFieldsContainer');
             const addButton = document.getElementById('addContactField');
+            if (!container || !addButton) return;
 
             function getNextIndex() {
                 const rows = container.querySelectorAll('.contact-field-row');
@@ -668,6 +669,7 @@
         (function() {
             const container = document.getElementById('volunteerHistoryContainer');
             const addButton = document.getElementById('addVolunteerHistory');
+            if (!container || !addButton) return;
 
             function getNextIndex() {
                 const rows = container.querySelectorAll('.volunteer-history-row');

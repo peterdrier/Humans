@@ -197,6 +197,7 @@ public record DailyStaffingData(
     string DateLabel,
     int ConfirmedCount,
     int TotalSlots,
+    int MinSlots,
     string Period);
 
 /// <summary>

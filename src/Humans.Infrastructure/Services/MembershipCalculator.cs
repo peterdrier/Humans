@@ -32,7 +32,7 @@ public class MembershipCalculator : IMembershipCalculator
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
-        if (profile == null)
+        if (profile is null)
         {
             return MembershipStatus.None;
         }
@@ -345,7 +345,7 @@ public class MembershipCalculator : IMembershipCalculator
     {
         var allIds = userIds.ToList();
 
-        // 1. PendingDeletion — DeletionRequestedAt != null (highest priority)
+        // 1. PendingDeletion — DeletionRequestedAt is not null (highest priority)
         var pendingDeletionIds = await _dbContext.Users
             .AsNoTracking()
             .Where(u => allIds.Contains(u.Id) && u.DeletionRequestedAt != null)
@@ -366,7 +366,7 @@ public class MembershipCalculator : IMembershipCalculator
         var incompleteSignup = new HashSet<Guid>();
         foreach (var id in remaining)
         {
-            if (!profileByUserId.TryGetValue(id, out var profile) || profile == null)
+            if (!profileByUserId.TryGetValue(id, out var profile) || profile is null)
             {
                 incompleteSignup.Add(id);
             }
@@ -392,7 +392,7 @@ public class MembershipCalculator : IMembershipCalculator
         {
             if (!profileByUserId[id]!.IsApproved)
             {
-                if (profileByUserId[id]!.RejectedAt != null)
+                if (profileByUserId[id]!.RejectedAt is not null)
                 {
                     incompleteSignup.Add(id);
                 }

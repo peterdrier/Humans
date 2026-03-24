@@ -49,7 +49,7 @@ public class StubTeamResourceService : ITeamResourceService
         _logger.LogInformation("[STUB] Would link Drive folder from URL '{FolderUrl}' to team {TeamId}", folderUrl, teamId);
 
         var folderId = TeamResourceService.ParseDriveFolderId(folderUrl);
-        if (folderId == null)
+        if (folderId is null)
         {
             return Task.FromResult(new LinkResourceResult(false,
                 ErrorMessage: "Invalid Google Drive folder URL."));
@@ -82,7 +82,7 @@ public class StubTeamResourceService : ITeamResourceService
         _logger.LogInformation("[STUB] Would link Drive file from URL '{FileUrl}' to team {TeamId}", fileUrl, teamId);
 
         var fileId = TeamResourceService.ParseDriveFileId(fileUrl);
-        if (fileId == null)
+        if (fileId is null)
         {
             return Task.FromResult(new LinkResourceResult(false,
                 ErrorMessage: "Invalid Google Drive file URL."));
@@ -127,7 +127,7 @@ public class StubTeamResourceService : ITeamResourceService
         _logger.LogInformation("[STUB] Would link Google Group '{GroupEmail}' to team {TeamId}", groupEmail, teamId);
 
         var normalizedGroupEmail = TeamResourceInputValidation.NormalizeGroupEmail(groupEmail);
-        if (normalizedGroupEmail == null)
+        if (normalizedGroupEmail is null)
         {
             return Task.FromResult(new LinkResourceResult(false,
                 ErrorMessage: TeamResourceValidationMessages.InvalidGroupEmail));
@@ -157,7 +157,7 @@ public class StubTeamResourceService : ITeamResourceService
     public async Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default)
     {
         var resource = await TeamResourcePersistence.DeactivateResourceAsync(_dbContext, resourceId, ct);
-        if (resource == null)
+        if (resource is null)
         {
             return;
         }

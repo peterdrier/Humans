@@ -174,7 +174,7 @@ public class RoleAssignmentService : IRoleAssignmentService
             .Include(ra => ra.User)
             .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct);
 
-        if (roleAssignment == null)
+        if (roleAssignment is null)
         {
             return new OnboardingResult(false, "NotFound");
         }

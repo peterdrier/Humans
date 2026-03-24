@@ -52,7 +52,7 @@ public class GitHubHealthCheck : IHealthCheck
                 ["authenticated"] = !string.IsNullOrEmpty(_settings.AccessToken)
             };
 
-            if (rateLimit != null)
+            if (rateLimit is not null)
             {
                 data["rateLimit"] = rateLimit.Limit;
                 data["rateLimitRemaining"] = rateLimit.Remaining;

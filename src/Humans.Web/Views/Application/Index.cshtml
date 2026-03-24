@@ -26,69 +26,101 @@
         }
         else
         {
-            var app = Model.Applications.First();
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <a asp-action="Details" asp-route-id="@app.Id" class="text-decoration-none">@Localizer["Governance_YourApplication"]</a>
-                    <span class="badge @app.StatusBadgeClass">@Localizer["ApplicationStatus_" + app.Status.ToString()]</span>
-                </div>
-                <div class="card-body">
-                    <dl class="row mb-0">
-                        <dt class="col-sm-3">@Localizer["Governance_Submitted"]</dt>
-                                    <dd class="col-sm-9">@app.SubmittedAt.ToDisplayLongDate()</dd>
+            @if (Model.IsApprovedColaborador && Model.CanSubmitNew)
+            {
+                <p class="text-muted small mb-3">
+                    @Localizer["Governance_ColaboradorCanApply"]
+                    <a asp-action="Create">@Localizer["Governance_ApplyForAsociado"]</a>
+                </p>
+            }
 
-                        @if (app.ResolvedAt.HasValue)
+            @foreach (var app in Model.Applications)
+            {
+                var tierLabel = app.MembershipTier.ToString();
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <a asp-action="Details" asp-route-id="@app.Id" class="text-decoration-none">@Localizer["Governance_YourApplication"]</a>
+                            <span class="badge bg-primary ms-2">@tierLabel</span>
+                        </div>
+                        <span class="badge @app.StatusBadgeClass">@Localizer["ApplicationStatus_" + app.Status.ToString()]</span>
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-4">@Localizer["Governance_Tier"]</dt>
+                            <dd class="col-sm-8">@tierLabel</dd>
+
+                            <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
+                            <dd class="col-sm-8">@app.SubmittedAt.ToDisplayLongDate()</dd>
+
+                            @if (app.ResolvedAt.HasValue)
+                            {
+                                <dt class="col-sm-4">@Localizer["Governance_Resolved"]</dt>
+                                <dd class="col-sm-8">@app.ResolvedAt.Value.ToDisplayLongDate()</dd>
+                            }
+
+                            @if (app.Status == ApplicationStatus.Approved && app.ResolvedAt.HasValue)
+                            {
+                                var resolvedYear = app.ResolvedAt.Value.Year;
+                                var expiryYear = resolvedYear % 2 == 0 ? resolvedYear + 1 : resolvedYear + 2;
+                                <dt class="col-sm-4">@Localizer["Governance_TermExpiry"]</dt>
+                                <dd class="col-sm-8">31 December @expiryYear</dd>
+                            }
+                        </dl>
+
+                        @if (app.Status == ApplicationStatus.Submitted)
                         {
-                            <dt class="col-sm-3">@Localizer["Governance_Resolved"]</dt>
-                                        <dd class="col-sm-9">@app.ResolvedAt.Value.ToDisplayLongDate()</dd>
+                            <hr />
+                            <p class="text-muted mb-0">@Localizer["Governance_UnderReviewMessage"]</p>
                         }
-                    </dl>
-
-                    @if (app.Status == ApplicationStatus.Submitted)
-                    {
-                        <hr />
-                        <p class="text-muted mb-0">@Localizer["Governance_UnderReviewMessage"]</p>
-                    }
-                    else if (app.Status == ApplicationStatus.Approved)
-                    {
-                        <hr />
-                        <p class="text-success mb-0">@Localizer["Governance_ApprovedMessage"]</p>
-                    }
-                    else if (app.Status == ApplicationStatus.Rejected)
-                    {
-                        <hr />
-                        <p class="text-muted mb-0">@Localizer["Governance_RejectedMessage"]</p>
-                    }
+                        else if (app.Status == ApplicationStatus.Approved)
+                        {
+                            <hr />
+                            <p class="text-success mb-0">
+                                @(app.MembershipTier == MembershipTier.Asociado
+                                    ? Localizer["Governance_ApprovedMessageAsociado"]
+                                    : Localizer["Governance_ApprovedMessageColaborador"])
+                            </p>
+                        }
+                        else if (app.Status == ApplicationStatus.Rejected)
+                        {
+                            <hr />
+                            <p class="text-muted mb-0">@Localizer["Governance_RejectedMessage"]</p>
+                        }
+                    </div>
                 </div>
-            </div>
+            }
         }
     </div>
 
     <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">@Localizer["Governance_WhatIsAsociado"]</div>
-            <div class="card-body">
-                <p class="mb-2">@Localizer["Governance_AsociadoLawDescription"]</p>
-                <p class="mb-2"><strong>@Localizer["Governance_AsociadoCanDo"]</strong></p>
-                <ul class="mb-0">
-                    <li>@Localizer["Governance_AttendAssemblies"]</li>
-                    <li>@Localizer["Governance_VoteOnDecisions"]</li>
-                    <li>@Localizer["Governance_ParticipateElections"]</li>
-                </ul>
+        @if (!Model.Applications.Any(a => a.Status == ApplicationStatus.Approved))
+        {
+            <div class="card mb-3">
+                <div class="card-header">@Localizer["Governance_WhatIsAsociado"]</div>
+                <div class="card-body">
+                    <p class="mb-2">@Localizer["Governance_AsociadoLawDescription"]</p>
+                    <p class="mb-2"><strong>@Localizer["Governance_AsociadoCanDo"]</strong></p>
+                    <ul class="mb-0">
+                        <li>@Localizer["Governance_AttendAssemblies"]</li>
+                        <li>@Localizer["Governance_VoteOnDecisions"]</li>
+                        <li>@Localizer["Governance_ParticipateElections"]</li>
+                    </ul>
+                </div>
             </div>
-        </div>
-        <div class="card">
-            <div class="card-header">@Localizer["Governance_WhoShouldApply"]</div>
-            <div class="card-body">
-                <p class="mb-2">@Localizer["Governance_WhoShouldApplyDescription"]</p>
-                <ul class="mb-2">
-                    <li>@Localizer["Governance_CampLeads"]</li>
-                    <li>@Localizer["Governance_MetaVolunteers"]</li>
-                    <li>@Localizer["Governance_LongTermMembers"]</li>
-                </ul>
-                <p class="mb-2 text-muted"><small>@Localizer["Governance_BoardReviews"]</small></p>
-                <p class="mb-0 text-muted"><small>@Localizer["Governance_NoteNotRequired"]</small></p>
+            <div class="card">
+                <div class="card-header">@Localizer["Governance_WhoShouldApply"]</div>
+                <div class="card-body">
+                    <p class="mb-2">@Localizer["Governance_WhoShouldApplyDescription"]</p>
+                    <ul class="mb-2">
+                        <li>@Localizer["Governance_CampLeads"]</li>
+                        <li>@Localizer["Governance_MetaVolunteers"]</li>
+                        <li>@Localizer["Governance_LongTermMembers"]</li>
+                    </ul>
+                    <p class="mb-2 text-muted"><small>@Localizer["Governance_BoardReviews"]</small></p>
+                    <p class="mb-0 text-muted"><small>@Localizer["Governance_NoteNotRequired"]</small></p>
+                </div>
             </div>
-        </div>
+        }
     </div>
 </div>

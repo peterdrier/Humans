@@ -177,7 +177,7 @@ public class ProcessAccountDeletionsJob
         user.SecurityStamp = Guid.NewGuid().ToString();
 
         // Anonymize profile if exists
-        if (user.Profile != null)
+        if (user.Profile is not null)
         {
             user.Profile.FirstName = "Deleted";
             user.Profile.LastName = "User";
@@ -201,7 +201,7 @@ public class ProcessAccountDeletionsJob
         }
 
         // Remove contact fields and volunteer history
-        if (user.Profile != null)
+        if (user.Profile is not null)
         {
             var contactFields = await _dbContext.ContactFields
                 .Where(cf => cf.ProfileId == user.Profile.Id)
@@ -215,7 +215,7 @@ public class ProcessAccountDeletionsJob
         }
 
         // Remove role slot assignments for active memberships
-        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt == null).Select(m => m.Id).ToList();
+        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt is null).Select(m => m.Id).ToList();
         if (activeMemberIds.Count > 0)
         {
             var roleSlotAssignments = await _dbContext.Set<TeamRoleAssignment>()
@@ -225,13 +225,13 @@ public class ProcessAccountDeletionsJob
         }
 
         // End team memberships (only active ones — may already be ended by RequestDeletion)
-        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt == null))
+        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt is null))
         {
             membership.LeftAt = now;
         }
 
         // End role assignments
-        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo == null))
+        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo is null))
         {
             role.ValidTo = now;
         }

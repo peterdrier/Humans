@@ -26,6 +26,9 @@ public class VolunteerEventProfileConfiguration : IEntityTypeConfiguration<Volun
         ConfigureJsonbList(builder, v => v.Allergies, listComparer);
         ConfigureJsonbList(builder, v => v.Intolerances, listComparer);
 
+        builder.Property(v => v.AllergyOtherText).HasMaxLength(500);
+        builder.Property(v => v.IntoleranceOtherText).HasMaxLength(500);
+
         builder.Property(v => v.DietaryPreference).HasMaxLength(200);
         builder.Property(v => v.MedicalConditions).HasMaxLength(4000);
 

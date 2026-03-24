@@ -60,7 +60,7 @@ public class OnboardingReviewController : HumansControllerBase
         var (profile, consentCount, requiredConsentCount, pendingApp) =
             await _onboardingService.GetReviewDetailAsync(userId);
 
-        if (profile == null)
+        if (profile is null)
             return NotFound();
 
         var viewModel = new OnboardingReviewDetailViewModel
@@ -79,7 +79,7 @@ public class OnboardingReviewController : HumansControllerBase
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
             ConsentCount = consentCount,
             RequiredConsentCount = requiredConsentCount,
-            HasPendingApplication = pendingApp != null,
+            HasPendingApplication = pendingApp is not null,
             ApplicationMotivation = pendingApp?.Motivation
         };
 
@@ -92,24 +92,32 @@ public class OnboardingReviewController : HumansControllerBase
     public async Task<IActionResult> Clear(Guid userId, string? notes)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.ClearConsentCheckAsync(
-            userId, currentUser.Id, currentUser.DisplayName, notes);
-
-        if (!result.Success)
+        try
         {
-            SetError(result.ErrorKey switch
-            {
-                "AlreadyRejected" => _localizer["OnboardingReview_AlreadyRejected"].Value,
-                "ConsentsRequired" => _localizer["OnboardingReview_ConsentsRequired"].Value,
-                _ => _localizer["OnboardingReview_Error"].Value
-            });
-            return RedirectToAction(nameof(Index));
-        }
+            var result = await _onboardingService.ClearConsentCheckAsync(
+                userId, currentUser.Id, currentUser.DisplayName, notes);
 
-        SetSuccess(_localizer["OnboardingReview_Cleared"].Value);
+            if (!result.Success)
+            {
+                SetError(result.ErrorKey switch
+                {
+                    "AlreadyRejected" => _localizer["OnboardingReview_AlreadyRejected"].Value,
+                    "ConsentsRequired" => _localizer["OnboardingReview_ConsentsRequired"].Value,
+                    _ => _localizer["OnboardingReview_Error"].Value
+                });
+                return RedirectToAction(nameof(Index));
+            }
+
+            SetSuccess(_localizer["OnboardingReview_Cleared"].Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear consent check for user {UserId}", userId);
+            SetError(_localizer["OnboardingReview_Error"].Value);
+        }
         return RedirectToAction(nameof(Index));
     }
 
@@ -119,19 +127,27 @@ public class OnboardingReviewController : HumansControllerBase
     public async Task<IActionResult> Flag(Guid userId, string? notes)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.FlagConsentCheckAsync(
-            userId, currentUser.Id, currentUser.DisplayName, notes);
-
-        if (!result.Success)
+        try
         {
-            SetError(_localizer["OnboardingReview_Error"].Value);
-            return RedirectToAction(nameof(Index));
-        }
+            var result = await _onboardingService.FlagConsentCheckAsync(
+                userId, currentUser.Id, currentUser.DisplayName, notes);
 
-        SetSuccess(_localizer["OnboardingReview_Flagged"].Value);
+            if (!result.Success)
+            {
+                SetError(_localizer["OnboardingReview_Error"].Value);
+                return RedirectToAction(nameof(Index));
+            }
+
+            SetSuccess(_localizer["OnboardingReview_Flagged"].Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to flag consent check for user {UserId}", userId);
+            SetError(_localizer["OnboardingReview_Error"].Value);
+        }
         return RedirectToAction(nameof(Index));
     }
 
@@ -141,20 +157,28 @@ public class OnboardingReviewController : HumansControllerBase
     public async Task<IActionResult> Reject(Guid userId, string? reason)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.RejectSignupAsync(
-            userId, currentUser.Id, currentUser.DisplayName, reason);
-
-        if (!result.Success)
+        try
         {
-            if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
-                SetError(_localizer["OnboardingReview_AlreadyRejected"].Value);
-            return RedirectToAction(nameof(Index));
-        }
+            var result = await _onboardingService.RejectSignupAsync(
+                userId, currentUser.Id, currentUser.DisplayName, reason);
 
-        SetSuccess(_localizer["OnboardingReview_Rejected"].Value);
+            if (!result.Success)
+            {
+                if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
+                    SetError(_localizer["OnboardingReview_AlreadyRejected"].Value);
+                return RedirectToAction(nameof(Index));
+            }
+
+            SetSuccess(_localizer["OnboardingReview_Rejected"].Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reject signup for user {UserId}", userId);
+            SetError(_localizer["OnboardingReview_Error"].Value);
+        }
         return RedirectToAction(nameof(Index));
     }
 
@@ -206,11 +230,11 @@ public class OnboardingReviewController : HumansControllerBase
     public async Task<IActionResult> BoardVotingDetail(Guid applicationId)
     {
         var application = await _onboardingService.GetBoardVotingDetailAsync(applicationId);
-        if (application == null)
+        if (application is null)
             return NotFound();
 
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
         var currentVote = application.BoardVotes.FirstOrDefault(v => v.BoardMemberUserId == currentUser.Id);
@@ -259,25 +283,34 @@ public class OnboardingReviewController : HumansControllerBase
     public async Task<IActionResult> Vote(Guid applicationId, VoteChoice vote, string? note)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.CastBoardVoteAsync(
-            applicationId, currentUser.Id, vote, note);
-
-        if (!result.Success)
+        try
         {
-            SetError(result.ErrorKey switch
+            var result = await _onboardingService.CastBoardVoteAsync(
+                applicationId, currentUser.Id, vote, note);
+
+            if (!result.Success)
             {
-                "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
-                "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
-                _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
-            });
+                SetError(result.ErrorKey switch
+                {
+                    "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
+                    "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
+                    _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
+                });
+                return RedirectToAction(nameof(BoardVoting));
+            }
+
+            SetSuccess(_localizer["BoardVoting_VoteSaved"].Value);
+            return RedirectToAction(nameof(BoardVotingDetail), new { applicationId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cast board vote for application {ApplicationId}", applicationId);
+            SetError(_localizer["BoardVoting_ApplicationNotVotable"].Value);
             return RedirectToAction(nameof(BoardVoting));
         }
-
-        SetSuccess(_localizer["BoardVoting_VoteSaved"].Value);
-        return RedirectToAction(nameof(BoardVotingDetail), new { applicationId });
     }
 
     [HttpPost("BoardVoting/Finalize")]
@@ -286,7 +319,7 @@ public class OnboardingReviewController : HumansControllerBase
     public async Task<IActionResult> Finalize(BoardVotingFinalizeModel model)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
         // Require a valid meeting date (validated in controller as it's form input)
@@ -299,7 +332,7 @@ public class OnboardingReviewController : HumansControllerBase
                 meetingDate = parseResult.Value;
         }
 
-        if (meetingDate == null)
+        if (meetingDate is null)
         {
             SetError(_localizer["BoardVoting_MeetingDateRequired"].Value);
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
@@ -313,35 +346,43 @@ public class OnboardingReviewController : HumansControllerBase
             return RedirectToAction(nameof(BoardVotingDetail), new { applicationId = model.ApplicationId });
         }
 
-        ApplicationDecisionResult result;
-        if (model.Approved)
+        try
         {
-            result = await _applicationDecisionService.ApproveAsync(
-                model.ApplicationId, currentUser.Id, currentUser.DisplayName,
-                model.DecisionNote, meetingDate);
-        }
-        else
-        {
-            result = await _applicationDecisionService.RejectAsync(
-                model.ApplicationId, currentUser.Id, currentUser.DisplayName,
-                model.DecisionNote ?? string.Empty, meetingDate);
-        }
-
-        if (!result.Success)
-        {
-            _logger.LogWarning("Finalize failed for application {ApplicationId}: {ErrorKey}",
-                model.ApplicationId, result.ErrorKey);
-            SetError(result.ErrorKey switch
+            ApplicationDecisionResult result;
+            if (model.Approved)
             {
-                "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
-                "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
-                "ConcurrencyConflict" => _localizer["BoardVoting_ConcurrencyConflict"].Value,
-                _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
-            });
-            return RedirectToAction(nameof(BoardVoting));
-        }
+                result = await _applicationDecisionService.ApproveAsync(
+                    model.ApplicationId, currentUser.Id, currentUser.DisplayName,
+                    model.DecisionNote, meetingDate);
+            }
+            else
+            {
+                result = await _applicationDecisionService.RejectAsync(
+                    model.ApplicationId, currentUser.Id, currentUser.DisplayName,
+                    model.DecisionNote ?? string.Empty, meetingDate);
+            }
 
-        SetSuccess(_localizer["BoardVoting_Finalized"].Value);
+            if (!result.Success)
+            {
+                _logger.LogWarning("Finalize failed for application {ApplicationId}: {ErrorKey}",
+                    model.ApplicationId, result.ErrorKey);
+                SetError(result.ErrorKey switch
+                {
+                    "NotFound" => _localizer["BoardVoting_ApplicationNotFound"].Value,
+                    "NotSubmitted" => _localizer["BoardVoting_ApplicationNotVotable"].Value,
+                    "ConcurrencyConflict" => _localizer["BoardVoting_ConcurrencyConflict"].Value,
+                    _ => _localizer["BoardVoting_ApplicationNotVotable"].Value
+                });
+                return RedirectToAction(nameof(BoardVoting));
+            }
+
+            SetSuccess(_localizer["BoardVoting_Finalized"].Value);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to finalize application {ApplicationId}", model.ApplicationId);
+            SetError(_localizer["BoardVoting_ApplicationNotVotable"].Value);
+        }
         return RedirectToAction(nameof(BoardVoting));
     }
 

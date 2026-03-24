@@ -52,7 +52,7 @@ public class ProfileCardViewComponent : ViewComponent
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (user == null)
+        if (user is null)
         {
             return Content(string.Empty);
         }
@@ -69,7 +69,7 @@ public class ProfileCardViewComponent : ViewComponent
         if (viewMode == ProfileCardViewMode.Public)
         {
             var viewer = await _userManager.GetUserAsync(UserClaimsPrincipal);
-            if (viewer != null)
+            if (viewer is not null)
             {
                 viewerUserId = viewer.Id;
                 canViewLegalName = await _teamService.IsUserBoardMemberAsync(viewer.Id);
@@ -77,7 +77,7 @@ public class ProfileCardViewComponent : ViewComponent
         }
 
         // Get contact fields
-        var contactFields = profile != null
+        var contactFields = profile is not null
             ? await _contactFieldService.GetVisibleContactFieldsAsync(profile.Id, viewerUserId)
             : [];
 
@@ -101,7 +101,7 @@ public class ProfileCardViewComponent : ViewComponent
                 && EF.Functions.ILike(ue.Email, "%@nobodies.team"));
 
         // Get volunteer history entries
-        var volunteerHistory = profile != null
+        var volunteerHistory = profile is not null
             ? await _volunteerHistoryService.GetAllAsync(profile.Id)
             : [];
 

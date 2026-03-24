@@ -43,13 +43,13 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> Index(Guid? departmentId, string? date, bool showFull = false)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
         var es = await _shiftMgmt.GetActiveAsync();
-        if (es == null) return View("NoActiveEvent");
+        if (es is null) return View("NoActiveEvent");
 
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
                            (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(user.Id)).Count > 0;
@@ -164,7 +164,7 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> SignUp(Guid shiftId)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
@@ -178,7 +178,7 @@ public class ShiftsController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        SetSuccess(result.Warning != null
+        SetSuccess(result.Warning is not null
             ? $"Signed up successfully. Note: {result.Warning}"
             : "Signed up successfully!");
 
@@ -190,7 +190,7 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
@@ -204,7 +204,7 @@ public class ShiftsController : HumansControllerBase
             return RedirectToAction(nameof(Index));
         }
 
-        SetSuccess(result.Warning != null
+        SetSuccess(result.Warning is not null
             ? $"Signed up for date range. Note: {result.Warning}"
             : "Signed up for date range!");
 
@@ -216,7 +216,7 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> BailRange(Guid signupBlockId)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
@@ -240,7 +240,7 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> Bail(Guid signupId, string? reason)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
@@ -261,14 +261,14 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> Mine()
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
         var es = await _shiftMgmt.GetActiveAsync();
 
-        var signups = es != null
+        var signups = es is not null
             ? await _signupService.GetByUserAsync(user.Id, es.Id)
             : [];
 
@@ -277,7 +277,7 @@ public class ShiftsController : HumansControllerBase
 
         foreach (var signup in signups)
         {
-            if (signup.Shift?.Rota?.Team == null || es == null)
+            if (signup.Shift?.Rota?.Team is null || es is null)
             {
                 _logger.LogWarning(
                     "Skipping shift signup {SignupId} for user {UserId} because related shift data was missing",
@@ -313,15 +313,15 @@ public class ShiftsController : HumansControllerBase
         model.Past = model.Past.OrderByDescending(s => s.AbsoluteStart).ToList();
 
         // Load general availability
-        if (es != null)
+        if (es is not null)
         {
             var availability = await _availabilityService.GetByUserAsync(user.Id, es.Id);
-            if (availability != null)
+            if (availability is not null)
                 model.AvailableDayOffsets = availability.AvailableDayOffsets;
         }
 
         // Generate iCal token on first access
-        if (user.ICalToken == null)
+        if (user.ICalToken is null)
         {
             user.ICalToken = Guid.NewGuid();
             await UpdateCurrentUserAsync(user);
@@ -336,13 +336,13 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> SaveAvailability(List<int>? dayOffsets)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
         var es = await _shiftMgmt.GetActiveAsync();
-        if (es == null) return BadRequest("No active event.");
+        if (es is null) return BadRequest("No active event.");
 
         await _availabilityService.SetAvailabilityAsync(user.Id, es.Id, dayOffsets ?? []);
         SetSuccess("Availability updated.");
@@ -354,7 +354,7 @@ public class ShiftsController : HumansControllerBase
     public async Task<IActionResult> RegenerateIcal()
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
@@ -373,7 +373,7 @@ public class ShiftsController : HumansControllerBase
         var es = await _shiftMgmt.GetActiveAsync();
         var model = new EventSettingsViewModel();
 
-        if (es != null)
+        if (es is not null)
         {
             model.Id = es.Id;
             model.EventName = es.EventName;
@@ -383,7 +383,7 @@ public class ShiftsController : HumansControllerBase
             model.EventEndOffset = es.EventEndOffset;
             model.StrikeEndOffset = es.StrikeEndOffset;
             model.EarlyEntryCapacityJson = JsonSerializer.Serialize(es.EarlyEntryCapacity);
-            model.BarriosEarlyEntryAllocationJson = es.BarriosEarlyEntryAllocation != null
+            model.BarriosEarlyEntryAllocationJson = es.BarriosEarlyEntryAllocation is not null
                 ? JsonSerializer.Serialize(es.BarriosEarlyEntryAllocation)
                 : null;
             model.EarlyEntryClose = es.EarlyEntryClose.HasValue
@@ -406,7 +406,7 @@ public class ShiftsController : HumansControllerBase
         if (!ModelState.IsValid)
             return View(model);
 
-        if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) == null)
+        if (DateTimeZoneProviders.Tzdb.GetZoneOrNull(model.TimeZoneId) is null)
         {
             ModelState.AddModelError(nameof(model.TimeZoneId), "Invalid IANA timezone ID.");
             return View(model);
@@ -438,7 +438,7 @@ public class ShiftsController : HumansControllerBase
         if (model.Id.HasValue)
         {
             var existing = await _shiftMgmt.GetByIdAsync(model.Id.Value);
-            if (existing == null) return NotFound();
+            if (existing is null) return NotFound();
 
             existing.EventName = model.EventName;
             existing.TimeZoneId = model.TimeZoneId;

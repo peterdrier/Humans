@@ -63,13 +63,13 @@ public class HumanController : HumansControllerBase
     {
         var profile = await _profileService.GetProfileAsync(id);
 
-        if (profile == null || profile.IsSuspended)
+        if (profile is null || profile.IsSuspended)
         {
             return NotFound();
         }
 
         var viewer = await GetCurrentUserAsync();
-        if (viewer == null)
+        if (viewer is null)
         {
             return NotFound();
         }
@@ -125,14 +125,14 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> SendMessage(Guid id)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
         if (currentUser.Id == id)
             return RedirectToAction(nameof(View), new { id });
 
         var targetUser = await FindUserByIdAsync(id);
-        if (targetUser == null)
+        if (targetUser is null)
             return NotFound();
 
         var viewModel = new SendMessageViewModel
@@ -149,7 +149,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
         if (currentUser.Id == id)
@@ -158,7 +158,7 @@ public class HumanController : HumansControllerBase
         var targetUser = await _userManager.Users
             .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u => u.Id == id);
-        if (targetUser == null)
+        if (targetUser is null)
             return NotFound();
 
         model.RecipientId = id;
@@ -288,7 +288,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> HumanDetail(Guid id)
     {
         var data = await _profileService.GetAdminHumanDetailAsync(id);
-        if (data == null)
+        if (data is null)
         {
             return NotFound();
         }
@@ -317,12 +317,12 @@ public class HumanController : HumansControllerBase
             LastLoginAt = data.User.LastLoginAt?.ToDateTimeUtc(),
             IsSuspended = data.Profile?.IsSuspended ?? false,
             IsApproved = data.Profile?.IsApproved ?? false,
-            HasProfile = data.Profile != null,
+            HasProfile = data.Profile is not null,
             AdminNotes = data.Profile?.AdminNotes,
             PreferredLanguage = data.User.PreferredLanguage,
             MembershipTier = data.Profile?.MembershipTier ?? MembershipTier.Volunteer,
             ConsentCheckStatus = data.Profile?.ConsentCheckStatus,
-            IsRejected = data.Profile?.RejectedAt != null,
+            IsRejected = data.Profile?.RejectedAt is not null,
             RejectionReason = data.Profile?.RejectionReason,
             RejectedAt = data.Profile?.RejectedAt?.ToDateTimeUtc(),
             RejectedByName = data.RejectedByName,
@@ -380,7 +380,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
         var result = await _onboardingService.SuspendAsync(id, currentUser.Id, currentUser.DisplayName, notes);
@@ -397,7 +397,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> UnsuspendHuman(Guid id)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
         var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id, currentUser.DisplayName);
@@ -414,7 +414,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> ApproveVolunteer(Guid id)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return NotFound();
 
         var result = await _onboardingService.ApproveVolunteerAsync(id, currentUser.Id, currentUser.DisplayName);
@@ -431,7 +431,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
             return Unauthorized();
 
         var result = await _onboardingService.RejectSignupAsync(id, currentUser.Id, currentUser.DisplayName, reason);
@@ -454,7 +454,7 @@ public class HumanController : HumansControllerBase
     {
         var user = await FindUserByIdAsync(id);
 
-        if (user == null)
+        if (user is null)
         {
             return NotFound();
         }
@@ -472,7 +472,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> AddRole(Guid id)
     {
         var user = await FindUserByIdAsync(id);
-        if (user == null)
+        if (user is null)
         {
             return NotFound();
         }
@@ -493,7 +493,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
     {
         var user = await FindUserByIdAsync(id);
-        if (user == null)
+        if (user is null)
         {
             return NotFound();
         }
@@ -514,7 +514,7 @@ public class HumanController : HumansControllerBase
         }
 
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
         {
             return Unauthorized();
         }
@@ -539,7 +539,7 @@ public class HumanController : HumansControllerBase
     {
         var roleAssignment = await _roleAssignmentService.GetByIdAsync(roleId);
 
-        if (roleAssignment == null)
+        if (roleAssignment is null)
         {
             return NotFound();
         }
@@ -551,7 +551,7 @@ public class HumanController : HumansControllerBase
         }
 
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null)
+        if (currentUser is null)
         {
             return Unauthorized();
         }

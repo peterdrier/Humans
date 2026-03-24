@@ -22,4 +22,6 @@ public static class RoleGroups
         RoleNames.TicketAdmin + "," + RoleNames.Admin + "," + RoleNames.Board;
 
     public const string TicketAdminOrAdmin = RoleNames.TicketAdmin + "," + RoleNames.Admin;
+
+    public const string FeedbackAdminOrAdmin = RoleNames.FeedbackAdmin + "," + RoleNames.Admin;
 }

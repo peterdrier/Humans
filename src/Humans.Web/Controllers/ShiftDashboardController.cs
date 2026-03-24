@@ -47,7 +47,7 @@ public class ShiftDashboardController : HumansControllerBase
     public async Task<IActionResult> Index(Guid? departmentId, string? date)
     {
         var es = await _shiftMgmt.GetActiveAsync();
-        if (es == null)
+        if (es is null)
         {
             SetError("No active event settings configured.");
             return RedirectToAction(nameof(HomeController.Index), "Home");
@@ -93,10 +93,10 @@ public class ShiftDashboardController : HumansControllerBase
         try
         {
             var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
-            if (shift == null) return NotFound();
+            if (shift is null) return NotFound();
 
             var es = shift.Rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
-            if (es == null) return NotFound();
+            if (es is null) return NotFound();
 
             var results = await ShiftVolunteerSearchBuilder.BuildAsync(
                 shift,
@@ -121,7 +121,7 @@ public class ShiftDashboardController : HumansControllerBase
     public async Task<IActionResult> Voluntell(Guid shiftId, Guid userId)
     {
         var (currentUserNotFound, currentUser) = await ResolveCurrentUserOrUnauthorizedAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }

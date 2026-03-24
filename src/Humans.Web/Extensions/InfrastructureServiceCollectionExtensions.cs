@@ -32,6 +32,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<VolunteerHistoryService>();
         services.AddScoped<ILegalDocumentSyncService, LegalDocumentSyncService>();
         services.AddScoped<IAdminLegalDocumentService, AdminLegalDocumentService>();
+        services.AddScoped<ILegalDocumentService, LegalDocumentService>();
 
         var googleWorkspaceConfig = configuration.GetSection(GoogleWorkspaceSettings.SectionName);
         var hasGoogleCredentials = !string.IsNullOrEmpty(googleWorkspaceConfig["ServiceAccountKeyPath"]) ||

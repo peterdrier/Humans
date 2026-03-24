@@ -24,7 +24,7 @@ public class GeneralAvailabilityService : IGeneralAvailabilityService
 
         var now = _clock.GetCurrentInstant();
 
-        if (existing != null)
+        if (existing is not null)
         {
             existing.AvailableDayOffsets = dayOffsets;
             existing.UpdatedAt = now;
@@ -69,7 +69,7 @@ public class GeneralAvailabilityService : IGeneralAvailabilityService
         var existing = await _dbContext.GeneralAvailability
             .FirstOrDefaultAsync(g => g.UserId == userId && g.EventSettingsId == eventSettingsId);
 
-        if (existing != null)
+        if (existing is not null)
         {
             _dbContext.GeneralAvailability.Remove(existing);
             await _dbContext.SaveChangesAsync();

@@ -78,10 +78,10 @@ public class TeamService : ITeamService
         {
             var slug = attempt == 0 ? baseSlug : $"{baseSlug}-{attempt + 1}";
 
-            // Check if slug collides with another team's custom slug
-            var collidesWithCustomSlug = await _dbContext.Teams.AnyAsync(
-                t => t.CustomSlug == slug, cancellationToken);
-            if (collidesWithCustomSlug)
+            // Check if slug collides with another team's slug or custom slug
+            var collidesWithExistingSlug = await _dbContext.Teams.AnyAsync(
+                t => t.Slug == slug || t.CustomSlug == slug, cancellationToken);
+            if (collidesWithExistingSlug)
                 continue;
 
             var team = new Team
@@ -186,7 +186,7 @@ public class TeamService : ITeamService
         if (!userId.HasValue)
         {
             var publicDepartments = cachedTeams.Values
-                .Where(t => t.IsPublicPage && !t.IsSystemTeam && t.ParentTeamId == null)
+                .Where(t => t.IsPublicPage && !t.IsSystemTeam && t.ParentTeamId is null)
                 .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
                 .ToList();
@@ -581,7 +581,7 @@ public class TeamService : ITeamService
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.TeamId == teamId && r.UserId == userId && r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
 
-        if (existingRequest != null)
+        if (existingRequest is not null)
         {
             throw new InvalidOperationException("User already has a pending request for this team");
         }
@@ -633,7 +633,7 @@ public class TeamService : ITeamService
             .AsNoTracking()
             .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId && tm.LeftAt == null, cancellationToken);
 
-        if (existingMember != null)
+        if (existingMember is not null)
         {
             throw new InvalidOperationException("User is already a member of this team");
         }
@@ -681,7 +681,7 @@ public class TeamService : ITeamService
 
         // Update cache
         var joinedUser = joiningUser ?? await _dbContext.Users.FindAsync([userId], cancellationToken);
-        if (joinedUser != null)
+        if (joinedUser is not null)
         {
             AddMemberToTeamCache(teamId, new CachedTeamMember(
                 member.Id, userId, joinedUser.DisplayName, joinedUser.ProfilePictureUrl,
@@ -709,7 +709,7 @@ public class TeamService : ITeamService
         var member = await _dbContext.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId && tm.LeftAt == null, cancellationToken);
 
-        if (member == null)
+        if (member is null)
         {
             throw new InvalidOperationException("User is not a member of this team");
         }
@@ -832,7 +832,7 @@ public class TeamService : ITeamService
 
         // Update cache
         var joinedUser = await _dbContext.Users.FindAsync([request.UserId], cancellationToken);
-        if (joinedUser != null)
+        if (joinedUser is not null)
         {
             AddMemberToTeamCache(request.TeamId, new CachedTeamMember(
                 member.Id, request.UserId, joinedUser.DisplayName, joinedUser.ProfilePictureUrl,
@@ -1123,7 +1123,7 @@ public class TeamService : ITeamService
             .AsNoTracking()
             .FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == targetUserId && tm.LeftAt == null, cancellationToken);
 
-        if (existingMember != null)
+        if (existingMember is not null)
         {
             throw new InvalidOperationException("User is already a member of this team");
         }
@@ -1132,7 +1132,7 @@ public class TeamService : ITeamService
         var pendingRequest = await _dbContext.TeamJoinRequests
             .FirstOrDefaultAsync(r => r.TeamId == teamId && r.UserId == targetUserId
                 && r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
-        if (pendingRequest != null)
+        if (pendingRequest is not null)
         {
             pendingRequest.Approve(actorUserId, "Added directly by team manager", _clock);
         }
@@ -1180,7 +1180,7 @@ public class TeamService : ITeamService
 
         // Update cache
         var addedUser = await _dbContext.Users.FindAsync([targetUserId], cancellationToken);
-        if (addedUser != null)
+        if (addedUser is not null)
         {
             AddMemberToTeamCache(teamId, new CachedTeamMember(
                 member.Id, targetUserId, addedUser.DisplayName, addedUser.ProfilePictureUrl,
@@ -1342,7 +1342,7 @@ public class TeamService : ITeamService
         definition.SortOrder = sortOrder;
         var invalidatedActiveTeams = false;
         var usersNeedingShiftAuthorizationInvalidation =
-            definition.Team.ParentTeamId == null &&
+            definition.Team.ParentTeamId is null &&
             definition.Team.SystemTeamType == SystemTeamType.None &&
             definition.IsManagement != isManagement &&
             definition.Assignments.Count > 0
@@ -1544,7 +1544,7 @@ public class TeamService : ITeamService
                     slotPriority.ToString(),
                     GetPriorityBadgeClass(slotPriority),
                     definition.Period.ToString(),
-                    assignment != null,
+                    assignment is not null,
                     assignment?.TeamMember?.User?.DisplayName));
             }
         }
@@ -1611,7 +1611,7 @@ public class TeamService : ITeamService
         var teamMember = await _dbContext.TeamMembers
             .FirstOrDefaultAsync(tm => tm.TeamId == definition.TeamId && tm.UserId == targetUserId && tm.LeftAt == null, cancellationToken);
 
-        if (teamMember == null)
+        if (teamMember is null)
         {
             // Auto-add to team (inlined to keep everything in one SaveChangesAsync)
             teamMember = new TeamMember
@@ -1629,7 +1629,7 @@ public class TeamService : ITeamService
                 .FirstOrDefaultAsync(r => r.TeamId == definition.TeamId
                     && r.UserId == targetUserId
                     && r.Status == TeamJoinRequestStatus.Pending, cancellationToken);
-            if (pendingRequest != null)
+            if (pendingRequest is not null)
             {
                 pendingRequest.Approve(actorUserId, "Added via role assignment", _clock);
             }
@@ -1693,7 +1693,7 @@ public class TeamService : ITeamService
         InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
         // Update cache: if auto-added to team, add member; if promoted to Lead, update role
-        if (targetUser != null)
+        if (targetUser is not null)
         {
             var cachedMember = new CachedTeamMember(
                 teamMember.Id, targetUserId, targetUser.DisplayName, targetUser.ProfilePictureUrl,
@@ -1702,7 +1702,7 @@ public class TeamService : ITeamService
             TryUpdateCachedTeam(definition.TeamId, ct =>
             {
                 var existing = ct.Members.FirstOrDefault(m => m.UserId == targetUserId);
-                return existing != null
+                return existing is not null
                     ? ct with { Members = ct.Members.Select(m => m.UserId == targetUserId ? cachedMember : m).ToList() }
                     : ct with { Members = [.. ct.Members, cachedMember] };
             });
@@ -1780,7 +1780,7 @@ public class TeamService : ITeamService
             var user = await _dbContext.Users
                 .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
-            if (user == null) return;
+            if (user is null) return;
 
             var email = user.GetEffectiveEmail() ?? user.Email!;
             var resources = await _dbContext.GoogleResources
@@ -1949,7 +1949,7 @@ public class TeamService : ITeamService
         IsPublicPage: team.IsPublicPage,
         CreatedAt: team.CreatedAt,
         Members: team.Members
-            .Where(m => m.LeftAt == null)
+            .Where(m => m.LeftAt is null)
             .Select(m => new CachedTeamMember(
                 TeamMemberId: m.Id,
                 UserId: m.UserId,
@@ -2136,7 +2136,7 @@ public class TeamService : ITeamService
 
     private static bool IsShiftAuthorizationDefinition(TeamRoleDefinition definition) =>
         definition.IsManagement &&
-        definition.Team.ParentTeamId == null &&
+        definition.Team.ParentTeamId is null &&
         definition.Team.SystemTeamType == SystemTeamType.None;
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)

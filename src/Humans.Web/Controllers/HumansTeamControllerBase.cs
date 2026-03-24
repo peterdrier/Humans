@@ -39,7 +39,7 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
     {
         return ResolveTeamAccessAsync(
             slug,
-            static team => team.ParentTeamId == null && team.SystemTeamType == SystemTeamType.None,
+            static team => team.ParentTeamId is null && team.SystemTeamType == SystemTeamType.None,
             canAccessAsync);
     }
 
@@ -49,13 +49,13 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
         Func<Team, User, Task<bool>> canAccessAsync)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult != null)
+        if (errorResult is not null)
         {
             return (errorResult, null!, null!);
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null || !teamFilter(team))
+        if (team is null || !teamFilter(team))
         {
             return (NotFound(), user, null!);
         }

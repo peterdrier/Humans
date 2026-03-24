@@ -18,7 +18,7 @@ public class GroupSettingsDriftReport
     public List<GroupSettingDrift> Drifts { get; init; } = [];
 
     public bool HasDrift => Drifts.Count > 0;
-    public bool HasError => ErrorMessage != null;
+    public bool HasError => ErrorMessage is not null;
     public bool IsOk => !HasDrift && !HasError;
 }
 

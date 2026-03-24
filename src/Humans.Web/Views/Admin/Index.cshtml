@@ -41,9 +41,6 @@
                 <a asp-action="Logs" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-triangle-exclamation me-2"></i>Application Logs
                 </a>
-                <a asp-controller="AdminFeedback" asp-action="Index" class="list-group-item list-group-item-action">
-                    <i class="fa-solid fa-comment-dots me-2"></i>Feedback
-                </a>
                 <a asp-controller="AdminEmail" asp-action="Index" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts
                 </a>
@@ -82,6 +79,25 @@
                 <a asp-action="GroupSettingsResults" class="btn btn-outline-secondary btn-sm mt-3">
                     <i class="fa-solid fa-list-check me-1"></i>View Last Group Settings Results
                 </a>
+                <a asp-action="AllGroups" class="btn btn-outline-primary btn-sm mt-2">
+                    <i class="fa-solid fa-globe me-1"></i>All Domain Groups
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Email Backfill</div>
+            <div class="card-body">
+                <form asp-action="CheckEmailMismatches" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-envelope-circle-check me-1"></i>Check Email Mismatches
+                    </button>
+                    <small class="text-muted d-block mt-1">Compares stored emails against Google Admin SDK. Detects case differences in @@nobodies.team addresses.</small>
+                </form>
+                <a asp-action="EmailBackfillReview" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Results
+                </a>
             </div>
         </div>
     </div>
@@ -93,7 +109,7 @@
                 <a asp-controller="Board" asp-action="Index" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-gauge-high me-2"></i>Board Dashboard
                 </a>
-                <a href="/health/ready" target="_blank" class="list-group-item list-group-item-action">
+                <a href="/health/ready" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-heart-pulse me-2"></i>@Localizer["Admin_ViewHealthCheck"]
                 </a>
             </div>

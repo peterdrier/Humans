@@ -52,7 +52,7 @@ public class Team
     /// <summary>
     /// Full Google Group email address, or null if no prefix is set.
     /// </summary>
-    public string? GoogleGroupEmail => GoogleGroupPrefix != null
+    public string? GoogleGroupEmail => GoogleGroupPrefix is not null
         ? $"{GoogleGroupPrefix}@nobodies.team"
         : null;
 
@@ -154,5 +154,5 @@ public class Team
     /// Display name including parent prefix for sub-teams (e.g. "Comms - Logo").
     /// Requires ParentTeam navigation to be loaded.
     /// </summary>
-    public string DisplayName => ParentTeam != null ? $"{ParentTeam.Name} - {Name}" : Name;
+    public string DisplayName => ParentTeam is not null ? $"{ParentTeam.Name} - {Name}" : Name;
 }

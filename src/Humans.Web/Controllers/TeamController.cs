@@ -95,7 +95,7 @@ public class TeamController : HumansControllerBase
             slug,
             user?.Id,
             ShiftRoleChecks.CanManageDepartment(User));
-        if (teamPage == null)
+        if (teamPage is null)
         {
             return NotFound();
         }
@@ -157,7 +157,7 @@ public class TeamController : HumansControllerBase
             .Replace("Controller", string.Empty, StringComparison.Ordinal);
 
         return members
-            .Where(member => member.CustomPicture != null)
+            .Where(member => member.CustomPicture is not null)
             .ToDictionary(
                 member => member.UserId,
                 member => Url.Action(
@@ -373,7 +373,7 @@ public class TeamController : HumansControllerBase
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -392,7 +392,7 @@ public class TeamController : HumansControllerBase
         }
 
         var pendingRequest = await _teamService.GetUserPendingRequestAsync(team.Id, user.Id);
-        if (pendingRequest != null)
+        if (pendingRequest is not null)
         {
             SetError(_localizer["Team_AlreadyPendingRequest"].Value);
             return RedirectToAction(nameof(Details), new { slug });
@@ -420,7 +420,7 @@ public class TeamController : HumansControllerBase
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -464,7 +464,7 @@ public class TeamController : HumansControllerBase
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -609,6 +609,13 @@ public class TeamController : HumansControllerBase
             SetSuccess(string.Format(_localizer["Admin_TeamCreated"].Value, team.Name));
             return RedirectToAction(nameof(Summary));
         }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to create team: {Message}", ex.Message);
+            SetError(ex.Message);
+            await PopulateEligibleParentsAsync(model, excludeTeamId: null);
+            return View(model);
+        }
         catch (DbUpdateException ex)
         {
             _logger.LogWarning(ex, "Failed to create team with Google group prefix {GoogleGroupPrefix}", model.GoogleGroupPrefix);
@@ -630,7 +637,7 @@ public class TeamController : HumansControllerBase
     public async Task<IActionResult> EditTeam(Guid id, CancellationToken cancellationToken)
     {
         var team = await _teamService.GetTeamByIdAsync(id, cancellationToken);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -679,7 +686,19 @@ public class TeamController : HumansControllerBase
             // Handles prefix set, changed, or cleared (deactivates old resource if needed)
             try
             {
-                await _googleSyncService.EnsureTeamGroupAsync(id);
+                var groupResult = await _googleSyncService.EnsureTeamGroupAsync(id);
+                if (!groupResult.Success)
+                {
+                    if (groupResult.RequiresConfirmation)
+                    {
+                        SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+                        SetError(groupResult.WarningMessage ?? "Confirmation required for group reactivation.");
+                        return RedirectToAction(nameof(Summary));
+                    }
+                    SetSuccess(_localizer["Admin_TeamUpdated"].Value);
+                    SetError(groupResult.ErrorMessage ?? "Google Group linking failed.");
+                    return RedirectToAction(nameof(Summary));
+                }
             }
             catch (Exception ex)
             {
@@ -763,7 +782,7 @@ public class TeamController : HumansControllerBase
         var allTeams = await _teamService.GetAllTeamsAsync(cancellationToken);
         return allTeams
             .Where(t => t.IsActive && !t.IsSystemTeam
-                && t.ParentTeamId == null  // Can't nest >1 level
+                && t.ParentTeamId is null  // Can't nest >1 level
                 && t.Id != excludeTeamId)  // Can't be own parent
             .OrderBy(t => t.Name, StringComparer.Ordinal)
             .Select(t => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem(t.Name, t.Id.ToString()))

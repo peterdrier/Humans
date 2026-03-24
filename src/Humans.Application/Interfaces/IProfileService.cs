@@ -29,7 +29,7 @@ public record CachedProfile(
         UserId: user.Id,
         DisplayName: user.DisplayName,
         ProfilePictureUrl: user.ProfilePictureUrl,
-        HasCustomPicture: profile.ProfilePictureData != null,
+        HasCustomPicture: profile.ProfilePictureData is not null,
         ProfileId: profile.Id,
         UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
         BurnerName: profile.BurnerName,

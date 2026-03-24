@@ -85,7 +85,7 @@ public class SuspendNonCompliantMembersJob
 
             foreach (var user in users)
             {
-                if (user.Profile == null)
+                if (user.Profile is null)
                 {
                     continue;
                 }
@@ -96,7 +96,7 @@ public class SuspendNonCompliantMembersJob
 
                 // 2. Send notification
                 var effectiveEmail = user.GetEffectiveEmail();
-                if (effectiveEmail != null)
+                if (effectiveEmail is not null)
                 {
                     await _emailService.SendAccessSuspendedAsync(
                         effectiveEmail,

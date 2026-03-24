@@ -73,14 +73,14 @@ public class TicketTailorService : ITicketVendorService
             var url = $"{BaseUrl}/orders?event_id={eventId}";
             if (since.HasValue)
                 url += $"&updated_at.gte={since.Value.ToUnixTimeSeconds()}";
-            if (cursor != null)
+            if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
             var response = await _httpClient.GetAsync(url, ct);
             response.EnsureSuccessStatusCode();
 
             var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtOrder>>(JsonOptions, ct);
-            if (body?.Data == null || body.Data.Count == 0)
+            if (body?.Data is null || body.Data.Count == 0)
                 break;
 
             foreach (var order in body.Data)
@@ -105,8 +105,8 @@ public class TicketTailorService : ITicketVendorService
                     Tickets: []));
             }
 
-            cursor = body.Links?.Next != null ? body.Data[^1].Id : null;
-        } while (cursor != null);
+            cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+        } while (cursor is not null);
 
         _logger.LogInformation("Fetched {Count} orders from TicketTailor for event {EventId}",
             orders.Count, eventId);
@@ -125,14 +125,14 @@ public class TicketTailorService : ITicketVendorService
             var url = $"{BaseUrl}/issued_tickets?event_id={eventId}";
             if (since.HasValue)
                 url += $"&updated_at.gte={since.Value.ToUnixTimeSeconds()}";
-            if (cursor != null)
+            if (cursor is not null)
                 url += $"&starting_after={cursor}";
 
             var response = await _httpClient.GetAsync(url, ct);
             response.EnsureSuccessStatusCode();
 
             var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtIssuedTicket>>(JsonOptions, ct);
-            if (body?.Data == null || body.Data.Count == 0)
+            if (body?.Data is null || body.Data.Count == 0)
                 break;
 
             foreach (var ticket in body.Data)
@@ -147,8 +147,8 @@ public class TicketTailorService : ITicketVendorService
                     Status: ticket.Status ?? "valid"));
             }
 
-            cursor = body.Links?.Next != null ? body.Data[^1].Id : null;
-        } while (cursor != null);
+            cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
+        } while (cursor is not null);
 
         _logger.LogInformation("Fetched {Count} issued tickets from TicketTailor for event {EventId}",
             tickets.Count, eventId);
@@ -200,7 +200,7 @@ public class TicketTailorService : ITicketVendorService
             response.EnsureSuccessStatusCode();
 
             var result = await response.Content.ReadFromJsonAsync<TtVoucherCode>(JsonOptions, ct);
-            if (result?.Code != null)
+            if (result?.Code is not null)
                 codes.Add(result.Code);
         }
 
@@ -245,7 +245,7 @@ public class TicketTailorService : ITicketVendorService
         var discountItem = lineItems?.FirstOrDefault(li =>
             string.Equals(li.Type, "gift_card", StringComparison.OrdinalIgnoreCase));
 
-        if (discountItem?.Description == null) return null;
+        if (discountItem?.Description is null) return null;
 
         // Extract code from parentheses: "Some Label (CODE123)" → "CODE123"
         var openParen = discountItem.Description.LastIndexOf('(');

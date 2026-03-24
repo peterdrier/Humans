@@ -63,6 +63,7 @@
   <data name="Nav_About" xml:space="preserve"><value>&#xC0; propos</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>File d'attente</value></data>
+  <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
 
 
   <!-- ======================== -->
@@ -86,6 +87,7 @@
   <data name="Login_Title" xml:space="preserve"><value>Connexion</value></data>
   <data name="Login_Description" xml:space="preserve"><value>Connectez-vous avec votre compte Google pour acc&#xE9;der &#xE0; Humans.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Se connecter avec Google</value></data>
+  <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Acc&#xE8;s refus&#xE9;</value></data>
   <data name="AccessDenied_Description" xml:space="preserve"><value>Vous n'avez pas la permission d'acc&#xE9;der &#xE0; cette page.</value></data>
 
@@ -328,11 +330,17 @@
   <data name="Governance_AsociadoDescription" xml:space="preserve"><value>Les asociados sont les membres votants de Nobodies Collective. En tant qu'asociado, vous pouvez assister aux assembl&#xE9;es g&#xE9;n&#xE9;rales, voter sur les d&#xE9;cisions collectives et participer aux &#xE9;lections.</value></data>
   <data name="Governance_Optional" xml:space="preserve"><value>Cela est facultatif. La plupart des b&#xE9;n&#xE9;voles n'ont pas besoin de devenir asociados. Vous avez d&#xE9;j&#xE0; acc&#xE8;s aux ressources une fois votre profil et vos consentements compl&#xE9;t&#xE9;s.</value></data>
   <data name="Governance_ApplyButton" xml:space="preserve"><value>Postuler pour devenir asociado</value></data>
+  <data name="Governance_ColaboradorCanApply" xml:space="preserve"><value>Les Colaboradores peuvent &#xE9;galement postuler pour le statut d'Asociado s'ils souhaitent participer &#xE0; la gouvernance.</value></data>
+  <data name="Governance_ApplyForAsociado" xml:space="preserve"><value>Postuler pour Asociado</value></data>
   <data name="Governance_YourApplication" xml:space="preserve"><value>Votre candidature</value></data>
   <data name="Governance_Submitted" xml:space="preserve"><value>Envoy&#xE9;e</value></data>
   <data name="Governance_Resolved" xml:space="preserve"><value>R&#xE9;solue</value></data>
   <data name="Governance_UnderReviewMessage" xml:space="preserve"><value>Votre candidature est en cours d'examen. Vous serez notifi&#xE9; par e-mail d&#xE8;s qu'une d&#xE9;cision sera prise.</value></data>
   <data name="Governance_ApprovedMessage" xml:space="preserve"><value>Bienvenue&#xA0;! Vous &#xEA;tes d&#xE9;sormais asociado de Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve"><value>Vous &#xEA;tes un/e Colaborador/a approuv&#xE9;/e de Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve"><value>Bienvenue&#xA0;! Vous &#xEA;tes d&#xE9;sormais Asociado/a de Nobodies Collective.</value></data>
+  <data name="Governance_Tier" xml:space="preserve"><value>Niveau</value></data>
+  <data name="Governance_TermExpiry" xml:space="preserve"><value>Le mandat expire</value></data>
   <data name="Governance_RejectedMessage" xml:space="preserve"><value>Votre candidature n'a pas &#xE9;t&#xE9; approuv&#xE9;e. Si vous avez des questions, veuillez contacter le conseil d'administration.</value></data>
   <data name="Governance_WhatIsAsociado" xml:space="preserve"><value>Qu'est-ce qu'un asociado&#xA0;?</value></data>
   <data name="Governance_AsociadoLawDescription" xml:space="preserve"><value>Les asociados sont les membres votants de l'association en vertu du droit espagnol.</value></data>
@@ -405,6 +413,7 @@
   <data name="Application_InvalidTier" xml:space="preserve"><value>Veuillez s&#xE9;lectionner Colaborador ou Asociado pour votre candidature.</value></data>
   <data name="Application_ConfirmAccuracy" xml:space="preserve"><value>Vous devez confirmer l'exactitude de vos informations.</value></data>
   <data name="Application_Submitted" xml:space="preserve"><value>Votre candidature a &#xE9;t&#xE9; soumise avec succ&#xE8;s&#xA0;!</value></data>
+  <data name="Application_SubmitError" xml:space="preserve"><value>Une erreur s&#x2019;est produite lors de l&#x2019;envoi de votre candidature. Veuillez r&#xE9;essayer.</value></data>
   <data name="Application_CannotWithdraw" xml:space="preserve"><value>Cette candidature ne peut pas &#xEA;tre retir&#xE9;e.</value></data>
   <data name="Application_Withdrawn" xml:space="preserve"><value>Votre candidature a &#xE9;t&#xE9; retir&#xE9;e.</value></data>
 
@@ -448,6 +457,7 @@
   <data name="Consent_MustCheck" xml:space="preserve"><value>Vous devez cocher la case de consentement pour continuer.</value></data>
   <data name="Consent_AlreadyConsented" xml:space="preserve"><value>Vous avez d&#xE9;j&#xE0; consenti &#xE0; ce document.</value></data>
   <data name="Consent_ThankYou" xml:space="preserve"><value>Merci d'avoir consenti &#xE0; {0}.</value><comment>{0} = document name</comment></data>
+  <data name="Consent_SubmitError" xml:space="preserve"><value>Une erreur s&#x2019;est produite lors de l&#x2019;enregistrement de votre consentement. Veuillez r&#xE9;essayer.</value></data>
 
   <!-- ======================== -->
   <!-- Teams                    -->

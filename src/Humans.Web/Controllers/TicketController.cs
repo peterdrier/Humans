@@ -296,7 +296,7 @@ public class TicketController : HumansControllerBase
         var campaignSummaries = campaigns.Select(c =>
         {
             var total = c.Grants.Count;
-            var redeemed = c.Grants.Count(g => g.RedeemedAt != null);
+            var redeemed = c.Grants.Count(g => g.RedeemedAt is not null);
             return new CampaignCodeSummary
             {
                 CampaignId = c.Id,
@@ -336,7 +336,7 @@ public class TicketController : HumansControllerBase
                 RecipientName = g.User.DisplayName,
                 RecipientUserId = g.UserId,
                 CampaignTitle = campaigns.First(c => c.Id == g.CampaignId).Title,
-                Status = g.RedeemedAt != null ? "Redeemed" : (g.LatestEmailStatus?.ToString() ?? "Pending"),
+                Status = g.RedeemedAt is not null ? "Redeemed" : (g.LatestEmailStatus?.ToString() ?? "Pending"),
                 RedeemedAt = g.RedeemedAt,
                 RedeemedByName = matchedOrder?.BuyerName,
                 RedeemedByEmail = matchedOrder?.BuyerEmail,
@@ -392,7 +392,7 @@ public class TicketController : HumansControllerBase
             .FirstOrDefaultAsync();
 
         var activeHumans = users
-            .Where(u => u.Profile != null &&
+            .Where(u => u.Profile is not null &&
                 u.TeamMemberships.Any(tm => tm.TeamId == volunteersTeamId))
             .ToList();
 
@@ -456,7 +456,7 @@ public class TicketController : HumansControllerBase
     public async Task<IActionResult> FullResync()
     {
         var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
-        if (syncState != null)
+        if (syncState is not null)
         {
             syncState.LastSyncAt = null;
             await _dbContext.SaveChangesAsync();

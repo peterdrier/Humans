@@ -60,7 +60,7 @@ public class AdminEmailController : HumansControllerBase
                 var isUsedAsPrimary = matchedEmail is { IsNotificationTarget: true };
 
                 // Count accounts that exist in the system but are not used as primary
-                if (matchedEmail != null && !isUsedAsPrimary)
+                if (matchedEmail is not null && !isUsedAsPrimary)
                 {
                     notPrimaryCount++;
                 }
@@ -117,7 +117,7 @@ public class AdminEmailController : HumansControllerBase
 
         // Check if account already exists
         var existing = await _workspaceUserService.GetAccountAsync(fullEmail);
-        if (existing != null)
+        if (existing is not null)
         {
             SetError($"Account {fullEmail} already exists.");
             return RedirectToAction(nameof(Index));
@@ -132,7 +132,7 @@ public class AdminEmailController : HumansControllerBase
                 fullEmail, model.FirstName.Trim(), model.LastName.Trim(), tempPassword);
 
             var currentUser = await GetCurrentUserAsync();
-            if (currentUser != null)
+            if (currentUser is not null)
             {
                 await _auditLogService.LogAsync(
                     AuditAction.WorkspaceAccountProvisioned,
@@ -167,7 +167,7 @@ public class AdminEmailController : HumansControllerBase
             await _workspaceUserService.SuspendAccountAsync(email);
 
             var currentUser = await GetCurrentUserAsync();
-            if (currentUser != null)
+            if (currentUser is not null)
             {
                 await _auditLogService.LogAsync(
                     AuditAction.WorkspaceAccountSuspended,
@@ -202,7 +202,7 @@ public class AdminEmailController : HumansControllerBase
             await _workspaceUserService.ReactivateAccountAsync(email);
 
             var currentUser = await GetCurrentUserAsync();
-            if (currentUser != null)
+            if (currentUser is not null)
             {
                 await _auditLogService.LogAsync(
                     AuditAction.WorkspaceAccountReactivated,
@@ -238,7 +238,7 @@ public class AdminEmailController : HumansControllerBase
             await _workspaceUserService.ResetPasswordAsync(email, newPassword);
 
             var currentUser = await GetCurrentUserAsync();
-            if (currentUser != null)
+            if (currentUser is not null)
             {
                 await _auditLogService.LogAsync(
                     AuditAction.WorkspaceAccountPasswordReset,

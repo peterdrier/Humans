@@ -30,7 +30,7 @@ public static class QueryableSearchExtensions
             var contains = Expression.Call(toLower, nameof(string.Contains), Type.EmptyTypes, Expression.Constant(normalizedSearch));
             var predicate = Expression.AndAlso(notNull, contains);
 
-            combinedPredicate = combinedPredicate == null
+            combinedPredicate = combinedPredicate is null
                 ? predicate
                 : Expression.OrElse(combinedPredicate, predicate);
         }

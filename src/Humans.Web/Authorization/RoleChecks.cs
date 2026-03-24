@@ -13,6 +13,7 @@ public static class RoleChecks
         RoleNames.CampAdmin,
         RoleNames.TicketAdmin,
         RoleNames.NoInfoAdmin,
+        RoleNames.FeedbackAdmin,
         RoleNames.ConsentCoordinator,
         RoleNames.VolunteerCoordinator
     ];
@@ -24,6 +25,7 @@ public static class RoleChecks
         RoleNames.CampAdmin,
         RoleNames.TicketAdmin,
         RoleNames.NoInfoAdmin,
+        RoleNames.FeedbackAdmin,
         RoleNames.ConsentCoordinator,
         RoleNames.VolunteerCoordinator
     ];
@@ -90,6 +92,11 @@ public static class RoleChecks
         return IsAdmin(user) ? AdminAssignableRoles : BoardAssignableRoles;
     }
 
+    public static bool IsFeedbackAdmin(ClaimsPrincipal user)
+    {
+        return IsAdmin(user) || user.IsInRole(RoleNames.FeedbackAdmin);
+    }
+
     public static bool CanManageRole(ClaimsPrincipal user, string roleName)
     {
         if (IsAdmin(user))
@@ -102,7 +109,8 @@ public static class RoleChecks
             return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal);
+                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.FeedbackAdmin, StringComparison.Ordinal);
         }
 
         return false;

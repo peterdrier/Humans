@@ -73,7 +73,7 @@ public class ConsentService : IConsentService
                         .Where(v => v.EffectiveFrom <= now)
                         .MaxBy(v => v.EffectiveFrom);
 
-                    if (currentVersion != null)
+                    if (currentVersion is not null)
                     {
                         var consent = userConsents.FirstOrDefault(c => c.DocumentVersionId == currentVersion.Id);
                         docPairs.Add((currentVersion, consent));
@@ -94,7 +94,7 @@ public class ConsentService : IConsentService
             .Include(v => v.LegalDocument)
             .FirstOrDefaultAsync(v => v.Id == documentVersionId, ct);
 
-        if (version == null)
+        if (version is null)
             return (null, null, null);
 
         var consentRecord = await _dbContext.ConsentRecords
@@ -115,7 +115,7 @@ public class ConsentService : IConsentService
             .Include(v => v.LegalDocument)
             .FirstOrDefaultAsync(v => v.Id == documentVersionId, ct);
 
-        if (version == null)
+        if (version is null)
             return new ConsentSubmitResult(false, ErrorKey: "NotFound");
 
         var alreadyConsented = await _dbContext.ConsentRecords

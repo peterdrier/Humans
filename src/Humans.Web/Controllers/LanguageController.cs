@@ -32,7 +32,7 @@ public class LanguageController : HumansControllerBase
         if (User.Identity?.IsAuthenticated == true)
         {
             var user = await GetCurrentUserAsync();
-            if (user != null)
+            if (user is not null)
             {
                 user.PreferredLanguage = culture;
                 await UpdateCurrentUserAsync(user);

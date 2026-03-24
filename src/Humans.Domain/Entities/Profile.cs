@@ -266,7 +266,7 @@ public class Profile
     /// <summary>
     /// Whether this profile has a custom uploaded profile picture.
     /// </summary>
-    public bool HasCustomProfilePicture => ProfilePictureData != null && ProfilePictureData.Length > 0;
+    public bool HasCustomProfilePicture => ProfilePictureData is not null && ProfilePictureData.Length > 0;
 
     /// <summary>
     /// Contact fields with visibility controls.

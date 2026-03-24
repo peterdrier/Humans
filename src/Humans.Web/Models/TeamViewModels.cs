@@ -32,7 +32,7 @@ public class TeamSummaryViewModel
     /// <summary>
     /// Sort key that groups sub-teams under their parent: "ParentName - ChildName" or just "Name".
     /// </summary>
-    public string SortKey => ParentTeamName != null ? $"{ParentTeamName} - {Name}" : Name;
+    public string SortKey => ParentTeamName is not null ? $"{ParentTeamName} - {Name}" : Name;
 }
 
 public class TeamDetailViewModel
@@ -314,13 +314,13 @@ public class TeamRoleDefinitionViewModel
                     SlotPriority.NiceToHave => "bg-secondary",
                     _ => "bg-light text-dark"
                 },
-                IsFilled = assignment != null,
+                IsFilled = assignment is not null,
                 AssignedUserId = assignment?.TeamMember?.UserId,
                 AssignedUserName = assignment?.TeamMember?.User?.DisplayName,
                 TeamMemberId = assignment?.TeamMemberId
             });
 
-            if (assignment?.TeamMember?.UserId != null)
+            if (assignment?.TeamMember?.UserId is not null)
                 assignedUserIds.Add(assignment.TeamMember.UserId);
         }
 
@@ -366,6 +366,8 @@ public class RoleManagementViewModel
 public class CreateRoleDefinitionModel
 {
     public string Name { get; set; } = string.Empty;
+
+    [MaxLength(2000)]
     public string? Description { get; set; }
     public int SlotCount { get; set; } = 1;
     public List<string> Priorities { get; set; } = ["None"];
@@ -376,6 +378,8 @@ public class CreateRoleDefinitionModel
 public class EditRoleDefinitionModel
 {
     public string Name { get; set; } = string.Empty;
+
+    [MaxLength(2000)]
     public string? Description { get; set; }
     public int SlotCount { get; set; }
     public List<string> Priorities { get; set; } = [];

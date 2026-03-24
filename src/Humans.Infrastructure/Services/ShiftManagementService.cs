@@ -163,7 +163,7 @@ public class ShiftManagementService : IShiftManagementService
         if (totalCapacity == 0) return 0;
 
         var barriosAllocation = 0;
-        if (settings.BarriosEarlyEntryAllocation != null)
+        if (settings.BarriosEarlyEntryAllocation is not null)
         {
             var applicableKey = int.MinValue;
             foreach (var key in settings.BarriosEarlyEntryAllocation.Keys)
@@ -187,16 +187,16 @@ public class ShiftManagementService : IShiftManagementService
         var team = await _dbContext.Teams.AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == rota.TeamId);
 
-        if (team == null)
+        if (team is null)
             throw new InvalidOperationException("Team not found.");
-        if (team.ParentTeamId != null)
+        if (team.ParentTeamId is not null)
             throw new InvalidOperationException("Rotas can only be created on parent teams (departments).");
         if (team.SystemTeamType != SystemTeamType.None)
             throw new InvalidOperationException("Rotas cannot be created on system teams.");
 
         var eventSettings = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == rota.EventSettingsId && e.IsActive);
-        if (eventSettings == null)
+        if (eventSettings is null)
             throw new InvalidOperationException("Active EventSettings not found.");
 
         rota.UpdatedAt = _clock.GetCurrentInstant();
@@ -218,7 +218,7 @@ public class ShiftManagementService : IShiftManagementService
                 .ThenInclude(s => s.ShiftSignups)
             .FirstOrDefaultAsync(r => r.Id == rotaId);
 
-        if (rota == null) throw new InvalidOperationException("Rota not found.");
+        if (rota is null) throw new InvalidOperationException("Rota not found.");
 
         var confirmedCount = rota.Shifts
             .SelectMany(s => s.ShiftSignups)
@@ -273,7 +273,7 @@ public class ShiftManagementService : IShiftManagementService
             .Include(r => r.EventSettings)
             .FirstOrDefaultAsync(r => r.Id == rotaId);
 
-        if (rota == null) throw new InvalidOperationException("Rota not found");
+        if (rota is null) throw new InvalidOperationException("Rota not found");
         if (rota.Period == RotaPeriod.Event)
             throw new InvalidOperationException("Build/strike shift generation is only for Build or Strike rotas");
 
@@ -325,7 +325,7 @@ public class ShiftManagementService : IShiftManagementService
             .Include(r => r.EventSettings)
             .FirstOrDefaultAsync(r => r.Id == rotaId);
 
-        if (rota == null) throw new InvalidOperationException("Rota not found");
+        if (rota is null) throw new InvalidOperationException("Rota not found");
         if (rota.Period != RotaPeriod.Event)
             throw new InvalidOperationException("Event shift generation is only for Event-period rotas");
 
@@ -365,7 +365,7 @@ public class ShiftManagementService : IShiftManagementService
             .Include(r => r.EventSettings)
             .FirstOrDefaultAsync(r => r.Id == shift.RotaId);
 
-        if (rota == null) throw new InvalidOperationException("Rota not found.");
+        if (rota is null) throw new InvalidOperationException("Rota not found.");
 
         var es = rota.EventSettings;
         if (shift.DayOffset < es.BuildStartOffset || shift.DayOffset > es.StrikeEndOffset)
@@ -393,7 +393,7 @@ public class ShiftManagementService : IShiftManagementService
             .Include(s => s.ShiftSignups)
             .FirstOrDefaultAsync(s => s.Id == shiftId);
 
-        if (shift == null) throw new InvalidOperationException("Shift not found.");
+        if (shift is null) throw new InvalidOperationException("Shift not found.");
 
         var confirmedCount = shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
         if (confirmedCount > 0)
@@ -450,7 +450,7 @@ public class ShiftManagementService : IShiftManagementService
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
-        if (es == null) return [];
+        if (es is null) return [];
 
         var query = _dbContext.Shifts
             .AsNoTracking()
@@ -496,7 +496,7 @@ public class ShiftManagementService : IShiftManagementService
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
-        if (es == null) return [];
+        if (es is null) return [];
 
         IQueryable<Shift> query;
         if (includeSignups)
@@ -540,7 +540,7 @@ public class ShiftManagementService : IShiftManagementService
                     ? s.ShiftSignups
                         .Where(ss => ss.Status is SignupStatus.Confirmed or SignupStatus.Pending)
                         .Select(ss => (ss.UserId, DisplayName: ss.User?.DisplayName ?? "", ss.Status,
-                            HasProfilePicture: ss.User?.ProfilePictureUrl != null))
+                            HasProfilePicture: ss.User?.ProfilePictureUrl is not null))
                         .OrderBy(ss => ss.Status == SignupStatus.Confirmed ? 0 : 1)
                         .ThenBy(ss => ss.DisplayName, StringComparer.OrdinalIgnoreCase)
                         .ToList()
@@ -572,7 +572,7 @@ public class ShiftManagementService : IShiftManagementService
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
-        if (es == null) return [];
+        if (es is null) return [];
 
         var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
@@ -612,11 +612,12 @@ public class ShiftManagementService : IShiftManagementService
             }).ToList();
 
             var totalSlots = overlapping.Sum(s => s.MaxVolunteers);
+            var minSlots = overlapping.Sum(s => s.MinVolunteers);
             var confirmedCount = overlapping
                 .SelectMany(s => s.ShiftSignups)
                 .Count(su => su.Status == SignupStatus.Confirmed);
 
-            results.Add(new DailyStaffingData(dayOffset, dateLabel, confirmedCount, totalSlots, period));
+            results.Add(new DailyStaffingData(dayOffset, dateLabel, confirmedCount, totalSlots, minSlots, period));
         }
 
         return results;

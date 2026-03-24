@@ -62,7 +62,7 @@ public class AdminController : HumansControllerBase
         }
 
         var user = await FindUserByIdAsync(id);
-        if (user == null)
+        if (user is null)
         {
             return NotFound();
         }
@@ -127,7 +127,7 @@ public class AdminController : HumansControllerBase
             report = System.Text.Json.JsonSerializer.Deserialize<SyncReport>(json);
         }
 
-        if (report == null)
+        if (report is null)
         {
             SetInfo("No sync results to display. Run a sync first.");
             return RedirectToAction(nameof(Index));
@@ -347,7 +347,7 @@ public class AdminController : HumansControllerBase
         SyncServiceType serviceType, SyncMode mode)
     {
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null) return Unauthorized();
+        if (currentUser is null) return Unauthorized();
 
         await syncSettingsService.UpdateModeAsync(serviceType, mode, currentUser.Id);
 
@@ -445,7 +445,7 @@ public class AdminController : HumansControllerBase
     public async Task<IActionResult> RetryEmailOutboxMessage(Guid id)
     {
         var message = await _dbContext.EmailOutboxMessages.FindAsync(id);
-        if (message == null) return NotFound();
+        if (message is null) return NotFound();
 
         message.Status = EmailOutboxStatus.Queued;
         message.RetryCount = 0;
@@ -463,7 +463,7 @@ public class AdminController : HumansControllerBase
     public async Task<IActionResult> DiscardEmailOutboxMessage(Guid id)
     {
         var message = await _dbContext.EmailOutboxMessages.FindAsync(id);
-        if (message == null) return NotFound();
+        if (message is null) return NotFound();
 
         var recipient = message.RecipientEmail;
         _dbContext.EmailOutboxMessages.Remove(message);
@@ -477,7 +477,7 @@ public class AdminController : HumansControllerBase
     {
         var setting = await _dbContext.SystemSettings
             .FirstOrDefaultAsync(s => s.Key == "IsEmailSendingPaused");
-        if (setting == null)
+        if (setting is null)
         {
             setting = new SystemSetting { Key = "IsEmailSendingPaused", Value = paused ? "true" : "false" };
             _dbContext.SystemSettings.Add(setting);
@@ -529,13 +529,260 @@ public class AdminController : HumansControllerBase
             result = System.Text.Json.JsonSerializer.Deserialize<Application.DTOs.GroupSettingsDriftResult>(json);
         }
 
-        if (result == null)
+        if (result is null)
         {
             SetInfo("No group settings results to display. Run the check first.");
             return RedirectToAction(nameof(Index));
         }
 
         return View(result);
+    }
+
+    [HttpPost("CheckEmailMismatches")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckEmailMismatches(
+        [FromServices] IGoogleSyncService googleSyncService)
+    {
+        try
+        {
+            var result = await googleSyncService.GetEmailMismatchesAsync();
+            TempData["EmailBackfillResult"] = System.Text.Json.JsonSerializer.Serialize(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check email mismatches");
+            SetError($"Email mismatch check failed: {ex.Message}");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return RedirectToAction(nameof(EmailBackfillReview));
+    }
+
+    [HttpGet("EmailBackfillReview")]
+    public IActionResult EmailBackfillReview()
+    {
+        Application.DTOs.EmailBackfillResult? result = null;
+        if (TempData["EmailBackfillResult"] is string json)
+        {
+            result = System.Text.Json.JsonSerializer.Deserialize<Application.DTOs.EmailBackfillResult>(json);
+        }
+
+        if (result is null)
+        {
+            SetInfo("No email mismatch results to display. Run the check first.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(result);
+    }
+
+    [HttpPost("ApplyEmailBackfill")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApplyEmailBackfill(
+        [FromForm] List<Guid> selectedUserIds,
+        [FromForm] Dictionary<string, string> corrections)
+    {
+        if (selectedUserIds.Count == 0)
+        {
+            SetInfo("No users selected.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
+
+        var updated = 0;
+        var errors = new List<string>();
+
+        foreach (var userId in selectedUserIds)
+        {
+            if (!corrections.TryGetValue(userId.ToString(), out var googleEmail) || string.IsNullOrEmpty(googleEmail))
+                continue;
+
+            try
+            {
+                var user = await _dbContext.Users
+                    .Include(u => u.UserEmails)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
+                if (user is null)
+                {
+                    errors.Add($"User {userId} not found.");
+                    continue;
+                }
+
+                var oldEmail = user.Email;
+
+                user.Email = googleEmail;
+                user.UserName = googleEmail;
+                user.NormalizedEmail = googleEmail.ToUpperInvariant();
+                user.NormalizedUserName = googleEmail.ToUpperInvariant();
+
+                // Update OAuth UserEmail record if it exists
+                var oauthEmail = user.UserEmails.FirstOrDefault(e => e.IsOAuth);
+                if (oauthEmail is not null)
+                {
+                    oauthEmail.Email = googleEmail;
+                }
+
+                _logger.LogInformation(
+                    "Admin {AdminId} applying email backfill for user {UserId}: '{OldEmail}' → '{NewEmail}'",
+                    currentUser.Id, userId, oldEmail, googleEmail);
+
+                updated++;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to update email for user {UserId}", userId);
+                errors.Add($"Error updating user {userId}: {ex.Message}");
+            }
+        }
+
+        if (updated > 0)
+            await _dbContext.SaveChangesAsync();
+
+        if (errors.Count > 0)
+            SetError($"Applied {updated} correction(s) with {errors.Count} error(s): {string.Join("; ", errors)}");
+        else
+            SetSuccess($"Applied {updated} email correction(s) successfully.");
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet("AllGroups")]
+    public async Task<IActionResult> AllGroups([FromServices] IGoogleSyncService googleSyncService)
+    {
+        try
+        {
+            var result = await googleSyncService.GetAllDomainGroupsAsync();
+            ViewBag.Teams = await _dbContext.Teams.Where(t => t.IsActive).OrderBy(t => t.Name).ToListAsync();
+            return View(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load domain groups");
+            SetError($"Failed to load domain groups: {ex.Message}");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("RemediateGroupSettings")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemediateGroupSettings(
+        [FromServices] IGoogleSyncService googleSyncService,
+        [FromForm] string groupEmail, [FromForm] string? returnUrl)
+    {
+        try
+        {
+            var success = await googleSyncService.RemediateGroupSettingsAsync(groupEmail);
+            if (success) SetSuccess($"Settings remediated for {groupEmail}.");
+            else SetError($"Remediation skipped for {groupEmail} — sync may be disabled.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remediate settings for {GroupEmail}", groupEmail);
+            SetError($"Remediation failed for {groupEmail}: {ex.Message}");
+        }
+        return Redirect(Url.IsLocalUrl(returnUrl) ? returnUrl : Url.Action(nameof(AllGroups))!);
+    }
+
+    [HttpPost("RemediateAllGroupSettings")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemediateAllGroupSettings(
+        [FromServices] IGoogleSyncService googleSyncService)
+    {
+        try
+        {
+            var result = await googleSyncService.GetAllDomainGroupsAsync();
+            if (result.ErrorMessage is not null)
+            {
+                SetError($"Failed to enumerate groups: {result.ErrorMessage}");
+                return RedirectToAction(nameof(AllGroups));
+            }
+
+            var drifted = result.Groups.Where(g => g.HasDrift).ToList();
+            if (drifted.Count == 0)
+            {
+                SetInfo("No drifted groups found — nothing to remediate.");
+                return RedirectToAction(nameof(AllGroups));
+            }
+
+            var fixed_ = 0;
+            var errors = new List<string>();
+
+            foreach (var group in drifted)
+            {
+                try
+                {
+                    var success = await googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail);
+                    if (success) fixed_++;
+                    else errors.Add($"{group.GroupEmail}: sync disabled");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to remediate {GroupEmail}", group.GroupEmail);
+                    errors.Add($"{group.GroupEmail}: {ex.Message}");
+                }
+            }
+
+            if (errors.Count > 0)
+                SetError($"Remediated {fixed_} group(s) with {errors.Count} error(s): {string.Join("; ", errors)}");
+            else
+                SetSuccess($"Remediated {fixed_} drifted group(s) successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remediate all group settings");
+            SetError($"Batch remediation failed: {ex.Message}");
+        }
+        return RedirectToAction(nameof(AllGroups));
+    }
+
+    [HttpPost("LinkGroupToTeam")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LinkGroupToTeam(
+        [FromServices] IGoogleSyncService googleSyncService,
+        [FromForm] Guid teamId, [FromForm] string groupPrefix)
+    {
+        if (string.IsNullOrWhiteSpace(groupPrefix))
+        {
+            SetError("Group prefix is required.");
+            return RedirectToAction(nameof(AllGroups));
+        }
+
+        try
+        {
+            var team = await _dbContext.Teams.FindAsync(teamId);
+            if (team is null) return NotFound();
+
+            var normalizedPrefix = groupPrefix.Trim().ToLowerInvariant();
+            var previousPrefix = team.GoogleGroupPrefix;
+            team.GoogleGroupPrefix = normalizedPrefix;
+
+            var linkResult = await googleSyncService.EnsureTeamGroupAsync(teamId);
+            if (linkResult.RequiresConfirmation)
+            {
+                await _dbContext.SaveChangesAsync();
+                SetInfo($"Linked group for team \"{team.Name}\". Note: {linkResult.WarningMessage}");
+            }
+            else if (linkResult.ErrorMessage is not null)
+            {
+                team.GoogleGroupPrefix = previousPrefix;
+                SetError($"Could not link group: {linkResult.ErrorMessage}");
+            }
+            else
+            {
+                await _dbContext.SaveChangesAsync();
+                SetSuccess($"Successfully linked {normalizedPrefix}@nobodies.team to team \"{team.Name}\".");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
+            SetError($"Failed to link group: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(AllGroups));
     }
 
 }

@@ -232,10 +232,10 @@ public class OutboxEmailService : IEmailService
     /// <inheritdoc />
     public async Task SendFeedbackResponseAsync(
         string userEmail, string userName, string originalDescription,
-        string responseMessage, string? culture = null,
+        string responseMessage, string reportLink, string? culture = null,
         CancellationToken cancellationToken = default)
     {
-        var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, culture);
+        var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
         await EnqueueAsync(userEmail, userName, content, "feedback_response", cancellationToken);
     }
 

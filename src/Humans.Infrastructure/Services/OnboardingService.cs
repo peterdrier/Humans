@@ -80,7 +80,7 @@ public class OnboardingService : IOnboardingService
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
             return (null, 0, 0, null);
 
         var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
@@ -150,10 +150,10 @@ public class OnboardingService : IOnboardingService
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
-        if (profile.RejectedAt != null)
+        if (profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
 
         var hasAllRequiredConsents = await _membershipCalculator.HasAllRequiredConsentsAsync(userId, ct);
@@ -210,7 +210,7 @@ public class OnboardingService : IOnboardingService
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
         var now = _clock.GetCurrentInstant();
@@ -251,7 +251,7 @@ public class OnboardingService : IOnboardingService
         var application = await _dbContext.Applications
             .FirstOrDefaultAsync(a => a.Id == applicationId, ct);
 
-        if (application == null)
+        if (application is null)
             return new OnboardingResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
@@ -262,7 +262,7 @@ public class OnboardingService : IOnboardingService
 
         var now = _clock.GetCurrentInstant();
 
-        if (existingVote != null)
+        if (existingVote is not null)
         {
             existingVote.Vote = vote;
             existingVote.Note = note;
@@ -296,10 +296,10 @@ public class OnboardingService : IOnboardingService
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
-        if (profile.RejectedAt != null)
+        if (profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
 
         var now = _clock.GetCurrentInstant();
@@ -349,7 +349,7 @@ public class OnboardingService : IOnboardingService
             .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        if (user?.Profile == null)
+        if (user?.Profile is null)
             return new OnboardingResult(false, "NotFound");
 
         var now = _clock.GetCurrentInstant();
@@ -387,7 +387,7 @@ public class OnboardingService : IOnboardingService
             .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        if (user?.Profile == null)
+        if (user?.Profile is null)
             return new OnboardingResult(false, "NotFound");
 
         user.Profile.IsSuspended = true;
@@ -417,7 +417,7 @@ public class OnboardingService : IOnboardingService
             .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        if (user?.Profile == null)
+        if (user?.Profile is null)
             return new OnboardingResult(false, "NotFound");
 
         user.Profile.IsSuspended = false;
@@ -445,7 +445,7 @@ public class OnboardingService : IOnboardingService
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(Guid userId, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles.FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        if (profile == null || profile.IsApproved || profile.ConsentCheckStatus != null)
+        if (profile is null || profile.IsApproved || profile.ConsentCheckStatus is not null)
             return false;
 
         var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
@@ -504,7 +504,7 @@ public class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> PurgeHumanAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], ct);
-        if (user == null)
+        if (user is null)
             return new OnboardingResult(false, "NotFound");
 
         var displayName = user.DisplayName;

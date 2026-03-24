@@ -50,7 +50,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> ApproveRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -74,7 +74,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> RejectRequest(string slug, Guid requestId, ApproveRejectRequestModel model)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -104,7 +104,7 @@ public class TeamAdminController : HumansTeamControllerBase
     {
         var pageSize = 20;
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -175,7 +175,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> RemoveMember(string slug, Guid userId)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -203,7 +203,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> AddMember(string slug, AddMemberModel model)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -226,7 +226,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> SearchUsers(string slug, string q)
     {
         var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -240,7 +240,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
         // Exclude existing team members
         var existingMemberIds = team.Members
-            .Where(m => m.LeftAt == null)
+            .Where(m => m.LeftAt is null)
             .Select(m => m.UserId)
             .ToHashSet();
 
@@ -257,13 +257,13 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> Resources(string slug)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -313,13 +313,13 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> LinkDriveResource(string slug, LinkDriveResourceModel model)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -344,7 +344,7 @@ public class TeamAdminController : HumansTeamControllerBase
         else
         {
             var errorMessage = result.ErrorMessage ?? "Failed to link Drive resource.";
-            if (result.ServiceAccountEmail != null)
+            if (result.ServiceAccountEmail is not null)
             {
                 errorMessage += $" {string.Format(_localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
             }
@@ -359,13 +359,13 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> LinkGroup(string slug, LinkGroupModel model)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -390,7 +390,7 @@ public class TeamAdminController : HumansTeamControllerBase
         else
         {
             var errorMessage = result.ErrorMessage ?? _localizer["TeamAdmin_GroupLinkFailed"].Value;
-            if (result.ServiceAccountEmail != null)
+            if (result.ServiceAccountEmail is not null)
             {
                 errorMessage += $" {string.Format(_localizer["TeamAdmin_ServiceAccount"].Value, result.ServiceAccountEmail)}";
             }
@@ -405,13 +405,13 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> UnlinkResource(string slug, Guid resourceId)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -432,13 +432,13 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> SyncResource(string slug, Guid resourceId)
     {
         var (currentUserNotFound, user) = await RequireCurrentUserAsync();
-        if (currentUserNotFound != null)
+        if (currentUserNotFound is not null)
         {
             return currentUserNotFound;
         }
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
         {
             return NotFound();
         }
@@ -466,7 +466,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> Roles(string slug)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -511,7 +511,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> CreateRole(string slug, CreateRoleDefinitionModel model)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -542,7 +542,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> EditRole(string slug, Guid roleId, EditRoleDefinitionModel model)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -573,7 +573,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> DeleteRole(string slug, Guid roleId)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -597,7 +597,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> ToggleManagement(string slug, Guid roleId)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -606,7 +606,7 @@ public class TeamAdminController : HumansTeamControllerBase
         {
             var roles = await _teamService.GetRoleDefinitionsAsync(team.Id);
             var role = roles.FirstOrDefault(r => r.Id == roleId);
-            if (role == null)
+            if (role is null)
             {
                 return NotFound();
             }
@@ -630,7 +630,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> AssignRole(string slug, Guid roleId, AssignRoleModel model)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -655,7 +655,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> UnassignRole(string slug, Guid roleId, Guid memberId)
     {
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -689,11 +689,11 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> EditPage(string slug)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
             return NotFound();
 
         var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
@@ -730,11 +730,11 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> EditPage(string slug, EditTeamPageViewModel model)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team == null)
+        if (team is null)
             return NotFound();
 
         var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
@@ -784,7 +784,7 @@ public class TeamAdminController : HumansTeamControllerBase
     public async Task<IActionResult> SearchMembersForRole(string slug, string q)
     {
         var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
-        if (teamError != null)
+        if (teamError is not null)
         {
             return teamError;
         }
@@ -796,13 +796,13 @@ public class TeamAdminController : HumansTeamControllerBase
 
         var teamMembers = await _teamService.GetTeamMembersAsync(team.Id);
         var teamMemberUserIds = teamMembers
-            .Where(m => m.LeftAt == null)
+            .Where(m => m.LeftAt is null)
             .Select(m => m.UserId)
             .ToHashSet();
 
         // Search team members first by name match
         var matchingTeamMembers = teamMembers
-            .Where(m => m.LeftAt == null &&
+            .Where(m => m.LeftAt is null &&
                         (m.User.DisplayName.ContainsOrdinalIgnoreCase(q) ||
                          m.User.Email.ContainsOrdinalIgnoreCase(q)))
             .Take(10)

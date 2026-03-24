@@ -34,7 +34,7 @@
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Browse Shifts</h2>
+        <h2>Browse Volunteer Options</h2>
         <div class="d-flex gap-2">
             <vc:access-matrix section="Shifts" />
             @if (User.IsInRole(Humans.Domain.Constants.RoleNames.NoInfoAdmin) || User.IsInRole(Humans.Domain.Constants.RoleNames.Admin) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator))
@@ -54,7 +54,7 @@
     <form method="get" class="row g-2 mb-4 align-items-end">
         <div class="col-auto">
             <label class="form-label mb-1">Department</label>
-            <select name="departmentId" class="form-select form-select-sm" onchange="this.form.submit()">
+            <select name="departmentId" class="form-select form-select-sm">
                 <option value="">All Departments</option>
                 @foreach (var dept in Model.AllDepartments)
                 {
@@ -64,7 +64,9 @@
         </div>
         <div class="col-auto">
             <label class="form-label mb-1">Date</label>
-            <input type="date" name="date" class="form-control form-control-sm" value="@Model.FilterDate" onchange="this.form.submit()" />
+            <input type="date" name="date" class="form-control form-control-sm" value="@Model.FilterDate"
+                   min="@Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.BuildStartOffset).ToString("yyyy-MM-dd", null)"
+                   max="@Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
         </div>
         @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterDate))
         {
@@ -73,6 +75,11 @@
             </div>
         }
     </form>
+    <script>
+        document.querySelectorAll('[name="departmentId"], [name="date"]').forEach(function(el) {
+            el.addEventListener('change', function() { this.form.submit(); });
+        });
+    </script>
 
     @if (!Model.EventSettings.IsShiftBrowsingOpen)
     {
@@ -92,8 +99,30 @@
                     <h5 class="mb-0">@dept.TeamName</h5>
                 </div>
                 <div class="card-body">
-                    @foreach (var rotaGroup in dept.Rotas)
+                    @{
+                        var rotasByPeriod = dept.Rotas
+                            .GroupBy(r => r.Rota.Period)
+                            .OrderBy(g => g.Key)
+                            .ToList();
+                    }
+                    @foreach (var periodGroup in rotasByPeriod)
                     {
+                        var periodName = periodGroup.Key == RotaPeriod.Build ? "Set-up"
+                            : periodGroup.Key == RotaPeriod.Strike ? "Strike"
+                            : "Event";
+                        <h5 class="mt-4 mb-2 border-bottom pb-1">
+                            <span class="badge @(periodGroup.Key == RotaPeriod.Build ? "bg-info" : periodGroup.Key == RotaPeriod.Strike ? "bg-secondary" : "bg-success") me-1">@periodName</span>
+                            @periodName
+                        </h5>
+                        var hasAvailable = periodGroup.Any(r => r.Shifts.Any(s => s.RemainingSlots > 0));
+                        @if (!hasAvailable)
+                        {
+                            <p class="text-muted fst-italic">All @periodName.ToLowerInvariant() shifts are full.</p>
+                        }
+                    @foreach (var rotaGroup in periodGroup)
+                    {
+                        var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
+                        var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
                         var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
                         <h6 class="mt-3">@rotaGroup.Rota.Name
                             @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
@@ -104,7 +133,7 @@
                             {
                                 <span class="badge bg-warning text-dark ms-1">Important</span>
                             }
-                            <span class="badge @(rotaGroup.Rota.Period == RotaPeriod.Build ? "bg-info" : rotaGroup.Rota.Period == RotaPeriod.Strike ? "bg-secondary" : "bg-success") ms-1">@(rotaGroup.Rota.Period == RotaPeriod.Build ? "Set-up" : rotaGroup.Rota.Period.ToString())</span>
+                            <span class="badge @(rotaGroup.Rota.Period switch { RotaPeriod.Build => "bg-info", RotaPeriod.Strike => "bg-secondary", RotaPeriod.All => "bg-primary", _ => "bg-success" }) ms-1">@(rotaGroup.Rota.Period switch { RotaPeriod.Build => "Set-up", RotaPeriod.All => "All Phases", _ => rotaGroup.Rota.Period.ToString() })</span>
                         </h6>
                         @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))
                         {
@@ -115,9 +144,9 @@
                             <div class="text-muted small"><i class="fa-solid fa-circle-info me-1"></i>@Html.SanitizedMarkdown(rotaGroup.Rota.PracticalInfo)</div>
                         }
 
-                        @if (isBuildStrike)
+                        @if (isBuildStrike || hasAllDayShifts)
                         {
-                            @* Build/Strike: show date range with per-day fill rates and range signup *@
+                            @* Build/Strike/All: show date range with per-day fill rates and range signup *@
                             var allDayShifts = rotaGroup.Shifts.Where(s => s.Shift.IsAllDay).OrderBy(s => s.Shift.DayOffset).ToList();
                             var availableShifts = allDayShifts.Where(s => s.RemainingSlots > 0 && !Model.UserSignupShiftIds.Contains(s.Shift.Id)).ToList();
                             @if (availableShifts.Count > 0)
@@ -144,7 +173,7 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
-                                        <button type="submit" class="btn btn-sm btn-success">Sign Up for Range</button>
+                                        <button type="submit" class="btn btn-sm btn-success">Sign up for @(rotaGroup.Rota.Period == RotaPeriod.Build ? "set-up" : "strike") dates</button>
                                     </div>
                                 </form>
                             }
@@ -211,9 +240,10 @@
                             </div>
 
                         }
-                        else
+                        @if (!isBuildStrike || hasTimedShifts)
                         {
-                            @* Event: standard per-shift signup *@
+                            @* Event/timed shifts: standard per-shift signup *@
+                            var timedShifts = isBuildStrike ? rotaGroup.Shifts.Where(s => !s.Shift.IsAllDay).ToList() : rotaGroup.Shifts.ToList();
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
@@ -232,7 +262,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var item in rotaGroup.Shifts)
+                                        @foreach (var item in timedShifts)
                                         {
                                             var shift = item.Shift;
                                             var isFull = item.RemainingSlots <= 0;
@@ -293,6 +323,7 @@
                                 </table>
                             </div>
                         }
+                    }
                     }
                 </div>
             </div>

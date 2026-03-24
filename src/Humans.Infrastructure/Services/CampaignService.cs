@@ -84,7 +84,7 @@ public class CampaignService : ICampaignService
     {
         var campaign = await _dbContext.Campaigns
             .FirstOrDefaultAsync(c => c.Id == id, ct);
-        if (campaign == null)
+        if (campaign is null)
         {
             return false;
         }
@@ -114,7 +114,7 @@ public class CampaignService : ICampaignService
     public async Task<CampaignDetailPageDto?> GetDetailPageAsync(Guid id, CancellationToken ct = default)
     {
         var campaign = await GetByIdAsync(id, ct);
-        if (campaign == null)
+        if (campaign is null)
         {
             return null;
         }
@@ -124,7 +124,7 @@ public class CampaignService : ICampaignService
         var availableCodes = totalCodes - assignedCodeIds.Count;
         var sentCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Sent);
         var failedCount = campaign.Grants.Count(g => g.LatestEmailStatus == EmailOutboxStatus.Failed);
-        var codesRedeemed = campaign.Grants.Count(g => g.RedeemedAt != null);
+        var codesRedeemed = campaign.Grants.Count(g => g.RedeemedAt is not null);
         var totalGrants = campaign.Grants.Count;
 
         return new CampaignDetailPageDto(
@@ -144,7 +144,7 @@ public class CampaignService : ICampaignService
         CancellationToken ct = default)
     {
         var campaign = await GetByIdAsync(campaignId, ct);
-        if (campaign == null)
+        if (campaign is null)
         {
             return null;
         }

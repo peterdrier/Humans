@@ -110,7 +110,7 @@ public class ProcessEmailOutboxJob
                 {
                     var grant = await _dbContext.CampaignGrants.FindAsync(
                         new object[] { message.CampaignGrantId.Value }, cancellationToken);
-                    if (grant != null)
+                    if (grant is not null)
                     {
                         grant.LatestEmailStatus = EmailOutboxStatus.Sent;
                         grant.LatestEmailAt = now;
@@ -137,7 +137,7 @@ public class ProcessEmailOutboxJob
                 {
                     var grant = await _dbContext.CampaignGrants.FindAsync(
                         new object[] { message.CampaignGrantId.Value }, cancellationToken);
-                    if (grant != null)
+                    if (grant is not null)
                     {
                         grant.LatestEmailStatus = EmailOutboxStatus.Failed;
                         grant.LatestEmailAt = now;

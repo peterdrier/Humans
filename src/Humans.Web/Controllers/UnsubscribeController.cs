@@ -43,7 +43,7 @@ public class UnsubscribeController : Controller
         }
 
         var user = await _db.Users.FindAsync(userId);
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         ViewData["DisplayName"] = user.DisplayName;
@@ -73,7 +73,7 @@ public class UnsubscribeController : Controller
         }
 
         var user = await _db.Users.FindAsync(userId);
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         if (!user.UnsubscribedFromCampaigns)

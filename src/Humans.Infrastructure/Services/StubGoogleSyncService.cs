@@ -106,16 +106,34 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.CompletedTask;
     }
 
-    public Task EnsureTeamGroupAsync(Guid teamId, CancellationToken cancellationToken = default)
+    public Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would ensure Google Group exists for team {TeamId}", teamId);
-        return Task.CompletedTask;
+        return Task.FromResult(GroupLinkResult.Ok());
     }
 
     public Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("[STUB] Would check Google Group settings for drift");
         return Task.FromResult(new GroupSettingsDriftResult());
+    }
+
+    public Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would check email mismatches against Admin SDK");
+        return Task.FromResult(new EmailBackfillResult());
+    }
+
+    public Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would remediate settings for Google Group {GroupEmail}", groupEmail);
+        return Task.FromResult(true);
+    }
+
+    public Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would enumerate all domain groups");
+        return Task.FromResult(new AllGroupsResult());
     }
 
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(

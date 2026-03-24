@@ -84,7 +84,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Index()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var (profile, latestApplication, pendingConsentCount) =
@@ -104,7 +104,7 @@ public class ProfileController : HumansControllerBase
         };
 
         // Show tier application status (skip Withdrawn — not interesting)
-        if (latestApplication != null && latestApplication.Status != ApplicationStatus.Withdrawn)
+        if (latestApplication is not null && latestApplication.Status != ApplicationStatus.Withdrawn)
         {
             viewModel.TierApplicationStatus = latestApplication.Status;
             viewModel.TierApplicationTier = latestApplication.MembershipTier;
@@ -118,19 +118,19 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Edit([FromQuery] bool preview = false)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var (profile, isTierLocked, pendingApplication) =
             await _profileService.GetProfileEditDataAsync(user.Id);
 
         // Get all contact fields for editing
-        var contactFields = profile != null
+        var contactFields = profile is not null
             ? await _contactFieldService.GetAllContactFieldsAsync(profile.Id)
             : [];
 
         // Get all volunteer history entries for editing
-        var volunteerHistory = profile != null
+        var volunteerHistory = profile is not null
             ? await _volunteerHistoryService.GetAllAsync(profile.Id)
             : [];
 
@@ -138,7 +138,7 @@ public class ProfileController : HumansControllerBase
 
         // Initial setup = no profile or not yet approved (onboarding)
         // ?preview=true forces initial-setup mode for testing
-        var isInitialSetup = profile == null || !profile.IsApproved || preview;
+        var isInitialSetup = profile is null || !profile.IsApproved || preview;
 
         var viewModel = new ProfileViewModel
         {
@@ -212,7 +212,7 @@ public class ProfileController : HumansControllerBase
         }
 
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         // Validate phone numbers start with + (E.164 format)
@@ -248,7 +248,7 @@ public class ProfileController : HumansControllerBase
                 _localizer["Profile_BurnerCVRequired"].Value);
             // Need to check if initial setup for the view
             var existingProfile = await _profileService.GetProfileAsync(user.Id);
-            model.IsInitialSetup = existingProfile == null || !existingProfile.IsApproved;
+            model.IsInitialSetup = existingProfile is null || !existingProfile.IsApproved;
             model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                 && string.IsNullOrEmpty(model.LastName)
                 && string.IsNullOrEmpty(model.EmergencyContactName);
@@ -258,7 +258,7 @@ public class ProfileController : HumansControllerBase
 
         // Validate tier-specific fields during initial setup
         var profileForSetupCheck = await _profileService.GetProfileAsync(user.Id);
-        var isInitialSetup = profileForSetupCheck == null || !profileForSetupCheck.IsApproved;
+        var isInitialSetup = profileForSetupCheck is null || !profileForSetupCheck.IsApproved;
         if (isInitialSetup)
         {
             if (model.SelectedTier != MembershipTier.Volunteer &&
@@ -332,7 +332,7 @@ public class ProfileController : HumansControllerBase
             using var uploadStream = new MemoryStream();
             await model.ProfilePictureUpload.CopyToAsync(uploadStream);
             var result = ResizeProfilePicture(uploadStream.ToArray(), uploadContentType);
-            if (result == null)
+            if (result is null)
             {
                 ModelState.AddModelError(nameof(model.ProfilePictureUpload),
                     _localizer["Profile_PictureInvalidFormat"].Value);
@@ -424,7 +424,7 @@ public class ProfileController : HumansControllerBase
     {
         var (data, contentType) = await _profileService.GetProfilePictureAsync(id);
 
-        if (data == null || string.IsNullOrEmpty(contentType))
+        if (data is null || string.IsNullOrEmpty(contentType))
             return NotFound();
 
         return File(data, contentType);
@@ -437,7 +437,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Emails()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var viewModel = await BuildEmailsViewModelAsync(user);
@@ -449,7 +449,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> AddEmail(EmailsViewModel model)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         if (string.IsNullOrWhiteSpace(model.NewEmail))
@@ -557,7 +557,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> SetNotificationTarget(Guid emailId)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         try
@@ -579,7 +579,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> SetEmailVisibility(Guid emailId, string? visibility)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         ContactFieldVisibility? parsedVisibility = null;
@@ -607,7 +607,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> DeleteEmail(Guid emailId)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         try
@@ -632,7 +632,7 @@ public class ProfileController : HumansControllerBase
         var minutesUntilResend = 0;
 
         var pendingEmail = emails.FirstOrDefault(e => e.IsPendingVerification);
-        if (pendingEmail != null)
+        if (pendingEmail is not null)
         {
             var (cooldownCanAdd, cooldownMinutes, _) =
                 await _profileService.GetEmailCooldownInfoAsync(pendingEmail.Id);
@@ -662,7 +662,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Outbox()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var messages = await _dbContext.EmailOutboxMessages
@@ -677,7 +677,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Privacy()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var viewModel = new PrivacyViewModel
@@ -696,7 +696,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> RequestDeletion()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var result = await _profileService.RequestDeletionAsync(user.Id);
@@ -721,7 +721,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> CancelDeletion()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var result = await _profileService.CancelDeletionAsync(user.Id);
@@ -742,7 +742,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             var user = await GetCurrentUserAsync();
-            if (user == null)
+            if (user is null)
                 return NotFound();
 
             var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: true);
@@ -755,7 +755,9 @@ public class ProfileController : HumansControllerBase
                 SelectedIntolerances = profile?.Intolerances ?? [],
                 SelectedLanguages = profile?.Languages ?? [],
                 DietaryPreference = profile?.DietaryPreference,
-                MedicalConditions = profile?.MedicalConditions
+                MedicalConditions = profile?.MedicalConditions,
+                AllergyOtherText = profile?.AllergyOtherText,
+                IntoleranceOtherText = profile?.IntoleranceOtherText
             };
 
             return View(viewModel);
@@ -775,7 +777,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             var user = await GetCurrentUserAsync();
-            if (user == null)
+            if (user is null)
                 return NotFound();
 
             var shiftProfile = await _profileService.GetOrCreateShiftProfileAsync(user.Id);
@@ -784,6 +786,8 @@ public class ProfileController : HumansControllerBase
             shiftProfile.Quirks = model.SelectedQuirks ?? [];
             shiftProfile.Allergies = model.SelectedAllergies ?? [];
             shiftProfile.Intolerances = model.SelectedIntolerances ?? [];
+            shiftProfile.AllergyOtherText = model.SelectedAllergies?.Contains("Other", StringComparer.Ordinal) == true ? model.AllergyOtherText : null;
+            shiftProfile.IntoleranceOtherText = model.SelectedIntolerances?.Contains("Other", StringComparer.Ordinal) == true ? model.IntoleranceOtherText : null;
             shiftProfile.Languages = model.SelectedLanguages ?? [];
             shiftProfile.DietaryPreference = model.DietaryPreference;
             shiftProfile.MedicalConditions = model.MedicalConditions;
@@ -807,7 +811,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             var user = await GetCurrentUserAsync();
-            if (user == null)
+            if (user is null)
                 return NotFound();
 
             var viewModel = new NotificationSettingsViewModel
@@ -833,7 +837,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             var user = await GetCurrentUserAsync();
-            if (user == null)
+            if (user is null)
                 return NotFound();
 
             user.SuppressScheduleChangeEmails = model.SuppressScheduleChangeEmails;
@@ -857,7 +861,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> DownloadData()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var exportData = await _profileService.ExportDataAsync(user.Id);

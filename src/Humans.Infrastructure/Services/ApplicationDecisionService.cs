@@ -58,7 +58,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.StateHistory)
             .FirstOrDefaultAsync(a => a.Id == applicationId, cancellationToken);
 
-        if (application == null)
+        if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
@@ -75,7 +75,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         // Update profile membership tier
         var profile = application.User.Profile;
-        if (profile != null)
+        if (profile is not null)
         {
             profile.MembershipTier = application.MembershipTier;
             profile.UpdatedAt = _clock.GetCurrentInstant();
@@ -158,7 +158,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.StateHistory)
             .FirstOrDefaultAsync(a => a.Id == applicationId, cancellationToken);
 
-        if (application == null)
+        if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
@@ -287,7 +287,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.StateHistory)
             .FirstOrDefaultAsync(a => a.Id == applicationId && a.UserId == userId, ct);
 
-        if (application == null)
+        if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)

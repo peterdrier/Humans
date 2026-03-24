@@ -80,7 +80,7 @@ public class DevLoginController : Controller
 
         var info = AllPersonas.FirstOrDefault(p =>
             string.Equals(p.Slug, persona, StringComparison.OrdinalIgnoreCase));
-        if (info == null)
+        if (info is null)
             return NotFound();
 
         var id = PersonaGuid(info.Slug);
@@ -98,7 +98,7 @@ public class DevLoginController : Controller
         var email = $"dev-{info.Slug}@localhost";
         var user = await _userManager.FindByIdAsync(id.ToString())
                    ?? await _userManager.FindByEmailAsync(email);
-        if (user == null)
+        if (user is null)
         {
             _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, id);
             return StatusCode(500, "Dev persona seeding failed");
@@ -139,7 +139,7 @@ public class DevLoginController : Controller
             return NotFound();
 
         var user = await _userManager.FindByIdAsync(id.ToString());
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         await _signInManager.SignInAsync(user, isPersistent: false);
@@ -159,14 +159,14 @@ public class DevLoginController : Controller
     private async Task EnsurePersonaAsync(DevPersonaInfo info, Guid id)
     {
         var existing = await _userManager.FindByIdAsync(id.ToString());
-        if (existing != null)
+        if (existing is not null)
             return;
 
         var email = $"dev-{info.Slug}@localhost";
 
         // Legacy personas may exist with old hardcoded GUIDs — reuse them
         var byEmail = await _userManager.FindByEmailAsync(email);
-        if (byEmail != null)
+        if (byEmail is not null)
         {
             _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmail.Id);
             return;
@@ -180,8 +180,8 @@ public class DevLoginController : Controller
 
         // Determine role and team assignments
         var roleName = RoleNameFromSlug(info.Slug);
-        var roles = roleName != null ? new[] { roleName } : Array.Empty<string>();
-        var teams = roleName != null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal)
+        var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
+        var teams = roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal)
             ? new[] { SystemTeamIds.Volunteers, SystemTeamIds.Board }
             : new[] { SystemTeamIds.Volunteers };
 

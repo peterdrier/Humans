@@ -14,21 +14,24 @@ public class ConsentController : HumansControllerBase
 {
     private readonly IConsentService _consentService;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly ILogger<ConsentController> _logger;
 
     public ConsentController(
         UserManager<User> userManager,
         IConsentService consentService,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        ILogger<ConsentController> logger)
         : base(userManager)
     {
         _consentService = consentService;
         _localizer = localizer;
+        _logger = logger;
     }
 
     public async Task<IActionResult> Index()
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var (groups, history) = await _consentService.GetConsentDashboardAsync(user.Id);
@@ -42,7 +45,7 @@ public class ConsentController : HumansControllerBase
                     DocumentName = d.Version.LegalDocument.Name,
                     VersionNumber = d.Version.VersionNumber,
                     EffectiveFrom = d.Version.EffectiveFrom.ToDateTimeUtc(),
-                    HasConsented = d.Consent != null,
+                    HasConsented = d.Consent is not null,
                     ConsentedAt = d.Consent?.ConsentedAt.ToDateTimeUtc(),
                     ChangesSummary = d.Version.ChangesSummary,
                     LastUpdated = d.Version.LegalDocument.LastSyncedAt != default
@@ -82,13 +85,13 @@ public class ConsentController : HumansControllerBase
     public async Task<IActionResult> Review(Guid id)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         var (version, consentRecord, fullName) =
             await _consentService.GetConsentReviewDetailAsync(id, user.Id);
 
-        if (version == null)
+        if (version is null)
             return NotFound();
 
         var viewModel = new ConsentDetailViewModel
@@ -99,7 +102,7 @@ public class ConsentController : HumansControllerBase
             Content = new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
             EffectiveFrom = version.EffectiveFrom.ToDateTimeUtc(),
             ChangesSummary = version.ChangesSummary,
-            HasAlreadyConsented = consentRecord != null,
+            HasAlreadyConsented = consentRecord is not null,
             ConsentedByFullName = fullName,
             ConsentedAt = consentRecord?.ConsentedAt.ToDateTimeUtc()
         };
@@ -112,7 +115,7 @@ public class ConsentController : HumansControllerBase
     public async Task<IActionResult> Submit(ConsentSubmitModel model)
     {
         var user = await GetCurrentUserAsync();
-        if (user == null)
+        if (user is null)
             return NotFound();
 
         if (!model.ExplicitConsent)
@@ -124,18 +127,27 @@ public class ConsentController : HumansControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         var userAgent = Request.Headers.UserAgent.ToString();
 
-        var result = await _consentService.SubmitConsentAsync(
-            user.Id, model.DocumentVersionId, model.ExplicitConsent,
-            ipAddress, userAgent);
-
-        if (!result.Success)
+        try
         {
-            if (string.Equals(result.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
-                SetInfo(_localizer["Consent_AlreadyConsented"].Value);
-            return RedirectToAction(nameof(Index));
-        }
+            var result = await _consentService.SubmitConsentAsync(
+                user.Id, model.DocumentVersionId, model.ExplicitConsent,
+                ipAddress, userAgent);
 
-        SetSuccess(string.Format(_localizer["Consent_ThankYou"].Value, result.DocumentName));
+            if (!result.Success)
+            {
+                if (string.Equals(result.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
+                    SetInfo(_localizer["Consent_AlreadyConsented"].Value);
+                return RedirectToAction(nameof(Index));
+            }
+
+            SetSuccess(string.Format(_localizer["Consent_ThankYou"].Value, result.DocumentName));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to submit consent for user {UserId}, document version {DocumentVersionId}",
+                user.Id, model.DocumentVersionId);
+            SetError(_localizer["Consent_SubmitError"].Value);
+        }
         return RedirectToAction(nameof(Index));
     }
 }

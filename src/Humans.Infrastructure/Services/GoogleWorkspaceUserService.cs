@@ -30,7 +30,7 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
 
     private async Task<DirectoryService> GetDirectoryServiceAsync()
     {
-        if (_directoryService != null)
+        if (_directoryService is not null)
             return _directoryService;
 
         var credential = await GetCredentialAsync();
@@ -83,12 +83,12 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
             request.Domain = _settings.Domain;
             request.MaxResults = 500;
             request.OrderBy = UsersResource.ListRequest.OrderByEnum.Email;
-            if (pageToken != null)
+            if (pageToken is not null)
                 request.PageToken = pageToken;
 
             var response = await request.ExecuteAsync(ct);
 
-            if (response.UsersValue != null)
+            if (response.UsersValue is not null)
             {
                 foreach (var user in response.UsersValue)
                 {
@@ -191,10 +191,10 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
             FirstName: user.Name?.GivenName ?? string.Empty,
             LastName: user.Name?.FamilyName ?? string.Empty,
             IsSuspended: user.Suspended ?? false,
-            CreationTime: user.CreationTimeRaw != null
+            CreationTime: user.CreationTimeRaw is not null
                 ? DateTime.Parse(user.CreationTimeRaw, System.Globalization.CultureInfo.InvariantCulture)
                 : DateTime.MinValue,
-            LastLoginTime: user.LastLoginTimeRaw != null
+            LastLoginTime: user.LastLoginTimeRaw is not null
                 ? DateTime.Parse(user.LastLoginTimeRaw, System.Globalization.CultureInfo.InvariantCulture)
                 : null);
     }

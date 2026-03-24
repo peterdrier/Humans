@@ -60,7 +60,7 @@ public class CampController : HumansCampControllerBase
         var user = await GetCurrentUserAsync();
         var directory = await _campService.GetCampDirectoryAsync(
             user?.Id,
-            filters == null
+            filters is null
                 ? null
                 : new CampDirectoryFilter(
                     filters.Vibe,
@@ -148,7 +148,7 @@ public class CampController : HumansCampControllerBase
     public async Task<IActionResult> Contact(string slug)
     {
         var camp = await GetCampBySlugAsync(slug);
-        if (camp == null) return NotFound();
+        if (camp is null) return NotFound();
 
         var season = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
         var model = new CampContactViewModel
@@ -165,10 +165,10 @@ public class CampController : HumansCampControllerBase
     public async Task<IActionResult> Contact(string slug, CampContactViewModel model)
     {
         var camp = await GetCampBySlugAsync(slug);
-        if (camp == null) return NotFound();
+        if (camp is null) return NotFound();
 
         var currentUser = await GetCurrentUserAsync();
-        if (currentUser == null) return Unauthorized();
+        if (currentUser is null) return Unauthorized();
 
         if (!ModelState.IsValid)
         {

@@ -59,7 +59,7 @@ public class AdminMergeController : HumansControllerBase
     public async Task<IActionResult> Detail(Guid id)
     {
         var request = await _mergeService.GetByIdAsync(id);
-        if (request == null)
+        if (request is null)
             return NotFound();
 
         var primaryCard = await BuildProfileCardAsync(request.TargetUser);
@@ -86,7 +86,7 @@ public class AdminMergeController : HumansControllerBase
         var profile = await _profileService.GetProfileAsync(user.Id);
         var teams = await _teamService.GetUserTeamsAsync(user.Id);
         var activeTeamNames = teams
-            .Where(m => m.LeftAt == null)
+            .Where(m => m.LeftAt is null)
             .Select(m => m.Team?.Name ?? "Unknown")
             .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -112,7 +112,7 @@ public class AdminMergeController : HumansControllerBase
     public async Task<IActionResult> Accept(Guid id, string? notes)
     {
         var (error, user) = await ResolveCurrentUserAsync();
-        if (error != null) return error;
+        if (error is not null) return error;
 
         try
         {
@@ -133,7 +133,7 @@ public class AdminMergeController : HumansControllerBase
     public async Task<IActionResult> Reject(Guid id, string? notes)
     {
         var (error, user) = await ResolveCurrentUserAsync();
-        if (error != null) return error;
+        if (error is not null) return error;
 
         try
         {

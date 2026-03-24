@@ -90,13 +90,13 @@ public class ProfileService : IProfileService
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        var isTierLocked = profile != null && await _dbContext.Applications
+        var isTierLocked = profile is not null && await _dbContext.Applications
             .AnyAsync(a => a.UserId == userId &&
                 (a.Status == ApplicationStatus.Submitted ||
                  a.Status == ApplicationStatus.Approved), ct);
 
         MemberApplication? pendingApplication = null;
-        var isInitialSetup = profile == null || !profile.IsApproved;
+        var isInitialSetup = profile is null || !profile.IsApproved;
         if (isInitialSetup)
         {
             pendingApplication = await _dbContext.Applications
@@ -129,7 +129,7 @@ public class ProfileService : IProfileService
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
         {
             profile = new Profile
             {
@@ -184,7 +184,7 @@ public class ProfileService : IProfileService
             profile.ProfilePictureData = null;
             profile.ProfilePictureContentType = null;
         }
-        else if (request.ProfilePictureData != null && request.ProfilePictureContentType != null)
+        else if (request.ProfilePictureData is not null && request.ProfilePictureContentType is not null)
         {
             profile.ProfilePictureData = request.ProfilePictureData;
             profile.ProfilePictureContentType = request.ProfilePictureContentType;
@@ -212,7 +212,7 @@ public class ProfileService : IProfileService
                     .FirstOrDefaultAsync(a => a.UserId == userId &&
                         a.Status == ApplicationStatus.Submitted, ct);
 
-                if (existingApp != null)
+                if (existingApp is not null)
                 {
                     existingApp.Motivation = request.ApplicationMotivation!;
                     existingApp.AdditionalInfo = request.ApplicationAdditionalInfo;
@@ -247,7 +247,7 @@ public class ProfileService : IProfileService
 
         // Update display name on user
         var user = await _dbContext.Users.FindAsync([userId], ct);
-        if (user != null)
+        if (user is not null)
         {
             user.DisplayName = displayName;
         }
@@ -257,7 +257,7 @@ public class ProfileService : IProfileService
         _cache.InvalidateActiveTeams();
 
         // Update profile cache if profile is approved
-        if (profile.IsApproved && !profile.IsSuspended && user != null)
+        if (profile.IsApproved && !profile.IsSuspended && user is not null)
         {
             await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
             UpdateProfileCache(userId, CachedProfile.Create(profile, user));
@@ -274,7 +274,7 @@ public class ProfileService : IProfileService
     public async Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], ct);
-        if (user == null)
+        if (user is null)
             return new OnboardingResult(false, "NotFound");
 
         if (user.IsDeletionPending)
@@ -291,7 +291,7 @@ public class ProfileService : IProfileService
         await _dbContext.Entry(user).Collection(u => u.RoleAssignments).LoadAsync(ct);
 
         var endedMemberships = 0;
-        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt == null).Select(m => m.Id).ToList();
+        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt is null).Select(m => m.Id).ToList();
 
         // Remove role assignments for departing memberships
         if (activeMemberIds.Count > 0)
@@ -302,14 +302,14 @@ public class ProfileService : IProfileService
             _dbContext.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
         }
 
-        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt == null))
+        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt is null))
         {
             membership.LeftAt = now;
             endedMemberships++;
         }
 
         var endedRoles = 0;
-        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo == null))
+        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo is null))
         {
             role.ValidTo = now;
             endedRoles++;
@@ -332,7 +332,7 @@ public class ProfileService : IProfileService
         // Send confirmation email
         await _dbContext.Entry(user).Collection(u => u.UserEmails).LoadAsync(ct);
         var effectiveEmail = user.GetEffectiveEmail();
-        if (effectiveEmail != null)
+        if (effectiveEmail is not null)
         {
             await _emailService.SendAccountDeletionRequestedAsync(
                 effectiveEmail,
@@ -348,7 +348,7 @@ public class ProfileService : IProfileService
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], ct);
-        if (user == null)
+        if (user is null)
             return new OnboardingResult(false, "NotFound");
 
         if (!user.IsDeletionPending)
@@ -401,7 +401,7 @@ public class ProfileService : IProfileService
             .OrderByDescending(tm => tm.JoinedAt)
             .ToListAsync(ct);
 
-        var contactFields = profile != null
+        var contactFields = profile is not null
             ? await _dbContext.ContactFields
                 .AsNoTracking()
                 .Where(cf => cf.ProfileId == profile.Id)
@@ -425,7 +425,7 @@ public class ProfileService : IProfileService
         return new
         {
             ExportedAt = _clock.GetCurrentInstant().ToInvariantInstantString(),
-            Account = user != null ? new
+            Account = user is not null ? new
             {
                 user.Id,
                 user.Email,
@@ -441,12 +441,12 @@ public class ProfileService : IProfileService
                 e.IsNotificationTarget,
                 e.Visibility
             }),
-            Profile = profile != null ? new
+            Profile = profile is not null ? new
             {
                 profile.BurnerName,
                 profile.FirstName,
                 profile.LastName,
-                Birthday = profile.DateOfBirth != null ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}" : null,
+                Birthday = profile.DateOfBirth is not null ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}" : null,
                 profile.City,
                 profile.CountryCode,
                 profile.Bio,
@@ -595,7 +595,7 @@ public class ProfileService : IProfileService
             _ => null
         };
 
-        var rows = filteredIds != null
+        var rows = filteredIds is not null
             ? users.Where(u => filteredIds.Contains(u.Id)).ToList()
             : users;
 
@@ -626,7 +626,7 @@ public class ProfileService : IProfileService
             .Include(u => u.ConsentRecords)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        if (user == null)
+        if (user is null)
             return null;
 
         var roleAssignments = await _dbContext.RoleAssignments
@@ -652,7 +652,7 @@ public class ProfileService : IProfileService
             .ToListAsync(ct);
 
         string? rejectedByName = null;
-        if (user.Profile?.RejectedByUserId != null)
+        if (user.Profile?.RejectedByUserId is not null)
         {
             var rejectedByUser = await _dbContext.Users
                 .AsNoTracking()
@@ -713,7 +713,7 @@ public class ProfileService : IProfileService
         foreach (var p in cached.Values)
         {
             var (matchField, matchSnippet) = DetermineMatchFromCache(p, query);
-            if (matchField == null) continue;
+            if (matchField is null) continue;
 
             results.Add(new HumanSearchResult(
                 p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
@@ -788,7 +788,7 @@ public class ProfileService : IProfileService
         var existing = await _dbContext.VolunteerEventProfiles
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
-        if (existing != null)
+        if (existing is not null)
             return existing;
 
         var now = _clock.GetCurrentInstant();
@@ -818,7 +818,7 @@ public class ProfileService : IProfileService
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
-        if (profile != null && !includeMedical)
+        if (profile is not null && !includeMedical)
         {
             profile.MedicalConditions = null;
         }

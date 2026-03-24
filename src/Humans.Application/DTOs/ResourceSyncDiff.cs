@@ -51,7 +51,7 @@ public class ResourceSyncDiff
     public List<string> MembersToRemove => Members
         .Where(m => m.State == MemberSyncState.Extra)
         .Select(m => m.Email).ToList();
-    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra) && ErrorMessage == null;
+    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra) && ErrorMessage is null;
 }
 
 /// <summary>
@@ -62,6 +62,6 @@ public class SyncPreviewResult
     public List<ResourceSyncDiff> Diffs { get; init; } = [];
     public int TotalResources => Diffs.Count;
     public int InSyncCount => Diffs.Count(d => d.IsInSync);
-    public int DriftCount => Diffs.Count(d => !d.IsInSync && d.ErrorMessage == null);
-    public int ErrorCount => Diffs.Count(d => d.ErrorMessage != null);
+    public int DriftCount => Diffs.Count(d => !d.IsInSync && d.ErrorMessage is null);
+    public int ErrorCount => Diffs.Count(d => d.ErrorMessage is not null);
 }

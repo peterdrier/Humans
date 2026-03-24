@@ -1034,18 +1034,46 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("event_settings", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.FeedbackMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FeedbackReportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SenderUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("FeedbackReportId");
+
+                    b.HasIndex("SenderUserId");
+
+                    b.ToTable("feedback_messages", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("AdminNotes")
-                        .HasMaxLength(5000)
-                        .HasColumnType("character varying(5000)");
-
-                    b.Property<Instant?>("AdminResponseSentAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<string>("AdditionalContext")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<string>("Category")
                         .IsRequired()
@@ -1062,6 +1090,12 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<int?>("GitHubIssueNumber")
                         .HasColumnType("integer");
+
+                    b.Property<Instant?>("LastAdminMessageAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Instant?>("LastReporterMessageAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("PageUrl")
                         .IsRequired()
@@ -2473,12 +2507,20 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("AllergyOtherText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DietaryPreference")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("IntoleranceOtherText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Intolerances")
                         .IsRequired()
@@ -2980,6 +3022,24 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.FeedbackMessage", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.FeedbackReport", "FeedbackReport")
+                        .WithMany("Messages")
+                        .HasForeignKey("FeedbackReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Humans.Domain.Entities.User", "SenderUser")
+                        .WithMany()
+                        .HasForeignKey("SenderUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("FeedbackReport");
+
+                    b.Navigation("SenderUser");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
@@ -3424,6 +3484,11 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.EventSettings", b =>
                 {
                     b.Navigation("Rotas");
+                });
+
+            modelBuilder.Entity("Humans.Domain.Entities.FeedbackReport", b =>
+                {
+                    b.Navigation("Messages");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>

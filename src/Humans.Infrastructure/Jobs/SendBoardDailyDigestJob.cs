@@ -168,7 +168,7 @@ public class SendBoardDailyDigestJob
             foreach (var member in boardMembers)
             {
                 var email = member.GetEffectiveEmail();
-                if (email == null)
+                if (email is null)
                 {
                     _logger.LogWarning("Board member {UserId} ({Name}) has no effective email, skipping digest",
                         member.Id, member.DisplayName);

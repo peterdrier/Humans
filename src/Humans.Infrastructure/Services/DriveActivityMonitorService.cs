@@ -130,7 +130,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             var queryRequest = activityService.Activity.Query(request);
             var response = await queryRequest.ExecuteAsync(cancellationToken);
 
-            if (response.Activities != null)
+            if (response.Activities is not null)
             {
                 foreach (var activity in response.Activities)
                 {
@@ -178,24 +178,24 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
     private static bool IsPermissionChangeActivity(DriveActivity activity)
     {
-        if (activity.PrimaryActionDetail == null)
+        if (activity.PrimaryActionDetail is null)
         {
             return false;
         }
 
-        return activity.PrimaryActionDetail.PermissionChange != null;
+        return activity.PrimaryActionDetail.PermissionChange is not null;
     }
 
     private static bool IsInitiatedByServiceAccount(DriveActivity activity, string serviceAccountEmail)
     {
-        if (activity.Actors == null || activity.Actors.Count == 0)
+        if (activity.Actors is null || activity.Actors.Count == 0)
         {
             return false;
         }
 
         foreach (var actor in activity.Actors)
         {
-            if (actor.User?.KnownUser?.PersonName != null)
+            if (actor.User?.KnownUser?.PersonName is not null)
             {
                 // The personName field contains the user's email in Drive Activity API
                 if (string.Equals(actor.User.KnownUser.PersonName, serviceAccountEmail, StringComparison.OrdinalIgnoreCase))
@@ -210,24 +210,24 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
     private static string? GetActorEmail(DriveActivity activity)
     {
-        if (activity.Actors == null || activity.Actors.Count == 0)
+        if (activity.Actors is null || activity.Actors.Count == 0)
         {
             return null;
         }
 
         foreach (var actor in activity.Actors)
         {
-            if (actor.User?.KnownUser?.PersonName != null)
+            if (actor.User?.KnownUser?.PersonName is not null)
             {
                 return actor.User.KnownUser.PersonName;
             }
 
-            if (actor.Administrator != null)
+            if (actor.Administrator is not null)
             {
                 return "Google Workspace Admin";
             }
 
-            if (actor.System != null)
+            if (actor.System is not null)
             {
                 return "Google System";
             }
@@ -242,7 +242,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         var permChange = activity.PrimaryActionDetail?.PermissionChange;
         var parts = new List<string>();
 
-        if (permChange?.AddedPermissions != null)
+        if (permChange?.AddedPermissions is not null)
         {
             foreach (var perm in permChange.AddedPermissions)
             {
@@ -252,7 +252,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             }
         }
 
-        if (permChange?.RemovedPermissions != null)
+        if (permChange?.RemovedPermissions is not null)
         {
             foreach (var perm in permChange.RemovedPermissions)
             {
@@ -271,22 +271,22 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
     private static string GetPermissionTarget(Permission permission)
     {
-        if (permission.User?.KnownUser?.PersonName != null)
+        if (permission.User?.KnownUser?.PersonName is not null)
         {
             return permission.User.KnownUser.PersonName;
         }
 
-        if (permission.Group?.Email != null)
+        if (permission.Group?.Email is not null)
         {
             return $"group:{permission.Group.Email}";
         }
 
-        if (permission.Domain?.Name != null)
+        if (permission.Domain?.Name is not null)
         {
             return $"domain:{permission.Domain.Name}";
         }
 
-        if (permission.Anyone != null)
+        if (permission.Anyone is not null)
         {
             return "anyone";
         }
@@ -296,7 +296,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
     private async Task<DriveActivityService> GetActivityServiceAsync()
     {
-        if (_activityService != null)
+        if (_activityService is not null)
         {
             return _activityService;
         }
@@ -339,7 +339,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
     private async Task<string> GetServiceAccountEmailAsync(CancellationToken ct)
     {
-        if (_serviceAccountEmail != null)
+        if (_serviceAccountEmail is not null)
         {
             return _serviceAccountEmail;
         }
@@ -361,7 +361,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             json = await System.IO.File.ReadAllTextAsync(_settings.ServiceAccountKeyPath, ct);
         }
 
-        if (json != null)
+        if (json is not null)
         {
             using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("client_email", out var emailElement))
