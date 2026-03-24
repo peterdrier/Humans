@@ -1,5 +1,5 @@
+using System.Net;
 using System.Security.Cryptography;
-using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -192,11 +192,12 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
     public Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category)
     {
         var token = GenerateUnsubscribeToken(userId, category);
-        var url = $"{_baseUrl}/Unsubscribe/{token}";
+        var oneClickUrl = $"{_baseUrl}/Unsubscribe/OneClick?token={WebUtility.UrlEncode(token)}";
+        var browserUrl = $"{_baseUrl}/Unsubscribe/{token}";
 
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["List-Unsubscribe"] = $"<{url}>",
+            ["List-Unsubscribe"] = $"<{oneClickUrl}>, <{browserUrl}>",
             ["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click",
         };
     }

@@ -39,8 +39,7 @@ public class UnsubscribeController : Controller
                 return NotFound();
 
             ViewData["DisplayName"] = user.DisplayName;
-            ViewData["CategoryName"] = GetCategoryDisplayName(category);
-            ViewData["Token"] = token;
+            ViewData["CategoryName"] = category.ToDisplayName();
             return View();
         }
 
@@ -63,7 +62,7 @@ public class UnsubscribeController : Controller
 
             await _preferenceService.UpdatePreferenceAsync(userId, category, optedOut: true, source: "MagicLink");
 
-            ViewData["CategoryName"] = GetCategoryDisplayName(category);
+            ViewData["CategoryName"] = category.ToDisplayName();
             return View("Done");
         }
 
@@ -73,25 +72,34 @@ public class UnsubscribeController : Controller
 
     /// <summary>
     /// RFC 8058 one-click unsubscribe endpoint.
-    /// Email clients POST List-Unsubscribe=One-Click — no anti-forgery token.
+    /// Email clients POST List-Unsubscribe=One-Click to the URL in the List-Unsubscribe header,
+    /// which includes the token as a query parameter. No anti-forgery token required.
     /// </summary>
     [HttpPost("/Unsubscribe/OneClick")]
     [IgnoreAntiforgeryToken]
-    public async Task<IActionResult> OneClick([FromForm(Name = "token")] string token)
+    public async Task<IActionResult> OneClick([FromQuery] string token)
     {
-        var result = _preferenceService.ValidateUnsubscribeToken(token);
-        if (result is null)
-            return BadRequest();
+        try
+        {
+            var result = _preferenceService.ValidateUnsubscribeToken(token);
+            if (result is null)
+                return BadRequest();
 
-        var (userId, category) = result.Value;
-        var user = await _db.Users.FindAsync(userId);
-        if (user is null)
-            return NotFound();
+            var (userId, category) = result.Value;
+            var user = await _db.Users.FindAsync(userId);
+            if (user is null)
+                return NotFound();
 
-        await _preferenceService.UpdatePreferenceAsync(userId, category, optedOut: true, source: "OneClick");
+            await _preferenceService.UpdatePreferenceAsync(userId, category, optedOut: true, source: "OneClick");
 
-        _logger.LogInformation("RFC 8058 one-click unsubscribe: user {UserId} from {Category}", userId, category);
-        return Ok();
+            _logger.LogInformation("RFC 8058 one-click unsubscribe: user {UserId} from {Category}", userId, category);
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process RFC 8058 one-click unsubscribe");
+            return StatusCode(500);
+        }
     }
 
     private async Task<IActionResult> TryLegacyToken(string token)
@@ -119,8 +127,7 @@ public class UnsubscribeController : Controller
             return NotFound();
 
         ViewData["DisplayName"] = user.DisplayName;
-        ViewData["CategoryName"] = GetCategoryDisplayName(MessageCategory.Marketing);
-        ViewData["Token"] = token;
+        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View();
     }
 
@@ -151,16 +158,7 @@ public class UnsubscribeController : Controller
         // Use the new preference service for legacy tokens too
         await _preferenceService.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true, source: "MagicLink");
 
-        ViewData["CategoryName"] = GetCategoryDisplayName(MessageCategory.Marketing);
+        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
         return View("Done");
     }
-
-    private static string GetCategoryDisplayName(MessageCategory category) => category switch
-    {
-        MessageCategory.System => "System",
-        MessageCategory.EventOperations => "Event Operations",
-        MessageCategory.CommunityUpdates => "Community Updates",
-        MessageCategory.Marketing => "Marketing",
-        _ => category.ToString(),
-    };
 }

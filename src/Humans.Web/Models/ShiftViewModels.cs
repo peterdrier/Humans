@@ -248,17 +248,6 @@ public class ShiftInfoViewModel
     public static readonly string[] LanguageOptions = ["English", "Spanish", "German", "French", "Italian", "Portuguese", "Other"];
 }
 
-// === Notification Settings ===
-
-public class NotificationSettingsViewModel
-{
-    [Display(Name = "Suppress schedule change emails")]
-    public bool SuppressScheduleChangeEmails { get; set; }
-
-    [Display(Name = "Unsubscribe from campaign emails")]
-    public bool UnsubscribedFromCampaigns { get; set; }
-}
-
 // === Dashboard ===
 
 public class ShiftDashboardViewModel

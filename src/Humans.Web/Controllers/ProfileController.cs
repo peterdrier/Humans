@@ -823,8 +823,8 @@ public class ProfileController : HumansControllerBase
                 Categories = prefs.Select(p => new CategoryPreferenceItem
                 {
                     Category = p.Category,
-                    DisplayName = GetCategoryDisplayName(p.Category),
-                    Description = GetCategoryDescription(p.Category),
+                    DisplayName = p.Category.ToDisplayName(),
+                    Description = p.Category.ToDescription(),
                     OptedOut = p.OptedOut,
                     IsEditable = p.Category != MessageCategory.System,
                 }).ToList()
@@ -869,24 +869,6 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
     }
-
-    private static string GetCategoryDisplayName(MessageCategory category) => category switch
-    {
-        MessageCategory.System => "System",
-        MessageCategory.EventOperations => "Event Operations",
-        MessageCategory.CommunityUpdates => "Community Updates",
-        MessageCategory.Marketing => "Marketing",
-        _ => category.ToString(),
-    };
-
-    private static string GetCategoryDescription(MessageCategory category) => category switch
-    {
-        MessageCategory.System => "Critical account, consent, and security notifications. Always on.",
-        MessageCategory.EventOperations => "Shift changes, schedule updates, and team notifications.",
-        MessageCategory.CommunityUpdates => "General community news and facilitated messages.",
-        MessageCategory.Marketing => "Campaign emails and promotions.",
-        _ => string.Empty,
-    };
 
     [HttpGet]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
