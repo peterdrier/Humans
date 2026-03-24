@@ -22,11 +22,13 @@ public class SubmitFeedbackViewModel
     public IFormFile? Screenshot { get; set; }
 }
 
-public class FeedbackListViewModel
+public class FeedbackPageViewModel
 {
-    public List<FeedbackListItemViewModel> Reports { get; set; } = [];
+    public List<FeedbackListItemViewModel> Reports { get; set; } = new();
     public FeedbackStatus? StatusFilter { get; set; }
     public FeedbackCategory? CategoryFilter { get; set; }
+    public bool IsAdmin { get; set; }
+    public Guid? SelectedReportId { get; set; }
 }
 
 public class FeedbackListItemViewModel
@@ -40,6 +42,9 @@ public class FeedbackListItemViewModel
     public string PageUrl { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public bool HasScreenshot { get; set; }
+    public int MessageCount { get; set; }
+    public bool NeedsReply { get; set; }
+    public int? GitHubIssueNumber { get; set; }
 }
 
 public class FeedbackDetailViewModel
@@ -50,16 +55,27 @@ public class FeedbackDetailViewModel
     public string Description { get; set; } = string.Empty;
     public string PageUrl { get; set; } = string.Empty;
     public string? UserAgent { get; set; }
+    public string? AdditionalContext { get; set; }
     public string? ScreenshotUrl { get; set; }
     public string ReporterName { get; set; } = string.Empty;
     public Guid ReporterUserId { get; set; }
-    public string? AdminNotes { get; set; }
     public int? GitHubIssueNumber { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public DateTime? AdminResponseSentAt { get; set; }
     public DateTime? ResolvedAt { get; set; }
     public string? ResolvedByName { get; set; }
+    public bool IsAdmin { get; set; }
+    public List<FeedbackMessageViewModel> Messages { get; set; } = new();
+}
+
+public class FeedbackMessageViewModel
+{
+    public Guid Id { get; set; }
+    public string SenderName { get; set; } = string.Empty;
+    public Guid? SenderUserId { get; set; }
+    public string Content { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public bool IsReporter { get; set; }
 }
 
 public class UpdateFeedbackStatusModel
@@ -69,20 +85,14 @@ public class UpdateFeedbackStatusModel
     public FeedbackStatus Status { get; set; }
 }
 
-public class UpdateFeedbackNotesModel
-{
-    [StringLength(5000)]
-    public string? Notes { get; set; }
-}
-
 public class SetGitHubIssueModel
 {
     public int? IssueNumber { get; set; }
 }
 
-public class SendFeedbackResponseModel
+public class PostFeedbackMessageModel
 {
     [Required]
     [StringLength(5000)]
-    public string Message { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
 }
