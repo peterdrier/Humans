@@ -121,6 +121,10 @@
             .then(response => response.text())
             .then(html => {
                 document.getElementById('detail-panel').innerHTML = html;
+                // Bind auto-submit on detail panel elements (innerHTML doesn't execute scripts)
+                document.querySelectorAll('.detail-auto-submit').forEach(el => {
+                    el.addEventListener('change', () => el.form.submit());
+                });
             })
             .catch(err => console.error('Failed to load detail:', err));
 
