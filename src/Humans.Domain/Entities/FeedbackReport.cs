@@ -14,15 +14,16 @@ public class FeedbackReport
     public string Description { get; set; } = string.Empty;
     public string PageUrl { get; set; } = string.Empty;
     public string? UserAgent { get; set; }
+    public string? AdditionalContext { get; set; }
 
     public string? ScreenshotFileName { get; set; }
     public string? ScreenshotStoragePath { get; set; }
     public string? ScreenshotContentType { get; set; }
 
     public FeedbackStatus Status { get; set; } = FeedbackStatus.Open;
-    public string? AdminNotes { get; set; }
     public int? GitHubIssueNumber { get; set; }
-    public Instant? AdminResponseSentAt { get; set; }
+    public Instant? LastReporterMessageAt { get; set; }
+    public Instant? LastAdminMessageAt { get; set; }
 
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
