@@ -88,7 +88,7 @@ public interface IEmailRenderer
     /// <summary>
     /// Feedback response notification.
     /// </summary>
-    EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string? culture = null);
+    EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null);
 
     /// <summary>
     /// Facilitated message between volunteers.

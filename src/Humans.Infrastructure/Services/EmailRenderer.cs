@@ -329,7 +329,7 @@ public class EmailRenderer : IEmailRenderer
         return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
     }
 
-    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string? culture = null)
+    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
     {
         using (WithCulture(culture))
         {
@@ -340,7 +340,8 @@ public class EmailRenderer : IEmailRenderer
                 _localizer["Email_FeedbackResponse_Body"].Value,
                 HtmlEncode(userName),
                 HtmlEncode(originalDescription),
-                responseHtml);
+                responseHtml,
+                HtmlEncode(reportLink));
             return new EmailContent(subject, body);
         }
     }

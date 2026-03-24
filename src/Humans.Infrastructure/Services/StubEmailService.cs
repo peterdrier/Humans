@@ -208,12 +208,12 @@ public class StubEmailService : IEmailService
 
     public Task SendFeedbackResponseAsync(
         string userEmail, string userName, string originalDescription,
-        string responseMessage, string? culture = null,
+        string responseMessage, string reportLink, string? culture = null,
         CancellationToken cancellationToken = default)
     {
         _logger.LogInformation(
-            "[STUB] Would send feedback response to {Email} ({UserName}) [Culture: {Culture}]",
-            userEmail, userName, culture);
+            "[STUB] Would send feedback response to {Email} ({UserName}) [Culture: {Culture}] Link: {ReportLink}",
+            userEmail, userName, culture, reportLink);
         return Task.CompletedTask;
     }
 
