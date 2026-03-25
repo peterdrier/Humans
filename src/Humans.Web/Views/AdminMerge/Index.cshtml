@@ -37,14 +37,14 @@ else
                     <tr>
                         <td><code>@request.Email</code></td>
                         <td>
-                            <human-link user-id="@request.PrimaryUserId" display-name="@request.PrimaryUserDisplayName" admin="true" />
+                            <human-link user-id="@request.PrimaryUserId" display-name="@request.PrimaryUserDisplayName" admin="true" show-popover="true" />
                             @if (!string.IsNullOrEmpty(request.PrimaryUserEmail))
                             {
                                 <small class="text-muted">(@request.PrimaryUserEmail)</small>
                             }
                         </td>
                         <td>
-                            <human-link user-id="@request.DuplicateUserId" display-name="@request.DuplicateUserDisplayName" admin="true" />
+                            <human-link user-id="@request.DuplicateUserId" display-name="@request.DuplicateUserDisplayName" admin="true" show-popover="true" />
                             @if (!string.IsNullOrEmpty(request.DuplicateUserEmail))
                             {
                                 <small class="text-muted">(@request.DuplicateUserEmail)</small>

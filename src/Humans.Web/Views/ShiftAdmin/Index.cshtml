@@ -58,7 +58,7 @@
                                 var first = signups[0];
                                 var isRange = signups.Count > 1;
                                 <tr>
-                                    <td><human-link user-id="@first.UserId" display-name="@first.User?.DisplayName" /></td>
+                                    <td><human-link user-id="@first.UserId" display-name="@first.User?.DisplayName" show-popover="true" /></td>
                                     <td>
                                         @{
                                             var pendingProfile = Model.VolunteerProfiles.GetValueOrDefault(first.UserId);
@@ -287,7 +287,7 @@
                                                     {
                                                         var ss = activeSignups[i];
                                                         if (i > 0) { <text>, </text> }
-                                                        <human-link user-id="@ss.UserId" display-name="@ss.User?.DisplayName"
+                                                        <human-link user-id="@ss.UserId" display-name="@ss.User?.DisplayName" show-popover="true"
                                                                    class="@(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")" />@if (ss.Status == SignupStatus.Pending)
                                                         {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
                                                     }
@@ -298,7 +298,7 @@
                                                         @foreach (var ss in activeSignups)
                                                         {
                                                             <human-link user-id="@ss.UserId" display-name="@(ss.User?.DisplayName)" mode="Avatar" size="26"
-                                                                       profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)"
+                                                                       profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)" show-popover="true"
                                                                        title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
                                                                        class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
                                                                        style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
@@ -428,7 +428,7 @@
                                                         {
                                                             <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                                                 <div>
-                                                                    <human-link user-id="@signup.UserId" display-name="@signup.User?.DisplayName" />
+                                                                    <human-link user-id="@signup.UserId" display-name="@signup.User?.DisplayName" show-popover="true" />
                                                                     @{
                                                                         var manageProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                     }
@@ -464,7 +464,7 @@
                                                     {
                                                         <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                                             <div>
-                                                                <human-link user-id="@signup.UserId" display-name="@signup.User?.DisplayName" />
+                                                                <human-link user-id="@signup.UserId" display-name="@signup.User?.DisplayName" show-popover="true" />
                                                                 @{
                                                                     var signupProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                 }

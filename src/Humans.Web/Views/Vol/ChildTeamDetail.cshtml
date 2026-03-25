@@ -54,7 +54,7 @@
                         {
                             <tr>
                                 <td>
-                                    <human-link user-id="@member.UserId" display-name="@member.User.DisplayName" />
+                                    <human-link user-id="@member.UserId" display-name="@member.User.DisplayName" show-popover="true" />
                                 </td>
                                 <td>
                                     @if (member.Role == TeamMemberRole.Coordinator)
@@ -118,7 +118,7 @@
                         {
                             <tr>
                                 <td>
-                                    <human-link user-id="@request.UserId" display-name="@request.User.DisplayName" />
+                                    <human-link user-id="@request.UserId" display-name="@request.User.DisplayName" show-popover="true" />
                                 </td>
                                 <td class="text-muted small">
                                     @(string.IsNullOrWhiteSpace(request.Message) ? "—" : request.Message)

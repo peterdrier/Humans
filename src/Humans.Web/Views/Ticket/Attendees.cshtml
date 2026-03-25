@@ -83,7 +83,7 @@
                         <td>
                             @if (a.MatchedUserId.HasValue)
                             {
-                                <human-link user-id="@a.MatchedUserId.Value" display-name="@a.MatchedUserName" admin="true">
+                                <human-link user-id="@a.MatchedUserId.Value" display-name="@a.MatchedUserName" admin="true" show-popover="true">
                                     <i class="fa-solid fa-check text-success"></i> @a.MatchedUserName
                                 </human-link>
                             }

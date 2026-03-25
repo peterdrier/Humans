@@ -214,7 +214,7 @@
                                                             @foreach (var signup in item.Signups)
                                                             {
                                                                 <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
-                                                                           profile-picture-url="@signup.ProfilePictureUrl"
+                                                                           profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
                                                                            title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
                                                                            class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
                                                                            style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
@@ -285,7 +285,7 @@
                                                         {
                                                             var signup = item.Signups[i];
                                                             if (i > 0) { <text>, </text> }
-                                                            <human-link user-id="@signup.UserId" display-name="@signup.DisplayName"
+                                                            <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" show-popover="true"
                                                                        class="@(signup.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")" />@if (signup.Status == SignupStatus.Pending)
                                                             {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
                                                         }

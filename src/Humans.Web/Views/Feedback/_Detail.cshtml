@@ -8,7 +8,7 @@
             <div class="text-muted small">
                 @if (Model.IsAdmin)
                 {
-                    <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="true" />
+                    <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="true" show-popover="true" />
                 }
                 else
                 {

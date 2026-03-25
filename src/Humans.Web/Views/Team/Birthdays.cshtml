@@ -44,7 +44,7 @@
                             @foreach (var birthday in group)
                             {
                                 <human-link user-id="@birthday.UserId" display-name="@birthday.DisplayName"
-                                           mode="AvatarName" size="48"
+                                           mode="AvatarName" size="48" show-popover="true"
                                            profile-picture-url="@birthday.EffectiveProfilePictureUrl">
                                     @if (birthday.TeamNames.Count > 0)
                                     {
