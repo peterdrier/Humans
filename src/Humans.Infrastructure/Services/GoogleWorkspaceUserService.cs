@@ -179,18 +179,25 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
     public async Task<WorkspaceUserAccount?> GetAccountAsync(
         string primaryEmail, CancellationToken ct = default)
     {
+        // Users.Get() returns 403 for our service account, but Users.List() with
+        // a query filter works. Use that to check if an account exists.
         var service = await GetDirectoryServiceAsync();
 
-        try
-        {
-            var user = await service.Users.Get(primaryEmail).ExecuteAsync(ct);
-            return MapToAccount(user);
-        }
-        catch (Google.GoogleApiException ex) when (ex.HttpStatusCode == System.Net.HttpStatusCode.NotFound)
+        var request = service.Users.List();
+        request.Domain = _settings.Domain;
+        request.Query = $"email={primaryEmail}";
+        request.MaxResults = 1;
+
+        var response = await request.ExecuteAsync(ct);
+        var user = response.UsersValue?.FirstOrDefault();
+
+        if (user is null)
         {
             _logger.LogDebug("Workspace account not found for email {Email}", primaryEmail);
             return null;
         }
+
+        return MapToAccount(user);
     }
 
     private static WorkspaceUserAccount MapToAccount(User user)
