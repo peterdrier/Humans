@@ -128,6 +128,7 @@ public class CampEditViewModel : CampRegisterViewModel
     public bool IsNameLocked { get; set; }
     public List<CampLeadViewModel> Leads { get; set; } = new();
     public List<CampImageViewModel> Images { get; set; } = new();
+    public List<CampHistoricalNameViewModel> ExistingHistoricalNames { get; set; } = new();
 }
 
 public class CampImageViewModel
@@ -135,6 +136,14 @@ public class CampImageViewModel
     public Guid Id { get; set; }
     public string Url { get; set; } = string.Empty;
     public int SortOrder { get; set; }
+}
+
+public class CampHistoricalNameViewModel
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int? Year { get; set; }
+    public string Source { get; set; } = string.Empty;
 }
 
 // Contact form

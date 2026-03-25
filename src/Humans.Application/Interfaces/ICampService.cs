@@ -64,6 +64,10 @@ public interface ICampService
     Task<CampLead> AddLeadAsync(Guid campId, Guid userId, CancellationToken cancellationToken = default);
     Task RemoveLeadAsync(Guid leadId, CancellationToken cancellationToken = default);
 
+    // Historical names
+    Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
+    Task RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken cancellationToken = default);
+
     // Authorization checks
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
 
@@ -176,12 +180,19 @@ public record CampEditData(
     string? ContainerNotes,
     ElectricalGrid? ElectricalGrid,
     IReadOnlyList<CampLeadSummary> Leads,
-    IReadOnlyList<CampImageSummary> Images);
+    IReadOnlyList<CampImageSummary> Images,
+    IReadOnlyList<CampHistoricalNameSummary> HistoricalNames);
 
 public record CampImageSummary(
     Guid Id,
     string Url,
     int SortOrder);
+
+public record CampHistoricalNameSummary(
+    Guid Id,
+    string Name,
+    int? Year,
+    string Source);
 
 public record CampSeasonDetailData(
     Guid Id,

@@ -536,6 +536,62 @@ public class CampController : HumansCampControllerBase
 
 
     // ======================================================================
+    // Historical name management
+    // ======================================================================
+
+    [Authorize]
+    [HttpPost("{slug}/HistoricalNames/Add")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddHistoricalName(string slug, string name)
+    {
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
+            return errorResult;
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            SetError("Name cannot be empty.");
+            return RedirectToAction(nameof(Edit), new { slug });
+        }
+
+        try
+        {
+            await _campService.AddHistoricalNameAsync(camp.Id, name);
+            SetSuccess("Historical name added.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Adding historical name failed for camp {CampId}", camp.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/HistoricalNames/Remove/{nameId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveHistoricalName(string slug, Guid nameId)
+    {
+        var (errorResult, _, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null)
+            return errorResult;
+
+        try
+        {
+            await _campService.RemoveHistoricalNameAsync(nameId);
+            SetSuccess("Historical name removed.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Removing historical name {NameId} failed for camp {CampId}", nameId, camp.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    // ======================================================================
     // Image management
     // ======================================================================
 
@@ -724,6 +780,14 @@ public class CampController : HumansCampControllerBase
                     Id = image.Id,
                     Url = image.Url,
                     SortOrder = image.SortOrder
+                }).ToList(),
+            ExistingHistoricalNames = editData.HistoricalNames
+                .Select(h => new CampHistoricalNameViewModel
+                {
+                    Id = h.Id,
+                    Name = h.Name,
+                    Year = h.Year,
+                    Source = h.Source
                 }).ToList()
         };
 
