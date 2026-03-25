@@ -334,9 +334,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<Guid>("CreatedByUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("HideHistoricalNames")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsSwissCamp")
                         .HasColumnType("boolean");
 
