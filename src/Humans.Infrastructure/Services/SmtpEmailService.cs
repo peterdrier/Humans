@@ -256,6 +256,24 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("facilitated_message");
     }
 
+    public async Task SendMagicLinkLoginAsync(
+        string toEmail, string displayName, string magicLinkUrl,
+        string? culture = null, CancellationToken ct = default)
+    {
+        var content = _renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
+        await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, ct);
+        _metrics.RecordEmailSent("magic_link_login");
+    }
+
+    public async Task SendMagicLinkSignupAsync(
+        string toEmail, string magicLinkUrl,
+        string? culture = null, CancellationToken ct = default)
+    {
+        var content = _renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
+        await SendEmailAsync(toEmail, content.Subject, content.HtmlBody, ct);
+        _metrics.RecordEmailSent("magic_link_signup");
+    }
+
     private async Task SendEmailAsync(
         string toAddress,
         string subject,

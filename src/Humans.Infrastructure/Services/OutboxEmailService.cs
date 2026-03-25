@@ -261,6 +261,31 @@ public class OutboxEmailService : IEmailService
             replyTo: replyTo);
     }
 
+    /// <inheritdoc />
+    public async Task SendMagicLinkLoginAsync(
+        string toEmail,
+        string displayName,
+        string magicLinkUrl,
+        string? culture = null,
+        CancellationToken ct = default)
+    {
+        var content = _renderer.RenderMagicLinkLogin(displayName, magicLinkUrl, culture);
+        await EnqueueAsync(toEmail, displayName, content, "magic_link_login", ct,
+            triggerImmediate: true);
+    }
+
+    /// <inheritdoc />
+    public async Task SendMagicLinkSignupAsync(
+        string toEmail,
+        string magicLinkUrl,
+        string? culture = null,
+        CancellationToken ct = default)
+    {
+        var content = _renderer.RenderMagicLinkSignup(magicLinkUrl, culture);
+        await EnqueueAsync(toEmail, toEmail, content, "magic_link_signup", ct,
+            triggerImmediate: true);
+    }
+
     private async Task EnqueueAsync(
         string recipientEmail,
         string recipientName,

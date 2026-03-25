@@ -117,6 +117,11 @@ public class User : IdentityUser<Guid>
     public bool SuppressScheduleChangeEmails { get; set; }
 
     /// <summary>
+    /// When the last magic link login email was sent (for rate limiting).
+    /// </summary>
+    public Instant? MagicLinkSentAt { get; set; }
+
+    /// <summary>
     /// Navigation property to communication preferences.
     /// </summary>
     public ICollection<CommunicationPreference> CommunicationPreferences { get; } = new List<CommunicationPreference>();

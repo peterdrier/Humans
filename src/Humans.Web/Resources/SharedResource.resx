@@ -1226,4 +1226,21 @@
   <data name="Feedback_Submitted" xml:space="preserve"><value>Thank you! Your feedback has been submitted.</value></data>
   <data name="Feedback_Error" xml:space="preserve"><value>Something went wrong submitting your feedback. Please try again.</value></data>
 
+  <!-- Magic Link Auth -->
+  <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Your login link for Nobodies</value></data>
+  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;Click the link below to sign in:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Sign in to Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;This link expires in 15 minutes and can only be used once.&lt;/p&gt;&lt;p&gt;If you didn't request this, you can ignore this email.&lt;/p&gt;</value><comment>{0}=display name, {1}=magic link URL</comment></data>
+  <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Welcome to Nobodies — confirm your email</value></data>
+  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value>&lt;p&gt;Welcome to Nobodies!&lt;/p&gt;&lt;p&gt;Click the link below to create your account:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Create your account&lt;/a&gt;&lt;/p&gt;&lt;p&gt;This link expires in 15 minutes and can only be used once.&lt;/p&gt;&lt;p&gt;If you didn't request this, you can ignore this email.&lt;/p&gt;</value><comment>{0}=magic link URL</comment></data>
+  <data name="Login_MagicLink_Title" xml:space="preserve"><value>Or sign in with email</value></data>
+  <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>your@email.com</value></data>
+  <data name="Login_MagicLink_Submit" xml:space="preserve"><value>Send me a login link</value></data>
+  <data name="MagicLinkSent_Title" xml:space="preserve"><value>Check your email</value></data>
+  <data name="MagicLinkSent_Message" xml:space="preserve"><value>If that email address is in our system, we've sent you a login link. Check your inbox (and spam folder).</value></data>
+  <data name="MagicLinkError_Title" xml:space="preserve"><value>Link expired or invalid</value></data>
+  <data name="MagicLinkError_Message" xml:space="preserve"><value>This login link has expired or has already been used.</value></data>
+  <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Request a new link</value></data>
+  <data name="CompleteSignup_Title" xml:space="preserve"><value>Complete your signup</value></data>
+  <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve"><value>Display name</value></data>
+  <data name="CompleteSignup_Submit" xml:space="preserve"><value>Create account</value></data>
+
 </root>

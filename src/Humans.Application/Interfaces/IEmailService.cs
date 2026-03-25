@@ -250,4 +250,23 @@ public interface IEmailService
         string? senderEmail,
         string? culture = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a magic link login email to an existing user.
+    /// </summary>
+    Task SendMagicLinkLoginAsync(
+        string toEmail,
+        string displayName,
+        string magicLinkUrl,
+        string? culture = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends a magic link signup email to a new user.
+    /// </summary>
+    Task SendMagicLinkSignupAsync(
+        string toEmail,
+        string magicLinkUrl,
+        string? culture = null,
+        CancellationToken ct = default);
 }

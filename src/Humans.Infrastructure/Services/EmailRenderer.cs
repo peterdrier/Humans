@@ -379,6 +379,33 @@ public class EmailRenderer : IEmailRenderer
         }
     }
 
+    public EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = _localizer["Email_MagicLinkLogin_Subject"].Value;
+            var body = string.Format(
+                CultureInfo.CurrentCulture,
+                _localizer["Email_MagicLinkLogin_Body"].Value,
+                HtmlEncode(displayName),
+                magicLinkUrl);
+            return new EmailContent(subject, body);
+        }
+    }
+
+    public EmailContent RenderMagicLinkSignup(string magicLinkUrl, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = _localizer["Email_MagicLinkSignup_Subject"].Value;
+            var body = string.Format(
+                CultureInfo.CurrentCulture,
+                _localizer["Email_MagicLinkSignup_Body"].Value,
+                magicLinkUrl);
+            return new EmailContent(subject, body);
+        }
+    }
+
     private CultureScope WithCulture(string? culture)
     {
         return new CultureScope(culture, _logger);

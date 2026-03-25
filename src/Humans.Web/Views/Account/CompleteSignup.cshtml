@@ -1,0 +1,31 @@
+@{
+    ViewData["Title"] = Localizer["CompleteSignup_Title"].Value;
+    var email = (string?)ViewData["Email"] ?? "";
+    var token = (string?)ViewData["Token"] ?? "";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card mt-5">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">@Localizer["CompleteSignup_Title"]</h2>
+                <form asp-action="CompleteSignup" method="post">
+                    <input type="hidden" name="token" value="@token" />
+                    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" value="@email" disabled />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="@("")" class="form-label">@Localizer["CompleteSignup_DisplayNameLabel"]</label>
+                        <input type="text" name="displayName" class="form-control"
+                               placeholder="@email" required autofocus />
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        @Localizer["CompleteSignup_Submit"]
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

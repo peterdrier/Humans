@@ -232,4 +232,20 @@ public class StubEmailService : IEmailService
             recipientEmail, recipientName, senderName, culture, includeContactInfo);
         return Task.CompletedTask;
     }
+
+    public Task SendMagicLinkLoginAsync(
+        string toEmail, string displayName, string magicLinkUrl,
+        string? culture = null, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[STUB] Would send magic link login to {Email} ({Name})", toEmail, displayName);
+        return Task.CompletedTask;
+    }
+
+    public Task SendMagicLinkSignupAsync(
+        string toEmail, string magicLinkUrl,
+        string? culture = null, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[STUB] Would send magic link signup to {Email}", toEmail);
+        return Task.CompletedTask;
+    }
 }

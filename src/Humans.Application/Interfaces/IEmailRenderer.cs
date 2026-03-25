@@ -100,4 +100,14 @@ public interface IEmailRenderer
         bool includeContactInfo,
         string? senderEmail,
         string? culture = null);
+
+    /// <summary>
+    /// Magic link login email for an existing user.
+    /// </summary>
+    EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null);
+
+    /// <summary>
+    /// Magic link signup email for a new user.
+    /// </summary>
+    EmailContent RenderMagicLinkSignup(string magicLinkUrl, string? culture = null);
 }
