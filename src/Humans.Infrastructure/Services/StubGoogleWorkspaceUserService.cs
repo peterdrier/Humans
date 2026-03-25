@@ -37,7 +37,7 @@ public class StubGoogleWorkspaceUserService : IGoogleWorkspaceUserService
 
     public Task<WorkspaceUserAccount> ProvisionAccountAsync(
         string primaryEmail, string firstName, string lastName,
-        string temporaryPassword, CancellationToken ct = default)
+        string temporaryPassword, string? recoveryEmail = null, CancellationToken ct = default)
     {
         _logger.LogInformation("[Stub] Provisioned fake account: {Email}", primaryEmail);
         var account = new WorkspaceUserAccount(primaryEmail, firstName, lastName, false,

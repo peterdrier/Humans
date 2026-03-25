@@ -12,11 +12,13 @@ public interface IGoogleWorkspaceUserService
 
     /// <summary>
     /// Provisions a new @nobodies.team email account.
+    /// Sets the recovery email on the Google account and sends the initial password notification.
     /// </summary>
     /// <param name="primaryEmail">The full email address (e.g., alice@nobodies.team).</param>
     /// <param name="firstName">Given name for the account.</param>
     /// <param name="lastName">Family name for the account.</param>
     /// <param name="temporaryPassword">Temporary password (user must change on first login).</param>
+    /// <param name="recoveryEmail">Personal email for password recovery (should not be @nobodies.team).</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The provisioned account details.</returns>
     Task<WorkspaceUserAccount> ProvisionAccountAsync(
@@ -24,6 +26,7 @@ public interface IGoogleWorkspaceUserService
         string firstName,
         string lastName,
         string temporaryPassword,
+        string? recoveryEmail = null,
         CancellationToken ct = default);
 
     /// <summary>

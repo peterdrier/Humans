@@ -388,7 +388,9 @@ public class HumanController : HumansControllerBase
             return RedirectToAction(nameof(HumanDetail), new { id });
         }
 
-        var user = await _dbContext.Users.FindAsync(id);
+        var user = await _dbContext.Users
+            .Include(u => u.UserEmails)
+            .FirstOrDefaultAsync(u => u.Id == id);
         if (user is null)
             return NotFound();
 
@@ -404,11 +406,17 @@ public class HumanController : HumansControllerBase
                 return RedirectToAction(nameof(HumanDetail), new { id });
             }
 
+            // Use their current notification target as recovery email (if not @nobodies.team)
+            var recoveryEmail = user.GetEffectiveEmail();
+            if (recoveryEmail?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
+                recoveryEmail = user.Email; // fall back to OAuth email
+
             // Generate temp password and provision in Google Workspace
             var tempPassword = PasswordGenerator.GenerateTemporary();
             var nameParts = user.DisplayName.Split(' ', 2);
             await _workspaceUserService.ProvisionAccountAsync(
-                fullEmail, nameParts[0], nameParts.Length > 1 ? nameParts[1] : "", tempPassword);
+                fullEmail, nameParts[0], nameParts.Length > 1 ? nameParts[1] : "", tempPassword,
+                recoveryEmail);
 
             // Auto-link: add as verified UserEmail (also sets notification target for @nobodies.team)
             await _userEmailService.AddVerifiedEmailAsync(id, fullEmail);

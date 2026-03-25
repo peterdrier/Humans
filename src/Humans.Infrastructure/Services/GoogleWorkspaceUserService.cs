@@ -108,6 +108,7 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
         string firstName,
         string lastName,
         string temporaryPassword,
+        string? recoveryEmail = null,
         CancellationToken ct = default)
     {
         var service = await GetDirectoryServiceAsync();
@@ -125,8 +126,16 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
             OrgUnitPath = "/"
         };
 
+        // Set recovery email if provided (for password resets and initial notification)
+        if (!string.IsNullOrEmpty(recoveryEmail) &&
+            !recoveryEmail.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+        {
+            newUser.RecoveryEmail = recoveryEmail;
+        }
+
         var created = await service.Users.Insert(newUser).ExecuteAsync(ct);
-        _logger.LogInformation("Provisioned @{Domain} account: {Email}", _settings.Domain, primaryEmail);
+        _logger.LogInformation("Provisioned @{Domain} account: {Email} (recovery: {Recovery})",
+            _settings.Domain, primaryEmail, recoveryEmail ?? "none");
 
         return MapToAccount(created);
     }
