@@ -67,7 +67,7 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
                 "Google Workspace credentials not configured. Set ServiceAccountKeyPath or ServiceAccountKeyJson.");
         }
 
-        return credential.CreateScoped(DirectoryService.Scope.AdminDirectoryUserReadonly);
+        return credential.CreateScoped(DirectoryService.Scope.AdminDirectoryUser);
     }
 
     public async Task<IReadOnlyList<WorkspaceUserAccount>> ListAccountsAsync(
