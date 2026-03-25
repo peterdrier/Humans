@@ -374,7 +374,13 @@ public class TeamService : ITeamService
 
         if (team.IsSystemTeam)
         {
-            throw new InvalidOperationException("Cannot modify system team settings");
+            // System teams only allow description and Google Group prefix changes
+            team.Description = description;
+            team.GoogleGroupPrefix = googleGroupPrefix;
+            team.UpdatedAt = _clock.GetCurrentInstant();
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _cache.InvalidateActiveTeams();
+            return team;
         }
 
         if (parentTeamId.HasValue)
