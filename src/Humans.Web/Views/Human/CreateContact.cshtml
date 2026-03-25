@@ -1,0 +1,43 @@
+@model Humans.Web.Models.CreateContactViewModel
+@{
+    ViewData["Title"] = "Create Contact";
+}
+
+<div class="mb-3">
+    <a asp-action="Contacts" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left"></i> Back to Contacts
+    </a>
+</div>
+
+<h1>Create Contact</h1>
+<p class="text-muted">Add an external contact for communication preference tracking. Contacts can authenticate later via magic link or Google to claim their account.</p>
+
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        <form method="post" asp-action="CreateContact">
+            <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" class="form-control" type="email" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DisplayName" class="form-label">Display Name</label>
+                <input asp-for="DisplayName" class="form-control" />
+                <span asp-validation-for="DisplayName" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Source" class="form-label">Source</label>
+                <select asp-for="Source" class="form-select"
+                        asp-items="Html.GetEnumSelectList<Humans.Domain.Enums.ContactSource>()">
+                </select>
+                <span asp-validation-for="Source" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create Contact</button>
+        </form>
+    </div>
+</div>

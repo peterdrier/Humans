@@ -7,7 +7,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>@Localizer["AdminHumans_Title"]</h1>
-    <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+        <a asp-action="Contacts" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-address-book"></i> Contacts
+        </a>
+    </div>
 </div>
 
 <div class="card mb-4">

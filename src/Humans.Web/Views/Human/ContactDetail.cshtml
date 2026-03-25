@@ -1,0 +1,114 @@
+@model Humans.Web.Models.AdminContactDetailViewModel
+@{
+    ViewData["Title"] = $"Contact: {Model.DisplayName}";
+}
+
+<div class="mb-3">
+    <a asp-action="Contacts" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left"></i> Back to Contacts
+    </a>
+</div>
+
+<h1>@Model.DisplayName</h1>
+<p class="text-muted">@Model.Email</p>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Contact Information</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Email</dt>
+                    <dd class="col-sm-8">@Model.Email</dd>
+
+                    <dt class="col-sm-4">Source</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-secondary">@(Model.ContactSource?.ToString() ?? "Unknown")</span>
+                    </dd>
+
+                    @if (!string.IsNullOrEmpty(Model.ExternalSourceId))
+                    {
+                        <dt class="col-sm-4">External ID</dt>
+                        <dd class="col-sm-8"><code>@Model.ExternalSourceId</code></dd>
+                    }
+
+                    <dt class="col-sm-4">Created</dt>
+                    <dd class="col-sm-8">@Model.CreatedAt.ToDisplayDate()</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Communication Preferences</div>
+            <div class="card-body">
+                @if (Model.CommunicationPreferences.Count == 0)
+                {
+                    <p class="text-muted mb-0">Using defaults.</p>
+                }
+                else
+                {
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pref in Model.CommunicationPreferences.OrderBy(p => p.Category))
+                            {
+                                <tr>
+                                    <td>@pref.Category</td>
+                                    <td>
+                                        @if (pref.OptedOut)
+                                        {
+                                            <span class="badge bg-danger">Opted Out</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Opted In</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Audit Log</div>
+    <div class="card-body p-0">
+        @if (Model.AuditLog.Count == 0)
+        {
+            <p class="text-muted text-center py-4 mb-0">No audit entries.</p>
+        }
+        else
+        {
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>When</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model.AuditLog)
+                    {
+                        <tr>
+                            <td>@entry.OccurredAt.ToDisplayDate()</td>
+                            <td><code>@entry.Action</code></td>
+                            <td>@entry.Description</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

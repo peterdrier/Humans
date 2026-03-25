@@ -135,6 +135,15 @@ Methods:
 - `GetGoogleServiceEmail()` → `GoogleEmail ?? Email` (for Google resource sync)
 - `GetEffectiveEmail()` → notification target email or OAuth email (for system notifications)
 
+### Contact Import Properties
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| ContactSource | ContactSource? | null | Where imported from (Manual, MailerLite, TicketTailor); null for self-registered users |
+| ExternalSourceId | string?(256) | null | ID in the external source system |
+
+A contact is identified by `ContactSource != null && LastLoginAt == null`. When a contact authenticates, `LastLoginAt` is set and they become a regular user.
+
 ### Campaign-Related Properties
 
 | Property | Type | Default | Purpose |

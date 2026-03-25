@@ -30,6 +30,7 @@ public class HumanController : HumansControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IContactService _contactService;
     private readonly IClock _clock;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
@@ -46,6 +47,7 @@ public class HumanController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IGoogleWorkspaceUserService workspaceUserService,
         IUserEmailService userEmailService,
+        IContactService contactService,
         IClock clock,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext,
@@ -62,6 +64,7 @@ public class HumanController : HumansControllerBase
         _shiftMgmt = shiftMgmt;
         _workspaceUserService = workspaceUserService;
         _userEmailService = userEmailService;
+        _contactService = contactService;
         _clock = clock;
         _localizer = localizer;
         _dbContext = dbContext;
@@ -681,6 +684,118 @@ public class HumanController : HumansControllerBase
 
         SetSuccess(string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, roleAssignment.User.DisplayName));
         return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
+    }
+
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [HttpGet("Admin/Contacts")]
+    public async Task<IActionResult> Contacts(string? search)
+    {
+        try
+        {
+            var allRows = await _contactService.GetFilteredContactsAsync(search);
+
+            var viewModel = new AdminContactListViewModel
+            {
+                TotalCount = allRows.Count,
+                SearchTerm = search,
+                Contacts = allRows.Select(r => new AdminContactViewModel
+                {
+                    Id = r.UserId,
+                    Email = r.Email,
+                    DisplayName = r.DisplayName,
+                    ContactSource = r.ContactSource,
+                    ExternalSourceId = r.ExternalSourceId,
+                    CreatedAt = r.CreatedAt,
+                    HasCommunicationPreferences = r.HasCommunicationPreferences
+                }).ToList()
+            };
+
+            return View(viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading contacts list");
+            SetError(_localizer["Common_Error"].Value);
+            return RedirectToAction(nameof(Humans));
+        }
+    }
+
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [HttpGet("Admin/Contacts/{id:guid}")]
+    public async Task<IActionResult> ContactDetail(Guid id)
+    {
+        try
+        {
+            var contact = await _contactService.GetContactDetailAsync(id);
+            if (contact is null)
+                return NotFound();
+
+            var auditLog = await _dbContext.AuditLogEntries
+                .AsNoTracking()
+                .Where(a => a.EntityId == id)
+                .OrderByDescending(a => a.OccurredAt)
+                .ToListAsync();
+
+            var viewModel = new AdminContactDetailViewModel
+            {
+                UserId = contact.Id,
+                Email = contact.Email ?? string.Empty,
+                DisplayName = contact.DisplayName,
+                ContactSource = contact.ContactSource,
+                ExternalSourceId = contact.ExternalSourceId,
+                CreatedAt = contact.CreatedAt,
+                CommunicationPreferences = contact.CommunicationPreferences.ToList(),
+                AuditLog = auditLog
+            };
+
+            return View(viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading contact detail for {ContactId}", id);
+            SetError(_localizer["Common_Error"].Value);
+            return RedirectToAction(nameof(Contacts));
+        }
+    }
+
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [HttpGet("Admin/Contacts/Create")]
+    public IActionResult CreateContact()
+    {
+        return View(new CreateContactViewModel());
+    }
+
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [HttpPost("Admin/Contacts/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateContact(CreateContactViewModel model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        try
+        {
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser is null)
+                return Unauthorized();
+
+            var contact = await _contactService.CreateContactAsync(
+                model.Email, model.DisplayName, model.Source);
+
+            SetSuccess($"Contact created for {model.Email}.");
+            return RedirectToAction(nameof(ContactDetail), new { id = contact.Id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating contact for {Email}", model.Email);
+            ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
+            return View(model);
+        }
     }
 
 }

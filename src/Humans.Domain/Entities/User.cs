@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
+using Humans.Domain.Enums;
 
 namespace Humans.Domain.Entities;
 
@@ -135,6 +136,16 @@ public class User : IdentityUser<Guid>
     /// Does NOT require UserEmails to be loaded.
     /// </summary>
     public string? GetGoogleServiceEmail() => GoogleEmail ?? Email;
+
+    /// <summary>
+    /// Where this user was imported from (null for self-registered users).
+    /// </summary>
+    public ContactSource? ContactSource { get; set; }
+
+    /// <summary>
+    /// ID in the external source system (e.g., MailerLite subscriber ID).
+    /// </summary>
+    public string? ExternalSourceId { get; set; }
 
     /// <summary>
     /// Navigation property to communication preferences.
