@@ -128,6 +128,50 @@
 
         <div class="card mb-4">
             <div class="card-header">
+                <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>Google Services Email</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    This email is used for Google Groups and Shared Drive access.
+                    @if (Model.HasNobodiesTeamEmail)
+                    {
+                        <text>Your @@nobodies.team email is automatically used.</text>
+                    }
+                </p>
+                @foreach (var email in Model.Emails.Where(e => e.IsVerified))
+                {
+                    <div class="d-flex align-items-center mb-2">
+                        @if (email.IsGoogleServiceEmail)
+                        {
+                            <span class="badge bg-primary me-2">
+                                <i class="fa-solid fa-check me-1"></i>Active
+                            </span>
+                            <code>@email.Email</code>
+                            @if (email.IsNobodiesTeamDomain)
+                            {
+                                <span class="badge bg-info text-dark ms-2">Auto-selected</span>
+                            }
+                        }
+                        else if (!Model.HasNobodiesTeamEmail)
+                        {
+                            <form asp-action="SetGoogleServiceEmail" method="post" class="d-inline me-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="emailId" value="@email.Id" />
+                                <button type="submit" class="btn btn-outline-primary btn-sm">Use this</button>
+                            </form>
+                            <code>@email.Email</code>
+                        }
+                        else
+                        {
+                            <span class="text-muted me-2"><code>@email.Email</code></span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
                 <h5 class="mb-0">@Localizer["Emails_AddNew"]</h5>
             </div>
             <div class="card-body">

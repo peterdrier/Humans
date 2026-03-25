@@ -125,6 +125,16 @@ VolunteerEventProfile n──1 EventSettings
 
 ## User Entity
 
+### Google Email Preference
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| GoogleEmail | string? (256) | null | Preferred email for Google services (Groups, Drive). Auto-set to @nobodies.team when provisioned/linked. Falls back to OAuth email when null. |
+
+Methods:
+- `GetGoogleServiceEmail()` → `GoogleEmail ?? Email` (for Google resource sync)
+- `GetEffectiveEmail()` → notification target email or OAuth email (for system notifications)
+
 ### Campaign-Related Properties
 
 | Property | Type | Default | Purpose |

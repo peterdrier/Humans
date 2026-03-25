@@ -353,6 +353,52 @@ public class UserEmailService : IUserEmailService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task AddVerifiedEmailAsync(
+        Guid userId,
+        string email,
+        CancellationToken cancellationToken = default)
+    {
+        // Skip if email already exists for this user
+        var exists = await _dbContext.UserEmails
+            .AnyAsync(ue => ue.UserId == userId
+                && EF.Functions.ILike(ue.Email, email), cancellationToken);
+        if (exists)
+            return;
+
+        var now = _clock.GetCurrentInstant();
+        var isNobodiesTeam = email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase);
+
+        // If @nobodies.team, clear existing notification target
+        if (isNobodiesTeam)
+        {
+            var currentTarget = await _dbContext.UserEmails
+                .FirstOrDefaultAsync(ue => ue.UserId == userId && ue.IsNotificationTarget, cancellationToken);
+            if (currentTarget is not null)
+            {
+                currentTarget.IsNotificationTarget = false;
+                currentTarget.UpdatedAt = now;
+            }
+        }
+
+        var userEmail = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = email,
+            IsOAuth = false,
+            IsVerified = true,
+            IsNotificationTarget = isNobodiesTeam,
+            Visibility = ContactFieldVisibility.BoardOnly,
+            DisplayOrder = 0,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.UserEmails.Add(userEmail);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Returns the set of visibility levels a viewer with the given access level can see.
     /// Visibility is stored as string in DB, so >= comparison doesn't work correctly.

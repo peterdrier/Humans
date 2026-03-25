@@ -7,6 +7,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -16,6 +17,7 @@ namespace Humans.Web.Controllers;
 public class AdminEmailController : HumansControllerBase
 {
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
     private readonly HumansDbContext _dbContext;
     private readonly ILogger<AdminEmailController> _logger;
@@ -25,12 +27,14 @@ public class AdminEmailController : HumansControllerBase
     public AdminEmailController(
         UserManager<User> userManager,
         IGoogleWorkspaceUserService workspaceUserService,
+        IUserEmailService userEmailService,
         IAuditLogService auditLogService,
         HumansDbContext dbContext,
         ILogger<AdminEmailController> logger)
         : base(userManager)
     {
         _workspaceUserService = workspaceUserService;
+        _userEmailService = userEmailService;
         _auditLogService = auditLogService;
         _dbContext = dbContext;
         _logger = logger;
@@ -79,6 +83,8 @@ public class AdminEmailController : HumansControllerBase
                 });
             }
 
+            var linkedCount = accountViewModels.Count(a => a.MatchedUserId.HasValue);
+
             var model = new WorkspaceEmailListViewModel
             {
                 Accounts = accountViewModels
@@ -87,6 +93,8 @@ public class AdminEmailController : HumansControllerBase
                 TotalAccounts = accountViewModels.Count,
                 ActiveAccounts = accountViewModels.Count(a => !a.IsSuspended),
                 SuspendedAccounts = accountViewModels.Count(a => a.IsSuspended),
+                LinkedAccounts = linkedCount,
+                UnlinkedAccounts = accountViewModels.Count - linkedCount,
                 NotPrimaryCount = notPrimaryCount
             };
 
@@ -126,7 +134,7 @@ public class AdminEmailController : HumansControllerBase
         try
         {
             // Generate a temporary password
-            var tempPassword = GenerateTemporaryPassword();
+            var tempPassword = PasswordGenerator.GenerateTemporary();
 
             await _workspaceUserService.ProvisionAccountAsync(
                 fullEmail, model.FirstName.Trim(), model.LastName.Trim(), tempPassword);
@@ -234,7 +242,7 @@ public class AdminEmailController : HumansControllerBase
 
         try
         {
-            var newPassword = GenerateTemporaryPassword();
+            var newPassword = PasswordGenerator.GenerateTemporary();
             await _workspaceUserService.ResetPasswordAsync(email, newPassword);
 
             var currentUser = await GetCurrentUserAsync();
@@ -259,13 +267,62 @@ public class AdminEmailController : HumansControllerBase
         return RedirectToAction(nameof(Index));
     }
 
-    private static string GenerateTemporaryPassword()
+    [HttpPost("Link")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Link(string email, Guid userId)
     {
-        // Generate a 16-char password: mix of chars and digits
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$";
-        var random = new Random();
-        return new string(Enumerable.Range(0, 16)
-            .Select(_ => chars[random.Next(chars.Length)])
-            .ToArray());
+        if (string.IsNullOrWhiteSpace(email) || userId == Guid.Empty)
+        {
+            SetError("Email and human are required.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        try
+        {
+            var user = await _dbContext.Users.FindAsync(userId);
+            if (user is null)
+            {
+                SetError("Human not found.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Check not already linked
+            var alreadyLinked = await _dbContext.UserEmails
+                .AnyAsync(ue => EF.Functions.ILike(ue.Email, email));
+            if (alreadyLinked)
+            {
+                SetError($"{email} is already linked to a human.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Add as verified email (also sets notification target for @nobodies.team)
+            await _userEmailService.AddVerifiedEmailAsync(userId, email);
+
+            // Auto-set as Google service email
+            user.GoogleEmail = email;
+            await _dbContext.SaveChangesAsync();
+
+            // Audit
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser is not null)
+            {
+                await _auditLogService.LogAsync(
+                    AuditAction.WorkspaceAccountLinked,
+                    "WorkspaceAccount", userId,
+                    $"Linked @{NobodiesTeamDomain} account {email} to {user.DisplayName}",
+                    currentUser.Id, currentUser.DisplayName);
+                await _dbContext.SaveChangesAsync();
+            }
+
+            SetSuccess($"Linked {email} to {user.DisplayName}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to link {Email} to user {UserId}", email, userId);
+            SetError($"Failed to link {email}.");
+        }
+
+        return RedirectToAction(nameof(Index));
     }
+
 }

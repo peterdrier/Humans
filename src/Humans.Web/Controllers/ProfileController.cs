@@ -627,6 +627,51 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetGoogleServiceEmail(Guid emailId)
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return NotFound();
+
+        try
+        {
+            var email = await _dbContext.UserEmails
+                .FirstOrDefaultAsync(ue => ue.Id == emailId && ue.UserId == user.Id && ue.IsVerified);
+
+            if (email is null)
+            {
+                SetError("Email not found or not verified.");
+                return RedirectToAction(nameof(Emails));
+            }
+
+            // If they have a @nobodies.team email, it must be used
+            var hasNobodiesTeam = await _dbContext.UserEmails
+                .AnyAsync(ue => ue.UserId == user.Id && ue.IsVerified
+                    && EF.Functions.ILike(ue.Email, "%@nobodies.team"));
+
+            if (hasNobodiesTeam && !email.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
+            {
+                SetError("Your @nobodies.team email must be used for Google services.");
+                return RedirectToAction(nameof(Emails));
+            }
+
+            // null = use OAuth email (default behavior)
+            user.GoogleEmail = email.IsOAuth ? null : email.Email;
+            await _userManager.UpdateAsync(user);
+
+            SetSuccess("Google service email updated.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set Google service email for user {UserId}", user.Id);
+            SetError("Failed to update Google service email.");
+        }
+
+        return RedirectToAction(nameof(Emails));
+    }
+
     private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user)
     {
         var emails = await _userEmailService.GetUserEmailsAsync(user.Id);
@@ -643,6 +688,9 @@ public class ProfileController : HumansControllerBase
             minutesUntilResend = cooldownMinutes;
         }
 
+        var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
+            e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
+
         return new EmailsViewModel
         {
             Emails = emails.Select(e => new EmailRowViewModel
@@ -654,10 +702,16 @@ public class ProfileController : HumansControllerBase
                 IsNotificationTarget = e.IsNotificationTarget,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
-                IsMergePending = e.IsMergePending
+                IsMergePending = e.IsMergePending,
+                IsGoogleServiceEmail = user.GoogleEmail is not null
+                    ? string.Equals(e.Email, user.GoogleEmail, StringComparison.OrdinalIgnoreCase)
+                    : e.IsOAuth,
+                IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase)
             }).ToList(),
             CanAddEmail = canAdd,
-            MinutesUntilResend = minutesUntilResend
+            MinutesUntilResend = minutesUntilResend,
+            GoogleServiceEmail = user.GoogleEmail,
+            HasNobodiesTeamEmail = hasNobodiesTeam
         };
     }
 

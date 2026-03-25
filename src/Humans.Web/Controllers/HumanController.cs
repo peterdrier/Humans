@@ -11,6 +11,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -27,9 +28,12 @@ public class HumanController : HumansControllerBase
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IGoogleWorkspaceUserService _workspaceUserService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IClock _clock;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
+    private readonly ILogger<HumanController> _logger;
 
     public HumanController(
         IProfileService profileService,
@@ -40,9 +44,12 @@ public class HumanController : HumansControllerBase
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftMgmt,
+        IGoogleWorkspaceUserService workspaceUserService,
+        IUserEmailService userEmailService,
         IClock clock,
         IStringLocalizer<SharedResource> localizer,
-        HumansDbContext dbContext)
+        HumansDbContext dbContext,
+        ILogger<HumanController> logger)
         : base(userManager)
     {
         _profileService = profileService;
@@ -53,9 +60,12 @@ public class HumanController : HumansControllerBase
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
         _shiftMgmt = shiftMgmt;
+        _workspaceUserService = workspaceUserService;
+        _userEmailService = userEmailService;
         _clock = clock;
         _localizer = localizer;
         _dbContext = dbContext;
+        _logger = logger;
     }
 
     [HttpGet("{id:guid}")]
@@ -358,7 +368,76 @@ public class HumanController : HumansControllerBase
             }).ToList()
         };
 
+        // Check for @nobodies.team email
+        viewModel.NobodiesTeamEmail = await _dbContext.UserEmails
+            .Where(ue => ue.UserId == id && ue.IsVerified && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
+            .Select(ue => ue.Email)
+            .FirstOrDefaultAsync();
+
         return View(viewModel);
+    }
+
+    [Authorize(Roles = RoleNames.Admin)]
+    [HttpPost("{id:guid}/ProvisionEmail")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ProvisionEmail(Guid id, string emailPrefix)
+    {
+        if (string.IsNullOrWhiteSpace(emailPrefix))
+        {
+            SetError("Email prefix is required.");
+            return RedirectToAction(nameof(HumanDetail), new { id });
+        }
+
+        var user = await _dbContext.Users.FindAsync(id);
+        if (user is null)
+            return NotFound();
+
+        var fullEmail = $"{emailPrefix.Trim().ToLowerInvariant()}@nobodies.team";
+
+        try
+        {
+            // Check if account already exists in Google Workspace
+            var existing = await _workspaceUserService.GetAccountAsync(fullEmail);
+            if (existing is not null)
+            {
+                SetError($"Account {fullEmail} already exists in Google Workspace.");
+                return RedirectToAction(nameof(HumanDetail), new { id });
+            }
+
+            // Generate temp password and provision in Google Workspace
+            var tempPassword = PasswordGenerator.GenerateTemporary();
+            var nameParts = user.DisplayName.Split(' ', 2);
+            await _workspaceUserService.ProvisionAccountAsync(
+                fullEmail, nameParts[0], nameParts.Length > 1 ? nameParts[1] : "", tempPassword);
+
+            // Auto-link: add as verified UserEmail (also sets notification target for @nobodies.team)
+            await _userEmailService.AddVerifiedEmailAsync(id, fullEmail);
+
+            // Auto-set as Google service email
+            user.GoogleEmail = fullEmail;
+            await _userManager.UpdateAsync(user);
+
+            // Audit
+            var currentUser = await GetCurrentUserAsync();
+            if (currentUser is not null)
+            {
+                await _auditLogService.LogAsync(
+                    AuditAction.WorkspaceAccountProvisioned,
+                    "WorkspaceAccount", id,
+                    $"Provisioned and linked @nobodies.team account: {fullEmail}",
+                    currentUser.Id, currentUser.DisplayName);
+                await _dbContext.SaveChangesAsync();
+            }
+
+            SetSuccess($"Account {fullEmail} provisioned and linked. Temporary password: {tempPassword}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to provision @nobodies.team account {Email} for user {UserId}", fullEmail, id);
+            SetError($"Failed to provision {fullEmail}. Check logs for details.");
+        }
+
+        return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
     [Authorize(Roles = RoleGroups.BoardOrAdmin)]

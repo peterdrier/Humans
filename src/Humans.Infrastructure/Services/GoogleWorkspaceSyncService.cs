@@ -545,7 +545,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var teamMembers = await _dbContext.TeamMembers
             .Include(tm => tm.User)
             .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
-            .Select(tm => tm.User.Email)
+            .Select(tm => tm.User.GoogleEmail ?? tm.User.Email)
             .Where(email => email != null)
             .ToListAsync(cancellationToken);
 
@@ -622,7 +622,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         CancellationToken cancellationToken = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], cancellationToken);
-        if (user?.Email is null)
+        var googleEmail = user?.GetGoogleServiceEmail();
+        if (googleEmail is null)
         {
             _logger.LogWarning("User {UserId} not found or has no email", userId);
             return;
@@ -636,11 +637,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (resource.ResourceType == GoogleResourceType.Group)
             {
-                await AddUserToGroupAsync(resource.Id, user.Email, cancellationToken);
+                await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
             }
             else
             {
-                await AddUserToDriveAsync(resource, user.Email, cancellationToken);
+                await AddUserToDriveAsync(resource, googleEmail, cancellationToken);
             }
         }
 
@@ -832,10 +833,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     {
         try
         {
-            // Expected: team's active members
+            // Expected: team's active members (use Google service email preference)
             var expectedMembers = resource.Team.Members
-                .Where(tm => tm.User.Email is not null)
-                .Select(tm => new { tm.User.Email, tm.User.DisplayName })
+                .Where(tm => tm.User.GetGoogleServiceEmail() is not null)
+                .Select(tm => new { Email = tm.User.GetGoogleServiceEmail(), tm.User.DisplayName })
                 .ToList();
             var expectedEmails = new HashSet<string>(
                 expectedMembers.Select(m => m.Email!), NormalizingEmailComparer.Instance);
@@ -1000,16 +1001,17 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 var teamName = resource.Team.Name;
                 foreach (var tm in resource.Team.Members)
                 {
-                    if (tm.User.Email is null) continue;
+                    var memberEmail = tm.User.GetGoogleServiceEmail();
+                    if (memberEmail is null) continue;
 
-                    if (membersByEmail.TryGetValue(tm.User.Email, out var existing))
+                    if (membersByEmail.TryGetValue(memberEmail, out var existing))
                     {
                         if (!existing.TeamNames.Contains(teamName, StringComparer.Ordinal))
                             existing.TeamNames.Add(teamName);
                     }
                     else
                     {
-                        membersByEmail[tm.User.Email] = (tm.User.DisplayName, new List<string> { teamName });
+                        membersByEmail[memberEmail] = (tm.User.DisplayName, new List<string> { teamName });
                     }
                 }
             }

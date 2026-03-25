@@ -59,6 +59,39 @@ Members sign in using their Google account, which provides their primary email a
 - Cannot remove the current notification target (must reassign first)
 - Confirmation prompt before removal
 
+### US-11.6: Choose Google Service Email
+**As a** member
+**I want to** choose which email is used for Google Groups and Drive access
+**So that** I can use my @nobodies.team email for Google resources
+
+**Acceptance Criteria:**
+- Only verified emails can be selected
+- If user has a verified @nobodies.team email, it's auto-selected and locked
+- Default is OAuth email (GoogleEmail = null on User)
+- Change takes effect on next Google sync cycle
+- Profile/Emails page shows "Google Services Email" card
+
+### US-11.7: Admin Provisions @nobodies.team Account
+**As an** admin
+**I want to** provision a @nobodies.team email from a human's admin page
+**So that** I can create and link their org email in one step
+
+**Acceptance Criteria:**
+- Provisioning creates the Google Workspace account and links it to the human
+- Auto-sets as notification target and Google service email
+- Temporary password shown to admin
+- Audit trail recorded
+
+### US-11.8: Admin Links Unlinked Workspace Account
+**As an** admin
+**I want to** link an existing @nobodies.team account to a human
+**So that** orphaned workspace accounts can be associated with their human
+
+**Acceptance Criteria:**
+- Admin can search for humans by name on the @nobodies.team Accounts page
+- Linking creates a verified UserEmail and sets GoogleEmail on the user
+- Audit trail recorded with WorkspaceAccountLinked action
+
 ## Data Model
 
 ### UserEmail Entity
@@ -77,9 +110,15 @@ UserEmail
 └── UpdatedAt: Instant
 ```
 
-### Computed Method on User
+### GoogleEmail Field on User
+```
+User.GoogleEmail: string? (256) — preferred email for Google services (Groups, Drive)
+```
+
+### Computed Methods on User
 ```csharp
-GetEffectiveEmail() → returns the email marked as notification target
+GetEffectiveEmail() → returns the email marked as notification target (for system emails)
+GetGoogleServiceEmail() → returns GoogleEmail ?? Email (for Google resource sync)
 ```
 
 ## Verification Flow
@@ -122,10 +161,18 @@ Uses ASP.NET Identity's built-in token providers:
 
 | Route | Purpose |
 |-------|---------|
-| `/Profile/Emails` | Manage email addresses (add, verify, remove, set visibility) |
+| `/Profile/Emails` | Manage email addresses (add, verify, remove, set visibility, Google preference) |
 | `/Profile/PreferredEmail` | Legacy redirect → `/Profile/Emails` |
+| `/Admin/Email` | List all @nobodies.team accounts, provision, suspend, link to humans |
+| `/Human/{id}/ProvisionEmail` | Provision @nobodies.team account from human admin page |
 
 ## Service Integration
+
+### Google Sync
+`GoogleWorkspaceSyncService` uses `GetGoogleServiceEmail()` (or `GoogleEmail ?? Email` in projections) for:
+- Adding/removing users from Google Groups
+- Adding/removing users from Shared Drive folders
+- Drift detection for membership sync
 
 ### Background Jobs
 These jobs use `GetEffectiveEmail()` to send to the notification target:

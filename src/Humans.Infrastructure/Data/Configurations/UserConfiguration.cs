@@ -19,6 +19,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.ProfilePictureUrl)
             .HasMaxLength(2048);
 
+        builder.Property(u => u.GoogleEmail)
+            .HasMaxLength(256);
+
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 

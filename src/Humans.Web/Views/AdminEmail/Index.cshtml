@@ -12,41 +12,91 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts</h1>
+    <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#provisionForm">
+        <i class="fa-solid fa-plus me-1"></i>Provision Account
+    </button>
 </div>
 
 <vc:temp-data-alerts />
 
+<div class="collapse mb-4" id="provisionForm">
+    <div class="card">
+        <div class="card-header">Provision New Account</div>
+        <div class="card-body">
+            <form asp-action="Provision" method="post" class="row g-3 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-3">
+                    <label class="form-label">Email Prefix</label>
+                    <div class="input-group">
+                        <input type="text" name="emailPrefix" class="form-control" placeholder="username" required />
+                        <span class="input-group-text">@@nobodies.team</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">First Name</label>
+                    <input type="text" name="firstName" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Last Name</label>
+                    <input type="text" name="lastName" class="form-control" required />
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fa-solid fa-plus me-1"></i>Provision
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @* Stats cards *@
 <div class="row mb-4">
-    <div class="col-md-3">
+    <div class="col">
         <div class="card text-center">
-            <div class="card-body">
-                <h3 class="mb-0">@Model.TotalAccounts</h3>
-                <small class="text-muted">Total Accounts</small>
+            <div class="card-body py-2">
+                <h4 class="mb-0">@Model.TotalAccounts</h4>
+                <small class="text-muted">Total</small>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="card text-center">
-            <div class="card-body">
-                <h3 class="mb-0 text-success">@Model.ActiveAccounts</h3>
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-success">@Model.ActiveAccounts</h4>
                 <small class="text-muted">Active</small>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="card text-center">
-            <div class="card-body">
-                <h3 class="mb-0 text-danger">@Model.SuspendedAccounts</h3>
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-danger">@Model.SuspendedAccounts</h4>
                 <small class="text-muted">Suspended</small>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col">
         <div class="card text-center">
-            <div class="card-body">
-                <h3 class="mb-0 text-warning">@Model.NotPrimaryCount</h3>
-                <small class="text-muted">Not Using as Primary</small>
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-primary">@Model.LinkedAccounts</h4>
+                <small class="text-muted">Linked</small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-secondary">@Model.UnlinkedAccounts</h4>
+                <small class="text-muted">Unlinked</small>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center">
+            <div class="card-body py-2">
+                <h4 class="mb-0 text-warning">@Model.NotPrimaryCount</h4>
+                <small class="text-muted">Not Primary</small>
             </div>
         </div>
     </div>
@@ -76,8 +126,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var account in Model.Accounts)
+                    @for (var i = 0; i < Model.Accounts.Count; i++)
                     {
+                        var account = Model.Accounts[i];
                         <tr class="@(account.IsSuspended ? "table-secondary" : "")">
                             <td>
                                 <code>@account.PrimaryEmail</code>
@@ -99,7 +150,15 @@
                                 }
                                 else
                                 {
-                                    <span class="text-muted">Not linked</span>
+                                    <form asp-action="Link" method="post" class="d-flex align-items-center gap-2 link-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="email" value="@account.PrimaryEmail" />
+                                        <input type="hidden" name="userId" class="link-userId" />
+                                        <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", $"link-{i}" } })' />
+                                        <button type="submit" class="btn btn-outline-primary btn-sm flex-shrink-0">
+                                            <i class="fa-solid fa-link"></i>
+                                        </button>
+                                    </form>
                                 }
                             </td>
                             <td>
@@ -130,3 +189,22 @@
         }
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Sync the _HumanSearchInput hidden value to the form's userId field on submit
+        document.querySelectorAll('.link-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                var searchHidden = form.querySelector('input[type="hidden"][id^="human-search-hidden-"]');
+                var userIdField = form.querySelector('.link-userId');
+                if (searchHidden && userIdField) {
+                    userIdField.value = searchHidden.value;
+                }
+                if (!userIdField || !userIdField.value) {
+                    e.preventDefault();
+                    alert('Please search and select a human first.');
+                }
+            });
+        });
+    </script>
+}

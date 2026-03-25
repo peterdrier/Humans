@@ -108,6 +108,9 @@ public class AdminHumanDetailViewModel
     public DateTime? RejectedAt { get; set; }
     public string? RejectedByName { get; set; }
 
+    // Workspace email
+    public string? NobodiesTeamEmail { get; set; }
+
     // Stats
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }

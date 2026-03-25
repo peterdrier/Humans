@@ -122,6 +122,21 @@ public class User : IdentityUser<Guid>
     public Instant? MagicLinkSentAt { get; set; }
 
     /// <summary>
+    /// Preferred email for Google services (Groups, Drive).
+    /// When set, this email is used instead of the OAuth email for Google resource sync.
+    /// Automatically set to @nobodies.team email when provisioned or linked.
+    /// </summary>
+    [PersonalData]
+    public string? GoogleEmail { get; set; }
+
+    /// <summary>
+    /// Gets the email address used for Google services (Groups, Drive permissions).
+    /// Returns GoogleEmail if set, otherwise falls back to the OAuth email.
+    /// Does NOT require UserEmails to be loaded.
+    /// </summary>
+    public string? GetGoogleServiceEmail() => GoogleEmail ?? Email;
+
+    /// <summary>
     /// Navigation property to communication preferences.
     /// </summary>
     public ICollection<CommunicationPreference> CommunicationPreferences { get; } = new List<CommunicationPreference>();

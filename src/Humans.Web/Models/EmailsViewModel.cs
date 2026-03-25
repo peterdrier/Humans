@@ -30,6 +30,17 @@ public class EmailsViewModel
     /// Minutes until the user can request a new verification email.
     /// </summary>
     public int MinutesUntilResend { get; set; }
+
+    /// <summary>
+    /// The email currently selected for Google services (Groups, Drive).
+    /// Null means OAuth email is used (default).
+    /// </summary>
+    public string? GoogleServiceEmail { get; set; }
+
+    /// <summary>
+    /// Whether the user has a verified @nobodies.team email (which auto-locks Google preference).
+    /// </summary>
+    public bool HasNobodiesTeamEmail { get; set; }
 }
 
 /// <summary>
@@ -45,4 +56,6 @@ public class EmailRowViewModel
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }
     public bool IsMergePending { get; set; }
+    public bool IsGoogleServiceEmail { get; set; }
+    public bool IsNobodiesTeamDomain { get; set; }
 }

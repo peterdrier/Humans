@@ -9,6 +9,8 @@ public class WorkspaceEmailListViewModel
     public int TotalAccounts { get; set; }
     public int ActiveAccounts { get; set; }
     public int SuspendedAccounts { get; set; }
+    public int LinkedAccounts { get; set; }
+    public int UnlinkedAccounts { get; set; }
     public int NotPrimaryCount { get; set; }
 }
 

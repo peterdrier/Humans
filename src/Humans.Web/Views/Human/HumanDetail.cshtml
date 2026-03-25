@@ -311,6 +311,34 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-header">@@nobodies.team Email</div>
+            <div class="card-body">
+                @if (Model.NobodiesTeamEmail is not null)
+                {
+                    <p class="mb-0">
+                        <code>@Model.NobodiesTeamEmail</code>
+                        <span class="badge bg-success ms-1">Linked</span>
+                    </p>
+                }
+                else
+                {
+                    <form asp-action="ProvisionEmail" asp-route-id="@Model.UserId" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="input-group mb-2">
+                            <input type="text" name="emailPrefix" class="form-control form-control-sm"
+                                   placeholder="username" required />
+                            <span class="input-group-text">@@nobodies.team</span>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-100"
+                                data-confirm="Provision a new @@nobodies.team account for this human?">
+                            <i class="fa-solid fa-plus me-1"></i>Provision Email
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">@Localizer["TeamDetail_Actions"]</div>
             <div class="card-body">
