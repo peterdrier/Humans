@@ -35,7 +35,7 @@
 
                     <div class="mb-3">
                         <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
-                        <input asp-for="Name" class="form-control" disabled="@(Model.IsSystemTeam ? "disabled" : null)" />
+                        <input asp-for="Name" class="form-control" readonly="@(Model.IsSystemTeam ? "readonly" : null)" />
                         <span asp-validation-for="Name" class="text-danger"></span>
                         <div class="form-text">Auto-generated slug: <code>@Model.Slug</code> — updates automatically when name changes.</div>
                     </div>
