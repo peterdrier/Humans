@@ -27,6 +27,7 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 
 **Acceptance Criteria:**
 - Create rota with name, period (Build/Event/Strike), priority (Normal/Important/Essential), signup policy (Public/RequireApproval), and optional practical info
+- Toggle rota visibility (`IsVisibleToVolunteers`) — hidden rotas are excluded from volunteer browse but remain visible to coordinators/admins, enabling staged rollout of signup
 - Build/strike rotas use all-day shifts with date-range signup; event rotas use time-slotted shifts
 - Bulk shift creation: `CreateBuildStrikeShiftsAsync` for build/strike rotas (one all-day shift per day offset with per-day staffing), `GenerateEventShiftsAsync` for event rotas (Cartesian product of day offsets x time slots)
 - Create individual shifts with day offset, start time, duration, min/max volunteers
@@ -39,7 +40,9 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 **So that** I can contribute to the event
 
 **Acceptance Criteria:**
-- Browse shifts filtered by department and date
+- Browse shifts filtered by department and date range (From/To date pickers; either may be omitted for open-ended range)
+- Filter by period (Set-up / Event / Strike toggle buttons)
+- Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all)
 - See fill status (confirmed count vs max)
 - Sign up for a shift (auto-confirmed for Public policy, pending for RequireApproval)
 - Date-range signup for build/strike rotas via `SignUpRangeAsync` — creates signups for all all-day shifts in the range, linked by a shared `SignupBlockId`
@@ -85,7 +88,7 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 | Entity | Purpose |
 |--------|---------|
 | `EventSettings` | Singleton event config: dates, timezone, EE capacity, browsing toggle |
-| `Rota` | Shift container per department+event, with period (Build/Event/Strike), priority, signup policy, and practical info |
+| `Rota` | Shift container per department+event, with period (Build/Event/Strike), priority, signup policy, practical info, and visibility toggle (`IsVisibleToVolunteers`, default true) |
 | `Shift` | Single work slot: day offset, time, duration, volunteer min/max; IsAllDay flag for build/strike shifts |
 | `ShiftSignup` | User-to-shift link with state machine; SignupBlockId groups range signups |
 | `GeneralAvailability` | Per-user per-event day availability (general volunteer pool) |
@@ -124,7 +127,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 | Route | Purpose |
 |-------|---------|
-| `/Shifts` | Browse all shifts (filtered by department/date) |
+| `/Shifts` | Browse all shifts (filtered by department, date range, period) |
 | `/Shifts/Mine` | View own signups (upcoming, pending, past) |
 | `/Shifts/Settings` | Admin: manage EventSettings |
 | `/Teams/{slug}/Shifts` | Coordinator: manage rotas/shifts for a department |

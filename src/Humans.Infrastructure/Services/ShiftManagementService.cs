@@ -491,8 +491,10 @@ public class ShiftManagementService : IShiftManagementService
     }
 
     public async Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(
-        Guid eventSettingsId, Guid? departmentId = null, LocalDate? date = null,
-        bool includeAdminOnly = false, bool includeSignups = false)
+        Guid eventSettingsId, Guid? departmentId = null,
+        LocalDate? fromDate = null, LocalDate? toDate = null,
+        bool includeAdminOnly = false, bool includeSignups = false,
+        bool includeHidden = false)
     {
         var es = await _dbContext.EventSettings.AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
@@ -519,13 +521,22 @@ public class ShiftManagementService : IShiftManagementService
         if (!includeAdminOnly)
             query = query.Where(s => !s.AdminOnly);
 
+        if (!includeHidden)
+            query = query.Where(s => s.Rota.IsVisibleToVolunteers);
+
         if (departmentId.HasValue)
             query = query.Where(s => s.Rota.TeamId == departmentId.Value);
 
-        if (date.HasValue)
+        if (fromDate.HasValue)
         {
-            var dayOffset = Period.Between(es.GateOpeningDate, date.Value).Days;
-            query = query.Where(s => s.DayOffset == dayOffset);
+            var fromOffset = Period.Between(es.GateOpeningDate, fromDate.Value).Days;
+            query = query.Where(s => s.DayOffset >= fromOffset);
+        }
+
+        if (toDate.HasValue)
+        {
+            var toOffset = Period.Between(es.GateOpeningDate, toDate.Value).Days;
+            query = query.Where(s => s.DayOffset <= toOffset);
         }
 
         var shifts = await query.ToListAsync();

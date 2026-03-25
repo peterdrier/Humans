@@ -9,7 +9,9 @@ public class ShiftBrowserViewModel
     public List<DepartmentShiftGroup> Departments { get; set; } = [];
     public List<DepartmentOption> AllDepartments { get; set; } = [];
     public Guid? FilterDepartmentId { get; set; }
-    public string? FilterDate { get; set; }
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+    public string? FilterPeriod { get; set; }
     public bool ShowFullShifts { get; set; }
     public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
     public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();

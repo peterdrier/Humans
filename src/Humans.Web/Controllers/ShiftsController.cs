@@ -40,7 +40,7 @@ public class ShiftsController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? date, bool showFull = false)
+    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -68,15 +68,28 @@ public class ShiftsController : HumansControllerBase
             .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
             .ToDictionary(s => s.ShiftId, s => s.Status);
 
-        // Parse date filter
-        LocalDate? filterDate = null;
-        if (!string.IsNullOrEmpty(date) && LocalDatePattern.Iso.Parse(date) is { Success: true } parseResult)
-            filterDate = parseResult.Value;
+        // Parse date range filters
+        LocalDate? filterFromDate = null;
+        LocalDate? filterToDate = null;
+        if (!string.IsNullOrEmpty(fromDate) && LocalDatePattern.Iso.Parse(fromDate) is { Success: true } fromResult)
+            filterFromDate = fromResult.Value;
+        if (!string.IsNullOrEmpty(toDate) && LocalDatePattern.Iso.Parse(toDate) is { Success: true } toResult)
+            filterToDate = toResult.Value;
+
+        // Apply period filter — compute date boundaries from EventSettings offsets
+        if (!string.IsNullOrEmpty(period) && Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
+        {
+            var (periodFrom, periodTo) = GetPeriodDateRange(es, parsedPeriod);
+            filterFromDate ??= periodFrom;
+            filterToDate ??= periodTo;
+        }
 
         // Build the browse view — show all active shifts, hide AdminOnly from regular volunteers
         var urgentShifts = await _shiftMgmt.GetBrowseShiftsAsync(
-            es.Id, departmentId: departmentId, date: filterDate,
-            includeAdminOnly: isPrivileged, includeSignups: isPrivileged);
+            es.Id, departmentId: departmentId,
+            fromDate: filterFromDate, toDate: filterToDate,
+            includeAdminOnly: isPrivileged, includeSignups: isPrivileged,
+            includeHidden: isPrivileged);
 
         // Group by department → rota → shift
         var departments = urgentShifts
@@ -147,7 +160,9 @@ public class ShiftsController : HumansControllerBase
         {
             EventSettings = es,
             FilterDepartmentId = departmentId,
-            FilterDate = date,
+            FilterFromDate = fromDate,
+            FilterToDate = toDate,
+            FilterPeriod = period,
             ShowFullShifts = showFull,
             UserSignupShiftIds = userSignupShiftIds,
             UserSignupStatuses = userSignupStatuses,
@@ -482,5 +497,24 @@ public class ShiftsController : HumansControllerBase
 
         SetSuccess("Event settings saved.");
         return RedirectToAction(nameof(Settings));
+    }
+
+    private static (LocalDate From, LocalDate To) GetPeriodDateRange(EventSettings es, ShiftPeriod period)
+    {
+        return period switch
+        {
+            ShiftPeriod.Build => (
+                es.GateOpeningDate.PlusDays(es.BuildStartOffset),
+                es.GateOpeningDate.PlusDays(-1)),
+            ShiftPeriod.Event => (
+                es.GateOpeningDate,
+                es.GateOpeningDate.PlusDays(es.EventEndOffset)),
+            ShiftPeriod.Strike => (
+                es.GateOpeningDate.PlusDays(es.EventEndOffset + 1),
+                es.GateOpeningDate.PlusDays(es.StrikeEndOffset)),
+            _ => (
+                es.GateOpeningDate.PlusDays(es.BuildStartOffset),
+                es.GateOpeningDate.PlusDays(es.StrikeEndOffset))
+        };
     }
 }

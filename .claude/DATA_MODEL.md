@@ -46,7 +46,7 @@
 | TicketAttendee | Individual ticket holder (issued ticket, multiple per order) |
 | TicketSyncState | Singleton tracking ticket sync operational state |
 | EventSettings | Singleton event config — dates, timezone, EE capacity, caps |
-| Rota | Shift container — belongs to department + event, with Period (Build/Event/Strike) and optional PracticalInfo |
+| Rota | Shift container — belongs to department + event, with Period (Build/Event/Strike), optional PracticalInfo, and IsVisibleToVolunteers visibility toggle (default true) |
 | Shift | Single work slot — DayOffset + StartTime + Duration + IsAllDay flag |
 | ShiftSignup | Links User to Shift with state machine (Pending/Confirmed/Refused/Bailed/Cancelled/NoShow), optional SignupBlockId for range signups |
 | GeneralAvailability | Per-user per-event day availability (AvailableDayOffsets stored as jsonb) |

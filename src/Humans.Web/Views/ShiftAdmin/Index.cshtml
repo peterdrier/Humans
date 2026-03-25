@@ -128,6 +128,10 @@
                     <span class="badge bg-secondary ms-2">@rota.Priority</span>
                     <span class="badge bg-info ms-1">@rota.Policy</span>
                     <span class="badge bg-secondary ms-1">@(rota.Period == RotaPeriod.Build ? "Set-up" : rota.Period.ToString())</span>
+                    @if (!rota.IsVisibleToVolunteers)
+                    {
+                        <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
+                    }
                     @if (!string.IsNullOrEmpty(rota.Description))
                     {
                         <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rota.Description)</div>
@@ -139,7 +143,22 @@
                 </div>
                 @if (Model.CanManageShifts)
                 {
-                    <div>
+                    <div class="d-flex gap-1">
+                        <form asp-action="ToggleVisibility" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            @if (rota.IsVisibleToVolunteers)
+                            {
+                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Hide from volunteers">
+                                    <i class="fa-solid fa-eye-slash"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-sm btn-warning" title="Show to volunteers">
+                                    <i class="fa-solid fa-eye"></i>
+                                </button>
+                            }
+                        </form>
                         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#edit-rota-@rota.Id.ToString("N")">Edit</button>
                         <form asp-action="DeleteRota" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post" class="d-inline">
                             @Html.AntiForgeryToken()

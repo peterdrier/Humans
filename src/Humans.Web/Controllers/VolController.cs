@@ -116,7 +116,7 @@ public class VolController : HumansControllerBase
     }
 
     [HttpGet("Shifts")]
-    public async Task<IActionResult> Shifts(Guid? departmentId, string? date, bool showFull = false)
+    public async Task<IActionResult> Shifts(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false)
     {
         try
         {
@@ -143,14 +143,40 @@ public class VolController : HumansControllerBase
                 .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
                 .ToDictionary(s => s.ShiftId, s => s.Status);
 
-            // Parse date filter
-            LocalDate? filterDate = null;
-            if (!string.IsNullOrEmpty(date) && LocalDatePattern.Iso.Parse(date) is { Success: true } parseResult)
-                filterDate = parseResult.Value;
+            // Parse date range filters
+            LocalDate? filterFromDate = null;
+            LocalDate? filterToDate = null;
+            if (!string.IsNullOrEmpty(fromDate) && LocalDatePattern.Iso.Parse(fromDate) is { Success: true } fromResult)
+                filterFromDate = fromResult.Value;
+            if (!string.IsNullOrEmpty(toDate) && LocalDatePattern.Iso.Parse(toDate) is { Success: true } toResult)
+                filterToDate = toResult.Value;
+
+            // Apply period filter — compute date boundaries from EventSettings offsets
+            if (!string.IsNullOrEmpty(period) && Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
+            {
+                var periodFrom = parsedPeriod switch
+                {
+                    ShiftPeriod.Build => es.GateOpeningDate.PlusDays(es.BuildStartOffset),
+                    ShiftPeriod.Event => es.GateOpeningDate,
+                    ShiftPeriod.Strike => es.GateOpeningDate.PlusDays(es.EventEndOffset + 1),
+                    _ => es.GateOpeningDate.PlusDays(es.BuildStartOffset)
+                };
+                var periodTo = parsedPeriod switch
+                {
+                    ShiftPeriod.Build => es.GateOpeningDate.PlusDays(-1),
+                    ShiftPeriod.Event => es.GateOpeningDate.PlusDays(es.EventEndOffset),
+                    ShiftPeriod.Strike => es.GateOpeningDate.PlusDays(es.StrikeEndOffset),
+                    _ => es.GateOpeningDate.PlusDays(es.StrikeEndOffset)
+                };
+                filterFromDate ??= periodFrom;
+                filterToDate ??= periodTo;
+            }
 
             var browseShifts = await _shiftMgmt.GetBrowseShiftsAsync(
-                es.Id, departmentId: departmentId, date: filterDate,
-                includeAdminOnly: isPrivileged, includeSignups: isPrivileged);
+                es.Id, departmentId: departmentId,
+                fromDate: filterFromDate, toDate: filterToDate,
+                includeAdminOnly: isPrivileged, includeSignups: isPrivileged,
+                includeHidden: isPrivileged);
 
             // Group by department -> rota -> shift
             var departments = browseShifts
@@ -209,7 +235,9 @@ public class VolController : HumansControllerBase
             {
                 EventSettings = es,
                 FilterDepartmentId = departmentId,
-                FilterDate = date,
+                FilterFromDate = fromDate,
+                FilterToDate = toDate,
+                FilterPeriod = period,
                 ShowFullShifts = showFull,
                 UserSignupShiftIds = userSignupShiftIds,
                 UserSignupStatuses = userSignupStatuses,

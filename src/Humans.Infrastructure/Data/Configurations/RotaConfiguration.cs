@@ -24,6 +24,10 @@ public class RotaConfiguration : IEntityTypeConfiguration<Rota>
         builder.Property(e => e.PracticalInfo)
             .HasMaxLength(2000);
 
+        builder.Property(r => r.IsVisibleToVolunteers)
+            .HasDefaultValue(true)
+            .HasSentinel(true);
+
         builder.HasIndex(r => new { r.EventSettingsId, r.TeamId });
 
         builder.HasOne(r => r.EventSettings)

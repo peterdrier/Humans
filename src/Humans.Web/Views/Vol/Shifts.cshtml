@@ -33,20 +33,40 @@
         </select>
     </div>
     <div class="col-auto">
-        <label class="form-label mb-1">Date</label>
-        <input type="date" name="date" class="form-control form-control-sm" value="@Model.FilterDate"
+        <label class="form-label mb-1">From</label>
+        <input type="date" name="fromDate" class="form-control form-control-sm" value="@Model.FilterFromDate"
                min="@es.GateOpeningDate.PlusDays(es.BuildStartOffset).ToString("yyyy-MM-dd", null)"
                max="@es.GateOpeningDate.PlusDays(es.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
     </div>
-    @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterDate))
+    <div class="col-auto">
+        <label class="form-label mb-1">To</label>
+        <input type="date" name="toDate" class="form-control form-control-sm" value="@Model.FilterToDate"
+               min="@es.GateOpeningDate.PlusDays(es.BuildStartOffset).ToString("yyyy-MM-dd", null)"
+               max="@es.GateOpeningDate.PlusDays(es.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
+    </div>
+    @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod))
     {
         <div class="col-auto">
             <a asp-action="Shifts" class="btn btn-sm btn-outline-secondary">Clear Filters</a>
         </div>
     }
+    <input type="hidden" name="period" value="@Model.FilterPeriod" />
 </form>
+@{
+    var activePeriod = Model.FilterPeriod ?? "";
+}
+<div class="btn-group mb-3" role="group" aria-label="Period filter">
+    <a href="@Url.Action("Shifts", new { departmentId = Model.FilterDepartmentId, fromDate = Model.FilterFromDate, toDate = Model.FilterToDate })"
+       class="btn btn-sm @(string.IsNullOrEmpty(activePeriod) ? "btn-primary" : "btn-outline-primary")">All</a>
+    <a href="@Url.Action("Shifts", new { departmentId = Model.FilterDepartmentId, period = "Build" })"
+       class="btn btn-sm @(activePeriod == "Build" ? "btn-info" : "btn-outline-info")">Set-up</a>
+    <a href="@Url.Action("Shifts", new { departmentId = Model.FilterDepartmentId, period = "Event" })"
+       class="btn btn-sm @(activePeriod == "Event" ? "btn-success" : "btn-outline-success")">Event</a>
+    <a href="@Url.Action("Shifts", new { departmentId = Model.FilterDepartmentId, period = "Strike" })"
+       class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">Strike</a>
+</div>
 <script>
-    document.querySelectorAll('[name="departmentId"], [name="date"]').forEach(function(el) {
+    document.querySelectorAll('[name="departmentId"], [name="fromDate"], [name="toDate"]').forEach(function(el) {
         el.addEventListener('change', function() { this.form.submit(); });
     });
 </script>

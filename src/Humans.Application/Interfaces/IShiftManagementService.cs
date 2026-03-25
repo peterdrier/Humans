@@ -149,8 +149,10 @@ public interface IShiftManagementService
     /// Gets all active shifts for browse page, with optional filtering. Includes full shifts.
     /// </summary>
     Task<IReadOnlyList<UrgentShift>> GetBrowseShiftsAsync(
-        Guid eventSettingsId, Guid? departmentId = null, LocalDate? date = null,
-        bool includeAdminOnly = false, bool includeSignups = false);
+        Guid eventSettingsId, Guid? departmentId = null,
+        LocalDate? fromDate = null, LocalDate? toDate = null,
+        bool includeAdminOnly = false, bool includeSignups = false,
+        bool includeHidden = false);
 
     /// <summary>
     /// Calculates the urgency score for a single shift.

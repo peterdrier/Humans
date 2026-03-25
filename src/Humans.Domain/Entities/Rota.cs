@@ -57,6 +57,12 @@ public class Rota
     public string? PracticalInfo { get; set; }
 
     /// <summary>
+    /// Whether this rota is visible to volunteers on the browse page.
+    /// Coordinators can disable to stage rollout of signup.
+    /// </summary>
+    public bool IsVisibleToVolunteers { get; set; } = true;
+
+    /// <summary>
     /// When this rota was created.
     /// </summary>
     public Instant CreatedAt { get; init; }

@@ -363,6 +363,25 @@ public class ShiftAdminController : HumansTeamControllerBase
         return RedirectToAction(nameof(Index), new { slug });
     }
 
+    [HttpPost("Rotas/{rotaId}/ToggleVisibility")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleVisibility(string slug, Guid rotaId)
+    {
+        var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        if (rota is null) return NotFound();
+        if (rota.TeamId != team.Id) return NotFound();
+
+        rota.IsVisibleToVolunteers = !rota.IsVisibleToVolunteers;
+        await _shiftMgmt.UpdateRotaAsync(rota);
+
+        var label = rota.IsVisibleToVolunteers ? "visible to" : "hidden from";
+        SetSuccess($"Rota '{rota.Name}' is now {label} volunteers.");
+        return RedirectToAction(nameof(Index), new { slug });
+    }
+
     [HttpPost("Rotas/{rotaId}/Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteRota(string slug, Guid rotaId)
