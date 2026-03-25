@@ -200,9 +200,14 @@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <span><i class="fa-solid fa-campground me-2"></i>All @Localizer["Camp_Plural"] (@Model.PublicYear)</span>
-        <a asp-controller="Camp" asp-action="Index" class="btn btn-outline-secondary btn-sm">
-            <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>View Public Page
-        </a>
+        <div class="d-flex gap-2">
+            <a asp-action="ExportCamps" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-download me-1"></i>Export CSV
+            </a>
+            <a asp-controller="Camp" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>View Public Page
+            </a>
+        </div>
     </div>
     <div class="card-body">
         <p class="text-muted">Use the public @Localizer["Camp_Plural"] page to browse all registered camps. CampAdmin and Admin users can edit any camp from its detail page.</p>

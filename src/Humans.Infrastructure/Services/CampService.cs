@@ -195,6 +195,7 @@ public class CampService : ICampService
             CreateCampLinks(camp),
             camp.IsSwissCamp,
             camp.TimesAtNowhere,
+            camp.HideHistoricalNames,
             camp.HistoricalNames.Select(h => h.Name).ToList(),
             camp.Images.OrderBy(i => i.SortOrder).Select(i => $"/{i.StoragePath}").ToList(),
             camp.Leads
@@ -450,6 +451,7 @@ public class CampService : ICampService
                     ? [camp.WebOrSocialUrl]
                     : [],
             camp.IsSwissCamp,
+            camp.HideHistoricalNames,
             camp.TimesAtNowhere,
             season.BlurbLong,
             season.BlurbShort,
@@ -755,6 +757,7 @@ public class CampService : ICampService
 
     public async Task UpdateCampAsync(Guid campId, string contactEmail, string contactPhone,
         string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
+        bool hideHistoricalNames,
         CancellationToken cancellationToken = default)
     {
         var camp = await _dbContext.Camps.FindAsync([campId], cancellationToken)
@@ -767,6 +770,7 @@ public class CampService : ICampService
         if (links is { Count: > 0 })
             camp.WebOrSocialUrl = null;
         camp.IsSwissCamp = isSwissCamp;
+        camp.HideHistoricalNames = hideHistoricalNames;
         camp.TimesAtNowhere = timesAtNowhere;
         camp.UpdatedAt = _clock.GetCurrentInstant();
 

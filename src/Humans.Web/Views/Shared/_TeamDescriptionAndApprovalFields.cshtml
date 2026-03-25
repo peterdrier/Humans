@@ -1,6 +1,7 @@
 @model Humans.Web.Models.TeamFormViewModelBase
 @{
     var isReadOnly = (bool?)ViewData["IsReadOnly"] ?? false;
+    var hideRequiresApproval = (bool?)ViewData["HideRequiresApproval"] ?? false;
     var showRequiresApprovalHelp = (bool?)ViewData["ShowRequiresApprovalHelp"] ?? true;
 }
 
@@ -10,11 +11,14 @@
     <span asp-validation-for="Description" class="text-danger"></span>
 </div>
 
-<div class="mb-3 form-check">
-    <input asp-for="RequiresApproval" type="checkbox" class="form-check-input" disabled="@(isReadOnly ? "disabled" : null)" />
-    <label asp-for="RequiresApproval" class="form-check-label">@Localizer["AdminTeams_RequireApproval"]</label>
-    @if (showRequiresApprovalHelp)
-    {
-        <div class="form-text">@Localizer["AdminTeams_RequireApprovalHelp"]</div>
-    }
-</div>
+@if (!hideRequiresApproval)
+{
+    <div class="mb-3 form-check">
+        <input asp-for="RequiresApproval" type="checkbox" class="form-check-input" disabled="@(isReadOnly ? "disabled" : null)" />
+        <label asp-for="RequiresApproval" class="form-check-label">@Localizer["AdminTeams_RequireApproval"]</label>
+        @if (showRequiresApprovalHelp)
+        {
+            <div class="form-text">@Localizer["AdminTeams_RequireApprovalHelp"]</div>
+        }
+    </div>
+}

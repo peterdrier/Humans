@@ -366,7 +366,8 @@ public class CampController : HumansCampControllerBase
                 null, // WebOrSocialUrl legacy — new registrations/edits use Links
                 updateLinks.Count > 0 ? updateLinks : null,
                 model.IsSwissCamp,
-                model.TimesAtNowhere);
+                model.TimesAtNowhere,
+                model.HideHistoricalNames);
 
             await _campService.UpdateSeasonAsync(model.SeasonId, MapToSeasonData(model));
 
@@ -691,6 +692,7 @@ public class CampController : HumansCampControllerBase
             ContactPhone = editData.ContactPhone,
             Links = [.. editData.Links],
             IsSwissCamp = editData.IsSwissCamp,
+            HideHistoricalNames = editData.HideHistoricalNames,
             TimesAtNowhere = editData.TimesAtNowhere,
             BlurbLong = editData.BlurbLong,
             BlurbShort = editData.BlurbShort,
@@ -735,6 +737,7 @@ public class CampController : HumansCampControllerBase
             Name = campDetail.Name,
             Links = [.. campDetail.Links],
             IsSwissCamp = campDetail.IsSwissCamp,
+            HideHistoricalNames = campDetail.HideHistoricalNames,
             TimesAtNowhere = campDetail.TimesAtNowhere,
             HistoricalNames = [.. campDetail.HistoricalNames],
             ImageUrls = [.. campDetail.ImageUrls],

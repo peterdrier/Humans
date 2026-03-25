@@ -263,7 +263,9 @@ Volunteers team membership is the source of truth for "active volunteer" status.
 
 ### System Team Properties
 - `RequiresApproval = false` (auto-managed)
-- Cannot be edited or deleted
+- Name, slug, active status, and parent team cannot be changed
+- Description and Google Group prefix can be edited by admins
+- Cannot be deleted
 - Cannot manually join or leave
 - Cannot change member roles
 

@@ -20,8 +20,9 @@
             <div class="card-body">
                 @if (Model.IsSystemTeam)
                 {
-                    <div class="alert alert-warning">
-                        @Localizer["AdminEditTeam_SystemTeamWarning"]
+                    <div class="alert alert-info">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        This is a system-managed team. You can edit the description and Google Group prefix.
                     </div>
                 }
 
@@ -52,20 +53,20 @@
                         </div>
                     }
 
-                    <partial name="~/Views/Shared/_TeamDescriptionAndApprovalFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = Model.IsSystemTeam, ["ShowRequiresApprovalHelp"] = false }' />
-                    <partial name="~/Views/Shared/_TeamGoogleAndParentFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = Model.IsSystemTeam, ["ShowParentTeam"] = !Model.IsSystemTeam, ["GoogleGroupEmail"] = Model.GoogleGroupEmail }' />
+                    <partial name="~/Views/Shared/_TeamDescriptionAndApprovalFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = false, ["HideRequiresApproval"] = Model.IsSystemTeam, ["ShowRequiresApprovalHelp"] = false }' />
+                    <partial name="~/Views/Shared/_TeamGoogleAndParentFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = false, ["ShowParentTeam"] = !Model.IsSystemTeam, ["GoogleGroupEmail"] = Model.GoogleGroupEmail }' />
 
-                    <div class="mb-3 form-check">
-                        <input asp-for="IsActive" type="checkbox" class="form-check-input" disabled="@(Model.IsSystemTeam ? "disabled" : null)" />
-                        <label asp-for="IsActive" class="form-check-label">@Localizer["AdminEditTeam_TeamIsActive"]</label>
-                    </div>
+                    @if (!Model.IsSystemTeam)
+                    {
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsActive" type="checkbox" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label">@Localizer["AdminEditTeam_TeamIsActive"]</label>
+                        </div>
+                    }
 
                     <div class="d-flex gap-2">
-                        @if (!Model.IsSystemTeam)
-                        {
-                            <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
-                        }
-                        <a asp-action="Summary" class="btn btn-outline-secondary">@(Model.IsSystemTeam ? Localizer["Common_Back"].Value : Localizer["Common_Cancel"].Value)</a>
+                        <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
+                        <a asp-action="Summary" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
                     </div>
                 </form>
             </div>

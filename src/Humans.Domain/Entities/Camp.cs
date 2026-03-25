@@ -12,6 +12,7 @@ public class Camp
     public string? WebOrSocialUrl { get; set; }
     public List<CampLink>? Links { get; set; }
     public bool IsSwissCamp { get; set; }
+    public bool HideHistoricalNames { get; set; }
     public int TimesAtNowhere { get; set; }
 
     public Guid CreatedByUserId { get; init; }

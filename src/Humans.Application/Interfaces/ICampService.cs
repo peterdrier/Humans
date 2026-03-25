@@ -56,6 +56,7 @@ public interface ICampService
     // Camp updates
     Task UpdateCampAsync(Guid campId, string contactEmail, string contactPhone,
         string? webOrSocialUrl, List<CampLink>? links, bool isSwissCamp, int timesAtNowhere,
+        bool hideHistoricalNames,
         CancellationToken cancellationToken = default);
     Task DeleteCampAsync(Guid campId, CancellationToken cancellationToken = default);
 
@@ -133,6 +134,7 @@ public record CampDetailData(
     IReadOnlyList<CampLink> Links,
     bool IsSwissCamp,
     int TimesAtNowhere,
+    bool HideHistoricalNames,
     IReadOnlyList<string> HistoricalNames,
     IReadOnlyList<string> ImageUrls,
     IReadOnlyList<CampLeadSummary> Leads,
@@ -154,6 +156,7 @@ public record CampEditData(
     string ContactPhone,
     IReadOnlyList<string> Links,
     bool IsSwissCamp,
+    bool HideHistoricalNames,
     int TimesAtNowhere,
     string BlurbLong,
     string BlurbShort,

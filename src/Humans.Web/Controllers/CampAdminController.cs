@@ -1,11 +1,15 @@
+using System.Text;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
+using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Controllers;
@@ -16,15 +20,18 @@ namespace Humans.Web.Controllers;
 public class CampAdminController : HumansControllerBase
 {
     private readonly ICampService _campService;
+    private readonly HumansDbContext _dbContext;
     private readonly ILogger<CampAdminController> _logger;
 
     public CampAdminController(
         ICampService campService,
+        HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<CampAdminController> logger)
         : base(userManager)
     {
         _campService = campService;
+        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -170,6 +177,66 @@ public class CampAdminController : HumansControllerBase
         if (!string.IsNullOrEmpty(returnSlug))
             return RedirectToAction("Details", "Camp", new { slug = returnSlug });
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet("Export")]
+    public async Task<IActionResult> ExportCamps()
+    {
+        var settings = await _campService.GetSettingsAsync();
+        var year = settings.PublicYear;
+
+        var camps = await _dbContext.Camps
+            .Include(c => c.Seasons.Where(s => s.Year == year))
+            .Include(c => c.Leads.Where(l => l.LeftAt == null))
+                .ThenInclude(l => l.User)
+            .Where(c => c.Seasons.Any(s => s.Year == year))
+            .OrderBy(c => c.Seasons.Where(s => s.Year == year).Select(s => s.Name).FirstOrDefault())
+            .ToListAsync();
+
+        var csv = new StringBuilder();
+        csv.AppendCsvRow(
+            "Name", "Slug", "Status", "Contact Email", "Contact Phone",
+            "Leads", "Languages", "Member Count",
+            "Space Requirement", "Sound Zone", "Containers", "Electrical Grid",
+            "Accepting Members", "Kids Welcome", "Adult Playspace",
+            "Vibes", "Swiss Camp", "Times Participating");
+
+        foreach (var camp in camps)
+        {
+            var season = camp.Seasons.FirstOrDefault();
+            if (season is null) continue;
+
+            var leads = string.Join("; ", camp.Leads
+                .Where(l => l.IsActive)
+                .Select(l => $"{l.User.DisplayName} <{l.User.Email}>"));
+
+            var vibes = season.Vibes.Count > 0
+                ? string.Join(", ", season.Vibes)
+                : "";
+
+            csv.AppendCsvRow(
+                season.Name,
+                camp.Slug,
+                season.Status,
+                camp.ContactEmail,
+                camp.ContactPhone,
+                leads,
+                season.Languages,
+                season.MemberCount,
+                season.SpaceRequirement?.ToString() ?? "",
+                season.SoundZone?.ToString() ?? "",
+                season.ContainerCount,
+                season.ElectricalGrid?.ToString() ?? "",
+                season.AcceptingMembers,
+                season.KidsWelcome,
+                season.AdultPlayspace,
+                vibes,
+                camp.IsSwissCamp ? "Yes" : "No",
+                camp.TimesAtNowhere);
+        }
+
+        return File(Encoding.UTF8.GetBytes(csv.ToString()),
+            "text/csv", $"barrios-{year}.csv");
     }
 
     [HttpPost("Delete")]

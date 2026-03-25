@@ -45,6 +45,7 @@ public class CampDetailViewModel
     public string Name { get; set; } = string.Empty;
     public List<CampLink> Links { get; set; } = new();
     public bool IsSwissCamp { get; set; }
+    public bool HideHistoricalNames { get; set; }
     public int TimesAtNowhere { get; set; }
     public List<string> HistoricalNames { get; set; } = new();
     public List<string> ImageUrls { get; set; } = new();
@@ -95,6 +96,7 @@ public class CampRegisterViewModel
     public string ContactPhone { get; set; } = string.Empty;
     public List<string> Links { get; set; } = new();
     public bool IsSwissCamp { get; set; }
+    public bool HideHistoricalNames { get; set; }
     public int TimesAtNowhere { get; set; }
     public string? HistoricalNames { get; set; }
     public string BlurbLong { get; set; } = string.Empty;
