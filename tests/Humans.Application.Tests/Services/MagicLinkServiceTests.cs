@@ -7,6 +7,7 @@ using Humans.Infrastructure.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -22,7 +23,7 @@ public class MagicLinkServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly UserManager<User> _userManager;
     private readonly IEmailService _emailService;
-    private readonly IEmailRenderer _renderer;
+    private readonly IMemoryCache _memoryCache;
     private readonly MagicLinkService _service;
 
     public MagicLinkServiceTests()
@@ -39,7 +40,7 @@ public class MagicLinkServiceTests : IDisposable
             store, null, null, null, null, null, null, null, null);
 
         _emailService = Substitute.For<IEmailService>();
-        _renderer = Substitute.For<IEmailRenderer>();
+        _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
         var dataProtectionProvider = DataProtectionProvider.Create("TestApp");
 
@@ -52,8 +53,8 @@ public class MagicLinkServiceTests : IDisposable
             _dbContext,
             _userManager,
             _emailService,
-            _renderer,
             dataProtectionProvider,
+            _memoryCache,
             _clock,
             emailSettings,
             NullLogger<MagicLinkService>.Instance);
@@ -63,6 +64,7 @@ public class MagicLinkServiceTests : IDisposable
     {
         _dbContext.Dispose();
         _userManager.Dispose();
+        _memoryCache.Dispose();
         GC.SuppressFinalize(this);
     }
 
@@ -92,8 +94,6 @@ public class MagicLinkServiceTests : IDisposable
         });
         await _dbContext.SaveChangesAsync();
 
-        _userManager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns("fake-token");
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         // Act — search by a secondary verified email
@@ -103,7 +103,7 @@ public class MagicLinkServiceTests : IDisposable
         await _emailService.Received(1).SendMagicLinkLoginAsync(
             "alice@work.com",
             "Alice",
-            Arg.Is<string>(url => url.Contains("/Account/MagicLink") && url.Contains(userId.ToString())),
+            Arg.Is<string>(url => url.Contains("/Account/MagicLinkConfirm") && url.Contains(userId.ToString())),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
@@ -136,8 +136,6 @@ public class MagicLinkServiceTests : IDisposable
         });
         await _dbContext.SaveChangesAsync();
 
-        _userManager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns("fake-token");
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         // Act
@@ -206,41 +204,20 @@ public class MagicLinkServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SendMagicLinkAsync_CaseInsensitive_FindsUser()
+    public async Task SendMagicLinkAsync_SignupRateLimited_DoesNotSendEmail()
     {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            UserName = "alice@gmail.com",
-            Email = "alice@gmail.com",
-            DisplayName = "Alice",
-            CreatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Users.Add(user);
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            Email = "Alice@Gmail.com",
-            IsVerified = true,
-            IsNotificationTarget = true,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
-        await _dbContext.SaveChangesAsync();
+        // Arrange — no user, but request same email twice quickly
+        _userManager.FindByEmailAsync(Arg.Any<string>()).Returns((User?)null);
 
-        _userManager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns("fake-token");
-        _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
+        await _service.SendMagicLinkAsync("newperson@example.com", null);
+        _emailService.ClearReceivedCalls();
 
-        // Act — search with different casing
-        await _service.SendMagicLinkAsync("alice@gmail.com", null);
+        // Act — second request within 60s
+        await _service.SendMagicLinkAsync("newperson@example.com", null);
 
-        // Assert — found and sent login link
-        await _emailService.Received(1).SendMagicLinkLoginAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+        // Assert — second email suppressed
+        await _emailService.DidNotReceive().SendMagicLinkSignupAsync(
+            Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
@@ -282,62 +259,80 @@ public class MagicLinkServiceTests : IDisposable
     }
 
     [Fact]
-    public void VerifySignupToken_ValidToken_ReturnsEmail()
+    public void VerifySignupToken_InvalidToken_ReturnsNull()
     {
-        // We can't directly test the token since it's created internally,
-        // but we can verify the round-trip via the DataProtection protector.
-        // Instead, test that an invalid token returns null.
         var result = _service.VerifySignupToken("not-a-valid-token");
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task VerifyLoginTokenAsync_InvalidToken_ReturnsNull()
-    {
-        // Arrange
-        var userId = Guid.NewGuid();
-        var user = new User { Id = userId, UserName = "test@test.com" };
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _userManager.VerifyUserTokenAsync(user, Arg.Any<string>(), Arg.Any<string>(), "bad-token")
-            .Returns(false);
-
-        // Act
-        var result = await _service.VerifyLoginTokenAsync(userId, "bad-token");
-
-        // Assert
         result.Should().BeNull();
     }
 
     [Fact]
     public async Task VerifyLoginTokenAsync_NonexistentUser_ReturnsNull()
     {
-        // Arrange
         _userManager.FindByIdAsync(Arg.Any<string>()).Returns((User?)null);
 
-        // Act
         var result = await _service.VerifyLoginTokenAsync(Guid.NewGuid(), "some-token");
 
-        // Assert
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task VerifyLoginTokenAsync_ValidToken_ReturnsUserAndRotatesStamp()
+    public async Task VerifyLoginTokenAsync_InvalidToken_ReturnsNull()
     {
-        // Arrange
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _userManager.VerifyUserTokenAsync(user, Arg.Any<string>(), Arg.Any<string>(), "valid-token")
-            .Returns(true);
-        _userManager.UpdateSecurityStampAsync(user).Returns(IdentityResult.Success);
+
+        var result = await _service.VerifyLoginTokenAsync(userId, "bad-token");
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task FindUserByVerifiedEmailAsync_FindsByUserEmail()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var user = new User
+        {
+            Id = userId,
+            UserName = "alice@gmail.com",
+            Email = "alice@gmail.com",
+            DisplayName = "Alice",
+            CreatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.Users.Add(user);
+        _dbContext.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "alice@work.com",
+            IsVerified = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        });
+        await _dbContext.SaveChangesAsync();
 
         // Act
-        var result = await _service.VerifyLoginTokenAsync(userId, "valid-token");
+        var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com");
 
         // Assert
         result.Should().NotBeNull();
         result!.Id.Should().Be(userId);
-        await _userManager.Received(1).UpdateSecurityStampAsync(user);
+    }
+
+    [Fact]
+    public async Task FindUserByVerifiedEmailAsync_FallsBackToIdentityEmail()
+    {
+        // Arrange — no UserEmail rows, but user exists in Identity
+        var userId = Guid.NewGuid();
+        var user = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com" };
+        _userManager.FindByEmailAsync("test@test.com").Returns(user);
+
+        // Act
+        var result = await _service.FindUserByVerifiedEmailAsync("test@test.com");
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Id.Should().Be(userId);
     }
 }

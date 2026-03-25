@@ -110,9 +110,7 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
     .AddEntityFrameworkStores<HumansDbContext>()
     .AddDefaultTokenProviders();
 
-// Magic link tokens expire after 15 minutes
-builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
-    options.TokenLifespan = TimeSpan.FromMinutes(15));
+// Magic link tokens use DataProtection with explicit 15-minute lifetime (not Identity token providers).
 
 // Configure cookie security policy (TLS terminated by Coolify/reverse proxy)
 builder.Services.ConfigureApplicationCookie(options =>

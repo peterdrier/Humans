@@ -4,8 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Controllers;
 
@@ -17,7 +15,6 @@ public class AccountController : Controller
     private readonly ILogger<AccountController> _logger;
     private readonly IUserEmailService _userEmailService;
     private readonly IMagicLinkService _magicLinkService;
-    private readonly HumansDbContext _dbContext;
 
     public AccountController(
         SignInManager<User> signInManager,
@@ -25,8 +22,7 @@ public class AccountController : Controller
         IClock clock,
         ILogger<AccountController> logger,
         IUserEmailService userEmailService,
-        IMagicLinkService magicLinkService,
-        HumansDbContext dbContext)
+        IMagicLinkService magicLinkService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
@@ -34,7 +30,6 @@ public class AccountController : Controller
         _logger = logger;
         _userEmailService = userEmailService;
         _magicLinkService = magicLinkService;
-        _dbContext = dbContext;
     }
 
     [HttpGet]
@@ -109,7 +104,7 @@ public class AccountController : Controller
         }
 
         // Account linking: check if a user already exists with this email
-        var existingByEmail = await FindUserByVerifiedEmailAsync(email);
+        var existingByEmail = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
         if (existingByEmail is not null)
         {
             try
@@ -149,6 +144,7 @@ public class AccountController : Controller
         {
             UserName = email,
             Email = email,
+            EmailConfirmed = true,
             DisplayName = name ?? email,
             ProfilePictureUrl = pictureUrl,
             CreatedAt = _clock.GetCurrentInstant(),
@@ -203,6 +199,18 @@ public class AccountController : Controller
     }
 
     [HttpGet]
+    public IActionResult MagicLinkConfirm(Guid userId, string token, string? returnUrl = null)
+    {
+        // Landing page — prevents email security scanners from consuming the token.
+        // The actual sign-in happens via POST from the landing page button.
+        ViewData["UserId"] = userId;
+        ViewData["Token"] = token;
+        ViewData["ReturnUrl"] = returnUrl;
+        return View("MagicLinkConfirm");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> MagicLink(Guid userId, string token, string? returnUrl = null)
     {
         returnUrl ??= Url.Content("~/");
@@ -231,7 +239,6 @@ public class AccountController : Controller
             return View("MagicLinkError");
         }
 
-        // Check if someone already signed up with this email (double-click)
         ViewData["ReturnUrl"] = returnUrl;
         ViewData["Email"] = email;
         ViewData["Token"] = token;
@@ -251,7 +258,7 @@ public class AccountController : Controller
         }
 
         // Check if account was already created (double-click protection)
-        var existingUser = await FindUserByVerifiedEmailAsync(email);
+        var existingUser = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
         if (existingUser is not null)
         {
             await _signInManager.SignInAsync(existingUser, isPersistent: false);
@@ -279,20 +286,8 @@ public class AccountController : Controller
             return View("MagicLinkError");
         }
 
-        // Create UserEmail record (non-OAuth, verified, notification target)
-        var userEmail = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Email = email,
-            IsOAuth = false,
-            IsVerified = true,
-            IsNotificationTarget = true,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-        _dbContext.UserEmails.Add(userEmail);
-        await _dbContext.SaveChangesAsync();
+        // Create UserEmail record via service (non-OAuth, verified, notification target)
+        await _userEmailService.AddOAuthEmailAsync(user.Id, email);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User {UserId} created account via magic link signup", user.Id);
@@ -315,26 +310,5 @@ public class AccountController : Controller
     public IActionResult AccessDenied()
     {
         return View();
-    }
-
-    // --- Helpers ---
-
-    /// <summary>
-    /// Finds a user by checking verified UserEmails first, then User.NormalizedEmail.
-    /// </summary>
-    private async Task<User?> FindUserByVerifiedEmailAsync(string email)
-    {
-        var normalizedEmail = email.ToUpperInvariant();
-        var userEmail = await _dbContext.UserEmails
-            .Include(ue => ue.User)
-            .FirstOrDefaultAsync(ue => ue.IsVerified &&
-                ue.Email.ToUpperInvariant() == normalizedEmail);
-
-        if (userEmail is not null)
-        {
-            return userEmail.User;
-        }
-
-        return await _userManager.FindByEmailAsync(email);
     }
 }
