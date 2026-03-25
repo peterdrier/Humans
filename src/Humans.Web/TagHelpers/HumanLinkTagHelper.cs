@@ -71,6 +71,7 @@ public class HumanLinkTagHelper : TagHelper
             : urlHelper.Action("View", "Human", new { id = UserId });
 
         output.TagName = "a";
+        output.TagMode = TagMode.StartTagAndEndTag;
         output.Attributes.SetAttribute("href", href);
 
         if (ShowPopover)
