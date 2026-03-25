@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
+using Humans.Domain.Enums;
 
 namespace Humans.Domain.Entities;
 
@@ -115,6 +116,28 @@ public class User : IdentityUser<Guid>
     /// Whether to suppress email notifications for schedule changes.
     /// </summary>
     public bool SuppressScheduleChangeEmails { get; set; }
+
+    /// <summary>
+    /// Type of account: Member (full platform user) or Contact (external, no login).
+    /// Defaults to Member so existing users are unaffected.
+    /// </summary>
+    public AccountType AccountType { get; set; } = AccountType.Member;
+
+    /// <summary>
+    /// Where this contact was imported from. Only set for Contact accounts.
+    /// </summary>
+    public ContactSource? ContactSource { get; set; }
+
+    /// <summary>
+    /// External system ID for deduplication (e.g., MailerLite subscriber ID, TicketTailor attendee ID).
+    /// Only set for Contact accounts.
+    /// </summary>
+    public string? ExternalSourceId { get; set; }
+
+    /// <summary>
+    /// Whether this is a lightweight contact (not a full member).
+    /// </summary>
+    public bool IsContact => AccountType == AccountType.Contact;
 
     /// <summary>
     /// Navigation property to communication preferences.

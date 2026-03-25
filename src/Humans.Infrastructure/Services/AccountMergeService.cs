@@ -19,6 +19,7 @@ public class AccountMergeService : IAccountMergeService
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
+    private readonly IContactService _contactService;
     private readonly ILogger<AccountMergeService> _logger;
     private readonly IClock _clock;
 
@@ -27,6 +28,7 @@ public class AccountMergeService : IAccountMergeService
         IAuditLogService auditLogService,
         IProfileService profileService,
         ITeamService teamService,
+        IContactService contactService,
         ILogger<AccountMergeService> logger,
         IClock clock)
     {
@@ -34,6 +36,7 @@ public class AccountMergeService : IAccountMergeService
         _auditLogService = auditLogService;
         _profileService = profileService;
         _teamService = teamService;
+        _contactService = contactService;
         _logger = logger;
         _clock = clock;
     }
@@ -83,49 +86,76 @@ public class AccountMergeService : IAccountMergeService
             "Admin {AdminId} accepting merge request {RequestId}: merging {SourceUserId} ({SourceName}) into {TargetUserId} ({TargetName})",
             adminUserId, requestId, sourceUser.Id, sourceDisplayName, targetUser.Id, targetUser.DisplayName);
 
-        // 1. Add primary to any non-system teams the duplicate is in (via service)
-        //    System teams (e.g. Volunteers) are managed automatically — skip them.
-        var sourceTeams = await _teamService.GetUserTeamsAsync(sourceUser.Id, ct);
-        var targetTeamIds = (await _teamService.GetUserTeamsAsync(targetUser.Id, ct))
-            .Select(m => m.TeamId).ToHashSet();
-
-        foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam && !targetTeamIds.Contains(m.TeamId)))
+        if (sourceUser.AccountType == AccountType.Contact)
         {
-            await _teamService.AddMemberToTeamAsync(membership.TeamId, targetUser.Id, adminUserId, ct);
+            // Lightweight merge: source is an external contact, not a full member.
+            // Delete source emails first to avoid unique constraint on pending email verify.
+            var sourceEmails = await _dbContext.UserEmails
+                .Where(e => e.UserId == sourceUser.Id)
+                .ToListAsync(ct);
+            _dbContext.UserEmails.RemoveRange(sourceEmails);
+            await _dbContext.SaveChangesAsync(ct);
+
+            // Verify the pending email on the target
+            var pendingEmail = await _dbContext.UserEmails
+                .FirstOrDefaultAsync(e => e.Id == request.PendingEmailId, ct)
+                ?? throw new InvalidOperationException(
+                    $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
+            pendingEmail.IsVerified = true;
+            pendingEmail.UpdatedAt = now;
+
+            // Delegate preference migration + deactivation to ContactService
+            await _contactService.MergeContactToMemberAsync(
+                sourceUser, targetUser, adminUserId, adminDisplayName, ct);
+        }
+        else
+        {
+            // Full member-to-member merge (existing logic)
+
+            // 1. Add primary to any non-system teams the duplicate is in (via service)
+            //    System teams (e.g. Volunteers) are managed automatically — skip them.
+            var sourceTeams = await _teamService.GetUserTeamsAsync(sourceUser.Id, ct);
+            var targetTeamIds = (await _teamService.GetUserTeamsAsync(targetUser.Id, ct))
+                .Select(m => m.TeamId).ToHashSet();
+
+            foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam && !targetTeamIds.Contains(m.TeamId)))
+            {
+                await _teamService.AddMemberToTeamAsync(membership.TeamId, targetUser.Id, adminUserId, ct);
+            }
+
+            // 2. Remove duplicate from all non-system teams (via service)
+            foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam))
+            {
+                await _teamService.RemoveMemberAsync(membership.TeamId, sourceUser.Id, adminUserId, ct);
+            }
+
+            // 3. End duplicate's active role assignments (system sync will re-evaluate)
+            foreach (var role in sourceUser.RoleAssignments.Where(r => r.ValidTo == null))
+            {
+                role.ValidTo = now;
+            }
+
+            // 4. Delete duplicate's email rows (must happen before verifying
+            //    the pending email to avoid unique constraint violation)
+            var sourceEmails = await _dbContext.UserEmails
+                .Where(e => e.UserId == sourceUser.Id)
+                .ToListAsync(ct);
+            _dbContext.UserEmails.RemoveRange(sourceEmails);
+            await _dbContext.SaveChangesAsync(ct);
+
+            // 5. Verify the pending email on the primary account
+            var pendingEmail = await _dbContext.UserEmails
+                .FirstOrDefaultAsync(e => e.Id == request.PendingEmailId, ct)
+                ?? throw new InvalidOperationException(
+                    $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
+            pendingEmail.IsVerified = true;
+            pendingEmail.UpdatedAt = now;
+
+            // 6. Anonymize the duplicate account
+            await AnonymizeSourceAccountAsync(sourceUser, now, ct);
         }
 
-        // 2. Remove duplicate from all non-system teams (via service)
-        foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam))
-        {
-            await _teamService.RemoveMemberAsync(membership.TeamId, sourceUser.Id, adminUserId, ct);
-        }
-
-        // 3. End duplicate's active role assignments (system sync will re-evaluate)
-        foreach (var role in sourceUser.RoleAssignments.Where(r => r.ValidTo == null))
-        {
-            role.ValidTo = now;
-        }
-
-        // 4. Delete duplicate's email rows (must happen before verifying
-        //    the pending email to avoid unique constraint violation)
-        var sourceEmails = await _dbContext.UserEmails
-            .Where(e => e.UserId == sourceUser.Id)
-            .ToListAsync(ct);
-        _dbContext.UserEmails.RemoveRange(sourceEmails);
-        await _dbContext.SaveChangesAsync(ct);
-
-        // 5. Verify the pending email on the primary account
-        var pendingEmail = await _dbContext.UserEmails
-            .FirstOrDefaultAsync(e => e.Id == request.PendingEmailId, ct)
-            ?? throw new InvalidOperationException(
-                $"Pending email {request.PendingEmailId} no longer exists. Cannot complete merge.");
-        pendingEmail.IsVerified = true;
-        pendingEmail.UpdatedAt = now;
-
-        // 6. Anonymize the duplicate account
-        await AnonymizeSourceAccountAsync(sourceUser, now, ct);
-
-        // 6. Mark the merge request as accepted
+        // 7. Mark the merge request as accepted
         request.Status = AccountMergeRequestStatus.Accepted;
         request.ResolvedAt = now;
         request.ResolvedByUserId = adminUserId;

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Infrastructure.Data.Configurations;
 
@@ -58,6 +59,24 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(u => u.Email);
+
+        // Contact account type support (#205)
+        builder.Property(u => u.AccountType)
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .HasDefaultValue(AccountType.Member);
+
+        builder.Property(u => u.ContactSource)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+        builder.Property(u => u.ExternalSourceId)
+            .HasMaxLength(256);
+
+        builder.HasIndex(u => u.AccountType);
+
+        builder.HasIndex(u => new { u.ContactSource, u.ExternalSourceId })
+            .HasFilter("external_source_id IS NOT NULL");
 
         // Ignore GetEffectiveEmail (method, not property - EF won't map it, but defensive)
     }

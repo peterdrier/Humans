@@ -471,7 +471,9 @@ public class OnboardingService : IOnboardingService
 
     public async Task<Application.DTOs.AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
-        var allUserIds = await _dbContext.Users.Select(u => u.Id).ToListAsync(ct);
+        var allUserIds = await _dbContext.Users
+            .Where(u => u.AccountType == AccountType.Member)
+            .Select(u => u.Id).ToListAsync(ct);
         var totalMembers = allUserIds.Count;
         var partition = await _membershipCalculator.PartitionUsersAsync(allUserIds, ct);
 

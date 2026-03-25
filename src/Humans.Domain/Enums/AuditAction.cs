@@ -69,4 +69,6 @@ public enum AuditAction
     AccountMergeRejected,
     GoogleResourceSettingsRemediated,
     CommunicationPreferenceChanged,
+    ContactCreated,
+    ContactMergedToMember,
 }

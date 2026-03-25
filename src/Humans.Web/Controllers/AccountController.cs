@@ -16,19 +16,22 @@ public class AccountController : Controller
     private readonly IClock _clock;
     private readonly ILogger<AccountController> _logger;
     private readonly IUserEmailService _userEmailService;
+    private readonly IContactService _contactService;
 
     public AccountController(
         SignInManager<User> signInManager,
         UserManager<User> userManager,
         IClock clock,
         ILogger<AccountController> logger,
-        IUserEmailService userEmailService)
+        IUserEmailService userEmailService,
+        IContactService contactService)
     {
         _signInManager = signInManager;
         _userManager = userManager;
         _clock = clock;
         _logger = logger;
         _userEmailService = userEmailService;
+        _contactService = contactService;
     }
 
     [HttpGet]
@@ -80,6 +83,18 @@ public class AccountController : Controller
             {
                 existingUser.LastLoginAt = _clock.GetCurrentInstant();
                 await _userManager.UpdateAsync(existingUser);
+
+                // Auto-merge if a contact exists with the same email
+                var loginEmail = info.Principal.FindFirstValue(ClaimTypes.Email);
+                if (!string.IsNullOrEmpty(loginEmail))
+                {
+                    var existingContact = await _contactService.FindContactByEmailAsync(loginEmail);
+                    if (existingContact is not null)
+                    {
+                        await _contactService.MergeContactToMemberAsync(
+                            existingContact, existingUser, null, "OAuth login auto-merge");
+                    }
+                }
             }
 
             _logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
@@ -120,6 +135,14 @@ public class AccountController : Controller
             {
                 // Create OAuth UserEmail record for the login email
                 await _userEmailService.AddOAuthEmailAsync(user.Id, email);
+
+                // Auto-merge if a contact exists with the same email
+                var existingContact = await _contactService.FindContactByEmailAsync(email);
+                if (existingContact is not null)
+                {
+                    await _contactService.MergeContactToMemberAsync(
+                        existingContact, user, null, "OAuth signup auto-merge");
+                }
 
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 _logger.LogInformation("User created an account using {Provider}", info.LoginProvider);

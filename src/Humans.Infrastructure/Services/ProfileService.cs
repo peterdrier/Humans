@@ -557,6 +557,7 @@ public class ProfileService : IProfileService
         string? search, string? statusFilter, CancellationToken ct = default)
     {
         var users = await _dbContext.Users
+            .Where(u => u.AccountType == AccountType.Member)
             .Select(u => new
             {
                 u.Id,
@@ -696,6 +697,7 @@ public class ProfileService : IProfileService
     {
         var pattern = $"%{query}%";
         return await _dbContext.Users
+            .Where(u => u.AccountType == AccountType.Member)
             .Where(u => u.Profile != null && u.Profile.IsApproved && !u.Profile.IsSuspended)
             .Where(u => EF.Functions.ILike(u.DisplayName, pattern) ||
                          (u.Email != null && EF.Functions.ILike(u.Email, pattern)))

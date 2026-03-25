@@ -13,7 +13,7 @@
 
 | Entity | Purpose |
 |--------|---------|
-| User | Custom IdentityUser with Google OAuth |
+| User | Custom IdentityUser with Google OAuth. AccountType distinguishes Members from Contacts. |
 | Profile | Member profile with computed MembershipStatus, MembershipTier, ConsentCheckStatus |
 | UserEmail | Email addresses per user (login, verified, notifications) |
 | ContactField | Contact info with per-field visibility controls |
@@ -335,6 +335,34 @@ Per-user, per-category email opt-in/opt-out preferences. One row per user per ca
 **Indexes:** UserId
 
 Defaults are created lazily: System=on, EventOperations=on, CommunityUpdates=off, Marketing=off.
+
+### AccountType
+
+Distinguishes full members from lightweight external contacts.
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| Member | 0 | Full platform member (OAuth login, profile, teams) |
+| Contact | 1 | External contact (MailerLite, TicketTailor, manual). No login. |
+| Deactivated | 2 | Deactivated (e.g., after contact-to-member merge). Preserved for audit. |
+
+Stored as string. Defaults to `Member`. Added in `AddContactAccountType` migration.
+
+### ContactSource
+
+Where an external contact was imported from. Nullable — only set for Contact accounts.
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| Manual | 0 | Manually created by admin |
+| MailerLite | 1 | Imported from MailerLite |
+| TicketTailor | 2 | Imported from TicketTailor |
+
+Stored as string. User also has `ExternalSourceId` (string, max 256) for dedup.
+
+**Contact merge paths:**
+- **Same email**: auto-merged on OAuth signup/login via `ContactService.MergeContactToMemberAsync`
+- **Different email**: handled by existing `AccountMergeRequest` admin workflow when member adds contact's email via Profile → Emails
 
 ## Enums
 

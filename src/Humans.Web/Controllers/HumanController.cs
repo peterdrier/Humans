@@ -27,6 +27,7 @@ public class HumanController : HumansControllerBase
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IContactService _contactService;
     private readonly IClock _clock;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
@@ -40,6 +41,7 @@ public class HumanController : HumansControllerBase
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftMgmt,
+        IContactService contactService,
         IClock clock,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext)
@@ -53,6 +55,7 @@ public class HumanController : HumansControllerBase
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
         _shiftMgmt = shiftMgmt;
+        _contactService = contactService;
         _clock = clock;
         _localizer = localizer;
         _dbContext = dbContext;
@@ -569,4 +572,98 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
     }
 
+    // ---- Contact Management ----
+
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [HttpGet("Admin/Contacts")]
+    public async Task<IActionResult> Contacts(string? search, int page = 1)
+    {
+        var pageSize = 20;
+        var allRows = await _contactService.GetFilteredContactsAsync(search);
+        var totalCount = allRows.Count;
+
+        var contacts = allRows
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(r => new AdminContactViewModel
+            {
+                Id = r.UserId,
+                Email = r.Email,
+                DisplayName = r.DisplayName,
+                ContactSource = r.ContactSource,
+                ExternalSourceId = r.ExternalSourceId,
+                CreatedAt = r.CreatedAt,
+                HasCommunicationPreferences = r.HasCommunicationPreferences
+            })
+            .ToList();
+
+        var viewModel = new AdminContactListViewModel
+        {
+            Contacts = contacts,
+            SearchTerm = search,
+            TotalCount = totalCount,
+            PageNumber = page,
+        };
+
+        return View(viewModel);
+    }
+
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [HttpGet("{id:guid}/Admin/Contact")]
+    public async Task<IActionResult> ContactDetail(Guid id)
+    {
+        var contact = await _contactService.GetContactDetailAsync(id);
+        if (contact is null)
+        {
+            return NotFound();
+        }
+
+        var auditLog = await _auditLogService.GetByUserAsync(id, 50);
+
+        var viewModel = new AdminContactDetailViewModel
+        {
+            UserId = contact.Id,
+            Email = contact.Email ?? string.Empty,
+            DisplayName = contact.DisplayName,
+            ContactSource = contact.ContactSource,
+            ExternalSourceId = contact.ExternalSourceId,
+            CreatedAt = contact.CreatedAt.ToDateTimeUtc(),
+            CommunicationPreferences = contact.CommunicationPreferences.ToList(),
+            AuditLog = auditLog,
+        };
+
+        return View(viewModel);
+    }
+
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [HttpGet("Admin/Contacts/Create")]
+    public IActionResult CreateContact()
+    {
+        return View(new CreateContactViewModel());
+    }
+
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [HttpPost("Admin/Contacts/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateContact(CreateContactViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        try
+        {
+            var contact = await _contactService.CreateContactAsync(
+                model.Email, model.DisplayName, model.Source);
+
+            SetSuccess($"Contact created for {model.Email}.");
+            return RedirectToAction(nameof(ContactDetail), new { id = contact.Id });
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message);
+            return View(model);
+        }
+    }
 }
