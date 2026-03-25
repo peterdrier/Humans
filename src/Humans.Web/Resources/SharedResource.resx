@@ -1235,7 +1235,7 @@
   <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>your@email.com</value></data>
   <data name="Login_MagicLink_Submit" xml:space="preserve"><value>Send me a login link</value></data>
   <data name="MagicLinkSent_Title" xml:space="preserve"><value>Check your email</value></data>
-  <data name="MagicLinkSent_Message" xml:space="preserve"><value>If that email address is in our system, we've sent you a login link. Check your inbox (and spam folder).</value></data>
+  <data name="MagicLinkSent_Message" xml:space="preserve"><value>We've sent a link to that email address. Check your inbox (and spam folder).</value></data>
   <data name="MagicLinkError_Title" xml:space="preserve"><value>Link expired or invalid</value></data>
   <data name="MagicLinkError_Message" xml:space="preserve"><value>This login link has expired or has already been used.</value></data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Request a new link</value></data>
