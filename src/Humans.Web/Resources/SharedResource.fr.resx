@@ -85,7 +85,7 @@
   <!-- Account / Login          -->
   <!-- ======================== -->
   <data name="Login_Title" xml:space="preserve"><value>Connexion</value></data>
-  <data name="Login_Description" xml:space="preserve"><value>Connectez-vous avec votre compte Google pour acc&#xE9;der &#xE0; Humans.</value></data>
+  <data name="Login_Description" xml:space="preserve"><value>Connectez-vous pour acc&#xE9;der &#xE0; Humans.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Se connecter avec Google</value></data>
   <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Acc&#xE8;s refus&#xE9;</value></data>
@@ -106,7 +106,7 @@
   <!-- ======================== -->
   <data name="Home_Title" xml:space="preserve"><value>Accueil</value></data>
   <data name="Home_Tagline" xml:space="preserve"><value>Portail des membres de Nobodies Collective</value></data>
-  <data name="Home_CTA" xml:space="preserve"><value>Nouveau/nouvelle ici&#xA0;? Connectez-vous avec Google pour commencer.</value></data>
+  <data name="Home_CTA" xml:space="preserve"><value>Nouveau/nouvelle ici&#xA0;? Connectez-vous pour commencer.</value></data>
   <data name="Home_WhyTitle" xml:space="preserve"><value>Pourquoi avons-nous besoin de cela&#xA0;?</value></data>
   <data name="Home_WhyDescription" xml:space="preserve"><value>En tant qu'association enregistr&#xE9;e en Espagne, Nobodies Collective a des obligations l&#xE9;gales. Avant que quiconque puisse acc&#xE9;der aux ressources partag&#xE9;es, nous devons confirmer l'acceptation de nos politiques. Ce syst&#xE8;me g&#xE8;re cela simplement et maintient tout &#xE0; jour.</value></data>
   <data name="Home_ComplianceTitle" xml:space="preserve"><value>Conformit&#xE9; l&#xE9;gale</value></data>
