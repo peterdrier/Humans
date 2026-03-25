@@ -8,7 +8,7 @@
             <div class="text-muted small">
                 @if (Model.IsAdmin)
                 {
-                    <a asp-controller="Human" asp-action="Detail" asp-route-id="@Model.ReporterUserId">@Model.ReporterName</a>
+                    <human-link user-id="@Model.ReporterUserId" display-name="@Model.ReporterName" admin="true" />
                 }
                 else
                 {

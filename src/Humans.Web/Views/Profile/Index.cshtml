@@ -11,9 +11,9 @@
                 <vc:access-matrix section="Profile" />
                 @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                 {
-                    <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary">
+                    <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary">
                         <i class="fa-solid fa-user-shield"></i> Admin
-                    </a>
+                    </human-link>
                 }
             </div>
         </div>

@@ -15,7 +15,7 @@
     }
     <div class="flex-grow-1">
         <h6 class="mb-0">
-            <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@Model.UserId">@Model.DisplayName</a>
+            <human-link user-id="@Model.UserId" display-name="@Model.DisplayName" admin="true" />
         </h6>
         <small class="text-muted">@Model.Email</small>
         <div class="mt-2">

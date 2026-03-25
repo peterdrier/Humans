@@ -55,7 +55,10 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 **Acceptance Criteria:**
 - Approve re-validates overlap (returns warning, not blocker)
 - Refuse with optional reason
+- Batch approve/refuse: `ApproveRangeAsync`/`RefuseRangeAsync` — approves or refuses all pending signups sharing a `SignupBlockId` in one action
+- Pending approvals table shows signup date and groups range signups with date range display
 - Voluntell: enroll a volunteer directly (auto-confirmed, sets Enrolled flag)
+- Remove: unassign a confirmed signup via `RemoveSignupAsync` — transitions to Cancelled with reviewer tracking
 
 ### US-25.5: Volunteer Manages Their Shifts
 **As a** volunteer
@@ -96,7 +99,7 @@ Pending --> Refused     (Refuse)
 Pending --> Bailed      (Bail)
 Confirmed --> Bailed    (Bail)
 Confirmed --> NoShow    (MarkNoShow, post-shift only)
-Confirmed --> Cancelled (system: shift deleted, account deletion)
+Confirmed --> Cancelled (system: shift deleted, account deletion, or coordinator removal)
 Pending --> Cancelled   (system: shift deleted, account deletion)
 ```
 

@@ -32,9 +32,9 @@
                         <h5 class="mb-0">@Model.UserDisplayName</h5>
                         <small class="text-muted">@Model.UserEmail</small>
                     </div>
-                    <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary ms-auto">
+                    <human-link user-id="@Model.UserId" display-name="@Localizer["AdminAppDetail_ViewProfile"]" admin="true" class="btn btn-sm btn-outline-secondary ms-auto">
                         @Localizer["AdminAppDetail_ViewProfile"]
-                    </a>
+                    </human-link>
                 </div>
             </div>
         </div>

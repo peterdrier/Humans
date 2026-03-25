@@ -426,6 +426,38 @@ public class ShiftAdminController : HumansTeamControllerBase
         return RedirectToAction(nameof(Index), new { slug });
     }
 
+    [HttpPost("ApproveRange")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveRange(string slug, Guid signupBlockId)
+    {
+        var (teamError, user, _) = await ResolveDepartmentApprovalAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var result = await _signupService.ApproveRangeAsync(signupBlockId, user.Id);
+        if (result.Success)
+            SetSuccess(result.Warning ?? "Range approved.");
+        else
+            SetError(result.Error ?? "Range approval failed.");
+
+        return RedirectToAction(nameof(Index), new { slug });
+    }
+
+    [HttpPost("RefuseRange")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RefuseRange(string slug, Guid signupBlockId, string? reason)
+    {
+        var (teamError, user, _) = await ResolveDepartmentApprovalAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var result = await _signupService.RefuseRangeAsync(signupBlockId, user.Id, reason);
+        if (result.Success)
+            SetSuccess("Range refused.");
+        else
+            SetError(result.Error ?? "Range refusal failed.");
+
+        return RedirectToAction(nameof(Index), new { slug });
+    }
+
     [HttpPost("Signups/{signupId}/Approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveSignup(string slug, Guid signupId)
@@ -494,6 +526,26 @@ public class ShiftAdminController : HumansTeamControllerBase
         {
             SetError(result.Error ?? "No-show update failed.");
         }
+
+        return RedirectToAction(nameof(Index), new { slug });
+    }
+
+    [HttpPost("Signups/{signupId}/Remove")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveSignup(string slug, Guid signupId, string? reason)
+    {
+        var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var signupCheck = await _signupService.GetByIdAsync(signupId);
+        if (signupCheck is null) return NotFound();
+        if (signupCheck.Shift.Rota.TeamId != team.Id) return NotFound();
+
+        var result = await _signupService.RemoveSignupAsync(signupId, user.Id, reason);
+        if (result.Success)
+            SetSuccess("Signup removed.");
+        else
+            SetError(result.Error ?? "Remove failed.");
 
         return RedirectToAction(nameof(Index), new { slug });
     }

@@ -54,8 +54,7 @@
                         {
                             <tr>
                                 <td>
-                                    <a asp-controller="Human" asp-action="View" asp-route-id="@member.UserId"
-                                       class="text-decoration-none">@member.User.DisplayName</a>
+                                    <human-link user-id="@member.UserId" display-name="@member.User.DisplayName" />
                                 </td>
                                 <td>
                                     @if (member.Role == TeamMemberRole.Coordinator)
@@ -119,8 +118,7 @@
                         {
                             <tr>
                                 <td>
-                                    <a asp-controller="Human" asp-action="View" asp-route-id="@request.UserId"
-                                       class="text-decoration-none">@request.User.DisplayName</a>
+                                    <human-link user-id="@request.UserId" display-name="@request.User.DisplayName" />
                                 </td>
                                 <td class="text-muted small">
                                     @(string.IsNullOrWhiteSpace(request.Message) ? "—" : request.Message)

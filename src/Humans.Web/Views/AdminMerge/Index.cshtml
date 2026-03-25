@@ -37,18 +37,14 @@ else
                     <tr>
                         <td><code>@request.Email</code></td>
                         <td>
-                            <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@request.PrimaryUserId">
-                                @request.PrimaryUserDisplayName
-                            </a>
+                            <human-link user-id="@request.PrimaryUserId" display-name="@request.PrimaryUserDisplayName" admin="true" />
                             @if (!string.IsNullOrEmpty(request.PrimaryUserEmail))
                             {
                                 <small class="text-muted">(@request.PrimaryUserEmail)</small>
                             }
                         </td>
                         <td>
-                            <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@request.DuplicateUserId">
-                                @request.DuplicateUserDisplayName
-                            </a>
+                            <human-link user-id="@request.DuplicateUserId" display-name="@request.DuplicateUserDisplayName" admin="true" />
                             @if (!string.IsNullOrEmpty(request.DuplicateUserEmail))
                             {
                                 <small class="text-muted">(@request.DuplicateUserEmail)</small>

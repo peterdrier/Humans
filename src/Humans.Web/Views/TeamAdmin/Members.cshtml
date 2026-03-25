@@ -46,18 +46,11 @@
                     {
                         <tr>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <vc:user-avatar profile-picture-url="@request.UserProfilePictureUrl"
-                                                    display-name="@request.UserDisplayName"
-                                                    size="32"
-                                                    css-class="me-2" />
-                                    <div>
-                                        <a asp-controller="Human" asp-action="View" asp-route-id="@request.UserId" class="text-decoration-none">
-                                            <strong>@request.UserDisplayName</strong>
-                                        </a><br>
-                                        <small class="text-muted">@request.UserEmail</small>
-                                    </div>
-                                </div>
+                                <human-link user-id="@request.UserId" display-name="@request.UserDisplayName"
+                                           mode="AvatarName" size="32"
+                                           profile-picture-url="@request.UserProfilePictureUrl">
+                                    <small class="text-muted">@request.UserEmail</small>
+                                </human-link>
                             </td>
                             <td>
                                 @if (!string.IsNullOrEmpty(request.Message))
@@ -156,18 +149,11 @@
                     {
                         <tr>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <vc:user-avatar profile-picture-url="@member.EffectiveProfilePictureUrl"
-                                                    display-name="@member.DisplayName"
-                                                    size="40"
-                                                    css-class="me-2" />
-                                    <div>
-                                        <a asp-controller="Human" asp-action="View" asp-route-id="@member.UserId" class="text-decoration-none">
-                                            <strong>@member.DisplayName</strong>
-                                        </a><br>
-                                        <small class="text-muted">@member.Email</small>
-                                    </div>
-                                </div>
+                                <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                                           mode="AvatarName" size="40"
+                                           profile-picture-url="@member.EffectiveProfilePictureUrl">
+                                    <small class="text-muted">@member.Email</small>
+                                </human-link>
                             </td>
                             <td>
                                 @await Html.PartialAsync("_RoleBadge", member.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)

@@ -380,6 +380,27 @@ public class ShiftSignupService : IShiftSignupService
         return SignupResult.Ok(signup);
     }
 
+    public async Task<SignupResult> RemoveSignupAsync(Guid signupId, Guid removedByUserId, string? reason)
+    {
+        var signup = await LoadSignupWithShiftAsync(signupId);
+        if (signup is null) return SignupResult.Fail("Signup not found.");
+
+        if (signup.Status != SignupStatus.Confirmed)
+            return SignupResult.Fail($"Cannot remove signup in {signup.Status} state.");
+
+        signup.Remove(removedByUserId, _clock, reason);
+
+        await _auditLogService.LogAsync(
+            AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
+            $"Removed from shift '{signup.Shift.Rota.Name}'" +
+            (reason is not null ? $": {reason}" : ""),
+            removedByUserId, "Reviewer");
+
+        await _dbContext.SaveChangesAsync();
+
+        return SignupResult.Ok(signup);
+    }
+
     public async Task<SignupResult> SignUpRangeAsync(Guid userId, Guid rotaId, int startDayOffset, int endDayOffset, Guid? actorUserId = null, bool isPrivileged = false)
     {
         var rota = await _dbContext.Rotas
@@ -518,6 +539,56 @@ public class ShiftSignupService : IShiftSignupService
         await _dbContext.SaveChangesAsync();
 
         return SignupResult.Ok(lastSignup!, warning);
+    }
+
+    public async Task<SignupResult> ApproveRangeAsync(Guid signupBlockId, Guid reviewerUserId)
+    {
+        var signups = await _dbContext.ShiftSignups
+            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
+            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
+            .Include(s => s.Shift).ThenInclude(s => s.ShiftSignups)
+            .Where(s => s.SignupBlockId == signupBlockId && s.Status == SignupStatus.Pending)
+            .ToListAsync();
+
+        if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
+
+        string? warning = null;
+        foreach (var signup in signups)
+        {
+            signup.Confirm(reviewerUserId, _clock);
+
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
+                $"Range approved for shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (block {signupBlockId})",
+                reviewerUserId, "Reviewer");
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return SignupResult.Ok(signups[0], warning);
+    }
+
+    public async Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason)
+    {
+        var signups = await _dbContext.ShiftSignups
+            .Include(s => s.Shift).ThenInclude(s => s.Rota)
+            .Where(s => s.SignupBlockId == signupBlockId && s.Status == SignupStatus.Pending)
+            .ToListAsync();
+
+        if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
+
+        foreach (var signup in signups)
+        {
+            signup.Refuse(reviewerUserId, _clock, reason);
+
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
+                $"Range refused for shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (block {signupBlockId})" +
+                (reason is not null ? $": {reason}" : ""),
+                reviewerUserId, "Reviewer");
+        }
+
+        await _dbContext.SaveChangesAsync();
+        return SignupResult.Ok(signups[0]);
     }
 
     public async Task BailRangeAsync(Guid signupBlockId, Guid actorUserId, string? reason = null)

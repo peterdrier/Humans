@@ -103,7 +103,7 @@
                     <tr>
                         <td><code>@code.Code</code></td>
                         <td>
-                            <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@code.RecipientUserId">@code.RecipientName</a>
+                            <human-link user-id="@code.RecipientUserId" display-name="@code.RecipientName" admin="true" />
                         </td>
                         <td>@code.CampaignTitle</td>
                         <td>

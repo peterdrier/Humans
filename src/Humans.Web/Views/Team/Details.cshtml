@@ -163,15 +163,13 @@
                                 <div class="col-6 col-sm-4 col-md-3">
                                     @if (Model.IsAuthenticated)
                                     {
-                                        <a asp-controller="Human" asp-action="View" asp-route-id="@member.UserId" class="text-center text-decoration-none d-block">
-                                            <vc:user-avatar profile-picture-url="@member.EffectiveProfilePictureUrl"
-                                                            display-name="@member.DisplayName"
-                                                            size="128"
-                                                            css-class="mb-2 mx-auto border border-primary border-3"
-                                                            bg-color="bg-primary" />
-                                            <div class="fw-semibold small">@member.DisplayName</div>
+                                        <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                                                    mode="Card" size="128"
+                                                    profile-picture-url="@member.EffectiveProfilePictureUrl"
+                                                    avatar-css-class="border border-primary border-3"
+                                                    avatar-bg-color="bg-primary">
                                             @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)
-                                        </a>
+                                        </human-link>
                                     }
                                     else
                                     {
@@ -199,13 +197,9 @@
                             @foreach (var member in regularMembers)
                             {
                                 <div class="col-6 col-sm-4 col-md-3">
-                                    <a asp-controller="Human" asp-action="View" asp-route-id="@member.UserId" class="text-center text-decoration-none d-block">
-                                        <vc:user-avatar profile-picture-url="@member.EffectiveProfilePictureUrl"
-                                                        display-name="@member.DisplayName"
-                                                        size="102"
-                                                        css-class="mb-2 mx-auto" />
-                                        <div class="small">@member.DisplayName</div>
-                                    </a>
+                                    <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                                                mode="Card" size="102"
+                                                profile-picture-url="@member.EffectiveProfilePictureUrl" />
                                 </div>
                             }
                         </div>

@@ -38,6 +38,9 @@
     @* Pending Approvals *@
     @if (Model.PendingSignups.Count > 0 && Model.CanApproveSignups)
     {
+        var pendingGroups = Model.PendingSignups
+            .GroupBy(s => s.SignupBlockId.HasValue ? $"{s.UserId}|{s.SignupBlockId}" : s.Id.ToString())
+            .ToList();
         <div class="card mb-4 border-warning">
             <div class="card-header bg-warning text-dark">
                 <h5 class="mb-0">Pending Approvals (@Model.PendingSignups.Count)</h5>
@@ -46,31 +49,65 @@
                 <div class="table-responsive">
                     <table class="table table-sm">
                         <thead>
-                            <tr><th>Human</th><th>Profile</th><th>Shift</th><th>Submitted</th><th></th></tr>
+                            <tr><th>Human</th><th>Profile</th><th>Shift</th><th>Date</th><th>Submitted</th><th></th></tr>
                         </thead>
                         <tbody>
-                            @foreach (var signup in Model.PendingSignups)
+                            @foreach (var group in pendingGroups)
                             {
+                                var signups = group.OrderBy(s => s.Shift.DayOffset).ToList();
+                                var first = signups[0];
+                                var isRange = signups.Count > 1;
                                 <tr>
-                                    <td>@signup.User?.DisplayName</td>
+                                    <td><human-link user-id="@first.UserId" display-name="@first.User?.DisplayName" /></td>
                                     <td>
                                         @{
-                                            var pendingProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
+                                            var pendingProfile = Model.VolunteerProfiles.GetValueOrDefault(first.UserId);
                                         }
                                         @await Html.PartialAsync("_VolunteerProfileBadges", (pendingProfile, Model.CanViewMedical))
                                     </td>
-                                    <td>@signup.Shift.Rota.Name</td>
-                                    <td>@signup.CreatedAt</td>
+                                    <td>@first.Shift.Rota.Name</td>
                                     <td>
-                                        <form asp-action="ApproveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                        </form>
-                                        <form asp-action="RefuseSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="text" name="reason" placeholder="Reason (optional)" class="form-control form-control-sm d-inline-block" style="width: 150px; vertical-align: middle;" />
-                                            <button type="submit" class="btn btn-sm btn-danger">Refuse</button>
-                                        </form>
+                                        @if (isRange)
+                                        {
+                                            var firstDate = Model.EventSettings.GateOpeningDate.PlusDays(signups[0].Shift.DayOffset);
+                                            var lastDate = Model.EventSettings.GateOpeningDate.PlusDays(signups[^1].Shift.DayOffset);
+                                            <span>@firstDate.ToDisplayShiftDate() – @lastDate.ToDisplayShiftDate()</span>
+                                            <span class="badge bg-secondary ms-1">@signups.Count days</span>
+                                        }
+                                        else
+                                        {
+                                            var signupDate = Model.EventSettings.GateOpeningDate.PlusDays(first.Shift.DayOffset);
+                                            @signupDate.ToDisplayShiftDate()
+                                        }
+                                    </td>
+                                    <td>@first.CreatedAt</td>
+                                    <td>
+                                        @if (isRange && first.SignupBlockId.HasValue)
+                                        {
+                                            <form asp-action="ApproveRange" asp-route-slug="@Model.Department.Slug" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="signupBlockId" value="@first.SignupBlockId" />
+                                                <button type="submit" class="btn btn-sm btn-success">Approve Range</button>
+                                            </form>
+                                            <form asp-action="RefuseRange" asp-route-slug="@Model.Department.Slug" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="signupBlockId" value="@first.SignupBlockId" />
+                                                <input type="text" name="reason" placeholder="Reason (optional)" class="form-control form-control-sm d-inline-block" style="width: 150px; vertical-align: middle;" />
+                                                <button type="submit" class="btn btn-sm btn-danger">Refuse Range</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <form asp-action="ApproveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@first.Id" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                            <form asp-action="RefuseSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@first.Id" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="text" name="reason" placeholder="Reason (optional)" class="form-control form-control-sm d-inline-block" style="width: 150px; vertical-align: middle;" />
+                                                <button type="submit" class="btn btn-sm btn-danger">Refuse</button>
+                                            </form>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -250,8 +287,8 @@
                                                     {
                                                         var ss = activeSignups[i];
                                                         if (i > 0) { <text>, </text> }
-                                                        <a asp-controller="Human" asp-action="View" asp-route-id="@ss.UserId"
-                                                           class="text-decoration-none @(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")">@ss.User?.DisplayName</a>@if (ss.Status == SignupStatus.Pending)
+                                                        <human-link user-id="@ss.UserId" display-name="@ss.User?.DisplayName"
+                                                                   class="@(ss.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")" />@if (ss.Status == SignupStatus.Pending)
                                                         {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
                                                     }
                                                 }
@@ -260,14 +297,11 @@
                                                     <div class="d-flex flex-wrap gap-1">
                                                         @foreach (var ss in activeSignups)
                                                         {
-                                                            <a asp-controller="Human" asp-action="View" asp-route-id="@ss.UserId"
-                                                               title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
-                                                               class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
-                                                               style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")">
-                                                                <vc:user-avatar profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)"
-                                                                                display-name="@(ss.User?.DisplayName)"
-                                                                                size="26" />
-                                                            </a>
+                                                            <human-link user-id="@ss.UserId" display-name="@(ss.User?.DisplayName)" mode="Avatar" size="26"
+                                                                       profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)"
+                                                                       title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                                       class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
+                                                                       style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
                                                         }
                                                     </div>
                                                 }
@@ -287,6 +321,17 @@
                                             }
                                             @if (Model.CanApproveSignups && !isPast)
                                             {
+                                                var confirmedSignups = shift.ShiftSignups
+                                                    .Where(ss => ss.Status == SignupStatus.Confirmed)
+                                                    .ToList();
+                                                if (confirmedSignups.Count > 0)
+                                                {
+                                                    var manageBtnId = "manage-" + shift.Id.ToString("N");
+                                                    <button class="btn btn-sm btn-outline-secondary ms-1" type="button"
+                                                            data-bs-toggle="collapse" data-bs-target="#@manageBtnId">
+                                                        Manage (@confirmedSignups.Count)
+                                                    </button>
+                                                }
                                                 var voluntellBtnId = "dept-voluntell-" + shift.Id.ToString("N");
                                                 <button class="btn btn-sm btn-outline-success ms-1" type="button"
                                                         data-bs-toggle="collapse" data-bs-target="#@voluntellBtnId">
@@ -367,6 +412,40 @@
                                             </td>
                                         </tr>
                                     }
+                                    @if (!isPast && Model.CanApproveSignups)
+                                    {
+                                        var manageSignups = shift.ShiftSignups
+                                            .Where(ss => ss.Status == SignupStatus.Confirmed)
+                                            .OrderBy(ss => ss.User?.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                            .ToList();
+                                        if (manageSignups.Count > 0)
+                                        {
+                                            var manageCollapseId = "manage-" + shift.Id.ToString("N");
+                                            <tr class="collapse" id="@manageCollapseId">
+                                                <td colspan="@(Model.CanApproveSignups ? 7 : 6)">
+                                                    <div class="p-2">
+                                                        @foreach (var signup in manageSignups)
+                                                        {
+                                                            <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                                                                <div>
+                                                                    <human-link user-id="@signup.UserId" display-name="@signup.User?.DisplayName" />
+                                                                    @{
+                                                                        var manageProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
+                                                                    }
+                                                                    @await Html.PartialAsync("_VolunteerProfileBadges", (manageProfile, Model.CanViewMedical))
+                                                                </div>
+                                                                <form asp-action="RemoveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
+                                                                    @Html.AntiForgeryToken()
+                                                                    <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                                            data-confirm="Remove this human from the shift?">Remove</button>
+                                                                </form>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
                                     @if (isPast && shiftSignups.Count > 0 && Model.CanApproveSignups)
                                     {
                                         var signupsCollapseId = "signups-" + shift.Id.ToString("N");
@@ -385,7 +464,7 @@
                                                     {
                                                         <div class="d-flex justify-content-between align-items-center border-bottom py-1">
                                                             <div>
-                                                                <span>@signup.User?.DisplayName</span>
+                                                                <human-link user-id="@signup.UserId" display-name="@signup.User?.DisplayName" />
                                                                 @{
                                                                     var signupProfile = Model.VolunteerProfiles.GetValueOrDefault(signup.UserId);
                                                                 }
@@ -402,6 +481,11 @@
                                                             @if (signup.Status == SignupStatus.Confirmed)
                                                             {
                                                                 <div class="d-flex gap-1">
+                                                                    <form asp-action="RemoveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
+                                                                        @Html.AntiForgeryToken()
+                                                                        <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                                                data-confirm="Remove this human from the shift?">Remove</button>
+                                                                    </form>
                                                                     <form asp-action="MarkNoShow" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@signup.Id" method="post" class="d-inline">
                                                                         @Html.AntiForgeryToken()
                                                                         <button type="submit" class="btn btn-sm btn-outline-danger">Mark No-Show</button>

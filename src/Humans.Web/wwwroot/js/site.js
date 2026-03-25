@@ -45,3 +45,38 @@ document.addEventListener('click', function (e) {
         window.location = row.getAttribute('data-href');
     }
 });
+
+// Human profile popover (lazy-loaded on first hover)
+(function () {
+    var cache = {};
+    document.addEventListener('mouseenter', function (e) {
+        var el = e.target.closest('[data-human-popover]');
+        if (!el || el._popoverInit) return;
+        el._popoverInit = true;
+
+        var userId = el.getAttribute('data-user-id');
+        if (!userId) return;
+
+        var popover = new bootstrap.Popover(el, {
+            trigger: 'hover focus',
+            placement: 'auto',
+            html: true,
+            content: '<div class="text-center p-2"><div class="spinner-border spinner-border-sm"></div></div>',
+            sanitize: false
+        });
+        popover.show();
+
+        if (cache[userId]) {
+            popover.setContent({ '.popover-body': cache[userId] });
+        } else {
+            fetch('/Human/' + userId + '/Popover')
+                .then(function (r) { return r.ok ? r.text() : ''; })
+                .then(function (html) {
+                    if (html) {
+                        cache[userId] = html;
+                        popover.setContent({ '.popover-body': html });
+                    }
+                });
+        }
+    }, true);
+})();

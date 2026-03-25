@@ -62,9 +62,7 @@
                                 <tr>
                                     <td><span class="badge @badgeClass">@change.Action</span></td>
                                     <td>
-                                        <a asp-controller="Human" asp-action="Detail" asp-route-id="@change.User.UserId">
-                                            @change.User.DisplayName
-                                        </a>
+                                        <human-link user-id="@change.User.UserId" display-name="@change.User.DisplayName" admin="true" />
                                     </td>
                                     <td class="text-muted">@change.Detail</td>
                                 </tr>

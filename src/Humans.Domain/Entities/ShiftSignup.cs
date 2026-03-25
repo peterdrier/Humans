@@ -163,4 +163,19 @@ public class ShiftSignup
         StatusReason = reason;
         UpdatedAt = clock.GetCurrentInstant();
     }
+
+    /// <summary>
+    /// Remove a confirmed signup (coordinator/admin unassignment).
+    /// </summary>
+    public void Remove(Guid removedByUserId, IClock clock, string? reason)
+    {
+        if (Status is not SignupStatus.Confirmed)
+            throw new InvalidOperationException($"Cannot remove signup in {Status} state");
+        var now = clock.GetCurrentInstant();
+        Status = SignupStatus.Cancelled;
+        ReviewedByUserId = removedByUserId;
+        ReviewedAt = now;
+        StatusReason = reason;
+        UpdatedAt = now;
+    }
 }

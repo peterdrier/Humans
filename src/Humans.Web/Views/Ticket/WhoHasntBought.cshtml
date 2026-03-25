@@ -62,7 +62,7 @@
                 {
                     <tr>
                         <td>
-                            <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@h.UserId">@h.Name</a>
+                            <human-link user-id="@h.UserId" display-name="@h.Name" admin="true" />
                         </td>
                         <td><small>@h.Email</small></td>
                         <td><small>@h.Teams</small></td>

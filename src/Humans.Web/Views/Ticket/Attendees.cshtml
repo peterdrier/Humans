@@ -83,9 +83,9 @@
                         <td>
                             @if (a.MatchedUserId.HasValue)
                             {
-                                <a asp-controller="Human" asp-action="HumanDetail" asp-route-id="@a.MatchedUserId">
+                                <human-link user-id="@a.MatchedUserId.Value" display-name="@a.MatchedUserName" admin="true">
                                     <i class="fa-solid fa-check text-success"></i> @a.MatchedUserName
-                                </a>
+                                </human-link>
                             }
                             else
                             {

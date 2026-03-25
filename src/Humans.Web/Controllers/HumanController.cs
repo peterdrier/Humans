@@ -121,6 +121,33 @@ public class HumanController : HumansControllerBase
         return View("~/Views/Profile/Index.cshtml", viewModel);
     }
 
+    [HttpGet("{id:guid}/Popover")]
+    public async Task<IActionResult> Popover(Guid id)
+    {
+        var profile = await _profileService.GetProfileAsync(id);
+        if (profile is null) return NotFound();
+
+        var teams = await _dbContext.TeamMembers
+            .Where(tm => tm.UserId == id && tm.LeftAt == null)
+            .Select(tm => tm.Team!.Name)
+            .OrderBy(n => n)
+            .ToListAsync();
+
+        var vm = new ProfileSummaryViewModel
+        {
+            UserId = id,
+            DisplayName = profile.User.DisplayName,
+            Email = profile.User.Email,
+            ProfilePictureUrl = profile.User.ProfilePictureUrl,
+            MembershipTier = profile.MembershipTier.ToString(),
+            MembershipStatus = profile.IsSuspended ? "Suspended"
+                : profile.IsApproved ? "Active" : "Pending",
+            Teams = teams
+        };
+
+        return PartialView("_HumanPopover", vm);
+    }
+
     [HttpGet("{id:guid}/SendMessage")]
     public async Task<IActionResult> SendMessage(Guid id)
     {

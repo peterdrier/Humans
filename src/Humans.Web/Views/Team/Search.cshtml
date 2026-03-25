@@ -38,7 +38,7 @@
         <div class="list-group">
             @foreach (var result in Model.Results)
             {
-                <a asp-controller="Human" asp-action="View" asp-route-id="@result.UserId" class="list-group-item list-group-item-action">
+                <human-link user-id="@result.UserId" display-name="@result.DisplayName" class="list-group-item list-group-item-action">
                     <div class="d-flex align-items-center gap-3">
                         <vc:user-avatar profile-picture-url="@result.EffectiveProfilePictureUrl"
                                         display-name="@result.DisplayName"
@@ -67,7 +67,7 @@
                             }
                         </div>
                     </div>
-                </a>
+                </human-link>
             }
         </div>
     }
