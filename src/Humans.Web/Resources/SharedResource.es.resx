@@ -1220,4 +1220,6 @@
   <data name="Feedback_Submitted" xml:space="preserve"><value>¡Gracias! Tu feedback ha sido enviado.</value></data>
   <data name="Feedback_Error" xml:space="preserve"><value>Algo salió mal al enviar tu feedback. Por favor, inténtalo de nuevo.</value></data>
 
+  <data name="MagicLinkSent_Message" xml:space="preserve"><value>Hemos enviado un enlace a esa dirección de correo desde humans@nobodies.team. Revisa tu bandeja de entrada (y la carpeta de spam).</value></data>
+
 </root>

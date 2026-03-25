@@ -1200,4 +1200,6 @@
   <data name="Feedback_Submitted" xml:space="preserve"><value>Merci ! Votre feedback a été envoyé.</value></data>
   <data name="Feedback_Error" xml:space="preserve"><value>Une erreur est survenue lors de l'envoi de votre feedback. Veuillez réessayer.</value></data>
 
+  <data name="MagicLinkSent_Message" xml:space="preserve"><value>Nous avons envoyé un lien à cette adresse e-mail depuis humans@nobodies.team. Vérifiez votre boîte de réception (et le dossier spam).</value></data>
+
 </root>
