@@ -278,16 +278,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         try
         {
             var groupssettingsService = await GetGroupssettingsServiceAsync();
-            var groupSettings = new Google.Apis.Groupssettings.v1.Data.Groups
-            {
-                WhoCanJoin = _settings.Groups.WhoCanJoin,
-                WhoCanViewMembership = _settings.Groups.WhoCanViewMembership,
-                WhoCanContactOwner = _settings.Groups.WhoCanContactOwner,
-                WhoCanPostMessage = _settings.Groups.WhoCanPostMessage,
-                WhoCanViewGroup = _settings.Groups.WhoCanViewGroup,
-                WhoCanModerateMembers = _settings.Groups.WhoCanModerateMembers,
-                AllowExternalMembers = _settings.Groups.AllowExternalMembers ? "true" : "false",
-            };
+            var groupSettings = BuildExpectedGroupSettings();
             await groupssettingsService.Groups.Update(groupSettings, groupEmail).ExecuteAsync(cancellationToken);
             _logger.LogInformation("Applied group settings to '{GroupEmail}'", groupEmail);
         }
@@ -1402,23 +1393,45 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         };
     }
 
-    private Dictionary<string, string> BuildExpectedSettingsDictionary() => new(StringComparer.Ordinal)
+    private Google.Apis.Groupssettings.v1.Data.Groups BuildExpectedGroupSettings() => new()
     {
-        ["WhoCanJoin"] = _settings.Groups.WhoCanJoin,
-        ["WhoCanViewMembership"] = _settings.Groups.WhoCanViewMembership,
-        ["WhoCanContactOwner"] = _settings.Groups.WhoCanContactOwner,
-        ["WhoCanPostMessage"] = _settings.Groups.WhoCanPostMessage,
-        ["WhoCanViewGroup"] = _settings.Groups.WhoCanViewGroup,
-        ["WhoCanModerateMembers"] = _settings.Groups.WhoCanModerateMembers,
-        ["AllowExternalMembers"] = _settings.Groups.AllowExternalMembers ? "true" : "false",
-        ["IsArchived"] = "true",
-        ["MembersCanPostAsTheGroup"] = "true",
-        ["IncludeInGlobalAddressList"] = "true",
-        ["AllowWebPosting"] = "true",
-        ["MessageModerationLevel"] = "MODERATE_NONE",
-        ["SpamModerationLevel"] = "MODERATE",
-        ["EnableCollaborativeInbox"] = "false"
+        WhoCanJoin = _settings.Groups.WhoCanJoin,
+        WhoCanViewMembership = _settings.Groups.WhoCanViewMembership,
+        WhoCanContactOwner = _settings.Groups.WhoCanContactOwner,
+        WhoCanPostMessage = _settings.Groups.WhoCanPostMessage,
+        WhoCanViewGroup = _settings.Groups.WhoCanViewGroup,
+        WhoCanModerateMembers = _settings.Groups.WhoCanModerateMembers,
+        AllowExternalMembers = _settings.Groups.AllowExternalMembers ? "true" : "false",
+        IsArchived = "true",
+        MembersCanPostAsTheGroup = "true",
+        IncludeInGlobalAddressList = "true",
+        AllowWebPosting = "true",
+        MessageModerationLevel = "MODERATE_NONE",
+        SpamModerationLevel = "MODERATE",
+        EnableCollaborativeInbox = "false"
     };
+
+    private Dictionary<string, string> BuildExpectedSettingsDictionary()
+    {
+        var gs = BuildExpectedGroupSettings();
+        return new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["WhoCanJoin"] = gs.WhoCanJoin,
+            ["WhoCanViewMembership"] = gs.WhoCanViewMembership,
+            ["WhoCanContactOwner"] = gs.WhoCanContactOwner,
+            ["WhoCanPostMessage"] = gs.WhoCanPostMessage,
+            ["WhoCanViewGroup"] = gs.WhoCanViewGroup,
+            ["WhoCanModerateMembers"] = gs.WhoCanModerateMembers,
+            ["AllowExternalMembers"] = gs.AllowExternalMembers,
+            ["IsArchived"] = gs.IsArchived,
+            ["MembersCanPostAsTheGroup"] = gs.MembersCanPostAsTheGroup,
+            ["IncludeInGlobalAddressList"] = gs.IncludeInGlobalAddressList,
+            ["AllowWebPosting"] = gs.AllowWebPosting,
+            ["MessageModerationLevel"] = gs.MessageModerationLevel,
+            ["SpamModerationLevel"] = gs.SpamModerationLevel,
+            ["EnableCollaborativeInbox"] = gs.EnableCollaborativeInbox
+        };
+    }
 
     private async Task<GroupSettingsDriftReport> CheckSingleGroupSettingsAsync(
         GoogleResource resource,
@@ -1444,7 +1457,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             CompareGroupSetting(drifts, "AllowExternalMembers",
                 _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
 
-            // Additional settings worth monitoring (not set at creation but important for group health)
+            // Additional settings (set at creation via BuildExpectedGroupSettings)
             CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
             CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "true", actual.MembersCanPostAsTheGroup);
             CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);

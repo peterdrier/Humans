@@ -39,6 +39,7 @@ public interface ICampService
         CampDirectoryFilter? filter = null,
         CancellationToken cancellationToken = default);
     Task<List<Camp>> GetCampsForYearAsync(int year, CancellationToken cancellationToken = default);
+    Task<List<Camp>> GetAllCampsForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default);

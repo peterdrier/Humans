@@ -39,12 +39,26 @@ public class CampAdminController : HumansControllerBase
     public async Task<IActionResult> Index()
     {
         var settings = await _campService.GetSettingsAsync();
-        var allCamps = await _campService.GetCampsForYearAsync(settings.PublicYear);
+        var allCamps = await _campService.GetAllCampsForYearAsync(settings.PublicYear);
         var pendingSeasons = await _campService.GetPendingSeasonsAsync();
 
         var nameLockDates = settings.OpenSeasons.Count > 0
             ? await _campService.GetNameLockDatesAsync(settings.OpenSeasons)
             : new Dictionary<int, NodaTime.LocalDate?>();
+
+        var withdrawnSeasons = allCamps
+            .SelectMany(c => c.Seasons
+                .Where(s => s.Year == settings.PublicYear && s.Status == CampSeasonStatus.Withdrawn)
+                .Select(s => new CampCardViewModel
+                {
+                    Id = c.Id,
+                    SeasonId = s.Id,
+                    Slug = c.Slug,
+                    Name = s.Name,
+                    BlurbShort = s.BlurbShort,
+                    Status = s.Status
+                }))
+            .ToList();
 
         var vm = new CampAdminViewModel
         {
@@ -53,6 +67,8 @@ public class CampAdminController : HumansControllerBase
             TotalCamps = allCamps.Count,
             ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
                 s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
+            WithdrawnCount = withdrawnSeasons.Count,
+            WithdrawnCamps = withdrawnSeasons,
             NameLockDates = nameLockDates,
             PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
             {

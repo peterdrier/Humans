@@ -319,7 +319,7 @@ public class AdminController : HumansControllerBase
             previews[culture] = items;
         }
 
-        return View(new EmailPreviewViewModel { Previews = previews });
+        return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });
     }
 
     [HttpGet("SyncSettings")]

@@ -36,8 +36,8 @@
     <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
-                <h5 class="card-title">@(Model.OpenSeasons.Count > 0 ? string.Join(", ", Model.OpenSeasons) : "None")</h5>
-                <p class="card-text text-muted">Open Seasons</p>
+                <h5 class="card-title">@Model.WithdrawnCount</h5>
+                <p class="card-text text-muted">Withdrawn</p>
             </div>
         </div>
     </div>
@@ -106,6 +106,48 @@
         </div>
     }
 </div>
+
+@* Withdrawn Camps *@
+@if (Model.WithdrawnCamps.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-circle-pause me-2"></i>Withdrawn (@Model.WithdrawnCamps.Count)
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var camp in Model.WithdrawnCamps)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@camp.Slug">
+                                    @camp.Name
+                                </a>
+                            </td>
+                            <td>@(camp.BlurbShort.Length > 100 ? camp.BlurbShort[..100] + "..." : camp.BlurbShort)</td>
+                            <td class="text-end">
+                                <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@camp.SeasonId" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Reactivate">
+                                        <i class="fa-solid fa-rotate-left me-1"></i>Reactivate
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
 
 @* Season Management *@
 <div class="row">

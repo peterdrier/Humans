@@ -163,9 +163,11 @@ public class CampContactViewModel
 public class CampAdminViewModel
 {
     public List<CampCardViewModel> PendingCamps { get; set; } = new();
+    public List<CampCardViewModel> WithdrawnCamps { get; set; } = new();
     public int PublicYear { get; set; }
     public List<int> OpenSeasons { get; set; } = new();
     public int TotalCamps { get; set; }
     public int ActiveCamps { get; set; }
+    public int WithdrawnCount { get; set; }
     public Dictionary<int, NodaTime.LocalDate?> NameLockDates { get; set; } = new();
 }
