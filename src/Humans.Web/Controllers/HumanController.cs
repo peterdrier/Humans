@@ -138,7 +138,7 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> Popover(Guid id)
     {
         var profile = await _profileService.GetProfileAsync(id);
-        if (profile is null) return NotFound();
+        if (profile is null || profile.IsSuspended) return NotFound();
 
         var teams = await _dbContext.TeamMembers
             .Where(tm => tm.UserId == id && tm.LeftAt == null

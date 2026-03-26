@@ -103,6 +103,8 @@ public class AdminMergeController : HumansControllerBase
                 : profile?.IsApproved == true ? "Active" : "Pending",
             MemberSince = profile?.CreatedAt.ToDateTimeUtc(),
             LastLogin = user.LastLoginAt?.ToDateTimeUtc(),
+            City = profile?.City,
+            CountryCode = profile?.CountryCode,
             Teams = activeTeamNames
         };
     }

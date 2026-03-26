@@ -9,7 +9,7 @@
     {
         <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white me-2"
              style="width: 72px; height: 72px; font-size: 1.25rem;">
-            @Model.DisplayName[..1]
+            @Model.DisplayName[..1].ToUpperInvariant()
         </div>
     }
     <div>

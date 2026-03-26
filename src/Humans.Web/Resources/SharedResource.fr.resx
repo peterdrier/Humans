@@ -1202,4 +1202,7 @@
 
   <data name="MagicLinkSent_Message" xml:space="preserve"><value>Nous avons envoyé un lien à cette adresse e-mail depuis humans@nobodies.team. Vérifiez votre boîte de réception (et le dossier spam).</value></data>
 
+  <!-- Camp Cards -->
+  <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>Ce barrio a besoin d'une photo !</value></data>
+
 </root>
