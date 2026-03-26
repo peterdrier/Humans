@@ -1411,27 +1411,27 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         EnableCollaborativeInbox = "false"
     };
 
-    private Dictionary<string, string> BuildExpectedSettingsDictionary()
+    private static Dictionary<string, string?> GroupSettingsToDict(Google.Apis.Groupssettings.v1.Data.Groups g) => new(StringComparer.Ordinal)
     {
-        var gs = BuildExpectedGroupSettings();
-        return new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["WhoCanJoin"] = gs.WhoCanJoin,
-            ["WhoCanViewMembership"] = gs.WhoCanViewMembership,
-            ["WhoCanContactOwner"] = gs.WhoCanContactOwner,
-            ["WhoCanPostMessage"] = gs.WhoCanPostMessage,
-            ["WhoCanViewGroup"] = gs.WhoCanViewGroup,
-            ["WhoCanModerateMembers"] = gs.WhoCanModerateMembers,
-            ["AllowExternalMembers"] = gs.AllowExternalMembers,
-            ["IsArchived"] = gs.IsArchived,
-            ["MembersCanPostAsTheGroup"] = gs.MembersCanPostAsTheGroup,
-            ["IncludeInGlobalAddressList"] = gs.IncludeInGlobalAddressList,
-            ["AllowWebPosting"] = gs.AllowWebPosting,
-            ["MessageModerationLevel"] = gs.MessageModerationLevel,
-            ["SpamModerationLevel"] = gs.SpamModerationLevel,
-            ["EnableCollaborativeInbox"] = gs.EnableCollaborativeInbox
-        };
-    }
+        ["WhoCanJoin"] = g.WhoCanJoin,
+        ["WhoCanViewMembership"] = g.WhoCanViewMembership,
+        ["WhoCanContactOwner"] = g.WhoCanContactOwner,
+        ["WhoCanPostMessage"] = g.WhoCanPostMessage,
+        ["WhoCanViewGroup"] = g.WhoCanViewGroup,
+        ["WhoCanModerateMembers"] = g.WhoCanModerateMembers,
+        ["AllowExternalMembers"] = g.AllowExternalMembers,
+        ["IsArchived"] = g.IsArchived,
+        ["MembersCanPostAsTheGroup"] = g.MembersCanPostAsTheGroup,
+        ["IncludeInGlobalAddressList"] = g.IncludeInGlobalAddressList,
+        ["AllowWebPosting"] = g.AllowWebPosting,
+        ["MessageModerationLevel"] = g.MessageModerationLevel,
+        ["SpamModerationLevel"] = g.SpamModerationLevel,
+        ["EnableCollaborativeInbox"] = g.EnableCollaborativeInbox
+    };
+
+    private Dictionary<string, string> BuildExpectedSettingsDictionary() =>
+        GroupSettingsToDict(BuildExpectedGroupSettings())
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value!, StringComparer.Ordinal);
 
     private async Task<GroupSettingsDriftReport> CheckSingleGroupSettingsAsync(
         GoogleResource resource,
@@ -1446,25 +1446,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var actual = await request.ExecuteAsync(cancellationToken);
 
             var drifts = new List<GroupSettingDrift>();
+            var expected = BuildExpectedSettingsDictionary();
+            var actualDict = GroupSettingsToDict(actual);
 
-            // Compare against the expected settings (same ones applied at group creation)
-            CompareGroupSetting(drifts, "WhoCanJoin", _settings.Groups.WhoCanJoin, actual.WhoCanJoin);
-            CompareGroupSetting(drifts, "WhoCanViewMembership", _settings.Groups.WhoCanViewMembership, actual.WhoCanViewMembership);
-            CompareGroupSetting(drifts, "WhoCanContactOwner", _settings.Groups.WhoCanContactOwner, actual.WhoCanContactOwner);
-            CompareGroupSetting(drifts, "WhoCanPostMessage", _settings.Groups.WhoCanPostMessage, actual.WhoCanPostMessage);
-            CompareGroupSetting(drifts, "WhoCanViewGroup", _settings.Groups.WhoCanViewGroup, actual.WhoCanViewGroup);
-            CompareGroupSetting(drifts, "WhoCanModerateMembers", _settings.Groups.WhoCanModerateMembers, actual.WhoCanModerateMembers);
-            CompareGroupSetting(drifts, "AllowExternalMembers",
-                _settings.Groups.AllowExternalMembers ? "true" : "false", actual.AllowExternalMembers);
-
-            // Additional settings (set at creation via BuildExpectedGroupSettings)
-            CompareGroupSetting(drifts, "IsArchived", "true", actual.IsArchived);
-            CompareGroupSetting(drifts, "MembersCanPostAsTheGroup", "true", actual.MembersCanPostAsTheGroup);
-            CompareGroupSetting(drifts, "IncludeInGlobalAddressList", "true", actual.IncludeInGlobalAddressList);
-            CompareGroupSetting(drifts, "AllowWebPosting", "true", actual.AllowWebPosting);
-            CompareGroupSetting(drifts, "MessageModerationLevel", "MODERATE_NONE", actual.MessageModerationLevel);
-            CompareGroupSetting(drifts, "SpamModerationLevel", "MODERATE", actual.SpamModerationLevel);
-            CompareGroupSetting(drifts, "EnableCollaborativeInbox", "false", actual.EnableCollaborativeInbox);
+            foreach (var (key, expectedValue) in expected)
+                CompareGroupSetting(drifts, key, expectedValue, actualDict.GetValueOrDefault(key));
 
             if (drifts.Count > 0)
             {
@@ -1530,26 +1516,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         try
         {
             var groupssettingsService = await GetGroupssettingsServiceAsync();
-            var expected = BuildExpectedSettingsDictionary();
-
-            var settings = new Google.Apis.Groupssettings.v1.Data.Groups
-            {
-                WhoCanJoin = expected["WhoCanJoin"],
-                WhoCanViewMembership = expected["WhoCanViewMembership"],
-                WhoCanContactOwner = expected["WhoCanContactOwner"],
-                WhoCanPostMessage = expected["WhoCanPostMessage"],
-                WhoCanViewGroup = expected["WhoCanViewGroup"],
-                WhoCanModerateMembers = expected["WhoCanModerateMembers"],
-                AllowExternalMembers = expected["AllowExternalMembers"],
-                IsArchived = expected["IsArchived"],
-                MembersCanPostAsTheGroup = expected["MembersCanPostAsTheGroup"],
-                IncludeInGlobalAddressList = expected["IncludeInGlobalAddressList"],
-                AllowWebPosting = expected["AllowWebPosting"],
-                MessageModerationLevel = expected["MessageModerationLevel"],
-                SpamModerationLevel = expected["SpamModerationLevel"],
-                EnableCollaborativeInbox = expected["EnableCollaborativeInbox"]
-            };
-
+            var settings = BuildExpectedGroupSettings();
             var request = groupssettingsService.Groups.Update(settings, groupEmail);
             await request.ExecuteAsync(cancellationToken);
 

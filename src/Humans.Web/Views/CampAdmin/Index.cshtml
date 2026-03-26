@@ -8,36 +8,44 @@
 <vc:temp-data-alerts />
 
 @* Summary cards *@
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card text-center">
+<div class="row row-cols-2 row-cols-md-5 g-3 mb-4">
+    <div class="col">
+        <div class="card text-center h-100">
             <div class="card-body">
                 <h5 class="card-title">@Model.TotalCamps</h5>
                 <p class="card-text text-muted">Total @Localizer["Camp_Plural"] (@Model.PublicYear)</p>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
+    <div class="col">
+        <div class="card text-center h-100">
             <div class="card-body">
                 <h5 class="card-title">@Model.ActiveCamps</h5>
                 <p class="card-text text-muted">Active</p>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
+    <div class="col">
+        <div class="card text-center h-100">
             <div class="card-body">
                 <h5 class="card-title">@Model.PendingCamps.Count</h5>
                 <p class="card-text text-muted">Pending Review</p>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
+    <div class="col">
+        <div class="card text-center h-100">
             <div class="card-body">
-                <h5 class="card-title">@Model.WithdrawnCount</h5>
+                <h5 class="card-title">@Model.WithdrawnCamps.Count</h5>
                 <p class="card-text text-muted">Withdrawn</p>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <h5 class="card-title">@(Model.OpenSeasons.Count > 0 ? string.Join(", ", Model.OpenSeasons) : "None")</h5>
+                <p class="card-text text-muted">Open Seasons</p>
             </div>
         </div>
     </div>
@@ -75,7 +83,7 @@
                                     @camp.Name
                                 </a>
                             </td>
-                            <td>@(camp.BlurbShort.Length > 100 ? camp.BlurbShort[..100] + "..." : camp.BlurbShort)</td>
+                            <td>@((camp.BlurbShort ?? "").Length > 100 ? camp.BlurbShort![..100] + "..." : camp.BlurbShort)</td>
                             <td>
                                 <input type="text" class="form-control form-control-sm" form="approve-@camp.SeasonId" name="notes" placeholder="Optional notes" />
                             </td>
@@ -132,7 +140,7 @@
                                     @camp.Name
                                 </a>
                             </td>
-                            <td>@(camp.BlurbShort.Length > 100 ? camp.BlurbShort[..100] + "..." : camp.BlurbShort)</td>
+                            <td>@((camp.BlurbShort ?? "").Length > 100 ? camp.BlurbShort![..100] + "..." : camp.BlurbShort)</td>
                             <td class="text-end">
                                 <form asp-controller="CampAdmin" asp-action="Reactivate" asp-route-seasonId="@camp.SeasonId" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()

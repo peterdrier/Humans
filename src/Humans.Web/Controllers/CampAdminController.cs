@@ -67,7 +67,6 @@ public class CampAdminController : HumansControllerBase
             TotalCamps = allCamps.Count,
             ActiveCamps = allCamps.Count(b => b.Seasons.Any(s =>
                 s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
-            WithdrawnCount = withdrawnSeasons.Count,
             WithdrawnCamps = withdrawnSeasons,
             NameLockDates = nameLockDates,
             PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
