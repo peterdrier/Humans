@@ -85,6 +85,12 @@
                                 <a class="nav-link" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
                             </li>
                         }
+                        @if (Humans.Web.Authorization.RoleChecks.IsHumanAdmin(User) && !Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Human" asp-action="Humans">Humans</a>
+                            </li>
+                        }
                         @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
                         {
                             <li class="nav-item">
