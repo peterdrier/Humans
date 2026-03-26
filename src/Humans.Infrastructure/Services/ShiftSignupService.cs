@@ -552,9 +552,34 @@ public class ShiftSignupService : IShiftSignupService
 
         if (signups.Count == 0) return SignupResult.Fail("No pending signups found for this block.");
 
-        string? warning = null;
+        var warnings = new List<string>();
+        var now = _clock.GetCurrentInstant();
+
         foreach (var signup in signups)
         {
+            var es = signup.Shift.Rota.EventSettings;
+
+            // Capacity check (same as single-item ApproveAsync)
+            var confirmedCount = signup.Shift.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
+            if (confirmedCount >= signup.Shift.MaxVolunteers)
+                warnings.Add($"Day {signup.Shift.DayOffset} is at capacity.");
+
+            // EE cap revalidation for build shifts
+            if (signup.Shift.IsEarlyEntry)
+            {
+                var eeWarning = await CheckEeCapAsync(es, signup.Shift.DayOffset);
+                if (eeWarning is not null)
+                    warnings.Add(eeWarning);
+            }
+
+            // EE freeze check
+            if (signup.Shift.IsEarlyEntry && es.EarlyEntryClose.HasValue && now >= es.EarlyEntryClose.Value)
+            {
+                var isPrivileged = await IsPrivilegedAsync(reviewerUserId, signup.Shift.Rota.TeamId);
+                if (!isPrivileged)
+                    return SignupResult.Fail("Cannot approve build shift signups after early entry close.");
+            }
+
             signup.Confirm(reviewerUserId, _clock);
 
             await _auditLogService.LogAsync(
@@ -564,6 +589,7 @@ public class ShiftSignupService : IShiftSignupService
         }
 
         await _dbContext.SaveChangesAsync();
+        var warning = warnings.Count > 0 ? string.Join(" ", warnings.Distinct(StringComparer.Ordinal)) : null;
         return SignupResult.Ok(signups[0], warning);
     }
 
