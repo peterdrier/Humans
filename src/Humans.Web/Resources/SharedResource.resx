@@ -1247,4 +1247,7 @@
   <data name="MagicLinkConfirm_Message" xml:space="preserve"><value>Click the button below to sign in to your account.</value></data>
   <data name="MagicLinkConfirm_SignIn" xml:space="preserve"><value>Sign in</value></data>
 
+  <!-- Camp Cards -->
+  <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>This barrio needs a photo!</value></data>
+
 </root>

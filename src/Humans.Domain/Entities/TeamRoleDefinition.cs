@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 
 namespace Humans.Domain.Entities;
@@ -31,6 +32,7 @@ public class TeamRoleDefinition
     /// <summary>
     /// Optional description of the role's responsibilities.
     /// </summary>
+    [MarkdownContent]
     public string? Description { get; set; }
 
     /// <summary>

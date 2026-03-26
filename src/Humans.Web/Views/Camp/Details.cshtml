@@ -124,7 +124,7 @@
                                     @if (!string.IsNullOrEmpty(season.KidsAreaDescription))
                                     {
                                         <dt>Kids Area</dt>
-                                        <dd>@season.KidsAreaDescription</dd>
+                                        <dd>@Html.SanitizedMarkdown(season.KidsAreaDescription)</dd>
                                     }
                                 }
                             </dl>

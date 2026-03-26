@@ -327,6 +327,8 @@ public class ProfileSummaryViewModel
     public string? MembershipStatus { get; set; }
     public DateTime? MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
+    public string? City { get; set; }
+    public string? CountryCode { get; set; }
     public List<string> Teams { get; set; } = [];
 }
 

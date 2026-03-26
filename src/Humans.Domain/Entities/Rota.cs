@@ -1,3 +1,4 @@
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -32,6 +33,7 @@ public class Rota
     /// <summary>
     /// Optional description of what this rota covers.
     /// </summary>
+    [MarkdownContent]
     public string? Description { get; set; }
 
     /// <summary>
@@ -53,6 +55,7 @@ public class Rota
     /// <summary>
     /// Meeting point, pre-shift instructions, what to bring. Shared by all shifts in the rota.
     /// </summary>
+    [MarkdownContent]
     [System.ComponentModel.DataAnnotations.MaxLength(2000)]
     public string? PracticalInfo { get; set; }
 

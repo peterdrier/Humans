@@ -3,20 +3,28 @@
 <div class="d-flex align-items-center" style="min-width: 200px;">
     @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
     {
-        <img src="@Model.ProfilePictureUrl" alt="" class="rounded-circle me-2" style="width: 48px; height: 48px; object-fit: cover;" />
+        <img src="@Model.ProfilePictureUrl" alt="" class="rounded-circle me-2" style="width: 72px; height: 72px; object-fit: cover;" />
     }
     else
     {
         <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white me-2"
-             style="width: 48px; height: 48px; font-size: 1rem;">
+             style="width: 72px; height: 72px; font-size: 1.25rem;">
             @Model.DisplayName[..1]
         </div>
     }
     <div>
         <div class="fw-semibold">@Model.DisplayName</div>
-        @if (!string.IsNullOrEmpty(Model.MembershipTier))
+        @if (!string.IsNullOrEmpty(Model.MembershipTier)
+            && !string.Equals(Model.MembershipTier, "Volunteer", StringComparison.OrdinalIgnoreCase))
         {
             <span class="badge bg-success" style="font-size: 0.7rem;">@Model.MembershipTier</span>
+        }
+        @if (!string.IsNullOrEmpty(Model.City) || !string.IsNullOrEmpty(Model.CountryCode))
+        {
+            <div class="text-muted small">
+                <i class="fa-solid fa-location-dot me-1"></i>@(string.Join(", ",
+                    new[] { Model.City, Model.CountryCode }.Where(s => !string.IsNullOrEmpty(s))))
+            </div>
         }
     </div>
 </div>

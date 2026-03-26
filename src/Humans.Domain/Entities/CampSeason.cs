@@ -1,3 +1,4 @@
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -17,6 +18,7 @@ public class CampSeason
 
     public CampSeasonStatus Status { get; set; } = CampSeasonStatus.Pending;
 
+    [MarkdownContent]
     public string BlurbLong { get; set; } = string.Empty;
     public string BlurbShort { get; set; } = string.Empty;
     public string Languages { get; set; } = string.Empty;
@@ -24,6 +26,7 @@ public class CampSeason
     public YesNoMaybe AcceptingMembers { get; set; }
     public YesNoMaybe KidsWelcome { get; set; }
     public KidsVisitingPolicy KidsVisiting { get; set; }
+    [MarkdownContent]
     public string? KidsAreaDescription { get; set; }
 
     public PerformanceSpaceStatus HasPerformanceSpace { get; set; }

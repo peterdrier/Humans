@@ -141,7 +141,8 @@ public class HumanController : HumansControllerBase
         if (profile is null) return NotFound();
 
         var teams = await _dbContext.TeamMembers
-            .Where(tm => tm.UserId == id && tm.LeftAt == null)
+            .Where(tm => tm.UserId == id && tm.LeftAt == null
+                && tm.Team!.SystemTeamType != SystemTeamType.Volunteers)
             .Select(tm => tm.Team!.Name)
             .OrderBy(n => n)
             .ToListAsync();
@@ -155,6 +156,8 @@ public class HumanController : HumansControllerBase
             MembershipTier = profile.MembershipTier.ToString(),
             MembershipStatus = profile.IsSuspended ? "Suspended"
                 : profile.IsApproved ? "Active" : "Pending",
+            City = profile.City,
+            CountryCode = profile.CountryCode,
             Teams = teams
         };
 

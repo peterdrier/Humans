@@ -1,4 +1,5 @@
 using NodaTime;
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 
@@ -86,6 +87,7 @@ public class Team
     /// <summary>
     /// Free-form markdown content for the public team page.
     /// </summary>
+    [MarkdownContent]
     public string? PageContent { get; set; }
 
     /// <summary>
