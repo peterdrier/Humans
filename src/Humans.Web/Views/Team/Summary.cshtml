@@ -21,8 +21,8 @@
                     <th>@Localizer["AdminTeams_Name"]</th>
                     <th>@Localizer["AdminTeams_Type"]</th>
                     <th>@Localizer["AdminTeams_Members"]</th>
-                    <th>Pending Joins</th>
-                    <th>Pending Shifts</th>
+                    <th>@Localizer["AdminTeams_PendingJoins"]</th>
+                    <th>@Localizer["AdminTeams_PendingShifts"]</th>
                     <th>@Localizer["AdminTeams_MailGroup"]</th>
                     <th>Slots</th>
                     <th>@Localizer["AdminTeams_DriveResources"]</th>
@@ -75,9 +75,16 @@
                         <td>
                             @if (team.PendingShiftSignupCount > 0)
                             {
-                                <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@team.Slug">
+                                @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
+                                {
+                                    <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@team.Slug">
+                                        <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
+                                    </a>
+                                }
+                                else
+                                {
                                     <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
-                                </a>
+                                }
                             }
                             else
                             {

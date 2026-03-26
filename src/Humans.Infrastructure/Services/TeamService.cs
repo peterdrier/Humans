@@ -1918,11 +1918,22 @@ public class TeamService : ITeamService
     {
         var (items, totalCount) = await GetAllTeamsForAdminAsync(page, pageSize, cancellationToken);
 
-        var pendingShiftCounts = await _dbContext.ShiftSignups
-            .Where(ss => ss.Status == SignupStatus.Pending)
-            .Select(ss => ss.Shift.Rota.TeamId)
-            .GroupBy(teamId => teamId)
-            .ToDictionaryAsync(g => g.Key, g => g.Count(), cancellationToken);
+        var activeEventId = await _dbContext.EventSettings
+            .Where(e => e.IsActive)
+            .Select(e => e.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var pendingShiftCounts = activeEventId == Guid.Empty
+            ? new Dictionary<Guid, int>()
+            : await (
+                from rota in _dbContext.Rotas
+                where rota.EventSettingsId == activeEventId
+                join shift in _dbContext.Shifts on rota.Id equals shift.RotaId
+                join signup in _dbContext.ShiftSignups on shift.Id equals signup.ShiftId
+                where signup.Status == SignupStatus.Pending
+                group signup by rota.TeamId into g
+                select new { TeamId = g.Key, Count = g.Count() }
+            ).ToDictionaryAsync(x => x.TeamId, x => x.Count, cancellationToken);
 
         return new AdminTeamListResult(BuildAdminTeamSummaries(items, pendingShiftCounts), totalCount);
     }

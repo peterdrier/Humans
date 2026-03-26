@@ -740,7 +740,8 @@
   <data name="AdminTeams_Name" xml:space="preserve"><value>Name</value></data>
   <data name="AdminTeams_Type" xml:space="preserve"><value>Type</value></data>
   <data name="AdminTeams_Members" xml:space="preserve"><value>Members</value></data>
-  <data name="AdminTeams_Pending" xml:space="preserve"><value>Pending</value></data>
+  <data name="AdminTeams_PendingJoins" xml:space="preserve"><value>Pending Joins</value></data>
+  <data name="AdminTeams_PendingShifts" xml:space="preserve"><value>Pending Shifts</value></data>
   <data name="AdminTeams_MailGroup" xml:space="preserve"><value>Mail Group</value></data>
   <data name="AdminTeams_DriveResources" xml:space="preserve"><value>Drive</value></data>
   <data name="AdminTeams_Created" xml:space="preserve"><value>Created</value></data>
