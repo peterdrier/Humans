@@ -9,7 +9,7 @@
             <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
-                @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
+                @if (Humans.Web.Authorization.RoleChecks.IsHumanAdminBoardOrAdmin(User))
                 {
                     <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary">
                         <i class="fa-solid fa-user-shield"></i> Admin

@@ -9,6 +9,7 @@ public static class RoleChecks
     [
         RoleNames.Admin,
         RoleNames.Board,
+        RoleNames.HumanAdmin,
         RoleNames.TeamsAdmin,
         RoleNames.CampAdmin,
         RoleNames.TicketAdmin,
@@ -21,6 +22,7 @@ public static class RoleChecks
     private static readonly string[] BoardAssignableRoles =
     [
         RoleNames.Board,
+        RoleNames.HumanAdmin,
         RoleNames.TeamsAdmin,
         RoleNames.CampAdmin,
         RoleNames.TicketAdmin,
@@ -81,6 +83,7 @@ public static class RoleChecks
     {
         return IsTeamsAdminBoardOrAdmin(user) ||
                IsCampAdmin(user) ||
+               IsHumanAdmin(user) ||
                user.IsInRole(RoleNames.TicketAdmin) ||
                user.IsInRole(RoleNames.NoInfoAdmin) ||
                user.IsInRole(RoleNames.ConsentCoordinator) ||
@@ -89,7 +92,21 @@ public static class RoleChecks
 
     public static IReadOnlyList<string> GetAssignableRoles(ClaimsPrincipal user)
     {
-        return IsAdmin(user) ? AdminAssignableRoles : BoardAssignableRoles;
+        if (IsAdmin(user))
+            return AdminAssignableRoles;
+        if (IsBoard(user) || IsHumanAdmin(user))
+            return BoardAssignableRoles;
+        return [];
+    }
+
+    public static bool IsHumanAdmin(ClaimsPrincipal user)
+    {
+        return user.IsInRole(RoleNames.HumanAdmin);
+    }
+
+    public static bool IsHumanAdminBoardOrAdmin(ClaimsPrincipal user)
+    {
+        return IsAdminOrBoard(user) || IsHumanAdmin(user);
     }
 
     public static bool IsFeedbackAdmin(ClaimsPrincipal user)
@@ -104,9 +121,10 @@ public static class RoleChecks
             return true;
         }
 
-        if (IsBoard(user))
+        if (IsBoard(user) || IsHumanAdmin(user))
         {
             return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.HumanAdmin, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal) ||

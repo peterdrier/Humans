@@ -252,7 +252,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(View), new { id });
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("Admin")]
     public async Task<IActionResult> Humans(string? search, string? filter, string sort = "name", string dir = "asc", int page = 1)
     {
@@ -323,7 +323,7 @@ public class HumanController : HumansControllerBase
         return View(viewModel);
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("{id:guid}/Admin")]
     public async Task<IActionResult> HumanDetail(Guid id)
     {
@@ -407,7 +407,7 @@ public class HumanController : HumansControllerBase
         return View(viewModel);
     }
 
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Roles = RoleGroups.HumanAdminOrAdmin)]
     [HttpPost("{id:guid}/ProvisionEmail")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionEmail(Guid id, string emailPrefix)
@@ -478,7 +478,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("{id:guid}/Outbox")]
     public async Task<IActionResult> Outbox(Guid id)
     {
@@ -491,7 +491,7 @@ public class HumanController : HumansControllerBase
         return View("~/Views/Profile/Outbox.cshtml", messages);
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Suspend")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
@@ -508,7 +508,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Unsuspend")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnsuspendHuman(Guid id)
@@ -525,7 +525,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Approve")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApproveVolunteer(Guid id)
@@ -542,7 +542,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Reject")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RejectSignup(Guid id, string? reason)
@@ -565,7 +565,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("{id:guid}/Admin/GoogleSyncAudit")]
     public async Task<IActionResult> HumanGoogleSyncAudit(Guid id)
     {
@@ -584,7 +584,7 @@ public class HumanController : HumansControllerBase
             entries);
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("{id:guid}/Admin/Roles/Add")]
     public async Task<IActionResult> AddRole(Guid id)
     {
@@ -604,7 +604,7 @@ public class HumanController : HumansControllerBase
         return View(viewModel);
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Roles/Add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
@@ -649,7 +649,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id });
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpPost("{id:guid}/Admin/Roles/{roleId:guid}/End")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
@@ -686,7 +686,7 @@ public class HumanController : HumansControllerBase
         return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("Admin/Contacts")]
     public async Task<IActionResult> Contacts(string? search)
     {
@@ -720,7 +720,7 @@ public class HumanController : HumansControllerBase
         }
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("Admin/Contacts/{id:guid}")]
     public async Task<IActionResult> ContactDetail(Guid id)
     {
@@ -758,14 +758,14 @@ public class HumanController : HumansControllerBase
         }
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("Admin/Contacts/Create")]
     public IActionResult CreateContact()
     {
         return View(new CreateContactViewModel());
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpPost("Admin/Contacts/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateContact(CreateContactViewModel model)

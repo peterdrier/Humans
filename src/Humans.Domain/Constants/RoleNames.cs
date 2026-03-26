@@ -56,4 +56,10 @@ public static class RoleNames
     /// manage feedback status, and link GitHub issues.
     /// </summary>
     public const string FeedbackAdmin = "FeedbackAdmin";
+
+    /// <summary>
+    /// Human Administrator — can view human admin pages, approve/suspend/reject humans,
+    /// provision @nobodies.team email accounts, and manage role assignments.
+    /// </summary>
+    public const string HumanAdmin = "HumanAdmin";
 }
