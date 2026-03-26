@@ -21,7 +21,8 @@
                     <th>@Localizer["AdminTeams_Name"]</th>
                     <th>@Localizer["AdminTeams_Type"]</th>
                     <th>@Localizer["AdminTeams_Members"]</th>
-                    <th>@Localizer["AdminTeams_Pending"]</th>
+                    <th>Pending Joins</th>
+                    <th>Pending Shifts</th>
                     <th>@Localizer["AdminTeams_MailGroup"]</th>
                     <th>Slots</th>
                     <th>@Localizer["AdminTeams_DriveResources"]</th>
@@ -64,6 +65,18 @@
                             {
                                 <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@team.Slug">
                                     <span class="badge bg-warning">@team.PendingRequestCount</span>
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted">0</span>
+                            }
+                        </td>
+                        <td>
+                            @if (team.PendingShiftSignupCount > 0)
+                            {
+                                <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@team.Slug">
+                                    <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
                                 </a>
                             }
                             else

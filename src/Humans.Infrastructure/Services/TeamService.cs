@@ -1918,7 +1918,13 @@ public class TeamService : ITeamService
     {
         var (items, totalCount) = await GetAllTeamsForAdminAsync(page, pageSize, cancellationToken);
 
-        return new AdminTeamListResult(BuildAdminTeamSummaries(items), totalCount);
+        var pendingShiftCounts = await _dbContext.ShiftSignups
+            .Where(ss => ss.Status == SignupStatus.Pending)
+            .Select(ss => ss.Shift.Rota.TeamId)
+            .GroupBy(teamId => teamId)
+            .ToDictionaryAsync(g => g.Key, g => g.Count(), cancellationToken);
+
+        return new AdminTeamListResult(BuildAdminTeamSummaries(items, pendingShiftCounts), totalCount);
     }
 
     // ==========================================================================
@@ -1967,7 +1973,9 @@ public class TeamService : ITeamService
             .ToList(),
         ParentTeamId: team.ParentTeamId);
 
-    private static IReadOnlyList<AdminTeamSummary> BuildAdminTeamSummaries(IReadOnlyList<Team> teams)
+    private static IReadOnlyList<AdminTeamSummary> BuildAdminTeamSummaries(
+        IReadOnlyList<Team> teams,
+        IReadOnlyDictionary<Guid, int> pendingShiftCounts)
     {
         var ordered = new List<AdminTeamSummary>(teams.Count);
 
@@ -1978,19 +1986,20 @@ public class TeamService : ITeamService
                 continue;
             }
 
-            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false));
+            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false, pendingShiftCounts));
 
             var children = teams
                 .Where(child => child.ParentTeamId == team.Id)
                 .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase);
 
-            ordered.AddRange(children.Select(child => CreateAdminTeamSummary(child, isChildTeam: true)));
+            ordered.AddRange(children.Select(child => CreateAdminTeamSummary(child, isChildTeam: true, pendingShiftCounts)));
         }
 
         return ordered;
     }
 
-    private static AdminTeamSummary CreateAdminTeamSummary(Team team, bool isChildTeam)
+    private static AdminTeamSummary CreateAdminTeamSummary(
+        Team team, bool isChildTeam, IReadOnlyDictionary<Guid, int> pendingShiftCounts)
     {
         var systemTeamType = team.SystemTeamType != SystemTeamType.None
             ? team.SystemTeamType.ToString()
@@ -2017,7 +2026,8 @@ public class TeamService : ITeamService
             driveResourceCount,
             team.RoleDefinitions.Sum(role => role.SlotCount),
             team.CreatedAt,
-            isChildTeam);
+            isChildTeam,
+            pendingShiftCounts.GetValueOrDefault(team.Id));
     }
 
     private static TeamDirectorySummary CreateDirectorySummary(
