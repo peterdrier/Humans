@@ -312,224 +312,6 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("board_votes", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetAuditLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ActorUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BudgetYearId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("FieldName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("NewValue")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Instant>("OccurredAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OldValue")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActorUserId");
-
-                    b.HasIndex("BudgetYearId");
-
-                    b.HasIndex("OccurredAt");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.ToTable("budget_audit_logs", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("AllocatedAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<Guid>("BudgetGroupId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ExpenditureType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("TeamId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TeamId")
-                        .HasFilter("\"TeamId\" IS NOT NULL");
-
-                    b.HasIndex("BudgetGroupId", "SortOrder");
-
-                    b.ToTable("budget_categories", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BudgetYearId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDepartmentGroup")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsRestricted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BudgetYearId", "SortOrder");
-
-                    b.ToTable("budget_groups", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetLineItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<Guid>("BudgetCategoryId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<LocalDate?>("ExpectedDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid?>("ResponsibleTeamId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ResponsibleTeamId")
-                        .HasFilter("\"ResponsibleTeamId\" IS NOT NULL");
-
-                    b.HasIndex("BudgetCategoryId", "SortOrder");
-
-                    b.ToTable("budget_line_items", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetYear", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Year")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("Year")
-                        .IsUnique();
-
-                    b.ToTable("budget_years", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2055,9 +1837,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<bool>("HasBudget")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -2134,7 +1913,6 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000001"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All active volunteers with signed required documents",
-                            HasBudget = false,
                             IsActive = true,
                             IsPublicPage = false,
                             Name = "Volunteers",
@@ -2149,7 +1927,6 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000002"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All team coordinators",
-                            HasBudget = false,
                             IsActive = true,
                             IsPublicPage = false,
                             Name = "Coordinators",
@@ -2164,7 +1941,6 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000003"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Board members with active role assignments",
-                            HasBudget = false,
                             IsActive = true,
                             IsPublicPage = false,
                             Name = "Board",
@@ -2179,7 +1955,6 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000004"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Voting members with approved asociado applications",
-                            HasBudget = false,
                             IsActive = true,
                             IsPublicPage = false,
                             Name = "Asociados",
@@ -2194,7 +1969,6 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000005"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Active contributors with approved colaborador applications",
-                            HasBudget = false,
                             IsActive = true,
                             IsPublicPage = false,
                             Name = "Colaboradors",
@@ -2209,7 +1983,6 @@ namespace Humans.Infrastructure.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000006"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All active camp leads across all camps",
-                            HasBudget = false,
                             IsActive = true,
                             IsPublicPage = false,
                             Name = "Barrio Leads",
@@ -2920,7 +2693,7 @@ namespace Humans.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("DataProtectionKeys");
+                    b.ToTable("DataProtectionKeys", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
@@ -3150,72 +2923,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Application");
 
                     b.Navigation("BoardMemberUser");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetAuditLog", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.User", "ActorUser")
-                        .WithMany()
-                        .HasForeignKey("ActorUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.BudgetYear", "BudgetYear")
-                        .WithMany("AuditLogs")
-                        .HasForeignKey("BudgetYearId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ActorUser");
-
-                    b.Navigation("BudgetYear");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.BudgetGroup", "BudgetGroup")
-                        .WithMany("Categories")
-                        .HasForeignKey("BudgetGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.Team", "Team")
-                        .WithMany()
-                        .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("BudgetGroup");
-
-                    b.Navigation("Team");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.BudgetYear", "BudgetYear")
-                        .WithMany("Groups")
-                        .HasForeignKey("BudgetYearId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BudgetYear");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetLineItem", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.BudgetCategory", "BudgetCategory")
-                        .WithMany("LineItems")
-                        .HasForeignKey("BudgetCategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.Team", "ResponsibleTeam")
-                        .WithMany()
-                        .HasForeignKey("ResponsibleTeamId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("BudgetCategory");
-
-                    b.Navigation("ResponsibleTeam");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
@@ -3837,23 +3544,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("BoardVotes");
 
                     b.Navigation("StateHistory");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
-                {
-                    b.Navigation("LineItems");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
-                {
-                    b.Navigation("Categories");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetYear", b =>
-                {
-                    b.Navigation("AuditLogs");
-
-                    b.Navigation("Groups");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
