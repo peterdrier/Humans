@@ -234,6 +234,19 @@ public class OutboxEmailService : IEmailService
     }
 
     /// <inheritdoc />
+    public async Task SendAdminDailyDigestAsync(
+        string email,
+        string name,
+        string date,
+        AdminDigestCounts counts,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderAdminDailyDigest(name, date, counts, culture);
+        await EnqueueAsync(email, name, content, "admin_daily_digest", cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task SendFeedbackResponseAsync(
         string userEmail, string userName, string originalDescription,
         string responseMessage, string reportLink, string? culture = null,

@@ -146,6 +146,31 @@ public class CampaignCodeSummary
     public decimal RedemptionRate { get; set; }
 }
 
+public class TicketSalesAggregatesViewModel
+{
+    public List<WeeklySalesRow> WeeklySales { get; set; } = [];
+    public List<QuarterlySalesRow> QuarterlySales { get; set; } = [];
+    public string Currency { get; set; } = "EUR";
+}
+
+public class WeeklySalesRow
+{
+    public string WeekLabel { get; set; } = string.Empty; // "Mar 3 – Mar 9"
+    public int TicketsSold { get; set; }
+    public decimal GrossRevenue { get; set; }
+    public int OrderCount { get; set; }
+}
+
+public class QuarterlySalesRow
+{
+    public string QuarterLabel { get; set; } = string.Empty; // "Q1 2026"
+    public int Year { get; set; }
+    public int Quarter { get; set; }
+    public int TicketsSold { get; set; }
+    public decimal GrossRevenue { get; set; }
+    public int OrderCount { get; set; }
+}
+
 public class WhoHasntBoughtViewModel : PagedListViewModel
 {
     public WhoHasntBoughtViewModel() : base(25)

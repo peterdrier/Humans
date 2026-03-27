@@ -46,6 +46,22 @@ document.addEventListener('click', function (e) {
     }
 });
 
+// Timezone detection — send browser IANA timezone to server session (once per session)
+(function () {
+    try {
+        var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz && !sessionStorage.getItem('tz_sent')) {
+            fetch('/api/timezone', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ timeZone: tz })
+            }).then(function (r) {
+                if (r.ok) sessionStorage.setItem('tz_sent', '1');
+            });
+        }
+    } catch (_) { /* Intl not supported — fall back to server default */ }
+})();
+
 // Human profile popover (lazy-loaded on first hover)
 (function () {
     var cache = {};

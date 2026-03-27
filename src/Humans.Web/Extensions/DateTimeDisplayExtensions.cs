@@ -1,10 +1,51 @@
 using System.Globalization;
+using Humans.Web.Controllers;
 using NodaTime;
 
 namespace Humans.Web.Extensions;
 
 public static class DateTimeDisplayExtensions
 {
+    /// <summary>
+    /// Resolves the user's timezone from session, falling back to the event default or UTC.
+    /// Fallback chain: session timezone → eventTimeZoneId → UTC.
+    /// </summary>
+    public static DateTimeZone GetUserTimeZone(this ISession session, string? eventTimeZoneId = null)
+    {
+        var sessionTz = session.GetString(TimezoneApiController.SessionKey);
+        if (!string.IsNullOrEmpty(sessionTz))
+        {
+            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(sessionTz);
+            if (zone is not null) return zone;
+        }
+
+        if (!string.IsNullOrEmpty(eventTimeZoneId))
+        {
+            var zone = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventTimeZoneId);
+            if (zone is not null) return zone;
+        }
+
+        return DateTimeZone.Utc;
+    }
+
+    // --- Timezone-aware Instant overloads ---
+
+    public static string ToDisplayDate(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).Date.ToDisplayDate();
+
+    public static string ToDisplayDateTime(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayDateTime();
+
+    public static string ToDisplayCompactDate(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayCompactDate();
+
+    public static string ToDisplayCompactDateTime(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayCompactDateTime();
+
+    public static string ToDisplayCompactDayTime(this Instant value, DateTimeZone timeZone) =>
+        value.InZone(timeZone).ToDateTimeUnspecified().ToDisplayCompactDayTime();
+
+
     public static string ToDisplayDate(this DateTime value) =>
         value.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
 

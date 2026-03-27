@@ -329,6 +329,45 @@ public class EmailRenderer : IEmailRenderer
         return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
     }
 
+    public EmailContent RenderAdminDailyDigest(string adminName, string date, AdminDigestCounts counts, string? culture = null)
+    {
+        // Admin digest is always English (admin pages aren't localized)
+        var subject = $"Admin Digest: {date}";
+
+        var items = new List<string>();
+
+        if (counts.PendingDeletions > 0)
+            items.Add($"<li><strong>{counts.PendingDeletions}</strong> account deletions pending <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
+
+        if (counts.PendingConsents > 0)
+            items.Add($"<li><strong>{counts.PendingConsents}</strong> with outstanding consent requirements</li>");
+
+        if (counts.TeamJoinRequests > 0)
+            items.Add($"<li><strong>{counts.TeamJoinRequests}</strong> team join requests pending <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
+
+        if (counts.OnboardingReview > 0)
+            items.Add($"<li><strong>{counts.OnboardingReview}</strong> awaiting onboarding review <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
+
+        if (counts.StillOnboarding > 0)
+            items.Add($"<li><strong>{counts.StillOnboarding}</strong> still completing onboarding</li>");
+
+        if (counts.BoardVotingTotal > 0)
+            items.Add($"<li><strong>{counts.BoardVotingTotal}</strong> tier applications awaiting vote</li>");
+
+        if (counts.FailedSyncOutboxEvents > 0)
+            items.Add($"<li><strong>{counts.FailedSyncOutboxEvents}</strong> failed Google sync outbox events</li>");
+
+        if (counts.TicketSyncError)
+            items.Add($"<li>Ticket sync error: {HtmlEncode(counts.TicketSyncErrorMessage ?? "Unknown")}</li>");
+
+        var itemsHtml = items.Count > 0
+            ? $"<ul>\n{string.Join("\n", items)}\n</ul>"
+            : "<p>All clear — no pending items.</p>";
+
+        var body = $"<h2>Admin Digest — {HtmlEncode(date)}</h2>\n<p>Hi {HtmlEncode(adminName)},</p>\n<h3>Pending Actions &amp; System Health</h3>\n{itemsHtml}";
+        return new EmailContent(subject, body);
+    }
+
     public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
     {
         using (WithCulture(culture))

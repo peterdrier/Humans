@@ -206,6 +206,20 @@ public class StubEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendAdminDailyDigestAsync(
+        string email,
+        string name,
+        string date,
+        AdminDigestCounts counts,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send Admin daily digest to {Email} ({Name}) [Culture: {Culture}] for {Date} with counts: {@Counts}",
+            email, name, culture, date, counts);
+        return Task.CompletedTask;
+    }
+
     public Task SendFeedbackResponseAsync(
         string userEmail, string userName, string originalDescription,
         string responseMessage, string reportLink, string? culture = null,

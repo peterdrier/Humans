@@ -231,6 +231,17 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends an Admin daily digest email summarizing system health and pending actions.
+    /// </summary>
+    Task SendAdminDailyDigestAsync(
+        string email,
+        string name,
+        string date,
+        AdminDigestCounts counts,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a feedback response notification to the reporter.
     /// </summary>
     Task SendFeedbackResponseAsync(

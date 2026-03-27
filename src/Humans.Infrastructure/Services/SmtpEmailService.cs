@@ -229,6 +229,20 @@ public class SmtpEmailService : IEmailService
     }
 
     /// <inheritdoc />
+    public async Task SendAdminDailyDigestAsync(
+        string email,
+        string name,
+        string date,
+        AdminDigestCounts counts,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderAdminDailyDigest(name, date, counts, culture);
+        await SendEmailAsync(email, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("admin_daily_digest");
+    }
+
+    /// <inheritdoc />
     public async Task SendFeedbackResponseAsync(
         string userEmail, string userName, string originalDescription,
         string responseMessage, string reportLink, string? culture = null,

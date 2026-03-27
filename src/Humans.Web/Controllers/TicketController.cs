@@ -446,6 +446,68 @@ public class TicketController : HumansControllerBase
         return View(model);
     }
 
+    [HttpGet("SalesAggregates")]
+    public async Task<IActionResult> SalesAggregates()
+    {
+        // Load all paid orders with attendee counts in memory (small dataset at ~1,500 orders)
+        var orders = await _dbContext.TicketOrders
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+            .Select(o => new { o.PurchasedAt, o.TotalAmount, AttendeeCount = o.Attendees.Count })
+            .ToListAsync();
+
+        // Weekly aggregates (ISO weeks, Mon–Sun)
+        var weeklySales = orders
+            .GroupBy(o =>
+            {
+                var date = o.PurchasedAt.InUtc().Date;
+                // NodaTime ISO day of week: Monday=1, Sunday=7
+                var monday = date.PlusDays(-(int)date.DayOfWeek + 1);
+                return monday;
+            })
+            .OrderBy(g => g.Key)
+            .Select(g =>
+            {
+                var monday = g.Key;
+                var sunday = monday.PlusDays(6);
+                return new WeeklySalesRow
+                {
+                    WeekLabel = $"{monday.ToString("MMM d", null)} – {sunday.ToString("MMM d", null)}",
+                    TicketsSold = g.Sum(o => o.AttendeeCount),
+                    GrossRevenue = g.Sum(o => o.TotalAmount),
+                    OrderCount = g.Count()
+                };
+            })
+            .ToList();
+
+        // Quarterly aggregates (Spanish tax quarters: Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec)
+        var quarterlySales = orders
+            .GroupBy(o =>
+            {
+                var date = o.PurchasedAt.InUtc().Date;
+                var quarter = (date.Month - 1) / 3 + 1;
+                return (date.Year, quarter);
+            })
+            .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.quarter)
+            .Select(g => new QuarterlySalesRow
+            {
+                QuarterLabel = $"Q{g.Key.quarter} {g.Key.Year}",
+                Year = g.Key.Year,
+                Quarter = g.Key.quarter,
+                TicketsSold = g.Sum(o => o.AttendeeCount),
+                GrossRevenue = g.Sum(o => o.TotalAmount),
+                OrderCount = g.Count()
+            })
+            .ToList();
+
+        var model = new TicketSalesAggregatesViewModel
+        {
+            WeeklySales = weeklySales,
+            QuarterlySales = quarterlySales,
+        };
+
+        return View(model);
+    }
+
     [HttpPost("Sync")]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
