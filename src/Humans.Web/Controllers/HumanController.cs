@@ -147,12 +147,17 @@ public class HumanController : HumansControllerBase
             .OrderBy(n => n)
             .ToListAsync();
 
+        var effectivePictureUrl = profile.HasCustomProfilePicture
+            ? Url.Action(nameof(ProfileController.Picture), "Profile",
+                new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+            : profile.User.ProfilePictureUrl;
+
         var vm = new ProfileSummaryViewModel
         {
             UserId = id,
             DisplayName = profile.User.DisplayName,
             Email = profile.User.Email,
-            ProfilePictureUrl = profile.User.ProfilePictureUrl,
+            ProfilePictureUrl = effectivePictureUrl,
             MembershipTier = profile.MembershipTier.ToString(),
             MembershipStatus = profile.IsSuspended ? "Suspended"
                 : profile.IsApproved ? "Active" : "Pending",
