@@ -83,6 +83,12 @@ public static class DateTimeDisplayExtensions
     public static string? ToDisplayCompactDateTime(this Instant? value) =>
         value?.ToDisplayCompactDateTime();
 
+    public static string ToDisplayCompactDayTime(this Instant value) =>
+        value.ToDateTimeUtc().ToDisplayCompactDayTime();
+
+    public static string ToDisplayCompactDayTime(this DateTime value) =>
+        value.ToString("MMM d", CultureInfo.CurrentCulture) + " @ " + value.ToString("HH:mm", CultureInfo.InvariantCulture);
+
     public static string ToDisplayShiftDate(this LocalDate value) =>
         value.DayOfWeek.ToString()[..3] + " " + value.ToString("MMM d", null);
 

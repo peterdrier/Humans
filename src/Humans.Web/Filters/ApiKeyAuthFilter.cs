@@ -10,14 +10,19 @@ public class FeedbackApiSettings
     public string ApiKey { get; set; } = string.Empty;
 }
 
-public class ApiKeyAuthFilter : IAuthorizationFilter
+public class LogApiSettings
+{
+    public string ApiKey { get; set; } = string.Empty;
+}
+
+public abstract class ApiKeyAuthFilterBase : IAuthorizationFilter
 {
     private const string ApiKeyHeaderName = "X-Api-Key";
     private readonly string _apiKey;
 
-    public ApiKeyAuthFilter(IOptions<FeedbackApiSettings> settings)
+    protected ApiKeyAuthFilterBase(string apiKey)
     {
-        _apiKey = settings.Value.ApiKey;
+        _apiKey = apiKey;
     }
 
     public void OnAuthorization(AuthorizationFilterContext context)
@@ -35,3 +40,9 @@ public class ApiKeyAuthFilter : IAuthorizationFilter
         }
     }
 }
+
+public class ApiKeyAuthFilter(IOptions<FeedbackApiSettings> settings)
+    : ApiKeyAuthFilterBase(settings.Value.ApiKey);
+
+public class LogApiKeyAuthFilter(IOptions<LogApiSettings> settings)
+    : ApiKeyAuthFilterBase(settings.Value.ApiKey);

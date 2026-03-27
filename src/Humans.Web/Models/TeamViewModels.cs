@@ -462,6 +462,7 @@ public class AdminTeamViewModel
     public int RoleSlotCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsChildTeam { get; set; }
+    public int PendingShiftSignupCount { get; set; }
 }
 
 /// <summary>

@@ -115,6 +115,13 @@ public static class InfrastructureServiceCollectionExtensions
         });
         services.AddScoped<ApiKeyAuthFilter>();
 
+        // Log API key (separate credential from feedback)
+        services.Configure<LogApiSettings>(opts =>
+        {
+            opts.ApiKey = Environment.GetEnvironmentVariable("LOG_API_KEY") ?? string.Empty;
+        });
+        services.AddScoped<LogApiKeyAuthFilter>();
+
         // Ticket vendor integration
         services.Configure<TicketVendorSettings>(opts =>
         {

@@ -1332,6 +1332,60 @@ public class TeamServiceTests : IDisposable
         result[0].IsFilled.Should().BeFalse();
     }
 
+    // ==========================================================================
+    // GetAdminTeamListAsync — PendingShiftSignupCount
+    // ==========================================================================
+
+    [Fact]
+    public async Task GetAdminTeamListAsync_CountsPendingShiftSignupsForActiveEvent()
+    {
+        var team = SeedTeam("Dept A");
+        var user = SeedUser();
+        SeedTeamMember(team.Id, user.Id);
+
+        var activeEvent = SeedEventSettings("Active Event", isActive: true);
+        var inactiveEvent = SeedEventSettings("Old Event", isActive: false);
+
+        // Rota on active event with 2 pending signups
+        var activeRota = SeedRota(team.Id, activeEvent.Id, "Gate Shifts");
+        var shift1 = SeedShift(activeRota.Id);
+        SeedShiftSignup(shift1.Id, user.Id, SignupStatus.Pending);
+        SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Pending);
+        SeedShiftSignup(shift1.Id, Guid.NewGuid(), SignupStatus.Confirmed); // not pending
+
+        // Rota on inactive event — should NOT be counted
+        var oldRota = SeedRota(team.Id, inactiveEvent.Id, "Old Shifts");
+        var oldShift = SeedShift(oldRota.Id);
+        SeedShiftSignup(oldShift.Id, user.Id, SignupStatus.Pending);
+
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetAdminTeamListAsync(1, 500);
+
+        var summary = result.Teams.Should().ContainSingle(t => t.Name == "Dept A").Subject;
+        summary.PendingShiftSignupCount.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task GetAdminTeamListAsync_ReturnsZeroPendingShifts_WhenNoActiveEvent()
+    {
+        var team = SeedTeam("Dept B");
+        var user = SeedUser();
+        SeedTeamMember(team.Id, user.Id);
+
+        var inactiveEvent = SeedEventSettings("Past Event", isActive: false);
+        var rota = SeedRota(team.Id, inactiveEvent.Id, "Shifts");
+        var shift = SeedShift(rota.Id);
+        SeedShiftSignup(shift.Id, user.Id, SignupStatus.Pending);
+
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetAdminTeamListAsync(1, 500);
+
+        var summary = result.Teams.Should().ContainSingle(t => t.Name == "Dept B").Subject;
+        summary.PendingShiftSignupCount.Should().Be(0);
+    }
+
     // --- Helpers ---
 
     private User SeedUser(Guid? id = null, string displayName = "Test User")
@@ -1443,5 +1497,72 @@ public class TeamServiceTests : IDisposable
         };
         _dbContext.TeamRoleAssignments.Add(assignment);
         return assignment;
+    }
+
+    private EventSettings SeedEventSettings(string name, bool isActive)
+    {
+        var es = new EventSettings
+        {
+            Id = Guid.NewGuid(),
+            EventName = name,
+            TimeZoneId = "Europe/Madrid",
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            BuildStartOffset = -7,
+            EventEndOffset = 5,
+            StrikeEndOffset = 7,
+            IsActive = isActive,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.EventSettings.Add(es);
+        return es;
+    }
+
+    private Rota SeedRota(Guid teamId, Guid eventSettingsId, string name)
+    {
+        var rota = new Rota
+        {
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            EventSettingsId = eventSettingsId,
+            Name = name,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.Rotas.Add(rota);
+        return rota;
+    }
+
+    private Shift SeedShift(Guid rotaId)
+    {
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            RotaId = rotaId,
+            DayOffset = 0,
+            StartTime = new LocalTime(9, 0),
+            Duration = Duration.FromHours(4),
+            MinVolunteers = 1,
+            MaxVolunteers = 5,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.Shifts.Add(shift);
+        return shift;
+    }
+
+    private ShiftSignup SeedShiftSignup(Guid shiftId, Guid userId, SignupStatus status)
+    {
+        var signup = new ShiftSignup
+        {
+            Id = Guid.NewGuid(),
+            ShiftId = shiftId,
+            UserId = userId,
+            Status = status,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.ShiftSignups.Add(signup);
+        return signup;
     }
 }

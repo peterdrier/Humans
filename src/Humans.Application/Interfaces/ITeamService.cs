@@ -101,7 +101,8 @@ public record AdminTeamSummary(
     int DriveResourceCount,
     int RoleSlotCount,
     Instant CreatedAt,
-    bool IsChildTeam);
+    bool IsChildTeam,
+    int PendingShiftSignupCount);
 
 public record AdminTeamListResult(
     IReadOnlyList<AdminTeamSummary> Teams,

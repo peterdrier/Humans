@@ -80,7 +80,7 @@
                                             @signupDate.ToDisplayShiftDate()
                                         }
                                     </td>
-                                    <td>@first.CreatedAt</td>
+                                    <td>@first.CreatedAt.ToDisplayCompactDayTime()</td>
                                     <td>
                                         @if (isRange && first.SignupBlockId.HasValue)
                                         {

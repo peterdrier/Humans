@@ -774,7 +774,8 @@ public class TeamController : HumansControllerBase
         DriveResourceCount = team.DriveResourceCount,
         RoleSlotCount = team.RoleSlotCount,
         CreatedAt = team.CreatedAt.ToDateTimeUtc(),
-        IsChildTeam = team.IsChildTeam
+        IsChildTeam = team.IsChildTeam,
+        PendingShiftSignupCount = team.PendingShiftSignupCount
     };
 
     private async Task<List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> GetEligibleParentTeamsAsync(
