@@ -75,8 +75,8 @@ namespace Humans.Infrastructure.Migrations
                     BudgetYearId = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     SortOrder = table.Column<int>(type: "integer", nullable: false),
-                    IsRestricted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    IsDepartmentGroup = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    IsRestricted = table.Column<bool>(type: "boolean", nullable: false),
+                    IsDepartmentGroup = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false)
                 },
