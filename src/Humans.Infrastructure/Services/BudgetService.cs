@@ -437,7 +437,7 @@ public class BudgetService : IBudgetService
 
     public async Task<BudgetLineItem> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, Guid actorUserId)
+        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId)
     {
         var category = await _dbContext.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -459,6 +459,7 @@ public class BudgetService : IBudgetService
             Amount = amount,
             ResponsibleTeamId = responsibleTeamId,
             Notes = notes,
+            ExpectedDate = expectedDate,
             SortOrder = maxSortOrder + 1,
             CreatedAt = now,
             UpdatedAt = now
@@ -479,7 +480,7 @@ public class BudgetService : IBudgetService
 
     public async Task UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, Guid actorUserId)
+        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId)
     {
         var lineItem = await _dbContext.BudgetLineItems
             .Include(li => li.BudgetCategory)
@@ -522,6 +523,16 @@ public class BudgetService : IBudgetService
                 nameof(BudgetLineItem.Notes), lineItem.Notes, notes,
                 actorUserId, now);
             lineItem.Notes = notes;
+        }
+
+        if (lineItem.ExpectedDate != expectedDate)
+        {
+            LogAudit(budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+                nameof(BudgetLineItem.ExpectedDate),
+                lineItem.ExpectedDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                expectedDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                actorUserId, now);
+            lineItem.ExpectedDate = expectedDate;
         }
 
         lineItem.UpdatedAt = now;

@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260327210328_AddBudgetEntities")]
+    [Migration("20260327221244_AddBudgetEntities")]
     partial class AddBudgetEntities
     {
         /// <inheritdoc />
@@ -469,6 +469,9 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<LocalDate?>("ExpectedDate")
+                        .HasColumnType("date");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)

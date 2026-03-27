@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces;
 
@@ -29,8 +30,8 @@ public interface IBudgetService
     Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
 
     // Budget Line Items
-    Task<BudgetLineItem> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, Guid actorUserId);
-    Task UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, Guid actorUserId);
+    Task<BudgetLineItem> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId);
+    Task UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId);
     Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
     // Audit Log

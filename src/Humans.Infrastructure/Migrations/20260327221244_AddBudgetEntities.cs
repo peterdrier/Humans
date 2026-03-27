@@ -132,6 +132,7 @@ namespace Humans.Infrastructure.Migrations
                     Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     ResponsibleTeamId = table.Column<Guid>(type: "uuid", nullable: true),
                     Notes = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    ExpectedDate = table.Column<LocalDate>(type: "date", nullable: true),
                     SortOrder = table.Column<int>(type: "integer", nullable: false),
                     CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false)
