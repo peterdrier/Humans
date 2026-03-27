@@ -1,0 +1,88 @@
+@model IReadOnlyList<BudgetAuditLog>
+@{
+    ViewData["Title"] = "Budget Audit Log";
+    var yearId = ViewBag.YearId as Guid?;
+    var years = ViewBag.Years as IReadOnlyList<BudgetYear> ?? [];
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Budget Audit Log</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+    </a>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (years.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" asp-action="AuditLog" class="row g-2 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label">Filter by Year</label>
+                    <select name="yearId" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Years</option>
+                        @foreach (var y in years)
+                        {
+                            <option value="@y.Id" selected="@(yearId == y.Id)">@y.Name</option>
+                        }
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+}
+
+@if (Model.Count > 0)
+{
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Who</th>
+                        <th>Entity Type</th>
+                        <th>Description</th>
+                        <th>Field</th>
+                        <th>Old Value</th>
+                        <th>New Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in Model)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@entry.OccurredAt.ToDateTimeUtc().ToString("g")</td>
+                            <td>@(entry.ActorUser?.DisplayName ?? entry.ActorUser?.Email ?? "Unknown")</td>
+                            <td><span class="badge bg-secondary">@entry.EntityType</span></td>
+                            <td>@entry.Description</td>
+                            <td>@(entry.FieldName ?? "")</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(entry.OldValue))
+                                {
+                                    <span class="text-danger">@entry.OldValue</span>
+                                }
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(entry.NewValue))
+                                {
+                                    <span class="text-success">@entry.NewValue</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center py-4 text-muted">
+            No audit log entries found.
+        </div>
+    </div>
+}
