@@ -66,6 +66,10 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
             .IsRequired()
             .HasDefaultValue(true);
 
+        builder.Property(t => t.HasBudget)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.Property(t => t.PageContent)
             .HasMaxLength(50000);
 
@@ -143,7 +147,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContentUpdatedByUserId = (Guid?)null,
                 CallsToAction = (List<CallToAction>?)null,
                 CustomSlug = (string?)null,
-                ShowCoordinatorsOnPublicPage = true
+                ShowCoordinatorsOnPublicPage = true,
+                HasBudget = false
             },
             new
             {
@@ -164,7 +169,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContentUpdatedByUserId = (Guid?)null,
                 CallsToAction = (List<CallToAction>?)null,
                 CustomSlug = (string?)null,
-                ShowCoordinatorsOnPublicPage = true
+                ShowCoordinatorsOnPublicPage = true,
+                HasBudget = false
             },
             new
             {
@@ -185,7 +191,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContentUpdatedByUserId = (Guid?)null,
                 CallsToAction = (List<CallToAction>?)null,
                 CustomSlug = (string?)null,
-                ShowCoordinatorsOnPublicPage = true
+                ShowCoordinatorsOnPublicPage = true,
+                HasBudget = false
             },
             new
             {
@@ -206,7 +213,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContentUpdatedByUserId = (Guid?)null,
                 CallsToAction = (List<CallToAction>?)null,
                 CustomSlug = (string?)null,
-                ShowCoordinatorsOnPublicPage = true
+                ShowCoordinatorsOnPublicPage = true,
+                HasBudget = false
             },
             new
             {
@@ -227,7 +235,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContentUpdatedByUserId = (Guid?)null,
                 CallsToAction = (List<CallToAction>?)null,
                 CustomSlug = (string?)null,
-                ShowCoordinatorsOnPublicPage = true
+                ShowCoordinatorsOnPublicPage = true,
+                HasBudget = false
             },
             new
             {
@@ -248,7 +257,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 PageContentUpdatedByUserId = (Guid?)null,
                 CallsToAction = (List<CallToAction>?)null,
                 CustomSlug = (string?)null,
-                ShowCoordinatorsOnPublicPage = true
+                ShowCoordinatorsOnPublicPage = true,
+                HasBudget = false
             });
     }
 }
