@@ -39,7 +39,7 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
     {
         return ResolveTeamAccessAsync(
             slug,
-            static team => team.ParentTeamId is null && team.SystemTeamType == SystemTeamType.None,
+            static team => team.SystemTeamType == SystemTeamType.None,
             canAccessAsync);
     }
 
