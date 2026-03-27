@@ -79,11 +79,38 @@ public class TicketController : HumansControllerBase
         // Count both Valid and CheckedIn — both are sold tickets
         var ticketsSold = await attendees.CountAsync(a =>
             a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn);
-        var revenue = await orders
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
-            .SumAsync(o => o.TotalAmount);
+        var paidOrders = orders.Where(o => o.PaymentStatus == TicketPaymentStatus.Paid);
+        var revenue = await paidOrders.SumAsync(o => o.TotalAmount);
+        var totalStripeFees = await paidOrders.SumAsync(o => (decimal?)o.StripeFee ?? 0m);
+        var totalAppFees = await paidOrders.SumAsync(o => (decimal?)o.ApplicationFee ?? 0m);
+        var netRevenue = revenue - totalStripeFees - totalAppFees;
         var avgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
         var unmatchedCount = await orders.CountAsync(o => o.MatchedUserId == null);
+
+        // Fee breakdown by payment method (load in memory — small dataset)
+        var feeData = await paidOrders
+            .Where(o => o.PaymentMethod != null)
+            .Select(o => new { o.PaymentMethod, o.PaymentMethodDetail, o.TotalAmount, o.StripeFee, o.ApplicationFee })
+            .ToListAsync();
+
+        var feesByMethod = feeData
+            .GroupBy(o => o.PaymentMethodDetail != null ? $"{o.PaymentMethod}/{o.PaymentMethodDetail}" : o.PaymentMethod!, StringComparer.Ordinal)
+            .Select(g =>
+            {
+                var totalAmt = g.Sum(o => o.TotalAmount);
+                var totalStripe = g.Sum(o => o.StripeFee ?? 0);
+                return new PaymentMethodFeeBreakdown
+                {
+                    PaymentMethod = g.Key,
+                    OrderCount = g.Count(),
+                    TotalAmount = totalAmt,
+                    TotalStripeFees = totalStripe,
+                    TotalApplicationFees = g.Sum(o => o.ApplicationFee ?? 0),
+                    EffectiveRate = totalAmt > 0 ? Math.Round(totalStripe / totalAmt * 100, 2) : 0
+                };
+            })
+            .OrderByDescending(f => f.TotalStripeFees)
+            .ToList();
 
         // Cache vendor event summary (15-min TTL) to avoid API call on every page load
         int totalCapacity = 0;
@@ -165,6 +192,10 @@ public class TicketController : HumansControllerBase
             Revenue = revenue,
             AveragePrice = avgPrice,
             TicketsRemaining = totalCapacity - ticketsSold,
+            TotalStripeFees = totalStripeFees,
+            TotalApplicationFees = totalAppFees,
+            NetRevenue = netRevenue,
+            FeesByPaymentMethod = feesByMethod,
             DailySales = dailySalesPoints,
             UnmatchedOrderCount = unmatchedCount,
             SyncStatus = syncState?.SyncStatus ?? TicketSyncStatus.Idle,
@@ -206,6 +237,11 @@ public class TicketController : HumansControllerBase
                 TotalAmount = o.TotalAmount,
                 Currency = o.Currency,
                 DiscountCode = o.DiscountCode,
+                DiscountAmount = o.DiscountAmount,
+                PaymentMethod = o.PaymentMethod,
+                PaymentMethodDetail = o.PaymentMethodDetail,
+                StripeFee = o.StripeFee,
+                ApplicationFee = o.ApplicationFee,
                 PaymentStatus = o.PaymentStatus,
                 VendorDashboardUrl = o.VendorDashboardUrl,
                 MatchedUserId = o.MatchedUserId,
@@ -565,9 +601,11 @@ public class TicketController : HumansControllerBase
             .ToListAsync();
 
         var csv = new System.Text.StringBuilder();
-        csv.AppendCsvRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency", "Code", "Status");
+        csv.AppendCsvRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency",
+            "Code", "Discount", "Payment Method", "Stripe Fee", "TT Fee", "Status");
         foreach (var o in orderList)
         {
+            var method = o.PaymentMethodDetail != null ? $"{o.PaymentMethod}/{o.PaymentMethodDetail}" : o.PaymentMethod;
             csv.AppendCsvRow(
                 o.PurchasedAt.InUtc().Date.ToIsoDateString(),
                 o.BuyerName,
@@ -576,6 +614,10 @@ public class TicketController : HumansControllerBase
                 o.TotalAmount,
                 o.Currency,
                 o.DiscountCode,
+                o.DiscountAmount,
+                method,
+                o.StripeFee,
+                o.ApplicationFee,
                 o.PaymentStatus);
         }
 

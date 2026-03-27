@@ -16,6 +16,7 @@ public class TicketSyncService : ITicketSyncService
 {
     private readonly HumansDbContext _dbContext;
     private readonly ITicketVendorService _vendorService;
+    private readonly IStripeService _stripeService;
     private readonly IClock _clock;
     private readonly TicketVendorSettings _settings;
     private readonly IMemoryCache _cache;
@@ -24,6 +25,7 @@ public class TicketSyncService : ITicketSyncService
     public TicketSyncService(
         HumansDbContext dbContext,
         ITicketVendorService vendorService,
+        IStripeService stripeService,
         IClock clock,
         IOptions<TicketVendorSettings> settings,
         ILogger<TicketSyncService> logger,
@@ -31,6 +33,7 @@ public class TicketSyncService : ITicketSyncService
     {
         _dbContext = dbContext;
         _vendorService = vendorService;
+        _stripeService = stripeService;
         _clock = clock;
         _settings = settings.Value;
         _cache = cache;
@@ -83,6 +86,9 @@ public class TicketSyncService : ITicketSyncService
             // Without this, newly added orders are only in the Change Tracker
             // and FirstOrDefaultAsync won't see them.
             await _dbContext.SaveChangesAsync(ct);
+
+            // Enrich orders with Stripe fee/payment method data
+            await EnrichOrdersWithStripeDataAsync(ct);
 
             // Sync all tickets (not grouped by order — we match by VendorTicketId)
             foreach (var ticketDto in tickets)
@@ -191,6 +197,8 @@ public class TicketSyncService : ITicketSyncService
             existing.VendorDashboardUrl = dto.VendorDashboardUrl;
             existing.SyncedAt = now;
             existing.MatchedUserId = LookupUserId(emailLookup, dto.BuyerEmail);
+            existing.StripePaymentIntentId = dto.StripePaymentIntentId;
+            existing.DiscountAmount = dto.DiscountAmount;
             return existing;
         }
 
@@ -209,6 +217,8 @@ public class TicketSyncService : ITicketSyncService
             PurchasedAt = dto.PurchasedAt,
             SyncedAt = now,
             MatchedUserId = LookupUserId(emailLookup, dto.BuyerEmail),
+            StripePaymentIntentId = dto.StripePaymentIntentId,
+            DiscountAmount = dto.DiscountAmount,
         };
 
         _dbContext.TicketOrders.Add(order);
@@ -316,6 +326,45 @@ public class TicketSyncService : ITicketSyncService
             await _dbContext.SaveChangesAsync(ct);
 
         return codesRedeemed;
+    }
+
+    private async Task EnrichOrdersWithStripeDataAsync(CancellationToken ct)
+    {
+        if (!_stripeService.IsConfigured)
+        {
+            _logger.LogDebug("Stripe not configured, skipping fee enrichment");
+            return;
+        }
+
+        // Find orders that have a Stripe PI but no fee data yet
+        var ordersToEnrich = await _dbContext.TicketOrders
+            .Where(o => o.StripePaymentIntentId != null && o.StripeFee == null)
+            .ToListAsync(ct);
+
+        if (ordersToEnrich.Count == 0) return;
+
+        _logger.LogInformation("Enriching {Count} orders with Stripe fee data", ordersToEnrich.Count);
+
+        foreach (var order in ordersToEnrich)
+        {
+            try
+            {
+                var details = await _stripeService.GetPaymentDetailsAsync(order.StripePaymentIntentId!, ct);
+                if (details is null) continue;
+
+                order.PaymentMethod = details.PaymentMethod;
+                order.PaymentMethodDetail = details.PaymentMethodDetail;
+                order.StripeFee = details.StripeFee;
+                order.ApplicationFee = details.ApplicationFee;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to fetch Stripe data for order {OrderId} (PI: {PaymentIntentId})",
+                    order.VendorOrderId, order.StripePaymentIntentId);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
     }
 
     private static Guid? LookupUserId(Dictionary<string, Guid> lookup, string? email) =>

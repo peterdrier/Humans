@@ -22,6 +22,7 @@ public class TicketSyncServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly ITicketVendorService _vendorService;
+    private readonly IStripeService _stripeService;
     private readonly TicketSyncService _service;
 
     public TicketSyncServiceTests()
@@ -41,9 +42,11 @@ public class TicketSyncServiceTests : IDisposable
             ApiKey = "test_key"
         });
 
+        _stripeService = Substitute.For<IStripeService>();
         _service = new TicketSyncService(
             _dbContext,
             _vendorService,
+            _stripeService,
             _clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
@@ -266,6 +269,7 @@ public class TicketSyncServiceTests : IDisposable
         var service = new TicketSyncService(
             _dbContext,
             _vendorService,
+            _stripeService,
             _clock,
             settings,
             NullLogger<TicketSyncService>.Instance,

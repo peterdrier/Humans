@@ -65,8 +65,27 @@ public class TicketOrderConfiguration : IEntityTypeConfiguration<TicketOrder>
             .HasForeignKey(a => a.TicketOrderId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Property(o => o.StripePaymentIntentId)
+            .HasMaxLength(100);
+
+        builder.Property(o => o.PaymentMethod)
+            .HasMaxLength(50);
+
+        builder.Property(o => o.PaymentMethodDetail)
+            .HasMaxLength(50);
+
+        builder.Property(o => o.StripeFee)
+            .HasPrecision(10, 2);
+
+        builder.Property(o => o.ApplicationFee)
+            .HasPrecision(10, 2);
+
+        builder.Property(o => o.DiscountAmount)
+            .HasPrecision(10, 2);
+
         builder.HasIndex(o => o.BuyerEmail);
         builder.HasIndex(o => o.PurchasedAt);
         builder.HasIndex(o => o.MatchedUserId);
+        builder.HasIndex(o => o.PaymentMethod);
     }
 }
