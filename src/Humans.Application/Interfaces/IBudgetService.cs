@@ -18,6 +18,8 @@ public interface IBudgetService
     Task UpdateYearAsync(Guid yearId, string year, string name, Guid actorUserId);
     Task DeleteYearAsync(Guid yearId, Guid actorUserId);
 
+    Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
+
     // Budget Groups
     Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId);
     Task UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId);

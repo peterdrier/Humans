@@ -139,6 +139,30 @@ public class FinanceController : HumansControllerBase
 
     // --- POST Actions ---
 
+    [HttpPost("Years/{id:guid}/SyncDepartments")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncDepartments(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var count = await _budgetService.SyncDepartmentsAsync(id, user.Id);
+            if (count > 0)
+                SetSuccess($"Synced {count} new department(s) into budget.");
+            else
+                SetInfo("All budget-enabled teams are already in the Departments group.");
+            return RedirectToAction(nameof(YearDetail), new { id });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing departments for year {YearId}", id);
+            SetError($"Failed to sync departments: {ex.Message}");
+            return RedirectToAction(nameof(YearDetail), new { id });
+        }
+    }
+
     [HttpPost("Years/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateYear(string year, string name)
