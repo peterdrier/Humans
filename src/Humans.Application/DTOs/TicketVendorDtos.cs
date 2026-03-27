@@ -13,7 +13,9 @@ public record VendorOrderDto(
     string PaymentStatus,
     string? VendorDashboardUrl,
     Instant PurchasedAt,
-    IReadOnlyList<VendorTicketDto> Tickets);
+    IReadOnlyList<VendorTicketDto> Tickets,
+    string? StripePaymentIntentId = null,
+    decimal? DiscountAmount = null);
 
 /// <summary>Vendor-agnostic issued ticket data.</summary>
 public record VendorTicketDto(

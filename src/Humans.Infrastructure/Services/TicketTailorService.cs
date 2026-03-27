@@ -91,6 +91,7 @@ public class TicketTailorService : ITicketVendorService
                 // Discount codes are in line_items with type "gift_card",
                 // code embedded in description like "NCA Contributor Discount (DISC25-OPGYT8-004)"
                 var discountCode = ExtractDiscountCode(order.LineItems);
+                var discountAmount = ExtractDiscountAmount(order.LineItems);
 
                 orders.Add(new VendorOrderDto(
                     VendorOrderId: order.Id,
@@ -102,7 +103,9 @@ public class TicketTailorService : ITicketVendorService
                     PaymentStatus: order.Status ?? "completed",
                     VendorDashboardUrl: null, // TT doesn't expose dashboard URLs via API
                     PurchasedAt: purchasedAt,
-                    Tickets: []));
+                    Tickets: [],
+                    StripePaymentIntentId: order.TxnId,
+                    DiscountAmount: discountAmount));
             }
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
@@ -256,6 +259,21 @@ public class TicketTailorService : ITicketVendorService
         return discountItem.Description;
     }
 
+    /// <summary>
+    /// Sum the absolute value of gift_card line item totals (they're negative in the API).
+    /// Returns null if no discount was applied.
+    /// </summary>
+    private static decimal? ExtractDiscountAmount(List<TtLineItem>? lineItems)
+    {
+        if (lineItems is null) return null;
+
+        var discountCents = lineItems
+            .Where(li => string.Equals(li.Type, "gift_card", StringComparison.OrdinalIgnoreCase))
+            .Sum(li => Math.Abs(li.Total ?? 0));
+
+        return discountCents > 0 ? discountCents / 100m : null;
+    }
+
     // --- TicketTailor API response models ---
     // Must be internal (not private) for System.Text.Json deserialization
 
@@ -274,7 +292,8 @@ public class TicketTailorService : ITicketVendorService
         [property: JsonPropertyName("currency")] TtCurrency? Currency,
         [property: JsonPropertyName("status")] string? Status,
         [property: JsonPropertyName("created_at")] long CreatedAt,
-        [property: JsonPropertyName("line_items")] List<TtLineItem>? LineItems);
+        [property: JsonPropertyName("line_items")] List<TtLineItem>? LineItems,
+        [property: JsonPropertyName("txn_id")] string? TxnId);
 
     internal sealed record TtLineItem(
         [property: JsonPropertyName("description")] string? Description,

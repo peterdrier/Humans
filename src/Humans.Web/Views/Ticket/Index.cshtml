@@ -54,16 +54,32 @@
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Revenue</h6>
+                    <h6 class="card-subtitle mb-2 text-muted">Gross Revenue</h6>
                     <h3 class="card-title">@Model.Currency @Model.Revenue.ToString("N0")</h3>
+                    @if (Model.TotalStripeFees > 0 || Model.TotalApplicationFees > 0)
+                    {
+                        var totalFees = Model.TotalStripeFees + Model.TotalApplicationFees;
+                        var feePct = Model.Revenue > 0 ? Math.Round(totalFees / Model.Revenue * 100, 1) : 0;
+                        <small class="text-muted">@feePct% in fees</small>
+                    }
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body">
-                    <h6 class="card-subtitle mb-2 text-muted">Avg. Price</h6>
-                    <h3 class="card-title">@Model.Currency @Model.AveragePrice.ToString("N0")</h3>
+                    <h6 class="card-subtitle mb-2 text-muted">Net Revenue</h6>
+                    <h3 class="card-title">@Model.Currency @Model.NetRevenue.ToString("N0")</h3>
+                    @if (Model.TotalStripeFees > 0)
+                    {
+                        <small class="text-muted">
+                            Stripe: @Model.Currency @Model.TotalStripeFees.ToString("N0")
+                            @if (Model.TotalApplicationFees > 0)
+                            {
+                                <text> / TT: @Model.Currency @Model.TotalApplicationFees.ToString("N0")</text>
+                            }
+                        </small>
+                    }
                 </div>
             </div>
         </div>
@@ -86,6 +102,42 @@
             </div>
             <div class="card-body">
                 <canvas id="dailySalesChart" height="100"></canvas>
+            </div>
+        </div>
+    }
+
+    @if (Model.FeesByPaymentMethod.Count > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-credit-card"></i> Fees by Payment Method
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Payment Method</th>
+                            <th class="text-end">Orders</th>
+                            <th class="text-end">Gross Amount</th>
+                            <th class="text-end">Stripe Fee</th>
+                            <th class="text-end">TT Fee</th>
+                            <th class="text-end">Effective Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pm in Model.FeesByPaymentMethod)
+                        {
+                            <tr>
+                                <td>@pm.PaymentMethod</td>
+                                <td class="text-end">@pm.OrderCount</td>
+                                <td class="text-end">@Model.Currency @pm.TotalAmount.ToString("N0")</td>
+                                <td class="text-end">@Model.Currency @pm.TotalStripeFees.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @pm.TotalApplicationFees.ToString("N2")</td>
+                                <td class="text-end">@pm.EffectiveRate%</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     }
