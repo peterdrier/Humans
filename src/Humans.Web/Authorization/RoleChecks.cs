@@ -15,6 +15,7 @@ public static class RoleChecks
         RoleNames.TicketAdmin,
         RoleNames.NoInfoAdmin,
         RoleNames.FeedbackAdmin,
+        RoleNames.FinanceAdmin,
         RoleNames.ConsentCoordinator,
         RoleNames.VolunteerCoordinator
     ];
@@ -28,6 +29,7 @@ public static class RoleChecks
         RoleNames.TicketAdmin,
         RoleNames.NoInfoAdmin,
         RoleNames.FeedbackAdmin,
+        RoleNames.FinanceAdmin,
         RoleNames.ConsentCoordinator,
         RoleNames.VolunteerCoordinator
     ];
@@ -86,6 +88,7 @@ public static class RoleChecks
                IsHumanAdmin(user) ||
                user.IsInRole(RoleNames.TicketAdmin) ||
                user.IsInRole(RoleNames.NoInfoAdmin) ||
+               user.IsInRole(RoleNames.FinanceAdmin) ||
                user.IsInRole(RoleNames.ConsentCoordinator) ||
                user.IsInRole(RoleNames.VolunteerCoordinator);
     }
@@ -114,6 +117,16 @@ public static class RoleChecks
         return IsAdmin(user) || user.IsInRole(RoleNames.FeedbackAdmin);
     }
 
+    public static bool IsFinanceAdmin(ClaimsPrincipal user)
+    {
+        return IsAdmin(user) || user.IsInRole(RoleNames.FinanceAdmin);
+    }
+
+    public static bool CanAccessFinance(ClaimsPrincipal user)
+    {
+        return IsFinanceAdmin(user);
+    }
+
     public static bool CanManageRole(ClaimsPrincipal user, string roleName)
     {
         if (IsAdmin(user))
@@ -128,7 +141,8 @@ public static class RoleChecks
                    string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.FeedbackAdmin, StringComparison.Ordinal);
+                   string.Equals(roleName, RoleNames.FeedbackAdmin, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.FinanceAdmin, StringComparison.Ordinal);
         }
 
         return false;

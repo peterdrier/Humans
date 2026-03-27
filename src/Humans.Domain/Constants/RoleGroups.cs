@@ -29,4 +29,6 @@ public static class RoleGroups
         RoleNames.HumanAdmin + "," + RoleNames.Board + "," + RoleNames.Admin;
 
     public const string HumanAdminOrAdmin = RoleNames.HumanAdmin + "," + RoleNames.Admin;
+
+    public const string FinanceAdminOrAdmin = RoleNames.FinanceAdmin + "," + RoleNames.Admin;
 }

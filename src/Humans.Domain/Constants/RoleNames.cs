@@ -62,4 +62,10 @@ public static class RoleNames
     /// provision @nobodies.team email accounts, and manage role assignments.
     /// </summary>
     public const string HumanAdmin = "HumanAdmin";
+
+    /// <summary>
+    /// Finance Administrator — can manage budgets, budget years, groups, categories,
+    /// and line items. Full access to the Finance section.
+    /// </summary>
+    public const string FinanceAdmin = "FinanceAdmin";
 }
