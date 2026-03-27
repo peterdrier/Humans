@@ -156,7 +156,11 @@ public class HomeController : HumansControllerBase
                 {
                     var now = _clock.GetCurrentInstant();
                     var userSignups = await _shiftSignup.GetByUserAsync(user.Id, activeEvent.Id);
-                    pendingCount = userSignups.Count(s => s.Status == SignupStatus.Pending);
+                    pendingCount = userSignups
+                        .Where(s => s.Status == SignupStatus.Pending)
+                        .Select(s => s.SignupBlockId ?? s.Id)
+                        .Distinct()
+                        .Count();
 
                     foreach (var s in userSignups.Where(s => s.Status == SignupStatus.Confirmed))
                     {

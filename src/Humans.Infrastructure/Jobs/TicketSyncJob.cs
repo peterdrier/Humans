@@ -1,6 +1,8 @@
 using Hangfire;
 using Humans.Application.Interfaces;
+using Humans.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -12,18 +14,27 @@ namespace Humans.Infrastructure.Jobs;
 public class TicketSyncJob
 {
     private readonly ITicketSyncService _syncService;
+    private readonly TicketVendorSettings _settings;
     private readonly ILogger<TicketSyncJob> _logger;
 
     public TicketSyncJob(
         ITicketSyncService syncService,
+        IOptions<TicketVendorSettings> settings,
         ILogger<TicketSyncJob> logger)
     {
         _syncService = syncService;
+        _settings = settings.Value;
         _logger = logger;
     }
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
+        if (!_settings.IsConfigured)
+        {
+            _logger.LogDebug("Ticket vendor not configured, skipping sync");
+            return;
+        }
+
         _logger.LogInformation("Starting ticket sync job");
 
         try
