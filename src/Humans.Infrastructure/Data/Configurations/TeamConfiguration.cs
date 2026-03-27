@@ -67,8 +67,7 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
             .HasDefaultValue(true);
 
         builder.Property(t => t.HasBudget)
-            .IsRequired()
-            .HasDefaultValue(false);
+            .IsRequired();
 
         builder.Property(t => t.PageContent)
             .HasMaxLength(50000);
