@@ -33,7 +33,7 @@ test.describe('Onboarding (16-onboarding-pipeline + 17-coordinator-roles)', () =
     await page.goto('/OnboardingReview');
 
     await expect(page.locator('h1, h2').first()).toBeVisible();
-    // Should NOT see Clear/Flag buttons (read-only access)
+    // Index page doesn't show Clear/Flag buttons — those only appear on Detail page
     await expect(page.getByRole('button', { name: /Clear/i })).not.toBeVisible();
     await expect(page.getByRole('button', { name: /Flag/i })).not.toBeVisible();
   });

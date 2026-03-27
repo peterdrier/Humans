@@ -14,7 +14,7 @@ export const loginAsConsentCoordinator = (page: Page) => loginAs(page, 'consent-
 export const loginAsTeamsAdmin = (page: Page) => loginAs(page, 'teams-admin');
 export const loginAsCampAdmin = (page: Page) => loginAs(page, 'camp-admin');
 export const loginAsTicketAdmin = (page: Page) => loginAs(page, 'ticket-admin');
-export const loginAsNoInfoAdmin = (page: Page) => loginAs(page, 'noinfo-admin');
+export const loginAsNoInfoAdmin = (page: Page) => loginAs(page, 'no-info-admin');
 export const loginAsVolunteerCoordinator = (page: Page) => loginAs(page, 'volunteer-coordinator');
 
 /**

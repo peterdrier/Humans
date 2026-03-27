@@ -15,7 +15,7 @@ test.describe('Feedback (27-feedback-system)', () => {
 
       await modal.locator('select[name="Category"]').selectOption({ index: 1 });
       await modal.locator('textarea[name="Description"]').fill(
-        `E2E smoke test feedback - ${new Date().toISOString()} - please ignore`
+        `feedback-test: please ignore (${new Date().toISOString()})`
       );
 
       await modal.locator('button[type="submit"]').click();
