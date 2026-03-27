@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Domain.Entities;
 
@@ -27,7 +28,11 @@ public class DocumentVersionConfiguration : IEntityTypeConfiguration<DocumentVer
             .HasConversion(
                 v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
                 v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions?)null)
-                     ?? new Dictionary<string, string>(StringComparer.Ordinal));
+                     ?? new Dictionary<string, string>(StringComparer.Ordinal),
+                new ValueComparer<Dictionary<string, string>>(
+                    (a, b) => a != null && b != null && a.Count == b.Count && a.All(kv => b.ContainsKey(kv.Key) && string.Equals(kv.Value, b[kv.Key], StringComparison.Ordinal)),
+                    v => v.Aggregate(0, (hash, kv) => HashCode.Combine(hash, StringComparer.Ordinal.GetHashCode(kv.Key), StringComparer.Ordinal.GetHashCode(kv.Value))),
+                    v => new Dictionary<string, string>(v, StringComparer.Ordinal)));
 
         builder.Property(dv => dv.EffectiveFrom)
             .IsRequired();

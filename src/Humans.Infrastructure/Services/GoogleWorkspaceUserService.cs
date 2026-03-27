@@ -113,13 +113,16 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
     {
         var service = await GetDirectoryServiceAsync();
 
+        // Google Directory API requires non-empty FamilyName; fall back to GivenName
+        var sanitizedLastName = string.IsNullOrWhiteSpace(lastName) ? firstName : lastName;
+
         var newUser = new User
         {
             PrimaryEmail = primaryEmail,
             Name = new UserName
             {
                 GivenName = firstName,
-                FamilyName = lastName
+                FamilyName = sanitizedLastName
             },
             Password = temporaryPassword,
             ChangePasswordAtNextLogin = true,

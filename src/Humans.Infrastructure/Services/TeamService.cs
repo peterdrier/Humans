@@ -1923,6 +1923,8 @@ public class TeamService : ITeamService
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
+        // Count distinct signup applications (not individual days).
+        // Multi-day signups share a SignupBlockId; fall back to signup Id for singles.
         var pendingShiftCounts = activeEventId == Guid.Empty
             ? new Dictionary<Guid, int>()
             : await (
@@ -1931,9 +1933,11 @@ public class TeamService : ITeamService
                 join shift in _dbContext.Shifts on rota.Id equals shift.RotaId
                 join signup in _dbContext.ShiftSignups on shift.Id equals signup.ShiftId
                 where signup.Status == SignupStatus.Pending
-                group signup by rota.TeamId into g
-                select new { TeamId = g.Key, Count = g.Count() }
-            ).ToDictionaryAsync(x => x.TeamId, x => x.Count, cancellationToken);
+                select new { rota.TeamId, BlockKey = signup.SignupBlockId ?? signup.Id }
+            ).Distinct()
+             .GroupBy(x => x.TeamId)
+             .Select(g => new { TeamId = g.Key, Count = g.Count() })
+             .ToDictionaryAsync(x => x.TeamId, x => x.Count, cancellationToken);
 
         return new AdminTeamListResult(BuildAdminTeamSummaries(items, pendingShiftCounts), totalCount);
     }
