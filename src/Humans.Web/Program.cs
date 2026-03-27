@@ -315,6 +315,10 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 var app = builder.Build();
 
+// Initialize timezone-aware display extensions with IHttpContextAccessor
+// so all Instant.ToDisplay*() calls automatically use the user's session timezone.
+DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContextAccessor>());
+
 // Eagerly resolve HumansMetricsService so the background gauge-refresh timer starts
 // immediately — otherwise observable gauges emit nothing until first injection.
 app.Services.GetRequiredService<HumansMetricsService>();
