@@ -143,7 +143,6 @@ public class TeamPageService : ITeamPageService
     {
         if (!isAuthenticated ||
             !userId.HasValue ||
-            team.ParentTeamId.HasValue ||
             team.SystemTeamType != SystemTeamType.None)
         {
             return null;
