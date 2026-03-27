@@ -50,7 +50,7 @@
 
     @if (!string.IsNullOrEmpty(rota.PracticalInfo))
     {
-        <p class="text-muted small mb-1 mt-1">@rota.PracticalInfo</p>
+        <div class="text-muted small mb-1 mt-1">@Html.SanitizedMarkdown(rota.PracticalInfo)</div>
     }
 
     <div class="progress mt-2" style="height: 6px;">

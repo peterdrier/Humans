@@ -1,3 +1,4 @@
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
 using NodaTime;
 
@@ -22,6 +23,7 @@ public class Shift
     /// <summary>
     /// Optional description of shift duties.
     /// </summary>
+    [MarkdownContent]
     public string? Description { get; set; }
 
     /// <summary>

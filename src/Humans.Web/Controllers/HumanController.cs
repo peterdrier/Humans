@@ -138,23 +138,31 @@ public class HumanController : HumansControllerBase
     public async Task<IActionResult> Popover(Guid id)
     {
         var profile = await _profileService.GetProfileAsync(id);
-        if (profile is null) return NotFound();
+        if (profile is null || profile.IsSuspended) return NotFound();
 
         var teams = await _dbContext.TeamMembers
-            .Where(tm => tm.UserId == id && tm.LeftAt == null)
+            .Where(tm => tm.UserId == id && tm.LeftAt == null
+                && tm.Team!.SystemTeamType != SystemTeamType.Volunteers)
             .Select(tm => tm.Team!.Name)
             .OrderBy(n => n)
             .ToListAsync();
+
+        var effectivePictureUrl = profile.HasCustomProfilePicture
+            ? Url.Action(nameof(ProfileController.Picture), "Profile",
+                new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+            : profile.User.ProfilePictureUrl;
 
         var vm = new ProfileSummaryViewModel
         {
             UserId = id,
             DisplayName = profile.User.DisplayName,
             Email = profile.User.Email,
-            ProfilePictureUrl = profile.User.ProfilePictureUrl,
+            ProfilePictureUrl = effectivePictureUrl,
             MembershipTier = profile.MembershipTier.ToString(),
             MembershipStatus = profile.IsSuspended ? "Suspended"
                 : profile.IsApproved ? "Active" : "Pending",
+            City = profile.City,
+            CountryCode = profile.CountryCode,
             Teams = teams
         };
 
