@@ -438,8 +438,13 @@ public class ShiftsController : HumansControllerBase
         if (!string.IsNullOrEmpty(model.EarlyEntryClose))
         {
             var parsedInstant = InstantPattern.General.Parse(model.EarlyEntryClose);
-            if (parsedInstant.Success)
-                earlyEntryClose = parsedInstant.Value;
+            if (!parsedInstant.Success)
+            {
+                ModelState.AddModelError(nameof(model.EarlyEntryClose), "Invalid UTC instant format.");
+                return View(model);
+            }
+
+            earlyEntryClose = parsedInstant.Value;
         }
 
         var eeCapacity = !string.IsNullOrEmpty(model.EarlyEntryCapacityJson)

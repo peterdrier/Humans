@@ -287,6 +287,16 @@ public class CampService : ICampService
         }) ?? [];
     }
 
+    public async Task<List<Camp>> GetAllCampsForYearAsync(int year, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Camps
+            .Include(b => b.Seasons.Where(s => s.Year == year))
+            .Include(b => b.Images.OrderBy(i => i.SortOrder))
+            .Include(b => b.HistoricalNames)
+            .Where(b => b.Seasons.Any(s => s.Year == year))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(
         int year,
         CancellationToken cancellationToken = default)

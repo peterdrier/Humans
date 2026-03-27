@@ -41,7 +41,7 @@ public class OutboxEmailServiceTests : IDisposable
         var emailSettings = Options.Create(new EmailSettings
         {
             BaseUrl = "https://humans.nobodies.team",
-            FromAddress = "noreply@nobodies.team",
+            FromAddress = "humans@nobodies.team",
             FromName = "Nobodies Collective"
         });
 

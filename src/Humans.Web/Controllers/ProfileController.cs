@@ -871,20 +871,7 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            var prefs = await _commPrefService.GetPreferencesAsync(user.Id);
-            var viewModel = new CommunicationPreferencesViewModel
-            {
-                Categories = prefs.Select(p => new CategoryPreferenceItem
-                {
-                    Category = p.Category,
-                    DisplayName = p.Category.ToDisplayName(),
-                    Description = p.Category.ToDescription(),
-                    OptedOut = p.OptedOut,
-                    IsEditable = p.Category != MessageCategory.System,
-                }).ToList()
-            };
-
-            return View(viewModel);
+            return View(await BuildCommunicationPreferencesViewModelAsync(user.Id));
         }
         catch (Exception ex)
         {
@@ -920,7 +907,34 @@ public class ProfileController : HumansControllerBase
         {
             _logger.LogError(ex, "Failed to save notification settings");
             SetError("Failed to save notification settings.");
+            PopulateCommunicationPreferenceMetadata(model);
             return View(model);
+        }
+    }
+
+    private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
+    {
+        var prefs = await _commPrefService.GetPreferencesAsync(userId);
+        return new CommunicationPreferencesViewModel
+        {
+            Categories = prefs.Select(p => new CategoryPreferenceItem
+            {
+                Category = p.Category,
+                DisplayName = p.Category.ToDisplayName(),
+                Description = p.Category.ToDescription(),
+                OptedOut = p.OptedOut,
+                IsEditable = p.Category != MessageCategory.System,
+            }).ToList()
+        };
+    }
+
+    private static void PopulateCommunicationPreferenceMetadata(CommunicationPreferencesViewModel model)
+    {
+        foreach (var item in model.Categories)
+        {
+            item.DisplayName = item.Category.ToDisplayName();
+            item.Description = item.Category.ToDescription();
+            item.IsEditable = item.Category != MessageCategory.System;
         }
     }
 

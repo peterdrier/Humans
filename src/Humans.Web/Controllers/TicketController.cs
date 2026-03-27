@@ -393,7 +393,7 @@ public class TicketController : HumansControllerBase
 
         var activeHumans = users
             .Where(u => u.Profile is not null &&
-                u.TeamMemberships.Any(tm => tm.TeamId == volunteersTeamId))
+                u.TeamMemberships.Any(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null))
             .ToList();
 
         var filteredHumans = FilterWhoHasntBoughtHumans(
@@ -414,15 +414,21 @@ public class TicketController : HumansControllerBase
                 HasTicket = matchedUserIds.Contains(u.Id),
                 Name = u.DisplayName,
                 Email = u.UserEmails.FirstOrDefault(e => e.IsNotificationTarget)?.Email ?? string.Empty,
-                Teams = string.Join(", ", u.TeamMemberships.Select(tm => tm.Team.Name)),
+                Teams = string.Join(", ", u.TeamMemberships
+                    .Where(tm => tm.LeftAt == null)
+                    .Select(tm => tm.Team.Name)
+                    .Order(StringComparer.OrdinalIgnoreCase)),
                 Tier = u.Profile?.MembershipTier ?? MembershipTier.Volunteer,
             })
             .ToList();
 
-        var teams = await _dbContext.Set<Domain.Entities.Team>()
-            .Select(t => t.Name)
-            .OrderBy(n => n)
-            .ToListAsync();
+        var teams = activeHumans
+            .SelectMany(u => u.TeamMemberships)
+            .Where(tm => tm.LeftAt == null)
+            .Select(tm => tm.Team.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var model = new WhoHasntBoughtViewModel
         {
@@ -701,7 +707,9 @@ public class TicketController : HumansControllerBase
         if (!string.IsNullOrEmpty(filterTeam))
         {
             filteredHumans = filteredHumans.Where(u =>
-                u.TeamMemberships.Any(tm => string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)));
+                u.TeamMemberships.Any(tm =>
+                    tm.LeftAt == null &&
+                    string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)));
         }
 
         if (!string.IsNullOrEmpty(filterTier) && Enum.TryParse<MembershipTier>(filterTier, ignoreCase: true, out var parsedTier))

@@ -456,6 +456,6 @@ The complete substitution vocabulary for campaign templates:
 
 ## Future Considerations
 
-**Bounce processing:** When SMTP accepts a message but the recipient's server later rejects it (mailbox full, invalid address), a bounce email is sent back to `noreply@nobodies.team`. Currently these accumulate unread. A future enhancement could add inbound bounce parsing to update outbox status from Sent → Bounced, enabling proactive admin notification. This is out of scope for v1 — the admin outbox dashboard lets admins spot patterns manually for now.
+**Bounce processing:** When SMTP accepts a message but the recipient's server later rejects it (mailbox full, invalid address), a bounce email is sent back to the configured From address. Currently these accumulate unread. A future enhancement could add inbound bounce parsing to update outbox status from Sent → Bounced, enabling proactive admin notification. This is out of scope for v1 — the admin outbox dashboard lets admins spot patterns manually for now.
 
 **Low-income ticket lottery:** The Campaign entity is designed to be reusable for future lottery-based code assignment. The assignment logic (how codes map to humans) differs, but the Campaign/CampaignCode/CampaignGrant structure and email delivery pipeline remain the same.

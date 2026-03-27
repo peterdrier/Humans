@@ -18,7 +18,7 @@
         <input type="text" name="q" class="form-control" value="@Model.Query"
                placeholder="@Localizer["Search_Placeholder"]" autofocus />
         <button type="submit" class="btn btn-primary">
-            <i class="fas fa-search"></i>
+            <i class="fa-solid fa-search"></i>
         </button>
     </div>
 </form>
@@ -52,7 +52,7 @@
                                 }
                                 @if (result.City != null)
                                 {
-                                    <small class="text-muted"><i class="fas fa-map-marker-alt"></i> @result.City</small>
+                                    <small class="text-muted"><i class="fa-solid fa-location-dot"></i> @result.City</small>
                                 }
                             </div>
                             @if (result.MatchField != null)

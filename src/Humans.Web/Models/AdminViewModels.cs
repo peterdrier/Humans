@@ -271,6 +271,7 @@ public class AdminConfigurationViewModel
 public class EmailPreviewViewModel
 {
     public Dictionary<string, List<EmailPreviewItem>> Previews { get; set; } = new(StringComparer.Ordinal);
+    public string FromAddress { get; set; } = string.Empty;
 }
 
 public class EmailPreviewItem

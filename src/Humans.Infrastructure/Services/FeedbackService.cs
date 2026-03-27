@@ -199,6 +199,7 @@ public class FeedbackService : IFeedbackService
     {
         var report = await _dbContext.FeedbackReports
             .Include(f => f.User)
+                .ThenInclude(u => u.UserEmails)
             .FirstOrDefaultAsync(f => f.Id == reportId, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {reportId} not found");
 
@@ -218,10 +219,21 @@ public class FeedbackService : IFeedbackService
             report.LastAdminMessageAt = now;
             var user = report.User;
             var reportLink = $"/Feedback/{reportId}";
-            await _emailService.SendFeedbackResponseAsync(
-                user.Email!, user.DisplayName,
-                report.Description, content, reportLink,
-                user.PreferredLanguage, cancellationToken);
+            var recipientEmail = user.GetEffectiveEmail();
+            if (!string.IsNullOrWhiteSpace(recipientEmail))
+            {
+                await _emailService.SendFeedbackResponseAsync(
+                    recipientEmail, user.DisplayName,
+                    report.Description, content, reportLink,
+                    user.PreferredLanguage, cancellationToken);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Skipping feedback response email for report {ReportId} because user {UserId} has no effective email",
+                    reportId,
+                    user.Id);
+            }
         }
         else
         {
