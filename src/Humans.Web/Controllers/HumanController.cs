@@ -430,6 +430,7 @@ public class HumanController : HumansControllerBase
 
         var user = await _dbContext.Users
             .Include(u => u.UserEmails)
+            .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == id);
         if (user is null)
             return NotFound();
@@ -446,6 +447,15 @@ public class HumanController : HumansControllerBase
                 return RedirectToAction(nameof(HumanDetail), new { id });
             }
 
+            // Use real name from profile, not display/burner name
+            var firstName = user.Profile?.FirstName;
+            var lastName = user.Profile?.LastName;
+            if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
+            {
+                SetError("Cannot provision account: the human must have a first and last name in their profile.");
+                return RedirectToAction(nameof(HumanDetail), new { id });
+            }
+
             // Use their current notification target as recovery email (if not @nobodies.team)
             var recoveryEmail = user.GetEffectiveEmail();
             if (recoveryEmail?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
@@ -453,9 +463,8 @@ public class HumanController : HumansControllerBase
 
             // Generate temp password and provision in Google Workspace
             var tempPassword = PasswordGenerator.GenerateTemporary();
-            var nameParts = user.DisplayName.Split(' ', 2);
             await _workspaceUserService.ProvisionAccountAsync(
-                fullEmail, nameParts[0], nameParts.Length > 1 ? nameParts[1] : "", tempPassword,
+                fullEmail, firstName, lastName, tempPassword,
                 recoveryEmail);
 
             // Auto-link: add as verified UserEmail (also sets notification target for @nobodies.team)

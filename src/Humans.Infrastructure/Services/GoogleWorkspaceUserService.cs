@@ -113,8 +113,9 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
     {
         var service = await GetDirectoryServiceAsync();
 
-        // Google Directory API requires non-empty FamilyName; fall back to GivenName
-        var sanitizedLastName = string.IsNullOrWhiteSpace(lastName) ? firstName : lastName;
+        if (string.IsNullOrWhiteSpace(lastName))
+            throw new InvalidOperationException(
+                $"Cannot provision account for {primaryEmail}: FamilyName is required but was empty. The user must have a last name in their profile.");
 
         var newUser = new User
         {
@@ -122,7 +123,7 @@ public class GoogleWorkspaceUserService : IGoogleWorkspaceUserService
             Name = new UserName
             {
                 GivenName = firstName,
-                FamilyName = sanitizedLastName
+                FamilyName = lastName
             },
             Password = temporaryPassword,
             ChangePasswordAtNextLogin = true,
