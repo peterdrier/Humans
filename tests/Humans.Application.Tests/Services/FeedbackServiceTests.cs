@@ -34,8 +34,11 @@ public class FeedbackServiceTests : IDisposable
         var env = Substitute.For<IHostEnvironment>();
         env.ContentRootPath.Returns(Path.GetTempPath());
 
+        var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
+            new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+
         _service = new FeedbackService(
-            _dbContext, _emailService, _auditLog, _clock, env,
+            _dbContext, _emailService, _auditLog, _clock, cache, env,
             NullLogger<FeedbackService>.Instance);
     }
 

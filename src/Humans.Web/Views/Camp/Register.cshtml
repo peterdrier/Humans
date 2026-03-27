@@ -39,12 +39,27 @@
                 <div class="col-12">
                     <label class="form-label">@Localizer["Camp_Edit_Links"]</label>
                     <div id="links-container">
-                        <div class="input-group mb-2 link-entry">
-                            <input type="url" name="Links" class="form-control" placeholder="https://" />
-                            <button type="button" class="btn btn-outline-danger remove-link">
-                                <i class="fa-solid fa-times"></i>
-                            </button>
-                        </div>
+                        @if (Model.Links.Count > 0)
+                        {
+                            for (var i = 0; i < Model.Links.Count; i++)
+                            {
+                                <div class="input-group mb-2 link-entry">
+                                    <input type="url" name="Links" class="form-control" value="@Model.Links[i]" placeholder="https://" />
+                                    <button type="button" class="btn btn-outline-danger remove-link">
+                                        <i class="fa-solid fa-times"></i>
+                                    </button>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="input-group mb-2 link-entry">
+                                <input type="url" name="Links" class="form-control" placeholder="https://" />
+                                <button type="button" class="btn btn-outline-danger remove-link">
+                                    <i class="fa-solid fa-times"></i>
+                                </button>
+                            </div>
+                        }
                     </div>
                     <button type="button" class="btn btn-outline-secondary btn-sm" id="add-link">
                         <i class="fa-solid fa-plus me-1"></i> @Localizer["Camp_Edit_AddLink"]

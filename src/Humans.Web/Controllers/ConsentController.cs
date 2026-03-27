@@ -88,24 +88,9 @@ public class ConsentController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        var (version, consentRecord, fullName) =
-            await _consentService.GetConsentReviewDetailAsync(id, user.Id);
-
-        if (version is null)
+        var viewModel = await BuildConsentReviewViewModelAsync(id, user.Id);
+        if (viewModel is null)
             return NotFound();
-
-        var viewModel = new ConsentDetailViewModel
-        {
-            DocumentVersionId = version.Id,
-            DocumentName = version.LegalDocument.Name,
-            VersionNumber = version.VersionNumber,
-            Content = new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
-            EffectiveFrom = version.EffectiveFrom.ToDateTimeUtc(),
-            ChangesSummary = version.ChangesSummary,
-            HasAlreadyConsented = consentRecord is not null,
-            ConsentedByFullName = fullName,
-            ConsentedAt = consentRecord?.ConsentedAt.ToDateTimeUtc()
-        };
 
         return View(viewModel);
     }
@@ -121,7 +106,12 @@ public class ConsentController : HumansControllerBase
         if (!model.ExplicitConsent)
         {
             ModelState.AddModelError(string.Empty, _localizer["Consent_MustCheck"].Value);
-            return RedirectToAction(nameof(Review), new { id = model.DocumentVersionId });
+
+            var viewModel = await BuildConsentReviewViewModelAsync(model.DocumentVersionId, user.Id);
+            if (viewModel is null)
+                return NotFound();
+
+            return View(nameof(Review), viewModel);
         }
 
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
@@ -149,5 +139,29 @@ public class ConsentController : HumansControllerBase
             SetError(_localizer["Consent_SubmitError"].Value);
         }
         return RedirectToAction(nameof(Index));
+    }
+
+    private async Task<ConsentDetailViewModel?> BuildConsentReviewViewModelAsync(Guid documentVersionId, Guid userId)
+    {
+        var (version, consentRecord, fullName) =
+            await _consentService.GetConsentReviewDetailAsync(documentVersionId, userId);
+
+        if (version is null)
+        {
+            return null;
+        }
+
+        return new ConsentDetailViewModel
+        {
+            DocumentVersionId = version.Id,
+            DocumentName = version.LegalDocument.Name,
+            VersionNumber = version.VersionNumber,
+            Content = new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
+            EffectiveFrom = version.EffectiveFrom.ToDateTimeUtc(),
+            ChangesSummary = version.ChangesSummary,
+            HasAlreadyConsented = consentRecord is not null,
+            ConsentedByFullName = fullName,
+            ConsentedAt = consentRecord?.ConsentedAt.ToDateTimeUtc()
+        };
     }
 }

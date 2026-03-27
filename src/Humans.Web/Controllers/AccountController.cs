@@ -84,7 +84,7 @@ public class AccountController : Controller
             }
 
             _logger.LogInformation("User logged in with {Provider}", info.LoginProvider);
-            return LocalRedirect(returnUrl);
+            return RedirectToLocal(returnUrl);
         }
 
         if (result.IsLockedOut)
@@ -123,7 +123,7 @@ public class AccountController : Controller
                     _logger.LogInformation(
                         "Linked {Provider} login to existing user {UserId} via email match",
                         info.LoginProvider, existingByEmail.Id);
-                    return LocalRedirect(returnUrl);
+                    return RedirectToLocal(returnUrl);
                 }
 
                 _logger.LogWarning(
@@ -162,7 +162,7 @@ public class AccountController : Controller
 
                 await _signInManager.SignInAsync(user, isPersistent: false);
                 _logger.LogInformation("User created an account using {Provider}", info.LoginProvider);
-                return LocalRedirect(returnUrl);
+                return RedirectToLocal(returnUrl);
             }
         }
 
@@ -227,7 +227,7 @@ public class AccountController : Controller
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User {UserId} logged in via magic link", user.Id);
 
-        return LocalRedirect(returnUrl);
+        return RedirectToLocal(returnUrl);
     }
 
     [HttpGet]
@@ -264,7 +264,7 @@ public class AccountController : Controller
             await _signInManager.SignInAsync(existingUser, isPersistent: false);
             existingUser.LastLoginAt = _clock.GetCurrentInstant();
             await _userManager.UpdateAsync(existingUser);
-            return LocalRedirect(returnUrl);
+            return RedirectToLocal(returnUrl);
         }
 
         var now = _clock.GetCurrentInstant();
@@ -292,7 +292,7 @@ public class AccountController : Controller
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogInformation("User {UserId} created account via magic link signup", user.Id);
 
-        return LocalRedirect(returnUrl);
+        return RedirectToLocal(returnUrl);
     }
 
     // --- Standard Auth ---
@@ -311,4 +311,9 @@ public class AccountController : Controller
     {
         return View();
     }
+
+    private IActionResult RedirectToLocal(string? returnUrl) =>
+        Url.IsLocalUrl(returnUrl)
+            ? LocalRedirect(returnUrl!)
+            : Redirect(Url.Content("~/"));
 }

@@ -39,6 +39,8 @@ public class LanguageController : HumansControllerBase
             }
         }
 
-        return LocalRedirect(returnUrl ?? "/");
+        return Url.IsLocalUrl(returnUrl)
+            ? LocalRedirect(returnUrl!)
+            : Redirect(Url.Content("~/"));
     }
 }

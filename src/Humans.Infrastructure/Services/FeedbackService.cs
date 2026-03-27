@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -16,6 +18,7 @@ public class FeedbackService : IFeedbackService
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
+    private readonly IMemoryCache _cache;
     private readonly IHostEnvironment _env;
     private readonly ILogger<FeedbackService> _logger;
 
@@ -31,6 +34,7 @@ public class FeedbackService : IFeedbackService
         IEmailService emailService,
         IAuditLogService auditLogService,
         IClock clock,
+        IMemoryCache cache,
         IHostEnvironment env,
         ILogger<FeedbackService> logger)
     {
@@ -38,6 +42,7 @@ public class FeedbackService : IFeedbackService
         _emailService = emailService;
         _auditLogService = auditLogService;
         _clock = clock;
+        _cache = cache;
         _env = env;
         _logger = logger;
     }
@@ -97,6 +102,7 @@ public class FeedbackService : IFeedbackService
 
         _dbContext.FeedbackReports.Add(report);
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _cache.InvalidateNavBadgeCounts();
 
         _logger.LogInformation("Feedback {ReportId} submitted by {UserId}: {Category}", reportId, userId, category);
 
@@ -164,8 +170,6 @@ public class FeedbackService : IFeedbackService
             report.ResolvedByUserId = null;
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
         string actorName = "API";
         if (actorUserId.HasValue)
         {
@@ -173,10 +177,23 @@ public class FeedbackService : IFeedbackService
             actorName = actor?.DisplayName ?? actorUserId.Value.ToString();
         }
 
-        await _auditLogService.LogAsync(
-            AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
-            $"Feedback {id} status changed to {status}",
-            actorUserId ?? Guid.Empty, actorName);
+        if (actorUserId.HasValue)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
+                $"Feedback {id} status changed to {status}",
+                actorUserId.Value, actorName);
+        }
+        else
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
+                $"Feedback {id} status changed to {status}",
+                actorName);
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        _cache.InvalidateNavBadgeCounts();
 
         _logger.LogInformation("Feedback {ReportId} status changed to {Status} by {ActorId}", id, status, actorUserId);
     }
@@ -242,6 +259,7 @@ public class FeedbackService : IFeedbackService
 
         report.UpdatedAt = now;
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _cache.InvalidateNavBadgeCounts();
         _logger.LogInformation("Feedback message posted on {ReportId} by {UserId} (admin: {IsAdmin})", reportId, senderUserId, isAdmin);
         return message;
     }

@@ -98,6 +98,10 @@ public class ProcessAccountDeletionsJob
                         $"Account anonymized (was {originalName})",
                         nameof(ProcessAccountDeletionsJob));
 
+                    // Cache invalidation must follow the persisted anonymization even if the
+                    // best-effort confirmation email fails afterward.
+                    processedUserIds.Add(user.Id);
+
                     // Send confirmation to original email if we have it
                     if (!string.IsNullOrEmpty(originalEmail))
                     {
@@ -111,8 +115,6 @@ public class ProcessAccountDeletionsJob
                     _logger.LogInformation(
                         "Successfully anonymized account {UserId}",
                         user.Id);
-
-                    processedUserIds.Add(user.Id);
                 }
                 catch (Exception ex)
                 {

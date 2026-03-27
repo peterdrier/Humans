@@ -1230,14 +1230,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             inactiveForTeam.IsActive = true;
             inactiveForTeam.LastSyncedAt = _clock.GetCurrentInstant();
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Reactivated Google Group resource {ResourceId} for team {TeamId}",
-                inactiveForTeam.Id, teamId);
             await _auditLogService.LogAsync(
                 AuditAction.GoogleResourceProvisioned, nameof(GoogleResource), inactiveForTeam.Id,
                 "Reactivated Google Group resource for team",
                 nameof(GoogleWorkspaceSyncService),
                 relatedEntityId: teamId, relatedEntityType: nameof(Team));
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Reactivated Google Group resource {ResourceId} for team {TeamId}",
+                inactiveForTeam.Id, teamId);
             return GroupLinkResult.Ok();
         }
 
@@ -1526,6 +1527,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
                 $"Remediated settings for Google Group '{groupEmail}'",
                 nameof(GoogleWorkspaceSyncService));
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
 
             return true;
         }

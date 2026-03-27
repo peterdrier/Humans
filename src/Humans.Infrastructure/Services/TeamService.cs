@@ -524,14 +524,14 @@ public class TeamService : ITeamService
         team.PageContentUpdatedByUserId = updatedByUserId;
         team.UpdatedAt = now;
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        TryUpdateCachedTeam(teamId, cachedTeam => cachedTeam with { IsPublicPage = isPublicPage });
-
         var actor = await _dbContext.Users.FindAsync(new object[] { updatedByUserId }, cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamPageContentUpdated, nameof(Team), teamId,
             $"Team page content updated. Public: {isPublicPage}",
             updatedByUserId, actor?.DisplayName ?? updatedByUserId.ToString());
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        TryUpdateCachedTeam(teamId, cachedTeam => cachedTeam with { IsPublicPage = isPublicPage });
 
         _logger.LogInformation("Team {TeamId} page content updated by {UserId}. Public: {IsPublic}",
             teamId, updatedByUserId, isPublicPage);
