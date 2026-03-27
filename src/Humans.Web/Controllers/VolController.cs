@@ -792,10 +792,6 @@ public class VolController : HumansControllerBase
         }
     }
 
-    [HttpGet("Register")]
-    [AllowAnonymous]
-    public IActionResult Register() => View();
-
     [HttpGet("SearchVolunteers")]
     public async Task<IActionResult> SearchVolunteers(Guid shiftId, string? query)
     {

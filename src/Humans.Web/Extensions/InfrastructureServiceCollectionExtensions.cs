@@ -102,6 +102,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ProcessEmailOutboxJob>();
         services.AddScoped<CleanupEmailOutboxJob>();
         services.AddScoped<TicketSyncJob>();
+        services.AddScoped<SendAdminDailyDigestJob>();
+        services.AddScoped<SendBoardDailyDigestJob>();
+        services.AddScoped<TermRenewalReminderJob>();
 
         // Shift management services
         services.AddScoped<IShiftManagementService, ShiftManagementService>();

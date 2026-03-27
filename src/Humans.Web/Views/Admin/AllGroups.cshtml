@@ -38,7 +38,7 @@
                 <form asp-action="RemediateAllGroupSettings" method="post">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-warning btn-sm"
-                            onclick="return confirm('Fix settings on all @driftedGroups.Count drifted group(s)?')">
+                            data-confirm="Fix settings on all @driftedGroups.Count drifted group(s)?">
                         <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Fix All (@driftedGroups.Count)
                     </button>
                 </form>

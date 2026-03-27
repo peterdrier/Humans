@@ -31,7 +31,7 @@
                 </a>
                 <form asp-action="ClearHangfireLocks" method="post" class="list-group-item list-group-item-action list-group-item-warning">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-link text-decoration-none p-0 text-dark" onclick="return confirm('Clear all Hangfire locks? You may need to restart the app afterwards.')">
+                    <button type="submit" class="btn btn-link text-decoration-none p-0 text-dark" data-confirm="Clear all Hangfire locks? You may need to restart the app afterwards.">
                         <i class="fa-solid fa-unlock me-2"></i>Clear Hangfire Locks
                     </button>
                 </form>

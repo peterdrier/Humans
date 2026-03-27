@@ -90,7 +90,7 @@
                             <textarea id="accept-notes" name="notes" class="form-control" rows="2" placeholder="Reason for accepting..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-success"
-                                onclick="return confirm('Accept this merge? The duplicate account will be permanently archived.')">
+                                data-confirm="Accept this merge? The duplicate account will be permanently archived.">
                             <i class="fa-solid fa-check me-1"></i>Accept Merge
                         </button>
                     </form>
@@ -108,7 +108,7 @@
                             <textarea id="reject-notes" name="notes" class="form-control" rows="2" placeholder="Reason for rejecting..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-danger"
-                                onclick="return confirm('Reject this merge? The pending email will be removed.')">
+                                data-confirm="Reject this merge? The pending email will be removed.">
                             <i class="fa-solid fa-xmark me-1"></i>Reject Merge
                         </button>
                     </form>

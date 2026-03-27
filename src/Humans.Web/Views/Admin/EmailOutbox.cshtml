@@ -140,7 +140,7 @@
                                     <form method="post" asp-action="DiscardEmailOutboxMessage" asp-route-id="@msg.Id" class="d-inline ms-1">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                onclick="return confirm('Discard this message? It cannot be recovered.')">Discard</button>
+                                                data-confirm="Discard this message? It cannot be recovered.">Discard</button>
                                     </form>
                                 }
                             </td>
