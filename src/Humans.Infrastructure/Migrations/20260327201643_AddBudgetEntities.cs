@@ -157,43 +157,43 @@ namespace Humans.Infrastructure.Migrations
                 table: "teams",
                 keyColumn: "Id",
                 keyValue: new Guid("00000000-0000-0000-0001-000000000001"),
-                columns: new string[0],
-                values: new object[0]);
+                column: "HasBudget",
+                value: false);
 
             migrationBuilder.UpdateData(
                 table: "teams",
                 keyColumn: "Id",
                 keyValue: new Guid("00000000-0000-0000-0001-000000000002"),
-                columns: new string[0],
-                values: new object[0]);
+                column: "HasBudget",
+                value: false);
 
             migrationBuilder.UpdateData(
                 table: "teams",
                 keyColumn: "Id",
                 keyValue: new Guid("00000000-0000-0000-0001-000000000003"),
-                columns: new string[0],
-                values: new object[0]);
+                column: "HasBudget",
+                value: false);
 
             migrationBuilder.UpdateData(
                 table: "teams",
                 keyColumn: "Id",
                 keyValue: new Guid("00000000-0000-0000-0001-000000000004"),
-                columns: new string[0],
-                values: new object[0]);
+                column: "HasBudget",
+                value: false);
 
             migrationBuilder.UpdateData(
                 table: "teams",
                 keyColumn: "Id",
                 keyValue: new Guid("00000000-0000-0000-0001-000000000005"),
-                columns: new string[0],
-                values: new object[0]);
+                column: "HasBudget",
+                value: false);
 
             migrationBuilder.UpdateData(
                 table: "teams",
                 keyColumn: "Id",
                 keyValue: new Guid("00000000-0000-0000-0001-000000000006"),
-                columns: new string[0],
-                values: new object[0]);
+                column: "HasBudget",
+                value: false);
 
             migrationBuilder.CreateIndex(
                 name: "IX_budget_audit_logs_ActorUserId",

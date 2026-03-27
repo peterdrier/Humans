@@ -2057,9 +2057,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.Property<bool>("HasBudget")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");

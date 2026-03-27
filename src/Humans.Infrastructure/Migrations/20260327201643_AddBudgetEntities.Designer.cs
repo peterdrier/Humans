@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260327194123_AddBudgetEntities")]
+    [Migration("20260327201643_AddBudgetEntities")]
     partial class AddBudgetEntities
     {
         /// <inheritdoc />
@@ -2060,9 +2060,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("character varying(64)");
 
                     b.Property<bool>("HasBudget")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
