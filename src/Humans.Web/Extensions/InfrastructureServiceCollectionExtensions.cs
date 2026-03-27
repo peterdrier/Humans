@@ -86,6 +86,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IContactService, ContactService>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();
         services.AddScoped<IFeedbackService, FeedbackService>();
+        services.AddScoped<IBudgetService, BudgetService>();
         services.AddScoped<IApplicationDecisionService, ApplicationDecisionService>();
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IConsentService, ConsentService>();
