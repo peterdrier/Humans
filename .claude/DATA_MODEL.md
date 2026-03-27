@@ -42,7 +42,7 @@
 | CampaignCode | Individual code belonging to a campaign |
 | CampaignGrant | Assignment of a code to a user |
 | SystemSetting | Key/value store for runtime configuration (e.g., outbox pause flag) |
-| TicketOrder | Ticket purchase order synced from vendor (one per purchase) |
+| TicketOrder | Ticket purchase order synced from vendor (one per purchase). Enriched with Stripe fee data (PaymentMethod, StripeFee, ApplicationFee) during sync. |
 | TicketAttendee | Individual ticket holder (issued ticket, multiple per order) |
 | TicketSyncState | Singleton tracking ticket sync operational state |
 | EventSettings | Singleton event config — dates, timezone, EE capacity, caps |

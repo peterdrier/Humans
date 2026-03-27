@@ -13,6 +13,14 @@ public class TicketDashboardViewModel
     public int BreakEvenTarget { get; set; }
     public string Currency { get; set; } = "EUR";
 
+    // Fee tracking
+    public decimal TotalStripeFees { get; set; }
+    public decimal TotalApplicationFees { get; set; }
+    public decimal NetRevenue { get; set; }
+
+    // Fee breakdown by payment method
+    public List<PaymentMethodFeeBreakdown> FeesByPaymentMethod { get; set; } = [];
+
     // Daily sales chart data
     public List<DailySalesPoint> DailySales { get; set; } = [];
 
@@ -29,6 +37,16 @@ public class TicketDashboardViewModel
 
     // Who hasn't bought count (for dashboard link)
     public int WhoHasntBoughtCount { get; set; }
+}
+
+public class PaymentMethodFeeBreakdown
+{
+    public string PaymentMethod { get; set; } = string.Empty;
+    public int OrderCount { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal TotalStripeFees { get; set; }
+    public decimal TotalApplicationFees { get; set; }
+    public decimal EffectiveRate { get; set; } // StripeFee as % of amount
 }
 
 public class DailySalesPoint
@@ -76,6 +94,11 @@ public class TicketOrderRow
     public decimal TotalAmount { get; set; }
     public string Currency { get; set; } = "EUR";
     public string? DiscountCode { get; set; }
+    public decimal? DiscountAmount { get; set; }
+    public string? PaymentMethod { get; set; }
+    public string? PaymentMethodDetail { get; set; }
+    public decimal? StripeFee { get; set; }
+    public decimal? ApplicationFee { get; set; }
     public TicketPaymentStatus PaymentStatus { get; set; }
     public string? VendorDashboardUrl { get; set; }
     public Guid? MatchedUserId { get; set; }

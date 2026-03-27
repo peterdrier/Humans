@@ -26,6 +26,7 @@
     <PackageReference Include="Google.Apis.DriveActivity.v2" />
     <PackageReference Include="Google.Apis.Groupssettings.v1" />
     <PackageReference Include="Google.Apis.Auth" />
+    <PackageReference Include="Stripe.net" />
   </ItemGroup>
 
 </Project>

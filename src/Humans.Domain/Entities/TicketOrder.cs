@@ -50,6 +50,24 @@ public class TicketOrder
     /// <summary>When this record was last synced from the vendor.</summary>
     public Instant SyncedAt { get; set; }
 
+    /// <summary>Stripe PaymentIntent ID from vendor txn_id (e.g. pi_xxx). Used to look up fee details.</summary>
+    public string? StripePaymentIntentId { get; set; }
+
+    /// <summary>Payment method type from Stripe (e.g. "card", "link", "ideal", "bancontact", "klarna").</summary>
+    public string? PaymentMethod { get; set; }
+
+    /// <summary>Payment method detail — card brand for cards (e.g. "visa", "mastercard"), null for others.</summary>
+    public string? PaymentMethodDetail { get; set; }
+
+    /// <summary>Stripe processing fee in order currency.</summary>
+    public decimal? StripeFee { get; set; }
+
+    /// <summary>Application fee (Ticket Tailor platform fee) in order currency.</summary>
+    public decimal? ApplicationFee { get; set; }
+
+    /// <summary>Discount amount applied to order (from vendor line items). Stored as positive value.</summary>
+    public decimal? DiscountAmount { get; set; }
+
     /// <summary>Individual attendees (issued tickets) for this order.</summary>
     public ICollection<TicketAttendee> Attendees { get; set; } = new List<TicketAttendee>();
 }
