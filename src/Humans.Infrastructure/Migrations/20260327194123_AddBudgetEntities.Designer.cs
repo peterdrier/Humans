@@ -3,6 +3,7 @@ using System;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    partial class HumansDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260327194123_AddBudgetEntities")]
+    partial class AddBudgetEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2507,10 +2510,6 @@ namespace Humans.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal?>("ApplicationFee")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
                     b.Property<string>("BuyerEmail")
                         .IsRequired()
                         .HasMaxLength(320)
@@ -2526,24 +2525,12 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
-                    b.Property<decimal?>("DiscountAmount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
                     b.Property<string>("DiscountCode")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("MatchedUserId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("PaymentMethod")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("PaymentMethodDetail")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("PaymentStatus")
                         .IsRequired()
@@ -2552,14 +2539,6 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<Instant>("PurchasedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal?>("StripeFee")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<string>("StripePaymentIntentId")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<Instant>("SyncedAt")
                         .HasColumnType("timestamp with time zone");
@@ -2587,8 +2566,6 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("BuyerEmail");
 
                     b.HasIndex("MatchedUserId");
-
-                    b.HasIndex("PaymentMethod");
 
                     b.HasIndex("PurchasedAt");
 
