@@ -39,7 +39,7 @@ Nobodies Collective runs one major event per year (2026: "Elsewhere", historical
 
 | Role | Creates/Edits | Sees | Key Need |
 |------|--------------|------|----------|
-| Treasurer/Admin | Total budget, all allocations, overhead, invoices | Everything | Solvency confidence, single source of truth |
+| FinanceAdmin/Admin | Total budget, all allocations, overhead, invoices | Everything | Solvency confidence, single source of truth |
 | Board | Approve total budget | Everything incl. salaries/overhead | Governance oversight |
 | Dept. Coordinators | Their dept. line items | All department budgets, own % spent | Own their allocation, see peer context |
 | General members | Nothing | Public summary (pie charts, speedometers) | Trust, transparency |
@@ -49,25 +49,28 @@ Nobodies Collective runs one major event per year (2026: "Elsewhere", historical
 
 | Tier | Content | Audience |
 |------|---------|----------|
-| Full | All groups + overhead + salaries + cashflow | Board, Admin/Treasurer |
+| Full | All groups + overhead + salaries + cashflow | Board, Admin/FinanceAdmin |
 | Coordinator | All department budgets + own % spent, no overhead/salaries | Department Coordinators |
 | Public | Aggregated summary, metaphors ("X of your ticket goes to...") | All members |
 
 ## Data Model
 
-### Budget Hierarchy (Three Fixed Levels)
+### Budget Hierarchy (Four Fixed Levels)
 
 ```
-BudgetYear (2026, 2027, ...)
-  └── BudgetGroup (Departments, Ticketing, Site Infrastructure, Vendors, Barrios, Overhead)
-        └── BudgetCategory (Sound, Art, Transport, ...)
-              └── BudgetLineItem (Equipment Rental, Personnel, ...)
+BudgetYear ("2026", "2027-A", ...)
+  └── BudgetGroup ("Departments", "Site Infrastructure", "Admin", ...)
+        └── BudgetCategory ("Cantina", "Sound", "Art", ...)
+              └── BudgetLineItem ("Food", "Drinks", "PA Rental", ...)
 ```
 
-- Top-level groups include both departments and non-department categories (Ticketing, Site Infrastructure, Vendors, Barrios, Overhead)
-- Overhead group contains salaries and other sensitive items — restricted to Board/Admin visibility
-- Each line item has: description, budgeted amount, CapEx/OpEx flag
-- No arbitrary nesting beyond three levels
+- `BudgetYear.Year` is a string (not int) for flexibility (e.g., "2027-A")
+- Top-level groups include a special "Departments" group (`IsDepartmentGroup = true`) that auto-generates categories from teams with `HasBudget == true` on year creation
+- An "Admin" group with `IsRestricted = true` hides sensitive items (staff, meetings) from coordinators/public
+- Allocation lives on `BudgetCategory` — line items are the free-text breakdown
+- Each line item has: description, amount, responsible team (FK → Team), optional notes
+- CapEx/OpEx flag is on `BudgetCategory`, not line items
+- No arbitrary nesting beyond four levels
 
 ### Budget Audit Log
 
@@ -179,13 +182,14 @@ Outbound invoices to members/barrios:
 
 ## Implementation Phases
 
-### V1: Budget Structure & Planning (2-3 sessions)
-- Data model and EF Core migration
-- Budget CRUD for Admin/Treasurer
-- Coordinator view (all departments, edit own)
-- Audit trail
-- Visibility enforcement
-- Nav link
+### V1: Budget Structure & Planning — IMPLEMENTED (PR #50)
+- Data model: BudgetYear, BudgetGroup, BudgetCategory, BudgetLineItem, BudgetAuditLog
+- EF Core migration with HasBudget on Team for department auto-mapping
+- FinanceAdmin role (replaces "Treasurer" in original spec)
+- Budget CRUD at `/Finance/*` via FinanceController
+- Field-level audit trail with old/new values (separate BudgetAuditLog table)
+- Nav link visible to FinanceAdmin + Admin
+- **Not yet implemented:** Coordinator view (#233), public summary (#234), visibility enforcement (IsRestricted/IsDepartmentGroup stored but not enforced)
 - **Exit:** Can recreate 2026 spreadsheet budget in the app
 
 ### V2a: Public View (1-2 sessions)
