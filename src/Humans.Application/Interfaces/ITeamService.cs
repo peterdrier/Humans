@@ -179,6 +179,7 @@ public interface ITeamService
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
         string? customSlug = null,
+        bool? hasBudget = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

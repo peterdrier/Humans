@@ -367,6 +367,7 @@ public class TeamService : ITeamService
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
         string? customSlug = null,
+        bool? hasBudget = null,
         CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams.FindAsync(new object[] { teamId }, cancellationToken)
@@ -455,6 +456,8 @@ public class TeamService : ITeamService
         team.ParentTeamId = parentTeamId;
         team.GoogleGroupPrefix = googleGroupPrefix;
         team.CustomSlug = customSlug;
+        if (hasBudget.HasValue)
+            team.HasBudget = hasBudget.Value;
         team.UpdatedAt = _clock.GetCurrentInstant();
 
         if (becomingChild)
