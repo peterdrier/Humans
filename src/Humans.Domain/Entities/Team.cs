@@ -107,6 +107,12 @@ public class Team
     public List<CallToAction>? CallsToAction { get; set; }
 
     /// <summary>
+    /// Whether this team participates in budget planning.
+    /// When true, a BudgetCategory is auto-created under the Departments group on budget year creation.
+    /// </summary>
+    public bool HasBudget { get; set; }
+
+    /// <summary>
     /// Optional parent team ID for one-level hierarchy (departments).
     /// A team with a parent cannot itself be a parent.
     /// </summary>
