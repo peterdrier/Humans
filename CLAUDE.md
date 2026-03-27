@@ -126,6 +126,11 @@ dotnet run --project src/Humans.Web
 | Analyzers/ReSharper | `.claude/CODE_ANALYSIS.md` |
 | Maintenance log | `.claude/MAINTENANCE_LOG.md` |
 | **Feature specs** | **`docs/features/`** |
+| **EF migration reviewer** | **`.claude/agents/ef-migration-reviewer.md`** |
+
+## Critical: EF Migration Review Gate
+
+**Before committing any EF Core migration**, run the EF migration reviewer agent (`.claude/agents/ef-migration-reviewer.md`). Mandatory for all database changes — do not commit or create PRs until it passes with no CRITICAL issues.
 
 ## Feature Documentation
 

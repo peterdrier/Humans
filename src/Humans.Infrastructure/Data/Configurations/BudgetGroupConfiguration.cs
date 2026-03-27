@@ -13,8 +13,8 @@ public class BudgetGroupConfiguration : IEntityTypeConfiguration<BudgetGroup>
 
         builder.Property(g => g.Name).HasMaxLength(256).IsRequired();
         builder.Property(g => g.SortOrder).IsRequired();
-        builder.Property(g => g.IsRestricted).IsRequired().HasDefaultValue(false);
-        builder.Property(g => g.IsDepartmentGroup).IsRequired().HasDefaultValue(false);
+        builder.Property(g => g.IsRestricted).IsRequired();
+        builder.Property(g => g.IsDepartmentGroup).IsRequired();
         builder.Property(g => g.CreatedAt).IsRequired();
         builder.Property(g => g.UpdatedAt).IsRequired();
 
