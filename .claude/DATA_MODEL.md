@@ -5,8 +5,8 @@
 - [Key Entities](#key-entities) | [Relationships](#relationships) | [User Entity](#user-entity) | [Profile Entity](#profile-entity)
 - [Application Entity](#application-entity) | [BoardVote Entity](#boardvote-entity) | [EmailOutboxMessage Entity](#emailoutboxmessage-entity)
 - [Campaign](#campaign-entity) | [CampaignCode](#campaigncode-entity) | [CampaignGrant](#campaigngrant-entity) | [SystemSetting](#systemsetting-entity) | [FeedbackReport](#feedbackreport-entity)
-- [CommunicationPreference Entity](#communicationpreference-entity)
-- [Enums](#enums): MembershipTier, ConsentCheckStatus, VoteChoice, ApplicationStatus, SystemTeamType, AuditAction, MessageCategory, RotaPeriod, RolePeriod
+- [CommunicationPreference Entity](#communicationpreference-entity) | [Budget Entities](#budget-entities)
+- [Enums](#enums): MembershipTier, ConsentCheckStatus, VoteChoice, ApplicationStatus, SystemTeamType, AuditAction, MessageCategory, RotaPeriod, RolePeriod, BudgetYearStatus, ExpenditureType
 - [Constants](#constants) | [ContactField Entity](#contactfield-entity) | [Term Lifecycle](#term-lifecycle) | [Camp Enums](#camp-enums)
 
 ## Key Entities
@@ -52,6 +52,11 @@
 | GeneralAvailability | Per-user per-event day availability (AvailableDayOffsets stored as jsonb) |
 | VolunteerEventProfile | Per-event volunteer profile with skills, dietary, medical data |
 | FeedbackReport | In-app feedback from users (bug reports, feature requests, questions) with screenshot support |
+| BudgetYear | Top-level budget container for a fiscal year (Draft/Active/Closed) |
+| BudgetGroup | Second-level group within a year (e.g., "Departments", "Site Infrastructure") |
+| BudgetCategory | Third-level category within a group — holds the allocated budget amount |
+| BudgetLineItem | Detail row within a category (free-text description + amount) |
+| BudgetAuditLog | **APPEND-ONLY** field-level change tracking for budget entities (old/new values) |
 
 ## Relationships
 
@@ -121,6 +126,14 @@ GeneralAvailability n──1 User
 GeneralAvailability n──1 EventSettings
 VolunteerEventProfile n──1 User
 VolunteerEventProfile n──1 EventSettings
+
+BudgetYear 1──n BudgetGroup
+BudgetYear 1──n BudgetAuditLog
+BudgetGroup 1──n BudgetCategory
+BudgetCategory 1──n BudgetLineItem
+BudgetCategory n──1 Team (optional — department categories link to team)
+BudgetLineItem n──1 Team (ResponsibleTeam, optional)
+BudgetAuditLog n──1 User (ActorUser)
 ```
 
 ## User Entity
@@ -481,6 +494,25 @@ Period tag on a TeamRoleDefinition indicating when the role is active. Used for 
 
 Stored as string via `HasConversion<string>()`.
 
+### BudgetYearStatus
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| Draft | 0 | Being built, not visible outside admin |
+| Active | 1 | Current operational budget |
+| Closed | 2 | Year complete, read-only |
+
+Stored as string via `HasConversion<string>()`.
+
+### ExpenditureType
+
+| Value | Int | Description |
+|-------|-----|-------------|
+| CapEx | 0 | Capital expenditure (investments, equipment) |
+| OpEx | 1 | Operational expenditure (recurring costs) |
+
+Stored as string via `HasConversion<string>()`.
+
 ## Constants
 
 ### RoleNames
@@ -491,6 +523,7 @@ Stored as string via `HasConversion<string>()`.
 | Board | "Board" | Elevated permissions, votes on tier applications |
 | ConsentCoordinator | "ConsentCoordinator" | Safety gate for onboarding consent checks |
 | VolunteerCoordinator | "VolunteerCoordinator" | Facilitation contact for onboarding |
+| FinanceAdmin | "FinanceAdmin" | Full access to Finance section (budgets, audit log) |
 
 ### SystemTeamIds
 
