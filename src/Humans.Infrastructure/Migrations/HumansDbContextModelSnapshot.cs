@@ -423,14 +423,10 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsDepartmentGroup")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsRestricted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
