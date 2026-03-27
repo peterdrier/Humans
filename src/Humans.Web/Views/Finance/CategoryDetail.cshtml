@@ -151,7 +151,7 @@
                             </td>
                         </tr>
                         <tr class="collapse" id="@editId">
-                            <td colspan="5" class="bg-light">
+                            <td colspan="6" class="bg-light">
                                 <form asp-action="UpdateLineItem" asp-route-id="@item.Id" method="post" class="row g-2 p-2 align-items-end">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="budgetCategoryId" value="@Model.Id" />
@@ -171,7 +171,14 @@
                                             {
                                                 var teamId = (Guid)team.Id;
                                                 var teamName = (string)team.Name;
-                                                <option value="@teamId" selected="@(item.ResponsibleTeamId == teamId)">@teamName</option>
+                                                if (item.ResponsibleTeamId == teamId)
+                                                {
+                                                    <option value="@teamId" selected>@teamName</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@teamId">@teamName</option>
+                                                }
                                             }
                                         </select>
                                     </div>

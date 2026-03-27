@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260327221244_AddBudgetEntities")]
+    [Migration("20260327230323_AddBudgetEntities")]
     partial class AddBudgetEntities
     {
         /// <inheritdoc />
@@ -3166,7 +3166,7 @@ namespace Humans.Infrastructure.Migrations
                     b.HasOne("Humans.Domain.Entities.BudgetYear", "BudgetYear")
                         .WithMany("AuditLogs")
                         .HasForeignKey("BudgetYearId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ActorUser");

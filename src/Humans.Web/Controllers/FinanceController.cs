@@ -170,6 +170,12 @@ public class FinanceController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
+        if (string.IsNullOrWhiteSpace(year) || string.IsNullOrWhiteSpace(name))
+        {
+            SetError("Year identifier and name are required.");
+            return RedirectToAction(nameof(Admin));
+        }
+
         try
         {
             await _budgetService.CreateYearAsync(year, name, user.Id);
