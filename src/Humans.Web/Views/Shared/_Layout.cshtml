@@ -109,6 +109,12 @@
                                 <a class="nav-link" asp-area="" asp-controller="Feedback" asp-action="Index">Feedback @await Component.InvokeAsync("NavBadges", new { queue = "feedback" })</a>
                             </li>
                         }
+                        @if (Humans.Web.Authorization.RoleChecks.CanAccessFinance(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Finance" asp-action="Index">Finance</a>
+                            </li>
+                        }
                     </ul>
                     <div class="d-flex align-items-center gap-2">
                         <partial name="_LanguageChooser" />
