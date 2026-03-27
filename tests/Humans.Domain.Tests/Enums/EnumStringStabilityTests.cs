@@ -151,6 +151,14 @@ public class EnumStringStabilityTests
         {
             typeof(DrivePermissionLevel),
             new[] { "Viewer", "Commenter", "Contributor", "ContentManager", "Manager" }
+        },
+        {
+            typeof(BudgetYearStatus),
+            new[] { "Draft", "Active", "Closed" }
+        },
+        {
+            typeof(ExpenditureType),
+            new[] { "CapEx", "OpEx" }
         }
     };
 }
