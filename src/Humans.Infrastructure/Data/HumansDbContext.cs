@@ -64,6 +64,11 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
     public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
     public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
+    public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
+    public DbSet<BudgetGroup> BudgetGroups => Set<BudgetGroup>();
+    public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
+    public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
+    public DbSet<BudgetAuditLog> BudgetAuditLogs => Set<BudgetAuditLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
