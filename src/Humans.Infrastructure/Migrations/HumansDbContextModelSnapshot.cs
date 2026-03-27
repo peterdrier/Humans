@@ -467,6 +467,9 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<LocalDate?>("ExpectedDate")
+                        .HasColumnType("date");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");

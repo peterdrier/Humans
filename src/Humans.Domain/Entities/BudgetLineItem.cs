@@ -15,6 +15,12 @@ public class BudgetLineItem
     public Guid? ResponsibleTeamId { get; set; }
     public Team? ResponsibleTeam { get; set; }
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// Expected date for this expense, used for cashflow projections.
+    /// </summary>
+    public LocalDate? ExpectedDate { get; set; }
+
     public int SortOrder { get; set; }
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
