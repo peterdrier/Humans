@@ -32,6 +32,12 @@
                 </ul>
             </div>
         }
+        <form asp-action="SyncDepartments" asp-route-id="@Model.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Departments
+            </button>
+        </form>
         <a asp-action="AuditLog" asp-route-yearId="@Model.Id" class="btn btn-outline-secondary">
             <i class="fa-solid fa-clock-rotate-left me-1"></i>Audit Log
         </a>

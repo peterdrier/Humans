@@ -222,6 +222,59 @@ public class BudgetService : IBudgetService
         _logger.LogInformation("Deleted budget year {YearId} ({Year})", yearId, year.Year);
     }
 
+    public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
+    {
+        var deptGroup = await _dbContext.BudgetGroups
+            .Include(g => g.Categories)
+            .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsDepartmentGroup)
+            ?? throw new InvalidOperationException("No Departments group found for this budget year");
+
+        var existingTeamIds = deptGroup.Categories
+            .Where(c => c.TeamId.HasValue)
+            .Select(c => c.TeamId!.Value)
+            .ToHashSet();
+
+        var budgetTeams = await _dbContext.Teams
+            .Where(t => t.HasBudget && t.IsActive && !existingTeamIds.Contains(t.Id))
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+
+        if (budgetTeams.Count == 0)
+            return 0;
+
+        var now = _clock.GetCurrentInstant();
+        var maxSortOrder = deptGroup.Categories.Any()
+            ? deptGroup.Categories.Max(c => c.SortOrder)
+            : -1;
+
+        foreach (var team in budgetTeams)
+        {
+            var category = new BudgetCategory
+            {
+                Id = Guid.NewGuid(),
+                BudgetGroupId = deptGroup.Id,
+                Name = team.Name,
+                AllocatedAmount = 0,
+                ExpenditureType = ExpenditureType.OpEx,
+                TeamId = team.Id,
+                SortOrder = ++maxSortOrder,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            _dbContext.BudgetCategories.Add(category);
+
+            LogAudit(budgetYearId, nameof(BudgetCategory), category.Id,
+                $"Synced department '{team.Name}' into budget",
+                actorUserId, now);
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Synced {Count} departments into budget year {YearId}", budgetTeams.Count, budgetYearId);
+
+        return budgetTeams.Count;
+    }
+
     // ───────────────────────── Budget Groups ─────────────────────────
 
     public async Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
