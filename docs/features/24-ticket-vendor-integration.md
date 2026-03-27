@@ -8,7 +8,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 
 ### New Entities
 
-- **TicketOrder** — one record per purchase from vendor. Fields: VendorOrderId, BuyerName, BuyerEmail, MatchedUserId (auto-matched by email), TotalAmount, Currency, DiscountCode, PaymentStatus, VendorEventId, PurchasedAt, SyncedAt
+- **TicketOrder** — one record per purchase from vendor. Fields: VendorOrderId, BuyerName, BuyerEmail, MatchedUserId (auto-matched by email), TotalAmount, Currency, DiscountCode, DiscountAmount, PaymentStatus, VendorEventId, PurchasedAt, SyncedAt, StripePaymentIntentId, PaymentMethod, PaymentMethodDetail, StripeFee, ApplicationFee
 - **TicketAttendee** — one per issued ticket (multiple per order). Fields: VendorTicketId, TicketOrderId, AttendeeName, AttendeeEmail, MatchedUserId, TicketTypeName, Price, Status (Valid/Void/CheckedIn), VendorEventId, SyncedAt
 - **TicketSyncState** — singleton (Id=1) tracking sync operational state. Fields: VendorEventId, LastSyncAt, SyncStatus (Idle/Running/Error), LastError, StatusChangedAt
 
@@ -19,8 +19,9 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 ## Architecture
 
 - **ITicketVendorService** — vendor-agnostic interface (Application layer)
-- **TicketTailorService** — TicketTailor API client (Infrastructure layer). Basic Auth, cursor-based pagination.
-- **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees, upsert, email-match to users, match discount codes to campaign grants
+- **TicketTailorService** — TicketTailor API client (Infrastructure layer). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID) and discount amounts from line items.
+- **IStripeService / StripeService** — Stripe API client (read-only). Looks up PaymentIntent → Charge → BalanceTransaction to get payment method type and fee breakdown (Stripe processing fee vs TT application fee).
+- **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees, upsert, email-match to users, match discount codes to campaign grants, enrich orders with Stripe fee data
 - **TicketSyncJob** — Hangfire recurring job (default every 15 min)
 
 ## Authorization
@@ -45,6 +46,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 
 - `TicketVendor:EventId` and `TicketVendor:SyncIntervalMinutes` in appsettings.json
 - `TICKET_VENDOR_API_KEY` environment variable (sensitive, not in appsettings)
+- `STRIPE_API_KEY` environment variable (read-only restricted key for fee tracking)
 
 ## Related Features
 
