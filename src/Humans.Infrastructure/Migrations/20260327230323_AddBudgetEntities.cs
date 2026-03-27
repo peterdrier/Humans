@@ -58,7 +58,7 @@ namespace Humans.Infrastructure.Migrations
                         column: x => x.BudgetYearId,
                         principalTable: "budget_years",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_budget_audit_logs_users_ActorUserId",
                         column: x => x.ActorUserId,

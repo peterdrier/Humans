@@ -3163,7 +3163,7 @@ namespace Humans.Infrastructure.Migrations
                     b.HasOne("Humans.Domain.Entities.BudgetYear", "BudgetYear")
                         .WithMany("AuditLogs")
                         .HasForeignKey("BudgetYearId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("ActorUser");

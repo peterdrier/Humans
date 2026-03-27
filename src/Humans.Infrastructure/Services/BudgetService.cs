@@ -224,6 +224,8 @@ public class BudgetService : IBudgetService
 
     public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
     {
+        await EnsureYearNotClosedAsync(budgetYearId);
+
         var deptGroup = await _dbContext.BudgetGroups
             .Include(g => g.Categories)
             .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsDepartmentGroup)
@@ -279,6 +281,8 @@ public class BudgetService : IBudgetService
 
     public async Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
     {
+        await EnsureYearNotClosedAsync(budgetYearId);
+
         var year = await _dbContext.BudgetYears.FindAsync(budgetYearId)
             ?? throw new InvalidOperationException($"Budget year {budgetYearId} not found");
 
@@ -318,6 +322,7 @@ public class BudgetService : IBudgetService
         var group = await _dbContext.BudgetGroups.FindAsync(groupId)
             ?? throw new InvalidOperationException($"Budget group {groupId} not found");
 
+        await EnsureYearNotClosedAsync(group.BudgetYearId);
         var now = _clock.GetCurrentInstant();
 
         if (!string.Equals(group.Name, name, StringComparison.Ordinal))
@@ -354,6 +359,8 @@ public class BudgetService : IBudgetService
         var group = await _dbContext.BudgetGroups.FindAsync(groupId)
             ?? throw new InvalidOperationException($"Budget group {groupId} not found");
 
+        await EnsureYearNotClosedAsync(group.BudgetYearId);
+
         if (group.IsDepartmentGroup)
             throw new InvalidOperationException("Cannot delete the auto-generated Departments group.");
 
@@ -377,8 +384,10 @@ public class BudgetService : IBudgetService
     {
         return await _dbContext.BudgetCategories
             .Include(c => c.BudgetGroup)
+                .ThenInclude(g => g!.BudgetYear)
             .Include(c => c.Team)
             .Include(c => c.LineItems.OrderBy(li => li.SortOrder))
+                .ThenInclude(li => li.ResponsibleTeam)
             .FirstOrDefaultAsync(c => c.Id == id);
     }
 
@@ -389,6 +398,7 @@ public class BudgetService : IBudgetService
         var group = await _dbContext.BudgetGroups.FindAsync(budgetGroupId)
             ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
 
+        await EnsureYearNotClosedAsync(group.BudgetYearId);
         var now = _clock.GetCurrentInstant();
 
         var maxSortOrder = await _dbContext.BudgetCategories
@@ -431,6 +441,7 @@ public class BudgetService : IBudgetService
             ?? throw new InvalidOperationException($"Budget category {categoryId} not found");
 
         var budgetYearId = category.BudgetGroup!.BudgetYearId;
+        await EnsureYearNotClosedAsync(budgetYearId);
         var now = _clock.GetCurrentInstant();
 
         if (!string.Equals(category.Name, name, StringComparison.Ordinal))
@@ -472,6 +483,7 @@ public class BudgetService : IBudgetService
             ?? throw new InvalidOperationException($"Budget category {categoryId} not found");
 
         var budgetYearId = category.BudgetGroup!.BudgetYearId;
+        await EnsureYearNotClosedAsync(budgetYearId);
         var now = _clock.GetCurrentInstant();
 
         LogAudit(budgetYearId, nameof(BudgetCategory), category.Id,
@@ -498,6 +510,7 @@ public class BudgetService : IBudgetService
             ?? throw new InvalidOperationException($"Budget category {budgetCategoryId} not found");
 
         var budgetYearId = category.BudgetGroup!.BudgetYearId;
+        await EnsureYearNotClosedAsync(budgetYearId);
         var now = _clock.GetCurrentInstant();
 
         var maxSortOrder = await _dbContext.BudgetLineItems
@@ -542,6 +555,7 @@ public class BudgetService : IBudgetService
             ?? throw new InvalidOperationException($"Budget line item {lineItemId} not found");
 
         var budgetYearId = lineItem.BudgetCategory!.BudgetGroup!.BudgetYearId;
+        await EnsureYearNotClosedAsync(budgetYearId);
         var now = _clock.GetCurrentInstant();
 
         if (!string.Equals(lineItem.Description, description, StringComparison.Ordinal))
@@ -602,6 +616,7 @@ public class BudgetService : IBudgetService
             ?? throw new InvalidOperationException($"Budget line item {lineItemId} not found");
 
         var budgetYearId = lineItem.BudgetCategory!.BudgetGroup!.BudgetYearId;
+        await EnsureYearNotClosedAsync(budgetYearId);
         var now = _clock.GetCurrentInstant();
 
         LogAudit(budgetYearId, nameof(BudgetLineItem), lineItem.Id,
@@ -634,6 +649,13 @@ public class BudgetService : IBudgetService
     }
 
     // ───────────────────────── Private Helpers ─────────────────────────
+
+    private async Task EnsureYearNotClosedAsync(Guid budgetYearId)
+    {
+        var year = await _dbContext.BudgetYears.FindAsync(budgetYearId);
+        if (year?.Status == BudgetYearStatus.Closed)
+            throw new InvalidOperationException("Cannot modify a closed budget year.");
+    }
 
     /// <summary>
     /// Logs a field-level change with old/new values and a generated description.

@@ -19,7 +19,7 @@ public class BudgetYearConfiguration : IEntityTypeConfiguration<BudgetYear>
         builder.Property(b => b.UpdatedAt).IsRequired();
 
         builder.HasMany(b => b.Groups).WithOne(g => g.BudgetYear).HasForeignKey(g => g.BudgetYearId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasMany(b => b.AuditLogs).WithOne(a => a.BudgetYear).HasForeignKey(a => a.BudgetYearId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(b => b.AuditLogs).WithOne(a => a.BudgetYear).HasForeignKey(a => a.BudgetYearId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(b => b.Year).IsUnique();
         builder.HasIndex(b => b.Status);
