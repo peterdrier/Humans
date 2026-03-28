@@ -120,6 +120,18 @@
                 this.form.submit();
             });
         });
+        // Expand/collapse compressed date ranges
+        document.querySelectorAll('.shift-range-header').forEach(function(el) {
+            el.addEventListener('click', function() {
+                var rangeKey = this.getAttribute('data-range');
+                var icon = this.querySelector('.range-icon');
+                var rows = document.querySelectorAll('.range-detail-' + rangeKey);
+                var expanding = rows[0].classList.contains('d-none');
+                rows.forEach(function(row) { row.classList.toggle('d-none', !expanding); });
+                icon.classList.toggle('fa-chevron-right', !expanding);
+                icon.classList.toggle('fa-chevron-down', expanding);
+            });
+        });
     </script>
 
     @if (!Model.EventSettings.IsShiftBrowsingOpen)
@@ -222,59 +234,163 @@
                                     </div>
                                 </form>
                             }
+                            var dateRanges = new List<List<Humans.Web.Models.ShiftDisplayItem>>();
+                            List<Humans.Web.Models.ShiftDisplayItem>? currentRange = null;
+                            foreach (var s in allDayShifts)
+                            {
+                                if (currentRange == null || s.Shift.DayOffset != currentRange.Last().Shift.DayOffset + 1)
+                                {
+                                    currentRange = new List<Humans.Web.Models.ShiftDisplayItem> { s };
+                                    dateRanges.Add(currentRange);
+                                }
+                                else
+                                {
+                                    currentRange.Add(s);
+                                }
+                            }
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
                                         <tr><th>Date</th><th>Filled</th><th>Status</th>@if (Model.ShowSignups) {<th>@Localizer["Shifts_SignedUp"]</th>}</tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var item in allDayShifts)
+                                        @foreach (var range in dateRanges)
                                         {
-                                            var isFull = item.RemainingSlots <= 0;
-                                            var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
-                                            <tr class="@(isFull ? "table-secondary" : "")">
-                                                <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
-                                                <td>
-                                                    <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
-                                                    <small class="text-muted">/ @item.Shift.MaxVolunteers</small>
-                                                </td>
-                                                <td>
-                                                    @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))
-                                                    {
-                                                        <span class="badge bg-info">Signed up</span>
-                                                    }
-                                                    else if (isFull)
-                                                    {
-                                                        <span class="badge bg-secondary">Full</span>
-                                                    }
-                                                    else if (understaffed)
-                                                    {
-                                                        <span class="badge bg-warning text-dark">Needs help</span>
-                                                    }
-                                                </td>
-                                                @if (Model.ShowSignups)
-                                                {
-                                                    <td>
-                                                        <div class="d-flex flex-wrap gap-1">
-                                                            @foreach (var signup in item.Signups)
-                                                            {
-                                                                <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
-                                                                           profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
-                                                                           title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
-                                                                           class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
-                                                                           style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
-                                                            }
-                                                        </div>
-                                                    </td>
-                                                }
-                                            </tr>
-                                            @if (!string.IsNullOrEmpty(item.Shift.Description))
+                                            if (range.Count > 1)
                                             {
-                                                <tr class="@(isFull ? "table-secondary" : "")">
-                                                    <td colspan="@(Model.ShowSignups ? 4 : 3)" class="text-muted small pt-0 pb-1 border-0">
-                                                        @Html.SanitizedMarkdown(item.Shift.Description)
+                                                var rangeKey = $"r{range.First().Shift.Id:N}";
+                                                var totalConfirmed = range.Sum(x => x.ConfirmedCount);
+                                                var totalMax = range.Sum(x => x.Shift.MaxVolunteers);
+                                                var anyUnderstaffed = range.Any(x => x.ConfirmedCount < x.Shift.MinVolunteers);
+                                                var daysNeedingHelp = range.Count(x => x.ConfirmedCount < x.Shift.MinVolunteers);
+                                                var allRangeFull = range.All(x => x.RemainingSlots <= 0);
+                                                var userSignedUpDays = range.Count(x => Model.UserSignupShiftIds.Contains(x.Shift.Id));
+                                                var rangeStart = es.GateOpeningDate.PlusDays(range.First().Shift.DayOffset);
+                                                var rangeEnd = es.GateOpeningDate.PlusDays(range.Last().Shift.DayOffset);
+                                                <tr class="@(allRangeFull ? "table-secondary" : "") shift-range-header" role="button" data-range="@rangeKey" style="cursor: pointer;">
+                                                    <td>
+                                                        <i class="fa-solid fa-chevron-right fa-xs me-1 range-icon"></i>
+                                                        @rangeStart.ToDisplayShiftDate()–@rangeEnd.ToDisplayShiftDate()
+                                                        <small class="text-muted">(@range.Count days)</small>
                                                     </td>
+                                                    <td>
+                                                        <span class="@(anyUnderstaffed ? "text-danger fw-bold" : "")">@totalConfirmed</span>
+                                                        <small class="text-muted">/ @totalMax total</small>
+                                                    </td>
+                                                    <td>
+                                                        @if (userSignedUpDays == range.Count)
+                                                        {
+                                                            <span class="badge bg-info">Signed up (all @range.Count days)</span>
+                                                        }
+                                                        else if (userSignedUpDays > 0)
+                                                        {
+                                                            <span class="badge bg-info">Signed up (@userSignedUpDays of @range.Count)</span>
+                                                        }
+                                                        else if (allRangeFull)
+                                                        {
+                                                            <span class="badge bg-secondary">Full</span>
+                                                        }
+                                                        else if (daysNeedingHelp > 0)
+                                                        {
+                                                            <span class="badge bg-warning text-dark">@daysNeedingHelp @(daysNeedingHelp == 1 ? "day needs" : "days need") help</span>
+                                                        }
+                                                    </td>
+                                                    @if (Model.ShowSignups)
+                                                    {
+                                                        <td><small class="text-muted fst-italic">click to expand</small></td>
+                                                    }
                                                 </tr>
+                                                @foreach (var item in range)
+                                                {
+                                                    var isFull = item.RemainingSlots <= 0;
+                                                    var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
+                                                    <tr class="d-none range-detail-@rangeKey @(isFull ? "table-secondary" : "")">
+                                                        <td class="ps-4">@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
+                                                        <td>
+                                                            <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
+                                                            <small class="text-muted">/ @item.Shift.MaxVolunteers</small>
+                                                        </td>
+                                                        <td>
+                                                            @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))
+                                                            {
+                                                                <span class="badge bg-info">Signed up</span>
+                                                            }
+                                                            else if (isFull)
+                                                            {
+                                                                <span class="badge bg-secondary">Full</span>
+                                                            }
+                                                            else if (understaffed)
+                                                            {
+                                                                <span class="badge bg-warning text-dark">Needs help</span>
+                                                            }
+                                                        </td>
+                                                        @if (Model.ShowSignups)
+                                                        {
+                                                            <td>
+                                                                <div class="d-flex flex-wrap gap-1">
+                                                                    @foreach (var signup in item.Signups)
+                                                                    {
+                                                                        <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
+                                                                                   profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
+                                                                                   title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
+                                                                                   class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
+                                                                                   style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
+                                                                    }
+                                                                </div>
+                                                            </td>
+                                                        }
+                                                    </tr>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                var item = range[0];
+                                                var isFull = item.RemainingSlots <= 0;
+                                                var understaffed = item.ConfirmedCount < item.Shift.MinVolunteers;
+                                                <tr class="@(isFull ? "table-secondary" : "")">
+                                                    <td>@es.GateOpeningDate.PlusDays(item.Shift.DayOffset).ToDisplayShiftDate()</td>
+                                                    <td>
+                                                        <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
+                                                        <small class="text-muted">/ @item.Shift.MaxVolunteers</small>
+                                                    </td>
+                                                    <td>
+                                                        @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))
+                                                        {
+                                                            <span class="badge bg-info">Signed up</span>
+                                                        }
+                                                        else if (isFull)
+                                                        {
+                                                            <span class="badge bg-secondary">Full</span>
+                                                        }
+                                                        else if (understaffed)
+                                                        {
+                                                            <span class="badge bg-warning text-dark">Needs help</span>
+                                                        }
+                                                    </td>
+                                                    @if (Model.ShowSignups)
+                                                    {
+                                                        <td>
+                                                            <div class="d-flex flex-wrap gap-1">
+                                                                @foreach (var signup in item.Signups)
+                                                                {
+                                                                    <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" mode="Avatar" size="26"
+                                                                               profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
+                                                                               title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
+                                                                               class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
+                                                                               style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
+                                                                }
+                                                            </div>
+                                                        </td>
+                                                    }
+                                                </tr>
+                                                @if (!string.IsNullOrEmpty(item.Shift.Description))
+                                                {
+                                                    <tr class="@(isFull ? "table-secondary" : "")">
+                                                        <td colspan="@(Model.ShowSignups ? 4 : 3)" class="text-muted small pt-0 pb-1 border-0">
+                                                            @Html.SanitizedMarkdown(item.Shift.Description)
+                                                        </td>
+                                                    </tr>
+                                                }
                                             }
                                         }
                                     </tbody>
