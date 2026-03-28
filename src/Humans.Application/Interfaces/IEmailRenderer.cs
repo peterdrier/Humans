@@ -115,4 +115,9 @@ public interface IEmailRenderer
     /// Magic link signup email for a new user.
     /// </summary>
     EmailContent RenderMagicLinkSignup(string magicLinkUrl, string? culture = null);
+
+    /// <summary>
+    /// Workspace credentials email sent after provisioning a @nobodies.team account.
+    /// </summary>
+    EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null);
 }

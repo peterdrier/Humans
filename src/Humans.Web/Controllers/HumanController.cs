@@ -456,21 +456,41 @@ public class HumanController : HumansControllerBase
                 return RedirectToAction(nameof(HumanDetail), new { id });
             }
 
-            // Use their current notification target as recovery email (if not @nobodies.team)
+            // ──────────────────────────────────────────────────────────────
+            // ORDERING IS CRITICAL in this block.
+            //
+            // We must capture the user's personal (recovery) email BEFORE
+            // calling AddVerifiedEmailAsync, because that call switches the
+            // user's notification target to the new @nobodies.team address.
+            // If we resolved the recovery email after that point, we'd send
+            // the credentials email to the @nobodies.team mailbox — which the
+            // user can't access yet (they don't have the password).
+            //
+            // Sequence:
+            //   1. Capture recovery email  (personal address)
+            //   2. Provision Google Workspace account
+            //   3. Link @nobodies.team email  (changes notification target)
+            //   4. Send credentials to recovery email captured in step 1
+            //
+            // Do NOT reorder these steps.
+            // ──────────────────────────────────────────────────────────────
+
+            // Step 1: Capture recovery email BEFORE the notification target changes.
+            // This MUST happen before AddVerifiedEmailAsync (step 3).
             var recoveryEmail = user.GetEffectiveEmail();
             if (recoveryEmail?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
                 recoveryEmail = user.Email; // fall back to OAuth email
 
-            // Generate temp password and provision in Google Workspace
+            // Step 2: Generate temp password and provision in Google Workspace.
             var tempPassword = PasswordGenerator.GenerateTemporary();
             await _workspaceUserService.ProvisionAccountAsync(
                 fullEmail, firstName, lastName, tempPassword,
                 recoveryEmail);
 
-            // Auto-link: add as verified UserEmail (also sets notification target for @nobodies.team)
+            // Step 3: Link the new email — this changes the notification target
+            // to @nobodies.team. Do NOT move this above step 1.
             await _userEmailService.AddVerifiedEmailAsync(id, fullEmail);
 
-            // Auto-set as Google service email
             user.GoogleEmail = fullEmail;
             await _userManager.UpdateAsync(user);
 
@@ -486,7 +506,17 @@ public class HumanController : HumansControllerBase
                 await _dbContext.SaveChangesAsync();
             }
 
-            SetSuccess($"Account {fullEmail} provisioned and linked. Temporary password: {tempPassword}");
+            // Step 4: Send credentials to the PERSONAL email captured in step 1.
+            // This uses recoveryEmail (personal address), NOT the user's current
+            // notification target (which is now @nobodies.team after step 3).
+            if (!string.IsNullOrEmpty(recoveryEmail))
+            {
+                await _emailService.SendWorkspaceCredentialsAsync(
+                    recoveryEmail, user.DisplayName, fullEmail, tempPassword,
+                    user.PreferredLanguage);
+            }
+
+            SetSuccess($"Account {fullEmail} provisioned and linked. Credentials sent to {recoveryEmail}.");
         }
         catch (Exception ex)
         {

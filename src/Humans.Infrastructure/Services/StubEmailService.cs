@@ -262,4 +262,12 @@ public class StubEmailService : IEmailService
         _logger.LogInformation("[STUB] Would send magic link signup to {Email}", toEmail);
         return Task.CompletedTask;
     }
+
+    public Task SendWorkspaceCredentialsAsync(
+        string recoveryEmail, string userName, string workspaceEmail, string tempPassword,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would send workspace credentials for {WorkspaceEmail} to {RecoveryEmail}", workspaceEmail, recoveryEmail);
+        return Task.CompletedTask;
+    }
 }

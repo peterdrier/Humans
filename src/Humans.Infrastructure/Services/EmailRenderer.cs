@@ -445,6 +445,21 @@ public class EmailRenderer : IEmailRenderer
         }
     }
 
+    public EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = _localizer["Email_WorkspaceCredentials_Subject"].Value;
+            var body = string.Format(
+                CultureInfo.CurrentCulture,
+                _localizer["Email_WorkspaceCredentials_Body"].Value,
+                HtmlEncode(userName),
+                HtmlEncode(workspaceEmail),
+                HtmlEncode(tempPassword));
+            return new EmailContent(subject, body);
+        }
+    }
+
     private CultureScope WithCulture(string? culture)
     {
         return new CultureScope(culture, _logger);

@@ -1203,6 +1203,17 @@
 
   <data name="MagicLinkSent_Message" xml:space="preserve"><value>Abbiamo inviato un link a quell'indirizzo email da humans@nobodies.team. Controlla la posta in arrivo (e la cartella spam).</value></data>
 
+  <!-- Workspace Credentials -->
+  <data name="Email_WorkspaceCredentials_Subject" xml:space="preserve"><value>Il tuo account @nobodies.team è pronto</value></data>
+  <data name="Email_WorkspaceCredentials_Body" xml:space="preserve"><value>&lt;h2&gt;Il tuo account @nobodies.team è pronto&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Il tuo account Google Workspace è stato creato:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Nome utente:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Password temporanea:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Accedi su &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; — ti verrà chiesto di cambiare la password al primo accesso.&lt;/p&gt;
+&lt;p&gt;La nostra organizzazione ha l'autenticazione a due fattori (2FA) attivata. Dovrai anche configurare un secondo fattore (come un telefono o un'app di autenticazione) durante l'accesso.&lt;/p&gt;
+&lt;p&gt;Il team di Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment></data>
+
   <!-- Camp Cards -->
   <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>Questo barrio ha bisogno di una foto!</value></data>
 

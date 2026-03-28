@@ -72,6 +72,9 @@ Members sign in using their Google account, which provides their primary email a
 - Profile/Emails page shows "Google Services Email" card
 
 ### US-11.7: Admin Provisions @nobodies.team Account
+
+> **See [Workspace Account Provisioning](32-workspace-account-provisioning.md) for full details** including the provisioning flow, credentials email, ordering constraints, and 2FA requirements.
+
 **As an** admin
 **I want to** provision a @nobodies.team email from a human's admin page
 **So that** I can create and link their org email in one step
@@ -79,7 +82,7 @@ Members sign in using their Google account, which provides their primary email a
 **Acceptance Criteria:**
 - Provisioning creates the Google Workspace account and links it to the human
 - Auto-sets as notification target and Google service email
-- Temporary password shown to admin
+- Credentials email sent to human's personal (recovery) email with username, temp password, and login link
 - Audit trail recorded
 
 ### US-11.8: Admin Links Unlinked Workspace Account

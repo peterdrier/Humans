@@ -288,6 +288,15 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("magic_link_signup");
     }
 
+    public async Task SendWorkspaceCredentialsAsync(
+        string recoveryEmail, string userName, string workspaceEmail, string tempPassword,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
+        await SendEmailAsync(recoveryEmail, content.Subject, content.HtmlBody, cancellationToken);
+        _metrics.RecordEmailSent("workspace_credentials");
+    }
+
     private async Task SendEmailAsync(
         string toAddress,
         string subject,

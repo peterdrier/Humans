@@ -299,6 +299,20 @@ public class OutboxEmailService : IEmailService
             triggerImmediate: true);
     }
 
+    /// <inheritdoc />
+    public async Task SendWorkspaceCredentialsAsync(
+        string recoveryEmail,
+        string userName,
+        string workspaceEmail,
+        string tempPassword,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        var content = _renderer.RenderWorkspaceCredentials(userName, workspaceEmail, tempPassword, culture);
+        await EnqueueAsync(recoveryEmail, userName, content, "workspace_credentials", cancellationToken,
+            triggerImmediate: true);
+    }
+
     private async Task EnqueueAsync(
         string recipientEmail,
         string recipientName,

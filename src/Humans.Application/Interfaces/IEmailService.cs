@@ -280,4 +280,15 @@ public interface IEmailService
         string magicLinkUrl,
         string? culture = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends workspace credentials to the user's recovery email after provisioning a @nobodies.team account.
+    /// </summary>
+    Task SendWorkspaceCredentialsAsync(
+        string recoveryEmail,
+        string userName,
+        string workspaceEmail,
+        string tempPassword,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
 }

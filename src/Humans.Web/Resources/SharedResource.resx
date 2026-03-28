@@ -1248,6 +1248,17 @@
   <data name="MagicLinkConfirm_Message" xml:space="preserve"><value>Click the button below to sign in to your account.</value></data>
   <data name="MagicLinkConfirm_SignIn" xml:space="preserve"><value>Sign in</value></data>
 
+  <!-- Workspace Credentials -->
+  <data name="Email_WorkspaceCredentials_Subject" xml:space="preserve"><value>Your @nobodies.team account is ready</value></data>
+  <data name="Email_WorkspaceCredentials_Body" xml:space="preserve"><value>&lt;h2&gt;Your @nobodies.team account is ready&lt;/h2&gt;
+&lt;p&gt;Hi {0},&lt;/p&gt;
+&lt;p&gt;Your Google Workspace account has been created:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Username:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Temporary password:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Sign in at &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; and you will be asked to change your password on first login.&lt;/p&gt;
+&lt;p&gt;Our organization has two-factor authentication (2FA) enabled, so you will also need to set up a second factor (such as a phone or authenticator app) during sign-in.&lt;/p&gt;
+&lt;p&gt;The Humans team&lt;/p&gt;</value><comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment></data>
+
   <!-- Camp Cards -->
   <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>This barrio needs a photo!</value></data>
 
