@@ -119,10 +119,11 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 ## Urgency Scoring
 
-`score = remainingSlots * priorityWeight * durationHours * understaffedMultiplier`
+`score = remainingSlots * priorityWeight * durationHours * understaffedMultiplier * proximityBoost`
 
 - Priority weights: Normal=1, Important=3, Essential=6
 - Understaffed multiplier: 2x when confirmed < minVolunteers, else 1x
+- Proximity boost: `1 + 10 / (1 + daysUntilStart)` — today ~11x, tomorrow ~6x, 7 days ~2.25x, 30 days ~1.3x
 - Score=0 when fully staffed (remaining=0)
 
 ## Routes

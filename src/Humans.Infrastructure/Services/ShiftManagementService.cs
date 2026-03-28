@@ -485,7 +485,7 @@ public class ShiftManagementService : IShiftManagementService
             .Select(s =>
             {
                 var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
-                var score = CalculateScore(s, confirmedCount);
+                var score = CalculateScore(s, confirmedCount, es);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
                 return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name, []);
             })
@@ -554,7 +554,7 @@ public class ShiftManagementService : IShiftManagementService
             .Select(s =>
             {
                 var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
-                var score = CalculateScore(s, confirmedCount);
+                var score = CalculateScore(s, confirmedCount, es);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
                 var signups = includeSignups
                     ? s.ShiftSignups
@@ -571,7 +571,7 @@ public class ShiftManagementService : IShiftManagementService
             .ToList();
     }
 
-    public double CalculateScore(Shift shift, int confirmedCount)
+    public double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings)
     {
         var remainingSlots = Math.Max(0, shift.MaxVolunteers - confirmedCount);
         if (remainingSlots == 0) return 0;
@@ -580,7 +580,15 @@ public class ShiftManagementService : IShiftManagementService
         var durationHours = shift.Duration.TotalHours;
         var understaffedMultiplier = confirmedCount < shift.MinVolunteers ? 2 : 1;
 
-        return remainingSlots * priorityWeight * durationHours * understaffedMultiplier;
+        // Time proximity: shifts happening sooner get a significant boost.
+        // Formula: 1 + 10 / (1 + daysUntilStart)
+        // Today → 11x, tomorrow → 6x, 7 days → 2.25x, 30 days → 1.32x
+        var now = _clock.GetCurrentInstant();
+        var shiftStart = shift.GetAbsoluteStart(eventSettings);
+        var daysUntilStart = Math.Max(0, (shiftStart - now).TotalDays);
+        var proximityBoost = 1.0 + (10.0 / (1.0 + daysUntilStart));
+
+        return remainingSlots * priorityWeight * durationHours * understaffedMultiplier * proximityBoost;
     }
 
     // ============================================================
