@@ -16,4 +16,13 @@ if [ -n "$PR_ID" ] && [ -n "$DB_PASSWORD" ]; then
   export ConnectionStrings__DefaultConnection="Host=humans-db;Database=humans_pr_${PR_ID};Username=humans;Password=${DB_PASSWORD}"
 fi
 
+# Preview environments: make QA uploaded images visible.
+# Coolify mounts QA uploads read-only at /app/wwwroot/uploads-qa.
+# Create a writable uploads dir and symlink QA content so existing images
+# display correctly while new uploads go to the ephemeral container filesystem.
+if [ -n "$PR_ID" ] && [ -d "/app/wwwroot/uploads-qa" ]; then
+  mkdir -p /app/wwwroot/uploads
+  cp -rs /app/wwwroot/uploads-qa/* /app/wwwroot/uploads/ 2>/dev/null || true
+fi
+
 exec dotnet Humans.Web.dll
