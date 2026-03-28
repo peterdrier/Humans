@@ -1,0 +1,149 @@
+@model Humans.Web.Models.ShiftSignupsViewModel
+@using Humans.Domain.Enums
+@using Humans.Web.Extensions
+@using NodaTime
+
+@{
+    var hasAny = Model.Upcoming.Count > 0 || Model.Pending.Count > 0 || Model.Past.Count > 0;
+    var es = Model.EventSettings;
+    var tz = es != null ? DateTimeZoneProviders.Tzdb[es.TimeZoneId] : null;
+    var isAdmin = Model.ViewMode == ShiftSignupsViewMode.Admin;
+    var label = isAdmin && !string.IsNullOrEmpty(Model.DisplayName)
+        ? $"{Model.DisplayName}'s Shifts"
+        : "Shift Signups";
+}
+
+@functions {
+    static string StatusBadge(SignupStatus status) => status switch
+    {
+        SignupStatus.Confirmed => "bg-success",
+        SignupStatus.Pending => "bg-warning",
+        SignupStatus.Bailed => "bg-danger",
+        SignupStatus.NoShow => "bg-danger",
+        _ => "bg-secondary"
+    };
+}
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>@label</span>
+        @if (Model.Upcoming.Count + Model.Pending.Count > 0)
+        {
+            <span>
+                @if (Model.Upcoming.Count > 0)
+                {
+                    <span class="badge bg-success">@Model.Upcoming.Count confirmed</span>
+                }
+                @if (Model.Pending.Count > 0)
+                {
+                    <span class="badge bg-warning ms-1">@Model.Pending.Count pending</span>
+                }
+            </span>
+        }
+    </div>
+    @if (!hasAny)
+    {
+        <div class="card-body text-muted">
+            @if (es == null)
+            {
+                <text>No active event configured.</text>
+            }
+            else
+            {
+                <text>No shift signups yet.</text>
+                @if (!isAdmin)
+                {
+                    <a asp-controller="Shifts" asp-action="Index" class="ms-1">Browse available shifts</a>
+                }
+            }
+        </div>
+    }
+    else if (es != null && tz != null)
+    {
+        <div class="card-body p-0">
+            @if (Model.Upcoming.Count > 0)
+            {
+                <div class="px-3 pt-3 pb-1">
+                    <h6 class="text-success mb-2"><i class="fa-solid fa-check-circle me-1"></i>Upcoming (@Model.Upcoming.Count)</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            @foreach (var item in Model.Upcoming)
+                            {
+                                var shift = item.Signup.Shift;
+                                <tr>
+                                    <td class="ps-3">@item.DepartmentName</td>
+                                    <td><strong>@shift.Rota.Name</strong></td>
+                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                                    <td>@item.AbsoluteStart.ToDisplayTime(tz)–@item.AbsoluteEnd.ToDisplayTime(tz)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            @if (Model.Pending.Count > 0)
+            {
+                <div class="px-3 pt-3 pb-1">
+                    <h6 class="text-warning mb-2"><i class="fa-solid fa-clock me-1"></i>Pending (@Model.Pending.Count)</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            @foreach (var item in Model.Pending)
+                            {
+                                var shift = item.Signup.Shift;
+                                <tr>
+                                    <td class="ps-3">@item.DepartmentName</td>
+                                    <td><strong>@shift.Rota.Name</strong></td>
+                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                                    <td>@item.AbsoluteStart.ToDisplayTime(tz)–@item.AbsoluteEnd.ToDisplayTime(tz)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            @if (Model.Past.Count > 0)
+            {
+                var pastToShow = Model.Past.Take(5).ToList();
+                <div class="px-3 pt-3 pb-1">
+                    <h6 class="text-muted mb-2"><i class="fa-solid fa-history me-1"></i>Past (@Model.Past.Count)</h6>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            @foreach (var item in pastToShow)
+                            {
+                                var shift = item.Signup.Shift;
+                                <tr class="text-muted">
+                                    <td class="ps-3">@item.DepartmentName</td>
+                                    <td>@shift.Rota.Name</td>
+                                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                                    <td><span class="badge @StatusBadge(item.Signup.Status)">@item.Signup.Status</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (Model.Past.Count > 5)
+                {
+                    <div class="px-3 py-2 text-muted small">
+                        + @(Model.Past.Count - 5) more
+                    </div>
+                }
+            }
+        </div>
+        <div class="card-footer">
+            @if (!isAdmin)
+            {
+                <a asp-controller="Shifts" asp-action="Mine" class="btn btn-sm btn-outline-primary">View All My Shifts</a>
+            }
+            else
+            {
+                <small class="text-muted">@Model.Upcoming.Count upcoming, @Model.Pending.Count pending, @Model.Past.Count past</small>
+            }
+        </div>
+    }
+</div>

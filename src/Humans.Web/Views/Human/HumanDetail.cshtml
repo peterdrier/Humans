@@ -198,6 +198,8 @@
             }
         </div>
 
+        <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
+
         <div class="card mb-4">
             <div class="card-header">@Localizer["AdminHuman_AuditHistory"]</div>
             @if (Model.AuditLog.Count > 0)

@@ -93,6 +93,7 @@ public class HomeController : HumansControllerBase
 
         var viewModel = new DashboardViewModel
         {
+            UserId = user.Id,
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
             MembershipStatus = membershipSnapshot.Status,

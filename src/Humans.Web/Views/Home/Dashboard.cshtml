@@ -119,17 +119,32 @@ else if (Model.PendingConsents > 0)
 
         @{
             var shiftCards = ViewData["ShiftCards"] as Humans.Web.Models.ShiftCardsViewModel;
-            if (shiftCards != null)
-            {
-                try
-                {
-                    await Html.RenderPartialAsync("_ShiftCards", shiftCards);
-                }
-                catch
-                {
-                    <div class="alert alert-warning mb-4">Shift cards could not be loaded.</div>
-                }
-            }
+        }
+
+        <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Self" />
+
+        @if (shiftCards?.UrgentShifts.Count > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Shifts Need Help</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var item in shiftCards.UrgentShifts)
+                        {
+                            <li class="mb-2">
+                                <strong>@(item?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                                <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) slots</span>
+                                <br /><small class="text-muted">@(item?.DepartmentName ?? "")</small>
+                            </li>
+                        }
+                    </ul>
+                </div>
+                <div class="card-footer">
+                    <a asp-controller="Shifts" asp-action="Index" class="btn btn-sm btn-outline-success">Browse Volunteer Options</a>
+                </div>
+            </div>
         }
 
         @if (Model.IsVolunteerMember)
