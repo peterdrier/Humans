@@ -306,16 +306,16 @@ When `GoogleGroupPrefix` is set on a team, `EnsureTeamGroupAsync` is called to:
 When `GoogleGroupPrefix` is cleared, the existing Group resource is deactivated (soft unlink). The Google Group itself is not deleted.
 
 ### Group Settings
-Group creation now applies the configured `GoogleWorkspace:Groups` settings from appsettings. Previously, new groups received Google defaults. This ensures groups are configured consistently (e.g., `AllowExternalMembers = true` per R-04).
+Group creation applies all expected settings via `BuildExpectedGroupSettings()` — the same method used by drift detection, ensuring creation and detection share a single source of truth.
 
 ### Group Settings Drift Detection
-Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift without auto-fixing:
+Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift:
 
 **Checked settings** (from `GoogleWorkspace:Groups` config):
 - WhoCanJoin, WhoCanViewMembership, WhoCanContactOwner, WhoCanPostMessage, WhoCanViewGroup, WhoCanModerateMembers, AllowExternalMembers
 
-**Additional monitored settings** (sensible defaults):
-- IsArchived (expected: false), MembersCanPostAsTheGroup (expected: false), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: false)
+**Additional hardcoded settings** (applied at creation and checked for drift):
+- IsArchived (expected: true — enables conversation history), MembersCanPostAsTheGroup (expected: true), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: false)
 
 **Nightly check:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). Drifts are logged as warnings.
 
