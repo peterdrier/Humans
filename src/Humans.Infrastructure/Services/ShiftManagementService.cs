@@ -128,6 +128,7 @@ public class ShiftManagementService : IShiftManagementService
     {
         return await _dbContext.EventSettings
             .AsNoTracking()
+            .OrderBy(e => e.Id)
             .FirstOrDefaultAsync(e => e.IsActive);
     }
 
