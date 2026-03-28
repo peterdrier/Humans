@@ -42,6 +42,7 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 **Acceptance Criteria:**
 - Browse shifts filtered by department and date range (From/To date pickers; either may be omitted for open-ended range)
 - Filter by period (Set-up / Event / Strike toggle buttons)
+- Date picker and period tabs interact cleanly: selecting a date clears the active period tab (dates take precedence); selecting a period tab clears manual dates; date picker min/max constrains to the active period's range when a period is selected
 - Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all)
 - See fill status (confirmed count vs max)
 - Sign up for a shift (auto-confirmed for Public policy, pending for RequireApproval)

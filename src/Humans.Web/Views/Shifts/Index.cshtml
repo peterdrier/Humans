@@ -6,6 +6,20 @@
     ViewData["Title"] = "Shifts";
     var es = Model.EventSettings;
     var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+
+    // Compute date picker bounds — tighten to active period's range
+    var pickerMin = es.GateOpeningDate.PlusDays(es.BuildStartOffset);
+    var pickerMax = es.GateOpeningDate.PlusDays(es.StrikeEndOffset);
+    if (!string.IsNullOrEmpty(Model.FilterPeriod) && Enum.TryParse<ShiftPeriod>(Model.FilterPeriod, true, out var activePeriodEnum))
+    {
+        (pickerMin, pickerMax) = activePeriodEnum switch
+        {
+            ShiftPeriod.Build => (es.GateOpeningDate.PlusDays(es.BuildStartOffset), es.GateOpeningDate.PlusDays(-1)),
+            ShiftPeriod.Event => (es.GateOpeningDate, es.GateOpeningDate.PlusDays(es.EventEndOffset)),
+            ShiftPeriod.Strike => (es.GateOpeningDate.PlusDays(es.EventEndOffset + 1), es.GateOpeningDate.PlusDays(es.StrikeEndOffset)),
+            _ => (pickerMin, pickerMax)
+        };
+    }
 }
 
 @functions {
@@ -65,14 +79,14 @@
         <div class="col-auto">
             <label class="form-label mb-1">From</label>
             <input type="date" name="fromDate" class="form-control form-control-sm" value="@Model.FilterFromDate"
-                   min="@Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.BuildStartOffset).ToString("yyyy-MM-dd", null)"
-                   max="@Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
+                   min="@pickerMin.ToString("yyyy-MM-dd", null)"
+                   max="@pickerMax.ToString("yyyy-MM-dd", null)" />
         </div>
         <div class="col-auto">
             <label class="form-label mb-1">To</label>
             <input type="date" name="toDate" class="form-control form-control-sm" value="@Model.FilterToDate"
-                   min="@Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.BuildStartOffset).ToString("yyyy-MM-dd", null)"
-                   max="@Model.EventSettings.GateOpeningDate.PlusDays(Model.EventSettings.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
+                   min="@pickerMin.ToString("yyyy-MM-dd", null)"
+                   max="@pickerMax.ToString("yyyy-MM-dd", null)" />
         </div>
         @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod))
         {
@@ -96,8 +110,15 @@
            class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">Strike</a>
     </div>
     <script>
-        document.querySelectorAll('[name="departmentId"], [name="fromDate"], [name="toDate"]').forEach(function(el) {
+        document.querySelectorAll('[name="departmentId"]').forEach(function(el) {
             el.addEventListener('change', function() { this.form.submit(); });
+        });
+        document.querySelectorAll('[name="fromDate"], [name="toDate"]').forEach(function(el) {
+            el.addEventListener('change', function() {
+                // Dates take precedence — clear the period tab so results aren't constrained
+                this.form.querySelector('[name="period"]').value = '';
+                this.form.submit();
+            });
         });
     </script>
 

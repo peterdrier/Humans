@@ -76,6 +76,11 @@ public class ShiftsController : HumansControllerBase
         if (!string.IsNullOrEmpty(toDate) && LocalDatePattern.Iso.Parse(toDate) is { Success: true } toResult)
             filterToDate = toResult.Value;
 
+        // Explicit dates take precedence over period tab — prevents conflicting filters
+        // (e.g., user picks a date outside the active period's range)
+        if ((!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate)) && !string.IsNullOrEmpty(period))
+            period = null;
+
         // Apply period filter — compute date boundaries from EventSettings offsets
         if (!string.IsNullOrEmpty(period) && Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
         {
