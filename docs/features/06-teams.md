@@ -244,6 +244,12 @@ Teams are either **departments** (top-level, no parent) or **sub-teams** (have a
 - `IsManagement` roles can be renamed and deleted (if no assignments)
 - No roles are auto-created on team creation — admins add roles manually
 
+### Permission Inheritance
+- Department coordinators automatically have management permissions on all child sub-teams
+- This includes: viewing/approving/rejecting join requests, managing members, editing sub-team pages
+- Permission checks cascade upward: checking coordinator status on a sub-team also checks the parent department
+- Both `TeamMember.Role == Coordinator` and `TeamRoleAssignment.IsManagement` paths are checked for consistency
+
 ### Display
 - Sub-team names display as "Department - SubTeam" on profile pills, team details, and MyTeams
 - `/Teams` page groups cards into: My Teams, Departments, System Teams

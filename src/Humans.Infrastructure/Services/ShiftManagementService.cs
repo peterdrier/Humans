@@ -95,7 +95,8 @@ public class ShiftManagementService : IShiftManagementService
 
     private async Task<IReadOnlyList<Guid>> LoadCoordinatorDepartmentIdsAsync(Guid userId)
     {
-        return await _dbContext.TeamRoleAssignments
+        // Check via IsManagement role assignment
+        var byRoleAssignment = await _dbContext.TeamRoleAssignments
             .AsNoTracking()
             .Where(tra =>
                 tra.TeamMember.UserId == userId &&
@@ -104,8 +105,21 @@ public class ShiftManagementService : IShiftManagementService
                 tra.TeamRoleDefinition.Team.ParentTeamId == null &&
                 tra.TeamRoleDefinition.Team.SystemTeamType == SystemTeamType.None)
             .Select(tra => tra.TeamRoleDefinition.TeamId)
-            .Distinct()
             .ToListAsync();
+
+        // Also check via TeamMember.Role == Coordinator (may be out of sync with IsManagement)
+        var byMemberRole = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm =>
+                tm.UserId == userId &&
+                tm.LeftAt == null &&
+                tm.Role == TeamMemberRole.Coordinator &&
+                tm.Team.ParentTeamId == null &&
+                tm.Team.SystemTeamType == SystemTeamType.None)
+            .Select(tm => tm.TeamId)
+            .ToListAsync();
+
+        return byRoleAssignment.Union(byMemberRole).Distinct().ToList();
     }
 
     private async Task<bool> HasActiveRoleAsync(Guid userId, string roleName)

@@ -352,7 +352,7 @@ public class VolController : HumansControllerBase
 
             var isCoordinator = RoleChecks.IsAdmin(User) ||
                                 User.IsInRole(RoleNames.VolunteerCoordinator) ||
-                                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
+                                await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
             var allTeams = await _teamService.GetAllTeamsAsync();
             var childTeams = allTeams.Where(t => t.ParentTeamId == team.Id && t.IsActive).ToList();
@@ -416,7 +416,7 @@ public class VolController : HumansControllerBase
 
             var isCoordinator = RoleChecks.IsAdmin(User) ||
                                 User.IsInRole(RoleNames.VolunteerCoordinator) ||
-                                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, parent.Id);
+                                await _teamService.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
             var members = await _teamService.GetTeamMembersAsync(child.Id);
 
