@@ -317,11 +317,11 @@ Settings applied at group creation can drift if someone changes them manually in
 **Additional hardcoded settings** (applied at creation and checked for drift):
 - IsArchived (expected: true — enables conversation history), MembersCanPostAsTheGroup (expected: true), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: false)
 
-**Nightly check:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). Drifts are logged as warnings.
+**Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures are logged but don't stop the reconciliation.
 
 **Manual trigger:** Admin page at `/Admin` has a "Check Group Settings" button. Results show at `/Admin/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
 
-**SyncSettings respected:** If GoogleGroups sync mode is set to None, the check is skipped entirely.
+**SyncSettings respected:** If GoogleGroups sync mode is set to None, both the check and auto-remediation are skipped entirely.
 
 ## Resource Linking (Pre-Shared Access Model)
 
