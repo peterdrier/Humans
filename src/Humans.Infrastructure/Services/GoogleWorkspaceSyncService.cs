@@ -175,6 +175,25 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         return _serviceAccountEmail;
     }
 
+    /// <summary>
+    /// Gets active members of all child teams for a department (subteam member rollup).
+    /// Returns empty if the team has no children.
+    /// </summary>
+    private async Task<List<TeamMember>> GetChildTeamMembersAsync(
+        Guid parentTeamId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Include(tm => tm.User)
+            .Include(tm => tm.Team)
+            .Where(tm =>
+                tm.Team.ParentTeamId == parentTeamId &&
+                tm.Team.IsActive &&
+                tm.LeftAt == null)
+            .ToListAsync(cancellationToken);
+    }
+
     /// <inheritdoc />
     public async Task<GoogleResource> ProvisionTeamFolderAsync(
         Guid teamId,
@@ -636,6 +655,28 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             }
         }
 
+        // Subteam member rollup: also add to parent department resources
+        var team = await _dbContext.Teams.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
+        if (team?.ParentTeamId is not null)
+        {
+            var parentResources = await _dbContext.GoogleResources
+                .Where(r => r.TeamId == team.ParentTeamId && r.IsActive)
+                .ToListAsync(cancellationToken);
+
+            foreach (var resource in parentResources)
+            {
+                if (resource.ResourceType == GoogleResourceType.Group)
+                {
+                    await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
+                }
+                else
+                {
+                    await AddUserToDriveAsync(resource, googleEmail, cancellationToken);
+                }
+            }
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -829,6 +870,19 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 .Where(tm => tm.User.GetGoogleServiceEmail() is not null)
                 .Select(tm => new { Email = tm.User.GetGoogleServiceEmail(), tm.User.DisplayName })
                 .ToList();
+
+            // Subteam member rollup: include child team members for departments
+            var childMembers = await GetChildTeamMembersAsync(resource.TeamId, cancellationToken);
+            foreach (var cm in childMembers)
+            {
+                var email = cm.User.GetGoogleServiceEmail();
+                if (email is not null && !expectedMembers.Any(m =>
+                    NormalizingEmailComparer.Instance.Equals(m.Email, email)))
+                {
+                    expectedMembers.Add(new { Email = (string?)email, cm.User.DisplayName });
+                }
+            }
+
             var expectedEmails = new HashSet<string>(
                 expectedMembers.Select(m => m.Email!), NormalizingEmailComparer.Instance);
 
@@ -1003,6 +1057,25 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     else
                     {
                         membersByEmail[memberEmail] = (tm.User.DisplayName, new List<string> { teamName });
+                    }
+                }
+
+                // Subteam member rollup: include child team members for departments
+                var childMembers = await GetChildTeamMembersAsync(resource.TeamId, cancellationToken);
+                foreach (var cm in childMembers)
+                {
+                    var memberEmail = cm.User.GetGoogleServiceEmail();
+                    if (memberEmail is null) continue;
+
+                    var childTeamName = cm.Team.Name;
+                    if (membersByEmail.TryGetValue(memberEmail, out var existing2))
+                    {
+                        if (!existing2.TeamNames.Contains(childTeamName, StringComparer.Ordinal))
+                            existing2.TeamNames.Add(childTeamName);
+                    }
+                    else
+                    {
+                        membersByEmail[memberEmail] = (cm.User.DisplayName, new List<string> { childTeamName });
                     }
                 }
             }

@@ -379,12 +379,55 @@ public class VolController : HumansControllerBase
                 });
             }
 
+            // Build effective members: direct department members + all child team members
+            var effectiveMembersDict = new Dictionary<Guid, DepartmentDetailViewModel.EffectiveMember>();
+
+            // Direct department members
+            var directMembers = await _teamService.GetTeamMembersAsync(team.Id);
+            foreach (var dm in directMembers)
+            {
+                effectiveMembersDict[dm.UserId] = new DepartmentDetailViewModel.EffectiveMember
+                {
+                    UserId = dm.UserId,
+                    DisplayName = dm.User.DisplayName,
+                    ProfilePictureUrl = dm.User.ProfilePictureUrl,
+                    SourceTeams = [team.Name]
+                };
+            }
+
+            // Child team members (rollup)
+            foreach (var child in childTeams)
+            {
+                var childMembers = await _teamService.GetTeamMembersAsync(child.Id);
+                foreach (var cm in childMembers)
+                {
+                    if (effectiveMembersDict.TryGetValue(cm.UserId, out var existing))
+                    {
+                        if (!existing.SourceTeams.Contains(child.Name, StringComparer.Ordinal))
+                            existing.SourceTeams.Add(child.Name);
+                    }
+                    else
+                    {
+                        effectiveMembersDict[cm.UserId] = new DepartmentDetailViewModel.EffectiveMember
+                        {
+                            UserId = cm.UserId,
+                            DisplayName = cm.User.DisplayName,
+                            ProfilePictureUrl = cm.User.ProfilePictureUrl,
+                            SourceTeams = [child.Name]
+                        };
+                    }
+                }
+            }
+
             var model = new DepartmentDetailViewModel
             {
                 Department = team,
                 ChildTeams = childCards,
                 IsCoordinator = isCoordinator,
-                EventSettings = es
+                EventSettings = es,
+                EffectiveMembers = effectiveMembersDict.Values
+                    .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                    .ToList()
             };
 
             return View(model);

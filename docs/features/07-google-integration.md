@@ -235,7 +235,7 @@ All Drive API calls MUST use:
 
 ### Full Sync (SyncResourcePermissionsAsync)
 For Shared Drive folders:
-1. Load expected members from DB (team members where `LeftAt == null`)
+1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
 2. List current direct permissions from Google (paginated, with `permissionDetails`)
 3. Filter to direct managed permissions only (exclude inherited, owner, service account)
 4. Add missing permissions (expected but not in Google)
@@ -243,7 +243,7 @@ For Shared Drive folders:
 6. Update `LastSyncedAt`
 
 For Google Groups:
-1. Load expected members from DB
+1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
 2. List current group members from Google (paginated)
 3. Add missing members
 4. Remove stale members
