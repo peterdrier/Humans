@@ -396,6 +396,17 @@ public class UserEmailService : IUserEmailService
         };
 
         _dbContext.UserEmails.Add(userEmail);
+
+        // Auto-set GoogleEmail when a @nobodies.team email is added
+        if (isNobodiesTeam)
+        {
+            var user = await _dbContext.Users.FindAsync([userId], cancellationToken);
+            if (user is not null && user.GoogleEmail is null)
+            {
+                user.GoogleEmail = email;
+            }
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
