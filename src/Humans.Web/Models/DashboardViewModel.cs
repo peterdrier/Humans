@@ -37,6 +37,10 @@ public class DashboardViewModel
     public bool TermExpiresSoon { get; set; }
     public bool TermExpired { get; set; }
 
+    // Shift discovery
+    public bool IsShiftBrowsingOpen { get; set; }
+    public string? EventName { get; set; }
+
     // Quick stats
     public DateTime MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
