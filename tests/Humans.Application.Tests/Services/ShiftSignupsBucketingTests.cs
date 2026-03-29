@@ -114,12 +114,16 @@ public class ShiftSignupsBucketingTests
         IShiftManagementService? shiftMgmt = null,
         IShiftSignupService? signupService = null)
     {
+        var callerProvidedMocks = shiftMgmt is not null;
         signupService ??= Substitute.For<IShiftSignupService>();
         shiftMgmt ??= Substitute.For<IShiftManagementService>();
 
-        shiftMgmt.GetActiveAsync().Returns(TestEvent);
-        signupService.GetByUserAsync(_userId, TestEvent.Id)
-            .Returns(signups);
+        if (!callerProvidedMocks)
+        {
+            shiftMgmt.GetActiveAsync().Returns(TestEvent);
+            signupService.GetByUserAsync(_userId, TestEvent.Id)
+                .Returns(signups);
+        }
 
         var clock = new FakeClock(TestNow);
         var component = new ShiftSignupsViewComponent(
