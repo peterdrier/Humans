@@ -135,6 +135,7 @@ public static class InfrastructureServiceCollectionExtensions
         });
         services.AddHttpClient<ITicketVendorService, TicketTailorService>();
         services.AddScoped<ITicketSyncService, TicketSyncService>();
+        services.AddScoped<ITicketQueryService, TicketQueryService>();
 
         // Stripe integration (read-only — fee tracking and payment method attribution)
         services.Configure<StripeSettings>(opts =>

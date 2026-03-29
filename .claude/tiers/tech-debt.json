@@ -1,0 +1,28 @@
+{
+  "tiers": [
+    {
+      "name": "low",
+      "model": "sonnet",
+      "label": "Mechanical standardization",
+      "focus": "Focus ONLY on these tasks — they are mechanical find-and-replace standardization:\n\n- Phase 4 (code quality): Inconsistent naming — find GetXAsync vs FetchXAsync vs LoadXAsync and standardize. Find string parameters that should be constants or nameof().\n- Phase 4 (code quality): Magic strings — replace inline role strings with RoleNames.* constants, inline action names with nameof()\n- Phase 3 (views): Inline avatar <img> tags — replace with @await Component.InvokeAsync(\"UserAvatar\", ...) calls\n- Phase 3 (views): Icon consistency — replace any bi bi-* with fa-solid fa-*\n- Phase 2 (caching): Cache key strings — extract inline cache key strings to constants in a CacheKeys static class\n\nSkip all other tasks — they will be handled in later passes by a more capable model."
+    },
+    {
+      "name": "medium",
+      "model": "sonnet",
+      "label": "Pattern consolidation",
+      "focus": "Focus ONLY on these tasks — they require tracing patterns across a few files:\n\n- Phase 1 (controllers): Consolidate error handling — standardize on TempData[\"SuccessMessage\"]/TempData[\"ErrorMessage\"] pattern, create SetSuccess/SetError helpers on HumansControllerBase if not already present, migrate controllers\n- Phase 2 (caching): Consolidate caching patterns — standardize on GetOrCreateAsync everywhere, replace TryGetValue + manual Set patterns\n- Phase 4 (jobs): Standardize background job patterns — consistent method naming (ExecuteAsync), add structured logging at job start/end\n- Phase 3 (email): Reduce EmailRenderer boilerplate — extract common render pattern if possible\n\nSkip controller base class extraction and god class breakup — those need deeper analysis."
+    },
+    {
+      "name": "high",
+      "model": "opus",
+      "label": "Architectural refactoring",
+      "focus": "Focus ONLY on these tasks — they require understanding cross-cutting patterns:\n\n- Phase 1 (controllers): Extract HumansControllerBase — create base class with GetCurrentUserAsync, RequireCurrentUserAsync. Migrate controllers incrementally, verify build after each.\n- Phase 1 (controllers): Extract team access helpers — the resolve-team-validate-access pattern used in TeamAdminController, ShiftAdminController, CampAdminController\n- Phase 1 (controllers): Consolidate authorization — replace inline User.IsInRole() with [Authorize(Roles)] attributes where feasible\n- Phase 2 (services): Move business logic out of controllers — extract LINQ transforms, ViewModel construction, and business decisions into services\n\nSkip god class breakup (TeamService splitting) — that's the highest-risk refactor and needs its own pass."
+    },
+    {
+      "name": "super",
+      "model": "opus",
+      "label": "High-risk structural changes",
+      "focus": "Focus ONLY on these tasks — they are high-risk structural refactors:\n\n- Phase 2 (services): Break up TeamService.cs (1,639 lines) — extract TeamRoleService for role definitions + role assignments, create ITeamRoleService in Application layer, update DI registration, migrate callers\n- Phase 2 (services): Break up TeamAdminController.cs (888 lines) — extract TeamRoleAdminController for role definition and role assignment endpoints\n- Phase 5 (tests): Write tests for any new services, helpers, or base classes extracted in earlier passes\n- Phase 6 (docs): Update feature docs in docs/features/ affected by refactoring\n\nThese are the riskiest changes. Verify build AND tests pass after every individual extraction. Commit frequently."
+    }
+  ]
+}

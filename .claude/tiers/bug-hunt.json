@@ -1,0 +1,28 @@
+{
+  "tiers": [
+    {
+      "name": "low",
+      "model": "sonnet",
+      "label": "Mechanical grep-and-fix",
+      "focus": "Focus ONLY on these phases — they are mechanical pattern-matching fixes:\n\n- Phase 1: Razor boolean attributes, icon library mismatches (bi bi-* → fa-solid fa-*), conditional column rendering\n- Phase 8 (string handling only): Missing StringComparison parameters on .Equals(), .Contains(), .StartsWith(), .EndsWith(), .IndexOf(), .Replace()\n- Phase 9: Orphan pages — controller actions returning views with no inbound navigation link\n- Phase 6 (antiforgery only): POST actions missing [ValidateAntiForgeryToken]\n\nSkip all other phases — they will be handled in later passes by a more capable model."
+    },
+    {
+      "name": "medium",
+      "model": "sonnet",
+      "label": "Single-hop tracing",
+      "focus": "Focus ONLY on these phases — they require tracing one hop (query→usage, GET→POST):\n\n- Phase 2: Missing .Include() on EF Core queries — trace FirstOrDefaultAsync/ToListAsync results to navigation property access\n- Phase 4: Form field preservation — compare ViewBag population in GET vs POST actions\n- Phase 7: Null reference risks — FirstOrDefault/SingleOrDefault/GetUserAsync results used without null checks\n- Phase 10: Silent exception swallowing — catch blocks without logging\n\nSkip Phases 1, 8 (strings), 9, 6 (antiforgery) — already handled. Skip Phases 3, 5, 6 (auth cascading), 8 (state machines), 11, 12 — those need deeper analysis and will be handled next."
+    },
+    {
+      "name": "high",
+      "model": "opus",
+      "label": "Multi-file reasoning",
+      "focus": "Focus ONLY on these phases — they require multi-step reasoning across files:\n\n- Phase 3: Cache invalidation — trace cache keys to all mutation paths, verify eviction after every write\n- Phase 5: EF Core bool sentinel trap — cross-reference entity configurations (read-only) with service code that sets bool properties\n- Phase 6 (authorization cascading): Complex role-based auth — coordinator permission inheritance across parent/child teams, policy-based checks beyond simple [Authorize(Roles)]\n- Phase 8 (state machines): Boundary condition bugs — verify start vs end field usage in range checks, aggregation scope (what's being counted/grouped), hidden field state corruption, disabled-inputs-don't-submit\n\nSkip Phases 1, 2, 4, 7, 8 (strings), 9, 10 — already handled. Skip Phases 11, 12 — handled in the final pass."
+    },
+    {
+      "name": "super",
+      "model": "opus",
+      "label": "Cross-system reasoning",
+      "focus": "Focus ONLY on these phases — they require cross-system reasoning:\n\n- Phase 11: Google/External Service Sync Correctness — API format mismatches, email normalization (@googlemail.com vs @gmail.com), reconciliation jobs that detect drift but fail to persist fixes, permission model mismatches (inherited vs direct on Shared Drives)\n- Phase 12: Infrastructure Configuration Correctness — unhandled external enum/status values from webhooks, environment variable precedence conflicts, database connection cleanup, preview environment parsing edge cases\n- Phase 8 (domain logic): Complex business logic bugs — spec-vs-implementation drift in calculations, cross-entity state consistency\n\nSkip all other phases — already handled in previous passes."
+    }
+  ]
+}

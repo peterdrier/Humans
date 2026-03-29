@@ -45,9 +45,9 @@ public class DashboardViewModel
     public DateTime MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
 
-    // Ticket summary
+    // Per-user ticket status
     public bool TicketsConfigured { get; set; }
-    public int TicketsSold { get; set; }
-    public int TicketCapacity { get; set; }
-    public decimal TicketCoveragePercent { get; set; }
+    public bool HasTicket { get; set; }
+    public int UserTicketCount { get; set; }
+    public string? TicketPurchaseUrl { get; set; }
 }

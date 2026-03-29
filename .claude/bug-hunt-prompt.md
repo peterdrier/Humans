@@ -1,4 +1,4 @@
-# Bug Hunt — Codex Autonomous Prompt
+# Bug Hunt — Claude Autonomous Prompt
 
 ## Mission
 

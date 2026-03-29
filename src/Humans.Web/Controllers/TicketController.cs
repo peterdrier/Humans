@@ -29,6 +29,7 @@ public class TicketController : HumansControllerBase
     private readonly HumansDbContext _dbContext;
     private readonly ITicketVendorService _vendorService;
     private readonly TicketVendorSettings _settings;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TicketController> _logger;
 
@@ -36,6 +37,7 @@ public class TicketController : HumansControllerBase
         HumansDbContext dbContext,
         ITicketVendorService vendorService,
         IOptions<TicketVendorSettings> settings,
+        ITicketQueryService ticketQueryService,
         IMemoryCache cache,
         UserManager<User> userManager,
         ILogger<TicketController> logger)
@@ -44,6 +46,7 @@ public class TicketController : HumansControllerBase
         _dbContext = dbContext;
         _vendorService = vendorService;
         _settings = settings.Value;
+        _ticketQueryService = ticketQueryService;
         _cache = cache;
         _logger = logger;
     }
@@ -84,7 +87,7 @@ public class TicketController : HumansControllerBase
         var totalStripeFees = await paidOrders.SumAsync(o => (decimal?)o.StripeFee ?? 0m);
         var totalAppFees = await paidOrders.SumAsync(o => (decimal?)o.ApplicationFee ?? 0m);
         var netRevenue = revenue - totalStripeFees - totalAppFees;
-        var avgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
+        var avgPrice = ticketsSold > 0 ? netRevenue / ticketsSold : 0;
         var unmatchedCount = await orders.CountAsync(o => o.MatchedUserId == null);
 
         // Fee breakdown by payment method (load in memory — small dataset)
@@ -198,16 +201,11 @@ public class TicketController : HumansControllerBase
             totalActiveVolunteers = await _dbContext.Set<TeamMember>()
                 .CountAsync(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null);
 
-            var validTicketUserIds = await _dbContext.TicketAttendees
-                .Where(a => a.MatchedUserId != null &&
-                    (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
-                .Select(a => a.MatchedUserId!.Value)
-                .Distinct()
-                .ToListAsync();
+            var userIdsWithTickets = await _ticketQueryService.GetUserIdsWithTicketsAsync();
 
             volunteersWithTickets = await _dbContext.Set<TeamMember>()
                 .Where(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null)
-                .CountAsync(tm => validTicketUserIds.Contains(tm.UserId));
+                .CountAsync(tm => userIdsWithTickets.Contains(tm.UserId));
         }
 
         var volunteerCoveragePct = totalActiveVolunteers > 0

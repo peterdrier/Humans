@@ -1,14 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 
@@ -23,10 +19,8 @@ public class HomeController : HumansControllerBase
     private readonly IShiftSignupService _shiftSignup;
     private readonly IConfiguration _configuration;
     private readonly IClock _clock;
-    private readonly HumansDbContext _dbContext;
-    private readonly ITicketVendorService _vendorService;
     private readonly TicketVendorSettings _ticketSettings;
-    private readonly IMemoryCache _cache;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly ILogger<HomeController> _logger;
 
     public HomeController(
@@ -38,10 +32,8 @@ public class HomeController : HumansControllerBase
         IShiftSignupService shiftSignup,
         IConfiguration configuration,
         IClock clock,
-        HumansDbContext dbContext,
-        ITicketVendorService vendorService,
         IOptions<TicketVendorSettings> ticketSettings,
-        IMemoryCache cache,
+        ITicketQueryService ticketQueryService,
         ILogger<HomeController> logger)
         : base(userManager)
     {
@@ -52,10 +44,8 @@ public class HomeController : HumansControllerBase
         _shiftSignup = shiftSignup;
         _configuration = configuration;
         _clock = clock;
-        _dbContext = dbContext;
-        _vendorService = vendorService;
         _ticketSettings = ticketSettings.Value;
-        _cache = cache;
+        _ticketQueryService = ticketQueryService;
         _logger = logger;
     }
 
@@ -249,40 +239,21 @@ public class HomeController : HumansControllerBase
             _logger.LogError(ex, "Failed to load shift cards for dashboard");
         }
 
-        // Ticket summary — guarded, failures must never crash the homepage
+        // Per-user ticket status — always renders, shows warning when unconfigured
+        viewModel.TicketPurchaseUrl = "https://tickets.nobodies.team";
+        viewModel.TicketsConfigured = _ticketSettings.IsConfigured;
         try
         {
             if (_ticketSettings.IsConfigured)
             {
-                var ticketsSold = await _dbContext.TicketAttendees.CountAsync(a =>
-                    a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn);
-
-                var totalCapacity = 0;
-                try
-                {
-                    var summary = await _cache.GetOrCreateAsync(CacheKeys.TicketEventSummary, async entry =>
-                    {
-                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15);
-                        return await _vendorService.GetEventSummaryAsync(_ticketSettings.EventId);
-                    });
-                    totalCapacity = summary?.TotalCapacity ?? 0;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Could not fetch event summary for homepage ticket card");
-                }
-
-                viewModel.TicketsConfigured = true;
-                viewModel.TicketsSold = ticketsSold;
-                viewModel.TicketCapacity = totalCapacity;
-                viewModel.TicketCoveragePercent = totalCapacity > 0
-                    ? Math.Round(ticketsSold * 100m / totalCapacity, 1)
-                    : 0;
+                var ticketCount = await _ticketQueryService.GetUserTicketCountAsync(user.Id);
+                viewModel.HasTicket = ticketCount > 0;
+                viewModel.UserTicketCount = ticketCount;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load ticket summary for homepage dashboard");
+            _logger.LogError(ex, "Failed to load ticket status for user {UserId}", user.Id);
         }
 
         return View("Dashboard", viewModel);
