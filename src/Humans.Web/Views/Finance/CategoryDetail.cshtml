@@ -226,7 +226,16 @@
                     <option value="">None</option>
                     @foreach (var team in teams)
                     {
-                        <option value="@team.Id">@team.Name</option>
+                        var teamId = (Guid)team.Id;
+                        var teamName = (string)team.Name;
+                        if (Model.TeamId == teamId)
+                        {
+                            <option value="@teamId" selected>@teamName</option>
+                        }
+                        else
+                        {
+                            <option value="@teamId">@teamName</option>
+                        }
                     }
                 </select>
             </div>

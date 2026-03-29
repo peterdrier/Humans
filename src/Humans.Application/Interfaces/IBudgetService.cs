@@ -36,6 +36,9 @@ public interface IBudgetService
     Task UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId);
     Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
+    // Coordinator
+    Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId);
+
     // Audit Log
     Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(Guid? budgetYearId);
 }

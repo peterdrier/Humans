@@ -189,13 +189,24 @@ Outbound invoices to members/barrios:
 - Budget CRUD at `/Finance/*` via FinanceController
 - Field-level audit trail with old/new values (separate BudgetAuditLog table)
 - Nav link visible to FinanceAdmin + Admin
-- **Not yet implemented:** Coordinator view (#233), public summary (#234), visibility enforcement (IsRestricted/IsDepartmentGroup stored but not enforced)
 - **Exit:** Can recreate 2026 spreadsheet budget in the app
 
-### V2a: Public View (1-2 sessions)
-- Public budget summary page (pie chart, speedometer)
-- Aggregated data only
-- **Exit:** General member can see "where does my ticket money go"
+### V1b: Coordinator View & Public Summary — IMPLEMENTED (#233, #234)
+- **Coordinator view** at `/Budget` via BudgetController (#233):
+  - Any team coordinator sees all department budgets (non-restricted groups)
+  - Can add/edit/delete line items within own department only
+  - Per-category unallocated remainder and progress bar
+  - `IsRestricted` groups hidden from coordinator view
+  - Authorization uses `GetEffectiveCoordinatorTeamIdsAsync` (includes child teams)
+  - All changes audit-logged via existing BudgetAuditLog
+- **Public summary** at `/Budget/Summary` (#234):
+  - All authenticated members see budget allocation pie chart (Chart.js doughnut)
+  - Progress bar showing overall budget utilization
+  - Breakdown table with category amounts and percentages
+  - No line-item, salary, or overhead detail visible
+  - Coordinators see link to department detail view
+- **Nav:** "Budget" link visible to all authenticated users; "Finance" link remains FinanceAdmin-only
+- **Exit:** Coordinators can manage their department budgets; all members see where money goes
 
 ### V2b: Stripe Integration (2-3 sessions)
 - Stripe sync job

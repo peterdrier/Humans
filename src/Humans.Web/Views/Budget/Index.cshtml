@@ -1,0 +1,145 @@
+@using Humans.Domain.Enums
+@model Humans.Web.Models.CoordinatorBudgetViewModel
+@{
+    ViewData["Title"] = $"Budget - {Model.Year.Name}";
+    var groups = Model.Year.Groups
+        .Where(g => !g.IsRestricted || Model.IsFinanceAdmin)
+        .OrderBy(g => g.SortOrder)
+        .ToList();
+    var totalAllocated = groups.SelectMany(g => g.Categories).Sum(c => c.AllocatedAmount);
+    var totalLineItems = groups.SelectMany(g => g.Categories).SelectMany(c => c.LineItems).Sum(li => li.Amount);
+    var unallocated = totalAllocated - totalLineItems;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <h1 class="mb-0">@Model.Year.Name</h1>
+        <span class="badge bg-success fs-6">@Model.Year.Status</span>
+    </div>
+    @if (Model.IsFinanceAdmin)
+    {
+        <a asp-controller="Finance" asp-action="Index" class="btn btn-outline-primary">
+            <i class="fa-solid fa-gear me-1"></i>Finance Admin
+        </a>
+    }
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total Allocated</h6>
+                <h3 class="card-title mb-0">&euro;@totalAllocated.ToString("N2")</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Detailed in Line Items</h6>
+                <h3 class="card-title mb-0">&euro;@totalLineItems.ToString("N2")</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
+                <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
+                    &euro;@unallocated.ToString("N2")
+                </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!groups.Any())
+{
+    <div class="card">
+        <div class="card-body text-center py-4">
+            <p class="text-muted mb-0">No budget groups available yet.</p>
+        </div>
+    </div>
+}
+
+@foreach (var group in groups)
+{
+    var groupAllocated = group.Categories.Sum(c => c.AllocatedAmount);
+    var groupLineItems = group.Categories.SelectMany(c => c.LineItems).Sum(li => li.Amount);
+    var collapseId = $"group-{group.Id.ToString("N")}";
+
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center" role="button" data-bs-toggle="collapse" data-bs-target="#@collapseId">
+            <div>
+                <strong>@group.Name</strong>
+                <span class="text-muted ms-2">(@group.Categories.Count categories)</span>
+                @if (group.IsDepartmentGroup)
+                {
+                    <span class="badge bg-info ms-1">Departments</span>
+                }
+            </div>
+            <span class="text-muted">&euro;@groupAllocated.ToString("N2")</span>
+        </div>
+        <div id="@collapseId" class="collapse show">
+            <div class="card-body p-0">
+                @if (group.Categories.Any())
+                {
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th class="text-end">Allocated</th>
+                                <th class="text-end">Line Items</th>
+                                <th class="text-end">Unallocated</th>
+                                <th>Type</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cat in group.Categories.OrderBy(c => c.SortOrder))
+                            {
+                                var catLineItemTotal = cat.LineItems.Sum(li => li.Amount);
+                                var catUnallocated = cat.AllocatedAmount - catLineItemTotal;
+                                var isOwnDept = cat.TeamId.HasValue && Model.EditableTeamIds.Contains(cat.TeamId.Value);
+                                var isEditable = Model.IsFinanceAdmin || isOwnDept;
+                                <tr>
+                                    <td>
+                                        @cat.Name
+                                        @if (isOwnDept)
+                                        {
+                                            <span class="badge bg-success ms-1">Your dept</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">&euro;@cat.AllocatedAmount.ToString("N2")</td>
+                                    <td class="text-end">&euro;@catLineItemTotal.ToString("N2")</td>
+                                    <td class="text-end @(catUnallocated < 0 ? "text-danger" : "")">
+                                        &euro;@catUnallocated.ToString("N2")
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-@(cat.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary")">
+                                            @cat.ExpenditureType
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-action="CategoryDetail" asp-route-id="@cat.Id"
+                                           class="btn btn-outline-@(isEditable ? "primary" : "secondary") btn-sm">
+                                            @(isEditable ? "Manage" : "View") <i class="fa-solid fa-arrow-right ms-1"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="card-body text-center text-muted py-3">
+                        No categories in this group.
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}

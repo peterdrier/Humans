@@ -1,0 +1,139 @@
+@model Humans.Web.Models.BudgetSummaryViewModel
+@{
+    ViewData["Title"] = $"Budget - {Model.YearName}";
+    var spentPct = Model.TotalBudget > 0 ? Model.TotalLineItems / Model.TotalBudget * 100 : 0;
+    var gaugeClass = spentPct > 100 ? "bg-danger" : spentPct > 80 ? "bg-warning" : "bg-success";
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+    var chartLabels = Model.Slices.Select(s => s.Name).ToList();
+    var chartData = Model.Slices.Select(s => s.Percentage).ToList();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Budget Overview</h1>
+    @if (Model.IsCoordinator)
+    {
+        <a asp-action="Index" class="btn btn-outline-primary">
+            <i class="fa-solid fa-list me-1"></i>Department Detail
+        </a>
+    }
+</div>
+
+<vc:temp-data-alerts />
+
+<p class="text-muted mb-4">How the @Model.YearName budget is allocated across departments and infrastructure.</p>
+
+<!-- Budget utilization -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">Budget Utilization</h5>
+            <span class="fs-4 fw-bold">@spentPct.ToString("N0")%</span>
+        </div>
+        <div class="progress" style="height: 12px;">
+            <div class="progress-bar @gaugeClass" style="width: @Math.Min(spentPct, 100).ToString("N0")%"></div>
+        </div>
+        <small class="text-muted mt-1 d-block">Percentage of the total budget detailed in line items.</small>
+    </div>
+</div>
+
+@if (Model.Slices.Any())
+{
+    <div class="row">
+        <!-- Pie Chart -->
+        <div class="col-lg-7 mb-4">
+            <div class="card">
+                <div class="card-header">Budget Allocation</div>
+                <div class="card-body">
+                    <canvas id="budgetPieChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Breakdown Table -->
+        <div class="col-lg-5 mb-4">
+            <div class="card">
+                <div class="card-header">Breakdown</div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th class="text-end">Share</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var slice in Model.Slices)
+                            {
+                                <tr>
+                                    <td>@slice.Name</td>
+                                    <td class="text-end">@slice.Percentage.ToString("N1")%</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    if (typeof Chart === 'undefined') {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+        s.onload = function() { renderBudgetPie(); };
+        document.head.appendChild(s);
+    } else {
+        document.addEventListener('DOMContentLoaded', function() { renderBudgetPie(); });
+    }
+
+    function renderBudgetPie() {
+        var labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartLabels, jsonOpts));
+        var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(chartData, jsonOpts));
+
+        var colors = [
+            '#0d6efd', '#198754', '#ffc107', '#dc3545', '#0dcaf0',
+            '#6f42c1', '#fd7e14', '#20c997', '#d63384', '#6610f2',
+            '#adb5bd', '#495057', '#e83e8c', '#17a2b8', '#28a745'
+        ];
+
+        new Chart(document.getElementById('budgetPieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: colors.slice(0, data.length),
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 16, usePointStyle: true }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                return ctx.label + ': ' + ctx.raw.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    </script>
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fa-solid fa-chart-pie fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">Budget data not available yet</h4>
+            <p class="text-muted mb-0">Budget allocations will appear here once they are set up by the finance team.</p>
+        </div>
+    </div>
+}
