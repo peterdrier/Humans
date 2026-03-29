@@ -270,10 +270,6 @@ builder.Services.AddRateLimiter(options =>
 // No explicit config needed — the app is only reachable through Traefik/Coolify
 // on internal Docker networks, so trusting any proxy is safe.
 
-// Set HTTPS port for redirect (avoids "Failed to determine the https port" warning
-// when requests bypass the reverse proxy, e.g. internal health checks)
-builder.Services.AddHttpsRedirection(options => options.HttpsPort = 443);
-
 // Session (used for browser-detected timezone — no DB migration needed)
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -398,12 +394,9 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
 }
 
 app.UseStatusCodePagesWithReExecute("/Home/Error/{0}");
-
-app.UseHttpsRedirection();
 
 if (!app.Environment.IsDevelopment())
 {
