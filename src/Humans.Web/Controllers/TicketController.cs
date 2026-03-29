@@ -198,10 +198,16 @@ public class TicketController : HumansControllerBase
             totalActiveVolunteers = await _dbContext.Set<TeamMember>()
                 .CountAsync(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null);
 
-            var matchedUserIds = await GetMatchedTicketUserIdsAsync();
+            var validTicketUserIds = await _dbContext.TicketAttendees
+                .Where(a => a.MatchedUserId != null &&
+                    (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
+                .Select(a => a.MatchedUserId!.Value)
+                .Distinct()
+                .ToListAsync();
+
             volunteersWithTickets = await _dbContext.Set<TeamMember>()
                 .Where(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null)
-                .CountAsync(tm => matchedUserIds.Contains(tm.UserId));
+                .CountAsync(tm => validTicketUserIds.Contains(tm.UserId));
         }
 
         var volunteerCoveragePct = totalActiveVolunteers > 0

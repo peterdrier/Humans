@@ -234,7 +234,7 @@ else if (Model.PendingConsents > 0)
                     {
                         <div class="progress" style="height: 10px;">
                             <div class="progress-bar @(Model.TicketCoveragePercent >= 75 ? "bg-success" : Model.TicketCoveragePercent >= 50 ? "bg-warning" : "bg-primary")"
-                                 style="width: @Model.TicketCoveragePercent%"></div>
+                                 style="width: @(Model.TicketCoveragePercent.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
                         </div>
                     }
                     @if (Humans.Web.Authorization.RoleChecks.CanAccessTickets(User))
