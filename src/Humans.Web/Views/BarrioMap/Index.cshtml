@@ -114,6 +114,7 @@
         let map, draw, state, connection;
         let activeCampSeasonId = null;
         let remoteCursors = {};
+        let currentPopup = null;
 
         // --- Initialization ---
 
@@ -164,6 +165,7 @@
                 f.properties = Object.assign(f.properties || {}, {
                     campSeasonId: p.campSeasonId,
                     campName: p.campName,
+                    areaSqm: p.areaSqm,
                     isOwn: p.campSeasonId === USER_CAMP_SEASON_ID
                 });
                 return f;
@@ -210,12 +212,22 @@
             const isOwn = props.campSeasonId === USER_CAMP_SEASON_ID;
             const canEdit = IS_MAP_ADMIN || (IS_PLACEMENT_OPEN && isOwn);
 
-            if (!canEdit) {
-                new maplibregl.Popup().setLngLat(e.lngLat)
-                    .setHTML(`<strong>${props.campName || 'Camp'}</strong>`)
-                    .addTo(map);
-                return;
+            const area = props.areaSqm ? `<div class="text-muted small">${Math.round(props.areaSqm).toLocaleString()} m²</div>` : '';
+            const editBtn = canEdit ? `<button class="btn btn-primary btn-sm mt-1 js-edit-barrio-btn">Edit</button>` : '';
+
+            if (currentPopup) currentPopup.remove();
+            currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
+                .setHTML(`<strong>${props.campName || 'Camp'}</strong>${area}${editBtn}`)
+                .addTo(map);
+
+            if (canEdit) {
+                currentPopup.getElement().querySelector('.js-edit-barrio-btn')
+                    .addEventListener('click', () => startEditing(campSeasonId));
             }
+        }
+
+        function startEditing(campSeasonId) {
+            if (currentPopup) { currentPopup.remove(); currentPopup = null; }
 
             activeCampSeasonId = campSeasonId;
             draw.deleteAll();
