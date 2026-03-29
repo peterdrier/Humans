@@ -342,12 +342,15 @@
                     <a asp-controller="TeamAdmin" asp-action="Roles" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
                         Manage Roles
                     </a>
-                    <a asp-controller="TeamAdmin" asp-action="Resources" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                        @Localizer["TeamDetail_ManageResources"]
-                    </a>
-                    <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" asp-route-teamId="@Model.Id" class="list-group-item list-group-item-action">
-                        @Localizer["TeamDetail_ManageConsents"]
-                    </a>
+                    @if (Model.CanCurrentUserEditTeam)
+                    {
+                        <a asp-controller="TeamAdmin" asp-action="Resources" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
+                            @Localizer["TeamDetail_ManageResources"]
+                        </a>
+                        <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" asp-route-teamId="@Model.Id" class="list-group-item list-group-item-action">
+                            @Localizer["TeamDetail_ManageConsents"]
+                        </a>
+                    }
                 </div>
             </div>
         }
