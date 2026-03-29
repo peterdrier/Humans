@@ -102,12 +102,12 @@
                             {
                                 var catLineItemTotal = cat.LineItems.Sum(li => li.Amount);
                                 var catUnallocated = cat.AllocatedAmount - catLineItemTotal;
-                                var isEditable = Model.IsFinanceAdmin ||
-                                    (cat.TeamId.HasValue && Model.EditableTeamIds.Contains(cat.TeamId.Value));
+                                var isOwnDept = cat.TeamId.HasValue && Model.EditableTeamIds.Contains(cat.TeamId.Value);
+                                var isEditable = Model.IsFinanceAdmin || isOwnDept;
                                 <tr>
                                     <td>
                                         @cat.Name
-                                        @if (isEditable)
+                                        @if (isOwnDept)
                                         {
                                             <span class="badge bg-success ms-1">Your dept</span>
                                         }
