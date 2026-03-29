@@ -212,40 +212,6 @@ else if (Model.PendingConsents > 0)
             </div>
         }
 
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fa-solid fa-ticket me-1"></i> Your Ticket
-            </div>
-            <div class="card-body">
-                @if (!Model.TicketsConfigured)
-                {
-                    <div class="alert alert-warning mb-0">
-                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Ticket vendor not configured. Contact an admin.
-                    </div>
-                }
-                else if (Model.HasTicket)
-                {
-                    <div class="d-flex align-items-center">
-                        <i class="fa-solid fa-circle-check text-success fs-3 me-3"></i>
-                        <div>
-                            <strong>Thanks for getting your ticket!</strong>
-                            @if (Model.UserTicketCount > 1)
-                            {
-                                <br /><span class="text-muted">You have @Model.UserTicketCount tickets</span>
-                            }
-                        </div>
-                    </div>
-                }
-                else
-                {
-                    <p class="mb-2">We don't see a ticket linked to your account yet.</p>
-                    <a href="@Model.TicketPurchaseUrl" target="_blank" rel="noopener" class="btn btn-primary">
-                        <i class="fa-solid fa-external-link-alt me-1"></i> Buy your ticket now
-                    </a>
-                }
-            </div>
-        </div>
-
         @if (Model.IsVolunteerMember)
         {
             @if (Model.MembershipTier != MembershipTier.Volunteer)
@@ -318,6 +284,40 @@ else if (Model.PendingConsents > 0)
     </div>
 
     <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-ticket me-1"></i> Your Ticket
+            </div>
+            <div class="card-body">
+                @if (!Model.TicketsConfigured)
+                {
+                    <div class="alert alert-warning mb-0">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i> Ticket vendor not configured. Contact an admin.
+                    </div>
+                }
+                else if (Model.HasTicket)
+                {
+                    <div class="d-flex align-items-center">
+                        <i class="fa-solid fa-circle-check text-success fs-3 me-3"></i>
+                        <div>
+                            <strong>Thanks for getting your ticket!</strong>
+                            @if (Model.UserTicketCount > 1)
+                            {
+                                <br /><span class="text-muted">You have @Model.UserTicketCount tickets</span>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="mb-2">We don't see a ticket linked to your account yet.</p>
+                    <a href="@Model.TicketPurchaseUrl" target="_blank" rel="noopener" class="btn btn-primary">
+                        <i class="fa-solid fa-external-link-alt me-1"></i> Buy your ticket now
+                    </a>
+                }
+            </div>
+        </div>
+
         <div class="card mb-4">
             <div class="card-header">@Localizer["Dashboard_YourMembership"]</div>
             <div class="card-body">
