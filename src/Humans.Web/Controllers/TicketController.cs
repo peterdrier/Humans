@@ -184,6 +184,30 @@ public class TicketController : HumansControllerBase
             })
             .ToListAsync();
 
+        // Volunteer ticket coverage
+        var volunteersTeamId = await _dbContext.Set<Team>()
+            .Where(t => t.SystemTeamType == SystemTeamType.Volunteers)
+            .Select(t => t.Id)
+            .OrderBy(id => id)
+            .FirstOrDefaultAsync();
+
+        var totalActiveVolunteers = 0;
+        var volunteersWithTickets = 0;
+        if (volunteersTeamId != Guid.Empty)
+        {
+            totalActiveVolunteers = await _dbContext.Set<TeamMember>()
+                .CountAsync(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null);
+
+            var matchedUserIds = await GetMatchedTicketUserIdsAsync();
+            volunteersWithTickets = await _dbContext.Set<TeamMember>()
+                .Where(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null)
+                .CountAsync(tm => matchedUserIds.Contains(tm.UserId));
+        }
+
+        var volunteerCoveragePct = totalActiveVolunteers > 0
+            ? Math.Round(volunteersWithTickets * 100m / totalActiveVolunteers, 1)
+            : 0;
+
         var model = new TicketDashboardViewModel
         {
             TicketsSold = ticketsSold,
@@ -203,6 +227,9 @@ public class TicketController : HumansControllerBase
             LastSyncAt = syncState?.LastSyncAt,
             RecentOrders = recentOrders,
             IsConfigured = true,
+            TotalActiveVolunteers = totalActiveVolunteers,
+            VolunteersWithTickets = volunteersWithTickets,
+            VolunteerCoveragePercent = volunteerCoveragePct,
         };
 
         return View(model);

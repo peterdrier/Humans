@@ -101,6 +101,34 @@
         </div>
     </div>
 
+    <!-- Volunteer Ticket Coverage -->
+    @if (Model.TotalActiveVolunteers > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-users"></i> Volunteer Ticket Coverage
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>
+                        <strong>@Model.VolunteersWithTickets</strong> / @Model.TotalActiveVolunteers humans have tickets
+                    </span>
+                    <span class="fs-4 fw-bold @(Model.VolunteerCoveragePercent >= 75 ? "text-success" : Model.VolunteerCoveragePercent >= 50 ? "text-warning" : "text-danger")">
+                        @Model.VolunteerCoveragePercent%
+                    </span>
+                </div>
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar @(Model.VolunteerCoveragePercent >= 75 ? "bg-success" : Model.VolunteerCoveragePercent >= 50 ? "bg-warning" : "bg-danger")"
+                         style="width: @Model.VolunteerCoveragePercent%">
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <a asp-action="WhoHasntBought" class="text-muted"><i class="fa-solid fa-arrow-right"></i> View details</a>
+                </div>
+            </div>
+        </div>
+    }
+
     <!-- Daily Sales Chart -->
     @if (Model.DailySales.Count > 0)
     {

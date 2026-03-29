@@ -37,6 +37,11 @@ public class TicketDashboardViewModel
 
     // Who hasn't bought count (for dashboard link)
     public int WhoHasntBoughtCount { get; set; }
+
+    // Volunteer ticket coverage
+    public int TotalActiveVolunteers { get; set; }
+    public int VolunteersWithTickets { get; set; }
+    public decimal VolunteerCoveragePercent { get; set; }
 }
 
 public class PaymentMethodFeeBreakdown
