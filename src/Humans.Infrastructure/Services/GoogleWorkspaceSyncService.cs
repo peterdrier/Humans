@@ -1409,7 +1409,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         AllowWebPosting = "true",
         MessageModerationLevel = "MODERATE_NONE",
         SpamModerationLevel = "MODERATE",
-        EnableCollaborativeInbox = "false"
+        EnableCollaborativeInbox = "true"
     };
 
     private static Dictionary<string, string?> GroupSettingsToDict(Google.Apis.Groupssettings.v1.Data.Groups g) => new(StringComparer.Ordinal)
