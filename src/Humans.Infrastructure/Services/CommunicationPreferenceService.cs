@@ -183,8 +183,9 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
 
             return (userId, category);
         }
-        catch (CryptographicException)
+        catch (CryptographicException ex)
         {
+            _logger.LogWarning(ex, "Failed to validate unsubscribe token");
             return null;
         }
     }

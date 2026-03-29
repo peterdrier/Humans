@@ -148,13 +148,13 @@
                             @Html.AntiForgeryToken()
                             @if (rota.IsVisibleToVolunteers)
                             {
-                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Hide from volunteers">
+                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Hide from humans">
                                     <i class="fa-solid fa-eye-slash"></i>
                                 </button>
                             }
                             else
                             {
-                                <button type="submit" class="btn btn-sm btn-warning" title="Show to volunteers">
+                                <button type="submit" class="btn btn-sm btn-warning" title="Show to humans">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
                             }

@@ -836,6 +836,7 @@ public class HumanController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Failed to create contact for {Email}", model.Email);
             ModelState.AddModelError(string.Empty, ex.Message);
             return View(model);
         }
