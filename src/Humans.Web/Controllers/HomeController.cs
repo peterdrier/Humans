@@ -1,14 +1,10 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 
@@ -23,10 +19,8 @@ public class HomeController : HumansControllerBase
     private readonly IShiftSignupService _shiftSignup;
     private readonly IConfiguration _configuration;
     private readonly IClock _clock;
-    private readonly HumansDbContext _dbContext;
-    private readonly ITicketVendorService _vendorService;
     private readonly TicketVendorSettings _ticketSettings;
-    private readonly IMemoryCache _cache;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly ILogger<HomeController> _logger;
 
     public HomeController(
@@ -38,10 +32,8 @@ public class HomeController : HumansControllerBase
         IShiftSignupService shiftSignup,
         IConfiguration configuration,
         IClock clock,
-        HumansDbContext dbContext,
-        ITicketVendorService vendorService,
         IOptions<TicketVendorSettings> ticketSettings,
-        IMemoryCache cache,
+        ITicketQueryService ticketQueryService,
         ILogger<HomeController> logger)
         : base(userManager)
     {
@@ -52,10 +44,8 @@ public class HomeController : HumansControllerBase
         _shiftSignup = shiftSignup;
         _configuration = configuration;
         _clock = clock;
-        _dbContext = dbContext;
-        _vendorService = vendorService;
         _ticketSettings = ticketSettings.Value;
-        _cache = cache;
+        _ticketQueryService = ticketQueryService;
         _logger = logger;
     }
 
@@ -256,40 +246,9 @@ public class HomeController : HumansControllerBase
         {
             if (_ticketSettings.IsConfigured)
             {
-                // Check tickets matched by MatchedUserId (auto-matched during sync)
-                var attendeeCount = await _dbContext.TicketAttendees.CountAsync(a =>
-                    a.MatchedUserId == user.Id &&
-                    (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn));
-
-                var buyerCount = await _dbContext.TicketOrders.CountAsync(o =>
-                    o.MatchedUserId == user.Id);
-
-                // Also check all verified user emails for unmatched orders/attendees
-                if (attendeeCount == 0 && buyerCount == 0)
-                {
-                    var userEmails = await _dbContext.Set<Domain.Entities.UserEmail>()
-                        .Where(e => e.UserId == user.Id && e.IsVerified)
-                        .Select(e => e.Email)
-                        .ToListAsync();
-
-                    if (userEmails.Count > 0)
-                    {
-                        attendeeCount = await _dbContext.TicketAttendees.CountAsync(a =>
-                            a.AttendeeEmail != null &&
-                            userEmails.Contains(a.AttendeeEmail) &&
-                            (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn));
-
-                        if (attendeeCount == 0)
-                        {
-                            buyerCount = await _dbContext.TicketOrders.CountAsync(o =>
-                                userEmails.Contains(o.BuyerEmail));
-                        }
-                    }
-                }
-
-                var totalTickets = Math.Max(attendeeCount, buyerCount);
-                viewModel.HasTicket = totalTickets > 0;
-                viewModel.UserTicketCount = totalTickets;
+                var ticketCount = await _ticketQueryService.GetUserTicketCountAsync(user.Id);
+                viewModel.HasTicket = ticketCount > 0;
+                viewModel.UserTicketCount = ticketCount;
             }
         }
         catch (Exception ex)
