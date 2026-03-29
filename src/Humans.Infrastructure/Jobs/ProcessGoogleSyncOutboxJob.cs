@@ -12,7 +12,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Drains queued Google sync outbox events and executes the underlying sync operations.
 /// SyncSettings enforcement is handled by the gateway methods in GoogleWorkspaceSyncService.
 /// </summary>
-public class ProcessGoogleSyncOutboxJob
+public class ProcessGoogleSyncOutboxJob : IRecurringJob
 {
     private const int BatchSize = 100;
     private const int MaxRetryCount = 10;

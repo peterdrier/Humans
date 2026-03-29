@@ -14,7 +14,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <summary>
 /// Daily job that emails each Admin a digest of system health and pending actions.
 /// </summary>
-public class SendAdminDailyDigestJob
+public class SendAdminDailyDigestJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;

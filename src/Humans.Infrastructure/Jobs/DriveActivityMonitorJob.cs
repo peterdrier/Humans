@@ -9,7 +9,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Periodic job that checks Google Drive Activity API for permission changes
 /// not initiated by the system's service account and logs anomalies to the audit log.
 /// </summary>
-public class DriveActivityMonitorJob
+public class DriveActivityMonitorJob : IRecurringJob
 {
     private readonly IDriveActivityMonitorService _monitorService;
     private readonly HumansMetricsService _metrics;

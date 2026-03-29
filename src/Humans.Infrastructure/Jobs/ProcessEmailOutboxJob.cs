@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Processes queued email outbox messages by sending them via the email transport.
 /// Runs every 1 minute via Hangfire.
 /// </summary>
-public class ProcessEmailOutboxJob
+public class ProcessEmailOutboxJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailTransport _transport;

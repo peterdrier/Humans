@@ -9,7 +9,7 @@ using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
-public class TermRenewalReminderJob
+public class TermRenewalReminderJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;

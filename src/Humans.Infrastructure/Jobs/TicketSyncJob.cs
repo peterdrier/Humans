@@ -11,7 +11,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Runs every 15 minutes by default. Can also be triggered manually.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class TicketSyncJob
+public class TicketSyncJob : IRecurringJob
 {
     private readonly ITicketSyncService _syncService;
     private readonly TicketVendorSettings _settings;

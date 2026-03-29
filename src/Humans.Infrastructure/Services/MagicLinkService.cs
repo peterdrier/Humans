@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Configuration;
@@ -86,7 +87,7 @@ public class MagicLinkService : IMagicLinkService
     public async Task<User?> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
         // Check if this token was already consumed
-        var cacheKey = $"magic_link_used:{token[..Math.Min(token.Length, 32)]}";
+        var cacheKey = CacheKeys.MagicLinkUsed(token[..Math.Min(token.Length, 32)]);
         if (_memoryCache.TryGetValue(cacheKey, out _))
         {
             _logger.LogWarning("Magic link login: token already used for user {UserId}", userId);
@@ -186,7 +187,7 @@ public class MagicLinkService : IMagicLinkService
     private async Task SendSignupLinkAsync(string email, string? returnUrl, CancellationToken ct)
     {
         // Rate limit signup emails: one per 60 seconds per email address
-        var cacheKey = $"magic_link_signup:{email.ToUpperInvariant()}";
+        var cacheKey = CacheKeys.MagicLinkSignupRateLimit(email.ToUpperInvariant());
         if (_memoryCache.TryGetValue(cacheKey, out _))
         {
             _logger.LogDebug("Magic link signup rate-limited for {Email}", email);

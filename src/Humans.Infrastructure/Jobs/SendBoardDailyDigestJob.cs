@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Nightly job that emails each Board member a summary of the previous UTC day's approvals
 /// plus outstanding items requiring attention.
 /// </summary>
-public class SendBoardDailyDigestJob
+public class SendBoardDailyDigestJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;

@@ -32,28 +32,18 @@ public class EmailRenderer : IEmailRenderer
     public EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName)
     {
         // Admin email — always English, no culture switch
-        var subject = string.Format(CultureInfo.CurrentCulture, _localizer["Email_ApplicationSubmitted_Subject"].Value, applicantName);
-        var body = string.Format(
-            CultureInfo.CurrentCulture,
-            _localizer["Email_ApplicationSubmitted_Body"].Value,
-            HtmlEncode(applicantName),
-            applicationId,
-            _settings.BaseUrl);
-        return new EmailContent(subject, body);
+        return new EmailContent(
+            Lf("Email_ApplicationSubmitted_Subject", applicantName),
+            Lf("Email_ApplicationSubmitted_Body", HtmlEncode(applicantName), applicationId, _settings.BaseUrl));
     }
 
     public EmailContent RenderApplicationApproved(string userName, MembershipTier tier, string? culture = null)
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_ApplicationApproved_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_ApplicationApproved_Body"].Value,
-                HtmlEncode(userName),
-                tier,
-                _settings.BaseUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_ApplicationApproved_Subject"),
+                Lf("Email_ApplicationApproved_Body", HtmlEncode(userName), tier, _settings.BaseUrl));
         }
     }
 
@@ -61,18 +51,12 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_ApplicationRejected_Subject"].Value;
             var reasonHtml = string.IsNullOrEmpty(reason)
                 ? ""
-                : string.Format(CultureInfo.CurrentCulture, _localizer["Email_ReasonLine"].Value, HtmlEncode(reason));
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_ApplicationRejected_Body"].Value,
-                HtmlEncode(userName),
-                tier,
-                reasonHtml,
-                _settings.AdminAddress);
-            return new EmailContent(subject, body);
+                : Lf("Email_ReasonLine", HtmlEncode(reason));
+            return new EmailContent(
+                L("Email_ApplicationRejected_Subject"),
+                Lf("Email_ApplicationRejected_Body", HtmlEncode(userName), tier, reasonHtml, _settings.AdminAddress));
         }
     }
 
@@ -80,17 +64,12 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_SignupRejected_Subject"].Value;
             var reasonHtml = string.IsNullOrEmpty(reason)
                 ? ""
-                : string.Format(CultureInfo.CurrentCulture, _localizer["Email_ReasonLine"].Value, HtmlEncode(reason));
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_SignupRejected_Body"].Value,
-                HtmlEncode(userName),
-                reasonHtml,
-                _settings.AdminAddress);
-            return new EmailContent(subject, body);
+                : Lf("Email_ReasonLine", HtmlEncode(reason));
+            return new EmailContent(
+                L("Email_SignupRejected_Subject"),
+                Lf("Email_SignupRejected_Body", HtmlEncode(userName), reasonHtml, _settings.AdminAddress));
         }
     }
 
@@ -99,16 +78,12 @@ public class EmailRenderer : IEmailRenderer
         using (WithCulture(culture))
         {
             var subject = documentNames.Count == 1
-                ? string.Format(CultureInfo.CurrentCulture, _localizer["Email_ReConsentRequired_Subject_Single"].Value, documentNames[0])
-                : _localizer["Email_ReConsentRequired_Subject_Multiple"].Value;
+                ? Lf("Email_ReConsentRequired_Subject_Single", documentNames[0])
+                : L("Email_ReConsentRequired_Subject_Multiple");
             var docsHtml = string.Join("\n", documentNames.Select(d => $"<li><strong>{HtmlEncode(d)}</strong></li>"));
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_ReConsentsRequired_Body"].Value,
-                HtmlEncode(userName),
-                docsHtml,
-                _settings.BaseUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                subject,
+                Lf("Email_ReConsentsRequired_Body", HtmlEncode(userName), docsHtml, _settings.BaseUrl));
         }
     }
 
@@ -116,16 +91,10 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = string.Format(CultureInfo.CurrentCulture, _localizer["Email_ReConsentReminder_Subject"].Value, daysRemaining);
             var docsHtml = string.Join("\n", documentNames.Select(d => $"<li>{HtmlEncode(d)}</li>"));
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_ReConsentReminder_Body"].Value,
-                HtmlEncode(userName),
-                daysRemaining,
-                docsHtml,
-                _settings.BaseUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                Lf("Email_ReConsentReminder_Subject", daysRemaining),
+                Lf("Email_ReConsentReminder_Body", HtmlEncode(userName), daysRemaining, docsHtml, _settings.BaseUrl));
         }
     }
 
@@ -133,13 +102,9 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_Welcome_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_Welcome_Body"].Value,
-                HtmlEncode(userName),
-                _settings.BaseUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_Welcome_Subject"),
+                Lf("Email_Welcome_Body", HtmlEncode(userName), _settings.BaseUrl));
         }
     }
 
@@ -147,15 +112,9 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_AccessSuspended_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_AccessSuspended_Body"].Value,
-                HtmlEncode(userName),
-                HtmlEncode(reason),
-                _settings.BaseUrl,
-                _settings.AdminAddress);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_AccessSuspended_Subject"),
+                Lf("Email_AccessSuspended_Body", HtmlEncode(userName), HtmlEncode(reason), _settings.BaseUrl, _settings.AdminAddress));
         }
     }
 
@@ -166,14 +125,9 @@ public class EmailRenderer : IEmailRenderer
             var templateKey = isConflict
                 ? "Email_EmailVerification_Merge_Body"
                 : "Email_EmailVerification_Body";
-            var subject = _localizer["Email_VerifyEmail_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer[templateKey].Value,
-                HtmlEncode(userName),
-                HtmlEncode(toEmail),
-                verificationUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_VerifyEmail_Subject"),
+                Lf(templateKey, HtmlEncode(userName), HtmlEncode(toEmail), verificationUrl));
         }
     }
 
@@ -181,14 +135,9 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_DeletionRequested_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_AccountDeletionRequested_Body"].Value,
-                HtmlEncode(userName),
-                formattedDeletionDate,
-                _settings.BaseUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_DeletionRequested_Subject"),
+                Lf("Email_AccountDeletionRequested_Body", HtmlEncode(userName), formattedDeletionDate, _settings.BaseUrl));
         }
     }
 
@@ -196,12 +145,9 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_AccountDeleted_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_AccountDeleted_Body"].Value,
-                HtmlEncode(userName));
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_AccountDeleted_Subject"),
+                Lf("Email_AccountDeleted_Body", HtmlEncode(userName)));
         }
     }
 
@@ -209,25 +155,17 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = string.Format(CultureInfo.CurrentCulture, _localizer["Email_AddedToTeam_Subject"].Value, teamName);
             var teamUrl = $"{_settings.BaseUrl}/Teams/{teamSlug}";
             var resourcesHtml = resources.Count > 0
-                ? string.Format(
-                    CultureInfo.CurrentCulture,
-                    _localizer["Email_ResourcesSection"].Value,
+                ? Lf("Email_ResourcesSection",
                     string.Join("\n", resources.Select(r =>
                         !string.IsNullOrEmpty(r.Url)
                             ? $"<li><a href=\"{r.Url}\">{HtmlEncode(r.Name)}</a></li>"
                             : $"<li>{HtmlEncode(r.Name)}</li>")))
                 : "";
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_AddedToTeam_Body"].Value,
-                HtmlEncode(userName),
-                HtmlEncode(teamName),
-                resourcesHtml,
-                teamUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                Lf("Email_AddedToTeam_Subject", teamName),
+                Lf("Email_AddedToTeam_Body", HtmlEncode(userName), HtmlEncode(teamName), resourcesHtml, teamUrl));
         }
     }
 
@@ -235,15 +173,9 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = string.Format(CultureInfo.CurrentCulture, _localizer["Email_TermRenewalReminder_Subject"].Value, tierName);
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_TermRenewalReminder_Body"].Value,
-                HtmlEncode(userName),
-                HtmlEncode(tierName),
-                HtmlEncode(expiresAt),
-                _settings.BaseUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                Lf("Email_TermRenewalReminder_Subject", tierName),
+                Lf("Email_TermRenewalReminder_Body", HtmlEncode(userName), HtmlEncode(tierName), HtmlEncode(expiresAt), _settings.BaseUrl));
         }
     }
 
@@ -251,30 +183,16 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDailyDigest_Subject"].Value, date);
-
             var outstandingHtml = BuildOutstandingSection(outstandingCounts);
 
-            string approvalsHtml;
-            if (tierGroups.Count > 0)
-            {
-                var tierSectionsHtml = string.Join("\n", tierGroups.Select(g =>
-                    $"<h3>{HtmlEncode(g.TierLabel)}</h3>\n<ul>\n{string.Join("\n", g.DisplayNames.Select(n => $"<li>{HtmlEncode(n)}</li>"))}\n</ul>"));
-                approvalsHtml = tierSectionsHtml;
-            }
-            else
-            {
-                approvalsHtml = $"<p>{_localizer["Email_BoardDigest_NoApprovals"].Value}</p>";
-            }
+            var approvalsHtml = tierGroups.Count > 0
+                ? string.Join("\n", tierGroups.Select(g =>
+                    $"<h3>{HtmlEncode(g.TierLabel)}</h3>\n<ul>\n{string.Join("\n", g.DisplayNames.Select(n => $"<li>{HtmlEncode(n)}</li>"))}\n</ul>"))
+                : $"<p>{L("Email_BoardDigest_NoApprovals")}</p>";
 
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_BoardDailyDigest_Body"].Value,
-                HtmlEncode(boardMemberName),
-                HtmlEncode(date),
-                approvalsHtml,
-                outstandingHtml);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                Lf("Email_BoardDailyDigest_Subject", date),
+                Lf("Email_BoardDailyDigest_Body", HtmlEncode(boardMemberName), HtmlEncode(date), approvalsHtml, outstandingHtml));
         }
     }
 
@@ -290,42 +208,24 @@ public class EmailRenderer : IEmailRenderer
         var items = new List<string>();
 
         if (counts.OnboardingReview > 0)
-        {
-            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_OnboardingReview"].Value, counts.OnboardingReview);
-            items.Add($"<li>{text} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
-        }
+            items.Add($"<li>{Lf("Email_BoardDigest_OnboardingReview", counts.OnboardingReview)} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.StillOnboarding > 0)
-        {
-            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_StillOnboarding"].Value, counts.StillOnboarding);
-            items.Add($"<li>{text}</li>");
-        }
+            items.Add($"<li>{Lf("Email_BoardDigest_StillOnboarding", counts.StillOnboarding)}</li>");
 
         if (counts.BoardVotingTotal > 0)
-        {
-            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_BoardVoting"].Value, counts.BoardVotingTotal, counts.BoardVotingYours);
-            items.Add($"<li>{text} <a href=\"{_settings.BaseUrl}/Applications\">&rarr;</a></li>");
-        }
+            items.Add($"<li>{Lf("Email_BoardDigest_BoardVoting", counts.BoardVotingTotal, counts.BoardVotingYours)} <a href=\"{_settings.BaseUrl}/Applications\">&rarr;</a></li>");
 
         if (counts.TeamJoinRequests > 0)
-        {
-            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_TeamJoinRequests"].Value, counts.TeamJoinRequests);
-            items.Add($"<li>{text} <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
-        }
+            items.Add($"<li>{Lf("Email_BoardDigest_TeamJoinRequests", counts.TeamJoinRequests)} <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
 
         if (counts.PendingConsents > 0)
-        {
-            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_PendingConsents"].Value, counts.PendingConsents);
-            items.Add($"<li>{text}</li>");
-        }
+            items.Add($"<li>{Lf("Email_BoardDigest_PendingConsents", counts.PendingConsents)}</li>");
 
         if (counts.PendingDeletions > 0)
-        {
-            var text = string.Format(CultureInfo.CurrentCulture, _localizer["Email_BoardDigest_PendingDeletions"].Value, counts.PendingDeletions);
-            items.Add($"<li>{text}</li>");
-        }
+            items.Add($"<li>{Lf("Email_BoardDigest_PendingDeletions", counts.PendingDeletions)}</li>");
 
-        var header = _localizer["Email_BoardDigest_OutstandingHeader"].Value;
+        var header = L("Email_BoardDigest_OutstandingHeader");
         return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
     }
 
@@ -372,16 +272,10 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_FeedbackResponse_Subject"].Value;
             var responseHtml = Markdig.Markdown.ToHtml(responseMessage);
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_FeedbackResponse_Body"].Value,
-                HtmlEncode(userName),
-                HtmlEncode(originalDescription),
-                responseHtml,
-                HtmlEncode(reportLink));
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_FeedbackResponse_Subject"),
+                Lf("Email_FeedbackResponse_Body", HtmlEncode(userName), HtmlEncode(originalDescription), responseHtml, HtmlEncode(reportLink)));
         }
     }
 
@@ -395,26 +289,15 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_FacilitatedMessage_Subject"].Value,
-                senderName);
-
             var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
 
             var contactInfoHtml = includeContactInfo && !string.IsNullOrEmpty(senderEmail)
                 ? $"<p><strong>{HtmlEncode(senderName)}</strong> &mdash; <a href=\"mailto:{HtmlEncode(senderEmail)}\">{HtmlEncode(senderEmail)}</a></p>"
-                : $"<p><em>{HtmlEncode(_localizer["Email_FacilitatedMessage_NoContactInfo"].Value)}</em></p>";
+                : $"<p><em>{HtmlEncode(L("Email_FacilitatedMessage_NoContactInfo"))}</em></p>";
 
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_FacilitatedMessage_Body"].Value,
-                HtmlEncode(recipientName),
-                HtmlEncode(senderName),
-                sanitizedMessage,
-                contactInfoHtml);
-
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                Lf("Email_FacilitatedMessage_Subject", senderName),
+                Lf("Email_FacilitatedMessage_Body", HtmlEncode(recipientName), HtmlEncode(senderName), sanitizedMessage, contactInfoHtml));
         }
     }
 
@@ -422,13 +305,9 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_MagicLinkLogin_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_MagicLinkLogin_Body"].Value,
-                HtmlEncode(displayName),
-                magicLinkUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_MagicLinkLogin_Subject"),
+                Lf("Email_MagicLinkLogin_Body", HtmlEncode(displayName), magicLinkUrl));
         }
     }
 
@@ -436,12 +315,9 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_MagicLinkSignup_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_MagicLinkSignup_Body"].Value,
-                magicLinkUrl);
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_MagicLinkSignup_Subject"),
+                Lf("Email_MagicLinkSignup_Body", magicLinkUrl));
         }
     }
 
@@ -449,16 +325,16 @@ public class EmailRenderer : IEmailRenderer
     {
         using (WithCulture(culture))
         {
-            var subject = _localizer["Email_WorkspaceCredentials_Subject"].Value;
-            var body = string.Format(
-                CultureInfo.CurrentCulture,
-                _localizer["Email_WorkspaceCredentials_Body"].Value,
-                HtmlEncode(userName),
-                HtmlEncode(workspaceEmail),
-                HtmlEncode(tempPassword));
-            return new EmailContent(subject, body);
+            return new EmailContent(
+                L("Email_WorkspaceCredentials_Subject"),
+                Lf("Email_WorkspaceCredentials_Body", HtmlEncode(userName), HtmlEncode(workspaceEmail), HtmlEncode(tempPassword)));
         }
     }
+
+    private string L(string key) => _localizer[key].Value;
+
+    private string Lf(string key, params object[] args) =>
+        string.Format(CultureInfo.CurrentCulture, _localizer[key].Value, args);
 
     private CultureScope WithCulture(string? culture)
     {

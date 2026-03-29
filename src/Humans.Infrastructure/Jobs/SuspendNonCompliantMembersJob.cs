@@ -13,7 +13,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Background job that suspends members who haven't re-consented to required documents
 /// after the grace period has expired.
 /// </summary>
-public class SuspendNonCompliantMembersJob
+public class SuspendNonCompliantMembersJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IMembershipCalculator _membershipCalculator;

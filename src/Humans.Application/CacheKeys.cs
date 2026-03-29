@@ -18,4 +18,8 @@ public static class CacheKeys
     public static string ShiftAuthorization(Guid userId) => $"shift-auth:{userId:N}";
 
     public static string LegalDocument(string slug) => $"Legal:{slug}";
+
+    // Magic link sentinel keys (rate limiting and replay prevention)
+    public static string MagicLinkUsed(string tokenPrefix) => $"magic_link_used:{tokenPrefix}";
+    public static string MagicLinkSignupRateLimit(string normalizedEmail) => $"magic_link_signup:{normalizedEmail}";
 }

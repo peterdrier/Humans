@@ -10,7 +10,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Scheduled job that reconciles Google resources.
 /// Add/remove behavior is controlled by SyncSettings, enforced by the service gateway methods.
 /// </summary>
-public class GoogleResourceReconciliationJob
+public class GoogleResourceReconciliationJob : IRecurringJob
 {
     private readonly IGoogleSyncService _googleSyncService;
     private readonly HumansMetricsService _metrics;

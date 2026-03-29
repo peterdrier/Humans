@@ -7,12 +7,14 @@ using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 
+using Humans.Application.Interfaces;
+
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
 /// Purges old sent messages from the email outbox. Runs weekly.
 /// </summary>
-public class CleanupEmailOutboxJob
+public class CleanupEmailOutboxJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
