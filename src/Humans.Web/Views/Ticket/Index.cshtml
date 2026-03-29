@@ -24,9 +24,9 @@
     <vc:temp-data-alerts />
 
     <!-- Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card">
+    <div class="row row-cols-1 row-cols-md-3 row-cols-xl-5 g-3 mb-4">
+        <div class="col">
+            <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Tickets Sold</h6>
                     <h3 class="card-title">@Model.TicketsSold.ToString("N0")</h3>
@@ -51,8 +51,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card">
+        <div class="col">
+            <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Gross Revenue</h6>
                     <h3 class="card-title">@Model.Currency @Model.Revenue.ToString("N0")</h3>
@@ -65,8 +65,8 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card">
+        <div class="col">
+            <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Net Revenue</h6>
                     <h3 class="card-title">@Model.Currency @Model.NetRevenue.ToString("N0")</h3>
@@ -83,8 +83,16 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card">
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="card-subtitle mb-2 text-muted">Avg. Ticket Price</h6>
+                    <h3 class="card-title">@Model.Currency @Model.AveragePrice.ToString("N2")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100">
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Remaining</h6>
                     <h3 class="card-title">@Model.TicketsRemaining.ToString("N0") tickets left</h3>
