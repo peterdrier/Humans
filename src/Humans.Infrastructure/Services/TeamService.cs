@@ -280,9 +280,7 @@ public class TeamService : ITeamService
 
         var currentUserId = userId.Value;
         var isCurrentUserMember = activeMembers.Any(m => m.UserId == currentUserId);
-        var isCurrentUserCoordinator = activeMembers.Any(m =>
-            m.UserId == currentUserId &&
-            m.Role == TeamMemberRole.Coordinator);
+        var isCurrentUserCoordinator = await IsUserCoordinatorOfTeamAsync(team.Id, currentUserId, cancellationToken);
         var isBoardMember = await IsUserBoardMemberAsync(currentUserId, cancellationToken);
         var isAdmin = await IsUserAdminAsync(currentUserId, cancellationToken);
         var isTeamsAdmin = await IsUserTeamsAdminAsync(currentUserId, cancellationToken);
