@@ -514,9 +514,12 @@ public class HumanController : HumansControllerBase
                 await _emailService.SendWorkspaceCredentialsAsync(
                     recoveryEmail, user.DisplayName, fullEmail, tempPassword,
                     user.PreferredLanguage);
+                SetSuccess($"Account {fullEmail} provisioned and linked. Credentials sent to {recoveryEmail}.");
             }
-
-            SetSuccess($"Account {fullEmail} provisioned and linked. Credentials sent to {recoveryEmail}.");
+            else
+            {
+                SetSuccess($"Account {fullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            }
         }
         catch (Exception ex)
         {
