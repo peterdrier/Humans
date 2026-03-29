@@ -84,7 +84,7 @@ public class TicketController : HumansControllerBase
         var totalStripeFees = await paidOrders.SumAsync(o => (decimal?)o.StripeFee ?? 0m);
         var totalAppFees = await paidOrders.SumAsync(o => (decimal?)o.ApplicationFee ?? 0m);
         var netRevenue = revenue - totalStripeFees - totalAppFees;
-        var avgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
+        var avgPrice = ticketsSold > 0 ? netRevenue / ticketsSold : 0;
         var unmatchedCount = await orders.CountAsync(o => o.MatchedUserId == null);
 
         // Fee breakdown by payment method (load in memory — small dataset)
@@ -198,12 +198,20 @@ public class TicketController : HumansControllerBase
             totalActiveVolunteers = await _dbContext.Set<TeamMember>()
                 .CountAsync(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null);
 
-            var validTicketUserIds = await _dbContext.TicketAttendees
+            var attendeeUserIds = await _dbContext.TicketAttendees
                 .Where(a => a.MatchedUserId != null &&
                     (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
                 .Select(a => a.MatchedUserId!.Value)
                 .Distinct()
                 .ToListAsync();
+
+            var buyerUserIds = await _dbContext.TicketOrders
+                .Where(o => o.MatchedUserId != null)
+                .Select(o => o.MatchedUserId!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            var validTicketUserIds = attendeeUserIds.Union(buyerUserIds).ToList();
 
             volunteersWithTickets = await _dbContext.Set<TeamMember>()
                 .Where(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null)
