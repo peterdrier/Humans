@@ -208,13 +208,12 @@ public class BudgetService : IBudgetService
         if (year.Status == BudgetYearStatus.Active)
             throw new InvalidOperationException("Cannot delete an active budget year. Close it first.");
 
-        var now = _clock.GetCurrentInstant();
-
-        LogAudit(year.Id, nameof(BudgetYear), year.Id,
-            $"Deleted budget year '{year.Name}' ({year.Year})",
-            actorUserId, now);
-
-        await _dbContext.SaveChangesAsync();
+        // Remove audit logs first — FK to BudgetYearId is Restrict,
+        // so the year can't be deleted while audit entries reference it.
+        var auditLogs = await _dbContext.Set<BudgetAuditLog>()
+            .Where(a => a.BudgetYearId == yearId)
+            .ToListAsync();
+        _dbContext.Set<BudgetAuditLog>().RemoveRange(auditLogs);
 
         _dbContext.BudgetYears.Remove(year);
         await _dbContext.SaveChangesAsync();
