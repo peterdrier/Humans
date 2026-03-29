@@ -249,40 +249,52 @@ public class HomeController : HumansControllerBase
             _logger.LogError(ex, "Failed to load shift cards for dashboard");
         }
 
-        // Ticket summary — guarded, failures must never crash the homepage
+        // Per-user ticket status — always renders, shows warning when unconfigured
+        viewModel.TicketPurchaseUrl = "https://tickets.nobodies.team";
+        viewModel.TicketsConfigured = _ticketSettings.IsConfigured;
         try
         {
             if (_ticketSettings.IsConfigured)
             {
-                var ticketsSold = await _dbContext.TicketAttendees.CountAsync(a =>
-                    a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn);
+                // Check tickets matched by MatchedUserId (auto-matched during sync)
+                var attendeeCount = await _dbContext.TicketAttendees.CountAsync(a =>
+                    a.MatchedUserId == user.Id &&
+                    (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn));
 
-                var totalCapacity = 0;
-                try
+                var buyerCount = await _dbContext.TicketOrders.CountAsync(o =>
+                    o.MatchedUserId == user.Id);
+
+                // Also check all verified user emails for unmatched orders/attendees
+                if (attendeeCount == 0 && buyerCount == 0)
                 {
-                    var summary = await _cache.GetOrCreateAsync(CacheKeys.TicketEventSummary, async entry =>
+                    var userEmails = await _dbContext.Set<Domain.Entities.UserEmail>()
+                        .Where(e => e.UserId == user.Id && e.IsVerified)
+                        .Select(e => e.Email)
+                        .ToListAsync();
+
+                    if (userEmails.Count > 0)
                     {
-                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(15);
-                        return await _vendorService.GetEventSummaryAsync(_ticketSettings.EventId);
-                    });
-                    totalCapacity = summary?.TotalCapacity ?? 0;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Could not fetch event summary for homepage ticket card");
+                        attendeeCount = await _dbContext.TicketAttendees.CountAsync(a =>
+                            a.AttendeeEmail != null &&
+                            userEmails.Contains(a.AttendeeEmail) &&
+                            (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn));
+
+                        if (attendeeCount == 0)
+                        {
+                            buyerCount = await _dbContext.TicketOrders.CountAsync(o =>
+                                userEmails.Contains(o.BuyerEmail));
+                        }
+                    }
                 }
 
-                viewModel.TicketsConfigured = true;
-                viewModel.TicketsSold = ticketsSold;
-                viewModel.TicketCapacity = totalCapacity;
-                viewModel.TicketCoveragePercent = totalCapacity > 0
-                    ? Math.Round(ticketsSold * 100m / totalCapacity, 1)
-                    : 0;
+                var totalTickets = Math.Max(attendeeCount, buyerCount);
+                viewModel.HasTicket = totalTickets > 0;
+                viewModel.UserTicketCount = totalTickets;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load ticket summary for homepage dashboard");
+            _logger.LogError(ex, "Failed to load ticket status for user {UserId}", user.Id);
         }
 
         return View("Dashboard", viewModel);
