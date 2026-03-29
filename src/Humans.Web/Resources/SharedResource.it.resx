@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -55,15 +55,15 @@
   <data name="Nav_Home" xml:space="preserve"><value>Home</value></data>
   <data name="Nav_MyProfile" xml:space="preserve"><value>Il mio Profilo</value></data>
   <data name="Nav_Teams" xml:space="preserve"><value>Team</value></data>
-  <data name="Nav_Shifts" xml:space="preserve"><value>Volunteer</value></data>
-  <data name="Nav_Roster" xml:space="preserve"><value>Roster</value></data>
+  <data name="Nav_Shifts" xml:space="preserve"><value>Volontariato</value></data>
+  <data name="Nav_Roster" xml:space="preserve"><value>Elenco</value></data>
   <data name="Nav_Consents" xml:space="preserve"><value>Accordi</value></data>
   <data name="Nav_Governance" xml:space="preserve"><value>Governance</value></data>
   <data name="Nav_Privacy" xml:space="preserve"><value>Privacy</value></data>
   <data name="Nav_About" xml:space="preserve"><value>Chi siamo</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Coda di revisione</value></data>
-  <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
+  <data name="Nav_MyFeedback" xml:space="preserve"><value>Il mio feedback</value></data>
 
 
   <!-- ======================== -->
@@ -87,7 +87,7 @@
   <data name="Login_Title" xml:space="preserve"><value>Accedi</value></data>
   <data name="Login_Description" xml:space="preserve"><value>Accedi per accedere a Humans.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Accedi con Google</value></data>
-  <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>
+  <data name="Login_SignInFailed" xml:space="preserve"><value>Accesso non riuscito. Questo può accadere se hai impiegato troppo tempo o se il tuo browser ha bloccato i cookie. Per favore riprova.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Accesso negato</value></data>
   <data name="AccessDenied_Description" xml:space="preserve"><value>Non dispone dei permessi necessari per accedere a questa pagina.</value></data>
 
@@ -174,7 +174,6 @@
   <data name="Profile_Title" xml:space="preserve"><value>Il mio Profilo</value></data>
   <data name="ProfileEdit_Title" xml:space="preserve"><value>Modifica Profilo</value></data>
   <data name="ProfilePrivacy_Title" xml:space="preserve"><value>I miei dati</value></data>
-  <data name="PreferredEmail_Title" xml:space="preserve"><value>Email preferita</value></data>
   <data name="VerifyEmail_Title" xml:space="preserve"><value>Verifica email</value></data>
   <data name="VerifyEmail_GoToSettings" xml:space="preserve"><value>Vai alle impostazioni email</value></data>
   <data name="VerifyEmail_GoHome" xml:space="preserve"><value>Vai alla Home</value></data>
@@ -198,7 +197,7 @@
   <data name="Profile_NoContactInfo" xml:space="preserve"><value>Nessuna informazione di contatto aggiunta.</value></data>
   <data name="Profile_AddSome" xml:space="preserve"><value>Aggiungi</value></data>
   <data name="Profile_Teams" xml:space="preserve"><value>Team</value></data>
-  <data name="Profile_Coordinator" xml:space="preserve"><value>Coordinator</value></data>
+  <data name="Profile_Coordinator" xml:space="preserve"><value>Coordinatore</value></data>
   <data name="Profile_MembershipTier" xml:space="preserve"><value>Livello di adesione</value></data>
   <data name="Profile_Motivation" xml:space="preserve"><value>Motivazione</value></data>
   <data name="Profile_AdditionalInfo" xml:space="preserve"><value>Informazioni aggiuntive (facoltativo)</value></data>
@@ -242,8 +241,6 @@
   <data name="ProfileEdit_AddContactField" xml:space="preserve"><value>Aggiungi campo contatto</value></data>
   <data name="ProfileEdit_BurnerCVHelp" xml:space="preserve"><value>Documenti il Suo coinvolgimento in eventi, ruoli e camp. Le voci sono ordinate per data (più recenti prima).</value></data>
   <data name="ProfileEdit_AddEntry" xml:space="preserve"><value>Aggiungi voce</value></data>
-  <data name="ProfileEdit_ManagePreferredEmail" xml:space="preserve"><value>Gestisci email preferita</value></data>
-  <data name="ProfileEdit_PreferredEmailHelp" xml:space="preserve"><value>Imposti un indirizzo email diverso per ricevere le notifiche di sistema.</value></data>
 
   <!-- Profile Privacy View -->
   <data name="ProfilePrivacy_Lead" xml:space="preserve"><value>Gestisca i Suoi dati personali e le impostazioni sulla privacy.</value></data>
@@ -278,27 +275,6 @@
   <data name="ProfilePrivacy_CancelNoRestore" xml:space="preserve"><value>L'annullamento non ripristiner&#xE0; le Sue precedenti appartenenze ai team. Dovr&#xE0; riunirsi ai team.</value></data>
 
   <!-- Preferred Email View -->
-  <data name="PreferredEmail_Description" xml:space="preserve"><value>Per impostazione predefinita, le notifiche di sistema vengono inviate al Suo indirizzo email di accesso. Può specificare un indirizzo email diverso per ricevere queste notifiche.</value></data>
-  <data name="PreferredEmail_CurrentSettings" xml:space="preserve"><value>Impostazioni email attuali</value></data>
-  <data name="PreferredEmail_SignInEmail" xml:space="preserve"><value>Email di accesso</value></data>
-  <data name="PreferredEmail_GoogleAccount" xml:space="preserve"><value>Account Google</value></data>
-  <data name="PreferredEmail_NotSet" xml:space="preserve"><value>Non impostata (viene utilizzata l'email di accesso)</value></data>
-  <data name="PreferredEmail_Verified" xml:space="preserve"><value>Verificata</value></data>
-  <data name="PreferredEmail_PendingVerification" xml:space="preserve"><value>Verifica in sospeso</value></data>
-  <data name="PreferredEmail_NotificationsSentTo" xml:space="preserve"><value>Notifiche inviate a</value></data>
-  <data name="PreferredEmail_Preferred" xml:space="preserve"><value>preferita</value></data>
-  <data name="PreferredEmail_SignInEmailLabel" xml:space="preserve"><value>email di accesso</value></data>
-  <data name="PreferredEmail_VerificationSent" xml:space="preserve"><value>Un'email di verifica è stata inviata a {0}. Controlli la Sua casella di posta e clicchi sul link di verifica.</value><comment>{0} = email address</comment></data>
-  <data name="PreferredEmail_ResendCooldown" xml:space="preserve"><value>Potrà richiedere una nuova email di verifica tra {0} minuto/i.</value><comment>{0} = minutes remaining</comment></data>
-  <data name="PreferredEmail_SetTitle" xml:space="preserve"><value>Imposta email preferita</value></data>
-  <data name="PreferredEmail_ChangeTitle" xml:space="preserve"><value>Cambia email preferita</value></data>
-  <data name="PreferredEmail_VerificationWillBeSent" xml:space="preserve"><value>Un'email di verifica verrà inviata a questo indirizzo.</value></data>
-  <data name="PreferredEmail_SendVerification" xml:space="preserve"><value>Invia email di verifica</value></data>
-  <data name="PreferredEmail_RemoveTitle" xml:space="preserve"><value>Rimuovi email preferita</value></data>
-  <data name="PreferredEmail_RemoveDescription" xml:space="preserve"><value>Rimuova l'email preferita e utilizzi l'email di accesso per tutte le notifiche di sistema.</value></data>
-  <data name="PreferredEmail_RemoveConfirm" xml:space="preserve"><value>È sicuro/a di voler rimuovere l'email preferita?</value></data>
-  <data name="PreferredEmail_RemoveButton" xml:space="preserve"><value>Rimuovi email preferita</value></data>
-  <data name="PreferredEmail_BackToEdit" xml:space="preserve"><value>Torna alla modifica del profilo</value></data>
 
   <!-- Profile Controller TempData -->
   <data name="Profile_Updated" xml:space="preserve"><value>Profilo aggiornato con successo.</value></data>
@@ -857,7 +833,7 @@
   <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Carica un'immagine JPEG, PNG, WebP o HEIC (max 20MB). Le immagini grandi vengono ridimensionate automaticamente. Questo sostituisce il tuo avatar di Google.</value></data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Rimuovi foto personalizzata (torna all'avatar di Google)</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Visibile solo a te e al consiglio. Utilizzato per il calendario dei compleanni.</value></data>
-  <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinators</value></data>
+  <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinatori</value></data>
 
   <!-- Team Public Pages -->
   <data name="TeamDetail_AboutTeam" xml:space="preserve"><value>Informazioni</value></data>
@@ -1132,8 +1108,8 @@
   <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} eliminazioni di account in sospeso</value><comment>{0} = count</comment></data>
 
   <!-- Navigation restructure -->
-  <data name="Nav_Review" xml:space="preserve"><value>Review</value></data>
-  <data name="Nav_Voting" xml:space="preserve"><value>Voting</value></data>
+  <data name="Nav_Review" xml:space="preserve"><value>Revisione</value></data>
+  <data name="Nav_Voting" xml:space="preserve"><value>Votazione</value></data>
   <data name="Nav_Board" xml:space="preserve"><value>Board</value></data>
 
   <!-- Team admin: add member -->
@@ -1217,4 +1193,64 @@
   <!-- Camp Cards -->
   <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>Questo barrio ha bisogno di una foto!</value></data>
 
+  <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve"><value>Nome visualizzato</value></data>
+  <data name="CompleteSignup_Submit" xml:space="preserve"><value>Crea account</value></data>
+  <data name="CompleteSignup_Title" xml:space="preserve"><value>Completa la registrazione</value></data>
+  <data name="Consent_ActionRequired" xml:space="preserve"><value>Azione richiesta</value></data>
+  <data name="Consent_LastUpdated" xml:space="preserve"><value>Ultimo aggiornamento</value></data>
+  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value><h2>Verifica unione account</h2>
+<p>Ciao {0},</p>
+<p>Hai richiesto di aggiungere <strong>{1}</strong> al tuo account. Questo indirizzo e-mail è attualmente collegato a un altro account.</p>
+<p>Se verifichi questa e-mail, verrà inviata una richiesta di unione per la revisione dell'amministratore. Una volta approvata, i dati dell'altro account verranno uniti al tuo e l'account duplicato verrà archiviato.</p>
+<p>Fai clic sul link qui sotto per verificare e richiedere l'unione:</p>
+<p><a href="{2}">Verifica e richiedi unione</a></p>
+<p>Questo link scade tra 24 ore.</p>
+<p>Se non hai richiesto questo, puoi ignorare questa e-mail. Non verranno apportate modifiche.</p>
+<p>Il team di Humans</p></value></data>
+  <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value><h2>Messaggio da {1}</h2><p>Ciao {0},</p><p>{1} ti ha inviato un messaggio tramite Humans:</p><hr /><p>{2}</p><hr />{3}</value></data>
+  <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>Questo umano ha scelto di non condividere le proprie informazioni di contatto.</value></data>
+  <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Messaggio Humans da: {0}</value></data>
+  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value><p>Ciao {0},</p><p>Fai clic sul link qui sotto per accedere:</p><p><a href="{1}">Accedi a Nobodies</a></p><p>Questo link scade tra 15 minuti e può essere utilizzato solo una volta.</p><p>Se non hai richiesto questo, puoi ignorare questa e-mail.</p></value></data>
+  <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Il tuo link di accesso per Nobodies</value></data>
+  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value><p>Benvenuto su Nobodies!</p><p>Fai clic sul link qui sotto per creare il tuo account:</p><p><a href="{0}">Crea il tuo account</a></p><p>Questo link scade tra 15 minuti e può essere utilizzato solo una volta.</p><p>Se non hai richiesto questo, puoi ignorare questa e-mail.</p></value></data>
+  <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Benvenuto su Nobodies — conferma la tua e-mail</value></data>
+  <data name="Emails_AddNew" xml:space="preserve"><value>Aggiungi indirizzo e-mail</value></data>
+  <data name="Emails_BackToEdit" xml:space="preserve"><value>Torna alla modifica del profilo</value></data>
+  <data name="Emails_Description" xml:space="preserve"><value>Gestisci i tuoi indirizzi e-mail. Il tuo indirizzo di accesso è sempre incluso. Aggiungi e-mail aggiuntive, scegli quale riceve le notifiche e controlla la visibilità del profilo.</value></data>
+  <data name="Emails_ManageEmails" xml:space="preserve"><value>Indirizzi e-mail</value></data>
+  <data name="Emails_ManageEmailsHelp" xml:space="preserve"><value>Aggiungi indirizzi e-mail aggiuntivi, gestisci le notifiche e imposta la visibilità del profilo.</value></data>
+  <data name="Emails_ManageLater" xml:space="preserve"><value>Puoi aggiungere e gestire indirizzi e-mail aggiuntivi dal tuo profilo dopo aver completato la configurazione.</value></data>
+  <data name="Emails_ResendCooldown" xml:space="preserve"><value>Puoi richiedere una nuova e-mail di verifica tra {0} minuto/i.</value></data>
+  <data name="Emails_SendVerification" xml:space="preserve"><value>Invia e-mail di verifica</value></data>
+  <data name="Emails_Title" xml:space="preserve"><value>Indirizzi e-mail</value></data>
+  <data name="Emails_VerificationWillBeSent" xml:space="preserve"><value>Verrà inviata un'e-mail di verifica a questo indirizzo.</value></data>
+  <data name="Emails_YourEmails" xml:space="preserve"><value>I tuoi indirizzi e-mail</value></data>
+  <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>tua@email.com</value></data>
+  <data name="Login_MagicLink_Submit" xml:space="preserve"><value>Inviami un link di accesso</value></data>
+  <data name="Login_MagicLink_Title" xml:space="preserve"><value>Oppure accedi con e-mail</value></data>
+  <data name="MagicLinkConfirm_Message" xml:space="preserve"><value>Fai clic sul pulsante qui sotto per accedere al tuo account.</value></data>
+  <data name="MagicLinkConfirm_SignIn" xml:space="preserve"><value>Accedi</value></data>
+  <data name="MagicLinkConfirm_Title" xml:space="preserve"><value>Accedi</value></data>
+  <data name="MagicLinkError_Message" xml:space="preserve"><value>Questo link di accesso è scaduto o è già stato utilizzato.</value></data>
+  <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Richiedi un nuovo link</value></data>
+  <data name="MagicLinkError_Title" xml:space="preserve"><value>Link scaduto o non valido</value></data>
+  <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Torna all'accesso</value></data>
+  <data name="MagicLinkSent_Title" xml:space="preserve"><value>Controlla la tua e-mail</value></data>
+  <data name="ProfileEdit_ManageEmails" xml:space="preserve"><value>Indirizzi e-mail</value></data>
+  <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>Aggiungi indirizzi e-mail, imposta le preferenze di notifica e controlla la visibilità del profilo.</value></data>
+  <data name="Profile_Day" xml:space="preserve"><value>Giorno</value></data>
+  <data name="Profile_Month" xml:space="preserve"><value>Mese</value></data>
+  <data name="Profile_NotificationTarget" xml:space="preserve"><value>Le notifiche di sistema vengono inviate a questo indirizzo</value></data>
+  <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notifiche</value></data>
+  <data name="SendMessage_Breadcrumb" xml:space="preserve"><value>Invia messaggio</value></data>
+  <data name="SendMessage_Button" xml:space="preserve"><value>Invia un messaggio a {0}</value></data>
+  <data name="SendMessage_Heading" xml:space="preserve"><value>Invia un messaggio a {0}</value></data>
+  <data name="SendMessage_IncludeContactInfo" xml:space="preserve"><value>Includi le mie informazioni di contatto</value></data>
+  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve"><value>Il tuo nome e la tua e-mail verranno inclusi in modo che possano risponderti direttamente.</value></data>
+  <data name="SendMessage_MessageLabel" xml:space="preserve"><value>Messaggio</value></data>
+  <data name="SendMessage_PlainTextOnly" xml:space="preserve"><value>Solo testo normale. Massimo 2000 caratteri.</value></data>
+  <data name="SendMessage_Send" xml:space="preserve"><value>Invia messaggio</value></data>
+  <data name="SendMessage_Success" xml:space="preserve"><value>Il tuo messaggio è stato inviato a {0}.</value></data>
+  <data name="SendMessage_Title" xml:space="preserve"><value>Invia un messaggio a {0}</value></data>
+  <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Documenti legali</value></data>
 </root>

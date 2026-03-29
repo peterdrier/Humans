@@ -235,7 +235,7 @@ All Drive API calls MUST use:
 
 ### Full Sync (SyncResourcePermissionsAsync)
 For Shared Drive folders:
-1. Load expected members from DB (team members where `LeftAt == null`)
+1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
 2. List current direct permissions from Google (paginated, with `permissionDetails`)
 3. Filter to direct managed permissions only (exclude inherited, owner, service account)
 4. Add missing permissions (expected but not in Google)
@@ -243,7 +243,7 @@ For Shared Drive folders:
 6. Update `LastSyncedAt`
 
 For Google Groups:
-1. Load expected members from DB
+1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
 2. List current group members from Google (paginated)
 3. Add missing members
 4. Remove stale members
@@ -306,22 +306,22 @@ When `GoogleGroupPrefix` is set on a team, `EnsureTeamGroupAsync` is called to:
 When `GoogleGroupPrefix` is cleared, the existing Group resource is deactivated (soft unlink). The Google Group itself is not deleted.
 
 ### Group Settings
-Group creation now applies the configured `GoogleWorkspace:Groups` settings from appsettings. Previously, new groups received Google defaults. This ensures groups are configured consistently (e.g., `AllowExternalMembers = true` per R-04).
+Group creation applies all expected settings via `BuildExpectedGroupSettings()` — the same method used by drift detection, ensuring creation and detection share a single source of truth.
 
 ### Group Settings Drift Detection
-Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift without auto-fixing:
+Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift:
 
 **Checked settings** (from `GoogleWorkspace:Groups` config):
 - WhoCanJoin, WhoCanViewMembership, WhoCanContactOwner, WhoCanPostMessage, WhoCanViewGroup, WhoCanModerateMembers, AllowExternalMembers
 
-**Additional monitored settings** (sensible defaults):
-- IsArchived (expected: false), MembersCanPostAsTheGroup (expected: false), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: false)
+**Additional hardcoded settings** (applied at creation and checked for drift):
+- IsArchived (expected: true — enables conversation history), MembersCanPostAsTheGroup (expected: true), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: true)
 
-**Nightly check:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). Drifts are logged as warnings.
+**Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures are logged but don't stop the reconciliation.
 
 **Manual trigger:** Admin page at `/Admin` has a "Check Group Settings" button. Results show at `/Admin/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
 
-**SyncSettings respected:** If GoogleGroups sync mode is set to None, the check is skipped entirely.
+**SyncSettings respected:** If GoogleGroups sync mode is set to None, both the check and auto-remediation are skipped entirely.
 
 ## Resource Linking (Pre-Shared Access Model)
 

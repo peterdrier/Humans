@@ -394,12 +394,9 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
 }
 
 app.UseStatusCodePagesWithReExecute("/Home/Error/{0}");
-
-app.UseHttpsRedirection();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -465,6 +462,21 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 
 // Prometheus metrics endpoint
 app.MapPrometheusScrapingEndpoint("/metrics");
+
+// Version endpoint (unauthenticated)
+app.MapGet("/api/version", () =>
+{
+    var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
+    var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
+        Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+    var informationalVersion = attr?.InformationalVersion ?? "";
+    var plusIndex = informationalVersion.IndexOf('+', StringComparison.Ordinal);
+    var version = plusIndex >= 0 ? informationalVersion[..plusIndex] : informationalVersion;
+    var fullCommit = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : "";
+    var commit = fullCommit.Length > 8 ? fullCommit[..8] : fullCommit;
+
+    return Results.Ok(new { version, commit, informationalVersion });
+}).AllowAnonymous();
 
 // Hangfire dashboard (admin only in production).
 // Skipped in Testing — MapHangfireDashboard resolves JobStorage from DI eagerly,

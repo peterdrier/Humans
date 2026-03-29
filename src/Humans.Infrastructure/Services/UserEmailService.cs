@@ -240,6 +240,8 @@ public class UserEmailService : IUserEmailService
         pendingEmail.UpdatedAt = _clock.GetCurrentInstant();
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        await TryBackfillGoogleEmailAsync(userId, cancellationToken);
+
         return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
     }
 
@@ -396,7 +398,42 @@ public class UserEmailService : IUserEmailService
         };
 
         _dbContext.UserEmails.Add(userEmail);
+
+        // Auto-set GoogleEmail when a @nobodies.team email is added
+        if (isNobodiesTeam)
+        {
+            var user = await _dbContext.Users.FindAsync([userId], cancellationToken);
+            if (user is not null && user.GoogleEmail is null)
+            {
+                user.GoogleEmail = email;
+            }
+        }
+
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> TryBackfillGoogleEmailAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _dbContext.Users.FindAsync([userId], cancellationToken);
+        if (user?.GoogleEmail is not null)
+            return false;
+
+        var nobodiesEmail = await _dbContext.UserEmails
+            .Where(ue => ue.UserId == userId
+                && ue.IsVerified
+                && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
+            .Select(ue => ue.Email)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (nobodiesEmail is null || user is null)
+            return false;
+
+        user.GoogleEmail = nobodiesEmail;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     /// <summary>

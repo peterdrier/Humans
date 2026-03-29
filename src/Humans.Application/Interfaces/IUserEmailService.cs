@@ -95,4 +95,12 @@ public interface IUserEmailService
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// If the user has a verified @nobodies.team email but GoogleEmail is null, sets it.
+    /// Returns true if GoogleEmail was updated.
+    /// </summary>
+    Task<bool> TryBackfillGoogleEmailAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
 }

@@ -156,8 +156,9 @@ public interface IShiftManagementService
 
     /// <summary>
     /// Calculates the urgency score for a single shift.
+    /// Factors in remaining slots, priority, duration, understaffing, and time proximity.
     /// </summary>
-    double CalculateScore(Shift shift, int confirmedCount);
+    double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings);
 
     // === Staffing & Summary ===
 

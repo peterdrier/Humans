@@ -288,6 +288,25 @@ public class ShiftsSummaryCardViewModel
     public bool CanManageShifts { get; set; }
 }
 
+// === Shift Signups ViewComponent ===
+
+public enum ShiftSignupsViewMode
+{
+    Self,
+    Admin
+}
+
+public class ShiftSignupsViewModel
+{
+    public List<MySignupItem> Upcoming { get; set; } = [];
+    public List<MySignupItem> Pending { get; set; } = [];
+    public List<MySignupItem> Past { get; set; } = [];
+    public EventSettings? EventSettings { get; set; }
+    public ShiftSignupsViewMode ViewMode { get; set; }
+    public Guid UserId { get; set; }
+    public string? DisplayName { get; set; }
+}
+
 // === No-Show History ===
 
 public class NoShowHistoryItem

@@ -8,6 +8,7 @@ public class DepartmentDetailViewModel
     public List<ChildTeamCard> ChildTeams { get; set; } = [];
     public bool IsCoordinator { get; set; }
     public EventSettings EventSettings { get; set; } = null!;
+    public List<EffectiveMember> EffectiveMembers { get; set; } = [];
 
     public class ChildTeamCard
     {
@@ -18,5 +19,13 @@ public class DepartmentDetailViewModel
         public int TotalSlots { get; set; }
         public int FilledSlots { get; set; }
         public int PendingRequestCount { get; set; }
+    }
+
+    public class EffectiveMember
+    {
+        public Guid UserId { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+        public string? ProfilePictureUrl { get; set; }
+        public List<string> SourceTeams { get; set; } = [];
     }
 }

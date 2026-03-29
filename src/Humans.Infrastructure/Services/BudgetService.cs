@@ -208,13 +208,12 @@ public class BudgetService : IBudgetService
         if (year.Status == BudgetYearStatus.Active)
             throw new InvalidOperationException("Cannot delete an active budget year. Close it first.");
 
-        var now = _clock.GetCurrentInstant();
-
-        LogAudit(year.Id, nameof(BudgetYear), year.Id,
-            $"Deleted budget year '{year.Name}' ({year.Year})",
-            actorUserId, now);
-
-        await _dbContext.SaveChangesAsync();
+        // Remove audit logs first — FK to BudgetYearId is Restrict,
+        // so the year can't be deleted while audit entries reference it.
+        var auditLogs = await _dbContext.Set<BudgetAuditLog>()
+            .Where(a => a.BudgetYearId == yearId)
+            .ToListAsync();
+        _dbContext.Set<BudgetAuditLog>().RemoveRange(auditLogs);
 
         _dbContext.BudgetYears.Remove(year);
         await _dbContext.SaveChangesAsync();
@@ -681,6 +680,47 @@ public class BudgetService : IBudgetService
 
         _dbContext.BudgetAuditLogs.Add(entry);
     }
+
+    // ───────────────────────── Coordinator ─────────────────────────
+
+    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId)
+    {
+        // Teams where user is direct coordinator
+        var directTeamIds = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator)
+            .Select(tm => tm.TeamId)
+            .ToListAsync();
+
+        // Teams where user has management role assignment
+        var mgmtTeamIds = await _dbContext.Set<TeamRoleAssignment>()
+            .AsNoTracking()
+            .Where(tra =>
+                tra.TeamMember.UserId == userId &&
+                tra.TeamMember.LeftAt == null &&
+                tra.TeamRoleDefinition.IsManagement)
+            .Select(tra => tra.TeamMember.TeamId)
+            .ToListAsync();
+
+        var coordinatorTeamIds = directTeamIds.Concat(mgmtTeamIds).ToHashSet();
+
+        // Include child teams (department coordinators manage child team budgets)
+        if (coordinatorTeamIds.Count > 0)
+        {
+            var childTeamIds = await _dbContext.Teams
+                .AsNoTracking()
+                .Where(t => t.ParentTeamId != null && coordinatorTeamIds.Contains(t.ParentTeamId.Value))
+                .Select(t => t.Id)
+                .ToListAsync();
+
+            foreach (var childId in childTeamIds)
+                coordinatorTeamIds.Add(childId);
+        }
+
+        return coordinatorTeamIds;
+    }
+
+    // ───────────────────────── Audit Helpers ─────────────────────────
 
     /// <summary>
     /// Logs a create/delete action with a free-text description.

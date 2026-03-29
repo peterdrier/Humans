@@ -42,6 +42,8 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 **Acceptance Criteria:**
 - Browse shifts filtered by department and date range (From/To date pickers; either may be omitted for open-ended range)
 - Filter by period (Set-up / Event / Strike toggle buttons)
+- Date picker and period tabs interact cleanly: selecting a date clears the active period tab (dates take precedence); selecting a period tab clears manual dates; date picker min/max constrains to the active period's range when a period is selected
+- Consecutive all-day shifts within the same rota are compressed into date ranges (e.g., "Jun 16–21, 6 days") with aggregated fill status; click to expand individual days
 - Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all)
 - See fill status (confirmed count vs max)
 - Sign up for a shift (auto-confirmed for Public policy, pending for RequireApproval)
@@ -73,6 +75,19 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 - Bail from confirmed or pending signups
 - Range bail via `BailRangeAsync` — bails all signups sharing a `SignupBlockId` (build/strike date-range signups)
 - Build shift bail blocked after EE close for non-privileged users
+- Reusable `ShiftSignupsViewComponent` shows categorized signups (upcoming/pending/past) on Dashboard and HumanDetail pages
+
+### US-25.7: Guided Shift Discovery
+**As a** volunteer with no upcoming shifts
+**I want to** see a guided introduction to shifts on my dashboard
+**So that** I understand how to get involved
+
+**Acceptance Criteria:**
+- When shift browsing is open and user has no upcoming or pending signups, Dashboard shows a discovery card
+- Discovery card explains the three shift phases (Set-up, Event, Strike) with brief descriptions
+- Urgent understaffed shifts are highlighted within the discovery card
+- Clear CTAs to browse all shifts and view own shift schedule
+- When user has existing signups, the standard shift signups component and urgent shifts list are shown instead
 
 ### US-25.6: Post-Event No-Show Tracking
 **As a** coordinator
@@ -117,10 +132,11 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 ## Urgency Scoring
 
-`score = remainingSlots * priorityWeight * durationHours * understaffedMultiplier`
+`score = remainingSlots * priorityWeight * durationHours * understaffedMultiplier * proximityBoost`
 
 - Priority weights: Normal=1, Important=3, Essential=6
 - Understaffed multiplier: 2x when confirmed < minVolunteers, else 1x
+- Proximity boost: `1 + 10 / (1 + daysUntilStart)` — today ~11x, tomorrow ~6x, 7 days ~2.25x, 30 days ~1.3x
 - Score=0 when fully staffed (remaining=0)
 
 ## Routes
@@ -131,6 +147,8 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 | `/Shifts/Mine` | View own signups (upcoming, pending, past) |
 | `/Shifts/Settings` | Admin: manage EventSettings |
 | `/Teams/{slug}/Shifts` | Coordinator: manage rotas/shifts for a department |
+| `/` (Dashboard) | Shift signups ViewComponent + guided discovery when no signups |
+| `/Human/{id}/Admin` | Shift signups ViewComponent (admin view of user's shifts) |
 
 ## Related Features
 

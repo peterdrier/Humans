@@ -119,17 +119,132 @@ else if (Model.PendingConsents > 0)
 
         @{
             var shiftCards = ViewData["ShiftCards"] as Humans.Web.Models.ShiftCardsViewModel;
-            if (shiftCards != null)
+        }
+
+        @{
+            var hasUpcomingShifts = shiftCards?.NextShifts.Count > 0 || shiftCards?.PendingCount > 0;
+        }
+
+        @if (hasUpcomingShifts)
+        {
+            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Self" />
+
+            @if (shiftCards?.UrgentShifts.Count > 0)
             {
-                try
-                {
-                    await Html.RenderPartialAsync("_ShiftCards", shiftCards);
-                }
-                catch
-                {
-                    <div class="alert alert-warning mb-4">Shift cards could not be loaded.</div>
-                }
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Shifts Need Help</h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled mb-0">
+                            @foreach (var item in shiftCards.UrgentShifts)
+                            {
+                                <li class="mb-2">
+                                    <strong>@(item?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                                    <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) slots</span>
+                                    <br /><small class="text-muted">@(item?.DepartmentName ?? "")</small>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                    <div class="card-footer">
+                        <a asp-controller="Shifts" asp-action="Index" class="btn btn-sm btn-outline-success">Browse Volunteer Options</a>
+                    </div>
+                </div>
             }
+        }
+        else if (Model.IsShiftBrowsingOpen)
+        {
+            @* Guided shift discovery — shown when user has no upcoming shifts *@
+            <div class="card mb-4 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fa-solid fa-hand-holding-heart me-2"></i>Get Involved — @Model.EventName</h5>
+                </div>
+                <div class="card-body">
+                    <p>The event runs on volunteer power. Pick shifts that fit your schedule — every hour helps.</p>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <h6><span class="badge bg-info me-1">Set-up</span></h6>
+                                <small class="text-muted">Build the site before gates open. Physical work, flexible hours, great for meeting the crew.</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <h6><span class="badge bg-success me-1">Event</span></h6>
+                                <small class="text-muted">Keep things running during the event. Bars, gates, safety, art — something for everyone.</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3 h-100">
+                                <h6><span class="badge bg-secondary me-1">Strike</span></h6>
+                                <small class="text-muted">Take it all down and leave no trace. Satisfying work, usually shorter commitment.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (shiftCards?.UrgentShifts.Count > 0)
+                    {
+                        <h6 class="mt-3"><i class="fa-solid fa-fire text-danger me-1"></i>Shifts that need humans now</h6>
+                        <ul class="list-unstyled mb-3">
+                            @foreach (var item in shiftCards.UrgentShifts)
+                            {
+                                <li class="d-flex justify-content-between align-items-center py-1">
+                                    <span>
+                                        <strong>@(item?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                                        <small class="text-muted ms-1">@(item?.DepartmentName ?? "")</small>
+                                    </span>
+                                    <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) slots open</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+                <div class="card-footer d-flex gap-2">
+                    <a asp-controller="Shifts" asp-action="Index" class="btn btn-primary">
+                        <i class="fa-solid fa-calendar-alt me-1"></i>Browse All Shifts
+                    </a>
+                    <a asp-controller="Shifts" asp-action="Mine" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-clipboard-list me-1"></i>My Shifts
+                    </a>
+                </div>
+            </div>
+        }
+
+        @if (Model.TicketsConfigured)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-ticket"></i> Ticket Sales
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>
+                            <strong>@Model.TicketsSold.ToString("N0")</strong>@(Model.TicketCapacity > 0 ? $" / {Model.TicketCapacity:N0}" : "") sold
+                        </span>
+                        @if (Model.TicketCapacity > 0)
+                        {
+                            <span class="fw-bold @(Model.TicketCoveragePercent >= 75 ? "text-success" : Model.TicketCoveragePercent >= 50 ? "text-warning" : "text-muted")">
+                                @Model.TicketCoveragePercent%
+                            </span>
+                        }
+                    </div>
+                    @if (Model.TicketCapacity > 0)
+                    {
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar @(Model.TicketCoveragePercent >= 75 ? "bg-success" : Model.TicketCoveragePercent >= 50 ? "bg-warning" : "bg-primary")"
+                                 style="width: @(Model.TicketCoveragePercent.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        </div>
+                    }
+                    @if (Humans.Web.Authorization.RoleChecks.CanAccessTickets(User))
+                    {
+                        <div class="mt-2">
+                            <a asp-controller="Ticket" asp-action="Index" class="text-muted"><i class="fa-solid fa-arrow-right"></i> Ticket dashboard</a>
+                        </div>
+                    }
+                </div>
+            </div>
         }
 
         @if (Model.IsVolunteerMember)

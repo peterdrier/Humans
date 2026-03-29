@@ -77,6 +77,26 @@ public class TeamDetailViewModel
     public Guid? CurrentUserPendingRequestId { get; set; }
     public int PendingRequestCount { get; set; }
     public ShiftsSummaryCardViewModel? ShiftsSummary { get; set; }
+
+    /// <summary>
+    /// Members from child teams rolled up to this department. Only populated for departments.
+    /// </summary>
+    public List<ChildTeamMemberViewModel> ChildTeamMembers { get; set; } = [];
+}
+
+public class ChildTeamMemberViewModel
+{
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string? ProfilePictureUrl { get; set; }
+    public bool HasCustomProfilePicture { get; set; }
+    public string? CustomProfilePictureUrl { get; set; }
+    public string ChildTeamName { get; set; } = string.Empty;
+    public string ChildTeamSlug { get; set; } = string.Empty;
+
+    public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
+        ? CustomProfilePictureUrl
+        : ProfilePictureUrl;
 }
 
 public class TeamMemberViewModel
