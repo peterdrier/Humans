@@ -103,8 +103,6 @@ Two-remote workflow:
 - Database: cloned from QA via GitHub Action (`humans_pr_{N}`), dropped on PR close
 - Auth: dev login enabled (`DevAuth__Enabled=true`) since Google OAuth doesn't support wildcard redirect URIs
 - Connection string override: `docker-entrypoint.sh` extracts PR number from `COOLIFY_CONTAINER_NAME`
-- Uploads: QA uploads mounted read-only at `/app/wwwroot/uploads-qa`; `docker-entrypoint.sh` symlinks them into `/app/wwwroot/uploads` so existing images display correctly
-
 **Version endpoint:** `GET /api/version` (unauthenticated) returns `{ version, commit, informationalVersion }`. Useful for checking which commit is deployed to a preview or QA environment.
 
 ## Build Commands
