@@ -15,7 +15,7 @@
         /* Override the main layout to occupy the whole screen space  */
         .main-content { display: flex; max-width: 100vw; padding: 0; }
         main { display: flex; flex: 1; padding: 0; }
-        
+
         #map-page { flex: 1; position: relative; overflow: hidden; }
         #map { height: 100%; width: 100%; }
         #area-badge {
@@ -146,7 +146,7 @@
         // --- Map rendering ---
 
         function renderMap() {
-            ['limit-zone-line', 'limit-zone-fill', 'polygons-outline', 'polygons-fill'].forEach(id => {
+            ['limit-zone-line', 'limit-zone-fill', 'polygons-outline', 'polygons-fill', 'polygons-labels'].forEach(id => {
                 if (map.getLayer(id)) map.removeLayer(id);
             });
             ['limit-zone', 'polygons'].forEach(id => {
@@ -182,6 +182,20 @@
                 paint: {
                     'line-color': ['case', ['boolean', ['get', 'isOwn'], false], '#00bfff', '#00ffbf'],
                     'line-width': 2
+                }
+            });
+            map.addLayer({
+                id: 'polygons-labels', type: 'symbol', source: 'polygons',
+                layout: {
+                    'text-field': ['get', 'campName'],
+                    'text-size': 14,
+                    'text-anchor': 'center',
+                    'text-allow-overlap': false
+                },
+                paint: {
+                    'text-color': '#000000',
+                    'text-halo-color': '#ffffff',
+                    'text-halo-width': 2
                 }
             });
 
