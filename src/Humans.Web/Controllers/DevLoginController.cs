@@ -89,6 +89,8 @@ public class DevLoginController : Controller
         try
         {
             await EnsurePersonaAsync(info, id);
+            if (IsBarrioLeadSlug(info.Slug))
+                await EnsureBarrioCampAsync(info.Slug, id);
         }
         finally
         {
@@ -181,9 +183,13 @@ public class DevLoginController : Controller
         // Determine role and team assignments
         var roleName = RoleNameFromSlug(info.Slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
-        var teams = roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal)
-            ? new[] { SystemTeamIds.Volunteers, SystemTeamIds.Board }
-            : new[] { SystemTeamIds.Volunteers };
+        Guid[] teams;
+        if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
+            teams = [SystemTeamIds.Volunteers, SystemTeamIds.Board];
+        else if (IsBarrioLeadSlug(info.Slug))
+            teams = [SystemTeamIds.Volunteers, SystemTeamIds.BarrioLeads];
+        else
+            teams = [SystemTeamIds.Volunteers];
 
         var user = new User
         {
@@ -266,13 +272,78 @@ public class DevLoginController : Controller
             email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
     }
 
+    private async Task EnsureBarrioCampAsync(string personaSlug, Guid leadUserId)
+    {
+        // barrio-1-lead → camp slug "barrio-1", name "Barrio 1"
+        var campSlug = personaSlug[..^"-lead".Length]; // "barrio-1" or "barrio-2"
+        var campName = campSlug.Replace("-", " ", StringComparison.Ordinal); // "barrio 1" → title-case below
+        campName = string.Concat(campName[..1].ToUpperInvariant(), campName.AsSpan(1)); // "Barrio 1" / "Barrio 2"
+
+        var campId = PersonaGuid($"dev-camp:{campSlug}");
+        var seasonId = PersonaGuid($"dev-camp-season:{campSlug}:2026");
+        var leadId = PersonaGuid($"dev-camp-lead:{campSlug}:{leadUserId}");
+
+        var now = _clock.GetCurrentInstant();
+
+        if (!await _db.Set<Humans.Domain.Entities.Camp>().AnyAsync(c => c.Id == campId))
+        {
+            _db.Set<Humans.Domain.Entities.Camp>().Add(new Humans.Domain.Entities.Camp
+            {
+                Id = campId,
+                Slug = campSlug,
+                ContactEmail = $"dev-{campSlug}@localhost",
+                ContactPhone = string.Empty,
+                CreatedByUserId = leadUserId,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+
+            _db.Set<Humans.Domain.Entities.CampSeason>().Add(new Humans.Domain.Entities.CampSeason
+            {
+                Id = seasonId,
+                CampId = campId,
+                Year = 2026,
+                Name = campName,
+                Status = Humans.Domain.Enums.CampSeasonStatus.Pending,
+                BlurbLong = string.Empty,
+                BlurbShort = string.Empty,
+                Languages = string.Empty,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+
+            _logger.LogInformation("DEV: seeded camp {Slug} ({Id})", campSlug, campId);
+        }
+
+        if (!await _db.Set<Humans.Domain.Entities.CampLead>().AnyAsync(l => l.Id == leadId))
+        {
+            _db.Set<Humans.Domain.Entities.CampLead>().Add(new Humans.Domain.Entities.CampLead
+            {
+                Id = leadId,
+                CampId = campId,
+                UserId = leadUserId,
+                Role = Humans.Domain.Enums.CampLeadRole.Primary,
+                JoinedAt = now
+            });
+
+            _logger.LogInformation("DEV: seeded camp lead for {Slug} user {UserId}", campSlug, leadUserId);
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
     // ============================================================
     // Static helpers
     // ============================================================
 
     private static List<DevPersonaInfo> BuildPersonaList()
     {
-        var list = new List<DevPersonaInfo> { new("volunteer", "Volunteer") };
+        var list = new List<DevPersonaInfo>
+        {
+            new("volunteer", "Volunteer"),
+            new("barrio-1-lead", "Barrio 1 Lead"),
+            new("barrio-2-lead", "Barrio 2 Lead"),
+        };
 
         var roles = typeof(RoleNames)
             .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
@@ -287,6 +358,10 @@ public class DevLoginController : Controller
 
         return list;
     }
+
+    private static bool IsBarrioLeadSlug(string slug) =>
+        slug.EndsWith("-lead", StringComparison.OrdinalIgnoreCase) &&
+        slug.StartsWith("barrio-", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Deterministic GUID from persona slug — stable across restarts for idempotent seeding.
