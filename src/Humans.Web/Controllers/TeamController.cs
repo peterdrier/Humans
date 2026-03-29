@@ -147,6 +147,32 @@ public class TeamController : HumansControllerBase
             ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug)
         };
 
+        // Subteam member rollup: for departments, show child team members not already direct members
+        if (teamPage.IsAuthenticated && teamPage.ChildTeams.Any())
+        {
+            var directMemberUserIds = new HashSet<Guid>(viewModel.Members.Select(m => m.UserId));
+            var addedUserIds = new HashSet<Guid>();
+
+            foreach (var child in teamPage.ChildTeams)
+            {
+                var childMembers = await _teamService.GetTeamMembersAsync(child.Id);
+                foreach (var cm in childMembers)
+                {
+                    if (directMemberUserIds.Contains(cm.UserId) || !addedUserIds.Add(cm.UserId))
+                        continue;
+
+                    viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
+                    {
+                        UserId = cm.UserId,
+                        DisplayName = cm.User.DisplayName,
+                        ProfilePictureUrl = cm.User.ProfilePictureUrl,
+                        ChildTeamName = child.Name,
+                        ChildTeamSlug = child.Slug
+                    });
+                }
+            }
+        }
+
         return View(viewModel);
     }
 
