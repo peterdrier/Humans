@@ -9,6 +9,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
 
@@ -169,6 +170,20 @@ public class TeamController : HumansControllerBase
                         ChildTeamName = child.Name,
                         ChildTeamSlug = child.Slug
                     });
+                }
+            }
+
+            // Resolve custom profile pictures for child team members
+            if (viewModel.ChildTeamMembers.Count > 0)
+            {
+                var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
+                    _profileService, Url,
+                    viewModel.ChildTeamMembers.Select(m => (m.UserId, m.ProfilePictureUrl)));
+
+                foreach (var member in viewModel.ChildTeamMembers)
+                {
+                    if (effectiveUrls.TryGetValue(member.UserId, out var effectiveUrl))
+                        member.ProfilePictureUrl = effectiveUrl;
                 }
             }
         }
