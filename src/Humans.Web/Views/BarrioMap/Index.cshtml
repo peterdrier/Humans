@@ -6,6 +6,7 @@
     var userCampSeasonId = (string)ViewBag.UserCampSeasonId;
     var seasonsWithout = (List<Humans.Application.Interfaces.CampSeasonSummaryDto>)ViewBag.SeasonsWithoutPolygon;
     var year = (int)ViewBag.Year;
+    var showMainToolbar = (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId)) || (isMapAdmin && seasonsWithout.Any());
 }
 
 @section Styles {
@@ -35,43 +36,49 @@
 <div id="map-page">
     <div id="map"></div>
 
-    <!-- Toolbar -->
-    @if (isPlacementOpen || isMapAdmin) {
-    <div class="card position-absolute top-0 left-0 mt-2 ms-2">
-        <div class="card-body d-flex flex-column gap-2">
-        @if (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId))
-        {
-            <button id="add-my-barrio-btn" class="btn btn-primary btn-sm shadow">
-                <i class="fa fa-plus me-1"></i> Add my barrio on the map
+    <!-- Toolbars -->
+    <div class="position-absolute top-0 start-0 mt-2 ms-2 d-flex flex-column gap-2">
+        @if (isPlacementOpen || isMapAdmin) {
+        <div id="main-toolbar" class="card" style="@(showMainToolbar ? "" : "display:none")">
+            <div class="card-body d-flex flex-column gap-2">
+            @if (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId))
+            {
+                <button id="add-my-barrio-btn" class="btn btn-primary btn-sm shadow">
+                    <i class="fa fa-plus me-1"></i> Add my barrio on the map
+                </button>
+            }
+            @if (isMapAdmin && seasonsWithout.Any())
+            {
+                <div id="add-barrio-container" class="d-flex gap-2 align-items-center">
+                    <select id="add-barrio-select" class="form-select form-select-sm" style="width:200px;">
+                        <option value="">Add a barrio…</option>
+                        @foreach (var s in seasonsWithout)
+                        {
+                            <option value="@s.CampSeasonId">@s.CampName</option>
+                        }
+                    </select>
+                </div>
+            }
+            <button id="save-btn" class="btn btn-success btn-sm" disabled>
+                <i class="fa fa-save me-1"></i> Save
             </button>
-        }
-        @if (isMapAdmin && seasonsWithout.Any())
-        {
-            <div id="add-barrio-container" class="d-flex gap-2 align-items-center">
-                <select id="add-barrio-select" class="form-select form-select-sm" style="width:200px;">
-                    <option value="">Add a barrio…</option>
-                    @foreach (var s in seasonsWithout)
-                    {
-                        <option value="@s.CampSeasonId">@s.CampName</option>
-                    }
-                </select>
+            <button id="history-btn" class="btn btn-outline-primary btn-sm">
+                <i class="fa fa-history me-1"></i> History
+            </button>
             </div>
+        </div>
         }
-        <button id="save-btn" class="btn btn-success btn-sm" disabled>
-            <i class="fa fa-save me-1"></i> Save
-        </button>
-        <button id="history-btn" class="btn btn-outline-primary btn-sm">
-            <i class="fa fa-history me-1"></i> History
-        </button>
         @if (isMapAdmin)
         {
-            <a href="/BarrioMap/Admin" class="btn btn-outline-primary btn-sm">
-                <i class="fa fa-cog me-1"></i> Admin
-            </a>
-        }
+        <div class="card">
+            <div class="card-body">
+                <a href="/BarrioMap/Admin" class="btn btn-outline-primary btn-sm">
+                    <i class="fa fa-cog me-1"></i> Admin
+                </a>
+            </div>
         </div>
+        }
     </div>
-    }
 
     <div id="area-badge"><span id="area-display"></span></div>
 </div>
@@ -217,7 +224,7 @@
 
             if (currentPopup) currentPopup.remove();
             currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
-                .setHTML(`<strong>${props.campName || 'Camp'}</strong>${area}${editBtn}`)
+                .setHTML(`<div><strong>${props.campName || 'Camp'}</strong></div>${area}${editBtn}`)
                 .addTo(map);
 
             if (canEdit) {
@@ -241,10 +248,23 @@
             }
 
             document.getElementById('history-btn').disabled = false;
+            setEditingControlsVisible(true);
             updateSaveButton();
         }
 
         // --- Toolbar state ---
+
+        function setEditingControlsVisible(visible) {
+            const toolbar = document.getElementById('main-toolbar');
+            if (!toolbar) return;
+            if (visible) {
+                toolbar.style.display = '';
+                return;
+            }
+            const addMyBarrioVisible = document.getElementById('add-my-barrio-btn')?.style.display !== 'none';
+            const addBarrioPresent = !!document.getElementById('add-barrio-container');
+            if (!addMyBarrioVisible && !addBarrioPresent) toolbar.style.display = 'none';
+        }
 
         function updateAddMyBarrioVisibility() {
             const btn = document.getElementById('add-my-barrio-btn');
@@ -272,6 +292,7 @@
             document.getElementById('save-btn').disabled = true;
             document.getElementById('history-btn').disabled = true;
             document.getElementById('area-badge').style.display = 'none';
+            setEditingControlsVisible(false);
         }
 
         // --- Button handlers ---
@@ -280,6 +301,7 @@
             activeCampSeasonId = USER_CAMP_SEASON_ID;
             draw.deleteAll();
             draw.changeMode('draw_polygon');
+            setEditingControlsVisible(true);
         });
 
         document.getElementById('add-barrio-select')?.addEventListener('change', e => {
@@ -289,6 +311,7 @@
             draw.deleteAll();
             draw.changeMode('draw_polygon');
             e.target.value = '';
+            setEditingControlsVisible(true);
         });
 
         document.getElementById('save-btn').addEventListener('click', async () => {
@@ -312,6 +335,7 @@
                 document.getElementById('save-btn').disabled = true;
                 document.getElementById('history-btn').disabled = true;
                 document.getElementById('area-badge').style.display = 'none';
+                setEditingControlsVisible(false);
                 // SignalR PolygonUpdated will refresh the map layer
             } else {
                 alert('Failed to save polygon. Please try again.');
@@ -398,6 +422,7 @@
                         f.properties = Object.assign(f.properties || {}, {
                             campSeasonId: p.campSeasonId,
                             campName: p.campName,
+                            areaSqm: p.areaSqm,
                             isOwn: p.campSeasonId === USER_CAMP_SEASON_ID
                         });
                         return f;
