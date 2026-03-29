@@ -213,7 +213,14 @@
                         <option value="">None</option>
                         @foreach (var team in Model.Teams)
                         {
-                            <option value="@team.Id">@team.Name</option>
+                            if (category.TeamId == team.Id)
+                            {
+                                <option value="@team.Id" selected>@team.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@team.Id">@team.Name</option>
+                            }
                         }
                     </select>
                 </div>
