@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -79,7 +80,7 @@ public class OnboardingService : IOnboardingService
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
             return (null, 0, 0, null);
 
         var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
@@ -149,10 +150,10 @@ public class OnboardingService : IOnboardingService
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
-        if (profile.RejectedAt != null)
+        if (profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
 
         var hasAllRequiredConsents = await _membershipCalculator.HasAllRequiredConsentsAsync(userId, ct);
@@ -169,19 +170,16 @@ public class OnboardingService : IOnboardingService
         profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
-            AuditAction.ConsentCheckCleared, "Profile", userId,
+            AuditAction.ConsentCheckCleared, nameof(Profile), userId,
             $"Consent check cleared by {reviewerDisplayName}",
             reviewerId, reviewerDisplayName);
 
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
 
         // Add to profile cache (profile is now approved and not suspended)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? profileCache) && profileCache != null)
-        {
-            await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-            profileCache[userId] = CachedProfile.Create(profile, profile.User);
-        }
+        await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
+        _cache.UpdateApprovedProfile(userId, CachedProfile.Create(profile, profile.User));
 
         // Sync Volunteers team membership (adds to team + sends welcome email)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
@@ -212,7 +210,7 @@ public class OnboardingService : IOnboardingService
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
         var now = _clock.GetCurrentInstant();
@@ -225,18 +223,15 @@ public class OnboardingService : IOnboardingService
         profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
-            AuditAction.ConsentCheckFlagged, "Profile", userId,
+            AuditAction.ConsentCheckFlagged, nameof(Profile), userId,
             $"Consent check flagged by {reviewerDisplayName}: {notes}",
             reviewerId, reviewerDisplayName);
 
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
 
         // Remove from profile cache (no longer approved)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? flagCache) && flagCache != null)
-        {
-            flagCache.TryRemove(userId, out _);
-        }
+        _cache.UpdateApprovedProfile(userId, null);
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
@@ -256,7 +251,7 @@ public class OnboardingService : IOnboardingService
         var application = await _dbContext.Applications
             .FirstOrDefaultAsync(a => a.Id == applicationId, ct);
 
-        if (application == null)
+        if (application is null)
             return new OnboardingResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
@@ -267,7 +262,7 @@ public class OnboardingService : IOnboardingService
 
         var now = _clock.GetCurrentInstant();
 
-        if (existingVote != null)
+        if (existingVote is not null)
         {
             existingVote.Vote = vote;
             existingVote.Note = note;
@@ -301,10 +296,10 @@ public class OnboardingService : IOnboardingService
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
-        if (profile.RejectedAt != null)
+        if (profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
 
         var now = _clock.GetCurrentInstant();
@@ -316,18 +311,15 @@ public class OnboardingService : IOnboardingService
         profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
-            AuditAction.SignupRejected, "Profile", userId,
+            AuditAction.SignupRejected, nameof(Profile), userId,
             $"Signup rejected by {reviewerDisplayName}{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
             reviewerId, reviewerDisplayName);
 
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
 
         // Remove from profile cache (no longer approved)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? rejectCache) && rejectCache != null)
-        {
-            rejectCache.TryRemove(userId, out _);
-        }
+        _cache.UpdateApprovedProfile(userId, null);
 
         // FIX: Both Admin and OnboardingReview paths now deprovision
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
@@ -357,7 +349,7 @@ public class OnboardingService : IOnboardingService
             .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        if (user?.Profile == null)
+        if (user?.Profile is null)
             return new OnboardingResult(false, "NotFound");
 
         var now = _clock.GetCurrentInstant();
@@ -366,21 +358,18 @@ public class OnboardingService : IOnboardingService
         user.Profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
-            AuditAction.VolunteerApproved, "User", userId,
+            AuditAction.VolunteerApproved, nameof(User), userId,
             $"{user.DisplayName} approved as volunteer by {adminDisplayName}",
             adminId, adminDisplayName);
 
         await _dbContext.SaveChangesAsync(ct);
 
         // FIX: cache eviction was missing in AdminController
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
 
         // Add to profile cache (profile is now approved)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? approveCache) && approveCache != null)
-        {
-            await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-            approveCache[userId] = CachedProfile.Create(user.Profile, user);
-        }
+        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
+        _cache.UpdateApprovedProfile(userId, CachedProfile.Create(user.Profile, user));
 
         // Sync Volunteers team membership (adds user if they also have all required consents)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
@@ -398,7 +387,7 @@ public class OnboardingService : IOnboardingService
             .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        if (user?.Profile == null)
+        if (user?.Profile is null)
             return new OnboardingResult(false, "NotFound");
 
         user.Profile.IsSuspended = true;
@@ -406,17 +395,14 @@ public class OnboardingService : IOnboardingService
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _auditLogService.LogAsync(
-            AuditAction.MemberSuspended, "User", userId,
+            AuditAction.MemberSuspended, nameof(User), userId,
             $"{user.DisplayName} suspended by {adminDisplayName}{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
             adminId, adminDisplayName);
 
         await _dbContext.SaveChangesAsync(ct);
 
         // Remove from profile cache (suspended)
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? suspendCache) && suspendCache != null)
-        {
-            suspendCache.TryRemove(userId, out _);
-        }
+        _cache.UpdateApprovedProfile(userId, null);
 
         _metrics.RecordMemberSuspended("admin");
         _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", adminId, userId);
@@ -431,14 +417,14 @@ public class OnboardingService : IOnboardingService
             .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        if (user?.Profile == null)
+        if (user?.Profile is null)
             return new OnboardingResult(false, "NotFound");
 
         user.Profile.IsSuspended = false;
         user.Profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _auditLogService.LogAsync(
-            AuditAction.MemberUnsuspended, "User", userId,
+            AuditAction.MemberUnsuspended, nameof(User), userId,
             $"{user.DisplayName} unsuspended by {adminDisplayName}",
             adminId, adminDisplayName);
 
@@ -447,11 +433,8 @@ public class OnboardingService : IOnboardingService
         // Re-add to profile cache if approved
         if (user.Profile.IsApproved)
         {
-            if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? unsuspendCache) && unsuspendCache != null)
-            {
-                await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-                unsuspendCache[userId] = CachedProfile.Create(user.Profile, user);
-            }
+            await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
+            _cache.UpdateApprovedProfile(userId, CachedProfile.Create(user.Profile, user));
         }
 
         _logger.LogInformation("Admin {AdminId} unsuspended human {HumanId}", adminId, userId);
@@ -462,7 +445,7 @@ public class OnboardingService : IOnboardingService
     public async Task<bool> SetConsentCheckPendingIfEligibleAsync(Guid userId, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles.FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        if (profile == null || profile.IsApproved || profile.ConsentCheckStatus != null)
+        if (profile is null || profile.IsApproved || profile.ConsentCheckStatus is not null)
             return false;
 
         var hasAllConsents = await _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
@@ -473,7 +456,7 @@ public class OnboardingService : IOnboardingService
         profile.ConsentCheckStatus = ConsentCheckStatus.Pending;
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
         _logger.LogInformation("User {UserId} has all consents signed, consent check set to Pending", userId);
 
         return true;
@@ -488,29 +471,12 @@ public class OnboardingService : IOnboardingService
 
     public async Task<Application.DTOs.AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
-        var totalMembers = await _dbContext.Users.CountAsync(ct);
-        var activeMembers = await _dbContext.Profiles.CountAsync(p => !p.IsSuspended, ct);
-        var pendingVolunteers = await _dbContext.Profiles
-            .CountAsync(p => !p.IsApproved && !p.IsSuspended, ct);
+        var allUserIds = await _dbContext.Users.Select(u => u.Id).ToListAsync(ct);
+        var totalMembers = allUserIds.Count;
+        var partition = await _membershipCalculator.PartitionUsersAsync(allUserIds, ct);
+
         var pendingApplications = await _dbContext.Applications
             .CountAsync(a => a.Status == ApplicationStatus.Submitted, ct);
-
-        // Calculate users with missing required consents
-        var allUserIds = await _dbContext.Users.Select(u => u.Id).ToListAsync(ct);
-        var usersWithAllVolunteerConsents = await _membershipCalculator.GetUsersWithAllRequiredConsentsAsync(allUserIds);
-
-        var leadUserIds = await _dbContext.TeamMembers
-            .Where(tm => tm.LeftAt == null && tm.Role == TeamMemberRole.Lead && tm.Team.SystemTeamType == SystemTeamType.None)
-            .Select(tm => tm.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-        var leadsWithAllConsents = leadUserIds.Count > 0
-            ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(leadUserIds, SystemTeamIds.Leads)
-            : new HashSet<Guid>();
-
-        var pendingConsents = allUserIds.Count(id =>
-            !usersWithAllVolunteerConsents.Contains(id) ||
-            (leadUserIds.Contains(id) && !leadsWithAllConsents.Contains(id)));
 
         // Application statistics (non-withdrawn)
         var appStats = await _dbContext.Applications
@@ -528,7 +494,9 @@ public class OnboardingService : IOnboardingService
             .FirstOrDefaultAsync(ct);
 
         return new Application.DTOs.AdminDashboardData(
-            totalMembers, activeMembers, pendingVolunteers, pendingApplications, pendingConsents,
+            totalMembers, partition.IncompleteSignup.Count, partition.PendingApproval.Count,
+            partition.Active.Count, partition.MissingConsents.Count,
+            partition.Suspended.Count, partition.PendingDeletion.Count, pendingApplications,
             appStats?.Total ?? 0, appStats?.Approved ?? 0, appStats?.Rejected ?? 0,
             appStats?.Colaborador ?? 0, appStats?.Asociado ?? 0);
     }
@@ -536,7 +504,7 @@ public class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> PurgeHumanAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], ct);
-        if (user == null)
+        if (user is null)
             return new OnboardingResult(false, "NotFound");
 
         var displayName = user.DisplayName;
@@ -558,6 +526,8 @@ public class OnboardingService : IOnboardingService
         user.LockoutEnd = DateTimeOffset.MaxValue;
 
         await _dbContext.SaveChangesAsync(ct);
+        _cache.InvalidateActiveTeams();
+        _cache.InvalidateApprovedProfiles();
 
         _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
 

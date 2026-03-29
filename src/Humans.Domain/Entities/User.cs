@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
+using Humans.Domain.Enums;
 
 namespace Humans.Domain.Entities;
 
@@ -100,4 +101,54 @@ public class User : IdentityUser<Guid>
     /// Whether a deletion request is pending.
     /// </summary>
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;
+
+    /// <summary>
+    /// Whether the user has unsubscribed from campaign emails.
+    /// </summary>
+    public bool UnsubscribedFromCampaigns { get; set; }
+
+    /// <summary>
+    /// Token for personal iCal feed URL. Regeneratable.
+    /// </summary>
+    public Guid? ICalToken { get; set; }
+
+    /// <summary>
+    /// Whether to suppress email notifications for schedule changes.
+    /// </summary>
+    public bool SuppressScheduleChangeEmails { get; set; }
+
+    /// <summary>
+    /// When the last magic link login email was sent (for rate limiting).
+    /// </summary>
+    public Instant? MagicLinkSentAt { get; set; }
+
+    /// <summary>
+    /// Preferred email for Google services (Groups, Drive).
+    /// When set, this email is used instead of the OAuth email for Google resource sync.
+    /// Automatically set to @nobodies.team email when provisioned or linked.
+    /// </summary>
+    [PersonalData]
+    public string? GoogleEmail { get; set; }
+
+    /// <summary>
+    /// Gets the email address used for Google services (Groups, Drive permissions).
+    /// Returns GoogleEmail if set, otherwise falls back to the OAuth email.
+    /// Does NOT require UserEmails to be loaded.
+    /// </summary>
+    public string? GetGoogleServiceEmail() => GoogleEmail ?? Email;
+
+    /// <summary>
+    /// Where this user was imported from (null for self-registered users).
+    /// </summary>
+    public ContactSource? ContactSource { get; set; }
+
+    /// <summary>
+    /// ID in the external source system (e.g., MailerLite subscriber ID).
+    /// </summary>
+    public string? ExternalSourceId { get; set; }
+
+    /// <summary>
+    /// Navigation property to communication preferences.
+    /// </summary>
+    public ICollection<CommunicationPreference> CommunicationPreferences { get; } = new List<CommunicationPreference>();
 }

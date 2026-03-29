@@ -115,6 +115,28 @@ When legal documents are updated:
 2. Members without valid consent are marked as Inactive
 3. Access is restricted until re-consent is provided
 
+## Development Timeline
+
+Built from zero to production in 40 days (493 commits). Key milestones:
+
+| Date | Milestone |
+|------|-----------|
+| **Feb 4** | Project inception — member profiles, admin dashboard, Google Places location autocomplete |
+| **Feb 5** | Self-organizing teams, GDPR compliance suite (consent tracking, data export, right-to-deletion), legal document sync from GitHub, Google Workspace integration |
+| **Feb 7** | Google resource management GUI, nightly Drive/Groups reconciliation job, comprehensive audit logging |
+| **Feb 8** | Multi-language support across 5 locales (EN, ES, DE, IT, FR) with language chooser |
+| **Feb 9** | Profile picture uploads with multi-format conversion, Google sync audit trail with per-resource views |
+| **Feb 10** | Visual rebrand to "Humans" with Da Vinci Renaissance identity; legal document redesign with team-scoped, multi-language admin CRUD |
+| **Feb 11** | Interactive volunteer map with Google Maps, consolidated contact fields, birthday tracking |
+| **Feb 15** | Custom Prometheus metrics for membership and compliance, email preview system, outbox-backed Google sync dispatcher |
+| **Feb 18** | Onboarding redesign epic — membership tiers (Colaborador/Asociado), consent-check gating, Board voting workflow, term lifecycle management |
+| **Mar 5** | Service-layer architecture extraction across all controllers, E.164 phone validation, admin sorting and filtering |
+| **Mar 9** | Google Groups via Cloud Identity API, configurable sync modes (Manual/Preview/Auto), enhanced map with avatar popups and location clustering |
+| **Mar 11** | Team role slots — named positions within teams with markdown descriptions and Lead auto-provisioning; in-memory caching layer |
+| **Mar 13** | Camps — full event camp registration system with approval workflow, co-leads, and public JSON API |
+| **Mar 14** | Email outbox with retry and crash recovery, campaign system with CSV import and discount code distribution |
+| **Mar 15** | Ticket vendor integration (TicketTailor sync), membership status partition model, admin log viewer |
+
 ## License
 
-MIT
+AGPL-3.0

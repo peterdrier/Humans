@@ -1,0 +1,24 @@
+@model Humans.Web.Models.LegalPageViewModel
+
+@{
+    ViewData["Title"] = Model.CurrentDocumentName;
+}
+
+<ul class="nav nav-pills justify-content-center mb-4">
+    @foreach (var doc in Model.AllDocuments)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(doc.Slug == Model.CurrentSlug ? "active" : "")"
+               asp-action="Index" asp-route-slug="@doc.Slug">
+                @doc.DisplayName
+            </a>
+        </li>
+    }
+</ul>
+
+<div class="card">
+    <div class="card-header">@Model.CurrentDocumentName</div>
+    <div class="card-body p-0">
+        @await Html.PartialAsync("_TabbedMarkdownDocuments", Model.DocumentContent)
+    </div>
+</div>

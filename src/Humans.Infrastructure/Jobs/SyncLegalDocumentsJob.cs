@@ -135,7 +135,7 @@ public class SyncLegalDocumentsJob
         foreach (var user in users)
         {
             var effectiveEmail = user.GetEffectiveEmail();
-            if (effectiveEmail == null)
+            if (effectiveEmail is null)
             {
                 continue;
             }

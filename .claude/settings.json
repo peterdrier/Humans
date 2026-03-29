@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // \"\"' | grep -qE '^git (commit|add)' && git diff --cached --name-only 2>/dev/null | grep -qE '(Migrations/|Entities/|DbContext)' && echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"STOP: You are committing database changes. Before proceeding, verify ALL of the following:\\n1. Migration files are in src/Humans.Infrastructure/Migrations/ (NOT Data/Migrations/)\\n2. Migration namespace is Humans.Infrastructure.Migrations\\n3. Migration file has NOT been hand-edited — no migrationBuilder.Sql() calls, no manual column changes\\n4. Read the migration .cs file and verify EF did not generate incorrect RenameColumn (should be DropColumn + AddColumn for unrelated columns)\\n5. If EF generated something wrong, run dotnet ef migrations remove and regenerate — do NOT hand-edit\\n6. The model snapshot (HumansDbContextModelSnapshot.cs) is consistent\\nDo NOT proceed with the commit until you have verified all items above. Read the migration file NOW if you have not already.\"}}' || true",
+            "timeout": 10,
+            "statusMessage": "Checking for database changes..."
+          }
+        ]
+      }
+    ]
+  }
+}

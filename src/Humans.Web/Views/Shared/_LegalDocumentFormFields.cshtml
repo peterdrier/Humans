@@ -1,0 +1,60 @@
+@model Humans.Web.Models.LegalDocumentEditViewModel
+@{
+    var includeTeamPlaceholder = (bool?)ViewData["IncludeTeamPlaceholder"] ?? false;
+    var gitHubHelpText = ViewData["GitHubHelpText"] as string;
+    var showGracePeriodHelp = (bool?)ViewData["ShowGracePeriodHelp"] ?? false;
+}
+
+<div class="mb-3">
+    <label asp-for="Name" class="form-label">Document Name</label>
+    <input asp-for="Name" class="form-control" placeholder="e.g. Privacy Policy" />
+    <span asp-validation-for="Name" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="TeamId" class="form-label">Team</label>
+    <select asp-for="TeamId" class="form-select">
+        @if (includeTeamPlaceholder)
+        {
+            <option value="">Select a team...</option>
+        }
+        @foreach (var team in Model.Teams)
+        {
+            <option value="@team.Id">@team.Name</option>
+        }
+    </select>
+    <div class="form-text">Documents scoped to "Volunteers" apply to all active members.</div>
+    <span asp-validation-for="TeamId" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="GitHubFolderPath" class="form-label">GitHub Folder Path</label>
+    <input asp-for="GitHubFolderPath" class="form-control" id="GitHubFolderPath"
+           placeholder="e.g. Volunteer/ or paste a GitHub URL" />
+    @if (!string.IsNullOrEmpty(gitHubHelpText))
+    {
+        <div class="form-text">@gitHubHelpText</div>
+    }
+    <div id="folder-path-feedback" class="small mt-1"></div>
+    <span asp-validation-for="GitHubFolderPath" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="GracePeriodDays" class="form-label">Grace Period (days)</label>
+    <input asp-for="GracePeriodDays" type="number" class="form-control" min="1" max="365" />
+    @if (showGracePeriodHelp)
+    {
+        <div class="form-text">Days before membership is affected by missing consent.</div>
+    }
+    <span asp-validation-for="GracePeriodDays" class="text-danger"></span>
+</div>
+
+<div class="mb-3 form-check">
+    <input asp-for="IsRequired" type="checkbox" class="form-check-input" />
+    <label asp-for="IsRequired" class="form-check-label">Required for membership</label>
+</div>
+
+<div class="mb-3 form-check">
+    <input asp-for="IsActive" type="checkbox" class="form-check-input" />
+    <label asp-for="IsActive" class="form-check-label">Active</label>
+</div>

@@ -6,6 +6,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
+using Humans.Web.Controllers;
 using Humans.Web.Models;
 
 namespace Humans.Web.ViewComponents;
@@ -51,7 +52,7 @@ public class ProfileCardViewComponent : ViewComponent
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (user == null)
+        if (user is null)
         {
             return Content(string.Empty);
         }
@@ -68,7 +69,7 @@ public class ProfileCardViewComponent : ViewComponent
         if (viewMode == ProfileCardViewMode.Public)
         {
             var viewer = await _userManager.GetUserAsync(UserClaimsPrincipal);
-            if (viewer != null)
+            if (viewer is not null)
             {
                 viewerUserId = viewer.Id;
                 canViewLegalName = await _teamService.IsUserBoardMemberAsync(viewer.Id);
@@ -76,7 +77,7 @@ public class ProfileCardViewComponent : ViewComponent
         }
 
         // Get contact fields
-        var contactFields = profile != null
+        var contactFields = profile is not null
             ? await _contactFieldService.GetVisibleContactFieldsAsync(profile.Id, viewerUserId)
             : [];
 
@@ -92,8 +93,15 @@ public class ProfileCardViewComponent : ViewComponent
         }
         var visibleEmails = await _userEmailService.GetVisibleEmailsAsync(userId, accessLevel);
 
+        // Check if user has a @nobodies.team email (from all emails, not just visible)
+        var hasNobodiesTeamEmail = await _dbContext.UserEmails
+            .AsNoTracking()
+            .AnyAsync(ue => ue.UserId == userId
+                && ue.IsVerified
+                && EF.Functions.ILike(ue.Email, "%@nobodies.team"));
+
         // Get volunteer history entries
-        var volunteerHistory = profile != null
+        var volunteerHistory = profile is not null
             ? await _volunteerHistoryService.GetAllAsync(profile.Id)
             : [];
 
@@ -105,9 +113,9 @@ public class ProfileCardViewComponent : ViewComponent
             .Select(tm => new TeamMembershipViewModel
             {
                 TeamId = tm.TeamId,
-                TeamName = tm.Team.Name,
+                TeamName = tm.Team.DisplayName,
                 TeamSlug = tm.Team.Slug,
-                IsLead = tm.Role == TeamMemberRole.Lead,
+                IsCoordinator = tm.Role == TeamMemberRole.Coordinator,
                 IsSystemTeam = tm.Team.IsSystemTeam
             })
             .ToList();
@@ -117,7 +125,7 @@ public class ProfileCardViewComponent : ViewComponent
 
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
         var pictureUrl = hasCustomPicture
-            ? Url.Action("Picture", "Profile", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+            ? Url.Action(nameof(ProfileController.Picture), "Profile", new { id = profile!.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
             : null;
 
         var model = new ProfileCardViewModel
@@ -129,7 +137,7 @@ public class ProfileCardViewComponent : ViewComponent
             CustomProfilePictureUrl = pictureUrl,
             BurnerName = profile?.BurnerName ?? string.Empty,
             Pronouns = profile?.Pronouns,
-            MembershipStatus = membershipSnapshot.Status.ToString(),
+            MembershipStatus = membershipSnapshot.Status,
             IsApproved = profile?.IsApproved ?? false,
             City = profile?.City,
             CountryCode = profile?.CountryCode,
@@ -145,6 +153,7 @@ public class ProfileCardViewComponent : ViewComponent
             EmergencyContactRelationship = canViewLegalName ? profile?.EmergencyContactRelationship : null,
             HasPendingConsents = membershipSnapshot.PendingConsentCount > 0,
             PendingConsentCount = membershipSnapshot.PendingConsentCount,
+            HasNobodiesTeamEmail = hasNobodiesTeamEmail,
             ViewMode = viewMode,
             CanViewLegalName = canViewLegalName,
             UserEmails = visibleEmails.Select(e => new UserEmailDisplayViewModel
@@ -169,6 +178,7 @@ public class ProfileCardViewComponent : ViewComponent
                 Description = vh.Description
             }).ToList(),
             Teams = displayableTeams,
+            PreferredLanguage = user.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
         };

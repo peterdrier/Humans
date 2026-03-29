@@ -1,15 +1,14 @@
 namespace Humans.Domain.Enums;
 
 /// <summary>
-/// What action to take during a sync operation.
-/// Used as a parameter in sync methods — not persisted.
+/// Whether a sync operation should preview changes or execute them.
+/// Add/remove behavior is controlled by SyncSettings (Admin/SyncSettings),
+/// enforced by the gateway methods in GoogleWorkspaceSyncService.
 /// </summary>
 public enum SyncAction
 {
     /// <summary>Compute diff only, make no changes.</summary>
     Preview = 0,
-    /// <summary>Compute diff and execute adds only.</summary>
-    AddOnly = 1,
-    /// <summary>Compute diff and execute adds + removes.</summary>
-    AddAndRemove = 2
+    /// <summary>Compute diff and execute changes (adds/removes per SyncSettings).</summary>
+    Execute = 1
 }

@@ -15,6 +15,8 @@
           integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
           crossorigin="anonymous"
           referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.2.3/css/flag-icons.min.css"
+          crossorigin="anonymous">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Sans+3:wght@400;500;600;700&display=swap">
@@ -41,50 +43,80 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
+                        </li>
+                        @if (User.Identity?.IsAuthenticated != true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
+                            </li>
+                        }
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            var isActiveMember = User.HasClaim("ActiveMember", "true") || User.IsInRole("Admin") || User.IsInRole("Board") || User.IsInRole("TeamsAdmin");
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="BarrioMap" asp-action="Index">@Localizer["Nav_Map"]</a>
-                            </li>
-                            if (isActiveMember)
+                            var isActiveMember = User.HasClaim(Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType, Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue) || Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User);
+                            @if (isActiveMember || Humans.Web.Authorization.ShiftRoleChecks.CanAccessDashboard(User))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-area="" asp-controller="BarrioMap" asp-action="Index">@Localizer["Nav_Map"]</a>
                                 </li>
                             }
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Consent" asp-action="Index">@Localizer["Nav_Consents"]</a>
-                            </li>
-                            if (isActiveMember)
+                            @if (Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Governance" asp-action="Index">@Localizer["Nav_Governance"]</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Vol" asp-action="Index">V</a>
                                 </li>
                             }
                         }
-                        @if (User.IsInRole("ConsentCoordinator") || User.IsInRole("VolunteerCoordinator") || User.IsInRole("Admin") || User.IsInRole("Board"))
+                        @if (Humans.Web.Authorization.RoleChecks.CanAccessReviewQueue(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
                             </li>
                         }
-                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
                             </li>
                         }
-                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
                             </li>
                         }
-                        @if (User.IsInRole("Admin"))
+                        @if (Humans.Web.Authorization.RoleChecks.IsHumanAdmin(User) && !Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Human" asp-action="Humans">Humans</a>
+                            </li>
+                        }
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
+                            </li>
+                        }
+                        @if (Humans.Web.Authorization.RoleChecks.CanAccessTickets(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
+                            </li>
+                        }
+                        @if (Humans.Web.Authorization.RoleChecks.IsFeedbackAdmin(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Feedback" asp-action="Index">Feedback @await Component.InvokeAsync("NavBadges", new { queue = "feedback" })</a>
+                            </li>
+                        }
+                        @if (Humans.Web.Authorization.RoleChecks.CanAccessFinance(User))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Finance" asp-action="Index">Finance</a>
                             </li>
                         }
                     </ul>
@@ -116,25 +148,12 @@
             <div class="d-flex gap-3">
                 <a asp-controller="Home" asp-action="About" class="text-muted small">About</a>
                 <a asp-controller="Home" asp-action="Privacy" class="text-muted small">@Localizer["Nav_Privacy"]</a>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <a href="#" class="text-muted small" data-bs-toggle="modal" data-bs-target="#feedbackModal">@Localizer["Feedback_Button"]</a>
+                }
             </div>
-            @{
-                var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
-                var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
-                    Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
-                var informationalVersion = attr?.InformationalVersion ?? "";
-                var plusIndex = informationalVersion.IndexOf('+');
-                var version = plusIndex >= 0 ? informationalVersion[..plusIndex] : informationalVersion;
-                var commitHash = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : null;
-                var isRelease = version.Length > 0 && !version.Contains('-');
-            }
-            @if (isRelease)
-            {
-                <a href="https://github.com/nobodies-collective/Humans/releases/tag/v@(version)" target="_blank" rel="noopener noreferrer" class="text-muted small">v@(version)</a>
-            }
-            else if (commitHash != null)
-            {
-                <a href="https://github.com/nobodies-collective/Humans/commit/@commitHash" target="_blank" rel="noopener noreferrer" class="text-muted small font-monospace">@commitHash[..Math.Min(8, commitHash.Length)]</a>
-            }
+            <partial name="_VersionInfo" />
         </div>
     </footer>
 
@@ -152,7 +171,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous"></script>
-    <script src="~/js/site.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    @await Component.InvokeAsync("FeedbackWidget")
 </body>
 </html>

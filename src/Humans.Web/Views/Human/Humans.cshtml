@@ -7,7 +7,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>@Localizer["AdminHumans_Title"]</h1>
-    <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+        <a asp-action="Contacts" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-address-book"></i> Contacts
+        </a>
+    </div>
 </div>
 
 <div class="card mb-4">
@@ -44,15 +49,19 @@
             </a>
             <a asp-action="Humans" asp-route-filter="pending" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "pending" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Pending"]
+                @Localizer["AdminHumans_PendingApproval"]
+            </a>
+            <a asp-action="Humans" asp-route-filter="missingconsents" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "missingconsents" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_MissingConsents"]
+            </a>
+            <a asp-action="Humans" asp-route-filter="incomplete" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "incomplete" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_IncompleteSignup"]
             </a>
             <a asp-action="Humans" asp-route-filter="suspended" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "suspended" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Suspended"]
-            </a>
-            <a asp-action="Humans" asp-route-filter="inactive" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
-               class="btn @(Model.StatusFilter == "inactive" ? "btn-primary" : "btn-outline-primary")">
-                @Localizer["AdminHumans_Inactive"]
             </a>
             <a asp-action="Humans" asp-route-filter="deleting" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "deleting" ? "btn-danger" : "btn-outline-danger")">
@@ -108,11 +117,11 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>@member.CreatedAt.ToString("d MMM yyyy")</td>
+                            <td>@member.CreatedAt.ToDisplayDate()</td>
                             <td>
                                 @if (member.LastLoginAt.HasValue)
                                 {
-                                    @member.LastLoginAt.Value.ToString("d MMM yyyy")
+                                @member.LastLoginAt.Value.ToDisplayDate()
                                 }
                                 else
                                 {
@@ -130,6 +139,14 @@
                                 {
                                     <span class="badge bg-secondary">@Localizer["Admin_NoProfile"]</span>
                                 }
+                                @if (member.HasNobodiesTeamEmail && !member.NobodiesTeamEmailIsPrimary)
+                                {
+                                    <span class="badge bg-warning text-dark ms-1"
+                                          title="Has @@nobodies.team email but not using it as primary"
+                                          data-bs-toggle="tooltip">
+                                        <i class="fa-solid fa-at"></i>
+                                    </span>
+                                }
                             </td>
                             <td class="text-end">
                                 <a asp-action="HumanDetail" asp-route-id="@member.Id" class="btn btn-sm btn-outline-primary">
@@ -144,12 +161,11 @@
     </div>
 </div>
 
-@if (Model.TotalCount > Model.PageSize)
+@if (Model.TotalPages > 1)
 {
-    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize);
     <nav class="mt-4">
         <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= totalPages && i <= 10; i++)
+            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
             {
                 <li class="page-item @(i == Model.PageNumber ? "active" : "")">
                     <a class="page-link" asp-action="Humans" asp-route-page="@i" asp-route-search="@Model.SearchTerm"

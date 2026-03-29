@@ -42,6 +42,7 @@
                     <tr>
                         <th>@Localizer["AdminTeams_Name"]</th>
                         <th>@Localizer["AdminTeams_Type"]</th>
+                        <th>Permission</th>
                         <th>@Localizer["TeamAdmin_LastSynced"]</th>
                         <th>@Localizer["Common_Status"]</th>
                         <th>@Localizer["MyTeams_Actions"]</th>
@@ -80,9 +81,19 @@
                                 }
                             </td>
                             <td>
+                                @if (resource.IsDriveResource)
+                                {
+                                    <span class="badge bg-light text-dark">@resource.DrivePermissionLevel</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
                                 @if (resource.LastSyncedAt.HasValue)
                                 {
-                                    @resource.LastSyncedAt.Value.ToString("MMM d, yyyy HH:mm")
+                                            @resource.LastSyncedAt.Value.ToDisplayCompactDateTime()
                                 }
                                 else
                                 {
@@ -131,6 +142,17 @@ else
                 <input type="url" class="form-control" id="resourceUrl" name="ResourceUrl"
                        placeholder="https://drive.google.com/drive/folders/... or https://docs.google.com/spreadsheets/d/..." required>
                 <div class="form-text">Paste a Google Drive folder, Sheets, Docs, Slides, or other file URL.</div>
+            </div>
+            <div class="mb-3">
+                <label for="permissionLevel" class="form-label">Permission Level</label>
+                <select class="form-select" id="permissionLevel" name="PermissionLevel" style="max-width: 300px;">
+                    <option value="Viewer">Viewer (read-only)</option>
+                    <option value="Commenter">Commenter</option>
+                    <option value="Contributor" selected>Contributor (read/write)</option>
+                    <option value="ContentManager">Content Manager</option>
+                    <option value="Manager">Manager</option>
+                </select>
+                <div class="form-text">Permission level granted to team members for this resource.</div>
             </div>
             <button type="submit" class="btn btn-primary">Link Resource</button>
         </form>

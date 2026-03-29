@@ -115,17 +115,19 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Sends an email verification link for the preferred email address.
+    /// Sends an email verification link.
     /// </summary>
     /// <param name="toEmail">The email address to verify.</param>
     /// <param name="userName">The user's name.</param>
     /// <param name="verificationUrl">The URL to verify the email.</param>
+    /// <param name="isConflict">True if this email belongs to another account and verifying will trigger a merge request.</param>
     /// <param name="culture">The recipient's preferred culture (ISO code, e.g. "es").</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task SendEmailVerificationAsync(
         string toEmail,
         string userName,
         string verificationUrl,
+        bool isConflict = false,
         string? culture = null,
         CancellationToken cancellationToken = default);
 
@@ -229,6 +231,25 @@ public interface IEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Sends an Admin daily digest email summarizing system health and pending actions.
+    /// </summary>
+    Task SendAdminDailyDigestAsync(
+        string email,
+        string name,
+        string date,
+        AdminDigestCounts counts,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a feedback response notification to the reporter.
+    /// </summary>
+    Task SendFeedbackResponseAsync(
+        string userEmail, string userName, string originalDescription,
+        string responseMessage, string reportLink, string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sends a facilitated message from one volunteer to another.
     /// </summary>
     Task SendFacilitatedMessageAsync(
@@ -238,6 +259,36 @@ public interface IEmailService
         string messageText,
         bool includeContactInfo,
         string? senderEmail,
+        string? culture = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a magic link login email to an existing user.
+    /// </summary>
+    Task SendMagicLinkLoginAsync(
+        string toEmail,
+        string displayName,
+        string magicLinkUrl,
+        string? culture = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends a magic link signup email to a new user.
+    /// </summary>
+    Task SendMagicLinkSignupAsync(
+        string toEmail,
+        string magicLinkUrl,
+        string? culture = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Sends workspace credentials to the user's recovery email after provisioning a @nobodies.team account.
+    /// </summary>
+    Task SendWorkspaceCredentialsAsync(
+        string recoveryEmail,
+        string userName,
+        string workspaceEmail,
+        string tempPassword,
         string? culture = null,
         CancellationToken cancellationToken = default);
 }

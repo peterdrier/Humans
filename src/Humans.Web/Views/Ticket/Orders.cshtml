@@ -1,0 +1,151 @@
+@model Humans.Web.Models.TicketOrdersViewModel
+@{
+    ViewData["Title"] = "Ticket Orders";
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Ticket Orders</h1>
+    <partial name="_TicketNav" />
+
+    <!-- Search & Filters -->
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search name, email, or code..." />
+        </div>
+        <div class="col-md-2">
+            <select name="filterPaymentStatus" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="Paid" selected="@(Model.FilterPaymentStatus == "Paid" ? "selected" : null)">Paid</option>
+                <option value="Pending" selected="@(Model.FilterPaymentStatus == "Pending" ? "selected" : null)">Pending</option>
+                <option value="Refunded" selected="@(Model.FilterPaymentStatus == "Refunded" ? "selected" : null)">Refunded</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="filterMatched" class="form-select">
+                <option value="">All</option>
+                <option value="true" selected="@(Model.FilterMatched == true ? "selected" : null)">Matched</option>
+                <option value="false" selected="@(Model.FilterMatched == false ? "selected" : null)">Unmatched</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="pageSize" class="form-select">
+                <option value="25" selected="@(Model.PageSize == 25 ? "selected" : null)">25 per page</option>
+                <option value="50" selected="@(Model.PageSize == 50 ? "selected" : null)">50 per page</option>
+                <option value="100" selected="@(Model.PageSize == 100 ? "selected" : null)">100 per page</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filter</button>
+        </div>
+        <input type="hidden" name="sortBy" value="@Model.SortBy" />
+        <input type="hidden" name="sortDesc" value="@Model.SortDesc" />
+        <input type="hidden" name="filterTicketType" value="@Model.FilterTicketType" />
+    </form>
+
+    <p class="text-muted">@Model.TotalCount orders found</p>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th><a asp-action="Orders" asp-route-sortBy="date" asp-route-sortDesc="@(string.Equals(Model.SortBy, "date", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Date</a></th>
+                    <th><a asp-action="Orders" asp-route-sortBy="name" asp-route-sortDesc="@(string.Equals(Model.SortBy, "name", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Purchaser</a></th>
+                    <th>Email</th>
+                    <th><a asp-action="Orders" asp-route-sortBy="tickets" asp-route-sortDesc="@(string.Equals(Model.SortBy, "tickets", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Tickets</a></th>
+                    <th><a asp-action="Orders" asp-route-sortBy="amount" asp-route-sortDesc="@(string.Equals(Model.SortBy, "amount", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Amount</a></th>
+                    <th>Discount</th>
+                    <th>Method</th>
+                    <th>Stripe Fee</th>
+                    <th>TT Fee</th>
+                    <th>Status</th>
+                    <th>Matched</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <td><small><code>@order.VendorOrderId</code></small></td>
+                        <td>@order.PurchasedAt.ToDisplayDate()</td>
+                        <td>@order.BuyerName</td>
+                        <td><small>@order.BuyerEmail</small></td>
+                        <td><a asp-action="Attendees" asp-route-filterOrderId="@order.VendorOrderId">@order.AttendeeCount</a></td>
+                        <td>@order.Currency @order.TotalAmount.ToString("N2")</td>
+                        <td>
+                            @if (order.DiscountAmount.HasValue)
+                            {
+                                <span title="@(order.DiscountCode ?? "")">-@order.DiscountAmount.Value.ToString("N2")</span>
+                            }
+                            else
+                            {
+                                <text>&mdash;</text>
+                            }
+                        </td>
+                        <td>
+                            @if (order.PaymentMethod != null)
+                            {
+                                <small>@(order.PaymentMethodDetail != null ? $"{order.PaymentMethod}/{order.PaymentMethodDetail}" : order.PaymentMethod)</small>
+                            }
+                            else
+                            {
+                                <text>&mdash;</text>
+                            }
+                        </td>
+                        <td>@(order.StripeFee.HasValue ? order.StripeFee.Value.ToString("N2") : "\u2014")</td>
+                        <td>@(order.ApplicationFee.HasValue ? order.ApplicationFee.Value.ToString("N2") : "\u2014")</td>
+                        <td>
+                            @{
+                                var statusClass = order.PaymentStatus switch
+                                {
+                                    Humans.Domain.Enums.TicketPaymentStatus.Paid => "bg-success",
+                                    Humans.Domain.Enums.TicketPaymentStatus.Pending => "bg-warning text-dark",
+                                    Humans.Domain.Enums.TicketPaymentStatus.Refunded => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @statusClass">@order.PaymentStatus</span>
+                        </td>
+                        <td>
+                            @if (order.MatchedUserId.HasValue)
+                            {
+                                <human-link user-id="@order.MatchedUserId.Value" display-name="@order.MatchedUserName" admin="true" show-popover="true">
+                                    <span class="badge bg-success"><i class="fa-solid fa-check"></i></span> @order.MatchedUserName
+                                </human-link>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary"><i class="fa-solid fa-xmark"></i></span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Orders.Count == 0)
+                {
+                    <tr><td colspan="13" class="text-muted text-center">No orders found</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Previous</a>
+                </li>
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Orders" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Orders" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-sortBy="@Model.SortBy" asp-route-sortDesc="@Model.SortDesc" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Next</a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>

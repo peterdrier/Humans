@@ -1,0 +1,123 @@
+@model Humans.Web.Models.AccountMergeDetailViewModel
+@{
+    ViewData["Title"] = "Merge Request Detail";
+    var isPending = string.Equals(Model.Status, "Pending", StringComparison.Ordinal);
+}
+
+<h1>Merge Request Detail</h1>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-4">
+    <div class="card-header d-flex align-items-center">
+        <i class="fa-solid fa-code-merge me-2"></i>Merge Request
+        @if (isPending)
+        {
+            <span class="badge bg-warning text-dark ms-2">Pending</span>
+        }
+        else if (string.Equals(Model.Status, "Accepted", StringComparison.Ordinal))
+        {
+            <span class="badge bg-success ms-2">Accepted</span>
+        }
+        else
+        {
+            <span class="badge bg-danger ms-2">Rejected</span>
+        }
+        <span class="text-muted ms-auto" style="font-size: 0.85rem;">
+            Requested @Model.CreatedAt.ToString("g")
+            @if (Model.ResolvedAt.HasValue)
+            {
+                <span class="ms-2">— Resolved @Model.ResolvedAt.Value.ToString("g") by @Model.ResolvedByName</span>
+            }
+        </span>
+    </div>
+    <div class="card-body">
+        <p class="mb-3">
+            Email in question: <code>@Model.Email</code>
+        </p>
+
+        @if (!string.IsNullOrEmpty(Model.AdminNotes))
+        {
+            <p class="mb-0"><strong>Admin notes:</strong> @Model.AdminNotes</p>
+        }
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100 border-success">
+            <div class="card-header bg-success bg-opacity-10">
+                <i class="fa-solid fa-star me-1 text-success"></i>Primary account <small>(will be kept)</small>
+            </div>
+            <div class="card-body">
+                <partial name="_ProfileCard" model="Model.PrimaryUser" />
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 border-secondary">
+            <div class="card-header bg-secondary bg-opacity-10">
+                <i class="fa-solid fa-clone me-1 text-secondary"></i>Duplicate account <small>(will be archived)</small>
+            </div>
+            <div class="card-body">
+                <partial name="_ProfileCard" model="Model.DuplicateUser" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (isPending)
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        <strong>Review carefully.</strong> Accepting this merge will:
+        <ul class="mb-0 mt-2">
+            <li>Migrate all teams, shift signups, and data from the duplicate to the primary account</li>
+            <li>Archive (anonymize) the duplicate account — this cannot be undone</li>
+            <li>Add the email <code>@Model.Email</code> to the primary account</li>
+        </ul>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">Accept Merge</div>
+                <div class="card-body">
+                    <form asp-action="Accept" asp-route-id="@Model.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label for="accept-notes" class="form-label">Notes (optional)</label>
+                            <textarea id="accept-notes" name="notes" class="form-control" rows="2" placeholder="Reason for accepting..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success"
+                                data-confirm="Accept this merge? The duplicate account will be permanently archived.">
+                            <i class="fa-solid fa-check me-1"></i>Accept Merge
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">Reject Merge</div>
+                <div class="card-body">
+                    <form asp-action="Reject" asp-route-id="@Model.Id" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="mb-3">
+                            <label for="reject-notes" class="form-label">Notes (optional)</label>
+                            <textarea id="reject-notes" name="notes" class="form-control" rows="2" placeholder="Reason for rejecting..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger"
+                                data-confirm="Reject this merge? The pending email will be removed.">
+                            <i class="fa-solid fa-xmark me-1"></i>Reject Merge
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<a asp-action="Index" class="btn btn-outline-secondary mt-3">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back to Merge Requests
+</a>

@@ -1,0 +1,80 @@
+@model IList<Humans.Domain.Entities.EmailOutboxMessage>
+@using Humans.Domain.Enums
+@{
+    var humanId = (Guid?)ViewBag.HumanId;
+    var isAdminView = humanId.HasValue;
+    ViewData["Title"] = isAdminView ? "Emails" : "My Emails";
+}
+
+<div class="row">
+    <div class="col-md-10">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>@ViewData["Title"]</h1>
+            @if (isAdminView)
+            {
+                <human-link user-id="@humanId.Value" display-name="Back to Admin" admin="true" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+                </human-link>
+            }
+            else
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-arrow-left me-1"></i>Back to Profile
+                </a>
+            }
+        </div>
+
+        <vc:temp-data-alerts />
+
+        <p class="text-muted">
+            @(isAdminView ? "Emails the system has sent to this human." : "Emails the system has sent to you (within the last 150 days).")
+        </p>
+
+        @if (!Model.Any())
+        {
+            <div class="text-muted text-center py-5">No emails on record.</div>
+        }
+        else
+        {
+            <div class="card">
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < Model.Count; i++)
+                            {
+                                var msg = Model[i];
+                                var statusClass = msg.Status switch
+                                {
+                                    EmailOutboxStatus.Queued => "bg-warning text-dark",
+                                    EmailOutboxStatus.Sent => "bg-success",
+                                    EmailOutboxStatus.Failed => "bg-danger",
+                                    _ => "bg-secondary"
+                                };
+                                var collapseId = $"msg-body-{i}";
+                                <tr data-bs-toggle="collapse" data-bs-target="#@collapseId" role="button" style="cursor: pointer;">
+                                    <td>@msg.Subject</td>
+                                    <td><span class="badge @statusClass">@msg.Status</span></td>
+                                    <td>@msg.CreatedAt.ToDateTimeUtc().ToDisplayDateTime()</td>
+                                </tr>
+                                <tr class="collapse" id="@collapseId">
+                                    <td colspan="3" class="p-0">
+                                        <div class="p-3 bg-light border-top">
+                                            <iframe srcdoc="@msg.HtmlBody" sandbox="" style="width:100%;border:none;min-height:300px;" onload="this.style.height=this.contentDocument.body.scrollHeight+'px';"></iframe>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+</div>

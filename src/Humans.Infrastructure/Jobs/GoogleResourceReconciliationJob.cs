@@ -7,25 +7,23 @@ using Humans.Infrastructure.Services;
 namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
-/// Scheduled job that reconciles Google resources based on per-service sync mode settings.
+/// Scheduled job that reconciles Google resources.
+/// Add/remove behavior is controlled by SyncSettings, enforced by the service gateway methods.
 /// </summary>
 public class GoogleResourceReconciliationJob
 {
     private readonly IGoogleSyncService _googleSyncService;
-    private readonly ISyncSettingsService _syncSettingsService;
     private readonly HumansMetricsService _metrics;
     private readonly ILogger<GoogleResourceReconciliationJob> _logger;
     private readonly IClock _clock;
 
     public GoogleResourceReconciliationJob(
         IGoogleSyncService googleSyncService,
-        ISyncSettingsService syncSettingsService,
         HumansMetricsService metrics,
         ILogger<GoogleResourceReconciliationJob> logger,
         IClock clock)
     {
         _googleSyncService = googleSyncService;
-        _syncSettingsService = syncSettingsService;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -37,8 +35,20 @@ public class GoogleResourceReconciliationJob
 
         try
         {
-            await SyncServiceAsync(SyncServiceType.GoogleDrive, GoogleResourceType.DriveFolder, cancellationToken);
-            await SyncServiceAsync(SyncServiceType.GoogleGroups, GoogleResourceType.Group, cancellationToken);
+            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
+            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, cancellationToken);
+
+            // Check Google Group settings for drift (detect only, does not fix)
+            var settingsResult = await _googleSyncService.CheckGroupSettingsAsync(cancellationToken);
+            if (!settingsResult.Skipped && settingsResult.DriftCount > 0)
+            {
+                _logger.LogWarning("Google Group settings drift detected: {DriftCount} group(s) with settings drift out of {Total}",
+                    settingsResult.DriftCount, settingsResult.TotalGroups);
+            }
+            if (settingsResult.ErrorCount > 0)
+            {
+                _logger.LogWarning("Google Group settings check had {ErrorCount} error(s)", settingsResult.ErrorCount);
+            }
 
             _metrics.RecordJobRun("google_resource_reconciliation", "success");
             _logger.LogInformation("Completed Google resource reconciliation");
@@ -49,25 +59,5 @@ public class GoogleResourceReconciliationJob
             _logger.LogError(ex, "Error during Google resource reconciliation");
             throw;
         }
-    }
-
-    private async Task SyncServiceAsync(SyncServiceType serviceType, GoogleResourceType resourceType, CancellationToken ct)
-    {
-        var mode = await _syncSettingsService.GetModeAsync(serviceType, ct);
-        if (mode == SyncMode.None)
-        {
-            _logger.LogInformation("Skipping {ServiceType} sync — mode is None", serviceType);
-            return;
-        }
-
-        var action = mode switch
-        {
-            SyncMode.AddOnly => SyncAction.AddOnly,
-            SyncMode.AddAndRemove => SyncAction.AddAndRemove,
-            _ => SyncAction.Preview
-        };
-
-        _logger.LogInformation("Syncing {ServiceType} resources with action {Action}", serviceType, action);
-        await _googleSyncService.SyncResourcesByTypeAsync(resourceType, action, ct);
     }
 }

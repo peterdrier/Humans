@@ -1,0 +1,90 @@
+@using Humans.Application.Interfaces
+@model (List<DailyStaffingData> Data, string ChartId)
+
+@{
+    var periods = Model.Data.GroupBy(d => d.Period).OrderBy(g => g.Key switch { "Set-up" => 0, "Event" => 1, "Strike" => 2, _ => 3 }).ToList();
+}
+
+@if (periods.Count > 0)
+{
+    <script>
+    if (typeof Chart === 'undefined') {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+        s.onload = function() {
+            @foreach (var group in periods)
+            {
+                <text>window['render_@(Model.ChartId)_@(group.Key.Replace("-", ""))']();</text>
+            }
+        };
+        document.head.appendChild(s);
+    } else {
+        document.addEventListener('DOMContentLoaded', function() {
+            @foreach (var group in periods)
+            {
+                <text>window['render_@(Model.ChartId)_@(group.Key.Replace("-", ""))']();</text>
+            }
+        });
+    }
+
+    @foreach (var group in periods)
+    {
+        var chartKey = Model.ChartId + "_" + group.Key.Replace("-", "");
+        var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+        <text>
+    window['render_@(chartKey)'] = function() {
+        var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(group.ToList(), jsonOpts));
+        var labels = data.map(function(d) { return d.dateLabel; });
+        var confirmed = data.map(function(d) { return d.confirmedCount; });
+        var remaining = data.map(function(d) { return Math.max(0, d.totalSlots - d.confirmedCount); });
+        var minLine = data.map(function(d) { return d.minSlots; });
+
+        var confirmedColors = data.map(function(d) {
+            if (d.totalSlots === 0) return '#198754';
+            if (d.confirmedCount >= d.minSlots) return '#198754';
+            if (d.minSlots > 0 && d.confirmedCount >= d.minSlots * 0.5) return '#ffc107';
+            return '#dc3545';
+        });
+
+        new Chart(document.getElementById('@chartKey'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Confirmed', data: confirmed, backgroundColor: confirmedColors },
+                    { label: 'Remaining', data: remaining, backgroundColor: '#e9ecef' },
+                    { label: 'Min needed', data: minLine, type: 'line', borderColor: '#dc3545', borderDash: [5, 5], pointRadius: 0, fill: false, order: 0 }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            afterTitle: function(items) { return data[items[0].dataIndex].period; }
+                        }
+                    }
+                }
+            }
+        });
+    };
+        </text>
+    }
+    </script>
+
+    @foreach (var group in periods)
+    {
+        var chartKey = Model.ChartId + "_" + group.Key.Replace("-", "");
+        var totalSlots = group.Sum(d => d.TotalSlots);
+        if (totalSlots > 0)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h6 class="mb-0">@group.Key Staffing</h6></div>
+                <div class="card-body">
+                    <canvas id="@chartKey" height="100"></canvas>
+                </div>
+            </div>
+        }
+    }
+}

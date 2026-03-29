@@ -1,0 +1,28 @@
+@using Humans.Domain.Entities
+@model (VolunteerEventProfile? Profile, bool ShowMedical)
+
+@if (Model.Profile != null)
+{
+    <span class="volunteer-badges">
+        @foreach (var skill in Model.Profile.Skills)
+        {
+            <span class="badge bg-info me-1">@skill</span>
+        }
+        @foreach (var quirk in Model.Profile.Quirks)
+        {
+            <span class="badge bg-secondary me-1">@quirk</span>
+        }
+        @if (!string.IsNullOrEmpty(Model.Profile.DietaryPreference))
+        {
+            <span class="badge bg-success me-1">@Model.Profile.DietaryPreference</span>
+        }
+        @foreach (var lang in Model.Profile.Languages)
+        {
+            <span class="badge bg-primary me-1">@lang</span>
+        }
+        @if (Model.ShowMedical && !string.IsNullOrEmpty(Model.Profile.MedicalConditions))
+        {
+            <span class="badge bg-danger" title="@Model.Profile.MedicalConditions">Medical</span>
+        }
+    </span>
+}

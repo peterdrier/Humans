@@ -1,0 +1,26 @@
+@{
+    var controller = ViewContext.RouteData.Values["action"]?.ToString();
+}
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link @(controller == "Index" ? "active" : "")" asp-action="Index">Dashboard</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(controller == "Orders" ? "active" : "")" asp-action="Orders">Orders</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(controller == "Attendees" ? "active" : "")" asp-action="Attendees">Attendees</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(controller == "Codes" ? "active" : "")" asp-action="Codes">Codes</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(controller == "WhoHasntBought" ? "active" : "")" asp-action="WhoHasntBought">Humans</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(controller == "SalesAggregates" ? "active" : "")" asp-action="SalesAggregates">Aggregates</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(controller == "GateList" ? "active" : "")" asp-action="GateList">Gate List</a>
+    </li>
+</ul>

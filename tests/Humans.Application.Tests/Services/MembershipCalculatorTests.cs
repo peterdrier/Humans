@@ -115,21 +115,21 @@ public class MembershipCalculatorTests : IDisposable
     }
 
     [Fact]
-    public async Task GetRequiredTeamIdsForUserAsync_IncludesLeads_WhenUserIsLeadOfUserCreatedTeam()
+    public async Task GetRequiredTeamIdsForUserAsync_IncludesCoordinators_WhenUserIsCoordinatorOfUserCreatedTeam()
     {
         var userId = Guid.NewGuid();
         var userTeam = SeedTeam("Geeks", SystemTeamType.None);
-        SeedTeamMember(userTeam.Id, userId, TeamMemberRole.Lead);
+        SeedTeamMember(userTeam.Id, userId, TeamMemberRole.Coordinator);
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
-        result.Should().Contain(SystemTeamIds.Leads);
+        result.Should().Contain(SystemTeamIds.Coordinators);
     }
 
     [Fact]
-    public async Task GetRequiredTeamIdsForUserAsync_ExcludesLeads_WhenUserIsOnlyMember()
+    public async Task GetRequiredTeamIdsForUserAsync_ExcludesCoordinators_WhenUserIsOnlyMember()
     {
         var userId = Guid.NewGuid();
         var userTeam = SeedTeam("Geeks", SystemTeamType.None);
@@ -139,26 +139,26 @@ public class MembershipCalculatorTests : IDisposable
         var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
-        result.Should().NotContain(SystemTeamIds.Leads);
+        result.Should().NotContain(SystemTeamIds.Coordinators);
     }
 
     [Fact]
-    public async Task GetRequiredTeamIdsForUserAsync_ExcludesLeads_WhenUserIsLeadOfSystemTeam()
+    public async Task GetRequiredTeamIdsForUserAsync_ExcludesCoordinators_WhenUserIsCoordinatorOfSystemTeam()
     {
         var userId = Guid.NewGuid();
-        // Lead of the Volunteers system team should NOT trigger Leads eligibility
+        // Coordinator of the Volunteers system team should NOT trigger Coordinators eligibility
         var volunteersTeam = SeedTeam("Volunteers", SystemTeamType.Volunteers, SystemTeamIds.Volunteers);
-        SeedTeamMember(volunteersTeam.Id, userId, TeamMemberRole.Lead);
+        SeedTeamMember(volunteersTeam.Id, userId, TeamMemberRole.Coordinator);
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
-        result.Should().NotContain(SystemTeamIds.Leads);
+        result.Should().NotContain(SystemTeamIds.Coordinators);
     }
 
     [Fact]
-    public async Task GetRequiredTeamIdsForUserAsync_ExcludesLeads_WhenLeadMembershipEnded()
+    public async Task GetRequiredTeamIdsForUserAsync_ExcludesCoordinators_WhenCoordinatorMembershipEnded()
     {
         var userId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
@@ -169,7 +169,7 @@ public class MembershipCalculatorTests : IDisposable
             Id = Guid.NewGuid(),
             TeamId = userTeam.Id,
             UserId = userId,
-            Role = TeamMemberRole.Lead,
+            Role = TeamMemberRole.Coordinator,
             JoinedAt = now - Duration.FromDays(30),
             LeftAt = now - Duration.FromDays(1) // Left the team
         });
@@ -178,7 +178,7 @@ public class MembershipCalculatorTests : IDisposable
         var result = await _service.GetRequiredTeamIdsForUserAsync(userId);
 
         result.Should().Contain(SystemTeamIds.Volunteers);
-        result.Should().NotContain(SystemTeamIds.Leads);
+        result.Should().NotContain(SystemTeamIds.Coordinators);
     }
 
     [Fact]
@@ -197,10 +197,10 @@ public class MembershipCalculatorTests : IDisposable
         result.Should().Contain(SystemTeamIds.Volunteers);
     }
 
-    // --- GetMembershipSnapshotAsync with Leads docs ---
+    // --- GetMembershipSnapshotAsync with Coordinators docs ---
 
     [Fact]
-    public async Task GetMembershipSnapshotAsync_IncludesLeadsDocsForLeadUser()
+    public async Task GetMembershipSnapshotAsync_IncludesCoordinatorsDocsForCoordinatorUser()
     {
         var userId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
@@ -210,11 +210,11 @@ public class MembershipCalculatorTests : IDisposable
 
         // System teams
         SeedTeam("Volunteers", SystemTeamType.Volunteers, SystemTeamIds.Volunteers);
-        SeedTeam("Leads", SystemTeamType.Leads, SystemTeamIds.Leads);
+        SeedTeam("Coordinators", SystemTeamType.Coordinators, SystemTeamIds.Coordinators);
 
-        // User-created team where user is Lead
+        // User-created team where user is Coordinator
         var geeks = SeedTeam("Geeks", SystemTeamType.None);
-        SeedTeamMember(geeks.Id, userId, TeamMemberRole.Lead);
+        SeedTeamMember(geeks.Id, userId, TeamMemberRole.Coordinator);
 
         // Volunteers member
         SeedTeamMember(SystemTeamIds.Volunteers, userId, TeamMemberRole.Member);
@@ -246,14 +246,14 @@ public class MembershipCalculatorTests : IDisposable
             LegalDocument = _dbContext.LegalDocuments.Local.First(d => d.Id == volDocId)
         });
 
-        // Leads doc (required)
-        var leadsDocId = Guid.NewGuid();
-        var leadsVersionId = Guid.NewGuid();
+        // Coordinators doc (required)
+        var coordsDocId = Guid.NewGuid();
+        var coordsVersionId = Guid.NewGuid();
         _dbContext.LegalDocuments.Add(new LegalDocument
         {
-            Id = leadsDocId,
-            Name = "Lead Agreement",
-            TeamId = SystemTeamIds.Leads,
+            Id = coordsDocId,
+            Name = "Coordinator Agreement",
+            TeamId = SystemTeamIds.Coordinators,
             IsRequired = true,
             IsActive = true,
             GracePeriodDays = 0,
@@ -263,29 +263,29 @@ public class MembershipCalculatorTests : IDisposable
         });
         _dbContext.DocumentVersions.Add(new DocumentVersion
         {
-            Id = leadsVersionId,
-            LegalDocumentId = leadsDocId,
+            Id = coordsVersionId,
+            LegalDocumentId = coordsDocId,
             VersionNumber = "v1",
             CommitSha = "def456",
             EffectiveFrom = now - Duration.FromDays(1),
             RequiresReConsent = false,
             CreatedAt = now,
-            LegalDocument = _dbContext.LegalDocuments.Local.First(d => d.Id == leadsDocId)
+            LegalDocument = _dbContext.LegalDocuments.Local.First(d => d.Id == coordsDocId)
         });
 
         await _dbContext.SaveChangesAsync();
 
         var snapshot = await _service.GetMembershipSnapshotAsync(userId);
 
-        // Should include both Volunteers and Leads docs
+        // Should include both Volunteers and Coordinators docs
         snapshot.RequiredConsentCount.Should().Be(2);
         snapshot.PendingConsentCount.Should().Be(2);
         snapshot.MissingConsentVersionIds.Should().Contain(volVersionId);
-        snapshot.MissingConsentVersionIds.Should().Contain(leadsVersionId);
+        snapshot.MissingConsentVersionIds.Should().Contain(coordsVersionId);
     }
 
     [Fact]
-    public async Task GetMembershipSnapshotAsync_ExcludesLeadsDocs_WhenUserIsNotLead()
+    public async Task GetMembershipSnapshotAsync_ExcludesCoordinatorsDocs_WhenUserIsNotCoordinator()
     {
         var userId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
@@ -295,9 +295,9 @@ public class MembershipCalculatorTests : IDisposable
 
         // System teams
         SeedTeam("Volunteers", SystemTeamType.Volunteers, SystemTeamIds.Volunteers);
-        SeedTeam("Leads", SystemTeamType.Leads, SystemTeamIds.Leads);
+        SeedTeam("Coordinators", SystemTeamType.Coordinators, SystemTeamIds.Coordinators);
 
-        // User is just a member of a user-created team, not a lead
+        // User is just a member of a user-created team, not a coordinator
         var geeks = SeedTeam("Geeks", SystemTeamType.None);
         SeedTeamMember(geeks.Id, userId, TeamMemberRole.Member);
         SeedTeamMember(SystemTeamIds.Volunteers, userId, TeamMemberRole.Member);
@@ -329,13 +329,13 @@ public class MembershipCalculatorTests : IDisposable
             LegalDocument = _dbContext.LegalDocuments.Local.First(d => d.Id == volDocId)
         });
 
-        // Leads doc exists but should NOT appear for non-leads
-        var leadsDocId = Guid.NewGuid();
+        // Coordinators doc exists but should NOT appear for non-coordinators
+        var coordsDocId = Guid.NewGuid();
         _dbContext.LegalDocuments.Add(new LegalDocument
         {
-            Id = leadsDocId,
-            Name = "Lead Agreement",
-            TeamId = SystemTeamIds.Leads,
+            Id = coordsDocId,
+            Name = "Coordinator Agreement",
+            TeamId = SystemTeamIds.Coordinators,
             IsRequired = true,
             IsActive = true,
             GracePeriodDays = 0,
@@ -346,20 +346,20 @@ public class MembershipCalculatorTests : IDisposable
         _dbContext.DocumentVersions.Add(new DocumentVersion
         {
             Id = Guid.NewGuid(),
-            LegalDocumentId = leadsDocId,
+            LegalDocumentId = coordsDocId,
             VersionNumber = "v1",
             CommitSha = "def456",
             EffectiveFrom = now - Duration.FromDays(1),
             RequiresReConsent = false,
             CreatedAt = now,
-            LegalDocument = _dbContext.LegalDocuments.Local.First(d => d.Id == leadsDocId)
+            LegalDocument = _dbContext.LegalDocuments.Local.First(d => d.Id == coordsDocId)
         });
 
         await _dbContext.SaveChangesAsync();
 
         var snapshot = await _service.GetMembershipSnapshotAsync(userId);
 
-        // Should only include Volunteers doc, not Leads
+        // Should only include Volunteers doc, not Coordinators
         snapshot.RequiredConsentCount.Should().Be(1);
         snapshot.PendingConsentCount.Should().Be(1);
         snapshot.MissingConsentVersionIds.Should().ContainSingle().Which.Should().Be(volVersionId);

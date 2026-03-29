@@ -1,8 +1,8 @@
 @model TeamMemberRole
 @inject IStringLocalizer<SharedResource> Localizer
-@if (Model == TeamMemberRole.Lead)
+@if (Model == TeamMemberRole.Coordinator)
 {
-    <span class="badge bg-warning text-dark">@Localizer["Profile_Lead"]</span>
+    <span class="badge bg-warning text-dark">@Localizer["Profile_Coordinator"]</span>
 }
 else
 {

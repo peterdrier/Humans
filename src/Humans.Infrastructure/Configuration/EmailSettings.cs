@@ -38,7 +38,7 @@ public class EmailSettings
     /// <summary>
     /// From email address.
     /// </summary>
-    public string FromAddress { get; set; } = "noreply@nobodies.team";
+    public string FromAddress { get; set; } = "humans@nobodies.team";
 
     /// <summary>
     /// From display name.
@@ -66,4 +66,19 @@ public class EmailSettings
     /// Production: 7, QA: 1.
     /// </summary>
     public int ConsentReminderCooldownDays { get; set; } = 7;
+
+    /// <summary>
+    /// Number of messages to process per outbox batch.
+    /// </summary>
+    public int OutboxBatchSize { get; set; } = 10;
+
+    /// <summary>
+    /// Maximum number of send retries before a message is marked as failed.
+    /// </summary>
+    public int OutboxMaxRetries { get; set; } = 10;
+
+    /// <summary>
+    /// Number of days to retain sent outbox messages before cleanup.
+    /// </summary>
+    public int OutboxRetentionDays { get; set; } = 150;
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using NodaTime;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
@@ -126,7 +127,8 @@ public class ProfileViewModel
             }
             catch (ArgumentOutOfRangeException)
             {
-                return null; // e.g. Feb 30
+                // Invalid month/day combinations from posted form values are treated as no birthday.
+                return null;
             }
         }
     }
@@ -154,7 +156,7 @@ public class ProfileViewModel
     /// </summary>
     public bool RemoveProfilePicture { get; set; }
 
-    public string MembershipStatus { get; set; } = "None";
+    public MembershipStatus MembershipStatus { get; set; }
     public bool IsApproved { get; set; }
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
@@ -162,7 +164,7 @@ public class ProfileViewModel
     /// <summary>
     /// Status of the user's latest tier application (Submitted, Approved, Rejected), or null if none.
     /// </summary>
-    public string? TierApplicationStatus { get; set; }
+    public ApplicationStatus? TierApplicationStatus { get; set; }
 
     /// <summary>
     /// The tier the user applied for (Colaborador or Asociado), or null if no application.
@@ -249,7 +251,7 @@ public class ProfileViewModel
         get
         {
             var parsed = ParsedBirthday;
-            if (parsed == null)
+            if (parsed is null)
                 return null;
 
             var pattern = NodaTime.Text.LocalDatePattern.CreateWithInvariantCulture("MMMM d");
@@ -298,6 +300,17 @@ public class ProfileViewModel
     /// Teams the user is a member of (excluding Volunteers system team).
     /// </summary>
     public IReadOnlyList<TeamMembershipViewModel> Teams { get; set; } = [];
+
+    /// <summary>
+    /// Campaign grants assigned to this user (Active and Completed campaigns only).
+    /// Only populated when IsOwnProfile is true.
+    /// </summary>
+    public IReadOnlyList<CampaignGrant> CampaignGrants { get; set; } = [];
+
+    /// <summary>
+    /// No-show history for coordinators/admins viewing other profiles.
+    /// </summary>
+    public List<NoShowHistoryItem>? NoShowHistory { get; set; }
 }
 
 /// <summary>
@@ -308,7 +321,7 @@ public class TeamMembershipViewModel
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;
-    public bool IsLead { get; set; }
+    public bool IsCoordinator { get; set; }
     public bool IsSystemTeam { get; set; }
 }
 
@@ -349,7 +362,7 @@ public class ContactFieldViewModel
 #pragma warning restore CS0618
         ContactFieldType.Phone => $"tel:{Value}",
         ContactFieldType.WhatsApp => $"https://wa.me/{new string(Value.Where(char.IsDigit).ToArray())}",
-        ContactFieldType.Telegram => Value.StartsWith('@') ? $"https://t.me/{Value[1..]}" : $"https://t.me/{Value}",
+        ContactFieldType.Telegram => Value.StartsWith("@", StringComparison.Ordinal) ? $"https://t.me/{Value[1..]}" : $"https://t.me/{Value}",
         _ => null
     };
 
@@ -359,7 +372,7 @@ public class ContactFieldViewModel
     public string VisibilityIconClass => Visibility switch
     {
         ContactFieldVisibility.BoardOnly => "fa-solid fa-lock",
-        ContactFieldVisibility.LeadsAndBoard => "fa-solid fa-user-shield",
+        ContactFieldVisibility.CoordinatorsAndBoard => "fa-solid fa-user-shield",
         ContactFieldVisibility.MyTeams => "fa-solid fa-users",
         ContactFieldVisibility.AllActiveProfiles => "fa-solid fa-globe",
         _ => "fa-solid fa-eye"
@@ -371,8 +384,8 @@ public class ContactFieldViewModel
     public string VisibilityTooltip => Visibility switch
     {
         ContactFieldVisibility.BoardOnly => "Visible to board members only",
-        ContactFieldVisibility.LeadsAndBoard => "Visible to team leads and board",
-        ContactFieldVisibility.MyTeams => "Visible to your teammates, leads, and board",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Visible to coordinators and board",
+        ContactFieldVisibility.MyTeams => "Visible to your teammates, coordinators, and board",
         ContactFieldVisibility.AllActiveProfiles => "Visible to all active members",
         _ => "Visibility unknown"
     };

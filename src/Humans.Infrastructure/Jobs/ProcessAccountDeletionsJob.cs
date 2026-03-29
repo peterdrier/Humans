@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Humans.Application.Extensions;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -20,6 +22,7 @@ public class ProcessAccountDeletionsJob
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
+    private readonly IMemoryCache _cache;
     private readonly HumansMetricsService _metrics;
     private readonly ILogger<ProcessAccountDeletionsJob> _logger;
     private readonly IClock _clock;
@@ -30,6 +33,7 @@ public class ProcessAccountDeletionsJob
         IAuditLogService auditLogService,
         IProfileService profileService,
         ITeamService teamService,
+        IMemoryCache cache,
         HumansMetricsService metrics,
         ILogger<ProcessAccountDeletionsJob> logger,
         IClock clock)
@@ -39,6 +43,7 @@ public class ProcessAccountDeletionsJob
         _auditLogService = auditLogService;
         _profileService = profileService;
         _teamService = teamService;
+        _cache = cache;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -76,6 +81,8 @@ public class ProcessAccountDeletionsJob
                 "Found {Count} accounts to process for deletion",
                 usersToDelete.Count);
 
+            var processedUserIds = new List<Guid>();
+
             foreach (var user in usersToDelete)
             {
                 try
@@ -86,14 +93,14 @@ public class ProcessAccountDeletionsJob
 
                     await AnonymizeUserAsync(user, now, cancellationToken);
 
-                    // Remove from caches
-                    _profileService.UpdateProfileCache(user.Id, null);
-                    _teamService.RemoveMemberFromAllTeamsCache(user.Id);
-
                     await _auditLogService.LogAsync(
-                        AuditAction.AccountAnonymized, "User", user.Id,
+                        AuditAction.AccountAnonymized, nameof(User), user.Id,
                         $"Account anonymized (was {originalName})",
                         nameof(ProcessAccountDeletionsJob));
+
+                    // Cache invalidation must follow the persisted anonymization even if the
+                    // best-effort confirmation email fails afterward.
+                    processedUserIds.Add(user.Id);
 
                     // Send confirmation to original email if we have it
                     if (!string.IsNullOrEmpty(originalEmail))
@@ -119,6 +126,14 @@ public class ProcessAccountDeletionsJob
             }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            foreach (var userId in processedUserIds)
+            {
+                _profileService.UpdateProfileCache(userId, null);
+                _teamService.RemoveMemberFromAllTeamsCache(userId);
+                _cache.InvalidateRoleAssignmentClaims(userId);
+                _cache.InvalidateShiftAuthorization(userId);
+            }
 
             _metrics.RecordJobRun("process_account_deletions", "success");
             _logger.LogInformation(
@@ -164,7 +179,7 @@ public class ProcessAccountDeletionsJob
         user.SecurityStamp = Guid.NewGuid().ToString();
 
         // Anonymize profile if exists
-        if (user.Profile != null)
+        if (user.Profile is not null)
         {
             user.Profile.FirstName = "Deleted";
             user.Profile.LastName = "User";
@@ -188,7 +203,7 @@ public class ProcessAccountDeletionsJob
         }
 
         // Remove contact fields and volunteer history
-        if (user.Profile != null)
+        if (user.Profile is not null)
         {
             var contactFields = await _dbContext.ContactFields
                 .Where(cf => cf.ProfileId == user.Profile.Id)
@@ -202,7 +217,7 @@ public class ProcessAccountDeletionsJob
         }
 
         // Remove role slot assignments for active memberships
-        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt == null).Select(m => m.Id).ToList();
+        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt is null).Select(m => m.Id).ToList();
         if (activeMemberIds.Count > 0)
         {
             var roleSlotAssignments = await _dbContext.Set<TeamRoleAssignment>()
@@ -212,16 +227,40 @@ public class ProcessAccountDeletionsJob
         }
 
         // End team memberships (only active ones — may already be ended by RequestDeletion)
-        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt == null))
+        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt is null))
         {
             membership.LeftAt = now;
         }
 
         // End role assignments
-        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo == null))
+        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo is null))
         {
             role.ValidTo = now;
         }
+
+        // Cancel active duty signups
+        var activeSignups = await _dbContext.ShiftSignups
+            .Where(d => d.UserId == user.Id &&
+                        (d.Status == SignupStatus.Confirmed || d.Status == SignupStatus.Pending))
+            .ToListAsync(cancellationToken);
+
+        foreach (var signup in activeSignups)
+        {
+            signup.Cancel(_clock, "Account deletion");
+            await _auditLogService.LogAsync(
+                AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
+                $"Cancelled signup (account deletion) for shift {signup.ShiftId}",
+                nameof(ProcessAccountDeletionsJob));
+        }
+
+        // Clear iCal token
+        user.ICalToken = null;
+
+        // Delete volunteer event profiles
+        var eventProfiles = await _dbContext.Set<VolunteerEventProfile>()
+            .Where(p => p.UserId == user.Id)
+            .ToListAsync(cancellationToken);
+        _dbContext.Set<VolunteerEventProfile>().RemoveRange(eventProfiles);
 
         // Note: We keep consent records and applications for GDPR audit trail
         // These are already anonymized via the user record anonymization

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
@@ -80,10 +81,11 @@ public class SuspendNonCompliantMembersJob
 
             var now = _clock.GetCurrentInstant();
             var suspendedCount = 0;
+            var suspendedUserIds = new List<Guid>();
 
             foreach (var user in users)
             {
-                if (user.Profile == null)
+                if (user.Profile is null)
                 {
                     continue;
                 }
@@ -94,7 +96,7 @@ public class SuspendNonCompliantMembersJob
 
                 // 2. Send notification
                 var effectiveEmail = user.GetEffectiveEmail();
-                if (effectiveEmail != null)
+                if (effectiveEmail is not null)
                 {
                     await _emailService.SendAccessSuspendedAsync(
                         effectiveEmail,
@@ -122,7 +124,7 @@ public class SuspendNonCompliantMembersJob
                 }
 
                 await _auditLogService.LogAsync(
-                    AuditAction.MemberSuspended, "User", user.Id,
+                    AuditAction.MemberSuspended, nameof(User), user.Id,
                     $"{user.DisplayName} suspended for missing required document consent (grace period expired)",
                     nameof(SuspendNonCompliantMembersJob));
 
@@ -130,17 +132,20 @@ public class SuspendNonCompliantMembersJob
                     "User {UserId} ({Email}) suspended and removed from {Count} teams",
                     user.Id, effectiveEmail, user.TeamMemberships.Count);
 
-                // Remove from profile and team caches (suspended)
-                _profileService.UpdateProfileCache(user.Id, null);
-                _teamService.RemoveMemberFromAllTeamsCache(user.Id);
-
                 _metrics.RecordMemberSuspended("job");
                 suspendedCount++;
+                suspendedUserIds.Add(user.Id);
             }
 
             if (suspendedCount > 0)
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
+
+                foreach (var userId in suspendedUserIds)
+                {
+                    _profileService.UpdateProfileCache(userId, null);
+                    _teamService.RemoveMemberFromAllTeamsCache(userId);
+                }
             }
 
             _metrics.RecordJobRun("suspend_noncompliant_members", "success");

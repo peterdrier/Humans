@@ -43,20 +43,14 @@
                         <div class="d-flex flex-wrap gap-3">
                             @foreach (var birthday in group)
                             {
-                                <a asp-controller="Human" asp-action="View" asp-route-id="@birthday.UserId"
-                                   class="d-flex align-items-center text-decoration-none text-reset">
-                                    <vc:user-avatar profile-picture-url="@birthday.EffectiveProfilePictureUrl"
-                                                    display-name="@birthday.DisplayName"
-                                                    size="48"
-                                                    css-class="me-2" />
-                                    <div>
-                                        <div class="fw-semibold">@birthday.DisplayName</div>
-                                        @if (birthday.TeamNames.Count > 0)
-                                        {
-                                            <small class="text-muted">@string.Join(", ", birthday.TeamNames)</small>
-                                        }
-                                    </div>
-                                </a>
+                                <human-link user-id="@birthday.UserId" display-name="@birthday.DisplayName"
+                                           mode="AvatarName" size="48" show-popover="true"
+                                           profile-picture-url="@birthday.EffectiveProfilePictureUrl">
+                                    @if (birthday.TeamNames.Count > 0)
+                                    {
+                                        <small class="text-muted">@string.Join(", ", birthday.TeamNames)</small>
+                                    }
+                                </human-link>
                             }
                         </div>
                     </div>

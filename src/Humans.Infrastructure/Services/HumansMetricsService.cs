@@ -26,6 +26,10 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
     private readonly Counter<long> _syncOperations;
     private readonly Counter<long> _applicationsProcessed;
     private readonly Counter<long> _jobRuns;
+    private readonly Counter<long> _emailsQueued;
+    private readonly Counter<long> _emailsFailed;
+
+    private volatile int _emailOutboxPending;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<HumansMetricsService> _logger;
@@ -68,6 +72,14 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
         _jobRuns = HumansMeter.CreateCounter<long>(
             "humans.job_runs_total",
             description: "Total background job runs");
+
+        _emailsQueued = HumansMeter.CreateCounter<long>(
+            "humans.email_queued_total",
+            description: "Total emails queued for sending");
+
+        _emailsFailed = HumansMeter.CreateCounter<long>(
+            "humans.email_failed_total",
+            description: "Total email send failures");
 
         // Observable Gauges
         HumansMeter.CreateObservableGauge(
@@ -135,6 +147,11 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
             observeValue: () => _snapshot.PendingOutboxEvents,
             description: "Unprocessed Google sync outbox events");
 
+        HumansMeter.CreateObservableGauge(
+            "humans.email_outbox_pending",
+            observeValue: () => _emailOutboxPending,
+            description: "Emails pending in the outbox queue");
+
         // Timer: fire immediately, then every 60 seconds
         _refreshTimer = new Timer(
             callback: _ => _ = RefreshSnapshotAsync(),
@@ -167,6 +184,15 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
         => _jobRuns.Add(1,
             new KeyValuePair<string, object?>("job", job),
             new KeyValuePair<string, object?>("result", result));
+
+    public void RecordEmailQueued(string template)
+        => _emailsQueued.Add(1, new KeyValuePair<string, object?>("template", template));
+
+    public void RecordEmailFailed(string template)
+        => _emailsFailed.Add(1, new KeyValuePair<string, object?>("template", template));
+
+    public void SetEmailOutboxPending(int count)
+        => _emailOutboxPending = count;
 
     // --- Observable gauge callbacks ---
 

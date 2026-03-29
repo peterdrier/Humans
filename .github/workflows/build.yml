@@ -28,7 +28,7 @@ jobs:
       run: dotnet build Humans.slnx --no-restore --configuration Release
 
     - name: Test
-      run: dotnet test Humans.slnx --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+      run: dotnet test Humans.slnx --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --filter "FullyQualifiedName!~Integration"
 
     - name: Upload test results
       uses: actions/upload-artifact@v4

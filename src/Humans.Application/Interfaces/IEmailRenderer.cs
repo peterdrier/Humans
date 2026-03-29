@@ -58,7 +58,7 @@ public interface IEmailRenderer
     /// <summary>
     /// Email verification link.
     /// </summary>
-    EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, string? culture = null);
+    EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, bool isConflict = false, string? culture = null);
 
     /// <summary>
     /// Account deletion requested confirmation.
@@ -86,6 +86,16 @@ public interface IEmailRenderer
     EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, BoardDigestOutstandingCounts? outstandingCounts = null, string? culture = null);
 
     /// <summary>
+    /// Admin daily digest of system health and pending actions.
+    /// </summary>
+    EmailContent RenderAdminDailyDigest(string adminName, string date, AdminDigestCounts counts, string? culture = null);
+
+    /// <summary>
+    /// Feedback response notification.
+    /// </summary>
+    EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null);
+
+    /// <summary>
     /// Facilitated message between volunteers.
     /// </summary>
     EmailContent RenderFacilitatedMessage(
@@ -95,4 +105,19 @@ public interface IEmailRenderer
         bool includeContactInfo,
         string? senderEmail,
         string? culture = null);
+
+    /// <summary>
+    /// Magic link login email for an existing user.
+    /// </summary>
+    EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null);
+
+    /// <summary>
+    /// Magic link signup email for a new user.
+    /// </summary>
+    EmailContent RenderMagicLinkSignup(string magicLinkUrl, string? culture = null);
+
+    /// <summary>
+    /// Workspace credentials email sent after provisioning a @nobodies.team account.
+    /// </summary>
+    EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null);
 }

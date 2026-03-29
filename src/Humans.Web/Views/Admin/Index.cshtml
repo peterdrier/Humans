@@ -2,7 +2,10 @@
     ViewData["Title"] = "Admin Tools";
 }
 
-<h1>Admin Tools</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Admin Tools</h1>
+    <vc:access-matrix section="Admin" />
+</div>
 
 <vc:temp-data-alerts />
 
@@ -17,11 +20,32 @@
                 <a asp-action="EmailPreview" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-envelope me-2"></i>Email Preview
                 </a>
+                <a asp-action="EmailOutbox" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-inbox me-2"></i>Email Outbox
+                </a>
                 <a asp-action="SyncSettings" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-sliders me-2"></i>Sync Settings
                 </a>
                 <a href="/hangfire" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-clock-rotate-left me-2"></i>@Localizer["Admin_BackgroundJobs"]
+                </a>
+                <form asp-action="ClearHangfireLocks" method="post" class="list-group-item list-group-item-action list-group-item-warning">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-link text-decoration-none p-0 text-dark" data-confirm="Clear all Hangfire locks? You may need to restart the app afterwards.">
+                        <i class="fa-solid fa-unlock me-2"></i>Clear Hangfire Locks
+                    </button>
+                </form>
+                <a asp-controller="Campaign" asp-action="Index" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-bullhorn me-2"></i>Campaigns
+                </a>
+                <a asp-action="Logs" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i>Application Logs
+                </a>
+                <a asp-controller="AdminEmail" asp-action="Index" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts
+                </a>
+                <a asp-controller="AdminMerge" asp-action="Index" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-code-merge me-2"></i>Account Merge Requests
                 </a>
             </div>
         </div>
@@ -36,6 +60,44 @@
                     </button>
                     <small class="text-muted d-block mt-1">Recalculates Volunteers, Leads, and Board team membership.</small>
                 </form>
+                <a asp-action="SyncResults" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Sync Results
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Google Group Settings</div>
+            <div class="card-body">
+                <form asp-action="CheckGroupSettings" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i>Check Group Settings
+                    </button>
+                    <small class="text-muted d-block mt-1">Checks all Google Groups for settings drift. Does not modify anything.</small>
+                </form>
+                <a asp-action="GroupSettingsResults" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Group Settings Results
+                </a>
+                <a asp-action="AllGroups" class="btn btn-outline-primary btn-sm mt-2">
+                    <i class="fa-solid fa-globe me-1"></i>All Domain Groups
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Email Backfill</div>
+            <div class="card-body">
+                <form asp-action="CheckEmailMismatches" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-envelope-circle-check me-1"></i>Check Email Mismatches
+                    </button>
+                    <small class="text-muted d-block mt-1">Compares stored emails against Google Admin SDK. Detects case differences in @@nobodies.team addresses.</small>
+                </form>
+                <a asp-action="EmailBackfillReview" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Results
+                </a>
             </div>
         </div>
     </div>
@@ -47,7 +109,7 @@
                 <a asp-controller="Board" asp-action="Index" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-gauge-high me-2"></i>Board Dashboard
                 </a>
-                <a href="/health/ready" target="_blank" class="list-group-item list-group-item-action">
+                <a href="/health/ready" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action">
                     <i class="fa-solid fa-heart-pulse me-2"></i>@Localizer["Admin_ViewHealthCheck"]
                 </a>
             </div>

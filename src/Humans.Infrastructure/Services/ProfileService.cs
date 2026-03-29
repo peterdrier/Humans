@@ -5,7 +5,9 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -69,19 +71,32 @@ public class ProfileService : IProfileService
         return (profile, latestApplication, snapshot.PendingConsentCount);
     }
 
+    public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        return await _dbContext.CampaignGrants
+            .AsNoTracking()
+            .Include(g => g.Campaign)
+            .Include(g => g.Code)
+            .Where(g => g.UserId == userId
+                && (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed))
+            .OrderByDescending(g => g.AssignedAt)
+            .ToListAsync(ct);
+    }
+
     public async Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
         GetProfileEditDataAsync(Guid userId, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        var isTierLocked = profile != null && await _dbContext.Applications
+        var isTierLocked = profile is not null && await _dbContext.Applications
             .AnyAsync(a => a.UserId == userId &&
                 (a.Status == ApplicationStatus.Submitted ||
                  a.Status == ApplicationStatus.Approved), ct);
 
         MemberApplication? pendingApplication = null;
-        var isInitialSetup = profile == null || !profile.IsApproved;
+        var isInitialSetup = profile is null || !profile.IsApproved;
         if (isInitialSetup)
         {
             pendingApplication = await _dbContext.Applications
@@ -114,7 +129,7 @@ public class ProfileService : IProfileService
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
-        if (profile == null)
+        if (profile is null)
         {
             profile = new Profile
             {
@@ -154,6 +169,7 @@ public class ProfileService : IProfileService
             }
             catch (ArgumentOutOfRangeException)
             {
+                // Invalid month/day combinations from form input are treated as "no birthday provided".
                 profile.DateOfBirth = null;
             }
         }
@@ -168,7 +184,7 @@ public class ProfileService : IProfileService
             profile.ProfilePictureData = null;
             profile.ProfilePictureContentType = null;
         }
-        else if (request.ProfilePictureData != null && request.ProfilePictureContentType != null)
+        else if (request.ProfilePictureData is not null && request.ProfilePictureContentType is not null)
         {
             profile.ProfilePictureData = request.ProfilePictureData;
             profile.ProfilePictureContentType = request.ProfilePictureContentType;
@@ -196,7 +212,7 @@ public class ProfileService : IProfileService
                     .FirstOrDefaultAsync(a => a.UserId == userId &&
                         a.Status == ApplicationStatus.Submitted, ct);
 
-                if (existingApp != null)
+                if (existingApp is not null)
                 {
                     existingApp.Motivation = request.ApplicationMotivation!;
                     existingApp.AdditionalInfo = request.ApplicationAdditionalInfo;
@@ -231,16 +247,17 @@ public class ProfileService : IProfileService
 
         // Update display name on user
         var user = await _dbContext.Users.FindAsync([userId], ct);
-        if (user != null)
+        if (user is not null)
         {
             user.DisplayName = displayName;
         }
 
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateActiveTeams();
 
         // Update profile cache if profile is approved
-        if (profile.IsApproved && !profile.IsSuspended && user != null)
+        if (profile.IsApproved && !profile.IsSuspended && user is not null)
         {
             await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
             UpdateProfileCache(userId, CachedProfile.Create(profile, user));
@@ -257,7 +274,7 @@ public class ProfileService : IProfileService
     public async Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], ct);
-        if (user == null)
+        if (user is null)
             return new OnboardingResult(false, "NotFound");
 
         if (user.IsDeletionPending)
@@ -274,7 +291,7 @@ public class ProfileService : IProfileService
         await _dbContext.Entry(user).Collection(u => u.RoleAssignments).LoadAsync(ct);
 
         var endedMemberships = 0;
-        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt == null).Select(m => m.Id).ToList();
+        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt is null).Select(m => m.Id).ToList();
 
         // Remove role assignments for departing memberships
         if (activeMemberIds.Count > 0)
@@ -285,27 +302,27 @@ public class ProfileService : IProfileService
             _dbContext.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
         }
 
-        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt == null))
+        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt is null))
         {
             membership.LeftAt = now;
             endedMemberships++;
         }
 
         var endedRoles = 0;
-        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo == null))
+        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo is null))
         {
             role.ValidTo = now;
             endedRoles++;
         }
 
         await _auditLogService.LogAsync(
-            AuditAction.MembershipsRevokedOnDeletionRequest, "User", user.Id,
+            AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), user.Id,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
             user.Id, user.DisplayName);
 
         await _dbContext.SaveChangesAsync(ct);
         UpdateProfileCache(userId, null);
-        _cache.Remove(CacheKeys.ActiveTeams);
+        _cache.InvalidateUserAccess(userId);
 
         _logger.LogWarning(
             "User {UserId} requested account deletion. Scheduled for {DeletionDate}. " +
@@ -315,7 +332,7 @@ public class ProfileService : IProfileService
         // Send confirmation email
         await _dbContext.Entry(user).Collection(u => u.UserEmails).LoadAsync(ct);
         var effectiveEmail = user.GetEffectiveEmail();
-        if (effectiveEmail != null)
+        if (effectiveEmail is not null)
         {
             await _emailService.SendAccountDeletionRequestedAsync(
                 effectiveEmail,
@@ -331,7 +348,7 @@ public class ProfileService : IProfileService
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], ct);
-        if (user == null)
+        if (user is null)
             return new OnboardingResult(false, "NotFound");
 
         if (!user.IsDeletionPending)
@@ -384,7 +401,7 @@ public class ProfileService : IProfileService
             .OrderByDescending(tm => tm.JoinedAt)
             .ToListAsync(ct);
 
-        var contactFields = profile != null
+        var contactFields = profile is not null
             ? await _dbContext.ContactFields
                 .AsNoTracking()
                 .Where(cf => cf.ProfileId == profile.Id)
@@ -407,14 +424,14 @@ public class ProfileService : IProfileService
 
         return new
         {
-            ExportedAt = _clock.GetCurrentInstant().ToString(null, CultureInfo.InvariantCulture),
-            Account = user != null ? new
+            ExportedAt = _clock.GetCurrentInstant().ToInvariantInstantString(),
+            Account = user is not null ? new
             {
                 user.Id,
                 user.Email,
                 user.DisplayName,
-                CreatedAt = user.CreatedAt.ToString(null, CultureInfo.InvariantCulture),
-                LastLoginAt = user.LastLoginAt?.ToString(null, CultureInfo.InvariantCulture)
+                CreatedAt = user.CreatedAt.ToInvariantInstantString(),
+                LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
             } : null,
             UserEmails = userEmails.Select(e => new
             {
@@ -424,12 +441,12 @@ public class ProfileService : IProfileService
                 e.IsNotificationTarget,
                 e.Visibility
             }),
-            Profile = profile != null ? new
+            Profile = profile is not null ? new
             {
                 profile.BurnerName,
                 profile.FirstName,
                 profile.LastName,
-                Birthday = profile.DateOfBirth != null ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}" : null,
+                Birthday = profile.DateOfBirth is not null ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}" : null,
                 profile.City,
                 profile.CountryCode,
                 profile.Bio,
@@ -441,8 +458,8 @@ public class ProfileService : IProfileService
                 profile.EmergencyContactPhone,
                 profile.EmergencyContactRelationship,
                 profile.HasCustomProfilePicture,
-                CreatedAt = profile.CreatedAt.ToString(null, CultureInfo.InvariantCulture),
-                UpdatedAt = profile.UpdatedAt.ToString(null, CultureInfo.InvariantCulture)
+                CreatedAt = profile.CreatedAt.ToInvariantInstantString(),
+                UpdatedAt = profile.UpdatedAt.ToInvariantInstantString()
             } : null,
             ContactFields = contactFields.Select(cf => new
             {
@@ -460,15 +477,15 @@ public class ProfileService : IProfileService
                 a.AdditionalInfo,
                 a.SignificantContribution,
                 a.RoleUnderstanding,
-                SubmittedAt = a.SubmittedAt.ToString(null, CultureInfo.InvariantCulture),
-                ResolvedAt = a.ResolvedAt?.ToString(null, CultureInfo.InvariantCulture)
+                SubmittedAt = a.SubmittedAt.ToInvariantInstantString(),
+                ResolvedAt = a.ResolvedAt.ToInvariantInstantString()
             }),
             Consents = consents.Select(c => new
             {
                 DocumentName = c.DocumentVersion.LegalDocument.Name,
                 DocumentVersion = c.DocumentVersion.VersionNumber,
                 c.ExplicitConsent,
-                ConsentedAt = c.ConsentedAt.ToString(null, CultureInfo.InvariantCulture),
+                ConsentedAt = c.ConsentedAt.ToInvariantInstantString(),
                 c.IpAddress,
                 c.UserAgent
             }),
@@ -476,14 +493,14 @@ public class ProfileService : IProfileService
             {
                 TeamName = tm.Team.Name,
                 tm.Role,
-                JoinedAt = tm.JoinedAt.ToString(null, CultureInfo.InvariantCulture),
-                LeftAt = tm.LeftAt?.ToString(null, CultureInfo.InvariantCulture)
+                JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
+                LeftAt = tm.LeftAt.ToInvariantInstantString()
             }),
             RoleAssignments = roleAssignments.Select(ra => new
             {
                 ra.RoleName,
-                ValidFrom = ra.ValidFrom.ToString(null, CultureInfo.InvariantCulture),
-                ValidTo = ra.ValidTo?.ToString(null, CultureInfo.InvariantCulture),
+                ValidFrom = ra.ValidFrom.ToInvariantInstantString(),
+                ValidTo = ra.ValidTo.ToInvariantInstantString(),
                 ra.CreatedByUserId
             })
         };
@@ -539,48 +556,66 @@ public class ProfileService : IProfileService
     public async Task<IReadOnlyList<Application.DTOs.AdminHumanRow>> GetFilteredHumansAsync(
         string? search, string? statusFilter, CancellationToken ct = default)
     {
-        var query = _dbContext.Users.AsQueryable();
+        var users = await _dbContext.Users
+            .Select(u => new
+            {
+                u.Id,
+                Email = u.Email ?? string.Empty,
+                u.DisplayName,
+                u.ProfilePictureUrl,
+                CreatedAt = u.CreatedAt.ToDateTimeUtc(),
+                LastLoginAt = u.LastLoginAt != null ? u.LastLoginAt.Value.ToDateTimeUtc() : (DateTime?)null,
+                HasProfile = u.Profile != null,
+                IsApproved = u.Profile != null && u.Profile.IsApproved,
+            })
+            .ToListAsync(ct);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            query = query.Where(u =>
-                u.Email!.Contains(search) ||
-                u.DisplayName.Contains(search));
+            users = users
+                .Where(u =>
+                    u.Email.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase))
+                .ToList();
         }
 
-        switch (statusFilter?.ToLowerInvariant())
+        // Partition once upfront — used for both filtering and status label assignment
+        var allIds = users.Select(u => u.Id).ToList();
+        var partition = await _membershipCalculator.PartitionUsersAsync(allIds, ct);
+
+        // Apply filter using partition buckets
+        HashSet<Guid>? filteredIds = statusFilter?.ToLowerInvariant() switch
         {
-            case "active":
-                query = query.Where(u => u.Profile != null && u.Profile.IsApproved && !u.Profile.IsSuspended);
-                break;
-            case "pending":
-                query = query.Where(u => u.Profile != null && !u.Profile.IsApproved && !u.Profile.IsSuspended);
-                break;
-            case "suspended":
-                query = query.Where(u => u.Profile != null && u.Profile.IsSuspended);
-                break;
-            case "inactive":
-                query = query.Where(u => u.Profile == null);
-                break;
-            case "deleting":
-                query = query.Where(u => u.DeletionRequestedAt != null);
-                break;
-        }
+            "active" => partition.Active,
+            "missingconsents" => partition.MissingConsents,
+            "pending" => partition.PendingApproval,
+            "suspended" => partition.Suspended,
+            "incomplete" => partition.IncompleteSignup,
+            "deleting" => partition.PendingDeletion,
+            _ => null
+        };
 
-        return await query
-            .Select(u => new Application.DTOs.AdminHumanRow(
-                u.Id,
-                u.Email ?? string.Empty,
-                u.DisplayName,
-                u.ProfilePictureUrl,
-                u.CreatedAt.ToDateTimeUtc(),
-                u.LastLoginAt != null ? u.LastLoginAt.Value.ToDateTimeUtc() : null,
-                u.Profile != null,
-                u.Profile != null && u.Profile.IsApproved,
-                u.Profile != null
-                    ? (u.Profile.IsSuspended ? "Suspended" : (!u.Profile.IsApproved ? "Pending Approval" : "Active"))
-                    : "Inactive"))
-            .ToListAsync(ct);
+        var rows = filteredIds is not null
+            ? users.Where(u => filteredIds.Contains(u.Id)).ToList()
+            : users;
+
+        return rows.Select(r => new Application.DTOs.AdminHumanRow(
+            r.Id,
+            r.Email,
+            r.DisplayName,
+            r.ProfilePictureUrl,
+            r.CreatedAt,
+            r.LastLoginAt,
+            r.HasProfile,
+            r.IsApproved,
+            partition.PendingDeletion.Contains(r.Id) ? MembershipStatusLabels.PendingDeletion :
+            partition.Suspended.Contains(r.Id) ? MembershipStatusLabels.Suspended :
+            partition.PendingApproval.Contains(r.Id) ? MembershipStatusLabels.PendingApproval :
+            partition.MissingConsents.Contains(r.Id) ? MembershipStatusLabels.MissingConsents :
+            partition.Active.Contains(r.Id) ? MembershipStatusLabels.Active :
+            partition.IncompleteSignup.Contains(r.Id) ? MembershipStatusLabels.IncompleteSignup :
+            "Unknown"))
+        .ToList();
     }
 
     public async Task<Application.DTOs.AdminHumanDetailData?> GetAdminHumanDetailAsync(Guid userId, CancellationToken ct = default)
@@ -591,7 +626,7 @@ public class ProfileService : IProfileService
             .Include(u => u.ConsentRecords)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
-        if (user == null)
+        if (user is null)
             return null;
 
         var roleAssignments = await _dbContext.RoleAssignments
@@ -617,7 +652,7 @@ public class ProfileService : IProfileService
             .ToListAsync(ct);
 
         string? rejectedByName = null;
-        if (user.Profile?.RejectedByUserId != null)
+        if (user.Profile?.RejectedByUserId is not null)
         {
             var rejectedByUser = await _dbContext.Users
                 .AsNoTracking()
@@ -678,7 +713,7 @@ public class ProfileService : IProfileService
         foreach (var p in cached.Values)
         {
             var (matchField, matchSnippet) = DetermineMatchFromCache(p, query);
-            if (matchField == null) continue;
+            if (matchField is null) continue;
 
             results.Add(new HumanSearchResult(
                 p.UserId, p.DisplayName, p.BurnerName, p.City, p.Bio, p.ContributionInterests,
@@ -717,15 +752,7 @@ public class ProfileService : IProfileService
     }
 
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
-    {
-        if (_cache.TryGetValue(CacheKeys.ApprovedProfiles, out ConcurrentDictionary<Guid, CachedProfile>? cached) && cached != null)
-        {
-            if (newValue != null)
-                cached[userId] = newValue;
-            else
-                cached.TryRemove(userId, out _);
-        }
-    }
+        => _cache.UpdateApprovedProfile(userId, newValue);
 
     private static (string? Field, string? Snippet) DetermineMatchFromCache(CachedProfile p, string query)
     {
@@ -750,6 +777,53 @@ public class ProfileService : IProfileService
         }
 
         return (null, null);
+    }
+
+    // ==========================================================================
+    // Volunteer Event Profiles
+    // ==========================================================================
+
+    public async Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId)
+    {
+        var existing = await _dbContext.VolunteerEventProfiles
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (existing is not null)
+            return existing;
+
+        var now = _clock.GetCurrentInstant();
+        var profile = new VolunteerEventProfile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.VolunteerEventProfiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+        return profile;
+    }
+
+    public async Task UpdateShiftProfileAsync(VolunteerEventProfile profile)
+    {
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        _dbContext.VolunteerEventProfiles.Update(profile);
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical)
+    {
+        var profile = await _dbContext.VolunteerEventProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (profile is not null && !includeMedical)
+        {
+            profile.MedicalConditions = null;
+        }
+
+        return profile;
     }
 
     private static string GetSnippet(string text, string query, int contextChars = 60)

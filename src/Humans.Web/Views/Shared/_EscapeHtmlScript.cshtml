@@ -1,0 +1,9 @@
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    var element = document.createElement('div');
+    element.appendChild(document.createTextNode(String(value)));
+    return element.innerHTML;
+}

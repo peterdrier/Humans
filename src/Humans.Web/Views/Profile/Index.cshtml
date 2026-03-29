@@ -5,7 +5,18 @@
 
 <div class="row align-items-start">
     <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
-        <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
+            <div class="d-flex gap-2">
+                <vc:access-matrix section="Profile" />
+                @if (Humans.Web.Authorization.RoleChecks.IsHumanAdminBoardOrAdmin(User))
+                {
+                    <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-user-shield"></i> Admin
+                    </human-link>
+                }
+            </div>
+        </div>
 
         @if (Model.IsOwnProfile)
         {
@@ -31,15 +42,15 @@
         {
             var alertClass = Model.TierApplicationStatus switch
             {
-                "Approved" => "alert-success",
-                "Rejected" => "alert-danger",
+                ApplicationStatus.Approved => "alert-success",
+                ApplicationStatus.Rejected => "alert-danger",
                 _ => "alert-info"
             };
             <div class="alert @alertClass" role="alert">
                 <div class="d-flex justify-content-between align-items-center">
                     <span>
                         @string.Format(Localizer["Profile_TierApplicationStatus"].Value, Model.TierApplicationTier)
-                        <span class="badge @Model.TierApplicationBadgeClass ms-1">@Localizer["ApplicationStatus_" + Model.TierApplicationStatus]</span>
+                        <span class="badge @Model.TierApplicationBadgeClass ms-1">@Localizer["ApplicationStatus_" + Model.TierApplicationStatus.ToString()]</span>
                     </span>
                     <a asp-controller="Governance" asp-action="Index" class="alert-link">@Localizer["Profile_TierApplicationDetails"]</a>
                 </div>
@@ -47,6 +58,81 @@
         }
 
         <vc:profile-card user-id="@Model.UserId" view-mode="@(Model.IsOwnProfile ? ProfileCardViewMode.Self : ProfileCardViewMode.Public)" />
+
+        @if (Model.NoShowHistory != null && Model.NoShowHistory.Count > 0)
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> No-Show History (@Model.NoShowHistory!.Count)</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Shift</th>
+                                <th>Department</th>
+                                <th>Date</th>
+                                <th>Marked By</th>
+                                <th>Marked At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.NoShowHistory!)
+                            {
+                                <tr>
+                                    <td>@item.ShiftLabel</td>
+                                    <td>@item.DepartmentName</td>
+                                    <td>@item.ShiftDateLabel</td>
+                                    <td>@item.MarkedByName</td>
+                                    <td>@item.MarkedAtLabel</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @if (Model.IsOwnProfile && Model.CampaignGrants.Any())
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">My Codes</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Code</th>
+                                <th>Assigned</th>
+                                <th>Redeemed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var grant in Model.CampaignGrants)
+                            {
+                                <tr>
+                                    <td>@grant.Campaign.Title</td>
+                                    <td><code>@grant.Code.Code</code></td>
+                                    <td>@grant.AssignedAt.ToDisplayDate()</td>
+                                    <td>
+                                        @if (grant.RedeemedAt.HasValue)
+                                        {
+                                            <span class="badge bg-success">@grant.RedeemedAt.Value.ToDisplayDate()</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">&mdash;</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
     </div>
 
     @if (Model.IsOwnProfile)
@@ -63,8 +149,11 @@
                             <span class="badge bg-warning text-dark float-end">@Model.PendingConsentCount</span>
                         }
                     </a>
+                    <a asp-controller="Profile" asp-action="ShiftInfo" class="list-group-item list-group-item-action">Shift Info</a>
+                    <a asp-controller="Profile" asp-action="Notifications" class="list-group-item list-group-item-action">Notifications</a>
                     <a asp-controller="Governance" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Nav_Governance"]</a>
                     <a asp-controller="Profile" asp-action="Privacy" class="list-group-item list-group-item-action">@Localizer["ProfilePrivacy_Title"]</a>
+                    <a asp-controller="Profile" asp-action="Outbox" class="list-group-item list-group-item-action">My Emails</a>
                 </div>
             </div>
         </div>

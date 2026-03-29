@@ -1,0 +1,154 @@
+@model Humans.Web.Models.FeedbackPageViewModel
+@inject IStringLocalizer<SharedResource> Localizer
+@{
+    ViewData["Title"] = "Feedback";
+}
+
+<div class="container-fluid">
+    <h2 class="mb-3">Feedback</h2>
+
+    <!-- Filter bar -->
+    <form method="get" class="feedback-filter-form d-flex gap-2 mb-3">
+        <select name="status" class="form-select form-select-sm" style="width: auto;">
+            <option value="">All Statuses</option>
+            @foreach (var s in Enum.GetValues<Humans.Domain.Enums.FeedbackStatus>())
+            {
+                if (Model.StatusFilter == s)
+                {
+                    <option value="@s" selected>@s</option>
+                }
+                else
+                {
+                    <option value="@s">@s</option>
+                }
+            }
+        </select>
+        <select name="category" class="form-select form-select-sm" style="width: auto;">
+            <option value="">All Categories</option>
+            @foreach (var c in Enum.GetValues<Humans.Domain.Enums.FeedbackCategory>())
+            {
+                if (Model.CategoryFilter == c)
+                {
+                    <option value="@c" selected>@c</option>
+                }
+                else
+                {
+                    <option value="@c">@c</option>
+                }
+            }
+        </select>
+        @if (Model.StatusFilter.HasValue || Model.CategoryFilter.HasValue)
+        {
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
+        }
+    </form>
+
+    <div class="row" style="min-height: 500px;">
+        <!-- Left panel: report list -->
+        <div class="col-md-5 col-lg-4 border-end overflow-auto" style="max-height: 80vh;">
+            @if (Model.Reports.Count == 0)
+            {
+                <p class="text-muted p-3">No feedback reports found.</p>
+            }
+            @foreach (var report in Model.Reports)
+            {
+                var isSelected = report.Id == Model.SelectedReportId;
+                <div class="feedback-list-item p-3 border-bottom @(isSelected ? "bg-body-tertiary border-start border-3 border-primary" : "")"
+                     data-report-id="@report.Id"
+                     style="cursor: pointer;">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="fw-semibold small">@report.Category on @(report.PageUrl.Length > 30 ? report.PageUrl[..30] + "..." : report.PageUrl)</span>
+                        @{
+                            var badgeClass = report.Status switch
+                            {
+                                Humans.Domain.Enums.FeedbackStatus.Open => "bg-danger",
+                                Humans.Domain.Enums.FeedbackStatus.Acknowledged => "bg-info",
+                                Humans.Domain.Enums.FeedbackStatus.Resolved => "bg-success",
+                                Humans.Domain.Enums.FeedbackStatus.WontFix => "bg-secondary",
+                                _ => "bg-secondary"
+                            };
+                        }
+                        <span class="badge @badgeClass" style="font-size: 0.7rem;">@report.Status</span>
+                    </div>
+                    @if (Model.IsAdmin)
+                    {
+                        <div class="text-muted" style="font-size: 0.75rem;">@report.ReporterName · @report.CreatedAt.ToString("MMM dd")</div>
+                    }
+                    else
+                    {
+                        <div class="text-muted" style="font-size: 0.75rem;">@report.CreatedAt.ToString("MMM dd, HH:mm")</div>
+                    }
+                    <div class="d-flex justify-content-between mt-1" style="font-size: 0.75rem;">
+                        <span class="text-muted">💬 @report.MessageCount</span>
+                        @if (report.NeedsReply && Model.IsAdmin)
+                        {
+                            <span class="text-danger">● needs reply</span>
+                        }
+                        @if (report.GitHubIssueNumber.HasValue)
+                        {
+                            <span class="text-muted">GH #@report.GitHubIssueNumber</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Right panel: detail -->
+        <div class="col-md-7 col-lg-8" id="detail-panel">
+            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                <p>Select a report to view details</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function loadDetail(reportId) {
+            // Highlight selected item
+            document.querySelectorAll('.feedback-list-item').forEach(el => {
+                el.classList.remove('bg-body-tertiary', 'border-start', 'border-3', 'border-primary');
+            });
+            const selected = document.querySelector(`[data-report-id="${reportId}"]`);
+            if (selected) {
+                selected.classList.add('bg-body-tertiary', 'border-start', 'border-3', 'border-primary');
+            }
+
+            // Load detail via AJAX
+            fetch(`/Feedback/${reportId}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('detail-panel').innerHTML = html;
+                // Bind auto-submit on detail panel elements (innerHTML doesn't execute scripts)
+                document.querySelectorAll('.detail-auto-submit').forEach(el => {
+                    el.addEventListener('change', () => el.form.submit());
+                });
+            })
+            .catch(err => console.error('Failed to load detail:', err));
+
+            // Update URL without reload
+            history.replaceState(null, '', `/Feedback?selected=${reportId}`);
+        }
+
+        // Auto-submit filter forms
+        document.querySelectorAll('.feedback-filter-form select').forEach(sel => {
+            sel.addEventListener('change', () => sel.form.submit());
+        });
+        // Click handler for report list items
+        document.querySelectorAll('[data-report-id]').forEach(el => {
+            el.addEventListener('click', () => loadDetail(el.dataset.reportId));
+        });
+
+        // Auto-load selected report on page load
+        @if (Model.SelectedReportId.HasValue)
+        {
+            <text>
+            document.addEventListener('DOMContentLoaded', function() {
+                loadDetail('@Model.SelectedReportId');
+            });
+            </text>
+        }
+    </script>
+}

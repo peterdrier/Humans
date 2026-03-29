@@ -22,7 +22,7 @@
                     <dd class="col-sm-8">@Model.FirstName @Model.LastName</dd>
 
                     <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
-                    <dd class="col-sm-8">@Model.SubmittedAt.ToString("d MMMM yyyy")</dd>
+                    <dd class="col-sm-8">@Model.SubmittedAt.ToDisplayLongDate()</dd>
 
                     <dt class="col-sm-4">@Localizer["AdminHuman_MembershipTier"]</dt>
                     <dd class="col-sm-8">
@@ -98,7 +98,7 @@
                                 <tr>
                                     <td>@v.DisplayName</td>
                                     <td><span class="badge @badgeClass">@v.Vote</span></td>
-                                    <td><small>@v.VotedAt.ToString("d MMM yyyy")</small></td>
+                                <td><small>@v.VotedAt.ToDisplayDate()</small></td>
                                     <td><small class="text-muted">@v.Note</small></td>
                                 </tr>
                             }
@@ -112,7 +112,7 @@
     </div>
 
     <div class="col-md-4">
-        @if (User.IsInRole("Board"))
+        @if (Humans.Web.Authorization.RoleChecks.IsBoard(User))
         {
             <div class="card mb-4">
                 <div class="card-header">@Localizer["BoardVoting_CastVote"]</div>
@@ -136,7 +136,7 @@
                                     };
                                     var isActive = Model.CurrentUserVote == choice;
                                     <button type="submit" name="vote" value="@choice"
-                                            class="btn @(isActive ? btnClass.Replace("outline-", "") : btnClass)">
+                                            class="btn @(isActive ? btnClass.Replace("outline-", "", StringComparison.Ordinal) : btnClass)">
                                         @choice
                                     </button>
                                 }

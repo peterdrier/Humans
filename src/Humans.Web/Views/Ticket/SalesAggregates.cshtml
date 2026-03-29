@@ -1,0 +1,124 @@
+@model Humans.Web.Models.TicketSalesAggregatesViewModel
+@{
+    ViewData["Title"] = "Sales Aggregates";
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <h1 class="mb-0">Tickets</h1>
+        <vc:access-matrix section="Tickets" />
+    </div>
+
+    <partial name="_TicketNav" />
+
+    <!-- Weekly Sales -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-calendar-week"></i> Weekly Sales (Mon–Sun)
+        </div>
+        <div class="card-body p-0">
+            @if (Model.WeeklySales.Count > 0)
+            {
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Week</th>
+                            <th class="text-end">Orders</th>
+                            <th class="text-end">Tickets Sold</th>
+                            <th class="text-end">Gross Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var week in Model.WeeklySales)
+                        {
+                            <tr>
+                                <td>@week.WeekLabel</td>
+                                <td class="text-end">@week.OrderCount.ToString("N0")</td>
+                                <td class="text-end">@week.TicketsSold.ToString("N0")</td>
+                                <td class="text-end">@Model.Currency @week.GrossRevenue.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td>Total</td>
+                            <td class="text-end">@Model.WeeklySales.Sum(w => w.OrderCount).ToString("N0")</td>
+                            <td class="text-end">@Model.WeeklySales.Sum(w => w.TicketsSold).ToString("N0")</td>
+                            <td class="text-end">@Model.Currency @Model.WeeklySales.Sum(w => w.GrossRevenue).ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+            else
+            {
+                <div class="text-muted text-center py-3">No paid orders yet.</div>
+            }
+        </div>
+    </div>
+
+    <!-- Quarterly Sales (Spanish Tax Quarters) -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-chart-pie"></i> Quarterly Sales (Spanish Tax Quarters)
+        </div>
+        <div class="card-body p-0">
+            @if (Model.QuarterlySales.Count > 0)
+            {
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Quarter</th>
+                            <th class="text-end">Orders</th>
+                            <th class="text-end">Tickets Sold</th>
+                            <th class="text-end">Gross Revenue</th>
+                            <th class="text-end text-muted">VAT (est. 10%)</th>
+                            <th class="text-end text-muted">Net (est.)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var q in Model.QuarterlySales)
+                        {
+                            var estimatedVat = Math.Round(q.GrossRevenue / 1.10m * 0.10m, 2);
+                            var estimatedNet = q.GrossRevenue - estimatedVat;
+                            <tr>
+                                <td>@q.QuarterLabel</td>
+                                <td class="text-end">@q.OrderCount.ToString("N0")</td>
+                                <td class="text-end">@q.TicketsSold.ToString("N0")</td>
+                                <td class="text-end">@Model.Currency @q.GrossRevenue.ToString("N2")</td>
+                                <td class="text-end text-muted">@Model.Currency @estimatedVat.ToString("N2")</td>
+                                <td class="text-end text-muted">@Model.Currency @estimatedNet.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        @{
+                            var totalGross = Model.QuarterlySales.Sum(q => q.GrossRevenue);
+                            var totalVat = Math.Round(totalGross / 1.10m * 0.10m, 2);
+                            var totalNet = totalGross - totalVat;
+                        }
+                        <tr class="fw-bold">
+                            <td>Total</td>
+                            <td class="text-end">@Model.QuarterlySales.Sum(q => q.OrderCount).ToString("N0")</td>
+                            <td class="text-end">@Model.QuarterlySales.Sum(q => q.TicketsSold).ToString("N0")</td>
+                            <td class="text-end">@Model.Currency @totalGross.ToString("N2")</td>
+                            <td class="text-end text-muted">@Model.Currency @totalVat.ToString("N2")</td>
+                            <td class="text-end text-muted">@Model.Currency @totalNet.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <div class="px-3 py-2">
+                    <small class="text-muted">
+                        <i class="fa-solid fa-circle-info"></i>
+                        VAT and net estimates assume 10% Spanish event ticket rate applied uniformly.
+                        Accurate VAT split (distinguishing VIP donations and standalone donations) requires
+                        additional data fields — see <a href="https://github.com/nobodies-collective/Humans/issues/217">#217</a> for details.
+                    </small>
+                </div>
+            }
+            else
+            {
+                <div class="text-muted text-center py-3">No paid orders yet.</div>
+            }
+        </div>
+    </div>
+</div>

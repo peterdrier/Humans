@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -39,6 +40,21 @@ public class ProfileServiceTests : IDisposable
             _dbContext, _onboardingService, _emailService, _auditLogService,
             _membershipCalculator, _clock, _cache,
             NullLogger<ProfileService>.Instance);
+
+        // Default: return all input IDs as Active (sufficient for most tests that don't filter by status)
+        _membershipCalculator
+            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IEnumerable<Guid>>().ToHashSet();
+                return Task.FromResult(new MembershipPartition(
+                    IncompleteSignup: [],
+                    PendingApproval: [],
+                    Active: ids,
+                    MissingConsents: [],
+                    Suspended: [],
+                    PendingDeletion: []));
+            });
     }
 
     public void Dispose()
@@ -317,7 +333,7 @@ public class ProfileServiceTests : IDisposable
 
         await _auditLogService.Received().LogAsync(
             AuditAction.MembershipsRevokedOnDeletionRequest,
-            "User", userId, Arg.Any<string>(), userId, Arg.Any<string>(),
+            nameof(User), userId, Arg.Any<string>(), userId, Arg.Any<string>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -775,6 +791,21 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(MakeProfile(u2, isApproved: false));
         await _dbContext.SaveChangesAsync();
 
+        // u1 is Active, u2 is PendingApproval — partition must reflect this for filter to work
+        _membershipCalculator
+            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var ids = callInfo.Arg<IEnumerable<Guid>>().ToHashSet();
+                return Task.FromResult(new MembershipPartition(
+                    IncompleteSignup: [],
+                    PendingApproval: ids.Where(id => id == u2).ToHashSet(),
+                    Active: ids.Where(id => id == u1).ToHashSet(),
+                    MissingConsents: [],
+                    Suspended: [],
+                    PendingDeletion: []));
+            });
+
         var result = await _service.GetFilteredHumansAsync(null, "active");
 
         result.Should().HaveCount(1);
@@ -792,6 +823,20 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(MakeProfile(u2, isApproved: false));
         await _dbContext.SaveChangesAsync();
 
+        _membershipCalculator
+            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IEnumerable<Guid>>().ToHashSet();
+                return Task.FromResult(new MembershipPartition(
+                    IncompleteSignup: [],
+                    PendingApproval: ids.Where(id => id == u2).ToHashSet(),
+                    Active: ids.Where(id => id == u1).ToHashSet(),
+                    MissingConsents: [],
+                    Suspended: [],
+                    PendingDeletion: []));
+            });
+
         var result = await _service.GetFilteredHumansAsync(null, "pending");
 
         result.Should().HaveCount(1);
@@ -808,6 +853,20 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(MakeProfile(u1, isSuspended: true));
         _dbContext.Profiles.Add(MakeProfile(u2));
         await _dbContext.SaveChangesAsync();
+
+        _membershipCalculator
+            .PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IEnumerable<Guid>>().ToHashSet();
+                return Task.FromResult(new MembershipPartition(
+                    IncompleteSignup: [],
+                    PendingApproval: [],
+                    Active: ids.Where(id => id == u2).ToHashSet(),
+                    MissingConsents: [],
+                    Suspended: ids.Where(id => id == u1).ToHashSet(),
+                    PendingDeletion: []));
+            });
 
         var result = await _service.GetFilteredHumansAsync(null, "suspended");
 
@@ -1211,6 +1270,22 @@ public class ProfileServiceTests : IDisposable
         // Should be gone from cache
         var resultsAfter = await _service.SearchHumansAsync("Test User");
         resultsAfter.Should().NotContain(r => r.UserId == userId);
+    }
+
+    [Fact]
+    public async Task RequestDeletionAsync_InvalidatesRoleAndShiftAuthorizationCaches()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        _cache.Set(CacheKeys.ActiveTeams, new object());
+        _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
+        _cache.Set(CacheKeys.ShiftAuthorization(userId), new[] { Guid.NewGuid() });
+
+        await _service.RequestDeletionAsync(userId);
+
+        _cache.TryGetValue(CacheKeys.ActiveTeams, out _).Should().BeFalse();
+        _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
+        _cache.TryGetValue(CacheKeys.ShiftAuthorization(userId), out _).Should().BeFalse();
     }
 
     // --- Helpers ---

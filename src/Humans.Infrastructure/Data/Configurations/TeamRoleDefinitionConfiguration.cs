@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Humans.Domain.Entities;
@@ -33,7 +34,11 @@ public class TeamRoleDefinitionConfiguration : IEntityTypeConfiguration<TeamRole
                     ? new List<SlotPriority>()
                     : v.Split(',', StringSplitOptions.RemoveEmptyEntries)
                         .Select(s => Enum.Parse<SlotPriority>(s))
-                        .ToList())
+                        .ToList(),
+                new ValueComparer<List<SlotPriority>>(
+                    (a, b) => a != null && b != null && a.SequenceEqual(b),
+                    v => v.Aggregate(0, (hash, item) => HashCode.Combine(hash, item)),
+                    v => v.ToList()))
             .HasDefaultValueSql("''");
 
         builder.Property(d => d.SortOrder)
@@ -57,6 +62,12 @@ public class TeamRoleDefinitionConfiguration : IEntityTypeConfiguration<TeamRole
             .HasForeignKey(d => d.TeamId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Ignore(d => d.IsLeadRole);
+        builder.Property(d => d.Period)
+            .HasConversion<string>()
+            .HasMaxLength(50);
+
+        builder.Property(d => d.IsManagement)
+            .IsRequired();
+
     }
 }

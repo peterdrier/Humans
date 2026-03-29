@@ -1,56 +1,61 @@
-# Nobodies Profiles - Documentation
+# Nobodies Humans — Documentation
 
-## Overview
+## Feature Specifications
 
-Nobodies Profiles is a membership management system for Nobodies Collective, a Spanish nonprofit organization. The system manages the complete membership lifecycle including authentication, profile management, membership applications, legal compliance (GDPR consent), team collaboration, and administrative governance.
-
-## Feature Documentation
+Business requirements, user stories, data model, and workflows for each feature area.
 
 | Document | Description |
 |----------|-------------|
-| [User Authentication & Accounts](features/01-authentication.md) | Google OAuth, user accounts, role assignments |
-| [Member Profiles](features/02-member-profiles.md) | Personal information, burner names, location |
-| [Membership Applications](features/03-membership-applications.md) | Application workflow and approval process |
+| [Authentication](features/01-authentication.md) | Google OAuth, user accounts, role assignments |
+| [Profiles](features/02-profiles.md) | Personal information, burner names, location, profile pictures |
+| [Asociado Applications](features/03-asociado-applications.md) | Tier application workflow and Board voting |
 | [Legal Documents & Consent](features/04-legal-documents-consent.md) | GDPR compliance, document versioning, consent tracking |
-| [Membership Status](features/05-membership-status.md) | Status computation, compliance tracking |
-| [Teams & Working Groups](features/06-teams.md) | Self-organizing teams, system teams, join requests |
-| [Google Integration](features/07-google-integration.md) | Drive provisioning, resource management |
+| [Volunteer Status](features/05-volunteer-status.md) | Volunteer approval, status computation |
+| [Teams](features/06-teams.md) | Self-organizing teams, system teams, join requests, role slots |
+| [Google Integration](features/07-google-integration.md) | Drive provisioning, Groups via Cloud Identity, sync modes |
 | [Background Jobs](features/08-background-jobs.md) | Automated sync, reminders, compliance enforcement |
-| [Administration](features/09-administration.md) | Admin dashboard, member management |
+| [Administration](features/09-administration.md) | Admin dashboard, human management, configuration |
+| [Contact Fields](features/10-contact-fields.md) | Granular contact visibility, E.164 phone validation |
+| [Preferred Email](features/11-preferred-email.md) | System notification email preferences |
+| [Audit Log](features/12-audit-log.md) | Comprehensive audit trail for admin and automated actions |
+| [Drive Activity Monitoring](features/13-drive-activity-monitoring.md) | Google Drive permission change tracking |
+| [Profile Pictures & Birthdays](features/14-profile-pictures-birthdays.md) | Avatar uploads, birthday calendar |
+| [Membership Tiers](features/15-membership-tiers.md) | Volunteer / Colaborador / Asociado tier system |
+| [Onboarding Pipeline](features/16-onboarding-pipeline.md) | Signup → consent → review → approval flow |
+| [Coordinator Roles](features/17-coordinator-roles.md) | Consent and Volunteer Coordinator workflows |
+| [Board Voting](features/18-board-voting.md) | Board voting on tier applications |
+| [Camps](features/20-camps.md) | Event camp registration, approval, co-leads, public API |
+| [Email Outbox](features/21-email-outbox.md) | Outbox-based email delivery with retry and crash recovery |
+| [Campaigns](features/22-campaigns.md) | Campaign system with CSV import and discount codes |
+| [Membership Status](features/23-membership-status.md) | 6-bucket membership partition model |
+| [Ticket Vendor Integration](features/24-ticket-vendor-integration.md) | TicketTailor sync, sales dashboard, attendee matching |
+
+## Operational Guides
+
+| Document | Description |
+|----------|-------------|
+| [Admin Role Setup](admin-role-setup.md) | Adding initial admin users via SQL |
+| [Google & External Service Setup](google-service-account-setup.md) | OAuth, service account, Maps, GitHub credentials |
+
+## Historical Design Records
+
+Design specs and implementation plans preserved for historical context. These document the thinking behind major features at the time they were built.
+
+| Directory | Contents |
+|-----------|----------|
+| [plans/](plans/) | Early design and implementation plans (semantic versioning, Google Groups) |
+| [superpowers/specs/](superpowers/specs/) | Feature design specifications |
+| [superpowers/plans/](superpowers/plans/) | Feature implementation plans |
 
 ## Architecture
 
-The system follows Clean Architecture with four layers:
+Clean Architecture with four layers:
 
 ```
-+------------------+
-|      Web         |  Controllers, Views, ViewModels
-+------------------+
-         |
-+------------------+
-|   Application    |  Interfaces, DTOs, Use Cases
-+------------------+
-         |
-+------------------+
-|  Infrastructure  |  EF Core, Services, Jobs
-+------------------+
-         |
-+------------------+
-|     Domain       |  Entities, Enums, Value Objects
-+------------------+
+Web             Controllers, Views, ViewModels
+Application     Interfaces, DTOs, Use Cases
+Infrastructure  EF Core, Services, Jobs
+Domain          Entities, Enums, Value Objects
 ```
 
-## Key Technologies
-
-- **ASP.NET Core 10** - Web framework
-- **Entity Framework Core** - ORM with PostgreSQL
-- **Hangfire** - Background job processing
-- **Stateless** - State machine library
-- **NodaTime** - Temporal operations
-- **Google OAuth 2.0** - Authentication
-- **Google Places API** - Location autocomplete
-
-## Quick Links
-
-- [Technical Documentation](.claude/README.md) - Coding rules, data model, analyzers
-- [Build Commands](../CLAUDE.md#build-commands) - How to build and run
+See the [root CLAUDE.md](../CLAUDE.md) for build commands, coding rules, and project conventions.

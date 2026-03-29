@@ -1,3 +1,4 @@
+using Humans.Domain.ValueObjects;
 using NodaTime;
 
 namespace Humans.Domain.Entities;
@@ -9,8 +10,9 @@ public class Camp
     public string ContactEmail { get; set; } = string.Empty;
     public string ContactPhone { get; set; } = string.Empty;
     public string? WebOrSocialUrl { get; set; }
-    public string ContactMethod { get; set; } = string.Empty;
+    public List<CampLink>? Links { get; set; }
     public bool IsSwissCamp { get; set; }
+    public bool HideHistoricalNames { get; set; }
     public int TimesAtNowhere { get; set; }
 
     public Guid CreatedByUserId { get; init; }

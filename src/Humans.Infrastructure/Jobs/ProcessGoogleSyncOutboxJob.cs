@@ -10,6 +10,7 @@ namespace Humans.Infrastructure.Jobs;
 
 /// <summary>
 /// Drains queued Google sync outbox events and executes the underlying sync operations.
+/// SyncSettings enforcement is handled by the gateway methods in GoogleWorkspaceSyncService.
 /// </summary>
 public class ProcessGoogleSyncOutboxJob
 {

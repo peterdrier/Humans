@@ -5,6 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 

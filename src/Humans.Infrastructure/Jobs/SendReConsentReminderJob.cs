@@ -86,14 +86,14 @@ public class SendReConsentReminderJob
                 }
 
                 // Skip if a reminder was sent recently
-                if (user.LastConsentReminderSentAt != null &&
+                if (user.LastConsentReminderSentAt is not null &&
                     now - user.LastConsentReminderSentAt.Value < cooldown)
                 {
                     continue;
                 }
 
                 var effectiveEmail = user.GetEffectiveEmail();
-                if (effectiveEmail != null)
+                if (effectiveEmail is not null)
                 {
                     await _emailService.SendReConsentReminderAsync(
                         effectiveEmail,

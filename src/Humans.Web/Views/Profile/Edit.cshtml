@@ -26,20 +26,12 @@
                     <h6>@Localizer["Profile_ProfilePicture"]</h6>
                     <div class="mb-3">
                         <div class="d-flex align-items-center gap-3 mb-2">
-                            @if (Model.HasCustomProfilePicture && !string.IsNullOrEmpty(Model.CustomProfilePictureUrl))
+                            <vc:user-avatar profile-picture-url="@Model.EffectiveProfilePictureUrl"
+                                            display-name="@Model.BurnerName"
+                                            size="80" />
+                            @if (!Model.HasCustomProfilePicture && !string.IsNullOrEmpty(Model.ProfilePictureUrl))
                             {
-                                <img src="@Model.CustomProfilePictureUrl" alt="Current profile picture" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;" />
-                            }
-                            else if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
-                            {
-                                <img src="@Model.ProfilePictureUrl" alt="Google avatar" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover;" />
                                 <span class="text-muted small">@Localizer["ProfileEdit_GoogleAvatar"]</span>
-                            }
-                            else
-                            {
-                                <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 80px; height: 80px; font-size: 1.5rem;">
-                                    @(string.IsNullOrEmpty(Model.BurnerName) ? "?" : Model.BurnerName[0])
-                                </div>
                             }
                         </div>
                         <input type="file" asp-for="ProfilePictureUpload" class="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,.heic,.heif,.avif" />
@@ -192,8 +184,8 @@
                                             }
                                             <select name="EditableContactFields[@i].Visibility" id="EditableContactFields_@(i)__Visibility" class="form-select form-select-sm">
                                                 <option value="AllActiveProfiles" selected="@(visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">All active members</option>
-                                                <option value="MyTeams" selected="@(visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">My teams (+ leads & board)</option>
-                                                <option value="LeadsAndBoard" selected="@(visibility == ContactFieldVisibility.LeadsAndBoard ? "selected" : null)">Leads + Board</option>
+                                                <option value="MyTeams" selected="@(visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">My teams (+ coordinators & board)</option>
+                                                <option value="CoordinatorsAndBoard" selected="@(visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">Coordinators + Board</option>
                                                 <option value="BoardOnly" selected="@(visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">Board only</option>
                                             </select>
                                         </div>
@@ -328,11 +320,11 @@
                             <div class="form-check mb-3">
                                 @if (Model.IsTierLocked)
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@isVolunteer" disabled />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@(isVolunteer ? "checked" : null)" disabled />
                                 }
                                 else
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@isVolunteer" />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Volunteer" id="tierVolunteer" checked="@(isVolunteer ? "checked" : null)" />
                                 }
                                 <label class="form-check-label" for="tierVolunteer">
                                     <strong>Volunteer</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierVolunteerDesc"]</span>
@@ -341,11 +333,11 @@
                             <div class="form-check mb-3">
                                 @if (Model.IsTierLocked)
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@isColaborador" disabled />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@(isColaborador ? "checked" : null)" disabled />
                                 }
                                 else
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@isColaborador" />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Colaborador" id="tierColaborador" checked="@(isColaborador ? "checked" : null)" />
                                 }
                                 <label class="form-check-label" for="tierColaborador">
                                     <strong>Colaborador</strong> — <span class="text-muted">@Localizer["ProfileEdit_TierColaboradorDesc"]</span>
@@ -354,11 +346,11 @@
                             <div class="form-check mb-3">
                                 @if (Model.IsTierLocked)
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@isAsociado" disabled />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@(isAsociado ? "checked" : null)" disabled />
                                 }
                                 else
                                 {
-                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@isAsociado" />
+                                    <input class="form-check-input" type="radio" name="SelectedTier" value="Asociado" id="tierAsociado" checked="@(isAsociado ? "checked" : null)" />
                                 }
                                 <label class="form-check-label" for="tierAsociado">
                                     <strong>Asociado</strong> <span class="text-muted">(@Localizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@Localizer["ProfileEdit_TierAsociadoDesc"]</span>
@@ -544,6 +536,7 @@
         (function() {
             const container = document.getElementById('contactFieldsContainer');
             const addButton = document.getElementById('addContactField');
+            if (!container || !addButton) return;
 
             function getNextIndex() {
                 const rows = container.querySelectorAll('.contact-field-row');
@@ -584,8 +577,8 @@
                                     <select name="EditableContactFields[${index}].Visibility" id="EditableContactFields_${index}__Visibility" class="form-select form-select-sm" required>
                                         <option value="" selected disabled>@Localizer["Profile_ChooseVisibility"]</option>
                                         <option value="AllActiveProfiles">All active members</option>
-                                        <option value="MyTeams">My teams (+ leads & board)</option>
-                                        <option value="LeadsAndBoard">Leads + Board</option>
+                                        <option value="MyTeams">My teams (+ coordinators & board)</option>
+                                        <option value="CoordinatorsAndBoard">Coordinators + Board</option>
                                         <option value="BoardOnly">Board only</option>
                                     </select>
                                 </div>
@@ -676,6 +669,7 @@
         (function() {
             const container = document.getElementById('volunteerHistoryContainer');
             const addButton = document.getElementById('addVolunteerHistory');
+            if (!container || !addButton) return;
 
             function getNextIndex() {
                 const rows = container.querySelectorAll('.volunteer-history-row');

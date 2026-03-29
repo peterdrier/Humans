@@ -9,7 +9,8 @@ public record MemberSyncStatus(
     string Email,
     string DisplayName,
     MemberSyncState State,
-    List<string> TeamNames);
+    List<string> TeamNames,
+    string? CurrentRole = null);
 
 /// <summary>
 /// Whether a member is correctly synced, missing, or extra.
@@ -34,6 +35,9 @@ public class ResourceSyncDiff
     public string? Url { get; init; }
     public string? ErrorMessage { get; init; }
 
+    /// <summary>The permission level team members will get on this resource.</summary>
+    public string? PermissionLevel { get; init; }
+
     /// <summary>All teams that link to this resource.</summary>
     public List<string> LinkedTeams { get; init; } = [];
 
@@ -47,7 +51,7 @@ public class ResourceSyncDiff
     public List<string> MembersToRemove => Members
         .Where(m => m.State == MemberSyncState.Extra)
         .Select(m => m.Email).ToList();
-    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra) && ErrorMessage == null;
+    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra) && ErrorMessage is null;
 }
 
 /// <summary>
@@ -58,6 +62,6 @@ public class SyncPreviewResult
     public List<ResourceSyncDiff> Diffs { get; init; } = [];
     public int TotalResources => Diffs.Count;
     public int InSyncCount => Diffs.Count(d => d.IsInSync);
-    public int DriftCount => Diffs.Count(d => !d.IsInSync && d.ErrorMessage == null);
-    public int ErrorCount => Diffs.Count(d => d.ErrorMessage != null);
+    public int DriftCount => Diffs.Count(d => !d.IsInSync && d.ErrorMessage is null);
+    public int ErrorCount => Diffs.Count(d => d.ErrorMessage is not null);
 }

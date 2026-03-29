@@ -54,18 +54,14 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
     {
-        return await _dbContext.GoogleResources
-            .Where(r => r.TeamId == teamId && r.IsActive)
-            .OrderBy(r => r.ProvisionedAt)
-            .AsNoTracking()
-            .ToListAsync(ct);
+        return await TeamResourcePersistence.GetActiveTeamResourcesAsync(_dbContext, teamId, ct);
     }
 
     /// <inheritdoc />
-    public async Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, CancellationToken ct = default)
+    public async Task<LinkResourceResult> LinkDriveFolderAsync(Guid teamId, string folderUrl, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
         var folderId = ParseDriveFolderId(folderUrl);
-        if (folderId == null)
+        if (folderId is null)
         {
             return new LinkResourceResult(false,
                 ErrorMessage: "Invalid Google Drive folder URL. Please use a URL like https://drive.google.com/drive/folders/...");
@@ -78,7 +74,7 @@ public partial class TeamResourceService : ITeamResourceService
                 && r.ResourceType == GoogleResourceType.DriveFolder
                 && r.IsActive, ct);
 
-        if (existing != null)
+        if (existing is not null)
         {
             return new LinkResourceResult(false,
                 ErrorMessage: "This Drive folder is already linked to this team.");
@@ -109,7 +105,7 @@ public partial class TeamResourceService : ITeamResourceService
                     && !r.IsActive, ct);
 
             GoogleResource resource;
-            if (inactive != null)
+            if (inactive is not null)
             {
                 inactive.Name = folderPath;
                 inactive.Url = file.WebViewLink;
@@ -130,15 +126,21 @@ public partial class TeamResourceService : ITeamResourceService
                     Url = file.WebViewLink,
                     ProvisionedAt = now,
                     LastSyncedAt = now,
-                    IsActive = true
+                    IsActive = true,
+                    DrivePermissionLevel = permissionLevel
                 };
                 _dbContext.GoogleResources.Add(resource);
             }
 
+            if (inactive is not null)
+            {
+                inactive.DrivePermissionLevel = permissionLevel;
+            }
+
             await _dbContext.SaveChangesAsync(ct);
 
-            _logger.LogInformation("Linked Drive folder {FolderId} ({FolderName}) to team {TeamId}",
-                file.Id, file.Name, teamId);
+            _logger.LogInformation("Linked Drive folder {FolderId} ({FolderName}) to team {TeamId} with permission {Permission}",
+                file.Id, file.Name, teamId, permissionLevel);
 
             return new LinkResourceResult(true, Resource: resource);
         }
@@ -160,10 +162,10 @@ public partial class TeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public async Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, CancellationToken ct = default)
+    public async Task<LinkResourceResult> LinkDriveFileAsync(Guid teamId, string fileUrl, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
         var fileId = ParseDriveFileId(fileUrl);
-        if (fileId == null)
+        if (fileId is null)
         {
             return new LinkResourceResult(false,
                 ErrorMessage: "Invalid Google Drive file URL. Please use a URL like https://docs.google.com/spreadsheets/d/... or https://drive.google.com/file/d/...");
@@ -176,7 +178,7 @@ public partial class TeamResourceService : ITeamResourceService
                 && r.ResourceType == GoogleResourceType.DriveFile
                 && r.IsActive, ct);
 
-        if (existing != null)
+        if (existing is not null)
         {
             return new LinkResourceResult(false,
                 ErrorMessage: "This Drive file is already linked to this team.");
@@ -207,7 +209,7 @@ public partial class TeamResourceService : ITeamResourceService
                     && !r.IsActive, ct);
 
             GoogleResource resource;
-            if (inactive != null)
+            if (inactive is not null)
             {
                 inactive.Name = filePath;
                 inactive.Url = file.WebViewLink;
@@ -228,15 +230,21 @@ public partial class TeamResourceService : ITeamResourceService
                     Url = file.WebViewLink,
                     ProvisionedAt = now,
                     LastSyncedAt = now,
-                    IsActive = true
+                    IsActive = true,
+                    DrivePermissionLevel = permissionLevel
                 };
                 _dbContext.GoogleResources.Add(resource);
             }
 
+            if (inactive is not null)
+            {
+                inactive.DrivePermissionLevel = permissionLevel;
+            }
+
             await _dbContext.SaveChangesAsync(ct);
 
-            _logger.LogInformation("Linked Drive file {FileId} ({FileName}) to team {TeamId}",
-                file.Id, file.Name, teamId);
+            _logger.LogInformation("Linked Drive file {FileId} ({FileName}) to team {TeamId} with permission {Permission}",
+                file.Id, file.Name, teamId, permissionLevel);
 
             return new LinkResourceResult(true, Resource: resource);
         }
@@ -258,44 +266,35 @@ public partial class TeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public async Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, CancellationToken ct = default)
+    public async Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, CancellationToken ct = default)
     {
-        // Try folder URL first, then file URL
-        var folderId = ParseDriveFolderId(url);
-        if (folderId != null)
-        {
-            return await LinkDriveFolderAsync(teamId, url, ct);
-        }
-
-        var fileId = ParseDriveFileId(url);
-        if (fileId != null)
-        {
-            return await LinkDriveFileAsync(teamId, url, ct);
-        }
-
-        return new LinkResourceResult(false,
-            ErrorMessage: "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...).");
+        return await TeamResourceInputValidation.LinkDriveResourceAsync(
+            teamId,
+            url,
+            permissionLevel,
+            ct,
+            LinkDriveFolderAsync,
+            LinkDriveFileAsync);
     }
 
     /// <inheritdoc />
     public async Task<LinkResourceResult> LinkGroupAsync(Guid teamId, string groupEmail, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(groupEmail) || !groupEmail.Contains('@'))
+        var normalizedGroupEmail = TeamResourceInputValidation.NormalizeGroupEmail(groupEmail);
+        if (normalizedGroupEmail is null)
         {
             return new LinkResourceResult(false,
-                ErrorMessage: "Please enter a valid group email address.");
+                ErrorMessage: TeamResourceValidationMessages.InvalidGroupEmail);
         }
-
-        groupEmail = groupEmail.Trim();
 
         // Check if this group is already linked to this team
         var existing = await _dbContext.GoogleResources
             .FirstOrDefaultAsync(r => r.TeamId == teamId
-                && EF.Functions.ILike(r.GoogleId, groupEmail)
+                && EF.Functions.ILike(r.GoogleId, normalizedGroupEmail)
                 && r.ResourceType == GoogleResourceType.Group
                 && r.IsActive, ct);
 
-        if (existing != null)
+        if (existing is not null)
         {
             return new LinkResourceResult(false,
                 ErrorMessage: "This Google Group is already linked to this team.");
@@ -305,27 +304,27 @@ public partial class TeamResourceService : ITeamResourceService
         {
             var cloudIdentity = await GetCloudIdentityServiceAsync(ct);
             var lookupRequest = cloudIdentity.Groups.Lookup();
-            lookupRequest.GroupKeyId = groupEmail;
+            lookupRequest.GroupKeyId = normalizedGroupEmail;
             var lookupResponse = await lookupRequest.ExecuteAsync(ct);
 
             var fullGroup = await cloudIdentity.Groups.Get(lookupResponse.Name).ExecuteAsync(ct);
 
             var now = _clock.GetCurrentInstant();
             var googleId = lookupResponse.Name["groups/".Length..];
-            var emailLocal = groupEmail.Split('@')[0];
+            var emailLocal = normalizedGroupEmail.Split('@')[0];
 
             // Check for an inactive record to reactivate
             var inactive = await _dbContext.GoogleResources
                 .FirstOrDefaultAsync(r => r.TeamId == teamId
-                    && (r.GoogleId == googleId || EF.Functions.ILike(r.GoogleId, groupEmail))
+                    && (r.GoogleId == googleId || EF.Functions.ILike(r.GoogleId, normalizedGroupEmail))
                     && r.ResourceType == GoogleResourceType.Group
                     && !r.IsActive, ct);
 
             GoogleResource resource;
-            if (inactive != null)
+            if (inactive is not null)
             {
                 inactive.GoogleId = googleId;
-                inactive.Name = groupEmail;
+                inactive.Name = normalizedGroupEmail;
                 inactive.Url = $"https://groups.google.com/a/{_googleSettings.Domain}/g/{emailLocal}";
                 inactive.LastSyncedAt = now;
                 inactive.IsActive = true;
@@ -340,7 +339,7 @@ public partial class TeamResourceService : ITeamResourceService
                     TeamId = teamId,
                     ResourceType = GoogleResourceType.Group,
                     GoogleId = googleId,
-                    Name = groupEmail,
+                    Name = normalizedGroupEmail,
                     Url = $"https://groups.google.com/a/{_googleSettings.Domain}/g/{emailLocal}",
                     ProvisionedAt = now,
                     LastSyncedAt = now,
@@ -352,13 +351,13 @@ public partial class TeamResourceService : ITeamResourceService
             await _dbContext.SaveChangesAsync(ct);
 
             _logger.LogInformation("Linked Google Group {GroupEmail} ({GroupName}) to team {TeamId}",
-                groupEmail, fullGroup.DisplayName, teamId);
+                normalizedGroupEmail, fullGroup.DisplayName, teamId);
 
             return new LinkResourceResult(true, Resource: resource);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
         {
-            _logger.LogWarning(ex, "Google Group not found when linking {GroupEmail} to team {TeamId}", groupEmail, teamId);
+            _logger.LogWarning(ex, "Google Group not found when linking {GroupEmail} to team {TeamId}", normalizedGroupEmail, teamId);
             var serviceAccountEmail = await GetServiceAccountEmailAsync(ct);
             return new LinkResourceResult(false,
                 ErrorMessage: "The Google Group was not found or the service account does not have access. " +
@@ -367,7 +366,7 @@ public partial class TeamResourceService : ITeamResourceService
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403)
         {
-            _logger.LogWarning(ex, "Permission denied when linking Google Group {GroupEmail} to team {TeamId}", groupEmail, teamId);
+            _logger.LogWarning(ex, "Permission denied when linking Google Group {GroupEmail} to team {TeamId}", normalizedGroupEmail, teamId);
             var serviceAccountEmail = await GetServiceAccountEmailAsync(ct);
             return new LinkResourceResult(false,
                 ErrorMessage: "The service account does not have permission to access this group. " +
@@ -379,16 +378,11 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default)
     {
-        var resource = await _dbContext.GoogleResources
-            .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
-
-        if (resource == null)
+        var resource = await TeamResourcePersistence.DeactivateResourceAsync(_dbContext, resourceId, ct);
+        if (resource is null)
         {
             return;
         }
-
-        resource.IsActive = false;
-        await _dbContext.SaveChangesAsync(ct);
 
         _logger.LogInformation("Unlinked resource {ResourceId} ({ResourceName})", resourceId, resource.Name);
     }
@@ -396,33 +390,18 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
-        // Board members can always manage resources
-        var isBoardMember = await _teamService.IsUserBoardMemberAsync(userId, ct);
-        if (isBoardMember)
-        {
-            return true;
-        }
-
-        // TeamsAdmin can always manage resources
-        var isTeamsAdmin = await _teamService.IsUserTeamsAdminAsync(userId, ct);
-        if (isTeamsAdmin)
-        {
-            return true;
-        }
-
-        // Leads can manage if the setting allows it
-        if (_resourceSettings.AllowLeadsToManageResources)
-        {
-            return await _teamService.IsUserLeadOfTeamAsync(teamId, userId, ct);
-        }
-
-        return false;
+        return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
+            _teamService,
+            _resourceSettings,
+            teamId,
+            userId,
+            ct);
     }
 
     /// <inheritdoc />
     public async Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default)
     {
-        if (_serviceAccountEmail != null)
+        if (_serviceAccountEmail is not null)
         {
             return _serviceAccountEmail;
         }
@@ -444,7 +423,7 @@ public partial class TeamResourceService : ITeamResourceService
             json = await File.ReadAllTextAsync(_googleSettings.ServiceAccountKeyPath, ct);
         }
 
-        if (json != null)
+        if (json is not null)
         {
             using var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("client_email", out var emailElement))
@@ -548,7 +527,7 @@ public partial class TeamResourceService : ITeamResourceService
 
     private async Task<DriveService> GetDriveServiceAsync(CancellationToken ct)
     {
-        if (_driveService != null)
+        if (_driveService is not null)
         {
             return _driveService;
         }
@@ -566,7 +545,7 @@ public partial class TeamResourceService : ITeamResourceService
 
     private async Task<CloudIdentityService> GetCloudIdentityServiceAsync(CancellationToken ct)
     {
-        if (_cloudIdentityService != null)
+        if (_cloudIdentityService is not null)
         {
             return _cloudIdentityService;
         }
@@ -679,9 +658,6 @@ public partial class TeamResourceService : ITeamResourceService
 
     public async Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
-        return await _dbContext.GoogleResources
-            .AsNoTracking()
-            .Include(r => r.Team)
-            .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
+        return await TeamResourcePersistence.GetResourceByIdAsync(_dbContext, resourceId, ct);
     }
 }

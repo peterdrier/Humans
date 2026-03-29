@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 
 namespace Humans.Web.Models;
 
@@ -42,17 +43,15 @@ public class CampDetailViewModel
     public Guid Id { get; set; }
     public string Slug { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string ContactEmail { get; set; } = string.Empty;
-    public string ContactMethod { get; set; } = string.Empty;
-    public string? WebOrSocialUrl { get; set; }
+    public List<CampLink> Links { get; set; } = new();
     public bool IsSwissCamp { get; set; }
+    public bool HideHistoricalNames { get; set; }
     public int TimesAtNowhere { get; set; }
     public List<string> HistoricalNames { get; set; } = new();
     public List<string> ImageUrls { get; set; } = new();
     public List<CampLeadViewModel> Leads { get; set; } = new();
     public CampSeasonDetailViewModel? CurrentSeason { get; set; }
     public bool IsCurrentUserLead { get; set; }
-    public bool IsCurrentUserPrimaryLead { get; set; }
     public bool IsCurrentUserCampAdmin { get; set; }
 }
 
@@ -87,7 +86,6 @@ public class CampLeadViewModel
     public Guid LeadId { get; set; }
     public Guid UserId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
-    public CampLeadRole Role { get; set; }
 }
 
 // Registration form
@@ -96,9 +94,9 @@ public class CampRegisterViewModel
     public string Name { get; set; } = string.Empty;
     public string ContactEmail { get; set; } = string.Empty;
     public string ContactPhone { get; set; } = string.Empty;
-    public string? WebOrSocialUrl { get; set; }
-    public string ContactMethod { get; set; } = string.Empty;
+    public List<string> Links { get; set; } = new();
     public bool IsSwissCamp { get; set; }
+    public bool HideHistoricalNames { get; set; }
     public int TimesAtNowhere { get; set; }
     public string? HistoricalNames { get; set; }
     public string BlurbLong { get; set; } = string.Empty;
@@ -130,6 +128,7 @@ public class CampEditViewModel : CampRegisterViewModel
     public bool IsNameLocked { get; set; }
     public List<CampLeadViewModel> Leads { get; set; } = new();
     public List<CampImageViewModel> Images { get; set; } = new();
+    public List<CampHistoricalNameViewModel> ExistingHistoricalNames { get; set; } = new();
 }
 
 public class CampImageViewModel
@@ -139,10 +138,32 @@ public class CampImageViewModel
     public int SortOrder { get; set; }
 }
 
+public class CampHistoricalNameViewModel
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int? Year { get; set; }
+    public string Source { get; set; } = string.Empty;
+}
+
+// Contact form
+public class CampContactViewModel
+{
+    public string CampSlug { get; set; } = string.Empty;
+    public string CampName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(2000, MinimumLength = 1)]
+    public string Message { get; set; } = string.Empty;
+
+    public bool IncludeContactInfo { get; set; } = true;
+}
+
 // Admin dashboard
 public class CampAdminViewModel
 {
     public List<CampCardViewModel> PendingCamps { get; set; } = new();
+    public List<CampCardViewModel> WithdrawnCamps { get; set; } = new();
     public int PublicYear { get; set; }
     public List<int> OpenSeasons { get; set; } = new();
     public int TotalCamps { get; set; }

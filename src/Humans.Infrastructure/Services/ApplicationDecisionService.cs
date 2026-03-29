@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain;
 using Humans.Domain.Enums;
@@ -57,7 +58,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.StateHistory)
             .FirstOrDefaultAsync(a => a.Id == applicationId, cancellationToken);
 
-        if (application == null)
+        if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
@@ -74,7 +75,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         // Update profile membership tier
         var profile = application.User.Profile;
-        if (profile != null)
+        if (profile is not null)
         {
             profile.MembershipTier = application.MembershipTier;
             profile.UpdatedAt = _clock.GetCurrentInstant();
@@ -82,7 +83,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         // Audit
         await _auditLogService.LogAsync(
-            AuditAction.TierApplicationApproved, "Application", application.Id,
+            AuditAction.TierApplicationApproved, nameof(Humans.Domain.Entities.Application), application.Id,
             $"{application.MembershipTier} application approved for {application.User.DisplayName} by {reviewerDisplayName}",
             reviewerUserId, reviewerDisplayName);
 
@@ -115,7 +116,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             return new ApplicationDecisionResult(false, "ConcurrencyConflict");
         }
 
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
         _metrics.RecordApplicationProcessed("approved");
         _logger.LogInformation("Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
@@ -157,7 +158,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.StateHistory)
             .FirstOrDefaultAsync(a => a.Id == applicationId, cancellationToken);
 
-        if (application == null)
+        if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
@@ -170,7 +171,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         // Audit
         await _auditLogService.LogAsync(
-            AuditAction.TierApplicationRejected, "Application", application.Id,
+            AuditAction.TierApplicationRejected, nameof(Humans.Domain.Entities.Application), application.Id,
             $"{application.MembershipTier} application rejected for {application.User.DisplayName} by {reviewerDisplayName}",
             reviewerUserId, reviewerDisplayName);
 
@@ -200,7 +201,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             return new ApplicationDecisionResult(false, "ConcurrencyConflict");
         }
 
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
         _metrics.RecordApplicationProcessed("rejected");
         _logger.LogInformation("Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
@@ -272,7 +273,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         _dbContext.Applications.Add(application);
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
 
         _logger.LogInformation("User {UserId} submitted application {ApplicationId}", userId, application.Id);
 
@@ -286,7 +287,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.StateHistory)
             .FirstOrDefaultAsync(a => a.Id == applicationId && a.UserId == userId, ct);
 
-        if (application == null)
+        if (application is null)
             return new ApplicationDecisionResult(false, "NotFound");
 
         if (application.Status != ApplicationStatus.Submitted)
@@ -294,7 +295,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         application.Withdraw(_clock);
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
         _metrics.RecordApplicationProcessed("withdrawn");
 
         _logger.LogInformation("User {UserId} withdrew application {ApplicationId}", userId, applicationId);
@@ -310,7 +311,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.User)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(statusFilter) && Enum.TryParse<ApplicationStatus>(statusFilter, out var statusEnum))
+        if (!string.IsNullOrWhiteSpace(statusFilter) && Enum.TryParse<ApplicationStatus>(statusFilter, ignoreCase: true, out var statusEnum))
         {
             query = query.Where(a => a.Status == statusEnum);
         }
@@ -320,7 +321,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             query = query.Where(a => a.Status == ApplicationStatus.Submitted);
         }
 
-        if (!string.IsNullOrWhiteSpace(tierFilter) && Enum.TryParse<MembershipTier>(tierFilter, out var tierEnum))
+        if (!string.IsNullOrWhiteSpace(tierFilter) && Enum.TryParse<MembershipTier>(tierFilter, ignoreCase: true, out var tierEnum))
         {
             query = query.Where(a => a.MembershipTier == tierEnum);
         }

@@ -1,0 +1,105 @@
+@model Humans.Web.Models.Vol.ShiftBrowserViewModel
+@using Humans.Domain.Enums
+@using NodaTime
+
+@{
+    ViewData["Title"] = "All Shifts";
+    ViewData["VolActiveTab"] = "Shifts";
+    var es = Model.EventSettings;
+
+    var totalRotas = Model.Departments.Sum(d => d.Rotas.Count);
+    var totalShifts = Model.Departments.Sum(d => d.Rotas.Sum(r => r.Shifts.Count));
+    var totalOpenSlots = Model.Departments.Sum(d => d.Rotas.Sum(r => r.Shifts.Sum(s => Math.Max(0, s.RemainingSlots))));
+}
+
+<vc:temp-data-alerts />
+
+<form method="get" class="row g-2 mb-4 align-items-end">
+    <div class="col-auto">
+        <label class="form-label mb-1">Department</label>
+        <select name="departmentId" class="form-select form-select-sm">
+            <option value="">All Departments</option>
+            @foreach (var dept in Model.AllDepartments)
+            {
+                @if (Model.FilterDepartmentId == dept.TeamId)
+                {
+                    <option value="@dept.TeamId" selected>@dept.Name</option>
+                }
+                else
+                {
+                    <option value="@dept.TeamId">@dept.Name</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label mb-1">From</label>
+        <input type="date" name="fromDate" class="form-control form-control-sm" value="@Model.FilterFromDate"
+               min="@es.GateOpeningDate.PlusDays(es.BuildStartOffset).ToString("yyyy-MM-dd", null)"
+               max="@es.GateOpeningDate.PlusDays(es.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label mb-1">To</label>
+        <input type="date" name="toDate" class="form-control form-control-sm" value="@Model.FilterToDate"
+               min="@es.GateOpeningDate.PlusDays(es.BuildStartOffset).ToString("yyyy-MM-dd", null)"
+               max="@es.GateOpeningDate.PlusDays(es.StrikeEndOffset).ToString("yyyy-MM-dd", null)" />
+    </div>
+    @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod))
+    {
+        <div class="col-auto">
+            <a asp-action="Shifts" class="btn btn-sm btn-outline-secondary">Clear Filters</a>
+        </div>
+    }
+    <input type="hidden" name="period" value="@Model.FilterPeriod" />
+</form>
+@{
+    var activePeriod = Model.FilterPeriod ?? "";
+}
+<div class="btn-group mb-3" role="group" aria-label="Period filter">
+    <a href="@Url.Action("Shifts", new { departmentId = Model.FilterDepartmentId, fromDate = Model.FilterFromDate, toDate = Model.FilterToDate })"
+       class="btn btn-sm @(string.IsNullOrEmpty(activePeriod) ? "btn-primary" : "btn-outline-primary")">All</a>
+    <a href="@Url.Action("Shifts", new { departmentId = Model.FilterDepartmentId, period = "Build" })"
+       class="btn btn-sm @(activePeriod == "Build" ? "btn-info" : "btn-outline-info")">Set-up</a>
+    <a href="@Url.Action("Shifts", new { departmentId = Model.FilterDepartmentId, period = "Event" })"
+       class="btn btn-sm @(activePeriod == "Event" ? "btn-success" : "btn-outline-success")">Event</a>
+    <a href="@Url.Action("Shifts", new { departmentId = Model.FilterDepartmentId, period = "Strike" })"
+       class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">Strike</a>
+</div>
+<script>
+    document.querySelectorAll('[name="departmentId"], [name="fromDate"], [name="toDate"]').forEach(function(el) {
+        el.addEventListener('change', function() { this.form.submit(); });
+    });
+</script>
+
+@if (!es.IsShiftBrowsingOpen)
+{
+    <div class="alert alert-danger">Shifts aren't open yet. Only coordinators and admins can see this page.</div>
+}
+
+@if (Model.Departments.Count == 0)
+{
+    <div class="alert alert-info">No shifts match the current filters.</div>
+}
+else
+{
+    <div class="d-flex gap-3 text-muted small mb-3">
+        <span><i class="fa-solid fa-layer-group me-1"></i>@totalRotas rota@(totalRotas != 1 ? "s" : "")</span>
+        <span><i class="fa-solid fa-clock me-1"></i>@totalShifts shift@(totalShifts != 1 ? "s" : "")</span>
+        <span><i class="fa-solid fa-user-plus me-1"></i>@totalOpenSlots open slot@(totalOpenSlots != 1 ? "s" : "")</span>
+    </div>
+
+    @foreach (var dept in Model.Departments)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">@dept.TeamName</h5>
+            </div>
+            <div class="card-body">
+                @foreach (var rotaGroup in dept.Rotas)
+                {
+                    @await Html.PartialAsync("_RotaCard", (rotaGroup, es, Model.UserSignupShiftIds, Model.UserSignupStatuses, Model.ShowSignups))
+                }
+            </div>
+        </div>
+    }
+}

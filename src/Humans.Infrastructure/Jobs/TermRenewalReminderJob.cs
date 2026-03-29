@@ -85,7 +85,7 @@ public class TermRenewalReminderJob
                 }
 
                 var email = application.User.GetEffectiveEmail() ?? application.User.Email;
-                if (email == null)
+                if (email is null)
                 {
                     continue;
                 }

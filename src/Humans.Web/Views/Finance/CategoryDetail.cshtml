@@ -1,0 +1,263 @@
+@model BudgetCategory
+@{
+    ViewData["Title"] = $"Finance - {Model.Name}";
+    var teams = ViewBag.Teams as IEnumerable<dynamic> ?? [];
+    var lineItemTotal = Model.LineItems.Sum(li => li.Amount);
+    var unallocated = Model.AllocatedAmount - lineItemTotal;
+    var group = Model.BudgetGroup;
+    var year = group?.BudgetYear;
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Finance</a></li>
+        @if (year is not null)
+        {
+            <li class="breadcrumb-item"><a asp-action="YearDetail" asp-route-id="@year.Id">@year.Name</a></li>
+        }
+        @if (group is not null)
+        {
+            <li class="breadcrumb-item">@group.Name</li>
+        }
+        <li class="breadcrumb-item active">@Model.Name</li>
+    </ol>
+</nav>
+
+<h1 class="mb-4">@Model.Name</h1>
+
+<vc:temp-data-alerts />
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Allocated</h6>
+                <h3 class="card-title mb-0">&euro;@Model.AllocatedAmount.ToString("N2")</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total in Line Items</h6>
+                <h3 class="card-title mb-0">&euro;@lineItemTotal.ToString("N2")</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
+                <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
+                    &euro;@unallocated.ToString("N2")
+                </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Category -->
+<div class="card mb-4">
+    <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#editCategory">
+        <i class="fa-solid fa-pen me-1"></i>Edit Category
+    </div>
+    <div id="editCategory" class="collapse">
+        <div class="card-body">
+            <form asp-action="UpdateCategory" asp-route-id="@Model.Id" method="post" class="row g-3 align-items-end">
+                @Html.AntiForgeryToken()
+                <div class="col-md-4">
+                    <label class="form-label">Name</label>
+                    <input type="text" name="name" class="form-control" value="@Model.Name" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Allocated Amount (&euro;)</label>
+                    <input type="number" name="allocatedAmount" class="form-control" step="0.01" min="0" value="@Model.AllocatedAmount" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Expenditure Type</label>
+                    <select name="expenditureType" class="form-select">
+                        @if (Model.ExpenditureType == ExpenditureType.OpEx)
+                        {
+                            <option value="@ExpenditureType.OpEx" selected>OpEx</option>
+                            <option value="@ExpenditureType.CapEx">CapEx</option>
+                        }
+                        else
+                        {
+                            <option value="@ExpenditureType.OpEx">OpEx</option>
+                            <option value="@ExpenditureType.CapEx" selected>CapEx</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Save</button>
+                </div>
+            </form>
+            @if (year is not null)
+            {
+                <hr />
+                <form asp-action="DeleteCategory" asp-route-id="@Model.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="budgetYearId" value="@year.Id" />
+                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this category and all its line items?')">
+                        <i class="fa-solid fa-trash me-1"></i>Delete Category
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Line Items -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Line Items</span>
+        <span class="badge bg-secondary">@Model.LineItems.Count items</span>
+    </div>
+    @if (Model.LineItems.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th class="text-end">Amount</th>
+                        <th>Responsible Team</th>
+                        <th>Notes</th>
+                        <th>Expected Date</th>
+                        <th class="text-end" style="min-width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.LineItems.OrderBy(li => li.SortOrder))
+                    {
+                        var editId = $"edit-{item.Id.ToString("N")}";
+                        <tr>
+                            <td>@item.Description</td>
+                            <td class="text-end">&euro;@item.Amount.ToString("N2")</td>
+                            <td>@(item.ResponsibleTeam?.Name ?? "\u2014")</td>
+                            <td class="text-muted">@(item.Notes ?? "")</td>
+                            <td>@item.ExpectedDate?.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
+                            <td class="text-end">
+                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#@editId">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <form asp-action="DeleteLineItem" asp-route-id="@item.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="budgetCategoryId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this line item?')">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr class="collapse" id="@editId">
+                            <td colspan="6" class="bg-light">
+                                <form asp-action="UpdateLineItem" asp-route-id="@item.Id" method="post" class="row g-2 p-2 align-items-end">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="budgetCategoryId" value="@Model.Id" />
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Description</label>
+                                        <input type="text" name="description" class="form-control form-control-sm" value="@item.Description" required />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">Amount (&euro;)</label>
+                                        <input type="number" name="amount" class="form-control form-control-sm" step="0.01" value="@item.Amount" required />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">Responsible Team</label>
+                                        <select name="responsibleTeamId" class="form-select form-select-sm">
+                                            <option value="">None</option>
+                                            @foreach (var team in teams)
+                                            {
+                                                var teamId = (Guid)team.Id;
+                                                var teamName = (string)team.Name;
+                                                if (item.ResponsibleTeamId == teamId)
+                                                {
+                                                    <option value="@teamId" selected>@teamName</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@teamId">@teamName</option>
+                                                }
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">Notes</label>
+                                        <input type="text" name="notes" class="form-control form-control-sm" value="@item.Notes" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">Expected Date</label>
+                                        <input type="date" name="expectedDate" class="form-control form-control-sm" value="@item.ExpectedDate?.ToDateTimeUnspecified().ToString("yyyy-MM-dd")" />
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">Save</button>
+                                    </div>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="card-body text-center text-muted py-4">
+            No line items yet. Add one below.
+        </div>
+    }
+    <div class="card-footer bg-light">
+        <h6 class="mb-2">Add Line Item</h6>
+        <form asp-action="CreateLineItem" method="post" class="row g-2 align-items-end">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="budgetCategoryId" value="@Model.Id" />
+            <div class="col-md-3">
+                <label class="form-label form-label-sm">Description</label>
+                <input type="text" name="description" class="form-control form-control-sm" required />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label form-label-sm">Amount (&euro;)</label>
+                <input type="number" name="amount" class="form-control form-control-sm" step="0.01" min="0" value="0" required />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label form-label-sm">Responsible Team</label>
+                <select name="responsibleTeamId" class="form-select form-select-sm">
+                    <option value="">None</option>
+                    @foreach (var team in teams)
+                    {
+                        <option value="@team.Id">@team.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label form-label-sm">Notes</label>
+                <input type="text" name="notes" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label form-label-sm">Expected Date</label>
+                <input type="date" name="expectedDate" class="form-control form-control-sm" />
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="fa-solid fa-plus me-1"></i>Add
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mt-3">
+    @if (year is not null)
+    {
+        <a asp-action="YearDetail" asp-route-id="@year.Id" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to @year.Name
+        </a>
+    }
+    else
+    {
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+        </a>
+    }
+</div>

@@ -1,0 +1,154 @@
+@model Humans.Web.Models.Vol.ChildTeamDetailViewModel
+
+@{
+    ViewData["Title"] = Model.ChildTeam.Name;
+    ViewData["VolActiveTab"] = "Teams";
+}
+
+<vc:temp-data-alerts />
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Teams">Teams</a></li>
+        <li class="breadcrumb-item">
+            <a asp-action="DepartmentDetail" asp-route-slug="@Model.Department.Slug">@Model.Department.Name</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.ChildTeam.Name</li>
+    </ol>
+</nav>
+
+@if (!string.IsNullOrWhiteSpace(Model.ChildTeam.Description))
+{
+    <p class="text-muted">@Model.ChildTeam.Description</p>
+}
+
+<div class="d-flex align-items-center mb-4">
+    <span class="text-muted">
+        <i class="fa-solid fa-user me-1"></i>@Model.Members.Count human@(Model.Members.Count != 1 ? "s" : "")
+    </span>
+</div>
+
+@* Member roster *@
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fa-solid fa-users me-2"></i>Humans</h5>
+    </div>
+    <div class="card-body p-0">
+        @if (Model.Members.Count == 0)
+        {
+            <div class="text-center py-4 text-muted">No humans in this team yet.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var member in Model.Members.OrderBy(m => m.User.DisplayName, StringComparer.OrdinalIgnoreCase))
+                        {
+                            <tr>
+                                <td>
+                                    <human-link user-id="@member.UserId" display-name="@member.User.DisplayName" show-popover="true" />
+                                </td>
+                                <td>
+                                    @if (member.Role == TeamMemberRole.Coordinator)
+                                    {
+                                        <span class="badge bg-primary">Coordinator</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Member</span>
+                                    }
+                                </td>
+                                <td>@member.JoinedAt.ToDisplayDate()</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* Rotas section *@
+@if (Model.Rotas.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fa-solid fa-calendar-days me-2"></i>Rotas</h5>
+        </div>
+        <div class="card-body">
+            @foreach (var rotaGroup in Model.Rotas.OrderBy(r => r.Rota.Name, StringComparer.Ordinal))
+            {
+                @await Html.PartialAsync("_RotaCard", (rotaGroup, Model.EventSettings, Model.UserSignupShiftIds, Model.UserSignupStatuses, Model.IsCoordinator))
+            }
+        </div>
+    </div>
+}
+
+@* Pending join requests (coordinator only) *@
+@if (Model.IsCoordinator && Model.PendingRequests.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fa-solid fa-clock me-2"></i>Pending Join Requests
+                <span class="badge bg-warning text-dark ms-2">@Model.PendingRequests.Count</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Message</th>
+                            <th>Requested</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var request in Model.PendingRequests.OrderBy(r => r.RequestedAt))
+                        {
+                            <tr>
+                                <td>
+                                    <human-link user-id="@request.UserId" display-name="@request.User.DisplayName" show-popover="true" />
+                                </td>
+                                <td class="text-muted small">
+                                    @(string.IsNullOrWhiteSpace(request.Message) ? "—" : request.Message)
+                                </td>
+                                <td>@request.RequestedAt.ToDisplayDate()</td>
+                                <td class="text-end">
+                                    <form asp-controller="Vol" asp-action="ApproveJoinRequest" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="requestId" value="@request.Id" />
+                                        <input type="hidden" name="returnUrl"
+                                               value="@Url.Action("ChildTeamDetail", "Vol", new { parentSlug = Model.Department.Slug, childSlug = Model.ChildTeam.Slug })" />
+                                        <button type="submit" class="btn btn-sm btn-success">
+                                            <i class="fa-solid fa-check me-1"></i>Approve
+                                        </button>
+                                    </form>
+                                    <form asp-controller="Vol" asp-action="RejectJoinRequest" method="post" class="d-inline ms-1">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="requestId" value="@request.Id" />
+                                        <input type="hidden" name="returnUrl"
+                                               value="@Url.Action("ChildTeamDetail", "Vol", new { parentSlug = Model.Department.Slug, childSlug = Model.ChildTeam.Slug })" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="fa-solid fa-xmark me-1"></i>Reject
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

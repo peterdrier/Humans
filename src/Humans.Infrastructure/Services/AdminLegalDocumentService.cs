@@ -142,7 +142,7 @@ public partial class AdminLegalDocumentService : IAdminLegalDocumentService
         var document = await _dbContext.LegalDocuments
             .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
-        if (document == null)
+        if (document is null)
         {
             return null;
         }
@@ -165,7 +165,7 @@ public partial class AdminLegalDocumentService : IAdminLegalDocumentService
         var document = await _dbContext.LegalDocuments
             .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
-        if (document == null)
+        if (document is null)
         {
             return null;
         }
@@ -189,7 +189,7 @@ public partial class AdminLegalDocumentService : IAdminLegalDocumentService
         var version = await _dbContext.Set<DocumentVersion>()
             .FirstOrDefaultAsync(v => v.Id == versionId && v.LegalDocumentId == documentId, cancellationToken);
 
-        if (version == null)
+        if (version is null)
         {
             return false;
         }

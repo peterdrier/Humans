@@ -69,7 +69,7 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
             try
             {
                 var result = await SyncSingleDocumentAsync(document, cancellationToken);
-                if (result != null)
+                if (result is not null)
                 {
                     updatedDocuments.Add(document);
                 }
@@ -91,7 +91,7 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
             .Include(d => d.Versions)
             .FirstOrDefaultAsync(d => d.Id == documentId, cancellationToken);
 
-        if (document == null)
+        if (document is null)
         {
             _logger.LogWarning("Document {DocumentId} not found", documentId);
             return null;
@@ -125,7 +125,7 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
                 }
 
                 var latestSha = await GetLatestCommitShaAsync(checkPath, cancellationToken);
-                if (latestSha != null && !string.Equals(latestSha, document.CurrentCommitSha, StringComparison.Ordinal))
+                if (latestSha is not null && !string.Equals(latestSha, document.CurrentCommitSha, StringComparison.Ordinal))
                 {
                     documentsWithUpdates.Add(document);
                 }
@@ -167,7 +167,7 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
             .Select(d => d.Versions
                 .Where(v => v.EffectiveFrom <= now)
                 .MaxBy(v => v.EffectiveFrom))
-            .Where(v => v != null)
+            .Where(v => v is not null)
             .Cast<DocumentVersion>()
             .ToList();
     }
@@ -224,7 +224,7 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
         var canonicalEntry = languageFiles.FirstOrDefault(kv =>
             string.Equals(kv.Key, "es", StringComparison.Ordinal));
 
-        if (canonicalEntry.Value == null)
+        if (canonicalEntry.Value is null)
         {
             var found = string.Join(", ", languageFiles.Keys);
             throw new InvalidOperationException(

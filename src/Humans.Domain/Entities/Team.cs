@@ -1,5 +1,7 @@
 using NodaTime;
+using Humans.Domain.Attributes;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 
 namespace Humans.Domain.Entities;
 
@@ -34,7 +36,7 @@ public class Team
     public bool IsActive { get; set; } = true;
 
     /// <summary>
-    /// Whether joining this team requires approval from a lead or board member.
+    /// Whether joining this team requires approval from a coordinator or board member.
     /// </summary>
     public bool RequiresApproval { get; set; } = true;
 
@@ -51,7 +53,7 @@ public class Team
     /// <summary>
     /// Full Google Group email address, or null if no prefix is set.
     /// </summary>
-    public string? GoogleGroupEmail => GoogleGroupPrefix != null
+    public string? GoogleGroupEmail => GoogleGroupPrefix is not null
         ? $"{GoogleGroupPrefix}@nobodies.team"
         : null;
 
@@ -64,6 +66,67 @@ public class Team
     /// When the team was last updated.
     /// </summary>
     public Instant UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Optional custom slug that overrides the auto-generated slug for external URL stability.
+    /// When set, both the custom slug and the auto-generated slug resolve to this team.
+    /// </summary>
+    public string? CustomSlug { get; set; }
+
+    /// <summary>
+    /// Whether this team has a public-facing page visible to anonymous visitors.
+    /// Only departments (no parent, non-system) can be made public.
+    /// </summary>
+    public bool IsPublicPage { get; set; }
+
+    /// <summary>
+    /// Whether coordinators are shown on the public page. Default true.
+    /// </summary>
+    public bool ShowCoordinatorsOnPublicPage { get; set; } = true;
+
+    /// <summary>
+    /// Free-form markdown content for the public team page.
+    /// </summary>
+    [MarkdownContent]
+    public string? PageContent { get; set; }
+
+    /// <summary>
+    /// When the page content was last updated.
+    /// </summary>
+    public Instant? PageContentUpdatedAt { get; set; }
+
+    /// <summary>
+    /// User ID of who last updated the page content.
+    /// </summary>
+    public Guid? PageContentUpdatedByUserId { get; set; }
+
+    /// <summary>
+    /// Call-to-action buttons displayed on the public team page (max 3).
+    /// Stored as JSONB.
+    /// </summary>
+    public List<CallToAction>? CallsToAction { get; set; }
+
+    /// <summary>
+    /// Whether this team participates in budget planning.
+    /// When true, a BudgetCategory is auto-created under the Departments group on budget year creation.
+    /// </summary>
+    public bool HasBudget { get; set; }
+
+    /// <summary>
+    /// Optional parent team ID for one-level hierarchy (departments).
+    /// A team with a parent cannot itself be a parent.
+    /// </summary>
+    public Guid? ParentTeamId { get; set; }
+
+    /// <summary>
+    /// Navigation property to the parent team (department).
+    /// </summary>
+    public Team? ParentTeam { get; set; }
+
+    /// <summary>
+    /// Navigation property to child teams (sub-teams of this department).
+    /// </summary>
+    public ICollection<Team> ChildTeams { get; } = new List<Team>();
 
     /// <summary>
     /// Navigation property to team members.
@@ -94,4 +157,10 @@ public class Team
     /// Whether this is a system-managed team.
     /// </summary>
     public bool IsSystemTeam => SystemTeamType != SystemTeamType.None;
+
+    /// <summary>
+    /// Display name including parent prefix for sub-teams (e.g. "Comms - Logo").
+    /// Requires ParentTeam navigation to be loaded.
+    /// </summary>
+    public string DisplayName => ParentTeam is not null ? $"{ParentTeam.Name} - {Name}" : Name;
 }

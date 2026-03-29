@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -46,7 +47,7 @@ public class SendBoardDailyDigestJob
         var yesterdayUtc = todayUtc.PlusDays(-1);
         var windowStart = yesterdayUtc.AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
         var windowEnd = todayUtc.AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
-        var dateLabel = yesterdayUtc.ToString("yyyy-MM-dd", null);
+        var dateLabel = yesterdayUtc.ToIsoDateString();
 
         _logger.LogInformation(
             "Starting Board daily digest job for {Date} (window {Start} to {End})",
@@ -117,12 +118,12 @@ public class SendBoardDailyDigestJob
             var usersWithAllConsents = await _membershipCalculator.GetUsersWithAllRequiredConsentsAsync(allUserIds, cancellationToken);
 
             var leadUserIds = await _dbContext.TeamMembers
-                .Where(tm => tm.LeftAt == null && tm.Role == TeamMemberRole.Lead && tm.Team.SystemTeamType == SystemTeamType.None)
+                .Where(tm => tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator && tm.Team.SystemTeamType == SystemTeamType.None)
                 .Select(tm => tm.UserId)
                 .Distinct()
                 .ToListAsync(cancellationToken);
             var leadsWithAllConsents = leadUserIds.Count > 0
-                ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(leadUserIds, SystemTeamIds.Leads, cancellationToken)
+                ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(leadUserIds, SystemTeamIds.Coordinators, cancellationToken)
                 : (IReadOnlySet<Guid>)new HashSet<Guid>();
 
             var pendingConsentsCount = allUserIds.Count(id =>
@@ -167,7 +168,7 @@ public class SendBoardDailyDigestJob
             foreach (var member in boardMembers)
             {
                 var email = member.GetEffectiveEmail();
-                if (email == null)
+                if (email is null)
                 {
                     _logger.LogWarning("Board member {UserId} ({Name}) has no effective email, skipping digest",
                         member.Id, member.DisplayName);

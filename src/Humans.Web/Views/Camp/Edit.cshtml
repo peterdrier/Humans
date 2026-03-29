@@ -53,22 +53,49 @@
                             <label asp-for="ContactPhone" class="form-label">Contact Phone</label>
                             <input asp-for="ContactPhone" class="form-control" type="tel" pattern="\+[\d\s\-()]{6,20}" placeholder="+34 612 345 678" />
                         </div>
-                        <div class="col-md-6">
-                            <label asp-for="ContactMethod" class="form-label">Preferred Contact Method</label>
-                            <input asp-for="ContactMethod" class="form-control" required />
-                        </div>
-                        <div class="col-md-6">
-                            <label asp-for="WebOrSocialUrl" class="form-label">Website or Social Media</label>
-                            <input asp-for="WebOrSocialUrl" class="form-control" type="url" placeholder="https://" />
+                        <div class="col-12">
+                            <label class="form-label">@Localizer["Camp_Edit_Links"]</label>
+                            <div id="links-container">
+                                @if (Model.Links != null)
+                                {
+                                    for (var i = 0; i < Model.Links.Count; i++)
+                                    {
+                                        <div class="input-group mb-2 link-entry">
+                                            <input type="url" name="Links" class="form-control" value="@Model.Links[i]" placeholder="https://" />
+                                            <button type="button" class="btn btn-outline-danger remove-link">
+                                                <i class="fa-solid fa-times"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-link">
+                                <i class="fa-solid fa-plus me-1"></i> @Localizer["Camp_Edit_AddLink"]
+                            </button>
+                            @{
+                                var hasWebsite = Model.Links?.Any(u => !string.IsNullOrEmpty(u) && !Humans.Domain.Helpers.PlatformDetector.IsSocialMedia(u)) ?? false;
+                            }
+                            @if (!hasWebsite)
+                            {
+                                <div class="alert alert-warning mt-2 mb-0">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> @Localizer["Camp_Edit_WebsiteNudge"]
+                                </div>
+                            }
                         </div>
                         <div class="col-md-3">
-                            <label asp-for="TimesAtNowhere" class="form-label">Times at Nowhere</label>
+                            <label asp-for="TimesAtNowhere" class="form-label">Times Participating</label>
                             <input asp-for="TimesAtNowhere" class="form-control" type="number" min="0" />
                         </div>
                         <div class="col-md-3">
                             <div class="form-check mt-4">
                                 <input asp-for="IsSwissCamp" class="form-check-input" />
                                 <label asp-for="IsSwissCamp" class="form-check-label">@Localizer["Camp_SwissCampLabel"]</label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input asp-for="HideHistoricalNames" class="form-check-input" />
+                                <label asp-for="HideHistoricalNames" class="form-check-label">Hide historical names</label>
                             </div>
                         </div>
                     </div>
@@ -224,22 +251,13 @@
                 @foreach (var lead in Model.Leads)
                 {
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            @lead.DisplayName
-                            @if (lead.Role == CampLeadRole.Primary)
-                            {
-                                <span class="badge bg-primary ms-1">Primary</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary ms-1">Co-Lead</span>
-                            }
-                        </div>
-                        @if (lead.Role == CampLeadRole.CoLead)
+                        @lead.DisplayName
+                        @if (Model.Leads.Count > 1)
                         {
                             <form asp-action="RemoveLead" asp-route-slug="@Model.Slug" asp-route-leadId="@lead.LeadId" method="post" class="d-inline">
                                 @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove lead">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove lead"
+                                        data-confirm="Remove @lead.DisplayName as a lead?">
                                     <i class="fa-solid fa-user-minus"></i>
                                 </button>
                             </form>
@@ -250,39 +268,14 @@
             <div class="card-body">
                 <form asp-action="AddLead" asp-route-slug="@Model.Slug" method="post" class="input-group">
                     @Html.AntiForgeryToken()
-                    <input type="text" name="userId" class="form-control" placeholder="User ID (GUID)" required />
-                    <button type="submit" class="btn btn-outline-success" title="Add co-lead">
+                    <partial name="_HumanSearchInput" view-data='@(new ViewDataDictionary(ViewData) { { "FieldName", "userId" } })' />
+                    <button type="submit" class="btn btn-outline-success" title="Add lead">
                         <i class="fa-solid fa-user-plus"></i>
                     </button>
                 </form>
-                <div class="form-text">Enter the user ID of the new co-lead.</div>
+                <div class="form-text">Search by name to find the new lead.</div>
             </div>
         </div>
-
-        @* Transfer Primary *@
-        @if (Model.Leads.Count > 1)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <i class="fa-solid fa-right-left me-1"></i> Transfer Primary Lead
-                </div>
-                <div class="card-body">
-                    <form asp-action="TransferPrimary" asp-route-slug="@Model.Slug" method="post">
-                        @Html.AntiForgeryToken()
-                        <select name="newPrimaryUserId" class="form-select mb-2" required>
-                            <option value="">Select new primary lead</option>
-                            @foreach (var lead in Model.Leads.Where(l => l.Role == CampLeadRole.CoLead))
-                            {
-                                <option value="@lead.UserId">@lead.DisplayName</option>
-                            }
-                        </select>
-                        <button type="submit" class="btn btn-warning w-100">
-                            <i class="fa-solid fa-right-left me-1"></i> Transfer
-                        </button>
-                    </form>
-                </div>
-            </div>
-        }
 
         @* Image Management *@
         <div class="card mb-4">
@@ -364,5 +357,53 @@
                 </div>
             }
         </div>
+
+        @* Historical Names *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-clock-rotate-left me-1"></i> Historical Names
+            </div>
+            @if (Model.ExistingHistoricalNames.Count > 0)
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var name in Model.ExistingHistoricalNames)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                @name.Name
+                                @if (name.Year.HasValue)
+                                {
+                                    <small class="text-muted">(@name.Year)</small>
+                                }
+                                @if (string.Equals(name.Source, "NameChange", StringComparison.Ordinal))
+                                {
+                                    <small class="text-muted ms-1" title="Auto-created from name change"><i class="fa-solid fa-rotate"></i></small>
+                                }
+                            </div>
+                            <form asp-action="RemoveHistoricalName" asp-route-slug="@Model.Slug" asp-route-nameId="@name.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            }
+            <div class="card-body">
+                <form asp-action="AddHistoricalName" asp-route-slug="@Model.Slug" method="post" class="input-group">
+                    @Html.AntiForgeryToken()
+                    <input type="text" name="name" class="form-control form-control-sm" placeholder="Previous camp name" maxlength="256" />
+                    <button type="submit" class="btn btn-outline-success btn-sm" title="Add">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </form>
+                <div class="form-text">Names this camp was previously known as.</div>
+            </div>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_LinksEditorScripts" />
+}

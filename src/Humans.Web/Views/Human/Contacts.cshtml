@@ -1,0 +1,94 @@
+@model Humans.Web.Models.AdminContactListViewModel
+@{
+    ViewData["Title"] = "Contacts";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Contacts</h1>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+        <a asp-action="CreateContact" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus"></i> Add Contact
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-auto flex-grow-1">
+                <input type="text" name="search" class="form-control" placeholder="Search by name or email..."
+                       value="@Model.SearchTerm">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">@Localizer["Admin_Search"]</button>
+                @if (!string.IsNullOrEmpty(Model.SearchTerm))
+                {
+                    <a asp-action="Contacts" class="btn btn-outline-secondary">@Localizer["Admin_Clear"]</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="mb-3">
+    <a asp-action="Humans" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left"></i> Back to Humans
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (Model.Contacts.Count == 0)
+        {
+            <p class="text-muted text-center py-4 mb-0">No contacts found.</p>
+        }
+        else
+        {
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Contact</th>
+                        <th>Source</th>
+                        <th>Created</th>
+                        <th>Preferences</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var contact in Model.Contacts)
+                    {
+                        <tr>
+                            <td>
+                                <div>@contact.DisplayName</div>
+                                <small class="text-muted">@contact.Email</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">@(contact.ContactSource?.ToString() ?? "Unknown")</span>
+                                @if (!string.IsNullOrEmpty(contact.ExternalSourceId))
+                                {
+                                    <br /><small class="text-muted">@contact.ExternalSourceId</small>
+                                }
+                            </td>
+                            <td>@contact.CreatedAt.ToDisplayDate()</td>
+                            <td>
+                                @if (contact.HasCommunicationPreferences)
+                                {
+                                    <span class="badge bg-success">Configured</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Defaults</span>
+                                }
+                            </td>
+                            <td>
+                                <a asp-action="ContactDetail" asp-route-id="@contact.Id"
+                                   class="btn btn-sm btn-outline-primary">Detail</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>

@@ -1,0 +1,187 @@
+@model Humans.Web.Models.ShiftInfoViewModel
+@{
+    ViewData["Title"] = "Shift Info";
+}
+
+<div class="row">
+    <div class="col-12" style="max-width: 900px;">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Shift Info</li>
+            </ol>
+        </nav>
+
+        <h1>Shift Info</h1>
+        <p class="text-muted">Skills, dietary preferences, and other information for shift coordination.</p>
+
+        <vc:temp-data-alerts />
+
+        <form asp-action="ShiftInfo" method="post">
+            @Html.AntiForgeryToken()
+
+            @* Skills *@
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label class="form-label fw-bold">Skills</label>
+                    <div class="row">
+                        @foreach (var skill in Humans.Web.Models.ShiftInfoViewModel.SkillOptions)
+                        {
+                            <div class="col-md-4 mb-1">
+                                <div class="form-check">
+                                    <input type="checkbox" name="SelectedSkills" value="@skill" class="form-check-input"
+                                           @(Model.SelectedSkills.Contains(skill) ? "checked" : "") />
+                                    <label class="form-check-label">@skill</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Quirks *@
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label class="form-label fw-bold">Work Preferences</label>
+                    <div class="row">
+                        @foreach (var quirk in Humans.Web.Models.ShiftInfoViewModel.QuirkOptions)
+                        {
+                            <div class="col-md-4 mb-1">
+                                <div class="form-check">
+                                    <input type="checkbox" name="SelectedQuirks" value="@quirk" class="form-check-input"
+                                           @(Model.SelectedQuirks.Contains(quirk) ? "checked" : "") />
+                                    <label class="form-check-label">@quirk</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Languages *@
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label class="form-label fw-bold">Languages</label>
+                    <div class="row">
+                        @foreach (var lang in Humans.Web.Models.ShiftInfoViewModel.LanguageOptions)
+                        {
+                            <div class="col-md-4 mb-1">
+                                <div class="form-check">
+                                    <input type="checkbox" name="SelectedLanguages" value="@lang" class="form-check-input"
+                                           @(Model.SelectedLanguages.Contains(lang) ? "checked" : "") />
+                                    <label class="form-check-label">@lang</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Dietary *@
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label class="form-label fw-bold">Dietary Preference</label>
+                    <div class="row">
+                        @foreach (var diet in Humans.Web.Models.ShiftInfoViewModel.DietaryOptions)
+                        {
+                            <div class="col-md-3 mb-1">
+                                <div class="form-check">
+                                    <input type="radio" name="DietaryPreference" value="@diet" class="form-check-input"
+                                           @(string.Equals(Model.DietaryPreference, diet, StringComparison.Ordinal) ? "checked" : "") />
+                                    <label class="form-check-label">@diet</label>
+                                </div>
+                            </div>
+                        }
+                        <div class="col-md-3 mb-1">
+                            <div class="form-check">
+                                <input type="radio" name="DietaryPreference" value="" class="form-check-input"
+                                       @(string.IsNullOrEmpty(Model.DietaryPreference) ? "checked" : "") />
+                                <label class="form-check-label text-muted">Not specified</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Allergies *@
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label class="form-label fw-bold">Allergies</label>
+                    <div class="row">
+                        @foreach (var allergy in Humans.Web.Models.ShiftInfoViewModel.AllergyOptions)
+                        {
+                            <div class="col-md-4 mb-1">
+                                <div class="form-check">
+                                    <input type="checkbox" name="SelectedAllergies" value="@allergy" class="form-check-input"
+                                           @(Model.SelectedAllergies.Contains(allergy) ? "checked" : "")
+                                           @(string.Equals(allergy, "Other", StringComparison.Ordinal) ? "data-toggle-target=allergyOtherText" : "") />
+                                    <label class="form-check-label">@allergy</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div id="allergyOtherText" class="mt-2" style="display: @(Model.SelectedAllergies.Contains("Other") ? "block" : "none");">
+                        <input type="text" name="AllergyOtherText" class="form-control" maxlength="500"
+                               value="@Model.AllergyOtherText" placeholder="Please specify your other allergy" />
+                    </div>
+                </div>
+            </div>
+
+            @* Intolerances *@
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label class="form-label fw-bold">Intolerances</label>
+                    <div class="row">
+                        @foreach (var intolerance in Humans.Web.Models.ShiftInfoViewModel.IntoleranceOptions)
+                        {
+                            <div class="col-md-4 mb-1">
+                                <div class="form-check">
+                                    <input type="checkbox" name="SelectedIntolerances" value="@intolerance" class="form-check-input"
+                                           @(Model.SelectedIntolerances.Contains(intolerance) ? "checked" : "")
+                                           @(string.Equals(intolerance, "Other", StringComparison.Ordinal) ? "data-toggle-target=intoleranceOtherText" : "") />
+                                    <label class="form-check-label">@intolerance</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div id="intoleranceOtherText" class="mt-2" style="display: @(Model.SelectedIntolerances.Contains("Other") ? "block" : "none");">
+                        <input type="text" name="IntoleranceOtherText" class="form-control" maxlength="500"
+                               value="@Model.IntoleranceOtherText" placeholder="Please specify your other intolerance" />
+                    </div>
+                </div>
+            </div>
+
+            @* Medical Conditions *@
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label for="MedicalConditions" class="form-label fw-bold">Medical Conditions</label>
+                    <textarea id="MedicalConditions" name="MedicalConditions" class="form-control" rows="3"
+                              placeholder="Any conditions shift coordinators should know about">@Model.MedicalConditions</textarea>
+                    <div class="form-text text-warning">Visible only to you, NoInfo Admins, and Admins.</div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-outline-secondary">Back to Profile</a>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.querySelectorAll('[data-toggle-target]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        var target = document.getElementById(this.dataset.toggleTarget);
+        if (target) {
+            target.style.display = this.checked ? 'block' : 'none';
+            if (!this.checked) {
+                var input = target.querySelector('input');
+                if (input) input.value = '';
+            }
+        }
+    });
+});
+</script>
+}

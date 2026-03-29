@@ -16,7 +16,7 @@ public class ProfileCardViewModel
     public string? CustomProfilePictureUrl { get; set; }
     public string BurnerName { get; set; } = string.Empty;
     public string? Pronouns { get; set; }
-    public string MembershipStatus { get; set; } = "None";
+    public MembershipStatus MembershipStatus { get; set; }
     public bool IsApproved { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }
@@ -32,8 +32,10 @@ public class ProfileCardViewModel
     public string? EmergencyContactRelationship { get; set; }
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
+    public bool HasNobodiesTeamEmail { get; set; }
     public ProfileCardViewMode ViewMode { get; set; }
     public bool CanViewLegalName { get; set; }
+    public string? PreferredLanguage { get; set; }
 
     public IReadOnlyList<UserEmailDisplayViewModel> UserEmails { get; set; } = [];
     public IReadOnlyList<ContactFieldViewModel> ContactFields { get; set; } = [];
@@ -67,6 +69,7 @@ public class ProfileCardViewModel
             }
             catch (ArgumentOutOfRangeException)
             {
+                // Invalid persisted month/day combinations should render as no birthday rather than break the profile card.
                 return null;
             }
         }

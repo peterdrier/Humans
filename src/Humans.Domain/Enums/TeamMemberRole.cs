@@ -11,7 +11,7 @@ public enum TeamMemberRole
     Member = 0,
 
     /// <summary>
-    /// Team lead with administrative privileges.
+    /// Team coordinator with administrative privileges.
     /// </summary>
-    Lead = 1
+    Coordinator = 1
 }

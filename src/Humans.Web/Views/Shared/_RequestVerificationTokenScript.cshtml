@@ -1,0 +1,12 @@
+function getRequestVerificationToken(selector) {
+    var tokenElement = selector
+        ? document.querySelector(selector)
+        : document.querySelector('input[name="__RequestVerificationToken"]')
+            || document.querySelector('meta[name="__RequestVerificationToken"]');
+
+    if (!tokenElement) {
+        return '';
+    }
+
+    return tokenElement.value || tokenElement.getAttribute('content') || '';
+}

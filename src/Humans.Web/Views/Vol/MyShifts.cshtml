@@ -1,0 +1,77 @@
+@model Humans.Web.Models.Vol.MyShiftsViewModel
+@using Humans.Domain.Enums
+@using NodaTime
+
+@{
+    ViewData["Title"] = "My Shifts";
+    ViewData["VolActiveTab"] = "MyShifts";
+    var tz = DateTimeZoneProviders.Tzdb[Model.EventSettings.TimeZoneId];
+}
+
+<vc:temp-data-alerts />
+
+@if (Model.Shifts.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">My Shifts</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Duty</th>
+                            <th>Team</th>
+                            <th>Date & Time</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Shifts)
+                        {
+                            var badgeClass = item.Status switch
+                            {
+                                SignupStatus.Confirmed => "bg-success",
+                                SignupStatus.Pending => "bg-warning",
+                                SignupStatus.Bailed => "bg-danger",
+                                _ => "bg-secondary"
+                            };
+                            <tr>
+                                <td>@item.DutyTitle</td>
+                                <td>@item.TeamName</td>
+                                <td>
+                                    @item.AbsoluteStart.InZone(tz).Date.ToDisplayShiftDate()
+                                    @item.AbsoluteStart.ToDisplayTime(tz)–@item.AbsoluteEnd.ToDisplayTime(tz)
+                                </td>
+                                <td><span class="badge @badgeClass">@item.Status</span></td>
+                                <td>
+                                    @if (item.CanBail)
+                                    {
+                                        <form asp-action="Bail" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="signupId" value="@item.SignupId" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    data-confirm="Bail from this shift?">Bail</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fa-solid fa-clipboard-list fa-2x text-muted mb-3"></i>
+            <p class="text-muted">No shifts booked yet.</p>
+            <a asp-action="Shifts" class="btn btn-outline-primary">Browse All Shifts</a>
+        </div>
+    </div>
+}

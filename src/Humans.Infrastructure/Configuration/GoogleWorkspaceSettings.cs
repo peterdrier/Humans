@@ -55,7 +55,7 @@ public class GoogleWorkspaceSettings
 public class GroupSettings
 {
     public string WhoCanJoin { get; set; } = "INVITED_CAN_JOIN";
-    public string WhoCanViewMembership { get; set; } = "ALL_MEMBERS_CAN_VIEW";
+    public string WhoCanViewMembership { get; set; } = "ALL_MANAGERS_CAN_VIEW";
     public string WhoCanContactOwner { get; set; } = "ALL_MANAGERS_CAN_CONTACT";
     public string WhoCanPostMessage { get; set; } = "ANYONE_CAN_POST";
     public string WhoCanViewGroup { get; set; } = "ALL_MEMBERS_CAN_VIEW";

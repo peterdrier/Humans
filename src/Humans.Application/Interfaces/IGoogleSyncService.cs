@@ -67,7 +67,7 @@ public interface IGoogleSyncService
     /// Ensures a team has a linked Google Group. If GoogleGroupPrefix is set but no Group
     /// resource exists, creates or links the group. Called when prefix is set on a team.
     /// </summary>
-    Task EnsureTeamGroupAsync(Guid teamId, CancellationToken cancellationToken = default);
+    Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Provisions a new Google Group for a team.
@@ -113,4 +113,33 @@ public interface IGoogleSyncService
     /// <param name="userId">The user ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks all active Google Groups for settings drift against the expected configuration.
+    /// Detect-only: does not modify any settings.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Drift results for all groups, or a skipped result if sync is disabled.</returns>
+    Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Compares stored user emails against the canonical emails from Google Admin SDK.
+    /// Returns a list of users whose stored email differs from what Google reports.
+    /// Detect-only: does not modify any data.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Mismatch results for all users checked.</returns>
+    Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies expected settings to a Google Group, fixing any drift.
+    /// Respects SyncSettings mode — returns without action if sync is disabled.
+    /// </summary>
+    Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists all Google Groups on the domain and cross-references with the local database.
+    /// Returns drift status for each group relative to the expected settings.
+    /// </summary>
+    Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default);
 }

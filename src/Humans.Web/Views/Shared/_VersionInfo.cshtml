@@ -1,0 +1,18 @@
+@{
+    var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
+    var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
+        Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+    var informationalVersion = attr?.InformationalVersion ?? "";
+    var plusIndex = informationalVersion.IndexOf("+", StringComparison.Ordinal);
+    var version = plusIndex >= 0 ? informationalVersion[..plusIndex] : informationalVersion;
+    var commitHash = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : null;
+    var isRelease = version.Length > 0 && !version.Contains("-", StringComparison.Ordinal);
+}
+@if (isRelease)
+{
+    <a href="https://github.com/nobodies-collective/Humans/releases/tag/v@(version)" target="_blank" rel="noopener noreferrer" class="text-muted small">v@(version)</a>
+}
+else if (commitHash != null)
+{
+    <a href="https://github.com/nobodies-collective/Humans/commit/@commitHash" target="_blank" rel="noopener noreferrer" class="text-muted small font-monospace">@commitHash[..Math.Min(8, commitHash.Length)]</a>
+}

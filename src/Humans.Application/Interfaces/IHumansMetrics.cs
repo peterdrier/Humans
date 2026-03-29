@@ -12,4 +12,7 @@ public interface IHumansMetrics
     void RecordSyncOperation(string result);
     void RecordApplicationProcessed(string action);
     void RecordJobRun(string job, string result);
+    void RecordEmailQueued(string template);
+    void RecordEmailFailed(string template);
+    void SetEmailOutboxPending(int count);
 }

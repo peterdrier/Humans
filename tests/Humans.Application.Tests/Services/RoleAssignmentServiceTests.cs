@@ -1,11 +1,15 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using Humans.Application;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Humans.Domain.Entities;
+using Humans.Domain.Constants;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -15,6 +19,7 @@ public class RoleAssignmentServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly RoleAssignmentService _service;
+    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public RoleAssignmentServiceTests()
     {
@@ -27,15 +32,16 @@ public class RoleAssignmentServiceTests : IDisposable
         // These tests only exercise HasOverlappingAssignmentAsync which uses only _dbContext
         _service = new RoleAssignmentService(
             _dbContext,
-            null!,
-            null!,
+            Substitute.For<Humans.Application.Interfaces.IAuditLogService>(),
+            Substitute.For<Humans.Application.Interfaces.ISystemTeamSync>(),
             _clock,
-            null!,
+            _cache,
             NullLogger<RoleAssignmentService>.Instance);
     }
 
     public void Dispose()
     {
+        _cache.Dispose();
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -110,9 +116,60 @@ public class RoleAssignmentServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
-    private async Task AddAssignmentAsync(Guid userId, string roleName, Instant validFrom, Instant? validTo)
+    [Fact]
+    public async Task AssignRoleAsync_InvalidatesCachedClaimsForUser()
     {
-        _dbContext.RoleAssignments.Add(new RoleAssignment
+        var userId = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target User");
+        await SeedUserAsync(assignerId, "Admin User");
+        _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
+
+        var result = await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, "Admin User", null);
+
+        result.Success.Should().BeTrue();
+        _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EndRoleAsync_InvalidatesCachedClaimsForUser()
+    {
+        var userId = Guid.NewGuid();
+        var enderId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target User");
+        await SeedUserAsync(enderId, "Admin User");
+        var assignment = await AddAssignmentAsync(
+            userId,
+            RoleNames.Board,
+            _clock.GetCurrentInstant() - Duration.FromDays(1),
+            null);
+        _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
+
+        var result = await _service.EndRoleAsync(assignment.Id, enderId, "Admin User", null);
+
+        result.Success.Should().BeTrue();
+        _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
+    }
+
+    private async Task<User> SeedUserAsync(Guid userId, string displayName)
+    {
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = displayName,
+            UserName = $"test-{userId}@test.com",
+            Email = $"test-{userId}@test.com",
+            PreferredLanguage = "en"
+        };
+
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync();
+        return user;
+    }
+
+    private async Task<RoleAssignment> AddAssignmentAsync(Guid userId, string roleName, Instant validFrom, Instant? validTo)
+    {
+        var assignment = new RoleAssignment
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -121,8 +178,11 @@ public class RoleAssignmentServiceTests : IDisposable
             ValidTo = validTo,
             CreatedAt = validFrom,
             CreatedByUserId = Guid.NewGuid()
-        });
+        };
+
+        _dbContext.RoleAssignments.Add(assignment);
 
         await _dbContext.SaveChangesAsync();
+        return assignment;
     }
 }

@@ -773,11 +773,22 @@ public class OnboardingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAdminDashboardAsync_ActiveMembers_CountsNonSuspended()
+    public async Task GetAdminDashboardAsync_ActiveMembers_CountsApprovedNonSuspended()
     {
-        await SeedUserWithProfileAsync(Guid.NewGuid());
-        await SeedUserWithProfileAsync(Guid.NewGuid(), isSuspended: true);
-        SetupMembershipCalculatorDefaults();
+        var activeId = Guid.NewGuid();
+        var suspendedId = Guid.NewGuid();
+        var pendingId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(activeId, isApproved: true);
+        await SeedUserWithProfileAsync(suspendedId, isApproved: true, isSuspended: true);
+        await SeedUserWithProfileAsync(pendingId, isApproved: false);
+        _membershipCalculator.PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => Task.FromResult(new MembershipPartition(
+                IncompleteSignup: [],
+                PendingApproval: [pendingId],
+                Active: [activeId],
+                MissingConsents: [],
+                Suspended: [suspendedId],
+                PendingDeletion: [])));
 
         var result = await _service.GetAdminDashboardAsync();
 
@@ -785,16 +796,26 @@ public class OnboardingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAdminDashboardAsync_PendingVolunteers_CountsUnapprovedNonSuspended()
+    public async Task GetAdminDashboardAsync_PendingApproval_CountsUnapprovedNonSuspended()
     {
-        await SeedUserWithProfileAsync(Guid.NewGuid(), isApproved: false);
-        await SeedUserWithProfileAsync(Guid.NewGuid(), isApproved: true);
-        await SeedUserWithProfileAsync(Guid.NewGuid(), isApproved: false, isSuspended: true);
-        SetupMembershipCalculatorDefaults();
+        var pendingId = Guid.NewGuid();
+        var activeId = Guid.NewGuid();
+        var suspendedId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(pendingId, isApproved: false);
+        await SeedUserWithProfileAsync(activeId, isApproved: true);
+        await SeedUserWithProfileAsync(suspendedId, isApproved: false, isSuspended: true);
+        _membershipCalculator.PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => Task.FromResult(new MembershipPartition(
+                IncompleteSignup: [],
+                PendingApproval: [pendingId],
+                Active: [activeId],
+                MissingConsents: [],
+                Suspended: [suspendedId],
+                PendingDeletion: [])));
 
         var result = await _service.GetAdminDashboardAsync();
 
-        result.PendingVolunteers.Should().Be(1);
+        result.PendingApproval.Should().Be(1);
     }
 
     [Fact]
@@ -810,21 +831,25 @@ public class OnboardingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetAdminDashboardAsync_PendingConsents_CalculatedFromMembershipCalculator()
+    public async Task GetAdminDashboardAsync_MissingConsents_CountsApprovedUsersWithoutConsents()
     {
         var userId1 = Guid.NewGuid();
         var userId2 = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId1);
-        await SeedUserWithProfileAsync(userId2);
-        // Nobody has all consents → all users have pending consents
-        _membershipCalculator.GetUsersWithAllRequiredConsentsAsync(Arg.Any<IEnumerable<Guid>>())
-            .Returns(new HashSet<Guid>());
-        _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<Guid>())
-            .Returns(new HashSet<Guid>());
+        await SeedUserWithProfileAsync(userId1, isApproved: true);
+        await SeedUserWithProfileAsync(userId2, isApproved: true);
+        // Nobody has all consents → all approved users have missing consents
+        _membershipCalculator.PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => Task.FromResult(new MembershipPartition(
+                IncompleteSignup: [],
+                PendingApproval: [],
+                Active: [],
+                MissingConsents: new HashSet<Guid> { userId1, userId2 },
+                Suspended: [],
+                PendingDeletion: [])));
 
         var result = await _service.GetAdminDashboardAsync();
 
-        result.PendingConsents.Should().Be(2);
+        result.MissingConsents.Should().Be(2);
     }
 
     [Fact]
@@ -862,32 +887,34 @@ public class OnboardingServiceTests : IDisposable
 
         result.TotalMembers.Should().Be(0);
         result.ActiveMembers.Should().Be(0);
-        result.PendingVolunteers.Should().Be(0);
+        result.PendingApproval.Should().Be(0);
         result.PendingApplications.Should().Be(0);
-        result.PendingConsents.Should().Be(0);
+        result.MissingConsents.Should().Be(0);
         result.TotalApplications.Should().Be(0);
     }
 
     [Fact]
-    public async Task GetAdminDashboardAsync_LeadsMissingConsents_CountTowardPending()
+    public async Task GetAdminDashboardAsync_MissingConsents_OnlyCountsApprovedUsers()
     {
-        var leadUserId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(leadUserId);
-        var now = _clock.GetCurrentInstant();
-        var teamId = Guid.NewGuid();
-        _dbContext.Teams.Add(new Team { Id = teamId, Name = "Test", Slug = "test", SystemTeamType = SystemTeamType.None, IsActive = true, CreatedAt = now, UpdatedAt = now });
-        _dbContext.TeamMembers.Add(new TeamMember { Id = Guid.NewGuid(), TeamId = teamId, UserId = leadUserId, Role = TeamMemberRole.Lead, JoinedAt = now });
-        await _dbContext.SaveChangesAsync();
+        var approvedUserId = Guid.NewGuid();
+        var unapprovedUserId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(approvedUserId, isApproved: true);
+        await SeedUserWithProfileAsync(unapprovedUserId, isApproved: false);
 
-        // User has all volunteer consents but NOT lead consents
-        _membershipCalculator.GetUsersWithAllRequiredConsentsAsync(Arg.Any<IEnumerable<Guid>>())
-            .Returns(new HashSet<Guid> { leadUserId });
-        _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Leads)
-            .Returns(new HashSet<Guid>()); // lead missing lead-specific consents
+        // Partition puts approved user in MissingConsents, unapproved in PendingApproval
+        _membershipCalculator.PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => Task.FromResult(new MembershipPartition(
+                IncompleteSignup: [],
+                PendingApproval: [unapprovedUserId],
+                Active: [],
+                MissingConsents: [approvedUserId],
+                Suspended: [],
+                PendingDeletion: [])));
 
         var result = await _service.GetAdminDashboardAsync();
 
-        result.PendingConsents.Should().Be(1);
+        // Only the approved user is counted toward missing consents
+        result.MissingConsents.Should().Be(1);
     }
 
     // --- Helpers ---
@@ -1015,5 +1042,18 @@ public class OnboardingServiceTests : IDisposable
             .Returns(ci => new HashSet<Guid>(ci.Arg<IEnumerable<Guid>>()));
         _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<Guid>())
             .Returns(ci => new HashSet<Guid>(ci.Arg<IEnumerable<Guid>>()));
+        // Default partition: all users go to Active (overridden in specific tests)
+        _membershipCalculator.PartitionUsersAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IEnumerable<Guid>>().ToHashSet();
+                return Task.FromResult(new MembershipPartition(
+                    IncompleteSignup: [],
+                    PendingApproval: [],
+                    Active: ids,
+                    MissingConsents: [],
+                    Suspended: [],
+                    PendingDeletion: []));
+            });
     }
 }

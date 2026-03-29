@@ -90,4 +90,12 @@ public interface IMembershipCalculator
     Task<IReadOnlyList<Guid>> GetRequiredTeamIdsForUserAsync(
         Guid userId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Partitions a set of user IDs into 6 mutually exclusive membership categories.
+    /// Every input user ID appears in exactly one bucket.
+    /// Priority order: PendingDeletion > Suspended > IncompleteSignup > PendingApproval > MissingConsents/Active.
+    /// </summary>
+    Task<MembershipPartition> PartitionUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default);
 }

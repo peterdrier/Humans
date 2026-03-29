@@ -1,18 +1,5 @@
 @model Humans.Web.Models.RosterSummaryViewModel
 
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
-
 @{
     ViewData["Title"] = "Team Roster";
 }
@@ -25,11 +12,11 @@
             Priority: @(Model.PriorityFilter ?? "All")
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { status = Model.StatusFilter })">All</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Critical", status = Model.StatusFilter })">Critical</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Important", status = Model.StatusFilter })">Important</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "NiceToHave", status = Model.StatusFilter })">Nice to Have</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "None", status = Model.StatusFilter })">None</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { status = Model.StatusFilter, period = Model.PeriodFilter })">All</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Critical", status = Model.StatusFilter, period = Model.PeriodFilter })">Critical</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "Important", status = Model.StatusFilter, period = Model.PeriodFilter })">Important</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "NiceToHave", status = Model.StatusFilter, period = Model.PeriodFilter })">Nice to Have</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = "None", status = Model.StatusFilter, period = Model.PeriodFilter })">None</a></li>
         </ul>
     </div>
     <div class="dropdown">
@@ -37,9 +24,21 @@
             Status: @(Model.StatusFilter ?? "All")
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter })">All</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = "Open" })">Open</a></li>
-            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = "Filled" })">Filled</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, period = Model.PeriodFilter })">All</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = "Open", period = Model.PeriodFilter })">Open</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = "Filled", period = Model.PeriodFilter })">Filled</a></li>
+        </ul>
+    </div>
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            Period: @(Model.PeriodFilter ?? "All")
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter })">All</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "YearRound" })">Year-round</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Build" })">Set-up</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Event" })">Event</a></li>
+            <li><a class="dropdown-item" href="@Url.Action("Roster", new { priority = Model.PriorityFilter, status = Model.StatusFilter, period = "Strike" })">Strike</a></li>
         </ul>
     </div>
 </div>
@@ -55,6 +54,7 @@ else
             <tr>
                 <th>Team</th>
                 <th>Role</th>
+                <th>Period</th>
                 <th>Slot</th>
                 <th>Priority</th>
                 <th>Assigned To</th>
@@ -69,7 +69,7 @@ else
                 var hasDescription = !string.IsNullOrEmpty(slot.RoleDescription);
                 var collapseId = $"roster-desc-{slot.RoleDefinitionId:N}";
                 var isFirstSlotForRole = hasDescription && shownDescriptions.Add(slot.RoleDefinitionId);
-                <tr class="@(slot is { IsFilled: false, Priority: "Critical" } ? "table-danger" : "")">
+                <tr class="@(slot is { IsFilled: false, Priority: SlotPriority.Critical } ? "table-danger" : "")">
                     <td><a href="@Url.Action("Details", "Team", new { slug = slot.TeamSlug })">@slot.TeamName</a></td>
                     <td>
                         @slot.RoleName
@@ -81,10 +81,25 @@ else
                             </a>
                         }
                     </td>
+                    @{
+                        var periodBadge = slot.Period switch
+                        {
+                            RolePeriod.Build => "bg-info",
+                            RolePeriod.Event => "bg-success",
+                            RolePeriod.Strike => "bg-secondary",
+                            _ => "bg-light text-dark"
+                        };
+                        var periodLabel = slot.Period switch { RolePeriod.YearRound => "Year-round", RolePeriod.Build => "Set-up", _ => slot.Period.ToString() };
+                    }
+                    <td><span class="badge @periodBadge">@periodLabel</span></td>
                     <td>@slot.SlotNumber</td>
-                    <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == "NiceToHave" ? "Nice to Have" : slot.Priority)</span></td>
+                    <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
                     <td>
-                        @if (slot.IsFilled)
+                        @if (slot.IsFilled && slot.AssignedUserId.HasValue)
+                        {
+                            <human-link user-id="@slot.AssignedUserId.Value" display-name="@slot.AssignedUserName" show-popover="true" />
+                        }
+                        else if (slot.IsFilled)
                         {
                             @slot.AssignedUserName
                         }
@@ -99,7 +114,7 @@ else
                     <tr class="collapse" id="@collapseId">
                         <td colspan="5">
                             <div class="role-description small text-muted">
-                                @Html.Raw(ConvertMarkdownToHtml(slot.RoleDescription!))
+                                @Html.SanitizedMarkdown(slot.RoleDescription)
                             </div>
                         </td>
                     </tr>

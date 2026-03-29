@@ -33,12 +33,12 @@
                                 }
                             </td>
                             <td>
-                                @await Html.PartialAsync("_RoleBadge", membership.IsLead ? TeamMemberRole.Lead : TeamMemberRole.Member)
+                                @await Html.PartialAsync("_RoleBadge", membership.IsCoordinator ? TeamMemberRole.Coordinator : TeamMemberRole.Member)
                             </td>
-                            <td>@membership.JoinedAt.ToString("MMM d, yyyy")</td>
+                            <td>@membership.JoinedAt.ToDisplayCompactDate()</td>
                             <td>
                                 <a asp-action="Details" asp-route-slug="@membership.TeamSlug" class="btn btn-sm btn-outline-primary">@Localizer["MyTeams_View"]</a>
-                                @if (membership.IsLead)
+                                @if (membership.IsCoordinator)
                                 {
                                     <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@membership.TeamSlug" class="btn btn-sm btn-outline-secondary">
                                         @Localizer["Teams_Manage"]
@@ -96,7 +96,7 @@ else
                             <td>
                                 <span class="badge @request.StatusBadgeClass">@request.Status</span>
                             </td>
-                            <td>@request.RequestedAt.ToString("MMM d, yyyy")</td>
+                            <td>@request.RequestedAt.ToDisplayCompactDate()</td>
                             <td>
                                 <form asp-action="WithdrawRequest" asp-route-id="@request.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()

@@ -1,0 +1,84 @@
+@model Humans.Web.Models.CampaignSendWaveViewModel
+@{
+    ViewData["Title"] = "Send Wave";
+    var preview = Model.Preview;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Send Wave: @Model.Campaign.Title</h1>
+    <a asp-action="Detail" asp-route-id="@Model.Campaign.Id" class="btn btn-outline-secondary">Back to Campaign</a>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-4">
+    <div class="card-header">Select Team</div>
+    <div class="card-body">
+        <form method="get" class="d-flex align-items-center gap-3">
+            <select name="teamId" class="form-select" style="max-width: 400px;">
+                <option value="">-- Select a team --</option>
+                @foreach (var team in Model.Teams)
+                {
+                    <option value="@team.Id" selected="@(Model.SelectedTeamId == team.Id ? "selected" : null)">@team.Name</option>
+                }
+            </select>
+            <button type="submit" class="btn btn-outline-primary">Preview</button>
+        </form>
+    </div>
+</div>
+
+@if (preview != null && Model.SelectedTeamId.HasValue)
+{
+    <div class="card mb-4">
+        <div class="card-header">Preview</div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td class="text-muted">Eligible humans</td>
+                            <td class="fw-bold">@preview.EligibleCount</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Already granted (excluded)</td>
+                            <td>@preview.AlreadyGrantedExcluded</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Unsubscribed (excluded)</td>
+                            <td>@preview.UnsubscribedExcluded</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Codes available</td>
+                            <td>@preview.CodesAvailable</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Codes remaining after send</td>
+                            <td>@preview.CodesRemainingAfterSend</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            @if (preview.EligibleCount > 0 && preview.CodesAvailable >= preview.EligibleCount)
+            {
+                <form asp-action="SendWave" asp-route-id="@Model.Campaign.Id" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="teamId" value="@Model.SelectedTeamId" />
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-paper-plane me-1"></i>Confirm Send to @preview.EligibleCount Humans
+                    </button>
+                </form>
+            }
+            else if (preview.EligibleCount == 0)
+            {
+                <div class="alert alert-info mb-0">No eligible humans to send to in this team.</div>
+            }
+            else
+            {
+                <div class="alert alert-warning mb-0">
+                    Not enough codes available. Need @preview.EligibleCount but only @preview.CodesAvailable available.
+                </div>
+            }
+        </div>
+    </div>
+}

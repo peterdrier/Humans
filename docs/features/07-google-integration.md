@@ -59,7 +59,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Inherited Shared Drive permissions are excluded from drift detection
 
 ### US-7.5: Link Existing Shared Drive Folder
-**As a** Board member or authorized Lead
+**As a** Board member or authorized Coordinator
 **I want to** link an existing Shared Drive folder to a team
 **So that** team members automatically get access to the shared folder
 
@@ -73,7 +73,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - All API calls use `SupportsAllDrives = true`
 
 ### US-7.5b: Link Existing Drive File
-**As a** Board member or authorized Lead
+**As a** Board member or authorized Coordinator
 **I want to** link an individual Drive file (Sheet, Doc, Slides, etc.) to a team
 **So that** team members automatically get access to specific shared files
 
@@ -88,7 +88,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Permission sync works the same as for folders (writer access for team members)
 
 ### US-7.6: Link Existing Google Group
-**As a** Board member or authorized Lead
+**As a** Board member or authorized Coordinator
 **I want to** link an existing Google Group to a team
 **So that** team membership automatically syncs with group membership
 
@@ -100,7 +100,7 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Duplicate links prevented (same group + team)
 
 ### US-7.7: Unlink Resource
-**As a** Board member or authorized Lead
+**As a** Board member or authorized Coordinator
 **I want to** unlink a Google resource from a team
 **So that** the association is removed without deleting the resource
 
@@ -109,15 +109,15 @@ Nobodies Collective uses Google Workspace for collaboration. The system integrat
 - Resource disappears from active list
 - Google permissions are NOT automatically revoked (manual cleanup)
 
-### US-7.8: Lead Resource Management
+### US-7.8: Coordinator Resource Management
 **As an** admin
-**I want to** control whether Leads can manage team resources
+**I want to** control whether Coordinators can manage team resources
 **So that** I can delegate resource management when appropriate
 
 **Acceptance Criteria:**
 - Controlled by `TeamResourceManagement:AllowLeadsToManageResources` config setting
 - Default: false (only Board members can manage)
-- When enabled, Leads can link/unlink/sync resources for their teams
+- When enabled, Coordinators can link/unlink/sync resources for their teams
 
 ## Data Model
 
@@ -308,6 +308,21 @@ When `GoogleGroupPrefix` is cleared, the existing Group resource is deactivated 
 ### Group Settings
 Group creation now applies the configured `GoogleWorkspace:Groups` settings from appsettings. Previously, new groups received Google defaults. This ensures groups are configured consistently (e.g., `AllowExternalMembers = true` per R-04).
 
+### Group Settings Drift Detection
+Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift without auto-fixing:
+
+**Checked settings** (from `GoogleWorkspace:Groups` config):
+- WhoCanJoin, WhoCanViewMembership, WhoCanContactOwner, WhoCanPostMessage, WhoCanViewGroup, WhoCanModerateMembers, AllowExternalMembers
+
+**Additional monitored settings** (sensible defaults):
+- IsArchived (expected: false), MembersCanPostAsTheGroup (expected: false), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: false)
+
+**Nightly check:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). Drifts are logged as warnings.
+
+**Manual trigger:** Admin page at `/Admin` has a "Check Group Settings" button. Results show at `/Admin/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
+
+**SyncSettings respected:** If GoogleGroups sync mode is set to None, the check is skipped entirely.
+
 ## Resource Linking (Pre-Shared Access Model)
 
 Instead of creating resources with domain-wide delegation, admins can link existing Google resources that have been pre-shared with the service account.
@@ -383,7 +398,7 @@ Supports multiple Google Drive/Docs URL formats:
 
 ### Authorization
 - Board members: can manage resources for any team
-- Leads: controlled by `TeamResourceManagement:AllowLeadsToManageResources` (default: false)
+- Coordinators: controlled by `TeamResourceManagement:AllowLeadsToManageResources` (default: false)
 
 ### Route: `/Teams/{slug}/Admin/Resources`
 Actions:

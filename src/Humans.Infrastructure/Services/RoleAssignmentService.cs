@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -145,12 +146,13 @@ public class RoleAssignmentService : IRoleAssignmentService
         var user = await _dbContext.Users.FindAsync([userId], ct);
 
         await _auditLogService.LogAsync(
-            AuditAction.RoleAssigned, "User", userId,
+            AuditAction.RoleAssigned, nameof(User), userId,
             $"Role '{roleName}' assigned to {user?.DisplayName ?? userId.ToString()}",
             assignerId, assignerDisplayName);
 
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateRoleAssignmentClaims(userId);
 
         _logger.LogInformation("Admin {AdminId} assigned role {Role} to user {UserId}",
             assignerId, roleName, userId);
@@ -172,7 +174,7 @@ public class RoleAssignmentService : IRoleAssignmentService
             .Include(ra => ra.User)
             .FirstOrDefaultAsync(ra => ra.Id == assignmentId, ct);
 
-        if (roleAssignment == null)
+        if (roleAssignment is null)
         {
             return new OnboardingResult(false, "NotFound");
         }
@@ -193,12 +195,13 @@ public class RoleAssignmentService : IRoleAssignmentService
         }
 
         await _auditLogService.LogAsync(
-            AuditAction.RoleEnded, "User", roleAssignment.UserId,
+            AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
             $"Role '{roleAssignment.RoleName}' ended for {roleAssignment.User.DisplayName}",
             enderId, enderDisplayName);
 
         await _dbContext.SaveChangesAsync(ct);
-        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateRoleAssignmentClaims(roleAssignment.UserId);
 
         _logger.LogInformation("Admin {AdminId} ended role {Role} for user {UserId}",
             enderId, roleAssignment.RoleName, roleAssignment.UserId);

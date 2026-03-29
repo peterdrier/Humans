@@ -166,10 +166,10 @@ Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a sing
    - Add: New eligible users
    - Remove: Users who lost eligibility
 
-2. SyncLeadsTeamAsync()
-   - Eligible: Users who are Lead of any user-created team + Leads-team consents
-   - Add: New leads
-   - Remove: Users who are no longer lead anywhere
+2. SyncCoordinatorsTeamAsync()
+   - Eligible: Users who are Coordinator of any user-created team + Coordinators-team consents
+   - Add: New coordinators
+   - Remove: Users who are no longer coordinator anywhere
 
 3. SyncBoardTeamAsync()
    - Eligible: Users with active "Board" RoleAssignment + Board-team consents
@@ -185,7 +185,7 @@ Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a sing
 | Team | Eligibility Criteria |
 |------|---------------------|
 | Volunteers | IsApproved AND !IsSuspended AND HasAllRequiredConsentsForTeam(Volunteers) |
-| Leads | TeamMember.Role = Lead (non-system teams) AND HasAllRequiredConsentsForTeam(Leads) |
+| Coordinators | TeamMember.Role = Coordinator (non-system teams) AND HasAllRequiredConsentsForTeam(Coordinators) |
 | Board | RoleAssignment.RoleName = "Board" AND active AND HasAllRequiredConsentsForTeam(Board) |
 
 **Single-User Sync**: `SyncVolunteersMembershipForUserAsync(userId)` evaluates one user against the Volunteers team criteria and adds or removes them without affecting other members. This is the mechanism that makes volunteer onboarding feel immediate rather than waiting for a scheduled job.
@@ -219,6 +219,8 @@ Both call `SyncVolunteersMembershipForUserAsync(userId)`, which evaluates a sing
 | `None` | Job skips this service entirely |
 | `AddOnly` | Only adds missing members — never removes |
 | `AddAndRemove` | Full sync: adds missing + removes extra members |
+
+**Group settings drift check**: After membership reconciliation, the job also checks all active Google Groups for settings drift (e.g., someone changed WhoCanPost in Google Admin). This is detect-only — drifts are logged as warnings but not auto-fixed. Respects the GoogleGroups sync mode: skipped entirely if set to None.
 
 > **Currently disabled** in Program.cs. Use manual "Sync Now" at `/Teams/Sync` or configure sync modes at `/Admin/SyncSettings` instead.
 

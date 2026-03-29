@@ -114,6 +114,7 @@ public class StubEmailService : IEmailService
         string toEmail,
         string userName,
         string verificationUrl,
+        bool isConflict = false,
         string? culture = null,
         CancellationToken cancellationToken = default)
     {
@@ -205,6 +206,31 @@ public class StubEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendAdminDailyDigestAsync(
+        string email,
+        string name,
+        string date,
+        AdminDigestCounts counts,
+        string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send Admin daily digest to {Email} ({Name}) [Culture: {Culture}] for {Date} with counts: {@Counts}",
+            email, name, culture, date, counts);
+        return Task.CompletedTask;
+    }
+
+    public Task SendFeedbackResponseAsync(
+        string userEmail, string userName, string originalDescription,
+        string responseMessage, string reportLink, string? culture = null,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send feedback response to {Email} ({UserName}) [Culture: {Culture}] Link: {ReportLink}",
+            userEmail, userName, culture, reportLink);
+        return Task.CompletedTask;
+    }
+
     public Task SendFacilitatedMessageAsync(
         string recipientEmail,
         string recipientName,
@@ -218,6 +244,30 @@ public class StubEmailService : IEmailService
         _logger.LogInformation(
             "[STUB] Would send facilitated message to {Email} ({RecipientName}) from {SenderName} [Culture: {Culture}] [IncludeContactInfo: {IncludeContact}]",
             recipientEmail, recipientName, senderName, culture, includeContactInfo);
+        return Task.CompletedTask;
+    }
+
+    public Task SendMagicLinkLoginAsync(
+        string toEmail, string displayName, string magicLinkUrl,
+        string? culture = null, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[STUB] Would send magic link login to {Email} ({Name})", toEmail, displayName);
+        return Task.CompletedTask;
+    }
+
+    public Task SendMagicLinkSignupAsync(
+        string toEmail, string magicLinkUrl,
+        string? culture = null, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[STUB] Would send magic link signup to {Email}", toEmail);
+        return Task.CompletedTask;
+    }
+
+    public Task SendWorkspaceCredentialsAsync(
+        string recoveryEmail, string userName, string workspaceEmail, string tempPassword,
+        string? culture = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would send workspace credentials for {WorkspaceEmail} to {RecoveryEmail}", workspaceEmail, recoveryEmail);
         return Task.CompletedTask;
     }
 }

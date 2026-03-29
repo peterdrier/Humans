@@ -1,4 +1,5 @@
 using Hangfire.Dashboard;
+using Humans.Web.Authorization;
 
 namespace Humans.Web;
 
@@ -14,6 +15,6 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 
         // Only allow authenticated users with Admin role
         return httpContext.User.Identity?.IsAuthenticated == true
-            && httpContext.User.IsInRole("Admin");
+            && RoleChecks.IsAdmin(httpContext.User);
     }
 }

@@ -43,7 +43,7 @@ public class EnumStringStabilityTests
     {
         {
             typeof(TeamMemberRole),
-            new[] { "Member", "Lead" }
+            new[] { "Member", "Coordinator" }
         },
         {
             typeof(TeamJoinRequestStatus),
@@ -51,7 +51,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(SystemTeamType),
-            new[] { "None", "Volunteers", "Leads", "Board", "Asociados", "Colaboradors" }
+            new[] { "None", "Volunteers", "Coordinators", "Board", "Asociados", "Colaboradors" }
         },
         {
             typeof(GoogleResourceType),
@@ -63,7 +63,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(ContactFieldVisibility),
-            new[] { "BoardOnly", "LeadsAndBoard", "MyTeams", "AllActiveProfiles" }
+            new[] { "BoardOnly", "CoordinatorsAndBoard", "MyTeams", "AllActiveProfiles" }
         },
         {
             typeof(AuditAction),
@@ -75,7 +75,17 @@ public class EnumStringStabilityTests
                 "TeamJoinedDirectly", "TeamLeft", "TeamJoinRequestApproved", "TeamJoinRequestRejected",
                 "TeamMemberRoleChanged", "AnomalousPermissionDetected",
                 "MembershipsRevokedOnDeletionRequest", "ConsentCheckCleared", "ConsentCheckFlagged",
-                "SignupRejected", "TierApplicationApproved", "TierApplicationRejected", "TierDowngraded"
+                "SignupRejected", "TierApplicationApproved", "TierApplicationRejected", "TierDowngraded",
+                "GoogleResourceDeactivated", "FacilitatedMessageSent",
+                "TeamRoleDefinitionCreated", "TeamRoleDefinitionUpdated", "TeamRoleDefinitionDeleted",
+                "TeamRoleAssigned", "TeamRoleUnassigned",
+                "CampCreated", "CampUpdated", "CampDeleted",
+                "CampSeasonCreated", "CampSeasonApproved", "CampSeasonRejected",
+                "CampSeasonWithdrawn", "CampSeasonStatusChanged", "CampNameChanged",
+                "CampLeadAdded", "CampLeadRemoved", "CampPrimaryLeadTransferred",
+                "CampImageUploaded", "CampImageDeleted",
+                "ShiftSignupConfirmed", "ShiftSignupRefused", "ShiftSignupVoluntold",
+                "ShiftSignupBailed", "ShiftSignupNoShow", "ShiftSignupCancelled"
             }
         },
         {
@@ -104,7 +114,51 @@ public class EnumStringStabilityTests
         },
         {
             typeof(SyncAction),
-            new[] { "Preview", "AddOnly", "AddAndRemove" }
+            new[] { "Preview", "Execute" }
+        },
+        {
+            typeof(TicketSyncStatus),
+            new[] { "Idle", "Running", "Error" }
+        },
+        {
+            typeof(TicketPaymentStatus),
+            new[] { "Paid", "Pending", "Refunded" }
+        },
+        {
+            typeof(TicketAttendeeStatus),
+            new[] { "Valid", "Void", "CheckedIn" }
+        },
+        {
+            typeof(ShiftPriority),
+            new[] { "Normal", "Important", "Essential" }
+        },
+        {
+            typeof(SignupPolicy),
+            new[] { "Public", "RequireApproval" }
+        },
+        {
+            typeof(SignupStatus),
+            new[] { "Pending", "Confirmed", "Refused", "Bailed", "Cancelled", "NoShow" }
+        },
+        {
+            typeof(RotaPeriod),
+            new[] { "Build", "Event", "Strike", "All" }
+        },
+        {
+            typeof(RolePeriod),
+            new[] { "YearRound", "Build", "Event", "Strike" }
+        },
+        {
+            typeof(DrivePermissionLevel),
+            new[] { "Viewer", "Commenter", "Contributor", "ContentManager", "Manager" }
+        },
+        {
+            typeof(BudgetYearStatus),
+            new[] { "Draft", "Active", "Closed" }
+        },
+        {
+            typeof(ExpenditureType),
+            new[] { "CapEx", "OpEx" }
         }
     };
 }

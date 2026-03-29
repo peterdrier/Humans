@@ -39,7 +39,9 @@
     'use strict';
 
     const canExecuteActions = @Json.Serialize(Model.CanExecuteActions);
-    const antiForgeryToken = document.querySelector('#antiForgeryForm input[name="__RequestVerificationToken"]')?.value;
+    @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
+
+    const antiForgeryToken = getRequestVerificationToken('#antiForgeryForm input[name="__RequestVerificationToken"]');
     const loadedTabs = {};
 
     // Resource type mapping: tab data-resource-type values to API enum values
@@ -194,6 +196,11 @@
         const teamsHtml = diff.linkedTeams && diff.linkedTeams.length > 0
             ? diff.linkedTeams.map(function (t) { return '<span class="badge bg-light text-dark border me-1">' + escapeHtml(t) + '</span>'; }).join('')
             : '<span class="text-muted">None</span>';
+        const auditUrl = '@Url.Action("GoogleSyncResourceAudit", "Board", new { id = "__RESOURCE_ID__" })';
+        const canViewAudit = @Json.Serialize(Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User));
+        const auditLinkHtml = canViewAudit
+            ? '<a class="btn btn-sm btn-outline-secondary" href="' + auditUrl.replace('__RESOURCE_ID__', diff.resourceId) + '">Audit</a>'
+            : '';
 
         let html = '<div class="card mb-2' + (isInSync ? ' resource-in-sync' : '') + '">';
         html += '<div class="card-header d-flex justify-content-between align-items-center py-2">';
@@ -202,9 +209,15 @@
         html += '<i class="fa-solid fa-chevron-right collapse-icon"></i>';
         html += '</button>';
         html += '<span>' + nameHtml + '</span> ' + statusBadge;
+        if (diff.permissionLevel) {
+            html += ' <span class="badge bg-light text-dark border">' + escapeHtml(diff.permissionLevel) + '</span>';
+        }
         html += '</div>';
         html += '<div class="d-flex align-items-center gap-2">';
         html += '<small class="text-muted">' + teamsHtml + '</small>';
+        if (auditLinkHtml) {
+            html += auditLinkHtml;
+        }
         if (canExecuteActions && !isInSync && !hasError) {
             html += '<button class="btn btn-sm btn-outline-success" data-action="executeSingle" data-resource-id="' + diff.resourceId + '" data-sync-action="1" data-resource-name="' + escapeHtml(diff.resourceName) + '">Add Missing</button>';
             html += '<button class="btn btn-sm btn-outline-primary" data-action="executeSingle" data-resource-id="' + diff.resourceId + '" data-sync-action="2" data-resource-name="' + escapeHtml(diff.resourceName) + '">Sync All</button>';
@@ -220,7 +233,8 @@
             html += '<div class="alert alert-danger m-3 mb-0">' + escapeHtml(diff.errorMessage) + '</div>';
         } else if (diff.members && diff.members.length > 0) {
             html += '<table class="table table-sm mb-0">';
-            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th><th>Teams</th></tr></thead>';
+            var showPermission = diff.permissionLevel != null;
+            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th>' + (showPermission ? '<th>Current Role</th>' : '') + '<th>Teams</th></tr></thead>';
             html += '<tbody>';
             for (let j = 0; j < diff.members.length; j++) {
                 const m = diff.members[j];
@@ -246,6 +260,10 @@
                 var nameDisplay = m.displayName && m.displayName !== m.email ? m.displayName : '';
                 html += '<td>' + escapeHtml(nameDisplay) + '</td>';
                 html += '<td><span class="badge ' + badgeClass + '">' + stateLabel + '</span></td>';
+                if (showPermission) {
+                    var role = m.currentRole || '—';
+                    html += '<td>' + escapeHtml(role) + '</td>';
+                }
                 html += '<td>' + memberTeams + '</td>';
                 html += '</tr>';
             }
@@ -315,12 +333,7 @@
         });
     }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        var div = document.createElement('div');
-        div.appendChild(document.createTextNode(str));
-        return div.innerHTML;
-    }
+    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 
     // Rotate chevron on collapse toggle
     document.addEventListener('show.bs.collapse', function (e) {

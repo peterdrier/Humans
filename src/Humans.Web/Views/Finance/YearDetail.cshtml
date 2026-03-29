@@ -1,0 +1,187 @@
+@model BudgetYear
+@{
+    ViewData["Title"] = $"Finance - {Model.Name}";
+    var allYears = ViewBag.AllYears as IReadOnlyList<BudgetYear> ?? [];
+    var totalAllocated = Model.Groups.SelectMany(g => g.Categories).Sum(c => c.AllocatedAmount);
+    var totalLineItems = Model.Groups.SelectMany(g => g.Categories).SelectMany(c => c.LineItems).Sum(li => li.Amount);
+    var unallocated = totalAllocated - totalLineItems;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center gap-3">
+        <h1 class="mb-0">@Model.Name</h1>
+        <span class="badge bg-@(Model.Status == BudgetYearStatus.Active ? "success" : Model.Status == BudgetYearStatus.Draft ? "warning" : "secondary") fs-6">@Model.Status</span>
+    </div>
+    <div class="d-flex gap-2">
+        @if (allYears.Count > 1)
+        {
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-calendar me-1"></i>Switch Year
+                </button>
+                <ul class="dropdown-menu">
+                    @foreach (var y in allYears)
+                    {
+                        <li>
+                            <a asp-action="YearDetail" asp-route-id="@y.Id" class="dropdown-item @(y.Id == Model.Id ? "active" : "")">
+                                @y.Name
+                                <span class="badge bg-@(y.Status == BudgetYearStatus.Active ? "success" : y.Status == BudgetYearStatus.Draft ? "warning" : "secondary") ms-1">@y.Status</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+        <form asp-action="SyncDepartments" asp-route-id="@Model.Id" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Departments
+            </button>
+        </form>
+        <a asp-action="AuditLog" asp-route-yearId="@Model.Id" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-clock-rotate-left me-1"></i>Audit Log
+        </a>
+        <a asp-action="Admin" class="btn btn-outline-primary">
+            <i class="fa-solid fa-gear me-1"></i>Admin
+        </a>
+    </div>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total Allocated</h6>
+                <h3 class="card-title mb-0">&euro;@totalAllocated.ToString("N2")</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total in Line Items</h6>
+                <h3 class="card-title mb-0">&euro;@totalLineItems.ToString("N2")</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
+                <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
+                    &euro;@unallocated.ToString("N2")
+                </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!Model.Groups.Any())
+{
+    <div class="card">
+        <div class="card-body text-center py-4">
+            <p class="text-muted mb-2">No groups yet. Add groups in Finance Admin to start building the budget.</p>
+            <a asp-action="Admin" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-plus me-1"></i>Go to Finance Admin
+            </a>
+        </div>
+    </div>
+}
+
+@foreach (var group in Model.Groups.OrderBy(g => g.SortOrder))
+{
+    var groupAllocated = group.Categories.Sum(c => c.AllocatedAmount);
+    var groupLineItems = group.Categories.SelectMany(c => c.LineItems).Sum(li => li.Amount);
+    var collapseId = $"group-{group.Id.ToString("N")}";
+
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center" role="button" data-bs-toggle="collapse" data-bs-target="#@collapseId">
+            <div>
+                <strong>@group.Name</strong>
+                <span class="text-muted ms-2">(@group.Categories.Count categories)</span>
+                @if (group.IsRestricted)
+                {
+                    <span class="badge bg-danger ms-1">Restricted</span>
+                }
+                @if (group.IsDepartmentGroup)
+                {
+                    <span class="badge bg-info ms-1">Department</span>
+                }
+            </div>
+            <span class="text-muted">&euro;@groupAllocated.ToString("N2")</span>
+        </div>
+        <div id="@collapseId" class="collapse show">
+            <div class="card-body p-0">
+                @if (group.Categories.Any())
+                {
+                    <table class="table table-sm table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th class="text-end">Allocated</th>
+                                <th class="text-end">Line Items</th>
+                                <th class="text-end">Unallocated</th>
+                                <th>Type</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var cat in group.Categories.OrderBy(c => c.SortOrder))
+                            {
+                                var catLineItemTotal = cat.LineItems.Sum(li => li.Amount);
+                                var catUnallocated = cat.AllocatedAmount - catLineItemTotal;
+                                <tr>
+                                    <td>@cat.Name</td>
+                                    <td class="text-end">&euro;@cat.AllocatedAmount.ToString("N2")</td>
+                                    <td class="text-end">&euro;@catLineItemTotal.ToString("N2")</td>
+                                    <td class="text-end @(catUnallocated < 0 ? "text-danger" : "")">
+                                        &euro;@catUnallocated.ToString("N2")
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-@(cat.ExpenditureType == ExpenditureType.CapEx ? "primary" : "secondary")">
+                                            @cat.ExpenditureType
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-action="CategoryDetail" asp-route-id="@cat.Id" class="btn btn-outline-primary btn-sm">
+                                            Manage <i class="fa-solid fa-arrow-right ms-1"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                <div class="p-3 border-top bg-light">
+                    <form asp-action="CreateCategory" method="post" class="row g-2 align-items-end">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="budgetGroupId" value="@group.Id" />
+                        <input type="hidden" name="budgetYearId" value="@Model.Id" />
+                        <div class="col-md-4">
+                            <label class="form-label form-label-sm">Category Name</label>
+                            <input type="text" name="name" class="form-control form-control-sm" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label form-label-sm">Allocated Amount (&euro;)</label>
+                            <input type="number" name="allocatedAmount" class="form-control form-control-sm" step="0.01" min="0" value="0" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label form-label-sm">Type</label>
+                            <select name="expenditureType" class="form-select form-select-sm">
+                                <option value="@ExpenditureType.OpEx">OpEx</option>
+                                <option value="@ExpenditureType.CapEx">CapEx</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary btn-sm w-100">
+                                <i class="fa-solid fa-plus me-1"></i>Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -11,8 +11,8 @@ public class TeamResourceManagementSettings
     public const string SectionName = "TeamResourceManagement";
 
     /// <summary>
-    /// Whether leads are allowed to manage Google resources for their teams.
+    /// Whether coordinators are allowed to manage Google resources for their teams.
     /// When false (default), only Board members can manage team resources.
     /// </summary>
-    public bool AllowLeadsToManageResources { get; set; } = false;
+    public bool AllowCoordinatorsToManageResources { get; set; } = false;
 }

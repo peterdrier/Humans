@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
 
@@ -22,12 +23,16 @@ public class GoogleResourceViewModel
     public DateTime? LastSyncedAt { get; set; }
     public bool IsActive { get; set; }
     public string? ErrorMessage { get; set; }
+    public DrivePermissionLevel DrivePermissionLevel { get; set; }
+    public bool IsDriveResource { get; set; }
 }
 
 public class LinkDriveResourceModel
 {
     [Required(ErrorMessage = "Please enter a Google Drive URL.")]
     public string ResourceUrl { get; set; } = string.Empty;
+
+    public DrivePermissionLevel PermissionLevel { get; set; } = DrivePermissionLevel.Contributor;
 }
 
 public class LinkGroupModel

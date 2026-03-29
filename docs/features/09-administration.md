@@ -157,6 +157,8 @@ Approval and consent completion both trigger `SyncVolunteersMembershipForUserAsy
 | `/Admin/GoogleSync` | GoogleSync | Legacy Google resource sync status |
 | `/Admin/GoogleSync/Apply` | ApplyGoogleSync | POST: Run legacy full sync |
 | `/Admin/SyncSettings` | SyncSettings | Per-service sync mode configuration |
+| `/Admin/CheckGroupSettings` | CheckGroupSettings | POST: Check Google Group settings for drift |
+| `/Admin/GroupSettingsResults` | GroupSettingsResults | Display group settings drift results |
 | `/Admin/DbVersion` | DbVersion | Database migration version |
 
 ### Sync Status (`/Teams/Sync`) — TeamsAdmin, Board, Admin
@@ -284,7 +286,7 @@ public class AdminDashboardViewModel
 │ Name      │ Type      │ Members │ Pending │ Actions    │
 │ ───────── │ ───────── │ ─────── │ ─────── │ ────────── │
 │ Volunteers│ System    │ 45      │ 0       │ (managed)  │
-│ Leads     │ System    │ 8       │ 0       │ (managed)  │
+│ Coordinators│ System  │ 8       │ 0       │ (managed)  │
 │ Board     │ System    │ 5       │ 0       │ (managed)  │
 │ Events    │ Approval  │ 12      │ 3       │ [Edit][Del]│
 │ Tech      │ Open      │ 7       │ 0       │ [Edit][Del]│
@@ -328,7 +330,7 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 
 | Role | Purpose |
 |------|---------|
-| **TeamsAdmin** | System-wide team management (edit teams, approve joins, assign leads, configure Google Group prefixes). Can view sync status at `/Teams/Sync` but cannot execute sync actions. |
+| **TeamsAdmin** | System-wide team management (edit teams, approve joins, assign coordinators, configure Google Group prefixes). Can view sync status at `/Teams/Sync` but cannot execute sync actions. |
 | **ConsentCoordinator** | Safety checks on new humans during onboarding |
 | **VolunteerCoordinator** | Read-only access to onboarding review queue |
 
@@ -343,8 +345,8 @@ public class AdminController : Controller
 ```
 
 ### Role Assignment Authorization
-- **Admin** can assign/end any role: Admin, Board, Lead
-- **Board** (non-Admin) can assign/end: Board, Lead only
+- **Admin** can assign/end any role: Admin, Board, Coordinator
+- **Board** (non-Admin) can assign/end: Board, Coordinator only
 - Attempting to assign a role outside your permissions returns 403 Forbidden
 
 ### Hangfire Dashboard
@@ -399,7 +401,7 @@ _logger.LogInformation(
 - **Database Connection**: Green if responsive
 - **Background Jobs**: Green if Hangfire server active
 - **Health Check URL**: `/health/ready`
-- **Sync System Teams**: Button to manually trigger `SystemTeamSyncJob.ExecuteAsync()`, which recalculates membership for Volunteers, Leads, and Board teams. Useful for fixing users who were approved before the immediate sync was implemented.
+- **Sync System Teams**: Button to manually trigger `SystemTeamSyncJob.ExecuteAsync()`, which recalculates membership for Volunteers, Coordinators, and Board teams. Useful for fixing users who were approved before the immediate sync was implemented.
 
 ### Prometheus Metrics
 - Available at `/metrics`

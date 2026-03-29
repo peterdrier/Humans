@@ -12,9 +12,9 @@ public enum ContactFieldVisibility
     BoardOnly = 0,
 
     /// <summary>
-    /// Visible to team leads and board members.
+    /// Visible to team coordinators and board members.
     /// </summary>
-    LeadsAndBoard = 1,
+    CoordinatorsAndBoard = 1,
 
     /// <summary>
     /// Visible to members who share at least one team with the profile owner.

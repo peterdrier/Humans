@@ -20,8 +20,9 @@
             <div class="card-body">
                 @if (Model.IsSystemTeam)
                 {
-                    <div class="alert alert-warning">
-                        @Localizer["AdminEditTeam_SystemTeamWarning"]
+                    <div class="alert alert-info">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        This is a system-managed team. You can edit the description and Google Group prefix.
                     </div>
                 }
 
@@ -34,51 +35,43 @@
 
                     <div class="mb-3">
                         <label asp-for="Name" class="form-label">@Localizer["AdminTeams_TeamName"]</label>
-                        <input asp-for="Name" class="form-control" disabled="@Model.IsSystemTeam" />
+                        <input asp-for="Name" class="form-control" readonly="@(Model.IsSystemTeam ? "readonly" : null)" />
                         <span asp-validation-for="Name" class="text-danger"></span>
+                        <div class="form-text">Auto-generated slug: <code>@Model.Slug</code> — updates automatically when name changes.</div>
                     </div>
 
-                    <div class="mb-3">
-                        <label asp-for="Description" class="form-label">@Localizer["AdminTeams_DescriptionOptional"]</label>
-                        <textarea asp-for="Description" class="form-control" rows="4" disabled="@Model.IsSystemTeam"></textarea>
-                        <span asp-validation-for="Description" class="text-danger"></span>
-                    </div>
-
-                    <div class="mb-3">
-                        <label asp-for="GoogleGroupPrefix" class="form-label">Google Group</label>
-                        <div class="input-group">
-                            <input asp-for="GoogleGroupPrefix" class="form-control" placeholder="e.g., design-crew" disabled="@Model.IsSystemTeam" />
-                            <span class="input-group-text">@@nobodies.team</span>
-                        </div>
-                        <span asp-validation-for="GoogleGroupPrefix" class="text-danger"></span>
-                        @if (Model.GoogleGroupEmail != null)
-                        {
-                            <div class="form-text text-success">
-                                <i class="fas fa-check-circle"></i> Group: @Model.GoogleGroupEmail
+                    @if (!Model.IsSystemTeam)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="CustomSlug" class="form-label">Custom Slug</label>
+                            <input asp-for="CustomSlug" class="form-control" placeholder="e.g. comms" />
+                            <span asp-validation-for="CustomSlug" class="text-danger"></span>
+                            <div class="form-text">
+                                Optional. When set, this slug is used for the team's URL instead of the auto-generated one.
+                                Both slugs will resolve to this team. Lowercase letters, numbers, and hyphens only.
                             </div>
-                        }
-                        else
-                        {
-                            <div class="form-text">Leave empty if this team doesn't need a Google Group.</div>
-                        }
-                    </div>
+                        </div>
+                    }
 
-                    <div class="mb-3 form-check">
-                        <input asp-for="RequiresApproval" type="checkbox" class="form-check-input" disabled="@Model.IsSystemTeam" />
-                        <label asp-for="RequiresApproval" class="form-check-label">@Localizer["AdminTeams_RequireApproval"]</label>
-                    </div>
+                    <partial name="~/Views/Shared/_TeamDescriptionAndApprovalFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = false, ["HideRequiresApproval"] = Model.IsSystemTeam, ["ShowRequiresApprovalHelp"] = false }' />
+                    <partial name="~/Views/Shared/_TeamGoogleAndParentFields.cshtml" model="Model" view-data='new ViewDataDictionary(ViewData) { ["IsReadOnly"] = false, ["ShowParentTeam"] = !Model.IsSystemTeam, ["GoogleGroupEmail"] = Model.GoogleGroupEmail }' />
 
-                    <div class="mb-3 form-check">
-                        <input asp-for="IsActive" type="checkbox" class="form-check-input" disabled="@Model.IsSystemTeam" />
-                        <label asp-for="IsActive" class="form-check-label">@Localizer["AdminEditTeam_TeamIsActive"]</label>
-                    </div>
+                    @if (!Model.IsSystemTeam)
+                    {
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsActive" type="checkbox" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label">@Localizer["AdminEditTeam_TeamIsActive"]</label>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input asp-for="HasBudget" type="checkbox" class="form-check-input" />
+                            <label asp-for="HasBudget" class="form-check-label">Include in budget planning</label>
+                            <div class="form-text">When enabled, this team gets a budget category under the Departments group when a new budget year is created.</div>
+                        </div>
+                    }
 
                     <div class="d-flex gap-2">
-                        @if (!Model.IsSystemTeam)
-                        {
-                            <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
-                        }
-                        <a asp-action="Summary" class="btn btn-outline-secondary">@(Model.IsSystemTeam ? Localizer["Common_Back"].Value : Localizer["Common_Cancel"].Value)</a>
+                        <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
+                        <a asp-action="Summary" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
                     </div>
                 </form>
             </div>

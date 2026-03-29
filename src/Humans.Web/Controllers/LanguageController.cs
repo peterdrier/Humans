@@ -2,30 +2,24 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Domain.Entities;
+using Humans.Web.Extensions;
 
 namespace Humans.Web.Controllers;
 
-public class LanguageController : Controller
+public class LanguageController : HumansControllerBase
 {
-    private static readonly HashSet<string> SupportedCultures = new(StringComparer.Ordinal)
-    {
-        "en", "es", "de", "it", "fr"
-    };
-
-    private readonly UserManager<User> _userManager;
-
     public LanguageController(UserManager<User> userManager)
+        : base(userManager)
     {
-        _userManager = userManager;
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetLanguage(string culture, string? returnUrl)
     {
-        if (!SupportedCultures.Contains(culture))
+        if (!culture.IsSupportedCultureCode())
         {
-            culture = "en";
+            culture = CultureCatalog.DefaultCultureCode;
         }
 
         // Set the culture cookie
@@ -37,14 +31,16 @@ public class LanguageController : Controller
         // If authenticated, persist to user profile
         if (User.Identity?.IsAuthenticated == true)
         {
-            var user = await _userManager.GetUserAsync(User);
-            if (user != null)
+            var user = await GetCurrentUserAsync();
+            if (user is not null)
             {
                 user.PreferredLanguage = culture;
-                await _userManager.UpdateAsync(user);
+                await UpdateCurrentUserAsync(user);
             }
         }
 
-        return LocalRedirect(returnUrl ?? "/");
+        return Url.IsLocalUrl(returnUrl)
+            ? LocalRedirect(returnUrl!)
+            : Redirect(Url.Content("~/"));
     }
 }

@@ -2,7 +2,7 @@
 
 ## Business Context
 
-Nobodies Collective operates through self-organizing working groups (teams). Teams can be created for specific initiatives and managed by their members. Three system-managed teams automatically track key organizational roles: all volunteers, all team leaders (leads), and board members.
+Nobodies Collective operates through self-organizing working groups (teams). Teams can be created for specific initiatives and managed by their members. Teams can optionally be organized into departments (parent-child hierarchy) for logical grouping. Three system-managed teams automatically track key organizational roles: all volunteers, all team coordinators, and board members.
 
 ## User Stories
 
@@ -28,7 +28,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **Acceptance Criteria:**
 - Shows team name, description, creation date
 - Lists all current members with roles
-- Shows lead(s) who manage the team
+- Shows coordinator(s) who manage the team
 - Displays join requirements (open vs approval)
 - Shows my current relationship with the team
 
@@ -46,7 +46,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 ### US-6.4: Request to Join Team
 **As a** member
 **I want to** request to join a team that requires approval
-**So that** the leads can review my request
+**So that** the coordinators can review my request
 
 **Acceptance Criteria:**
 - Can submit request with optional message
@@ -55,7 +55,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Can withdraw pending request
 
 ### US-6.5: Approve/Reject Join Requests
-**As a** team lead or board member
+**As a** team coordinator or board member
 **I want to** review and process join requests
 **So that** appropriate members can join the team
 
@@ -77,14 +77,13 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Google resources access revoked
 
 ### US-6.7: Manage Team Members
-**As a** team lead or board member
+**As a** team coordinator or board member
 **I want to** manage team membership and roles
 **So that** the team is properly organized
 
 **Acceptance Criteria:**
 - View all team members
-- Promote member to lead
-- Demote lead to member
+- Assign coordinator role via management role definition
 - Remove member from team
 - Cannot modify system team membership
 
@@ -96,8 +95,47 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **Acceptance Criteria:**
 - Specify team name and description
 - Choose if approval is required
+- Optionally assign a parent team (department)
 - System generates URL-friendly slug
 - Team is immediately active
+
+### US-6.9: View Public Team Page (Anonymous)
+**As an** anonymous visitor
+**I want to** view a team's public page
+**So that** I can learn about the team before joining
+
+**Acceptance Criteria:**
+- Anonymous visitors can access `/Teams/{slug}` for public teams
+- Shows team description, page content (markdown), and call-to-action buttons
+- Shows coordinators with display name and avatar (no email or contact info)
+- Regular members are hidden from anonymous visitors
+- Non-public teams return 404 for anonymous visitors
+- System teams and sub-teams cannot be made public
+
+### US-6.10: Edit Team Page Content (Coordinator/Admin)
+**As a** team coordinator, board member, or admin
+**I want to** edit my team's public page content
+**So that** I can provide information to potential volunteers
+
+**Acceptance Criteria:**
+- Edit page at `/Teams/{slug}/EditPage`
+- Toggle public visibility (only for departments, not sub-teams or system teams)
+- Write page content in markdown format
+- Configure up to 3 call-to-action buttons (text + URL + style)
+- Only one CTA can be styled as Primary
+- Changes are audit-logged with `TeamPageContentUpdated`
+- Edit Page link appears in team management sidebar
+
+### US-6.11: Browse Public Team Directory (Anonymous)
+**As an** anonymous visitor
+**I want to** browse the public team directory
+**So that** I can discover teams I might want to join
+
+**Acceptance Criteria:**
+- Anonymous visitors can access `/Teams` and see only public teams
+- Shows team name, description snippet, and "Learn More" link
+- No My Teams section, no admin buttons, no system teams shown
+- Authenticated users see the full existing layout unchanged
 
 ## Data Model
 
@@ -111,12 +149,18 @@ Team
 ├── IsActive: bool
 ├── RequiresApproval: bool
 ├── SystemTeamType: SystemTeamType [enum]
+├── ParentTeamId: Guid? (FK → Team, self-referencing)
 ├── GoogleGroupPrefix: string? (100) [email prefix before @nobodies.team]
 ├── CreatedAt: Instant
 ├── UpdatedAt: Instant
+├── IsPublicPage: bool [default false, opt-in public visibility]
+├── PageContent: string? (50000) [markdown content for public page]
+├── PageContentUpdatedAt: Instant? [last edit timestamp]
+├── PageContentUpdatedByUserId: Guid? [FK → User, who last edited]
+├── CallsToAction: List<CallToAction> [JSONB, max 3 items]
 ├── Computed: IsSystemTeam (SystemTeamType != None)
 ├── Computed: GoogleGroupEmail (prefix + "@nobodies.team", or null)
-└── Navigation: Members, JoinRequests, GoogleResources
+└── Navigation: Members, JoinRequests, GoogleResources, ChildTeams, ParentTeam
 ```
 
 ### TeamMember Entity
@@ -125,7 +169,7 @@ TeamMember
 ├── Id: Guid
 ├── TeamId: Guid (FK → Team)
 ├── UserId: Guid (FK → User)
-├── Role: TeamMemberRole [enum: Member, Lead]
+├── Role: TeamMemberRole [enum: Member, Coordinator]
 ├── JoinedAt: Instant
 ├── LeftAt: Instant? (null = active)
 └── Computed: IsActive (LeftAt == null)
@@ -150,20 +194,60 @@ TeamJoinRequest
 ```
 TeamMemberRole:
   Member = 0
-  Lead = 1
+  Coordinator = 1
 
 SystemTeamType:
-  None = 0       // User-created team
-  Volunteers = 1 // Auto: all with signed docs
-  Leads = 2      // Auto: all team leads
-  Board = 3      // Auto: active Board role
+  None = 0            // User-created team
+  Volunteers = 1      // Auto: all with signed docs
+  Coordinators = 2    // Auto: all team coordinators
+  Board = 3           // Auto: active Board role
 
 TeamJoinRequestStatus:
   Pending = 0
   Approved = 1
   Rejected = 2
   Withdrawn = 3
+
+CallToActionStyle:
+  Primary = 0
+  Secondary = 1
 ```
+
+### CallToAction Value Object
+```
+CallToAction (JSONB on Team.CallsToAction)
+├── Text: string (100) [button label]
+├── Url: string (512) [button link]
+└── Style: CallToActionStyle [Primary or Secondary]
+```
+
+## Team Hierarchy (Departments)
+
+Teams are either **departments** (top-level, no parent) or **sub-teams** (have a parent). A department may have child sub-teams.
+
+### Terminology
+- **Department**: Any user-created team that is NOT a sub-team. May or may not have children.
+- **Sub-team**: A team with a `ParentTeamId` set. Always belongs to a department.
+
+### Hierarchy Rules
+- Only user-created teams can participate in hierarchy (system teams cannot be parents or children)
+- Only single-level nesting (a sub-team cannot also be a parent)
+- `ParentTeamId` is set during team creation or editing
+- When a team becomes a sub-team, all `IsManagement` flags on its roles are cleared and any Coordinator members are demoted to Member
+
+### Coordinator (IsManagement) Rules
+- Only departments can have an `IsManagement` role. Sub-teams cannot.
+- At most one role per department can have `IsManagement = true`
+- Assigning a member to an `IsManagement` role sets their `TeamMember.Role = Coordinator`
+- Unassigning from an `IsManagement` role demotes to Member (if no other management assignments remain)
+- `IsManagement` cannot be toggled while members are assigned to the role
+- `IsManagement` roles can be renamed and deleted (if no assignments)
+- No roles are auto-created on team creation — admins add roles manually
+
+### Display
+- Sub-team names display as "Department - SubTeam" on profile pills, team details, and MyTeams
+- `/Teams` page groups cards into: My Teams, Departments, System Teams
+- `/Teams/Summary` shows hierarchy with sub-teams indented below their parent
 
 ## System Teams
 
@@ -172,14 +256,16 @@ TeamJoinRequestStatus:
 | Team | Auto-Add Trigger | Auto-Remove Trigger |
 |------|------------------|---------------------|
 | **Volunteers** | Approved + all required consents signed | Missing consent, suspended, or approval revoked |
-| **Leads** | Become Lead of any team + team consents | No longer Lead anywhere |
+| **Coordinators** | Become Coordinator of any team + team consents | No longer Coordinator anywhere |
 | **Board** | Active "Board" RoleAssignment + team consents | RoleAssignment expires |
 
-Volunteers team membership is the source of truth for "active volunteer" status. Both approval (`AdminController.ApproveVolunteer`) and consent completion (`ConsentController.Submit`) trigger an immediate single-user sync via `SyncVolunteersMembershipForUserAsync` — the user doesn't wait for the scheduled job.
+Volunteers team membership is the source of truth for "active volunteer" status. Both approval (`AdminController.ApproveVolunteer`) and consent completion (`ConsentController.Submit`) trigger an immediate single-user sync via `SyncVolunteersMembershipForUserAsync` -- the user doesn't wait for the scheduled job.
 
 ### System Team Properties
 - `RequiresApproval = false` (auto-managed)
-- Cannot be edited or deleted
+- Name, slug, active status, and parent team cannot be changed
+- Description and Google Group prefix can be edited by admins
+- Cannot be deleted
 - Cannot manually join or leave
 - Cannot change member roles
 
@@ -192,9 +278,9 @@ SystemTeamSyncJob (scheduled hourly, currently disabled; also triggered inline):
      - Filter to those with all required Volunteers-team consents
      - Add missing members, remove ineligible
 
-  2. SyncLeadsTeamAsync()
-     - Get all users with TeamMember.Role = Lead (non-system teams)
-     - Filter by Leads-team consents
+  2. SyncCoordinatorsTeamAsync()
+     - Get all users with TeamMember.Role = Coordinator (non-system teams)
+     - Filter by Coordinators-team consents
      - Add missing members, remove ineligible
 
   3. SyncBoardTeamAsync()
@@ -203,7 +289,9 @@ SystemTeamSyncJob (scheduled hourly, currently disabled; also triggered inline):
      - Filter by Board-team consents
      - Add missing members, remove ineligible
 
-  Single-user variant: SyncVolunteersMembershipForUserAsync(userId)
+  Single-user variants:
+     - SyncVolunteersMembershipForUserAsync(userId)
+     - SyncCoordinatorsMembershipForUserAsync(userId)
      - Called by AdminController (after approval) and ConsentController (after consent)
      - Evaluates one user without affecting others
 ```
@@ -215,21 +303,21 @@ Volunteers team membership controls app access. Non-volunteers can only access H
 ## Join Request State Machine
 
 ```
-                  ┌─────────┐
-                  │ Pending │
-                  └────┬────┘
-                       │
-        ┌──────────────┼──────────────┐
-        │              │              │
-   ┌────▼────┐   ┌────▼────┐   ┌────▼────┐
-   │ Approve │   │ Reject  │   │Withdraw │
-   └────┬────┘   └────┬────┘   └────┬────┘
-        │              │              │
-   ┌────▼────┐   ┌────▼────┐   ┌────▼─────┐
-   │Approved │   │Rejected │   │Withdrawn │
-   │         │   │         │   │          │
-   │(+Member)│   │         │   │          │
-   └─────────┘   └─────────┘   └──────────┘
+                  +---------+
+                  | Pending |
+                  +----+----+
+                       |
+        +--------------+--------------+
+        |              |              |
+   +----v----+   +----v----+   +----v----+
+   | Approve |   | Reject  |   |Withdraw |
+   +----+----+   +----+----+   +----+----+
+        |              |              |
+   +----v----+   +----v----+   +----v-----+
+   |Approved |   |Rejected |   |Withdrawn |
+   |         |   |         |   |          |
+   |(+Member)|   |         |   |          |
+   +---------+   +---------+   +----------+
 ```
 
 ## Approval Authority
@@ -238,7 +326,7 @@ Volunteers team membership controls app access. Non-volunteers can only access H
 
 | User Type | Can Approve |
 |-----------|-------------|
-| Team Lead | Own team only |
+| Team Coordinator | Own team only |
 | Board Member | Any team |
 | Regular Member | No |
 
@@ -249,8 +337,8 @@ bool CanApprove(teamId, userId)
     // Board members can approve any team
     if (IsUserBoardMember(userId)) return true;
 
-    // Leads can approve their own team
-    return IsUserLeadOfTeam(teamId, userId);
+    // Coordinators can approve their own team
+    return IsUserCoordinatorOfTeam(teamId, userId);
 }
 ```
 
@@ -259,7 +347,7 @@ bool CanApprove(teamId, userId)
 The `TeamsAdmin` role provides system-wide team management capabilities without requiring Board or Admin access.
 
 ### Capabilities
-- Manage all teams (edit settings, approve join requests, assign leads)
+- Manage all teams (edit settings, approve join requests, assign coordinators)
 - Configure `GoogleGroupPrefix` on teams
 - View sync status at `/Teams/Sync`
 
@@ -298,79 +386,79 @@ When the prefix changes (e.g., `"events"` to `"events-team"`):
 ### Direct Join (No Approval)
 ```
 User clicks "Join"
-        │
-        ▼
-┌───────────────────┐
-│ Create TeamMember │
-│ Role = Member     │
-│ JoinedAt = now    │
-└─────────┬─────────┘
-          │
-          ▼
-┌───────────────────┐
-│ Sync Google       │
-│ Resources         │
-└─────────┬─────────┘
-          │
-          ▼
+        |
+        v
++-------------------+
+| Create TeamMember |
+| Role = Member     |
+| JoinedAt = now    |
++---------+---------+
+          |
+          v
++-------------------+
+| Sync Google       |
+| Resources         |
++---------+---------+
+          |
+          v
     [User is member]
 ```
 
 ### Approval Join
 ```
 User submits request
-        │
-        ▼
-┌───────────────────┐
-│ Create            │
-│ TeamJoinRequest   │
-│ Status = Pending  │
-└─────────┬─────────┘
-          │
+        |
+        v
++-------------------+
+| Create            |
+| TeamJoinRequest   |
+| Status = Pending  |
++---------+---------+
+          |
     [Wait for review]
-          │
-          ▼
-┌───────────────────┐
-│ Lead/Board        │
-│ reviews request   │
-└─────────┬─────────┘
-          │
-    ┌─────┴─────┐
-    │           │
+          |
+          v
++---------------------+
+| Coordinator/Board   |
+| reviews request     |
++---------+-----------+
+          |
+    +-----+-----+
+    |           |
  Approve     Reject
-    │           │
-    ▼           ▼
-┌────────┐  ┌────────┐
-│+Member │  │Notify  │
-│+Google │  │User    │
-└────────┘  └────────┘
+    |           |
+    v           v
++--------+  +--------+
+|+Member |  |Notify  |
+|+Google |  |User    |
++--------+  +--------+
 ```
 
 ## Leave Workflow
 
 ```
 User clicks "Leave"
-        │
-        ▼
-┌───────────────────┐
-│ Validate:         │
-│ - Not system team │
-│ - Is member       │
-└─────────┬─────────┘
-          │
-          ▼
-┌───────────────────┐
-│ Set LeftAt = now  │
-│ (soft delete)     │
-└─────────┬─────────┘
-          │
-          ▼
-┌───────────────────┐
-│ Revoke Google     │
-│ resource access   │
-└─────────┬─────────┘
-          │
-          ▼
+        |
+        v
++-------------------+
+| Validate:         |
+| - Not system team |
+| - Is member       |
++---------+---------+
+          |
+          v
++-------------------+
+| Set LeftAt = now  |
+| (soft delete)     |
++---------+---------+
+          |
+          v
++-------------------+
+| Revoke Google     |
+| resource access   |
++---------+---------+
+          |
+          v
     [User removed]
 ```
 
@@ -385,17 +473,19 @@ Real implementation will manage Google Drive folder permissions.
 
 ## URL Structure
 
-| Route | Description |
-|-------|-------------|
-| `/Teams` | All teams list |
-| `/Teams/{slug}` | Team details |
-| `/Teams/{slug}/Join` | Join form |
-| `/Teams/My` | User's teams |
-| `/Teams/Sync` | Sync status (TeamsAdmin, Board, Admin) |
-| `/Teams/{slug}/Admin/Members` | Manage members (includes pending requests) |
-| `/Teams/Summary` | Team summary with resource columns (Board, Admin, TeamsAdmin) |
-| `/Teams/Create` | Create team form (Board, Admin) |
-| `/Teams/{id}/Edit` | Edit team (Board, Admin) |
+| Route | Description | Auth |
+|-------|-------------|------|
+| `/Teams` | Teams directory | AllowAnonymous (anonymous: public teams only) |
+| `/Teams/{slug}` | Team details | AllowAnonymous (anonymous: public teams only, 404 for non-public) |
+| `/Teams/{slug}/Join` | Join form | Authenticated |
+| `/Teams/My` | User's teams | Authenticated |
+| `/Teams/Birthdays` | Birthday calendar | Authenticated |
+| `/Teams/Sync` | Sync status | TeamsAdmin, Board, Admin |
+| `/Teams/{slug}/Members` | Manage members | Coordinator, Board, Admin, TeamsAdmin |
+| `/Teams/{slug}/EditPage` | Edit public page content | Coordinator, Board, Admin, TeamsAdmin |
+| `/Teams/Summary` | Team summary with resource columns | Board, Admin, TeamsAdmin |
+| `/Teams/Create` | Create team form | Board, Admin, TeamsAdmin |
+| `/Teams/{id}/Edit` | Edit team settings | Board, Admin, TeamsAdmin |
 
 ## Role Slots
 
@@ -405,14 +495,14 @@ Teams can define named role slots that members fill. Each role has a configurabl
 
 - **Role Definition**: A named role on a team (e.g., "Social Media", "Designer") with a slot count and priority per slot
 - **Role Assignment**: Links a team member to a specific slot in a role definition
-- **Lead Role**: Auto-created per team, unified with `TeamMember.Role = Lead`
+- **IsManagement flag**: One role per department can be marked `IsManagement = true`. Assigning a member to this role sets their `TeamMember.Role = Coordinator`. Sub-teams cannot have IsManagement roles.
 - **Auto-add**: Assigning a non-member to a role automatically adds them to the team
 - **Roster Summary**: Cross-team view showing all slots with priority/status filtering
 
 ### Routes
 
-- `GET /Teams/Roster` — cross-team roster summary
-- `GET /Teams/{slug}/Roles` — role management page
+- `GET /Teams/Roster` -- cross-team roster summary
+- `GET /Teams/{slug}/Roles` -- role management page
 - Role CRUD and assignment via POST actions on TeamAdminController
 
 ## Related Features

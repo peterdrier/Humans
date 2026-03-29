@@ -1,0 +1,50 @@
+@model Humans.Web.Models.ShiftCardsViewModel
+@if (Model.NextShifts.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between">
+            <h5 class="mb-0">My Shifts</h5>
+            @if (Model.PendingCount > 0)
+            {
+                <span class="badge bg-warning">@Model.PendingCount pending</span>
+            }
+        </div>
+        <div class="card-body">
+            <ul class="list-unstyled mb-0">
+                @foreach (var item in Model.NextShifts)
+                {
+                    <li class="mb-2">
+                        <strong>@(item?.Signup?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                        <br /><small class="text-muted">@(item?.DepartmentName ?? "")</small>
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="card-footer">
+            <a asp-controller="Shifts" asp-action="Mine" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+    </div>
+}
+@if (Model.UrgentShifts.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Shifts Need Help</h5>
+        </div>
+        <div class="card-body">
+            <ul class="list-unstyled mb-0">
+                @foreach (var item in Model.UrgentShifts)
+                {
+                    <li class="mb-2">
+                        <strong>@(item?.Shift?.Rota?.Name ?? "Unknown")</strong>
+                        <span class="badge bg-danger">@(item?.RemainingSlots ?? 0) slots</span>
+                        <br /><small class="text-muted">@(item?.DepartmentName ?? "")</small>
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="card-footer">
+            <a asp-controller="Shifts" asp-action="Index" class="btn btn-sm btn-outline-success">Browse Volunteer Options</a>
+        </div>
+    </div>
+}

@@ -1,0 +1,160 @@
+@model Humans.Web.Models.ShiftDashboardViewModel
+@using Humans.Application.Interfaces
+@using Humans.Domain.Enums
+@using Humans.Web.Controllers
+
+@{
+    ViewData["Title"] = "Shift Dashboard";
+    var searchUrl = Url.Action(nameof(ShiftDashboardController.SearchVolunteers), "ShiftDashboard");
+    var voluntellUrl = Url.Action(nameof(ShiftDashboardController.Voluntell), "ShiftDashboard");
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Shift Dashboard</h2>
+        <span class="badge bg-secondary fs-6">@Model.Shifts.Count shifts</span>
+    </div>
+
+    <vc:temp-data-alerts />
+
+    @* Filter bar *@
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" value="@Model.SelectedDate" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Department</label>
+                    <select name="departmentId" class="form-select">
+                        <option value="">All departments</option>
+                        @foreach (var dept in Model.Departments)
+                        {
+                            <option value="@dept.TeamId" selected="@(Model.SelectedDepartmentId == dept.TeamId ? "selected" : null)">@dept.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary ms-1">Clear</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @* Staffing chart *@
+    @await Html.PartialAsync("_StaffingChart", (Model.StaffingData, "dashboardStaffingChart"))
+
+    @* Urgency table *@
+    @if (Model.Shifts.Count == 0)
+    {
+        <div class="alert alert-info">No shifts match the current filters.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Shift</th>
+                        <th>Department</th>
+                        <th>Date / Time</th>
+                        <th>Slots</th>
+                        <th>Priority</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Shifts)
+                    {
+                        var shift = item.Shift;
+                        var shiftDate = Model.EventSettings.GateOpeningDate.PlusDays(shift.DayOffset);
+                        var shiftDateLabel = shiftDate.ToDisplayShiftDate();
+                        var period = shift.GetShiftPeriod(Model.EventSettings);
+                        var periodBadge = period switch
+                        {
+                            ShiftPeriod.Build => "bg-info",
+                            ShiftPeriod.Event => "bg-success",
+                            ShiftPeriod.Strike => "bg-secondary",
+                            _ => "bg-secondary"
+                        };
+                        var periodLabel = period switch
+                        {
+                            ShiftPeriod.Build => "Set-up",
+                            ShiftPeriod.Event => "Event",
+                            ShiftPeriod.Strike => "Strike",
+                            _ => ""
+                        };
+                        var priorityBadge = shift.Rota.Priority switch
+                        {
+                            ShiftPriority.Essential => "bg-danger",
+                            ShiftPriority.Important => "bg-warning text-dark",
+                            _ => "bg-secondary"
+                        };
+                        var priorityLabel = shift.Rota.Priority.ToString();
+                        var understaffed = item.ConfirmedCount < shift.MinVolunteers;
+                        var collapseId = "voluntell-" + shift.Id.ToString("N");
+
+                        <tr>
+                            <td>
+                                @shift.Rota.Name
+                                @if (shift.AdminOnly) { <span class="badge bg-dark ms-1">Admin</span> }
+                            </td>
+                            <td>@item.DepartmentName</td>
+                            <td>
+                                <span class="badge @periodBadge me-1">@periodLabel</span>
+                                @shiftDateLabel
+                                <small class="text-muted ms-1">@shift.StartTime</small>
+                            </td>
+                            <td>
+                                <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
+                                <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
+                            </td>
+                            <td><span class="badge @priorityBadge">@priorityLabel</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#@collapseId"
+                                        data-shift-id="@shift.Id">
+                                    Voluntell
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="collapse" id="@collapseId">
+                            <td colspan="6">
+                                <div class="p-3 bg-light rounded border">
+                                    <label class="form-label fw-semibold">Search volunteers for: @shift.Rota.Name</label>
+                                    <input type="text"
+                                           class="form-control mb-2 volunteer-search-input"
+                                           placeholder="Type a name (min 2 chars)..."
+                                           data-shift-id="@shift.Id"
+                                           autocomplete="off" />
+                                    <div class="volunteer-results" data-shift-id="@shift.Id"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+@await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
+@await Html.PartialAsync("~/Views/Shared/_VolunteerSearchScript.cshtml", new ViewDataDictionary(ViewData)
+{
+    ["SearchUrl"] = searchUrl,
+    ["VoluntellUrl"] = voluntellUrl,
+    ["AssignButtonClass"] = "btn-success",
+    ["NoResultsText"] = "No volunteers found.",
+    ["ErrorText"] = "Search failed.",
+    ["OverlapLabel"] = "Schedule conflict",
+    ["DietaryPreferenceStyle"] = "muted",
+    ["ShowPoolBadge"] = false
+})
+</script>
+}

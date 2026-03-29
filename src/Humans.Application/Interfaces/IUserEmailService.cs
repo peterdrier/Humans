@@ -25,18 +25,21 @@ public interface IUserEmailService
 
     /// <summary>
     /// Adds a new email address and initiates verification.
-    /// Returns a verification token to build the confirmation URL.
+    /// Returns a result containing the verification token and whether the email conflicts
+    /// with another account (which will trigger a merge request on verification).
     /// </summary>
-    Task<string> AddEmailAsync(
+    Task<AddEmailResult> AddEmailAsync(
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Verifies an email address using a token.
-    /// Returns the verified email address on success.
+    /// If the email is already verified on another account, creates a merge request
+    /// instead of completing verification.
+    /// Returns a result indicating the email and whether a merge request was created.
     /// </summary>
-    Task<string> VerifyEmailAsync(
+    Task<VerifyEmailResult> VerifyEmailAsync(
         Guid userId,
         string token,
         CancellationToken cancellationToken = default);
@@ -79,6 +82,16 @@ public interface IUserEmailService
     /// Used during first-time OAuth login to record the provider email.
     /// </summary>
     Task AddOAuthEmailAsync(
+        Guid userId,
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
+    /// If the email is @nobodies.team, it's automatically set as the notification target.
+    /// Skips if the email already exists for this user.
+    /// </summary>
+    Task AddVerifiedEmailAsync(
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);

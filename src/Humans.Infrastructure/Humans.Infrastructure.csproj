@@ -8,8 +8,10 @@
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Hangfire.PostgreSql" />
     <PackageReference Include="MailKit" />
+    <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.Extensions.Localization" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.Extensions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="NodaTime" />
     <PackageReference Include="NodaTime.Serialization.SystemTextJson" />
@@ -18,11 +20,13 @@
     <PackageReference Include="Octokit" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Serilog" />
+    <PackageReference Include="Google.Apis.Admin.Directory.directory_v1" />
     <PackageReference Include="Google.Apis.CloudIdentity.v1" />
     <PackageReference Include="Google.Apis.Drive.v3" />
     <PackageReference Include="Google.Apis.DriveActivity.v2" />
     <PackageReference Include="Google.Apis.Groupssettings.v1" />
     <PackageReference Include="Google.Apis.Auth" />
+    <PackageReference Include="Stripe.net" />
   </ItemGroup>
 
 </Project>

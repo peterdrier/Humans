@@ -2,7 +2,7 @@
 
 ## Business Context
 
-Members need to share contact information (Signal, Telegram, WhatsApp, Discord, phone) with other members, but different contexts require different privacy levels. A member might want their Signal handle visible to all active members, but their phone number only visible to their team leads or board members.
+Members need to share contact information (Signal, Telegram, WhatsApp, Discord, phone) with other members, but different contexts require different privacy levels. A member might want their Signal handle visible to all active members, but their phone number only visible to their team coordinators or board members.
 
 **Note:** Email addresses are managed separately via the `UserEmail` entity (see below). The `Email` contact field type is deprecated.
 
@@ -30,7 +30,7 @@ Members need to share contact information (Signal, Telegram, WhatsApp, Discord, 
 - Each field has independent visibility setting
 - Visibility levels from most to least restrictive:
   - Board only
-  - Leads + Board (leads and board)
+  - Coordinators + Board (coordinators and board)
   - My teams (members sharing a team with me)
   - All active members
 - Default visibility is "All active members"
@@ -107,7 +107,7 @@ GetViewerAccessLevel(ownerUserId, viewerUserId):
 
   2. Board member → BoardOnly (sees everything)
 
-  3. Any lead (of any team) → LeadsAndBoard
+  3. Any coordinator (of any team) → LeadsAndBoard
 
   4. Shares team with owner → MyTeams
 
@@ -132,8 +132,8 @@ Alice (board member) views Bob's profile:
 - Access level: BoardOnly (0)
 - Sees: All contact fields regardless of visibility
 
-### Scenario 2: Team Lead Viewing
-Carol (lead of Art team) views Bob's profile:
+### Scenario 2: Team Coordinator Viewing
+Carol (coordinator of Art team) views Bob's profile:
 - Access level: LeadsAndBoard (1)
 - Sees: Fields with visibility LeadsAndBoard, MyTeams, or AllActiveProfiles
 - Cannot see: Fields with BoardOnly visibility
@@ -171,7 +171,7 @@ Eve (active member, no shared teams) views Bob's profile:
 | Visibility | Icon | Tooltip |
 |------------|------|---------|
 | BoardOnly | Lock | "Visible to board members only" |
-| LeadsAndBoard | User Shield | "Visible to team leads and board" |
+| LeadsAndBoard | User Shield | "Visible to team coordinators and board" |
 | MyTeams | Users | "Visible to members of your teams" |
 | AllActiveProfiles | Globe | "Visible to all active members" |
 

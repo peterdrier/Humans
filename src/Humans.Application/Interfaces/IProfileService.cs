@@ -29,7 +29,7 @@ public record CachedProfile(
         UserId: user.Id,
         DisplayName: user.DisplayName,
         ProfilePictureUrl: user.ProfilePictureUrl,
-        HasCustomPicture: profile.ProfilePictureData != null,
+        HasCustomPicture: profile.ProfilePictureData is not null,
         ProfileId: profile.Id,
         UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
         BurnerName: profile.BurnerName,
@@ -69,6 +69,9 @@ public interface IProfileService
     Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
         GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default);
 
+    Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
+        Guid userId, CancellationToken ct = default);
+
     Task<IReadOnlyList<(Guid UserId, string DisplayName, string? ProfilePictureUrl, bool HasCustomPicture, Guid ProfileId, int Day, int Month)>>
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default);
 
@@ -89,6 +92,21 @@ public interface IProfileService
     /// Pass null to remove the entry (e.g., on suspension/deletion).
     /// </summary>
     void UpdateProfileCache(Guid userId, CachedProfile? newValue);
+
+    /// <summary>
+    /// Gets or creates the user's shift profile (1:1 with User).
+    /// </summary>
+    Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId);
+
+    /// <summary>
+    /// Updates a volunteer shift profile.
+    /// </summary>
+    Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
+
+    /// <summary>
+    /// Gets a user's shift profile. Medical data included only when includeMedical=true.
+    /// </summary>
+    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical);
 }
 
 public record UserSearchResult(Guid UserId, string DisplayName, string Email);

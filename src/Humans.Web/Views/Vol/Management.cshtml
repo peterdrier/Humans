@@ -1,0 +1,116 @@
+@model Humans.Web.Models.Vol.ManagementViewModel
+
+@{
+    ViewData["Title"] = "Management";
+    ViewData["VolActiveTab"] = "Management";
+
+    var fillPercent = Model.VolunteerCap.HasValue && Model.VolunteerCap.Value > 0
+        ? (int)(100.0 * Model.ConfirmedVolunteerCount / Model.VolunteerCap.Value)
+        : 0;
+    var progressColor = fillPercent > 90 ? "bg-danger"
+        : fillPercent >= 75 ? "bg-warning"
+        : "bg-success";
+}
+
+<vc:temp-data-alerts />
+
+<div class="row g-4 mb-4">
+    @* System Status *@
+    <div class="col-md-6">
+        <div class="card h-100 @(Model.SystemOpen ? "border-start border-success border-4" : "border-start border-danger border-4")">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    @if (Model.SystemOpen)
+                    {
+                        <i class="fa-solid fa-circle-check fa-lg text-success me-2"></i>
+                        <h5 class="mb-0 text-success">System Open</h5>
+                    }
+                    else
+                    {
+                        <i class="fa-solid fa-circle-xmark fa-lg text-danger me-2"></i>
+                        <h5 class="mb-0 text-danger">System Closed</h5>
+                    }
+                </div>
+                <p class="text-muted mb-2">
+                    Humans can @(Model.SystemOpen ? "" : "not ")browse and sign up for shifts.
+                </p>
+                @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
+                {
+                    <a asp-action="Settings" class="btn btn-sm btn-outline-secondary">
+                        <i class="fa-solid fa-gear me-1"></i>Change in Settings
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+
+    @* Volunteer Cap *@
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fa-solid fa-users fa-lg text-primary me-2"></i>
+                    <h5 class="mb-0">Volunteer Cap</h5>
+                </div>
+                @if (Model.VolunteerCap.HasValue && Model.VolunteerCap.Value > 0)
+                {
+                    <div class="mb-2">
+                        <span class="fs-4 fw-bold">@Model.ConfirmedVolunteerCount</span>
+                        <span class="text-muted">/ @Model.VolunteerCap.Value confirmed</span>
+                    </div>
+                    <div class="progress" style="height: 12px;">
+                        <div class="progress-bar @progressColor" style="width: @(Math.Min(fillPercent, 100))%"
+                             role="progressbar" aria-valuenow="@Model.ConfirmedVolunteerCount"
+                             aria-valuemin="0" aria-valuemax="@Model.VolunteerCap.Value">
+                            @(fillPercent)%
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">
+                        <i class="fa-solid fa-infinity me-1"></i>No cap set
+                    </p>
+                    <p class="mb-0">
+                        <span class="fs-4 fw-bold">@Model.ConfirmedVolunteerCount</span>
+                        <span class="text-muted">confirmed</span>
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Actions *@
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fa-solid fa-bolt me-2"></i>Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary w-100" disabled title="Phase 3">
+                    <i class="fa-solid fa-file-csv me-1"></i>Export Shifts
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary w-100" disabled title="Phase 3">
+                    <i class="fa-solid fa-file-arrow-down me-1"></i>Export Signups
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary w-100" disabled title="Phase 3">
+                    <i class="fa-solid fa-chart-pie me-1"></i>Staffing Report
+                </button>
+            </div>
+            @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
+            {
+                <div class="col-md-3">
+                    <a asp-action="Settings" class="btn btn-outline-primary w-100">
+                        <i class="fa-solid fa-gear me-1"></i>Settings
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -50,7 +50,7 @@ else
                             </td>
                             <td>@(entry.UserEmail ?? "--")</td>
                             <td>@(entry.Role ?? "--")</td>
-                            <td>@(entry.SyncSource ?? "--")</td>
+                            <td>@(entry.SyncSource?.ToString() ?? "--")</td>
                             <td>
                                 @if (entry.Success == true)
                                 {
@@ -74,7 +74,7 @@ else
                                 <span class="badge bg-info">System</span>
                                 <span class="ms-1">@entry.ActorName</span>
                             </td>
-                            <td class="text-nowrap">@entry.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td class="text-nowrap">@entry.OccurredAt.ToAuditTimestamp()</td>
                         </tr>
                     }
                 </tbody>

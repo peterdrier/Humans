@@ -32,7 +32,7 @@ public class MembershipCalculator : IMembershipCalculator
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
 
-        if (profile == null)
+        if (profile is null)
         {
             return MembershipStatus.None;
         }
@@ -320,24 +320,103 @@ public class MembershipCalculator : IMembershipCalculator
             teamIds.Add(SystemTeamIds.Volunteers);
         }
 
-        // Include Leads if user is Lead of any user-created team
-        if (!teamIds.Contains(SystemTeamIds.Leads))
+        // Include Coordinators if user is Coordinator of any user-created team
+        if (!teamIds.Contains(SystemTeamIds.Coordinators))
         {
-            var isLeadAnywhere = await _dbContext.TeamMembers
+            var isCoordinatorAnywhere = await _dbContext.TeamMembers
                 .AnyAsync(tm =>
                     tm.UserId == userId &&
                     tm.LeftAt == null &&
-                    tm.Role == TeamMemberRole.Lead &&
+                    tm.Role == TeamMemberRole.Coordinator &&
                     tm.Team.SystemTeamType == SystemTeamType.None,
                     cancellationToken);
 
-            if (isLeadAnywhere)
+            if (isCoordinatorAnywhere)
             {
-                teamIds.Add(SystemTeamIds.Leads);
+                teamIds.Add(SystemTeamIds.Coordinators);
             }
         }
 
         return teamIds;
+    }
+
+    public async Task<MembershipPartition> PartitionUsersAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
+    {
+        var allIds = userIds.ToList();
+
+        // 1. PendingDeletion — DeletionRequestedAt is not null (highest priority)
+        var pendingDeletionIds = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => allIds.Contains(u.Id) && u.DeletionRequestedAt != null)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+        var pendingDeletion = pendingDeletionIds.ToHashSet();
+
+        // 2. Load remaining users with profiles
+        var remaining = allIds.Where(id => !pendingDeletion.Contains(id)).ToList();
+        var usersWithProfiles = await _dbContext.Users
+            .AsNoTracking()
+            .Include(u => u.Profile)
+            .Where(u => remaining.Contains(u.Id))
+            .ToListAsync(ct);
+        var profileByUserId = usersWithProfiles.ToDictionary(u => u.Id, u => u.Profile);
+
+        // 3. IncompleteSignup — no Profile entity
+        var incompleteSignup = new HashSet<Guid>();
+        foreach (var id in remaining)
+        {
+            if (!profileByUserId.TryGetValue(id, out var profile) || profile is null)
+            {
+                incompleteSignup.Add(id);
+            }
+        }
+
+        remaining = remaining.Where(id => !incompleteSignup.Contains(id)).ToList();
+
+        // 4. Suspended — Profile.IsSuspended
+        var suspended = new HashSet<Guid>();
+        foreach (var id in remaining)
+        {
+            if (profileByUserId[id]!.IsSuspended)
+            {
+                suspended.Add(id);
+            }
+        }
+
+        remaining = remaining.Where(id => !suspended.Contains(id)).ToList();
+
+        // 5. PendingApproval — !Profile.IsApproved (rejected users go to IncompleteSignup)
+        var pendingApproval = new HashSet<Guid>();
+        foreach (var id in remaining)
+        {
+            if (!profileByUserId[id]!.IsApproved)
+            {
+                if (profileByUserId[id]!.RejectedAt is not null)
+                {
+                    incompleteSignup.Add(id);
+                }
+                else
+                {
+                    pendingApproval.Add(id);
+                }
+            }
+        }
+
+        remaining = remaining.Where(id => !pendingApproval.Contains(id) && !incompleteSignup.Contains(id)).ToList();
+
+        // 6. Active vs MissingConsents — approved, not suspended
+        var usersWithConsents = await GetUsersWithAllRequiredConsentsForTeamAsync(remaining, SystemTeamIds.Volunteers, ct);
+        var active = remaining.Where(id => usersWithConsents.Contains(id)).ToHashSet();
+        var missingConsents = remaining.Where(id => !usersWithConsents.Contains(id)).ToHashSet();
+
+        return new MembershipPartition(
+            incompleteSignup,
+            pendingApproval,
+            active,
+            missingConsents,
+            suspended,
+            pendingDeletion);
     }
 
     private async Task<List<Domain.Entities.DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(

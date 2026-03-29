@@ -46,6 +46,7 @@
   <data name="Common_Back" xml:space="preserve"><value>Volver</value></data>
   <data name="Common_Submit" xml:space="preserve"><value>Enviar</value></data>
   <data name="Common_NotProvided" xml:space="preserve"><value>No proporcionado</value></data>
+  <data name="Common_Error" xml:space="preserve"><value>Algo salió mal. Por favor, inténtalo de nuevo más tarde.</value></data>
 
   <!-- ======================== -->
   <!-- Navigation (_Layout)     -->
@@ -54,12 +55,15 @@
   <data name="Nav_Home" xml:space="preserve"><value>Inicio</value></data>
   <data name="Nav_MyProfile" xml:space="preserve"><value>Mi perfil</value></data>
   <data name="Nav_Teams" xml:space="preserve"><value>Equipos</value></data>
+  <data name="Nav_Shifts" xml:space="preserve"><value>Volunteer</value></data>
   <data name="Nav_Roster" xml:space="preserve"><value>Roster</value></data>
   <data name="Nav_Consents" xml:space="preserve"><value>Acuerdos</value></data>
   <data name="Nav_Governance" xml:space="preserve"><value>Gobernanza</value></data>
   <data name="Nav_Privacy" xml:space="preserve"><value>Privacidad</value></data>
+  <data name="Nav_About" xml:space="preserve"><value>Acerca de</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>Cola de revisi&#xF3;n</value></data>
+  <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
 
 
   <!-- ======================== -->
@@ -81,8 +85,9 @@
   <!-- Account / Login          -->
   <!-- ======================== -->
   <data name="Login_Title" xml:space="preserve"><value>Iniciar sesi&#xF3;n</value></data>
-  <data name="Login_Description" xml:space="preserve"><value>Inicie sesi&#xF3;n con su cuenta de Google para acceder a Humans.</value></data>
+  <data name="Login_Description" xml:space="preserve"><value>Inicia sesi&#xF3;n para acceder a Humans.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Iniciar sesi&#xF3;n con Google</value></data>
+  <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Acceso denegado</value></data>
   <data name="AccessDenied_Description" xml:space="preserve"><value>No tiene permiso para acceder a esta p&#xE1;gina.</value></data>
 
@@ -101,7 +106,7 @@
   <!-- ======================== -->
   <data name="Home_Title" xml:space="preserve"><value>Inicio</value></data>
   <data name="Home_Tagline" xml:space="preserve"><value>Portal de miembros de Nobodies Collective</value></data>
-  <data name="Home_CTA" xml:space="preserve"><value>&#xBF;Eres nuevo/a? Inicia sesi&#xF3;n con Google para empezar.</value></data>
+  <data name="Home_CTA" xml:space="preserve"><value>&#xBF;Eres nuevo/a? Inicia sesi&#xF3;n para empezar.</value></data>
   <data name="Home_WhyTitle" xml:space="preserve"><value>&#xBF;Por qu&#xE9; necesitamos esto?</value></data>
   <data name="Home_WhyDescription" xml:space="preserve"><value>Como asociaci&#xF3;n registrada en Espa&#xF1;a, Nobodies Collective tiene obligaciones legales. Antes de que cualquier persona pueda acceder a los recursos compartidos, necesitamos confirmar su aceptaci&#xF3;n de nuestras pol&#xED;ticas. Este sistema se encarga de ello de forma sencilla y mantiene todo actualizado.</value></data>
   <data name="Home_ComplianceTitle" xml:space="preserve"><value>Cumplimiento legal</value></data>
@@ -195,7 +200,7 @@
   <data name="Profile_NotificationTarget" xml:space="preserve"><value>Las notificaciones del sistema se env&#xED;an a esta direcci&#xF3;n</value></data>
   <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notificaciones</value></data>
   <data name="Profile_Teams" xml:space="preserve"><value>Equipos</value></data>
-  <data name="Profile_Lead" xml:space="preserve"><value>L&#xED;der de equipo</value></data>
+  <data name="Profile_Coordinator" xml:space="preserve"><value>Coordinator</value></data>
   <data name="Profile_MembershipTier" xml:space="preserve"><value>Nivel de membres&#xED;a</value></data>
   <data name="Profile_Motivation" xml:space="preserve"><value>Motivaci&#xF3;n</value></data>
   <data name="Profile_AdditionalInfo" xml:space="preserve"><value>Informaci&#xF3;n adicional (opcional)</value></data>
@@ -327,11 +332,17 @@
   <data name="Governance_AsociadoDescription" xml:space="preserve"><value>Los asociados son los miembros con derecho a voto de Nobodies Collective. Como asociado, puede asistir a asambleas generales, votar en decisiones colectivas y participar en elecciones.</value></data>
   <data name="Governance_Optional" xml:space="preserve"><value>Esto es opcional. La mayor&#xED;a de los voluntarios no necesitan convertirse en asociados. Ya tiene acceso a los recursos una vez que haya completado su perfil y consentimientos.</value></data>
   <data name="Governance_ApplyButton" xml:space="preserve"><value>Solicitar ser asociado</value></data>
+  <data name="Governance_ColaboradorCanApply" xml:space="preserve"><value>Los Colaboradores tambi&#xE9;n pueden solicitar el estatus de Asociado si desean participar en la gobernanza.</value></data>
+  <data name="Governance_ApplyForAsociado" xml:space="preserve"><value>Solicitar ser Asociado</value></data>
   <data name="Governance_YourApplication" xml:space="preserve"><value>Su solicitud</value></data>
   <data name="Governance_Submitted" xml:space="preserve"><value>Enviada</value></data>
   <data name="Governance_Resolved" xml:space="preserve"><value>Resuelta</value></data>
   <data name="Governance_UnderReviewMessage" xml:space="preserve"><value>Su solicitud est&#xE1; siendo revisada. Le notificaremos por correo electr&#xF3;nico cuando se tome una decisi&#xF3;n.</value></data>
   <data name="Governance_ApprovedMessage" xml:space="preserve"><value>&#xA1;Bienvenido/a! Ahora es asociado de Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageColaborador" xml:space="preserve"><value>Es un/a Colaborador/a aprobado/a de Nobodies Collective.</value></data>
+  <data name="Governance_ApprovedMessageAsociado" xml:space="preserve"><value>&#xA1;Bienvenido/a! Ahora es Asociado/a de Nobodies Collective.</value></data>
+  <data name="Governance_Tier" xml:space="preserve"><value>Nivel</value></data>
+  <data name="Governance_TermExpiry" xml:space="preserve"><value>El mandato expira</value></data>
   <data name="Governance_RejectedMessage" xml:space="preserve"><value>Su solicitud no fue aprobada. Si tiene preguntas, por favor contacte con la junta directiva.</value></data>
   <data name="Governance_WhatIsAsociado" xml:space="preserve"><value>&#xBF;Qu&#xE9; es un asociado?</value></data>
   <data name="Governance_AsociadoLawDescription" xml:space="preserve"><value>Los asociados son los miembros con derecho a voto de la asociaci&#xF3;n seg&#xFA;n la legislaci&#xF3;n espa&#xF1;ola.</value></data>
@@ -404,6 +415,7 @@
   <data name="Application_InvalidTier" xml:space="preserve"><value>Seleccione Colaborador o Asociado para su solicitud.</value></data>
   <data name="Application_ConfirmAccuracy" xml:space="preserve"><value>Debe confirmar la veracidad de su informaci&#xF3;n.</value></data>
   <data name="Application_Submitted" xml:space="preserve"><value>&#xA1;Su solicitud ha sido enviada correctamente!</value></data>
+  <data name="Application_SubmitError" xml:space="preserve"><value>Algo sali&#xF3; mal al enviar su solicitud. Por favor, int&#xE9;ntelo de nuevo.</value></data>
   <data name="Application_CannotWithdraw" xml:space="preserve"><value>Esta solicitud no puede ser retirada.</value></data>
   <data name="Application_Withdrawn" xml:space="preserve"><value>Su solicitud ha sido retirada.</value></data>
 
@@ -449,6 +461,7 @@
   <data name="Consent_MustCheck" xml:space="preserve"><value>Debe marcar la casilla de consentimiento para continuar.</value></data>
   <data name="Consent_AlreadyConsented" xml:space="preserve"><value>Ya ha otorgado su consentimiento a este documento.</value></data>
   <data name="Consent_ThankYou" xml:space="preserve"><value>Gracias por otorgar su consentimiento a {0}.</value><comment>{0} = document name</comment></data>
+  <data name="Consent_SubmitError" xml:space="preserve"><value>Algo sali&#xF3; mal al registrar su consentimiento. Por favor, int&#xE9;ntelo de nuevo.</value></data>
 
   <!-- ======================== -->
   <!-- Teams                    -->
@@ -556,9 +569,10 @@
   <data name="AdminHumans_Title" xml:space="preserve"><value>Humans</value></data>
   <data name="AdminHumans_AllStatuses" xml:space="preserve"><value>Todos</value></data>
   <data name="AdminHumans_Active" xml:space="preserve"><value>Activos</value></data>
-  <data name="AdminHumans_Pending" xml:space="preserve"><value>Pendientes</value></data>
+  <data name="AdminHumans_PendingApproval" xml:space="preserve"><value>Pendiente de aprobaci&#xF3;n</value></data>
+  <data name="AdminHumans_MissingConsents" xml:space="preserve"><value>Consentimientos pendientes</value></data>
+  <data name="AdminHumans_IncompleteSignup" xml:space="preserve"><value>Registro incompleto</value></data>
   <data name="AdminHumans_Suspended" xml:space="preserve"><value>Suspendidos</value></data>
-  <data name="AdminHumans_Inactive" xml:space="preserve"><value>Inactivos</value></data>
   <data name="AdminHumans_Deleting" xml:space="preserve"><value>Pendiente de borrado</value></data>
   <data name="AdminHumanDetail_Title" xml:space="preserve"><value>Miembro: {0}</value><comment>{0} = display name</comment></data>
   <data name="AdminApplications_Title" xml:space="preserve"><value>Solicitudes de asociado</value></data>
@@ -737,7 +751,8 @@
   <data name="AdminTeams_Name" xml:space="preserve"><value>Nombre</value></data>
   <data name="AdminTeams_Type" xml:space="preserve"><value>Tipo</value></data>
   <data name="AdminTeams_Members" xml:space="preserve"><value>Miembros</value></data>
-  <data name="AdminTeams_Pending" xml:space="preserve"><value>Pendientes</value></data>
+  <data name="AdminTeams_PendingJoins" xml:space="preserve"><value>Solicitudes pendientes</value></data>
+  <data name="AdminTeams_PendingShifts" xml:space="preserve"><value>Turnos pendientes</value></data>
   <data name="AdminTeams_MailGroup" xml:space="preserve"><value>Grupo de correo</value></data>
   <data name="AdminTeams_DriveResources" xml:space="preserve"><value>Drive</value></data>
   <data name="AdminTeams_Created" xml:space="preserve"><value>Creado</value></data>
@@ -778,6 +793,8 @@
   <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Verificaciones de seguridad durante la incorporación</value></data>
   <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Gestionar el mapa del campamento y las fases de colocación</value></data>
   <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Contacto de facilitación de incorporación</value></data>
+  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Facilitación de incorporación, gestión de turnos global</value></data>
+  <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Aprobar inscripciones en turnos, ver datos médicos de voluntarios</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notas (opcional)</value></data>
   <data name="AdminAddRole_NotesPlaceholder" xml:space="preserve"><value>Motivo de la asignaci&#xF3;n</value></data>
 
@@ -801,10 +818,6 @@
   <data name="TeamAdmin_ManageResources" xml:space="preserve"><value>Gestionar recursos</value></data>
   <data name="TeamAdmin_SystemTeam" xml:space="preserve"><value>Equipo del sistema</value></data>
   <data name="TeamAdmin_SystemTeamRolesInfo" xml:space="preserve"><value>Este es un equipo gestionado por el sistema. Los roles de los miembros no se pueden cambiar manualmente.</value></data>
-  <data name="TeamAdmin_DemoteConfirm" xml:space="preserve"><value>&#xBF;Degradar a este usuario a Miembro?</value></data>
-  <data name="TeamAdmin_DemoteToMember" xml:space="preserve"><value>Degradar a Miembro</value></data>
-  <data name="TeamAdmin_PromoteConfirm" xml:space="preserve"><value>&#xBF;Ascender a este usuario a Lead?</value></data>
-  <data name="TeamAdmin_PromoteToLead" xml:space="preserve"><value>Ascender a Lead</value></data>
   <data name="TeamAdmin_RemoveConfirm" xml:space="preserve"><value>&#xBF;Eliminar a este miembro del equipo?</value></data>
   <data name="TeamAdmin_Remove" xml:space="preserve"><value>Eliminar</value></data>
   <data name="TeamAdmin_NoMembers" xml:space="preserve"><value>A&#xFA;n no hay miembros en este equipo.</value></data>
@@ -851,7 +864,19 @@
   <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>Suba una imagen JPEG, PNG, WebP o HEIC (m&#xE1;x. 20MB). Las im&#xE1;genes grandes se redimensionan autom&#xE1;ticamente. Esto reemplaza su avatar de Google.</value></data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Eliminar foto personalizada (volver al avatar de Google)</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Solo visible para usted y la junta directiva. Se usa para el calendario de cumplea&#xF1;os.</value></data>
-  <data name="TeamDetail_TeamLeads" xml:space="preserve"><value>L&#xED;deres del equipo</value></data>
+  <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinators</value></data>
+
+  <!-- Team Public Pages -->
+  <data name="TeamDetail_AboutTeam" xml:space="preserve"><value>Sobre</value></data>
+  <data name="TeamDetail_EditPage" xml:space="preserve"><value>Editar Página</value></data>
+  <data name="TeamDetail_LastUpdated" xml:space="preserve"><value>Última actualización</value></data>
+  <data name="TeamDetail_NoPageContent" xml:space="preserve"><value>Este equipo aún no tiene una página. Añade contenido para contar a los humans de qué se trata.</value></data>
+  <data name="TeamDetail_AddPageContent" xml:space="preserve"><value>Añadir Contenido</value></data>
+  <data name="Teams_PublicDirectory" xml:space="preserve"><value>Equipos</value></data>
+  <data name="Teams_PublicDirectorySubtitle" xml:space="preserve"><value>Descubre los equipos que hacen que las cosas sucedan.</value></data>
+  <data name="Teams_LearnMore" xml:space="preserve"><value>Más Info</value></data>
+  <data name="Teams_NoPublicTeams" xml:space="preserve"><value>Aún no hay páginas de equipos públicas.</value></data>
+  <data name="EditTeamPage_Saved" xml:space="preserve"><value>Página del equipo actualizada.</value></data>
 
   <!-- Emergency Contact -->
   <data name="Profile_EmergencyContact" xml:space="preserve"><value>Contacto de emergencia</value></data>
@@ -1151,5 +1176,67 @@
   <data name="Camp_SwissCampLabel" xml:space="preserve"><value>¿Este camp se ha llamado alguna vez "Swiss Camp"?</value></data>
   <data name="Camp_InfoTitle" xml:space="preserve"><value>Información del Barrio</value></data>
   <data name="Camp_NameLabel" xml:space="preserve"><value>Nombre del Barrio</value></data>
+  <data name="Camp_ContactButton" xml:space="preserve"><value>Contactar este barrio</value></data>
+  <data name="Camp_ContactLoginHint" xml:space="preserve"><value>Requiere iniciar sesión · Tu email se mantiene privado</value></data>
+  <data name="Camp_Contact_Title" xml:space="preserve"><value>Contactar {0}</value></data>
+  <data name="Camp_Contact_Heading" xml:space="preserve"><value>Contactar {0}</value></data>
+  <data name="Camp_Contact_Breadcrumb" xml:space="preserve"><value>Contacto</value></data>
+  <data name="Camp_Contact_MessageLabel" xml:space="preserve"><value>Tu mensaje</value></data>
+  <data name="Camp_Contact_PlainTextOnly" xml:space="preserve"><value>Solo texto plano. Máximo 2000 caracteres.</value></data>
+  <data name="Camp_Contact_IncludeContactInfo" xml:space="preserve"><value>Incluir mi información de contacto</value></data>
+  <data name="Camp_Contact_IncludeContactInfoHelp" xml:space="preserve"><value>Tu email se añadirá como respuesta para que puedan responderte directamente</value></data>
+  <data name="Camp_Contact_Send" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Camp_Contact_Success" xml:space="preserve"><value>Tu mensaje se ha enviado a {0}.</value></data>
+  <data name="Camp_Contact_RateLimited" xml:space="preserve"><value>Ya has contactado este barrio recientemente. Espera unos minutos antes de enviar otro mensaje.</value></data>
+  <data name="Camp_Links_Header" xml:space="preserve"><value>Enlaces y Contacto</value></data>
+  <data name="Camp_Edit_Links" xml:space="preserve"><value>Enlaces</value></data>
+  <data name="Camp_Edit_AddLink" xml:space="preserve"><value>Añadir enlace</value></data>
+  <data name="Camp_Edit_RemoveLink" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="Camp_Edit_WebsiteNudge" xml:space="preserve"><value>Recomendamos encarecidamente añadir una web para tu barrio para que los visitantes puedan conocerte mejor.</value></data>
+  <data name="Shifts_SignedUp" xml:space="preserve"><value>Apuntados</value></data>
+  <data name="Shifts_Pending" xml:space="preserve"><value>(pendiente)</value></data>
+
+  <!-- Feedback Email -->
+  <data name="Email_FeedbackResponse_Subject" xml:space="preserve"><value>Actualización sobre tu feedback</value></data>
+  <data name="Email_FeedbackResponse_Body" xml:space="preserve"><value>&lt;h2&gt;Actualización sobre tu Feedback&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Hemos revisado tu feedback:&lt;/p&gt;
+&lt;blockquote style="border-left: 3px solid #ccc; padding-left: 12px; color: #666;"&gt;{1}&lt;/blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Nuestra respuesta:&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;{2}&lt;/p&gt;
+&lt;p&gt;¡Gracias por ayudarnos a mejorar!&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = original description, {2} = response message</comment></data>
+
+  <!-- Feedback Widget -->
+  <data name="Feedback_Button" xml:space="preserve"><value>Feedback</value></data>
+  <data name="Feedback_Title" xml:space="preserve"><value>Enviar Feedback</value></data>
+  <data name="Feedback_Category" xml:space="preserve"><value>Categoría</value></data>
+  <data name="Feedback_Category_Bug" xml:space="preserve"><value>Reporte de error</value></data>
+  <data name="Feedback_Category_FeatureRequest" xml:space="preserve"><value>Solicitud de función</value></data>
+  <data name="Feedback_Category_Question" xml:space="preserve"><value>Pregunta</value></data>
+  <data name="Feedback_Description" xml:space="preserve"><value>Descripción</value></data>
+  <data name="Feedback_DescriptionPlaceholder" xml:space="preserve"><value>Cuéntanos qué pasó o qué te gustaría ver...</value></data>
+  <data name="Feedback_Screenshot" xml:space="preserve"><value>Captura de pantalla (opcional)</value></data>
+  <data name="Feedback_ScreenshotHelp" xml:space="preserve"><value>JPEG, PNG o WebP. Máximo 10MB.</value></data>
+  <data name="Feedback_Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Feedback_Submit" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Feedback_Submitted" xml:space="preserve"><value>¡Gracias! Tu feedback ha sido enviado.</value></data>
+  <data name="Feedback_Error" xml:space="preserve"><value>Algo salió mal al enviar tu feedback. Por favor, inténtalo de nuevo.</value></data>
+
+  <data name="MagicLinkSent_Message" xml:space="preserve"><value>Hemos enviado un enlace a esa dirección de correo desde humans@nobodies.team. Revisa tu bandeja de entrada (y la carpeta de spam).</value></data>
+
+  <!-- Workspace Credentials -->
+  <data name="Email_WorkspaceCredentials_Subject" xml:space="preserve"><value>Tu cuenta @nobodies.team está lista</value></data>
+  <data name="Email_WorkspaceCredentials_Body" xml:space="preserve"><value>&lt;h2&gt;Tu cuenta @nobodies.team está lista&lt;/h2&gt;
+&lt;p&gt;Hola {0},&lt;/p&gt;
+&lt;p&gt;Tu cuenta de Google Workspace ha sido creada:&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Usuario:&lt;/strong&gt; {1}&lt;br/&gt;
+&lt;strong&gt;Contraseña temporal:&lt;/strong&gt; {2}&lt;/p&gt;
+&lt;p&gt;Inicia sesión en &lt;a href="https://mail.google.com/"&gt;mail.google.com&lt;/a&gt; y se te pedirá cambiar tu contraseña en el primer inicio de sesión.&lt;/p&gt;
+&lt;p&gt;Nuestra organización tiene la autenticación en dos pasos (2FA) activada, por lo que también tendrás que configurar un segundo factor (como un teléfono o una app de autenticación) durante el inicio de sesión.&lt;/p&gt;
+&lt;p&gt;El equipo de Humans&lt;/p&gt;</value><comment>{0} = user name, {1} = workspace email, {2} = temporary password</comment></data>
+
+  <!-- Camp Cards -->
+  <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>¡Este barrio necesita una foto!</value></data>
 
 </root>

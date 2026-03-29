@@ -23,13 +23,31 @@
     {
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">@role.Name</h5>
-                @if (!role.IsLeadRole)
+                <div>
+                    <h5 class="mb-0 d-inline">@role.Name</h5>
+                    @if (role.Period != RolePeriod.YearRound)
+                    {
+                        var rpBadge = role.Period switch
+                        {
+                            RolePeriod.Build => "bg-info",
+                            RolePeriod.Event => "bg-success",
+                            RolePeriod.Strike => "bg-secondary",
+                            _ => "bg-light text-dark"
+                        };
+                        <span class="badge @rpBadge ms-2">@role.Period</span>
+                    }
+                    @if (role.IsManagement)
+                    {
+                        <span class="badge bg-warning text-dark ms-1">Management</span>
+                    }
+                </div>
+                @if (!role.IsManagement)
                 {
                     <form asp-controller="TeamAdmin" asp-action="DeleteRole" asp-route-slug="@Model.Slug" asp-route-roleId="@role.Id" method="post"
-                          class="d-inline" onsubmit="return confirm('Are you sure you want to delete this role? All assignments will be removed.')">
+                          class="d-inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                data-confirm="Are you sure you want to delete this role? All assignments will be removed.">Delete</button>
                     </form>
                 }
             </div>
@@ -39,14 +57,7 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-3">
                             <label class="form-label">Name</label>
-                            @if (role.IsLeadRole)
-                            {
-                                <input type="text" class="form-control" name="Name" value="@role.Name" readonly />
-                            }
-                            else
-                            {
-                                <input type="text" class="form-control" name="Name" value="@role.Name" required />
-                            }
+                            <input type="text" class="form-control" name="Name" value="@role.Name" required />
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Slot Count</label>
@@ -57,6 +68,15 @@
                             <label class="form-label">Sort</label>
                             <input type="number" class="form-control" name="SortOrder" value="@role.SortOrder" />
                         </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Period</label>
+                            <select name="Period" class="form-select">
+                                <option value="YearRound" selected="@(role.Period == RolePeriod.YearRound ? "selected" : null)">Year-round</option>
+                                <option value="Build" selected="@(role.Period == RolePeriod.Build ? "selected" : null)">Set-up</option>
+                                <option value="Event" selected="@(role.Period == RolePeriod.Event ? "selected" : null)">Event</option>
+                                <option value="Strike" selected="@(role.Period == RolePeriod.Strike ? "selected" : null)">Strike</option>
+                            </select>
+                        </div>
                         <div class="col-md-1 d-flex align-items-end">
                             <button type="submit" class="btn btn-primary">Save</button>
                         </div>
@@ -66,13 +86,13 @@
                         <div class="d-flex flex-wrap gap-2 priorities-container" data-role-id="@role.Id">
                             @for (var i = 0; i < role.SlotCount; i++)
                             {
-                                var currentPriority = i < role.Slots.Count ? role.Slots[i].Priority : "None";
+                                var currentPriority = i < role.Slots.Count ? role.Slots[i].Priority.ToString() : "None";
                                 <div class="input-group input-group-sm" style="max-width: 200px;">
                                     <span class="input-group-text">@(i + 1)</span>
                                     <select name="Priorities" class="form-select form-select-sm">
                                         @foreach (var opt in priorityOptions)
                                         {
-                                            <option value="@opt" selected="@(string.Equals(opt, currentPriority, StringComparison.OrdinalIgnoreCase))">
+                                            <option value="@opt" selected="@(string.Equals(opt, currentPriority, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">
                                                 @(opt == "NiceToHave" ? "Nice to Have" : opt)
                                             </option>
                                         }
@@ -81,10 +101,35 @@
                             }
                         </div>
                     </div>
+                    @if (!Model.IsChildTeam || role.IsManagement)
+                    {
+                        var hasAssignments = role.Slots.Any(s => s.IsFilled);
+                        <div class="mb-3 form-check">
+                            @if (role.IsManagement && hasAssignments)
+                            {
+                                <input type="hidden" name="IsManagement" value="true" />
+                                <input type="checkbox" class="form-check-input" id="isManagement-@role.Id" checked disabled />
+                            }
+                            else
+                            {
+                                <input type="checkbox" class="form-check-input" id="isManagement-@role.Id"
+                                       name="IsManagement" value="true" @(role.IsManagement ? "checked" : "") />
+                            }
+                            <label class="form-check-label" for="isManagement-@role.Id">Coordinator role</label>
+                            @if (role.IsManagement && hasAssignments)
+                            {
+                                <div class="form-text text-warning">Unassign all members before unchecking.</div>
+                            }
+                            else
+                            {
+                                <div class="form-text">Members assigned to this role automatically become Coordinators.</div>
+                            }
+                        </div>
+                    }
                     <div class="mb-3">
                         <label class="form-label">Description</label>
                         <small class="text-muted ms-2">Markdown: **bold**, *italic*, - bullets, ## headings</small>
-                        <textarea class="form-control" name="Description" rows="3">@role.Description</textarea>
+                        <textarea class="form-control" name="Description" rows="3" maxlength="2000">@role.Description</textarea>
                     </div>
                 </form>
 
@@ -102,7 +147,7 @@
                         {
                             <tr>
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == "NiceToHave" ? "Nice to Have" : slot.Priority)</span></td>
+                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
                                 <td>
                                     @if (slot.IsFilled)
                                     {
@@ -172,6 +217,15 @@ else
                     <label class="form-label">Sort</label>
                     <input type="number" class="form-control" name="SortOrder" value="0" />
                 </div>
+                <div class="col-md-2">
+                    <label class="form-label">Period</label>
+                    <select name="Period" class="form-select">
+                        <option value="YearRound" selected>Year-round</option>
+                        <option value="Build">Set-up</option>
+                        <option value="Event">Event</option>
+                        <option value="Strike">Strike</option>
+                    </select>
+                </div>
                 <div class="col-md-1 d-flex align-items-end">
                     <button type="submit" class="btn btn-success">Add</button>
                 </div>
@@ -193,7 +247,7 @@ else
             <div class="mt-2">
                 <label class="form-label">Description</label>
                 <small class="text-muted ms-2">Markdown: **bold**, *italic*, - bullets, ## headings</small>
-                <textarea class="form-control" name="Description" rows="3"></textarea>
+                <textarea class="form-control" name="Description" rows="3" maxlength="2000"></textarea>
             </div>
         </form>
     </div>

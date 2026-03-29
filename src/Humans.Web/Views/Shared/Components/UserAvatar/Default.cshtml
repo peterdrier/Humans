@@ -1,10 +1,10 @@
 @{
-    string? profilePictureUrl = ViewBag.ProfilePictureUrl;
-    string initial = ViewBag.Initial;
-    int size = ViewBag.Size;
-    string? cssClass = ViewBag.CssClass;
-    string bgColor = ViewBag.BgColor;
-    double fontRem = ViewBag.FontRem;
+    string? profilePictureUrl = ViewBag.ProfilePictureUrl as string;
+    string initial = ViewBag.Initial as string ?? "?";
+    int size = (int?)ViewBag.Size ?? 40;
+    string? cssClass = ViewBag.CssClass as string;
+    string bgColor = ViewBag.BgColor as string ?? "bg-secondary";
+    double fontRem = (double?)ViewBag.FontRem ?? 0.8;
 }
 @if (!string.IsNullOrEmpty(profilePictureUrl))
 {

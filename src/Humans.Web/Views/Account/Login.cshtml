@@ -1,9 +1,21 @@
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnv
+@inject Microsoft.Extensions.Configuration.IConfiguration Config
 @{
     ViewData["Title"] = Localizer["Login_Title"].Value;
+    var devAuthEnabled = !HostEnv.IsProduction() && Config.GetValue<bool>("DevAuth:Enabled");
 }
 
 <div class="row justify-content-center">
+    @if (Context.Request.Query.ContainsKey("error"))
+    {
+        <div class="col-md-6 mb-0">
+            <div class="alert alert-warning alert-dismissible fade show mt-5 mb-0" role="alert">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                @Localizer["Login_SignInFailed"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    }
     <div class="col-md-6">
         <div class="card mt-5">
             <div class="card-body text-center">
@@ -23,38 +35,45 @@
                         @Localizer["Login_SignInWithGoogle"]
                     </button>
                 </form>
+
+                <hr class="my-4" />
+
+                <p class="text-muted small mb-3">@Localizer["Login_MagicLink_Title"]</p>
+                <form asp-controller="Account" asp-action="MagicLinkRequest" method="post" class="d-flex gap-2 justify-content-center">
+                    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+                    <input type="email" name="email" class="form-control" style="max-width: 280px;"
+                           placeholder="@Localizer["Login_MagicLink_Placeholder"]" required />
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-paper-plane me-1"></i>
+                        @Localizer["Login_MagicLink_Submit"]
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
-@if (HostEnv.IsDevelopment())
+@if (devAuthEnabled)
 {
     <div class="row justify-content-center mt-3">
         <div class="col-md-6">
             <div class="card border-warning">
                 <div class="card-header bg-warning text-dark py-2">
-                    <small><strong>⚠️ Dev login — local only</strong></small>
+                    <small><strong>Dev login — @HostEnv.EnvironmentName</strong></small>
                 </div>
                 <div class="card-body py-3 text-center">
-                    <p class="text-muted small mb-3">Skip Google OAuth and sign in as a seeded dev persona.</p>
-                    <div class="d-flex gap-2 justify-content-center flex-wrap">
-                        <a asp-controller="DevLogin" asp-action="Volunteer" class="btn btn-sm btn-outline-secondary">
-                            👤 Volunteer
-                        </a>
-                        <a asp-controller="DevLogin" asp-action="Board" class="btn btn-sm btn-outline-secondary">
-                            🏛️ Board
-                        </a>
-                        <a asp-controller="DevLogin" asp-action="Admin" class="btn btn-sm btn-outline-secondary">
-                            🔧 Admin
-                        </a>
-                        <a asp-controller="DevLogin" asp-action="ConsentCoordinator" class="btn btn-sm btn-outline-secondary">
-                            ✅ Consent Coord
-                        </a>
-                        <a asp-controller="DevLogin" asp-action="VolunteerCoordinator" class="btn btn-sm btn-outline-secondary">
-                            📋 Volunteer Coord
-                        </a>
+                    <p class="text-muted small mb-3">Skip Google OAuth and sign in directly.</p>
+                    <div class="d-flex gap-2 justify-content-center flex-wrap mb-3">
+                        @foreach (var persona in Humans.Web.Controllers.DevLoginController.AllPersonas)
+                        {
+                            <a href="/dev/login/@persona.Slug" class="btn btn-sm btn-outline-secondary">
+                                @persona.DisplayName
+                            </a>
+                        }
                     </div>
+                    <a asp-controller="DevLogin" asp-action="Users" class="btn btn-sm btn-outline-warning">
+                        Choose any user...
+                    </a>
                 </div>
             </div>
         </div>

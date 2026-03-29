@@ -1,0 +1,113 @@
+@model Humans.Web.Models.EventSettingsViewModel
+
+@{
+    ViewData["Title"] = "Event Settings";
+}
+
+<div class="container py-4">
+    <h2>Event Settings</h2>
+    <hr />
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <vc:temp-data-alerts />
+
+            <form asp-action="Settings" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                @if (Model.Id.HasValue)
+                {
+                    <input type="hidden" asp-for="Id" />
+                }
+
+                <div class="card mb-4">
+                    <div class="card-header"><h5 class="mb-0">General</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="EventName" class="form-label">Event Name</label>
+                            <input asp-for="EventName" class="form-control" placeholder="e.g., Nowhere 2026" />
+                            <span asp-validation-for="EventName" class="text-danger"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="TimeZoneId" class="form-label">Timezone (IANA)</label>
+                            <input asp-for="TimeZoneId" class="form-control" placeholder="e.g., Europe/Madrid" />
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="GateOpeningDate" class="form-label">Gate Opening Date</label>
+                                <input asp-for="GateOpeningDate" type="date" class="form-control" />
+                                <span asp-validation-for="GateOpeningDate" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="BuildStartOffset" class="form-label">Build Start Offset</label>
+                                <input asp-for="BuildStartOffset" type="number" class="form-control" />
+                                <small class="form-text text-muted">Negative number (e.g., -14)</small>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="EventEndOffset" class="form-label">Event End Offset</label>
+                                <input asp-for="EventEndOffset" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label asp-for="StrikeEndOffset" class="form-label">Strike End Offset</label>
+                                <input asp-for="StrikeEndOffset" type="number" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header"><h5 class="mb-0">Early Entry</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label asp-for="EarlyEntryCapacityJson" class="form-label">EE Capacity (JSON: day offset → total capacity)</label>
+                            <textarea asp-for="EarlyEntryCapacityJson" class="form-control font-monospace" rows="4" placeholder='{"day_offset": capacity, ...}'></textarea>
+                            <small class="form-text text-muted">Step function: e.g., {"-14": 50, "-7": 100, "-3": 200}</small>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="BarriosEarlyEntryAllocationJson" class="form-label">Barrios EE Allocation (JSON, optional)</label>
+                            <textarea asp-for="BarriosEarlyEntryAllocationJson" class="form-control font-monospace" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="EarlyEntryClose" class="form-label">EE Close (UTC instant, optional)</label>
+                            <input asp-for="EarlyEntryClose" class="form-control" placeholder="2026-07-04T12:00:00Z" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header"><h5 class="mb-0">System Settings</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsShiftBrowsingOpen" type="checkbox" class="form-check-input" />
+                            <label asp-for="IsShiftBrowsingOpen" class="form-check-label">Shift Browsing Open</label>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="GlobalVolunteerCap" class="form-label">Global Volunteer Cap (optional)</label>
+                            <input asp-for="GlobalVolunteerCap" type="number" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="ReminderLeadTimeHours" class="form-label">Reminder Lead Time (hours)</label>
+                            <input asp-for="ReminderLeadTimeHours" type="number" class="form-control" />
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsActive" type="checkbox" class="form-check-input" />
+                            <label asp-for="IsActive" class="form-check-label">Active</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

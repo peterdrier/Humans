@@ -14,7 +14,7 @@
             <option value="">All teams</option>
             @foreach (var team in Model.Teams)
             {
-                <option value="@team.Id" selected="@(Model.FilterTeamId == team.Id)">@team.Name</option>
+                <option value="@team.Id" selected="@(Model.FilterTeamId == team.Id ? "selected" : null)">@team.Name</option>
             }
         </select>
     </form>
@@ -72,7 +72,7 @@
                         </td>
                         <td>@doc.GracePeriodDays days</td>
                         <td>@(doc.CurrentVersion ?? "No versions")</td>
-                        <td>@(doc.LastSyncedAt?.ToString("d MMM yyyy HH:mm") ?? "Never")</td>
+                            <td>@(doc.LastSyncedAt?.ToDisplayDateTime() ?? "Never")</td>
                         <td>
                             <a asp-controller="AdminLegalDocuments" asp-action="EditLegalDocument" asp-route-id="@doc.Id" class="btn btn-outline-primary btn-sm">Edit</a>
                                 @if (doc.IsActive)

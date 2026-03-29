@@ -1,17 +1,5 @@
 @model List<Humans.Web.Models.TeamRoleDefinitionViewModel>
-
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
+@using Humans.Domain.Enums
 
 @if (Model.Any())
 {
@@ -45,6 +33,17 @@
                                 {
                                     <td rowspan="@role.Slots.Count">
                                         <strong>@role.Name</strong>
+                                        @if (role.Period != RolePeriod.YearRound)
+                                        {
+                                            var rpBadge = role.Period switch
+                                            {
+                                                RolePeriod.Build => "bg-info",
+                                                RolePeriod.Event => "bg-success",
+                                                RolePeriod.Strike => "bg-secondary",
+                                                _ => "bg-light text-dark"
+                                            };
+                                            <span class="badge @rpBadge ms-1">@role.Period</span>
+                                        }
                                         @if (!string.IsNullOrEmpty(role.Description))
                                         {
                                             <br />
@@ -56,7 +55,7 @@
                                     </td>
                                 }
                                 <td>@(slot.SlotIndex + 1)</td>
-                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == "NiceToHave" ? "Nice to Have" : slot.Priority)</span></td>
+                                <td><span class="badge @slot.PriorityBadgeClass">@(slot.Priority == SlotPriority.NiceToHave ? "Nice to Have" : slot.Priority.ToString())</span></td>
                                 <td>
                                     @if (slot.IsFilled)
                                     {
@@ -74,7 +73,7 @@
                             <tr class="collapse" id="@collapseId">
                                 <td colspan="4">
                                     <div class="role-description small text-muted">
-                                        @Html.Raw(ConvertMarkdownToHtml(role.Description))
+                                        @Html.SanitizedMarkdown(role.Description)
                                     </div>
                                 </td>
                             </tr>

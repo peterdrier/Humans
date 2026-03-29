@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,7 @@ public class CampServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly CampService _service;
     private readonly IAuditLogService _auditLog;
+    private readonly string _campImagesRoot;
 
     public CampServiceTests()
     {
@@ -29,10 +31,12 @@ public class CampServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 13, 12, 0));
         _auditLog = Substitute.For<IAuditLogService>();
+        _campImagesRoot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "uploads", "camps");
 
         _service = new CampService(
             _dbContext,
             _auditLog,
+            Substitute.For<ISystemTeamSync>(),
             _clock,
             new MemoryCache(new MemoryCacheOptions()),
             NullLogger<CampService>.Instance);
@@ -40,6 +44,11 @@ public class CampServiceTests : IDisposable
 
     public void Dispose()
     {
+        if (Directory.Exists(_campImagesRoot))
+        {
+            Directory.Delete(_campImagesRoot, recursive: true);
+        }
+
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -56,7 +65,7 @@ public class CampServiceTests : IDisposable
 
         var camp = await _service.CreateCampAsync(
             userId, "Camp Funhouse", "camp@fun.com", "+34612345678",
-            "https://instagram.com/funhouse", "DM us on Instagram",
+            "https://instagram.com/funhouse", null,
             isSwissCamp: false, timesAtNowhere: 0,
             MakeSeasonData(), historicalNames: null, year: 2026);
 
@@ -74,7 +83,7 @@ public class CampServiceTests : IDisposable
             .FirstOrDefaultAsync(l => l.CampId == camp.Id);
         lead.Should().NotBeNull();
         lead!.UserId.Should().Be(userId);
-        lead.Role.Should().Be(CampLeadRole.Primary);
+        lead.Role.Should().Be(CampLeadRole.CoLead);
     }
 
     [Fact]
@@ -85,7 +94,7 @@ public class CampServiceTests : IDisposable
 
         var act = () => _service.CreateCampAsync(
             userId, "Register", "camp@test.com", "+34600000000",
-            null, "email", false, 0, MakeSeasonData(), null, 2026);
+            null, null, false, 0, MakeSeasonData(), null, 2026);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*reserved*");
@@ -192,16 +201,15 @@ public class CampServiceTests : IDisposable
     // ==========================================================================
 
     [Fact]
-    public async Task AddLeadAsync_UnderMax_AddsCoLead()
+    public async Task AddLeadAsync_UnderMax_AddsLead()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var coLeadId = Guid.NewGuid();
+        var newLeadId = Guid.NewGuid();
 
-        var lead = await _service.AddLeadAsync(camp.Id, coLeadId, CampLeadRole.CoLead);
+        var lead = await _service.AddLeadAsync(camp.Id, newLeadId);
 
-        lead.Role.Should().Be(CampLeadRole.CoLead);
-        lead.UserId.Should().Be(coLeadId);
+        lead.UserId.Should().Be(newLeadId);
     }
 
     [Fact]
@@ -209,32 +217,23 @@ public class CampServiceTests : IDisposable
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        // Add 4 co-leads (1 primary + 4 = 5 max)
+        // Add 4 more leads (1 creator + 4 = 5 max)
         for (var i = 0; i < 4; i++)
-            await _service.AddLeadAsync(camp.Id, Guid.NewGuid(), CampLeadRole.CoLead);
+            await _service.AddLeadAsync(camp.Id, Guid.NewGuid());
 
-        var act = () => _service.AddLeadAsync(camp.Id, Guid.NewGuid(), CampLeadRole.CoLead);
+        var act = () => _service.AddLeadAsync(camp.Id, Guid.NewGuid());
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*maximum*");
     }
 
-    // ==========================================================================
-    // TransferPrimaryLeadAsync
-    // ==========================================================================
-
     [Fact]
-    public async Task TransferPrimaryLeadAsync_ToCoLead_SwapsRoles()
+    public async Task RemoveLeadAsync_LastLead_Throws()
     {
         await SeedSettingsAsync();
         var camp = await CreateTestCamp();
-        var coLeadId = Guid.NewGuid();
-        await _service.AddLeadAsync(camp.Id, coLeadId, CampLeadRole.CoLead);
+        var lead = await _dbContext.CampLeads.FirstAsync(l => l.CampId == camp.Id);
 
-        await _service.TransferPrimaryLeadAsync(camp.Id, coLeadId);
-
-        var leads = await _dbContext.CampLeads
-            .Where(l => l.CampId == camp.Id && l.LeftAt == null)
-            .ToListAsync();
-        leads.First(l => l.UserId == coLeadId).Role.Should().Be(CampLeadRole.Primary);
+        var act = () => _service.RemoveLeadAsync(lead.Id);
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*last lead*");
     }
 
     // ==========================================================================
@@ -259,6 +258,276 @@ public class CampServiceTests : IDisposable
         var camp = await CreateTestCamp();
         var result = await _service.IsUserCampLeadAsync(Guid.NewGuid(), camp.Id);
         result.Should().BeFalse();
+    }
+
+    // ==========================================================================
+    // Public projections
+    // ==========================================================================
+
+    [Fact]
+    public async Task GetCampPublicSummariesForYearAsync_ReturnsSortedProjectedSummaries()
+    {
+        await SeedSettingsAsync();
+
+        var zebraCamp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Zebra Camp",
+            "zebra@camp.com",
+            "+34600000000",
+            null,
+            [new CampLink { Url = "https://example.com/zebra", Platform = "Website" }],
+            isSwissCamp: true,
+            timesAtNowhere: 3,
+            MakeSeasonData() with
+            {
+                BlurbShort = "Zebra short",
+                BlurbLong = "Zebra long",
+                AcceptingMembers = YesNoMaybe.Maybe,
+                KidsWelcome = YesNoMaybe.Yes,
+                SoundZone = SoundZone.Red,
+                Vibes = [CampVibe.LiveMusic]
+            },
+            historicalNames: null,
+            year: 2026);
+
+        var alphaCamp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Alpha Camp",
+            "alpha@camp.com",
+            "+34600000001",
+            "https://example.com/alpha",
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 1,
+            MakeSeasonData() with
+            {
+                BlurbShort = "Alpha short",
+                BlurbLong = "Alpha long",
+                AcceptingMembers = YesNoMaybe.Yes,
+                KidsWelcome = YesNoMaybe.No,
+                SoundZone = SoundZone.Green,
+                Vibes = [CampVibe.ChillOut]
+            },
+            historicalNames: null,
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(zebraCamp.Id);
+        await ApproveLatestSeasonAsync(alphaCamp.Id);
+
+        _dbContext.CampImages.Add(new CampImage
+        {
+            Id = Guid.NewGuid(),
+            CampId = zebraCamp.Id,
+            StoragePath = "uploads/camps/zebra.jpg",
+            SortOrder = 1,
+            UploadedAt = _clock.GetCurrentInstant()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var summaries = await _service.GetCampPublicSummariesForYearAsync(2026);
+
+        summaries.Select(summary => summary.Name).Should().Equal("Alpha Camp", "Zebra Camp");
+        summaries[0].BlurbShort.Should().Be("Alpha short");
+        summaries[0].Status.Should().Be(nameof(CampSeasonStatus.Active));
+        summaries[0].WebOrSocialUrl.Should().Be("https://example.com/alpha");
+        summaries[1].ImageUrl.Should().Be("/uploads/camps/zebra.jpg");
+        summaries[1].Links.Should().ContainSingle();
+        summaries[1].AcceptingMembers.Should().Be(nameof(YesNoMaybe.Maybe));
+        summaries[1].KidsWelcome.Should().Be(nameof(YesNoMaybe.Yes));
+        summaries[1].SoundZone.Should().Be(nameof(SoundZone.Red));
+        summaries[1].Vibes.Should().Equal(nameof(CampVibe.LiveMusic));
+        summaries[1].IsSwissCamp.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetCampPlacementSummariesForYearAsync_ReturnsSortedPlacementData()
+    {
+        await SeedSettingsAsync();
+
+        var bravoCamp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Bravo Camp",
+            "bravo@camp.com",
+            "+34600000002",
+            null,
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            MakeSeasonData() with
+            {
+                MemberCount = 42,
+                SpaceRequirement = SpaceSize.Sqm800,
+                SoundZone = SoundZone.Blue,
+                ContainerCount = 2,
+                ContainerNotes = "Two containers",
+                ElectricalGrid = ElectricalGrid.Red
+            },
+            historicalNames: null,
+            year: 2026);
+
+        var alphaCamp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Alpha Camp",
+            "alpha2@camp.com",
+            "+34600000003",
+            null,
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            MakeSeasonData() with
+            {
+                MemberCount = 10,
+                SpaceRequirement = SpaceSize.Sqm300,
+                SoundZone = SoundZone.Green,
+                ContainerCount = 0,
+                ContainerNotes = null,
+                ElectricalGrid = ElectricalGrid.Yellow
+            },
+            historicalNames: null,
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(bravoCamp.Id);
+        await ApproveLatestSeasonAsync(alphaCamp.Id);
+
+        var placements = await _service.GetCampPlacementSummariesForYearAsync(2026);
+
+        placements.Select(summary => summary.Name).Should().Equal("Alpha Camp", "Bravo Camp");
+        placements[1].MemberCount.Should().Be(42);
+        placements[1].SpaceRequirement.Should().Be(nameof(SpaceSize.Sqm800));
+        placements[1].SoundZone.Should().Be(nameof(SoundZone.Blue));
+        placements[1].ContainerCount.Should().Be(2);
+        placements[1].ContainerNotes.Should().Be("Two containers");
+        placements[1].ElectricalGrid.Should().Be(nameof(ElectricalGrid.Red));
+        placements[1].Status.Should().Be(nameof(CampSeasonStatus.Active));
+    }
+
+    [Fact]
+    public async Task GetCampDetailAsync_UsesPublicYearAndFallsBackToLatestSeason()
+    {
+        await SeedSettingsAsync();
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "Camp Lead");
+
+        var camp = await _service.CreateCampAsync(
+            leadUserId,
+            "Fallback Camp",
+            "fallback@camp.com",
+            "+34600000004",
+            "https://example.com/fallback",
+            null,
+            isSwissCamp: true,
+            timesAtNowhere: 4,
+            MakeSeasonData(),
+            historicalNames: ["Old Fallback"],
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        season.NameLockDate = new LocalDate(2026, 3, 1);
+
+        _dbContext.CampImages.Add(new CampImage
+        {
+            Id = Guid.NewGuid(),
+            CampId = camp.Id,
+            StoragePath = "uploads/camps/fallback.jpg",
+            SortOrder = 1,
+            UploadedAt = _clock.GetCurrentInstant()
+        });
+
+        var settings = await _dbContext.CampSettings.FirstAsync();
+        settings.PublicYear = 2027;
+        await _dbContext.SaveChangesAsync();
+
+        var detail = await _service.GetCampDetailAsync(camp.Slug);
+
+        detail.Should().NotBeNull();
+        detail!.Name.Should().Be("Fallback Camp");
+        detail.Links.Should().ContainSingle(link => link.Url == "https://example.com/fallback");
+        detail.HistoricalNames.Should().Contain("Old Fallback");
+        detail.ImageUrls.Should().ContainSingle("/uploads/camps/fallback.jpg");
+        detail.Leads.Should().ContainSingle(lead => lead.DisplayName == "Camp Lead");
+        detail.CurrentSeason.Should().NotBeNull();
+        detail.CurrentSeason!.Year.Should().Be(2026);
+        detail.CurrentSeason.IsNameLocked.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetCampDetailAsync_ExplicitYearWithoutFallback_ReturnsNullWhenSeasonMissing()
+    {
+        await SeedSettingsAsync();
+        var leadUserId = Guid.NewGuid();
+        await SeedUserAsync(leadUserId, "No Fallback Lead");
+
+        var camp = await _service.CreateCampAsync(
+            leadUserId,
+            "No Fallback Camp",
+            "nofollow@camp.com",
+            "+34600000005",
+            null,
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            MakeSeasonData(),
+            historicalNames: null,
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        var detail = await _service.GetCampDetailAsync(
+            camp.Slug,
+            preferredYear: 2027,
+            fallbackToLatestSeason: false);
+
+        detail.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetSettingsAsync_AfterSetPublicYearAsync_ReturnsInvalidatedSettings()
+    {
+        await SeedSettingsAsync();
+
+        var initial = await _service.GetSettingsAsync();
+
+        initial.PublicYear.Should().Be(2026);
+
+        await _service.SetPublicYearAsync(2027);
+
+        var updated = await _service.GetSettingsAsync();
+
+        updated.PublicYear.Should().Be(2027);
+    }
+
+    [Fact]
+    public async Task GetCampPublicSummariesForYearAsync_AfterUploadImageAsync_RefreshesCachedImage()
+    {
+        await SeedSettingsAsync();
+
+        var camp = await _service.CreateCampAsync(
+            Guid.NewGuid(),
+            "Cache Image Camp",
+            "cache-image@camp.com",
+            "+34600000006",
+            null,
+            null,
+            isSwissCamp: false,
+            timesAtNowhere: 0,
+            MakeSeasonData(),
+            historicalNames: null,
+            year: 2026);
+
+        await ApproveLatestSeasonAsync(camp.Id);
+
+        var beforeUpload = await _service.GetCampPublicSummariesForYearAsync(2026);
+
+        beforeUpload.Single(summary => summary.Id == camp.Id).ImageUrl.Should().BeNull();
+
+        await using var imageStream = new MemoryStream([1, 2, 3, 4]);
+        await _service.UploadImageAsync(camp.Id, imageStream, "camp.jpg", "image/jpeg", imageStream.Length);
+
+        var afterUpload = await _service.GetCampPublicSummariesForYearAsync(2026);
+
+        afterUpload.Single(summary => summary.Id == camp.Id).ImageUrl.Should().NotBeNull();
     }
 
     // ==========================================================================
@@ -327,7 +596,17 @@ public class CampServiceTests : IDisposable
     {
         return await _service.CreateCampAsync(
             Guid.NewGuid(), "Test Camp", "test@camp.com", "+34600000000",
-            null, "email us", false, 1, MakeSeasonData(), null, 2026);
+            null, null, false, 1, MakeSeasonData(), null, 2026);
+    }
+
+    private async Task ApproveLatestSeasonAsync(Guid campId)
+    {
+        var season = await _dbContext.CampSeasons
+            .Where(s => s.CampId == campId)
+            .OrderByDescending(s => s.Year)
+            .FirstAsync();
+
+        await _service.ApproveSeasonAsync(season.Id, Guid.NewGuid(), null);
     }
 
     private async Task SeedSettingsAsync()
@@ -342,5 +621,18 @@ public class CampServiceTests : IDisposable
             });
             await _dbContext.SaveChangesAsync();
         }
+    }
+
+    private async Task SeedUserAsync(Guid userId, string displayName)
+    {
+        _dbContext.Users.Add(new User
+        {
+            Id = userId,
+            UserName = $"{displayName.Replace(" ", string.Empty, StringComparison.Ordinal)}@example.com",
+            Email = $"{displayName.Replace(" ", string.Empty, StringComparison.Ordinal)}@example.com",
+            DisplayName = displayName
+        });
+
+        await _dbContext.SaveChangesAsync();
     }
 }

@@ -18,10 +18,10 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Humans.Domain.Entities;
+using Humans.Web.Extensions;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
-using Humans.Web.Extensions;
 using Humans.Web.Health;
 using Humans.Web.Hubs;
 using Humans.Web.Middleware;
@@ -29,6 +29,8 @@ using Microsoft.Extensions.Localization;
 using Npgsql;
 using Humans.Infrastructure.Logging;
 using Serilog;
+using Serilog.Events;
+using Humans.Web.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,7 +40,8 @@ var logConfig = new LoggerConfiguration()
     .Enrich.FromLogContext()
     .Enrich.WithProperty("Application", "Humans.Web")
     .Enrich.With<PiiRedactionEnricher>()
-    .WriteTo.Console();
+    .WriteTo.Console()
+    .WriteTo.Sink(InMemoryLogSink.Instance, LogEventLevel.Warning);
 
 if (Debugger.IsAttached)
 {
@@ -85,6 +88,7 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
     {
         npgsqlOptions.UseNodaTime();
         npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
+        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
     if (builder.Environment.IsDevelopment())
     {
@@ -107,6 +111,8 @@ builder.Services.AddIdentity<User, IdentityRole<Guid>>(options =>
     .AddEntityFrameworkStores<HumansDbContext>()
     .AddDefaultTokenProviders();
 
+// Magic link tokens use DataProtection with explicit 15-minute lifetime (not Identity token providers).
+
 // Configure cookie security policy (TLS terminated by Coolify/reverse proxy)
 builder.Services.ConfigureApplicationCookie(options =>
 {
@@ -128,6 +134,19 @@ builder.Services.AddAuthentication()
         options.Scope.Add("profile");
         options.Scope.Add("email");
         options.SaveTokens = false;
+        options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
+        {
+            OnRemoteFailure = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("GoogleOAuth");
+                logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", context.Failure?.Message);
+
+                context.Response.Redirect("/Account/Login?error=sign-in-failed");
+                context.HandleResponse();
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Configure Authorization
@@ -150,7 +169,11 @@ builder.Services.AddHangfire((sp, config) =>
         config.UsePostgreSqlStorage(options =>
             options.UseNpgsqlConnection(
                 sp.GetRequiredService<IConfiguration>()
-                    .GetConnectionString("DefaultConnection")!));
+                    .GetConnectionString("DefaultConnection")!),
+            new Hangfire.PostgreSql.PostgreSqlStorageOptions
+            {
+                DistributedLockTimeout = TimeSpan.FromSeconds(5)
+            });
     }
 });
 
@@ -181,6 +204,7 @@ builder.Services.AddOpenTelemetry()
         .AddRuntimeInstrumentation()
         .AddHttpClientInstrumentation()
         .AddMeter("Humans.Metrics")
+        .AddMeter("Npgsql")
         .AddPrometheusExporter());
 
 // Register activity source for custom tracing
@@ -247,6 +271,15 @@ builder.Services.AddRateLimiter(options =>
 // No explicit config needed — the app is only reachable through Traefik/Coolify
 // on internal Docker networks, so trusting any proxy is safe.
 
+// Session (used for browser-detected timezone — no DB migration needed)
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(8);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 // Configure Localization
 builder.Services.AddLocalization();
 
@@ -254,13 +287,14 @@ builder.Services.AddLocalization();
 builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add<MembershipRequiredFilter>();
+        options.Filters.Add<Humans.Web.Filters.GlobalExceptionFilter>();
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
     .AddDataAnnotationsLocalization();
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
 
-var supportedCultures = new[] { "en", "es", "de", "it", "fr" };
+var supportedCultures = CultureCatalog.SupportedCultureCodes.ToArray();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
     options.SetDefaultCulture("en");
@@ -272,7 +306,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
         {
             var userManager = context.RequestServices.GetRequiredService<UserManager<User>>();
             var user = await userManager.GetUserAsync(context.User);
-            if (user != null && !string.IsNullOrEmpty(user.PreferredLanguage))
+            if (user is not null && !string.IsNullOrEmpty(user.PreferredLanguage))
             {
                 return new ProviderCultureResult(user.PreferredLanguage);
             }
@@ -282,6 +316,10 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 });
 
 var app = builder.Build();
+
+// Initialize timezone-aware display extensions with IHttpContextAccessor
+// so all Instant.ToDisplay*() calls automatically use the user's session timezone.
+DateTimeDisplayExtensions.Initialize(app.Services.GetRequiredService<IHttpContextAccessor>());
 
 // Eagerly resolve HumansMetricsService so the background gauge-refresh timer starts
 // immediately — otherwise observable gauges emit nothing until first injection.
@@ -335,7 +373,27 @@ app.Services.GetRequiredService<HumansMetricsService>();
 // Forwarded headers must be first (for reverse proxy)
 app.UseForwardedHeaders();
 
-if (!app.Environment.IsDevelopment())
+// Global catch-all logger — logs every unhandled exception regardless of what
+// downstream middleware does. Must be first after forwarded headers.
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Unhandled exception on {Method} {Path}", context.Request.Method, context.Request.Path);
+        throw;
+    }
+});
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+else
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
@@ -345,8 +403,10 @@ app.UseStatusCodePagesWithReExecute("/Home/Error/{0}");
 
 app.UseHttpsRedirection();
 
-// Response compression
-app.UseResponseCompression();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseResponseCompression();
+}
 
 app.UseStaticFiles();
 
@@ -384,6 +444,8 @@ app.UseSerilogRequestLogging();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseSession();
 
 app.UseRequestLocalization();
 
@@ -445,7 +507,19 @@ if (!app.Environment.IsEnvironment("Testing"))
     app.UseHumansRecurringJobs();
 }
 
-await app.RunAsync();
+try
+{
+    await app.RunAsync();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 static async Task WriteDetailedHealthResponse(HttpContext context, HealthReport report)
 {

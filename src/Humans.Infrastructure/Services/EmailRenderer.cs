@@ -4,6 +4,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Infrastructure.Services;
@@ -16,13 +17,16 @@ public class EmailRenderer : IEmailRenderer
 {
     private readonly EmailSettings _settings;
     private readonly IStringLocalizer _localizer;
+    private readonly ILogger<EmailRenderer> _logger;
 
     public EmailRenderer(
         IOptions<EmailSettings> settings,
-        IStringLocalizerFactory localizerFactory)
+        IStringLocalizerFactory localizerFactory,
+        ILogger<EmailRenderer> logger)
     {
         _settings = settings.Value;
         _localizer = localizerFactory.Create("SharedResource", "Humans.Web");
+        _logger = logger;
     }
 
     public EmailContent RenderApplicationSubmitted(Guid applicationId, string applicantName)
@@ -155,14 +159,17 @@ public class EmailRenderer : IEmailRenderer
         }
     }
 
-    public EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, string? culture = null)
+    public EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, bool isConflict = false, string? culture = null)
     {
         using (WithCulture(culture))
         {
+            var templateKey = isConflict
+                ? "Email_EmailVerification_Merge_Body"
+                : "Email_EmailVerification_Body";
             var subject = _localizer["Email_VerifyEmail_Subject"].Value;
             var body = string.Format(
                 CultureInfo.CurrentCulture,
-                _localizer["Email_EmailVerification_Body"].Value,
+                _localizer[templateKey].Value,
                 HtmlEncode(userName),
                 HtmlEncode(toEmail),
                 verificationUrl);
@@ -273,7 +280,7 @@ public class EmailRenderer : IEmailRenderer
 
     private string BuildOutstandingSection(BoardDigestOutstandingCounts? counts)
     {
-        if (counts == null) return "";
+        if (counts is null) return "";
 
         var hasAny = counts.OnboardingReview > 0 || counts.StillOnboarding > 0
             || counts.BoardVotingTotal > 0 || counts.TeamJoinRequests > 0
@@ -322,6 +329,62 @@ public class EmailRenderer : IEmailRenderer
         return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
     }
 
+    public EmailContent RenderAdminDailyDigest(string adminName, string date, AdminDigestCounts counts, string? culture = null)
+    {
+        // Admin digest is always English (admin pages aren't localized)
+        var subject = $"Admin Digest: {date}";
+
+        var items = new List<string>();
+
+        if (counts.PendingDeletions > 0)
+            items.Add($"<li><strong>{counts.PendingDeletions}</strong> account deletions pending <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
+
+        if (counts.PendingConsents > 0)
+            items.Add($"<li><strong>{counts.PendingConsents}</strong> with outstanding consent requirements</li>");
+
+        if (counts.TeamJoinRequests > 0)
+            items.Add($"<li><strong>{counts.TeamJoinRequests}</strong> team join requests pending <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
+
+        if (counts.OnboardingReview > 0)
+            items.Add($"<li><strong>{counts.OnboardingReview}</strong> awaiting onboarding review <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
+
+        if (counts.StillOnboarding > 0)
+            items.Add($"<li><strong>{counts.StillOnboarding}</strong> still completing onboarding</li>");
+
+        if (counts.BoardVotingTotal > 0)
+            items.Add($"<li><strong>{counts.BoardVotingTotal}</strong> tier applications awaiting vote</li>");
+
+        if (counts.FailedSyncOutboxEvents > 0)
+            items.Add($"<li><strong>{counts.FailedSyncOutboxEvents}</strong> failed Google sync outbox events</li>");
+
+        if (counts.TicketSyncError)
+            items.Add($"<li>Ticket sync error: {HtmlEncode(counts.TicketSyncErrorMessage ?? "Unknown")}</li>");
+
+        var itemsHtml = items.Count > 0
+            ? $"<ul>\n{string.Join("\n", items)}\n</ul>"
+            : "<p>All clear — no pending items.</p>";
+
+        var body = $"<h2>Admin Digest — {HtmlEncode(date)}</h2>\n<p>Hi {HtmlEncode(adminName)},</p>\n<h3>Pending Actions &amp; System Health</h3>\n{itemsHtml}";
+        return new EmailContent(subject, body);
+    }
+
+    public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = _localizer["Email_FeedbackResponse_Subject"].Value;
+            var responseHtml = Markdig.Markdown.ToHtml(responseMessage);
+            var body = string.Format(
+                CultureInfo.CurrentCulture,
+                _localizer["Email_FeedbackResponse_Body"].Value,
+                HtmlEncode(userName),
+                HtmlEncode(originalDescription),
+                responseHtml,
+                HtmlEncode(reportLink));
+            return new EmailContent(subject, body);
+        }
+    }
+
     public EmailContent RenderFacilitatedMessage(
         string recipientName,
         string senderName,
@@ -337,7 +400,7 @@ public class EmailRenderer : IEmailRenderer
                 _localizer["Email_FacilitatedMessage_Subject"].Value,
                 senderName);
 
-            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />");
+            var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
 
             var contactInfoHtml = includeContactInfo && !string.IsNullOrEmpty(senderEmail)
                 ? $"<p><strong>{HtmlEncode(senderName)}</strong> &mdash; <a href=\"mailto:{HtmlEncode(senderEmail)}\">{HtmlEncode(senderEmail)}</a></p>"
@@ -355,9 +418,51 @@ public class EmailRenderer : IEmailRenderer
         }
     }
 
-    private static CultureScope WithCulture(string? culture)
+    public EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null)
     {
-        return new CultureScope(culture);
+        using (WithCulture(culture))
+        {
+            var subject = _localizer["Email_MagicLinkLogin_Subject"].Value;
+            var body = string.Format(
+                CultureInfo.CurrentCulture,
+                _localizer["Email_MagicLinkLogin_Body"].Value,
+                HtmlEncode(displayName),
+                magicLinkUrl);
+            return new EmailContent(subject, body);
+        }
+    }
+
+    public EmailContent RenderMagicLinkSignup(string magicLinkUrl, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = _localizer["Email_MagicLinkSignup_Subject"].Value;
+            var body = string.Format(
+                CultureInfo.CurrentCulture,
+                _localizer["Email_MagicLinkSignup_Body"].Value,
+                magicLinkUrl);
+            return new EmailContent(subject, body);
+        }
+    }
+
+    public EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null)
+    {
+        using (WithCulture(culture))
+        {
+            var subject = _localizer["Email_WorkspaceCredentials_Subject"].Value;
+            var body = string.Format(
+                CultureInfo.CurrentCulture,
+                _localizer["Email_WorkspaceCredentials_Body"].Value,
+                HtmlEncode(userName),
+                HtmlEncode(workspaceEmail),
+                HtmlEncode(tempPassword));
+            return new EmailContent(subject, body);
+        }
+    }
+
+    private CultureScope WithCulture(string? culture)
+    {
+        return new CultureScope(culture, _logger);
     }
 
     private sealed class CultureScope : IDisposable
@@ -365,7 +470,7 @@ public class EmailRenderer : IEmailRenderer
         private readonly CultureInfo? _originalCulture;
         private readonly CultureInfo? _originalUICulture;
 
-        public CultureScope(string? culture)
+        public CultureScope(string? culture, ILogger<EmailRenderer> logger)
         {
             if (string.IsNullOrWhiteSpace(culture)) return;
 
@@ -377,8 +482,9 @@ public class EmailRenderer : IEmailRenderer
                 CultureInfo.CurrentUICulture = targetCulture;
                 CultureInfo.CurrentCulture = targetCulture;
             }
-            catch (CultureNotFoundException)
+            catch (CultureNotFoundException ex)
             {
+                logger.LogWarning(ex, "Invalid email culture '{Culture}', using current culture fallback", culture);
                 _originalCulture = null;
                 _originalUICulture = null;
             }
@@ -386,7 +492,7 @@ public class EmailRenderer : IEmailRenderer
 
         public void Dispose()
         {
-            if (_originalUICulture != null)
+            if (_originalUICulture is not null)
             {
                 CultureInfo.CurrentUICulture = _originalUICulture;
                 CultureInfo.CurrentCulture = _originalCulture!;

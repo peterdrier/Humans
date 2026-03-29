@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
+using Humans.Application;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Data;
 
@@ -10,6 +12,7 @@ namespace Humans.Web.Authorization;
 /// <summary>
 /// Claims transformation that syncs active RoleAssignment entities to Identity role claims
 /// and adds membership status claims. Runs on every authenticated request.
+/// Results are cached per user for 60 seconds to avoid 2 DB queries per request.
 /// </summary>
 public class RoleAssignmentClaimsTransformation : IClaimsTransformation
 {
@@ -17,14 +20,20 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
     /// Claim type indicating the user is an active member of the Volunteers team.
     /// </summary>
     public const string ActiveMemberClaimType = "ActiveMember";
+    public const string ActiveClaimValue = "true";
+    public const string ClaimsAddedMarkerType = "RoleAssignmentClaimsAdded";
+
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(60);
 
     private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
+    private readonly IMemoryCache _cache;
 
-    public RoleAssignmentClaimsTransformation(IServiceProvider serviceProvider, IClock clock)
+    public RoleAssignmentClaimsTransformation(IServiceProvider serviceProvider, IClock clock, IMemoryCache cache)
     {
         _serviceProvider = serviceProvider;
         _clock = clock;
+        _cache = cache;
     }
 
     public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
@@ -35,21 +44,44 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         }
 
         var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
             return principal;
         }
 
         // Avoid adding duplicate role claims on subsequent calls within the same request
-        if (principal.HasClaim(c => string.Equals(c.Type, "RoleAssignmentClaimsAdded", StringComparison.Ordinal) && string.Equals(c.Value, "true", StringComparison.Ordinal)))
+        if (principal.HasClaim(c => string.Equals(c.Type, ClaimsAddedMarkerType, StringComparison.Ordinal) && string.Equals(c.Value, ActiveClaimValue, StringComparison.Ordinal)))
         {
             return principal;
         }
 
+        var claims = await _cache.GetOrCreateAsync(CacheKeys.RoleAssignmentClaims(userId), async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+            return await LoadClaimsFromDbAsync(userId);
+        }) ?? [];
+
+        var identity = new ClaimsIdentity();
+        foreach (var claim in claims)
+        {
+            identity.AddClaim(claim);
+        }
+
+        // Marker claim to prevent duplicate processing
+        identity.AddClaim(new Claim(ClaimsAddedMarkerType, ActiveClaimValue));
+
+        principal.AddIdentity(identity);
+
+        return principal;
+    }
+
+    private async Task<List<Claim>> LoadClaimsFromDbAsync(Guid userId)
+    {
         using var scope = _serviceProvider.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
 
         var now = _clock.GetCurrentInstant();
+        var claims = new List<Claim>();
 
         var activeRoles = await dbContext.RoleAssignments
             .AsNoTracking()
@@ -61,14 +93,11 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
             .Distinct()
             .ToListAsync();
 
-        var identity = new ClaimsIdentity();
-
         foreach (var role in activeRoles)
         {
-            identity.AddClaim(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        // Check if user is an active Volunteers team member
         var isVolunteerMember = await dbContext.TeamMembers
             .AsNoTracking()
             .AnyAsync(tm =>
@@ -78,14 +107,9 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
 
         if (isVolunteerMember)
         {
-            identity.AddClaim(new Claim(ActiveMemberClaimType, "true"));
+            claims.Add(new Claim(ActiveMemberClaimType, ActiveClaimValue));
         }
 
-        // Marker claim to prevent duplicate processing
-        identity.AddClaim(new Claim("RoleAssignmentClaimsAdded", "true"));
-
-        principal.AddIdentity(identity);
-
-        return principal;
+        return claims;
     }
 }

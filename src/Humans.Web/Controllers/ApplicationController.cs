@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
@@ -13,26 +14,30 @@ using Humans.Web.Models;
 namespace Humans.Web.Controllers;
 
 [Authorize]
-public class ApplicationController : Controller
+public class ApplicationController : HumansControllerBase
 {
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly UserManager<Domain.Entities.User> _userManager;
     private readonly IStringLocalizer<SharedResource> _localizer;
+    private readonly ILogger<ApplicationController> _logger;
 
     public ApplicationController(
         IApplicationDecisionService applicationDecisionService,
         UserManager<Domain.Entities.User> userManager,
-        IStringLocalizer<SharedResource> localizer)
+        IStringLocalizer<SharedResource> localizer,
+        ILogger<ApplicationController> logger)
+        : base(userManager)
     {
         _applicationDecisionService = applicationDecisionService;
         _userManager = userManager;
         _localizer = localizer;
+        _logger = logger;
     }
 
     public async Task<IActionResult> Index()
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var user = await GetCurrentUserAsync();
+        if (user is null)
             return NotFound();
 
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
@@ -40,18 +45,22 @@ public class ApplicationController : Controller
         var hasPendingApplication = applications.Any(a =>
             a.Status == ApplicationStatus.Submitted);
 
+        var isApprovedColaborador = applications.Any(a =>
+            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+
         var viewModel = new ApplicationIndexViewModel
         {
             Applications = applications.Select(a => new ApplicationSummaryViewModel
             {
                 Id = a.Id,
-                Status = a.Status.ToString(),
+                Status = a.Status,
                 MembershipTier = a.MembershipTier,
                 SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
                 ResolvedAt = a.ResolvedAt?.ToDateTimeUtc(),
                 StatusBadgeClass = a.Status.GetBadgeClass()
             }).ToList(),
-            CanSubmitNew = !hasPendingApplication
+            CanSubmitNew = !hasPendingApplication,
+            IsApprovedColaborador = isApprovedColaborador
         };
 
         return View(viewModel);
@@ -60,8 +69,8 @@ public class ApplicationController : Controller
     [HttpGet]
     public async Task<IActionResult> Create()
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var user = await GetCurrentUserAsync();
+        if (user is null)
             return NotFound();
 
         var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
@@ -69,11 +78,17 @@ public class ApplicationController : Controller
 
         if (hasPending)
         {
-            TempData["ErrorMessage"] = _localizer["Application_AlreadyPending"].Value;
+            SetError(_localizer["Application_AlreadyPending"].Value);
             return RedirectToAction(nameof(Index));
         }
 
-        return View(new ApplicationCreateViewModel());
+        var isApprovedColaborador = applications.Any(a =>
+            a.Status == ApplicationStatus.Approved && a.MembershipTier == MembershipTier.Colaborador);
+
+        return View(new ApplicationCreateViewModel
+        {
+            MembershipTier = isApprovedColaborador ? MembershipTier.Asociado : MembershipTier.Colaborador
+        });
     }
 
     [HttpPost]
@@ -90,8 +105,8 @@ public class ApplicationController : Controller
             return View(model);
         }
 
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var user = await GetCurrentUserAsync();
+        if (user is null)
             return NotFound();
 
         // Validate tier is not Volunteer (applications are for Colaborador/Asociado only)
@@ -120,36 +135,45 @@ public class ApplicationController : Controller
             }
         }
 
-        var result = await _applicationDecisionService.SubmitAsync(
-            user.Id, model.MembershipTier, model.Motivation,
-            model.AdditionalInfo, model.SignificantContribution, model.RoleUnderstanding,
-            CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
-
-        if (!result.Success)
+        try
         {
-            if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = _localizer["Application_AlreadyPending"].Value;
+            var result = await _applicationDecisionService.SubmitAsync(
+                user.Id, model.MembershipTier, model.Motivation,
+                model.AdditionalInfo, model.SignificantContribution, model.RoleUnderstanding,
+                CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+
+            if (!result.Success)
+            {
+                if (string.Equals(result.ErrorKey, "AlreadyPending", StringComparison.Ordinal))
+                    SetError(_localizer["Application_AlreadyPending"].Value);
+                return RedirectToAction(nameof(Index));
+            }
+
+            SetSuccess(_localizer["Application_Submitted"].Value);
+            return RedirectToAction(nameof(Details), new { id = result.ApplicationId });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to submit application for user {UserId}", user.Id);
+            SetError(_localizer["Application_SubmitError"].Value);
             return RedirectToAction(nameof(Index));
         }
-
-        TempData["SuccessMessage"] = _localizer["Application_Submitted"].Value;
-        return RedirectToAction(nameof(Details), new { id = result.ApplicationId });
     }
 
     public async Task<IActionResult> Details(Guid id)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var user = await GetCurrentUserAsync();
+        if (user is null)
             return NotFound();
 
         var application = await _applicationDecisionService.GetUserApplicationDetailAsync(id, user.Id);
-        if (application == null)
+        if (application is null)
             return NotFound();
 
         var viewModel = new ApplicationDetailViewModel
         {
             Id = application.Id,
-            Status = application.Status.ToString(),
+            Status = application.Status,
             Motivation = application.Motivation,
             AdditionalInfo = application.AdditionalInfo,
             SignificantContribution = application.SignificantContribution,
@@ -165,7 +189,7 @@ public class ApplicationController : Controller
                 .OrderByDescending(h => h.ChangedAt)
                 .Select(h => new ApplicationHistoryViewModel
                 {
-                    Status = h.Status.ToString(),
+                    Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
                     ChangedBy = h.ChangedByUser.DisplayName,
                     Notes = h.Notes
@@ -179,25 +203,34 @@ public class ApplicationController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Withdraw(Guid id)
     {
-        var user = await _userManager.GetUserAsync(User);
-        if (user == null)
+        var user = await GetCurrentUserAsync();
+        if (user is null)
             return NotFound();
 
-        var result = await _applicationDecisionService.WithdrawAsync(id, user.Id);
-
-        if (!result.Success)
+        try
         {
-            if (string.Equals(result.ErrorKey, "CannotWithdraw", StringComparison.Ordinal))
-                TempData["ErrorMessage"] = _localizer["Application_CannotWithdraw"].Value;
+            var result = await _applicationDecisionService.WithdrawAsync(id, user.Id);
+
+            if (!result.Success)
+            {
+                if (string.Equals(result.ErrorKey, "CannotWithdraw", StringComparison.Ordinal))
+                    SetError(_localizer["Application_CannotWithdraw"].Value);
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            SetSuccess(_localizer["Application_Withdrawn"].Value);
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to withdraw application {ApplicationId}", id);
+            SetError(_localizer["Application_CannotWithdraw"].Value);
             return RedirectToAction(nameof(Details), new { id });
         }
-
-        TempData["SuccessMessage"] = _localizer["Application_Withdrawn"].Value;
-        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("Application/Admin")]
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     public async Task<IActionResult> Applications(string? status, string? tier, int page = 1)
     {
         var pageSize = 20;
@@ -210,11 +243,11 @@ public class ApplicationController : Controller
             UserId = a.UserId,
             UserEmail = a.User.Email ?? string.Empty,
             UserDisplayName = a.User.DisplayName,
-            Status = a.Status.ToString(),
+            Status = a.Status,
             StatusBadgeClass = a.Status.GetBadgeClass(),
             SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
             MotivationPreview = a.Motivation.Length > 100 ? a.Motivation[..100] + "..." : a.Motivation,
-            MembershipTier = a.MembershipTier.ToString()
+            MembershipTier = a.MembershipTier
         }).ToList();
 
         var viewModel = new AdminApplicationListViewModel
@@ -227,16 +260,16 @@ public class ApplicationController : Controller
             PageSize = pageSize
         };
 
-        return View(viewModel);
+        return View("~/Views/Shared/Applications.cshtml", viewModel);
     }
 
     [HttpGet("Application/Admin/{id:guid}")]
-    [Authorize(Roles = "Board,Admin")]
+    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
     public async Task<IActionResult> ApplicationDetail(Guid id)
     {
         var application = await _applicationDecisionService.GetApplicationDetailAsync(id);
 
-        if (application == null)
+        if (application is null)
         {
             return NotFound();
         }
@@ -248,7 +281,7 @@ public class ApplicationController : Controller
             UserEmail = application.User.Email ?? string.Empty,
             UserDisplayName = application.User.DisplayName,
             UserProfilePictureUrl = application.User.ProfilePictureUrl,
-            Status = application.Status.ToString(),
+            Status = application.Status,
             Motivation = application.Motivation,
             AdditionalInfo = application.AdditionalInfo,
             SignificantContribution = application.SignificantContribution,
@@ -264,7 +297,7 @@ public class ApplicationController : Controller
                 .OrderByDescending(h => h.ChangedAt)
                 .Select(h => new ApplicationHistoryViewModel
                 {
-                    Status = h.Status.ToString(),
+                    Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
                     ChangedBy = h.ChangedByUser.DisplayName,
                     Notes = h.Notes

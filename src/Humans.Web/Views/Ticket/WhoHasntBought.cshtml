@@ -1,0 +1,110 @@
+@model Humans.Web.Models.WhoHasntBoughtViewModel
+@{
+    ViewData["Title"] = "Humans & Tickets";
+}
+
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Humans & Tickets</h1>
+    <partial name="_TicketNav" />
+
+    <p class="text-muted">Active humans and their ticket purchase status.</p>
+
+    <!-- Search & Filters -->
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <input type="text" name="search" value="@Model.Search" class="form-control" placeholder="Search name or email..." />
+        </div>
+        <div class="col-md-2">
+            <select name="filterTicketStatus" class="form-select">
+                <option value="" selected="@(string.IsNullOrEmpty(Model.FilterTicketStatus) ? "selected" : null)">All</option>
+                <option value="bought" selected="@(Model.FilterTicketStatus == "bought" ? "selected" : null)">Has ticket</option>
+                <option value="not_bought" selected="@(Model.FilterTicketStatus == "not_bought" ? "selected" : null)">No ticket</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="filterTeam" class="form-select">
+                <option value="">All Teams</option>
+                @foreach (var team in Model.AvailableTeams)
+                {
+                    <option value="@team" selected="@(Model.FilterTeam == team ? "selected" : null)">@team</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <select name="filterTier" class="form-select">
+                <option value="">All Tiers</option>
+                <option value="Volunteer" selected="@(Model.FilterTier == "Volunteer" ? "selected" : null)">Volunteer</option>
+                <option value="Colaborador" selected="@(Model.FilterTier == "Colaborador" ? "selected" : null)">Colaborador</option>
+                <option value="Asociado" selected="@(Model.FilterTier == "Asociado" ? "selected" : null)">Asociado</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-search"></i> Filter</button>
+        </div>
+        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+    </form>
+
+    <p class="text-muted">@Model.TotalCount humans</p>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Teams</th>
+                    <th>Tier</th>
+                    <th>Ticket</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var h in Model.Humans)
+                {
+                    <tr>
+                        <td>
+                            <human-link user-id="@h.UserId" display-name="@h.Name" admin="true" show-popover="true" />
+                        </td>
+                        <td><small>@h.Email</small></td>
+                        <td><small>@h.Teams</small></td>
+                        <td><span class="badge bg-secondary">@h.Tier</span></td>
+                        <td>
+                            @if (h.HasTicket)
+                            {
+                                <span class="badge bg-success"><i class="fa-solid fa-check"></i></span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark"><i class="fa-solid fa-xmark"></i></span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Humans.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-muted text-center">No humans match the filters</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="WhoHasntBought" asp-route-page="@(Model.Page - 1)" asp-route-search="@Model.Search" asp-route-filterTeam="@Model.FilterTeam" asp-route-filterTier="@Model.FilterTier" asp-route-filterTicketStatus="@Model.FilterTicketStatus" asp-route-pageSize="@Model.PageSize">Previous</a>
+                </li>
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="WhoHasntBought" asp-route-page="@i" asp-route-search="@Model.Search" asp-route-filterTeam="@Model.FilterTeam" asp-route-filterTier="@Model.FilterTier" asp-route-filterTicketStatus="@Model.FilterTicketStatus" asp-route-pageSize="@Model.PageSize">@i</a>
+                    </li>
+                }
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="WhoHasntBought" asp-route-page="@(Model.Page + 1)" asp-route-search="@Model.Search" asp-route-filterTeam="@Model.FilterTeam" asp-route-filterTier="@Model.FilterTier" asp-route-filterTicketStatus="@Model.FilterTicketStatus" asp-route-pageSize="@Model.PageSize">Next</a>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>

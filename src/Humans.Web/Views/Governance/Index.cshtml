@@ -2,36 +2,24 @@
 @{
     ViewData["Title"] = Localizer["Governance_Title"].Value;
 
-    // Language display names — Spanish is canonical/legal
-    var languageNames = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["es"] = "Castellano",
-        ["en"] = "English",
-        ["de"] = "Deutsch",
-        ["fr"] = "Fran\u00e7ais",
-        ["it"] = "Italiano",
-        ["pt"] = "Portugu\u00eas",
-        ["ca"] = "Catal\u00e0"
-    };
-
-    string GetLanguageLabel(string langCode)
-    {
-        var name = languageNames.TryGetValue(langCode, out var n) ? n : langCode.ToUpperInvariant();
-        return langCode == "es" ? $"{name} (Legal)" : name;
-    }
-
-    // Order: Spanish (canonical/legal) always first, then alphabetical
     var orderedLanguages = Model.StatutesContent
-        .OrderByDescending(kv => kv.Key == "es")
-        .ThenBy(kv => languageNames.TryGetValue(kv.Key, out var n) ? n : kv.Key, StringComparer.Ordinal)
+        .OrderByDisplayLanguage(canonicalFirst: true)
         .ToList();
-
-    // Default active tab: user's language if available, else Spanish
-    var userLang = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-    var defaultLang = Model.StatutesContent.ContainsKey(userLang) ? userLang : "es";
+    var statutesTabs = new Humans.Web.Models.TabbedMarkdownDocumentsViewModel
+    {
+        Documents = orderedLanguages,
+        TabsId = "statutesTabs",
+        ContentId = "statutesTabsContent",
+        DefaultLanguage = Model.StatutesContent.GetDefaultDocumentLanguage(),
+        TabsCssClass = "nav nav-tabs px-3 pt-3",
+        EmptyMessage = Localizer["ConsentReview_ContentNotAvailable"].Value
+    };
 }
 
-<h1 class="mb-4">@Localizer["Governance_Title"]</h1>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">@Localizer["Governance_Title"]</h1>
+    <vc:access-matrix section="Governance" />
+</div>
 
 <div class="row mb-4">
     <div class="col-md-8">
@@ -54,32 +42,56 @@
         {
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>@Localizer["Governance_YourApplication"]</span>
-                    <span class="badge @Model.ApplicationStatusBadgeClass">@Localizer["ApplicationStatus_" + Model.ApplicationStatus]</span>
+                    <div>
+                        <span>@Localizer["Governance_YourApplication"]</span>
+                        @if (Model.ApplicationTier.HasValue)
+                        {
+                            <span class="badge bg-primary ms-2">@Model.ApplicationTier.Value</span>
+                        }
+                    </div>
+                    <span class="badge @Model.ApplicationStatusBadgeClass">@Localizer["ApplicationStatus_" + Model.ApplicationStatus.ToString()]</span>
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-sm-3">@Localizer["Governance_Submitted"]</dt>
-                        <dd class="col-sm-9">@Model.ApplicationSubmittedAt?.ToString("d MMMM yyyy")</dd>
+                        @if (Model.ApplicationTier.HasValue)
+                        {
+                            <dt class="col-sm-4">@Localizer["Governance_Tier"]</dt>
+                            <dd class="col-sm-8">@Model.ApplicationTier.Value</dd>
+                        }
+
+                        <dt class="col-sm-4">@Localizer["Governance_Submitted"]</dt>
+                        <dd class="col-sm-8">@Model.ApplicationSubmittedAt.ToDisplayLongDate()</dd>
 
                         @if (Model.ApplicationResolvedAt.HasValue)
                         {
-                            <dt class="col-sm-3">@Localizer["Governance_Resolved"]</dt>
-                            <dd class="col-sm-9">@Model.ApplicationResolvedAt.Value.ToString("d MMMM yyyy")</dd>
+                            <dt class="col-sm-4">@Localizer["Governance_Resolved"]</dt>
+                            <dd class="col-sm-8">@Model.ApplicationResolvedAt.ToDisplayLongDate()</dd>
+                        }
+
+                        @if (Model.ApplicationStatus == ApplicationStatus.Approved && Model.ApplicationResolvedAt.HasValue)
+                        {
+                            var resolvedYear = Model.ApplicationResolvedAt.Value.Year;
+                            var expiryYear = resolvedYear % 2 == 0 ? resolvedYear + 1 : resolvedYear + 2;
+                            <dt class="col-sm-4">@Localizer["Governance_TermExpiry"]</dt>
+                            <dd class="col-sm-8">31 December @expiryYear</dd>
                         }
                     </dl>
 
-                    @if (Model.ApplicationStatus == "Submitted")
+                    @if (Model.ApplicationStatus == ApplicationStatus.Submitted)
                     {
                         <hr />
                         <p class="text-muted mb-0">@Localizer["Governance_UnderReviewMessage"]</p>
                     }
-                    else if (Model.ApplicationStatus == "Approved")
+                    else if (Model.ApplicationStatus == ApplicationStatus.Approved)
                     {
                         <hr />
-                        <p class="text-success mb-0">@Localizer["Governance_ApprovedMessage"]</p>
+                        <p class="text-success mb-0">
+                            @(Model.ApplicationTier == MembershipTier.Asociado
+                                ? Localizer["Governance_ApprovedMessageAsociado"]
+                                : Localizer["Governance_ApprovedMessageColaborador"])
+                        </p>
                     }
-                    else if (Model.ApplicationStatus == "Rejected")
+                    else if (Model.ApplicationStatus == ApplicationStatus.Rejected)
                     {
                         <hr />
                         <p class="text-muted mb-0">@Localizer["Governance_RejectedMessage"]</p>
@@ -97,69 +109,41 @@
             <div class="card mt-4">
                 <div class="card-header">@Localizer["Governance_Statutes"]</div>
                 <div class="card-body p-0">
-                    <ul class="nav nav-tabs px-3 pt-3" id="statutesTabs" role="tablist">
-                        @foreach (var lang in orderedLanguages)
-                        {
-                            var isActive = lang.Key == defaultLang;
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link @(isActive ? "active" : "")" id="statutes-tab-@lang.Key" data-bs-toggle="tab"
-                                        data-bs-target="#statutes-content-@lang.Key" type="button" role="tab"
-                                        aria-controls="statutes-content-@lang.Key" aria-selected="@(isActive ? "true" : "false")">
-                                    @GetLanguageLabel(lang.Key)
-                                </button>
-                            </li>
-                        }
-                    </ul>
-
-                    <div class="tab-content p-4" id="statutesTabsContent" style="max-height: 500px; overflow-y: auto;">
-                        @foreach (var lang in orderedLanguages)
-                        {
-                            var isActive = lang.Key == defaultLang;
-                            <div class="tab-pane fade @(isActive ? "show active" : "")" id="statutes-content-@lang.Key" role="tabpanel" aria-labelledby="statutes-tab-@lang.Key">
-                                @if (string.IsNullOrEmpty(lang.Value))
-                                {
-                                    <p class="text-muted">@Localizer["ConsentReview_ContentNotAvailable"]</p>
-                                }
-                                else
-                                {
-                                    <div class="document-content">
-                                        @Html.Raw(ConvertMarkdownToHtml(lang.Value))
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
+                    @await Html.PartialAsync("~/Views/Shared/_TabbedMarkdownDocuments.cshtml", statutesTabs)
                 </div>
             </div>
         }
     </div>
 
     <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">@Localizer["Governance_WhatIsAsociado"]</div>
-            <div class="card-body">
-                <p class="mb-2">@Localizer["Governance_AsociadoLawDescription"]</p>
-                <p class="mb-2"><strong>@Localizer["Governance_AsociadoCanDo"]</strong></p>
-                <ul class="mb-0">
-                    <li>@Localizer["Governance_AttendAssemblies"]</li>
-                    <li>@Localizer["Governance_VoteOnDecisions"]</li>
-                    <li>@Localizer["Governance_ParticipateElections"]</li>
-                </ul>
+        @if (Model.ApplicationStatus != ApplicationStatus.Approved)
+        {
+            <div class="card mb-3">
+                <div class="card-header">@Localizer["Governance_WhatIsAsociado"]</div>
+                <div class="card-body">
+                    <p class="mb-2">@Localizer["Governance_AsociadoLawDescription"]</p>
+                    <p class="mb-2"><strong>@Localizer["Governance_AsociadoCanDo"]</strong></p>
+                    <ul class="mb-0">
+                        <li>@Localizer["Governance_AttendAssemblies"]</li>
+                        <li>@Localizer["Governance_VoteOnDecisions"]</li>
+                        <li>@Localizer["Governance_ParticipateElections"]</li>
+                    </ul>
+                </div>
             </div>
-        </div>
-        <div class="card">
-            <div class="card-header">@Localizer["Governance_WhoShouldApply"]</div>
-            <div class="card-body">
-                <p class="mb-2">@Localizer["Governance_WhoShouldApplyDescription"]</p>
-                <ul class="mb-2">
-                    <li>@Localizer["Governance_CampLeads"]</li>
-                    <li>@Localizer["Governance_MetaVolunteers"]</li>
-                    <li>@Localizer["Governance_LongTermMembers"]</li>
-                </ul>
-                <p class="mb-2 text-muted"><small>@Localizer["Governance_BoardReviews"]</small></p>
-                <p class="mb-0 text-muted"><small>@Localizer["Governance_NoteNotRequired"]</small></p>
+            <div class="card mb-3">
+                <div class="card-header">@Localizer["Governance_WhoShouldApply"]</div>
+                <div class="card-body">
+                    <p class="mb-2">@Localizer["Governance_WhoShouldApplyDescription"]</p>
+                    <ul class="mb-2">
+                        <li>@Localizer["Governance_CampLeads"]</li>
+                        <li>@Localizer["Governance_MetaVolunteers"]</li>
+                        <li>@Localizer["Governance_LongTermMembers"]</li>
+                    </ul>
+                    <p class="mb-2 text-muted"><small>@Localizer["Governance_BoardReviews"]</small></p>
+                    <p class="mb-0 text-muted"><small>@Localizer["Governance_NoteNotRequired"]</small></p>
+                </div>
             </div>
-        </div>
+        }
         <div class="card mt-3">
             <div class="card-header">@Localizer["Governance_MemberCounts"]</div>
             <div class="card-body">
@@ -171,29 +155,14 @@
                 </dl>
             </div>
         </div>
+        @if (Model.IsApprovedColaborador && Model.CanApply)
+        {
+            <div class="card mt-3 border-info">
+                <div class="card-body text-info-emphasis bg-info-subtle">
+                    <p class="mb-2">@Localizer["Governance_ColaboradorCanApply"]</p>
+                    <a asp-controller="Application" asp-action="Create" class="btn btn-sm btn-outline-info">@Localizer["Governance_ApplyForAsociado"]</a>
+                </div>
+            </div>
+        }
     </div>
 </div>
-
-@functions {
-    static readonly Ganss.Xss.HtmlSanitizer Sanitizer = new();
-
-    string ConvertMarkdownToHtml(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        var html = Markdig.Markdown.ToHtml(content);
-        return Sanitizer.Sanitize(html);
-    }
-}
-
-<style>
-    .document-content {
-        font-size: 0.95rem;
-        line-height: 1.7;
-    }
-
-    .document-content p {
-        margin-bottom: 1rem;
-    }
-</style>

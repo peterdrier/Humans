@@ -240,6 +240,59 @@ h5, .h5 { font-size: 1.1rem; }
     color: var(--h-parchment) !important;
 }
 
+/* --- Profile Dropdown --- */
+.profile-dropdown-name {
+    color: rgba(245, 230, 200, 0.7);
+    font-family: var(--h-font-body);
+    font-weight: 600;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.profile-dropdown-menu {
+    min-width: 220px;
+    background-color: var(--h-bg-elevated);
+    border: 1px solid var(--h-border);
+    border-radius: var(--h-radius);
+    box-shadow: var(--h-shadow-lg);
+    font-family: var(--h-font-body);
+}
+
+.profile-dropdown-menu .dropdown-item {
+    font-size: 0.85rem;
+    padding: 0.45rem 1rem;
+    color: var(--h-text);
+}
+
+.profile-dropdown-menu .dropdown-item:hover,
+.profile-dropdown-menu .dropdown-item:focus {
+    background-color: var(--h-parchment-light);
+    color: var(--h-aged-ink);
+}
+
+.profile-dropdown-menu .dropdown-item i {
+    color: var(--h-sepia-light);
+    font-size: 0.8rem;
+}
+
+.profile-dropdown-menu .dropdown-divider {
+    border-color: var(--h-border-light);
+}
+
+/* Dropdown toggle in navbar — style and remove Bootstrap's default caret */
+.navbar .dropdown > .btn-link.dropdown-toggle::after {
+    display: none;
+}
+
+.navbar .dropdown > .btn-link {
+    color: rgba(245, 230, 200, 0.7) !important;
+}
+
+.navbar .dropdown > .btn-link:hover {
+    color: var(--h-parchment) !important;
+}
+
 /* --- Main Content --- */
 .main-content {
     flex: 1;

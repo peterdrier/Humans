@@ -1,92 +1,206 @@
 # Release TODOs
 
 Audit date: 2026-02-05
-Last synced: 2026-03-10T09:00
+Last synced: 2026-03-22T18:30
 
 ---
 
 ## Open Work — Prioritized
 
+### Priority 1: Bugs / User-Reported Issues
+
+#### #172: Google sign-in returns 500 when correlation cookie is missing
+Sign-in fails with 500 error when correlation cookie is absent. Needs investigation.
+
+#### #173: Duplicate key error when syncing Google Group on team edit
+Google Group sync on barrios team throws duplicate key error. Affects group membership propagation.
+
+#### #174: Creating a team with a duplicate slug returns a database error
+Raw database error instead of user-friendly validation message.
+
+#### #175: Role edit fails when description exceeds varchar(2000) limit
+No client-side validation; raw DB error on long descriptions.
+
+#### #177: Feedback API: accept string enum values for status
+API only accepts integer enum values, not string names. Quick fix — add `JsonStringEnumConverter`.
+
+#### #182: Fix: profile edit Add buttons may silently break (missing null guards)
+Contact and volunteer history JS IIFEs lack null checks on DOM elements. Reporter (phaune) can't add entries on Firefox/macOS.
+
+#### #188: Fix shift editing bugs: empty start date, histogram min/cap split, plot inconsistency
+Three shift admin bugs from Frank: (1) full-day shift edit shows empty start date, (2) histograms don't distinguish min from cap, (3) confirmed plot doesn't match data.
+
 ### Priority 2: Small-Medium Enhancements
 
-#### #77: Reasons why an Asociado is accepted (or applying)
-Board members voting on Asociado applications should be required to select which bylaw criteria the applicant meets. Optionally, the applicant could also state their reasons when applying.
+#### #153: Feedback API: enum serialization, response tracking, missing context, markdown emails
+Batch of feedback system improvements. Partially overlaps #177.
 
+#### #178: Add "My Feedback" page so users can track their own reports
+User-facing page (linked from profile menu) showing their submitted feedback: status, linked GitHub issue, admin responses, resolution timeline. No new entities needed.
+
+#### #176: Batch voluntell: add range assignment from shift admin view
+Coordinators can assign a user to a range of consecutive all-day shifts from the admin view.
+
+#### #180: Clarify rota separation in shift signup UI (build/event/strike)
+Make build/event/strike rota boundaries visually clearer so users understand separate signup flows.
+
+#### #181: Add visibility toggle for team role definitions
+`IsPublic` boolean on `TeamRoleDefinition` to hide internal tracking roles from volunteer views.
+
+#### #183: Improve discoverability of Asociado application for existing Colaboradores
+Add contextual guidance for Colaboradores on the Application page — the upgrade path exists but users don't find it.
+
+#### #184: Shift UI text/label cleanup: rename buttons and headings
+Rename "Browse Shifts" → "Browse Volunteer Options", coordinator button → "Manage Shifts", remove duplicate button, "Sign up for range" → "Sign up for these dates".
+
+#### #185: Add rota visibility control and shift period filtering for volunteers
+Coordinator rota enable/disable toggle + volunteer-facing set-up/event/strike filter with set-up week sub-filter.
+
+#### #186: Add custom labels/tags to rotas with volunteer-facing filter
+Tag rotas with descriptive labels (e.g. "Heavy lifting", "Working in the sun"). Multi-select filter on browse page.
+
+#### #77: Reasons why an Asociado is accepted (or applying)
+Board members voting on Asociado applications should be required to select which bylaw criteria the applicant meets.
+
+#### #127: Add incomplete signup lifecycle — reminders and auto-deletion
+Send reminders to humans who signed up but never completed profile/consent, auto-delete after configurable period.
+
+#### #144: Fix preview environment file share for uploaded images
+Preview environments clone QA DB but lack access to uploaded images.
+
+#### #148: Add automated Codex code review on pull requests
+GitHub Action workflow running OpenAI Codex CLI on PRs.
+
+#### #138: Add Catalan (ca) translation
+New `SharedResource.ca.resx` with all ~805 keys.
+
+#### #97: Add communication preference management with magic-link unsubscribe
+Let humans manage email notification preferences with magic-link unsubscribe support.
+
+#### #156: Add public API endpoint for app version and commit hash
+Simple health/version endpoint.
+
+#### #161: Add shift exports, iCal feed, and post-event stats
+Slice 4 of shift management. Independent of #162.
+
+#### #162: Add shift notification emails and signup cleanup jobs
+Slice 5 of shift management. Independent of #161.
+
+#### #163: Gather feedback on shift management UX before slices 4-5
+Get coordinator and volunteer feedback on slices 1-3. Frank's feedback (today) is a major input — see #184, #185, #186, #187, #188.
 
 ---
 
 ### Priority 3: Medium Features
 
+#### #149: Integrate new Figma designs into Humans UI
+Adopt new visual designs from Figma.
+
+#### #150: Event guide: submission, moderation, and in-app browser
+Event guide feature for content submission and browsing.
+
+#### #187: Add image attachments to team page editor for visual job descriptions
+Upload and display images on team EditPage for visual job descriptions.
+
+#### #111: Add organizational email account management (@nobodies.team)
+Associate @nobodies.team emails with humans, admin provisioning UI, profile badges.
+
+#### #126: Add Stripe fee tracking to ticket vendor integration
+Track Stripe processing fees on ticket purchases.
+
+#### #157: Add bus ticket sales for event transport
+First Stripe write integration.
+
+#### #158: Add barrio services store for at-cost supplies
+Second store on the shared Stripe payment layer.
+
+#### #159: Add invoice generation for Stripe payments
+Official invoices for Stripe payments. Depends on #157, #158.
+
+#### #116: Add per-team Google Drive permission level configuration
+Configure Drive permission levels per team instead of global default.
+
+#### #179: Drive sync: resolve max permission level when same resource linked to multiple teams
+Handle permission level conflicts when a Drive resource belongs to multiple teams.
+
 ### Blocked — Waiting on External Input
 
 #### #56: Add site policies page for app-specific legal disclosures
-Dedicated page for app-specific operational disclosures (delegated coordinator roles + enhanced access, contact point, visibility model, automated provisioning) with multi-language privacy policy viewer below (same tabbed UX as Governance statutes). Replaces current hardcoded English-only Privacy page.
 **Blocked:** Waiting on Pepe for legal advice on disclosure content.
+
+#### #166: Merge duplicate accounts for Deepak (gn.org + gmail)
+**Blocked:** Needs confirmation from Deepak on which account to keep.
 
 ---
 
 ### Priority 4: Architecture / Refactoring
 
+#### #102: Codebase audit: tech debt, test gaps, and cleanup opportunities
+Comprehensive audit of codebase quality.
+
+---
 
 ### Priority 5: UI/Navigation Improvements
 
+#### #110: Add inbound bounce email parsing for delivery failure tracking
+Parse bounce/NDR emails. Depends on email outbox system.
+
 #### #14: Drive Activity Monitor: resolve people/ IDs to email addresses
-Drive Activity API returns `people/` IDs instead of email addresses. Need to resolve these via the People API for meaningful audit display.
+Resolve People API IDs for meaningful audit display.
 
 #### #33 / #82: Discord integration — sync team memberships to server roles
-Discord bot integration to automatically assign/remove Discord server roles based on Humans team memberships and role assignments. Configurable team→Discord role mappings, drift detection, audit logging, and manual sync UI at `/Admin/DiscordSync`. #82 has detailed architecture and phased implementation plan. Follows the Google Workspace sync pattern (outbox, periodic full sync, stub for dev).
+Discord bot integration following Google Workspace sync pattern.
 
 ---
 
 ### Priority 5b: Large Features (Future)
 
 #### #86: Voting system — bylaw-compliant member voting with notifications and multilingual support
-Formal member voting system: Yes/No votes with configurable voting periods (default 1 week), automated reminder schedule (open, 3 days, 1 day), multilingual support (5 languages), quorum enforcement, eligibility checks (Asociados only for binding votes). Open questions around anonymity requirements, proxy voting, and bylaw specifics. Optional non-binding community polls alongside binding votes.
+Formal member voting system.
 
 #### #83: Add other OAuth options, additional to Google
-Currently only Google OAuth login. Add email/password option (and potentially other OAuth providers) for users without Google accounts.
+Add email/password or other OAuth providers.
+
+#### #99: Add local username/password authentication
+Standard email/password auth. Overlaps #83.
+
+#### #98: Add magic-link email authentication for non-Google users
+Passwordless magic-link login via email.
+
+#### #100: Add SSO/JWT token issuance for nobodies.team services
+Issue JWT tokens for cross-service auth.
 
 ---
 
 ### Priority 6: Data Integrity & Security
 
 #### P1-09: Enforce uniqueness for active role assignments (DB-level)
-App-layer overlap guard added (`RoleAssignmentService.HasOverlappingAssignmentAsync`), but DB-level exclusion constraint on `tsrange(valid_from, valid_to)` is still deferred. Low urgency since admin UI validates before insert.
-**Where:** `RoleAssignmentConfiguration.cs`
+DB-level exclusion constraint on `tsrange(valid_from, valid_to)`. Low urgency — app layer validates.
 
 #### P1-22: Add row-level locking to outbox processor
-`ProcessGoogleSyncOutboxJob` reads pending events without `FOR UPDATE SKIP LOCKED`, risking duplicate processing if the job overlaps. Low risk at single-server scale but good defensive design.
-**Where:** `ProcessGoogleSyncOutboxJob.cs:41-52`
-**Source:** Multi-model production readiness assessment (2026-02-16), Codex unique finding
-
+`FOR UPDATE SKIP LOCKED` on outbox processing. Low risk at single-server scale.
 
 ---
 
 ### Priority 7: Technical Debt (Low Priority)
 
 #### G-03: N+1 queries in GoogleWorkspaceSyncService
-Helper methods re-query resources already loaded by parent methods. Redundant DB round-trips.
-
-
-
-#### #60: Replace magic string ViewModel properties with domain enums
-~50+ sites across 20+ ViewModels, 10+ controllers, and 3 views use `.ToString()` on domain enums instead of passing typed enums through. Affects `ApplicationStatus`, `MembershipStatus`, `TeamMemberRole`, `SystemTeamType`, `GoogleResourceType`, `TeamJoinRequestStatus`, `AuditAction`, `GoogleSyncSource`, `MembershipTier`. Also fix `StatusBadgeExtensions` to accept enums and add coding rules to prevent recurrence.
+Helper methods re-query resources already loaded by parent methods.
 
 #### Replace audit log entity type magic strings with nameof()
-~40 instances of hardcoded `"User"`, `"Team"`, `"Profile"`, `"Application"`, `"GoogleResource"` strings passed to `IAuditLogService` across 11 files. Replace with `nameof(User)`, `nameof(Team)`, etc. for type safety. Also 3 `Url.Action` calls in TeamController/ProfileCardViewComponent use hardcoded `"Picture"` instead of `nameof(ProfileController.Picture)`.
+~40 instances of hardcoded strings passed to `IAuditLogService`.
 
 #### G-09: Team membership caching
-Every page load queries team memberships. At ~500 users, in-memory cache with short TTL would eliminate most DB hits.
+In-memory cache with short TTL for team memberships.
 
 #### #22: Add EF Core query monitoring to identify caching opportunities
-Add a `DbCommandInterceptor` tracking query counts by table + operation (SELECT/INSERT/UPDATE/DELETE) in a singleton `ConcurrentDictionary`. Expose via admin page at `/Admin/DbStats`. Informs future `IMemoryCache` adoption for hot read paths. No persistence needed — resets on restart.
+`DbCommandInterceptor` tracking query counts, admin page at `/Admin/DbStats`.
 
 #### P1-11: Implement real pagination at query layer
-`GetAllTeamsAsync()` and `GetPendingRequestsForTeamAsync()` load everything into memory, then paginate in LINQ-to-Objects.
+`GetAllTeamsAsync()` and `GetPendingRequestsForTeamAsync()` paginate in-memory.
 
 #### P2-04: Review prerelease/beta observability packages
-Two OpenTelemetry packages pinned to beta versions. Check for stable releases or document risk acceptance.
-
+Two OpenTelemetry packages on beta versions.
 
 ---
 
@@ -95,7 +209,7 @@ Two OpenTelemetry packages pinned to beta versions. Check for stable releases or
 | ID | Issue | Status |
 |----|-------|--------|
 | P0-03 | Restrict health and metrics endpoints | Public OK per R-03, revisit post-launch |
-| P2-05 | Verify consent metadata fidelity (IP/UA accuracy) | Code uses `RemoteIpAddress` + `UseForwardedHeaders` — should be correct. Verify real IPs appear in consent records after first deploy. |
+| P2-05 | Verify consent metadata fidelity (IP/UA accuracy) | Verify real IPs appear in consent records after first deploy |
 
 ---
 
@@ -112,208 +226,68 @@ Two OpenTelemetry packages pinned to beta versions. Check for stable releases or
 
 ## Completed
 
-### #93: Merge pending requests into Manage Members page DONE
-Consolidated `/Teams/{slug}/Requests` into `/Teams/{slug}/Members`. Pending requests shown at top with approve/reject, members below. Removed standalone Requests page and view. Updated all navigation links. Committed `88c1065`.
+### #134: Standardize role authorization to prevent Identity/RoleAssignments mismatch DONE
+Closed 2026-03-19.
 
-### #92: Allow team Leads to directly add members to their team DONE
-Added `AddMemberToTeamAsync` service method with Google provisioning and email notification. Added search endpoint and autocomplete UI on the Manage Members page. 3 unit tests. Localized in 5 languages. Committed `718d37f`.
+### #146: Contact info publicly available without log in DONE
+Fixed — contact info hidden from public pages. Closed 2026-03-19.
 
-### #90: Dissolve BoardController — move actions to domain controllers DONE
-Moved ~500 lines from BoardController to domain-appropriate controllers: team actions to TeamController (`99a0b6c`), human actions to HumanController (`8a9c734`), application actions to ApplicationController (`4ec1fca`), role actions to Governance/HumanController (`dfe8958`), audit actions to AdminController (`d499109`). BoardController now contains only the dashboard Index action. Per-action `[Authorize(Roles = "Board,Admin")]` replaces class-level attribute. Views moved to target folders.
+### #147: Add feedback-to-issue triage workflow via API DONE
+Feedback API with query, respond, link issues, update status. Closed 2026-03-19.
 
-### #94: Move Teams Summary to /Teams page with resource columns DONE
-Added `/Teams/Summary` page with Mail Group (bool) and Drive Resources (count) columns. Accessible to Board, Admin, and TeamsAdmin roles. Summary button on Teams index. Part of BoardController dissolution. Committed `99a0b6c`.
+### #142: Add "report a bug" link in menu or footer DONE
+Superseded by #147 (feedback widget). Closed 2026-03-20.
 
-### P1-13: Apply configured Google group settings during provisioning DONE
-Group creation now applies `GoogleWorkspace:Groups` settings (WhoCanViewMembership, WhoCanPostMessage, AllowExternalMembers). Also: unified sync code path (`SyncResourcesByTypeAsync`/`SyncSingleResourceAsync`), per-service sync modes (`sync_service_settings` table), `TeamsAdmin` role, `GoogleGroupPrefix` on Team, Board/Admin controller split, sync status page at `/Teams/Sync`, admin sync settings at `/Admin/SyncSettings`.
+### #154: Team public pages improvements DONE
+Custom slug + coordinator visibility. Closed 2026-03-22.
 
-### #59 / G-08: Extract duplicated controller business logic into shared services DONE
-Expanded 8 service interfaces (IAuditLogService, IProfileService, ITeamService, IRoleAssignmentService, IUserEmailService, ITeamResourceService, IApplicationDecisionService, IOnboardingService) with methods previously inline in controllers. AdminController shrinks by ~400 lines. DbContext removed from AccountController, GovernanceController, HomeController, HumanController, TeamController (AdminController retains it only for DbVersion migration introspection). Also resolves G-07 (AdminController over-fetches) via new `AdminDashboardData`, `AdminHumanDetailData`, `AdminHumanRow` DTOs. Committed `9b9b6b9`.
+### #170: Support markdown in shift descriptions DONE
+Closed 2026-03-22.
 
-### G-07: AdminController over-fetches data DONE
-Resolved as part of #59/G-08. Raw EF `Include` queries replaced with dedicated DTOs (`AdminDashboardData`, `AdminHumanDetailData`, `AdminHumanRow`) that fetch only needed data. Committed `9b9b6b9`.
+### #165: Preferred language indicator on profile and admin pages DONE
+Closed 2026-03-22.
 
-### #70: Extract IOnboardingService, expand IApplicationDecisionService, remove DbContext from controllers DONE
-Extracted 3 new service interfaces (`IOnboardingService`, `IConsentService`, `IProfileService`) and expanded `IApplicationDecisionService` with 4 new methods. Removed `DbContext` from OnboardingReviewController, ApplicationController, ConsentController, and ProfileController. Consolidated duplicated consent-check-to-Pending logic. Fixed bugs: AdminController.RejectSignup missing deprovision, AdminController.ApproveVolunteer missing cache eviction. AdminController mutations (Suspend/Unsuspend/Approve/Reject) now delegate to IOnboardingService. Committed `f351b82`, `931aa7d`, `c9a2388`, `bba766f`.
+### #169: Investigate Google Group email delivery DONE
+Google Groups settings drift detection. Closed 2026-03-22.
 
-### #84: Admin/Humans table sorting, filtering, default sort DONE
-Clickable column headers (name, joined, last login, status) with toggle asc/desc. Status filter bar: All/Active/Pending/Suspended/Inactive/Pending Deletion. Default sort changed to alphabetical. All state preserved across search/filter/sort/pagination. Localized in 5 languages. Committed `4456115`.
+### #168: Shift edit: max humans count doesn't save DONE
+Closed 2026-03-21.
 
-### #85: Map: restrict to active volunteers + profile links DONE
-Added `IsApproved` filter to map query so only approved volunteers appear. Map InfoWindow now links display names to `/Human/{userId}` profiles. Committed `50ebc77`.
+### #60: Replace magic string ViewModel properties with domain enums DONE
+~50+ sites updated. Committed `38d3a72`.
 
-### #80: Enforce E.164 phone format DONE
-Phone/WhatsApp contact fields and emergency contact phone now require + country code prefix. Client-side: dynamic pattern/placeholder/type=tel on Phone/WhatsApp fields, static on emergency phone. Server-side: controller validates before save with localized error. All 5 languages. Existing numbers untouched until next edit. Committed `5d90b77`.
+### #137: Public team pages with editable markdown content, CTAs, and member roster DONE
+Merged to production via PR #145 (commit `31df3c4`).
 
-### #72: Add clear CTA to homepage DONE
-Added "New here? Sign in with Google to get started." text above the sign-in button on the pre-login homepage. Localized in all 5 languages. Committed `534554a`.
+### #141: In-app feedback system for bug reports and feature requests DONE
+Feedback widget on every page (post-login), admin triage dashboard, API endpoint.
 
-### #87 + #88 + #81: Profile bug fixes and UX improvements DONE
-Fixed broken "My Data" and "Edit Profile" links on `/Human/{id}` page (missing `asp-controller="Profile"`). New contact fields now require explicit visibility selection instead of defaulting to "All active members". Added client-side warning on profile edit when burner name matches legal name, localized in all 5 languages. Committed `290ea9b`.
+### #133: Add clickable lead profiles on barrio pages and auto-create Barrio Leads system team DONE
+Committed `d3a40c8`.
 
-### #26: Wire up custom Prometheus metrics DONE
-Eagerly resolve HumansMetricsService at startup, add RecordJobRun to 3 uninstrumented jobs, add google_sync_outbox_pending gauge. Committed `5a99d19`.
+### #136: Camp self-service — flatten leads, fix withdraw, add rejoin DONE
+Committed `929d64e`.
 
-### #27: Revoke team memberships immediately on deletion request DONE
-Immediately revokes all team memberships and ends role assignments on deletion request. Returning users must re-consent and rejoin. Google deprovisioning via normal sync job. Committed `966e2a6`.
+### #139: Fix googlemail.com/gmail.com mismatch in Google sync drift detection DONE
+Committed `a191fd7`, `34fb014`.
 
-### #32: Fix Lead role — remove standalone RoleAssignment DONE
-Removed `RoleNames.Lead` from assignable roles, data migration to soft-end orphaned assignments, fixed Leads team sync on role change, consolidated consent eligibility into `GetRequiredTeamIdsForUserAsync`, fixed HumanController missing ViewModel properties, added 8 unit tests. Committed `5acfa4f`.
+### #135: Add shift management system (Slices 1-3) DONE
+Committed `23b0ec1`.
 
-### #34: Add environment banner for non-production deployments DONE
-Colored banner below navbar in non-production environments. Committed `66c19f1`.
+### #130: Add team hierarchy (departments) and rename Leads to Coordinators DONE
+Committed across 15+ commits, closed 2026-03-16.
 
-### #29: Link birthday calendar entries to member profiles DONE
-Birthday entries now link to member profiles via `/Human/View/{id}`. Committed `66c19f1`.
+### #117: Add ticket vendor integration — coupon tracking, purchase matching, code generation DONE
+Closed 2026-03-15.
 
-### #31: Send email notification when user is added to a team DONE
-Members receive email with team resources when added via approval, join request, or system sync. Committed `247385c`.
+### #115: Fix membership status model — dashboard counts don't match admin page DONE
+Closed 2026-03-15.
 
-### #30: Reorganize profile page card layout and information flow DONE
-Consolidated 4 cards to 2 (public + board-private), teams as pills under name, edit page reordered to match, added ContributionInterests and BoardNotes fields, fixed email visibility enum comparison bug, OAuth email backfill migration. Committed `d96376d`.
+### #113: Show campaign grants on admin human detail page DONE
+Closed 2026-03-15.
 
-### G-01: AdminNotes GDPR exposure RESOLVED
-Decision: AdminNotes field is fine as-is. Users can request to see what's stored about them (GDPR subject access request), so board members should be mindful of what they write. No code change needed.
-
-### P1-19: Sanitize markdown-to-HTML in consent and governance views DONE
-Added `HtmlSanitizer` (Ganss.Xss) to both `Consent/Review.cshtml` and `Governance/Index.cshtml` markdown render paths. Markdig output is now sanitized before `@Html.Raw()`. Committed `34a8f79`.
-
-### P1-18: Account deletion Google deprovisioning DISMISSED
-Not needed — users lose team memberships (and thus Google permissions) at the start of the deletion flow, not at the 30-day anonymization step. The overnight sync job provides a second check by removing any stale permissions it finds.
-
-### P1-17: GDPR anonymization — clear all PII fields DONE
-Added missing field clearings to `ProcessAccountDeletionsJob.AnonymizeUserAsync`: `Pronouns`, `DateOfBirth`, `ProfilePictureData`, `ProfilePictureContentType`, `EmergencyContactName`, `EmergencyContactPhone`, `EmergencyContactRelationship`. Also added removal of `VolunteerHistoryEntries` and `ContactFields` related entities. Committed `84f0538`.
-
-### P1-21: Add missing database constraints DONE (already existed)
-Both CHECK constraints (`CK_google_resources_exactly_one_owner`, `CK_role_assignments_valid_window`) were already applied in the `AddPreProdIntegrityAndGoogleSyncOutbox` migration. The P1-09 temporal exclusion constraint remains tracked separately.
-
-### P0-12: Docker healthcheck DONE
-Added `curl` to runtime image and `HEALTHCHECK` directive hitting `/health/live`. Coolify/Docker will detect unhealthy containers.
-
-### P0-13: Remove insecure default credentials from docker-compose DONE
-Replaced `:-humans` fallback with `:?POSTGRES_PASSWORD must be set` — compose fails loudly if env var missing. Updated `.env.example`.
-
-### P2-02: Add explicit cookie/security policy settings DONE
-`ConfigureApplicationCookie` with `SecurePolicy.Always`, `SameSite.Lax`, `HttpOnly = true`. TLS terminated by Coolify reverse proxy.
-
-### P2-01: Persist Data Protection keys to database DONE
-Keys persisted to PostgreSQL via `PersistKeysToDbContext<HumansDbContext>()`. Auth cookies survive container restarts and Coolify redeploys. Migration `AddDataProtectionKeys` creates the table. Zero deploy-time config needed.
-
-### P1-16: Fail fast in production if Google credentials missing DONE
-`AddHumansInfrastructure` throws `InvalidOperationException` at startup in Production if Google Workspace credentials are not configured. Stubs still available in Development/Staging.
-
-### P2-06 + G-05: Register, schedule, and configure SendReConsentReminderJob DONE
-Job registered in DI, scheduled daily at 04:00 (before suspension job at 04:30). Cooldown and days-before-suspension now configurable via `Email:ConsentReminderDaysBeforeSuspension` (prod: 30, QA: 3) and `Email:ConsentReminderCooldownDays` (prod: 7, QA: 1). G-05 cooldown was already implemented in code.
-
-### P0-01: Lock down trusted proxy headers DONE
-`KnownProxies` set to `46.225.30.76` in `Program.cs`. Consent records and audit logs will now capture real client IPs.
-
-### P0-04: Enforce host header restrictions DONE
-`AllowedHosts` set to `humans.nobodies.team;humans.n.burn.camp;localhost`. QA override in `appsettings.Staging.json`.
-
-### P1-07: Add transactional consistency for Google sync DONE
-Outbox pattern implemented: `TeamService` enqueues `GoogleSyncOutboxEvent` rows instead of calling Google API in-request. `ProcessGoogleSyncOutboxJob` drains the outbox with retry logic (max 10 attempts).
-
-### #3: Full Lead rename (domain, DB, code) DONE
-Renamed all internal "Lead" references across domain, application, infrastructure, web, tests, migrations, resources, and documentation.
-
-### #23: Rename "Members" to "Humans" across internal code and UI DONE
-Renamed view models (AdminMember* → AdminHuman*), controller methods (Members → Humans, MemberDetail → HumanDetail, SuspendMember → SuspendHuman, UnsuspendMember → UnsuspendHuman, MemberGoogleSyncAudit → HumanGoogleSyncAudit), view files, ~30 AdminMember_ localization keys across all 5 .resx files, asp-action references, and feature docs. TeamMember domain entities untouched.
-
-### #24: Add emergency contact field to member profiles DONE
-Emergency contact fields (name, phone, relationship) on Profile. Board-only visibility, GDPR export included, all 5 locales. Also added public `/Admin/DbVersion` endpoint for migration squash checks.
-
-### #20: Add volunteer location map showing shared city/country DONE
-Google Maps page with volunteer pins. Committed `2664c46`.
-
-### #19: Fix profile edit data lost when navigating to Preferred Email DONE
-Added beforeunload guard to profile edit form. Committed `3cf905a`.
-
-### #18: Burner CV: separate position/role from event name DONE
-Updated placeholder text to separate event from role. Committed `b424f9b`, `352c79a`.
-
-### #17: Add Discord as a contact type DONE
-Added Discord as contact field type. Committed `352c79a`.
-
-### #16: Consolidate phone and contact fields, add validation DONE
-Consolidated emails, removed standalone phone, birthday as month-day. Committed `352c79a`.
-
-### Codebase simplification: remove dead code and unnecessary abstractions DONE
-Committed `251da28`.
-
-### P2-08: Expand configuration health checks DONE
-Added OAuth, Email, and GitHub config keys to `ConfigurationHealthCheck`. Now checks 9 required keys (was 1). Dedicated connectivity checks (SMTP, GitHub, GoogleWorkspace) remain separate.
-
-### P1-12: Google group sync pagination DONE (stale)
-All three call sites (`SyncTeamGroupMembersAsync`, `PreviewGroupSyncAsync`, `ListDrivePermissionsAsync`) already handle `NextPageToken` with `do/while` loops. Bug was fixed as part of earlier work; todo was stale.
+### #112: Add preferred language distribution chart to board dashboard DONE
+Closed 2026-03-15.
 
 ### Earlier completed items (condensed)
-- F-01: Profile pictures with team photo gallery (`f04c8cf`)
-- F-02: Volunteer acceptance gate before system access (`4364b5d`)
-- F-03: Admin UI for managing team Google resources (`d9bf5c1`)
-- F-04: Audit log for automatic user and resource changes
-- F-05: Localization / PreferredLanguage support (`4189f8d`, closes #7)
-- F-07/F-08: Admin dashboard RecentActivity + PendingConsents (`f04c8cf`)
-- Drive Activity API monitoring (`f04c8cf`, closes #11)
-- Issue #15: Redesign legal document management (`b73982c`, `dbc6676`)
-- Membership gating, volunteer sync, application language tracking (`28a2e8b`)
-- P0-02 through P0-14: Security hardening (CSP, token persistence, consent cascade, GDPR wording, email consistency)
-- P1-01/P1-02: Profile page membership status + pending consent fix (`c7b127f`)
-- P1-03: Anti-caching headers on data export (`6287976`)
-- P1-05: Anonymous email verification redirect (`3319eec`)
-- P1-06: Domain restriction decision (R-01)
-- P1-08: Active team membership uniqueness (`44330ec`)
-- P1-10: Slug generation race conditions (`1c5bfc0`)
-- P1-14/P1-15: Hangfire dashboard 404 + Team Join slug fix
-- G-02: N+1 query in SendReConsentReminderJob (`3966e79`)
-- G-04: Google Drive provisioning idempotency (`4243ca7`)
-- G-06: SystemTeamSyncJob sequential execution (resolved by design)
-
-### Batch: UI consolidation, security hardening, integration tests DONE
-Committed 2026-02-18 in 3 commits:
-
-**UI consolidation** (`3a2e444`): TempDataAlertsViewComponent replaces 19 duplicated alert blocks (#38). UserAvatarViewComponent replaces 9 avatar patterns (#39). ProfileCardViewComponent with dedicated ViewModel replaces 3 duplicated profile renderings (#37). _RoleBadge partial fixes Lead color inconsistency across 5 views (#40). _ApplicationHistory partial deduplicates timeline in 2 views (#41). StatusBadgeExtensions wired in Profile/Index + Admin/Humans, added "Pending Approval" case (G-06b). Net -150 lines across 37 files.
-
-**Security hardening** (`dbdcf58`): CSP nonce middleware + NonceTagHelper replace `unsafe-inline` in script-src (P1-23). Inline onclick/onchange handlers converted to addEventListener in LegalDocuments, Resources, Emails. PII redaction Serilog enricher masks emails and PII in structured logs (P2-09). P2-03 was already resolved (NU1902/NU1903 not suppressed).
-
-**Integration tests** (`b6c43c1`): WebApplicationFactory with TestContainers PostgreSQL, 16 tests across health endpoints, anonymous access controls, and security headers (P2-07).
-
-### #44 + #46 Part 1: Consent tab language + admin terminology DONE
-Committed `a53696d`. #44: Consent review checkbox text now follows the active document tab via JS tab-switch handler with per-language translations from ResourceManager. Non-Spanish tabs show bilingual legal note (tab language + Spanish italic). #46 Part 1: Replaced "Volunteer"/"Member" with "Human" in 7 admin button/message keys across all 5 locales (EN/ES/DE/FR/IT) + 3 log messages in AdminController.
-
-### #49: Reorganize profile edit into four named sections DONE
-Committed `2e98cbd`. Restructured Profile Edit from a single flat card into 4 distinct cards within one form: General Information, Contributor Information, Application (initial setup only), Private Information. Folds in #45 (Private section shown first when private fields are empty) and #47 (require Burner CV or "no prior burn experience" checkbox). Renamed "Legal First Name" → "Legal First Name(s)" in all 5 locales. Added `NoPriorBurnExperience` domain property with EF migration, client-side + server-side CV validation, `ShowPrivateFirst` conditional ordering, and `_EditSectionPrivate.cshtml` partial.
-
-### #58: Add dev/QA user purge function DONE
-Committed `32468ea`. Admin-only PurgeHuman endpoint (non-production gated). Severs OAuth login, clears UserEmails, changes email to `purged-{guid}@deleted.local`, locks out account — so the same Gmail can log back in fresh. Danger-styled button on HumanDetail inside `<environment exclude="Production">`.
-
-### Onboarding QA stabilization (part of #52/#53/#54) DONE
-Committed `32468ea`. Removed unnecessary StartReview/UnderReview application states — Submitted now transitions directly to Approved/Rejected/Withdrawn. Fixed board vote concurrency error (vote no longer touches Application entity). Fixed invisible membership tier badge (bg-purple → bg-primary). Simplified OnboardingReview Detail and BoardVotingDetail first cards (removed duplicated profile info, inlined motivation). Added vote date column. Clickable board voting rows. Application/Create tier selector switched to radio buttons with always-visible descriptions.
-
-### #55: Show tier application status on profile banner DONE
-Committed `d503e2b`. Profile page now shows a banner with the user's latest tier application status (Submitted/Approved/Rejected) and a link to the Governance page. Skips Withdrawn applications. Localized in all 5 languages.
-
-### #57: Add application transparency statistics to Governance page DONE
-Committed `ebc54b0`. Governance page shows aggregate application statistics: total, approved, rejected, pending counts, Colaborador/Asociado breakdown, and approval rate percentage. Visible to all members per Section 8 transparency requirements.
-
-### #50: Split teams page into My Teams / Other Teams DONE
-Committed `793bceb`. Teams Index page now shows "My Teams" section at top with user's teams, "Other Teams" section below with remaining teams. Extracted `_TeamCard.cshtml` partial to eliminate card markup duplication. Pagination applies to Other Teams only. Separate `/Teams/My` page retained for Leave/Manage actions.
-
-### #52/#53/#54/#46: Onboarding redesign epic DONE
-Three tiers (Volunteer/Colaborador/Asociado), board voting, Consent Coordinator gate, reject signup. Landed `8a9ee4e` + 5 follow-up fixes. QA validated, issues closed.
-
-### #62: Fix missing id attributes on dynamically-generated form fields in profile edit DONE
-Committed `e3f1ad5`. Added `id` attributes to dynamically-created contact field and volunteer history rows in `/Profile/Edit`.
-
-### #63: Add daily board digest email for new member approvals DONE
-Committed `1e2b29f`. Nightly Hangfire job (02:00 UTC) emails each Board member a summary of the previous UTC day's volunteer and tier application approvals, grouped by tier. Skips on zero-approval days. Localized templates in all 5 locales. Admin email preview added.
-
-### QA-01 through QA-04: Localize status badges, fix page title, diacritics, error pages DONE
-Committed `a884b22`. Fixed "Approved" badge localization, `/Application` page title, language name diacritics, and custom error pages in dev mode.
-
-### P1: Switch Google Groups API from Admin SDK to Cloud Identity DONE
-Replaced Admin SDK Directory API with Cloud Identity Groups API for group/membership operations. Direct service account auth, no domain-wide delegation. Added `GoogleWorkspace:CustomerId` config. Follow-up fixes: `WITH_INITIAL_OWNER` for group creation, service account exclusion from drift detection, inherited vs direct Drive permission distinction. Committed `acc4ea5`, `0795623`, `24e4d7d`, `9625580`.
-
-### #25 / F-06: Localize email bodies DONE
-### #35: Deduplicate email previews DONE
-Committed `08c4d84`. Extracted `IEmailRenderer` to separate rendering from SMTP transport, eliminating ~250 lines of duplicated body HTML. All 14 email body texts localized via SharedResource resx keys across en/es/de/fr/it. Email preview page uses per-locale personas and adds TermRenewalReminder preview.
+Items prior to March 2026 are in git history. Key milestones: onboarding redesign (#52/#53/#54), BoardController dissolution (#90), service extraction (#59/G-08), Cloud Identity migration, security hardening batch, integration tests, UI consolidation, localization, GDPR compliance, Google sync outbox pattern.

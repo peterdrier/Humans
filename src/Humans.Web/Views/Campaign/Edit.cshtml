@@ -1,0 +1,50 @@
+@model Humans.Domain.Entities.Campaign
+@{
+    ViewData["Title"] = "Edit Campaign";
+}
+
+<h1>Edit Campaign</h1>
+
+<vc:temp-data-alerts />
+
+<div class="card">
+    <div class="card-body">
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+            @Html.AntiForgeryToken()
+            @Html.ValidationSummary(false, "", new { @class = "text-danger" })
+
+            <div class="mb-3">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" class="form-control" id="title" name="title" value="@Model.Title" required />
+            </div>
+
+            <div class="mb-3">
+                <label for="description" class="form-label">Description</label>
+                <textarea class="form-control" id="description" name="description" rows="3">@Model.Description</textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="emailSubject" class="form-label">Email Subject</label>
+                <input type="text" class="form-control" id="emailSubject" name="emailSubject" value="@Model.EmailSubject" required />
+                <small class="form-text text-muted">You can use <code>{{Name}}</code> to insert the human's name.</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="emailBodyTemplate" class="form-label">Email Body Template</label>
+                <textarea class="form-control font-monospace" id="emailBodyTemplate" name="emailBodyTemplate" rows="10" required>@Model.EmailBodyTemplate</textarea>
+                <small class="form-text text-muted">Markdown supported. Use <code>{{Code}}</code> for the code and <code>{{Name}}</code> for the human's name.</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="replyToAddress" class="form-label">Reply-To Address <span class="text-muted">(optional)</span></label>
+                <input type="email" class="form-control" id="replyToAddress" name="replyToAddress" value="@Model.ReplyToAddress" placeholder="e.g. tickets@nobodies.team">
+                <small class="form-text text-muted">Recipients who reply to the campaign email will reach this address.</small>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a asp-action="Detail" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>

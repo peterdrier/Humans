@@ -24,10 +24,11 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **So that** I can learn about its community and decide whether to join
 
 **Acceptance Criteria:**
-- Shows camp name, contact info, description, images
+- Shows camp name, links (with platform icons), description, images
+- Contact email is hidden — replaced with facilitated "Contact this camp" button (login required)
 - Displays current season data (vibes, kids policy, performance space, etc.)
-- Shows leads with display names
-- Shows historical names if any
+- Shows leads with display names (authenticated users only)
+- Shows historical names if any (hidden when camp has `HideHistoricalNames` enabled)
 - Leads and admins see edit link
 
 ### US-20.3: Register a New Camp
@@ -52,6 +53,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **Acceptance Criteria:**
 - Leads can edit their own camp; CampAdmin/Admin can edit any
 - Can update contact info, season data, and camp-level fields
+- Can toggle "Hide historical names" to suppress the "Also known as" section on the public detail page
 - Name change blocked after name lock date
 - Can upload, delete, and reorder images
 - Can manage co-leads (add, remove, transfer primary)
@@ -119,6 +121,17 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - `GET /api/camps/{year}/placement` returns placement-relevant data (space, sound zone, containers, electrical)
 - Both endpoints are public (no authentication required)
 
+### US-20.11: Export Camps CSV
+**As a** CampAdmin or Admin
+**I want to** export camp data as CSV
+**So that** I can analyze camp registrations in a spreadsheet
+
+**Acceptance Criteria:**
+- Export button on Barrios Admin page
+- Exports all camps for the current public year
+- Includes: name, slug, status, contact info, leads, season data (languages, member count, placement, vibes)
+- CSV file named `barrios-{year}.csv`
+
 ## Data Model
 
 ### Camp
@@ -128,9 +141,10 @@ Camp
 ├── Slug: string [unique, URL-friendly]
 ├── ContactEmail: string
 ├── ContactPhone: string
-├── WebOrSocialUrl: string?
-├── ContactMethod: string
+├── WebOrSocialUrl: string? (legacy, read-only fallback — cleared when Links is populated)
+├── Links: List<CampLink>? (jsonb — multiple URLs with auto-detected platform)
 ├── IsSwissCamp: bool
+├── HideHistoricalNames: bool (default false — when true, "Also known as" is hidden on detail page)
 ├── TimesAtNowhere: int
 ├── CreatedByUserId: Guid (FK → User)
 ├── CreatedAt: Instant

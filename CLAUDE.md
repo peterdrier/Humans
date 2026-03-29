@@ -4,7 +4,7 @@ Membership management system for Nobodies Collective (Spanish nonprofit).
 
 ## Purpose
 
-Manage the full membership lifecycle for Nobodies Collective: volunteer applications are reviewed and approved by the Board, accepted members are provisioned into the appropriate teams and Google Workspace resources (Drive folders, Groups), and governance roles (Board, Leads, Admin) are tracked with temporal assignments. The system provides a way to organize teams logically and visually, gives Board and Admin visibility into what happens automatically on members' behalf through audit trails, and maintains GDPR compliance through consent tracking, data export, and right-to-deletion support.
+Manage the full membership lifecycle for Nobodies Collective: volunteer applications are reviewed and approved by the Board, accepted members are provisioned into the appropriate teams and Google Workspace resources (Drive folders, Groups), and governance roles (Board, Coordinators, Admin) are tracked with temporal assignments. The system provides a way to organize teams logically and visually, gives Board and Admin visibility into what happens automatically on members' behalf through audit trails, and maintains GDPR compliance through consent tracking, data export, and right-to-deletion support.
 
 ## Critical: Coding Rules
 
@@ -14,6 +14,7 @@ Manage the full membership lifecycle for Nobodies Collective: volunteer applicat
 - JSON serialization requirements
 - String comparison rules
 - **NodaTime for all dates/times** (`Instant`, `LocalDate`, etc.)
+- **Every new page MUST have a nav link.** If you add a controller action that returns a view, add a link to it from the nav menu or a contextual link from a related page. No orphan pages.
 
 ## Architecture
 
@@ -23,27 +24,15 @@ Clean Architecture with 4 layers:
 - **Infrastructure**: EF Core, external services, jobs
 - **Web**: Controllers, views, API
 
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `src/Humans.Web/Program.cs` | Startup, DI, middleware configuration |
-| `src/Humans.Domain/Entities/` | Core domain entities |
-| `src/Humans.Infrastructure/Data/HumansDbContext.cs` | EF Core DbContext |
-| `src/Humans.Infrastructure/Jobs/` | Hangfire background jobs |
-| `Directory.Packages.props` | Centralized NuGet package versions |
-| `src/Humans.Web/Views/Home/About.cshtml` | About page with package attribution and licenses |
-| `LICENSE` | AGPL-3.0 license |
-
 ## Domain Entities
 
-See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relationships, and serialization notes. Key entities: `User`, `Profile`, `ContactField`, `Application` (Colaborador/Asociado tier applications), `BoardVote` (transient), `RoleAssignment`, `LegalDocument`/`DocumentVersion`, `ConsentRecord` (append-only), `Team`/`TeamMember`, `GoogleResource`.
+See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relationships, and serialization notes. Key entities: `User`, `Profile`, `ContactField`, `Application` (Colaborador/Asociado tier applications), `BoardVote` (transient), `RoleAssignment`, `LegalDocument`/`DocumentVersion`, `ConsentRecord` (append-only), `Team`/`TeamMember`, `GoogleResource`, `BudgetYear`/`BudgetGroup`/`BudgetCategory`/`BudgetLineItem`, `BudgetAuditLog` (append-only).
 
 ## Important: Shared Drives Only
 
 **All Google Drive resources are on Shared Drives.** This system does NOT use regular (My Drive) folders. All Drive API calls must use `SupportsAllDrives = true`, and permission listing must include `permissionDetails` to distinguish inherited from direct permissions. Only direct permissions are managed by the system — inherited Shared Drive permissions are excluded from drift detection and sync.
 
-**Google permission-modifying jobs are currently DISABLED** (`SystemTeamSyncJob`, `GoogleResourceReconciliationJob`). Use the manual "Sync Now" button at `/Admin/GoogleSync` until automated sync is validated.
+**Google sync jobs** (`SystemTeamSyncJob` hourly, `GoogleResourceReconciliationJob` daily at 03:00) are controlled by per-service mode at `/Admin/SyncSettings` (None/AddOnly/AddAndRemove). Set a service to "None" to disable without redeploying.
 
 ## Important: ConsentRecord is Immutable
 
@@ -70,14 +59,6 @@ Submitted → Approved/Rejected
 
 Triggers: `Approve`, `Reject`, `Withdraw`
 
-## Namespace Alias
-
-Due to namespace collision, use `MemberApplication` alias when referencing `Humans.Domain.Entities.Application`:
-
-```csharp
-using MemberApplication = Humans.Domain.Entities.Application;
-```
-
 ## Important: UI Terminology — "Humans" Not "Members" or "Volunteers"
 
 In all user-facing text (views, localization strings, emails), use **"humans"** — not "members", "volunteers", or "users". This is the org's branded terminology. It applies across all locales (the word "humans" is kept in English even in es/de/fr/it translations). Internal code (entity names, variable names) is unaffected.
@@ -96,34 +77,32 @@ Coolify strips `.git` from the Docker build context. Do NOT use `COPY .git` in t
 - **Don't over-engineer for scale.** Pagination, batching, and query optimization matter less when the total dataset fits comfortably in memory. Simple, correct code beats performant-but-complex code.
 - **No concurrency tokens.** Do NOT add `IsConcurrencyToken()`, `[ConcurrencyCheck]`, or row versioning to any entity. At single-server scale with ~500 users, concurrency conflicts don't happen and optimistic concurrency only causes bugs. Never add them without explicit user permission.
 
-## Debugging: Check the Log File
-
-When debugging runtime errors, **always check the log file first** before speculating about causes. The Serilog file sink writes to:
-
-- **With debugger**: `%LOCALAPPDATA%\Temp\human\humans-YYYYMMDD.log`
-- **Console**: always enabled via `WriteTo.Console()`
-
-Use `Grep` on the log file filtering by entity ID, error keywords, or timestamp. Write diagnostic log messages (`_logger.LogWarning`/`LogError`) that include entity IDs, actual values, and expected values — not just "operation failed". When something goes wrong, the log should tell you *why*.
-
-## LSP Integration
-
-The `csharp-ls` LSP is active via the `csharp-lsp` Claude Code plugin. It provides real-time C# compiler diagnostics (type errors, missing usings, nullable warnings, etc.) on `.cs` files when they are read.
-
-**After editing any `.cs` file, re-read it before moving on.** Diagnostics appear on `Read`, not on `Edit`. This catches errors immediately without waiting for a full `dotnet build`. Always fix LSP-reported errors in the current file before editing the next one.
-
 ## Git Workflow
 
-Two-remote workflow with QA gating:
+Two-remote workflow:
 
-- **`origin`** = `peterdrier/Humans` (QA environment)
+- **`origin`** = `peterdrier/Humans` (peter's fork — QA deploys from `main`)
 - **`upstream`** = `nobodies-collective/Humans` (production)
 
-**Default flow:** Push to `origin` (QA) first. Batch changes, test in QA, then PR from `origin` to `upstream` for production. Never push directly to `upstream` without QA validation.
+**Development flow:**
 
-- `git push origin main` — deploy to QA
-- `gh pr create -R nobodies-collective/Humans --head peterdrier:main` — PR to production
+- **Small changes:** commit directly to `main` on peter's fork. Coolify auto-deploys to QA.
+- **Larger changes:** feature branch → PR to `main` on peter's fork (squash merge if multiple commits). Preview environments deploy per-PR at `{pr_id}.n.burn.camp`.
+- **Promote to production:** batch changes on peter's `main`, PR to nobodies' `main` (rebase merge, since individual efforts were already squashed going into peter's `main`).
+- **After production merge:** reset peter's `main` to nobodies' `main`:
+  ```bash
+  git fetch upstream main
+  git checkout main && git reset --hard upstream/main
+  git push origin main --force-with-lease
+  ```
 
-**QA deployment:** Always use `./deploy-qa.sh` to start QA. This script pulls latest changes, sets `SOURCE_COMMIT` for the footer git hash, and rebuilds/restarts the containers. Use `--no-pull` if you've already pulled. Never use bare `docker compose up` for QA — always use the deploy script.
+**QA deployment:** Coolify auto-deploys on push to `main` on peter's fork. Coolify UI at `https://coolify.n.burn.camp`.
+
+**Preview environment details:**
+- URL: `https://{pr_id}.n.burn.camp`
+- Database: cloned from QA via GitHub Action (`humans_pr_{N}`), dropped on PR close
+- Auth: dev login enabled (`DevAuth__Enabled=true`) since Google OAuth doesn't support wildcard redirect URIs
+- Connection string override: `docker-entrypoint.sh` extracts PR number from `COOLIFY_CONTAINER_NAME`
 
 ## Build Commands
 
@@ -142,10 +121,16 @@ dotnet run --project src/Humans.Web
 | Topic | File |
 |-------|------|
 | **Coding rules** | **`.claude/CODING_RULES.md`** |
+| **Code review rules** | **`.claude/CODE_REVIEW_RULES.md`** |
 | Data model | `.claude/DATA_MODEL.md` |
 | Analyzers/ReSharper | `.claude/CODE_ANALYSIS.md` |
 | Maintenance log | `.claude/MAINTENANCE_LOG.md` |
 | **Feature specs** | **`docs/features/`** |
+| **EF migration reviewer** | **`.claude/agents/ef-migration-reviewer.md`** |
+
+## Critical: EF Migration Review Gate
+
+**Before committing any EF Core migration**, run the EF migration reviewer agent (`.claude/agents/ef-migration-reviewer.md`). Mandatory for all database changes — do not commit or create PRs until it passes with no CRITICAL issues.
 
 ## Feature Documentation
 

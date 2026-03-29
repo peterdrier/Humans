@@ -33,6 +33,10 @@ public class GoogleResourceConfiguration : IEntityTypeConfiguration<GoogleResour
         builder.Property(gr => gr.ErrorMessage)
             .HasMaxLength(2000);
 
+        builder.Property(gr => gr.DrivePermissionLevel)
+            .HasConversion<string>()
+            .HasMaxLength(20);
+
         builder.HasIndex(gr => gr.GoogleId);
 
         builder.HasIndex(gr => gr.TeamId);

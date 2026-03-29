@@ -1,11 +1,11 @@
 @model Humans.Web.Models.AdminTeamListViewModel
 @{
-    ViewData["Title"] = Localizer["AdminTeams_Title"].Value;
+    ViewData["Title"] = "Teams Summary";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>@Localizer["AdminTeams_Title"]</h1>
-    @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+    <h1>Teams Summary</h1>
+    @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
     {
         <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
     }
@@ -21,12 +21,14 @@
                     <th>@Localizer["AdminTeams_Name"]</th>
                     <th>@Localizer["AdminTeams_Type"]</th>
                     <th>@Localizer["AdminTeams_Members"]</th>
-                    <th>@Localizer["AdminTeams_Pending"]</th>
+                    <th>@Localizer["AdminTeams_PendingJoins"]</th>
+                    <th>@Localizer["AdminTeams_PendingShifts"]</th>
                     <th>@Localizer["AdminTeams_MailGroup"]</th>
+                    <th>Slots</th>
                     <th>@Localizer["AdminTeams_DriveResources"]</th>
                     <th>@Localizer["Common_Status"]</th>
                     <th>@Localizer["AdminTeams_Created"]</th>
-                    @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                    @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                     {
                         <th>@Localizer["MyTeams_Actions"]</th>
                     }
@@ -37,6 +39,10 @@
                 {
                     <tr>
                         <td>
+                            @if (team.IsChildTeam)
+                            {
+                                <span class="text-muted ms-3">└</span>
+                            }
                             <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug">@team.Name</a>
                         </td>
                         <td>
@@ -67,15 +73,35 @@
                             }
                         </td>
                         <td>
-                            @if (team.HasMailGroup)
+                            @if (team.PendingShiftSignupCount > 0)
                             {
-                                <i class="fa-solid fa-check text-success"></i>
+                                @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
+                                {
+                                    <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@team.Slug">
+                                        <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">0</span>
+                            }
+                        </td>
+                        <td>
+                            @if (team.GoogleGroupEmail != null)
+                            {
+                                <small>@(team.GoogleGroupEmail.Split('@')[0])@@</small>
                             }
                             else
                             {
                                 <span class="text-muted">—</span>
                             }
                         </td>
+                        <td>@team.RoleSlotCount</td>
                         <td>
                             @if (team.DriveResourceCount > 0)
                             {
@@ -96,8 +122,8 @@
                                 <span class="badge bg-secondary">@Localizer["AdminTeams_Inactive"]</span>
                             }
                         </td>
-                        <td>@team.CreatedAt.ToString("MMM d, yyyy")</td>
-                        @if (User.IsInRole("Board") || User.IsInRole("Admin"))
+                        <td>@team.CreatedAt.ToDisplayCompactDate()</td>
+                        @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
                         {
                             <td>
                                 @if (!team.IsSystemTeam)
@@ -131,19 +157,4 @@
     <div class="alert alert-info mt-3">
         @Localizer["Teams_NoTeams"]
     </div>
-}
-
-@if (Model.TotalCount > Model.PageSize)
-{
-    var totalPages = (int)Math.Ceiling((double)Model.TotalCount / Model.PageSize);
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            @for (var i = 1; i <= totalPages && i <= 10; i++)
-            {
-                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="Summary" asp-route-page="@i">@i</a>
-                </li>
-            }
-        </ul>
-    </nav>
 }

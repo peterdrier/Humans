@@ -156,7 +156,7 @@ public class AuditLogService : IAuditLogService
     {
         var query = _dbContext.AuditLogEntries.AsNoTracking().AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(actionFilter) && Enum.TryParse<AuditAction>(actionFilter, out var actionEnum))
+        if (!string.IsNullOrWhiteSpace(actionFilter) && Enum.TryParse<AuditAction>(actionFilter, ignoreCase: true, out var actionEnum))
         {
             query = query.Where(e => e.Action == actionEnum);
         }

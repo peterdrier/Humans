@@ -18,10 +18,16 @@ COPY src/ src/
 # Coolify passes SOURCE_COMMIT and MINVER_VERSION as build args; deploy-qa.sh sets them from the host repo
 ARG SOURCE_COMMIT=""
 ARG MINVER_VERSION=""
-RUN dotnet publish src/Humans.Web/Humans.Web.csproj -c Release -o /app/publish \
-    -p:TreatWarningsAsErrors=false \
-    -p:SourceRevisionId="${SOURCE_COMMIT}" \
-    -p:MinVerVersionOverride="${MINVER_VERSION}"
+RUN if [ -n "${MINVER_VERSION}" ]; then \
+        dotnet publish src/Humans.Web/Humans.Web.csproj -c Release -o /app/publish \
+            -p:TreatWarningsAsErrors=false \
+            -p:SourceRevisionId="${SOURCE_COMMIT}" \
+            -p:MinVerVersionOverride="${MINVER_VERSION}"; \
+    else \
+        dotnet publish src/Humans.Web/Humans.Web.csproj -c Release -o /app/publish \
+            -p:TreatWarningsAsErrors=false \
+            -p:SourceRevisionId="${SOURCE_COMMIT}"; \
+    fi
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
@@ -54,5 +60,8 @@ EXPOSE 9090
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:8080/health/live || exit 1
 
+# Copy entrypoint wrapper (handles preview environment DB selection)
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+
 # Entry point
-ENTRYPOINT ["dotnet", "Humans.Web.dll"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

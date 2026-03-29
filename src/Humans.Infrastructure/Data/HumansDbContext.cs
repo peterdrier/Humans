@@ -49,6 +49,29 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<CampPolygon> CampPolygons => Set<CampPolygon>();
     public DbSet<CampPolygonHistory> CampPolygonHistories => Set<CampPolygonHistory>();
     public DbSet<CampMapSettings> CampMapSettings => Set<CampMapSettings>();
+    public DbSet<EmailOutboxMessage> EmailOutboxMessages { get; set; } = null!;
+    public DbSet<Campaign> Campaigns { get; set; } = null!;
+    public DbSet<CampaignCode> CampaignCodes { get; set; } = null!;
+    public DbSet<CampaignGrant> CampaignGrants { get; set; } = null!;
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<TicketOrder> TicketOrders => Set<TicketOrder>();
+    public DbSet<TicketAttendee> TicketAttendees => Set<TicketAttendee>();
+    public DbSet<TicketSyncState> TicketSyncStates => Set<TicketSyncState>();
+    public DbSet<EventSettings> EventSettings => Set<EventSettings>();
+    public DbSet<Rota> Rotas => Set<Rota>();
+    public DbSet<Shift> Shifts => Set<Shift>();
+    public DbSet<ShiftSignup> ShiftSignups => Set<ShiftSignup>();
+    public DbSet<VolunteerEventProfile> VolunteerEventProfiles => Set<VolunteerEventProfile>();
+    public DbSet<GeneralAvailability> GeneralAvailability => Set<GeneralAvailability>();
+    public DbSet<FeedbackReport> FeedbackReports => Set<FeedbackReport>();
+    public DbSet<FeedbackMessage> FeedbackMessages => Set<FeedbackMessage>();
+    public DbSet<AccountMergeRequest> AccountMergeRequests => Set<AccountMergeRequest>();
+    public DbSet<CommunicationPreference> CommunicationPreferences => Set<CommunicationPreference>();
+    public DbSet<BudgetYear> BudgetYears => Set<BudgetYear>();
+    public DbSet<BudgetGroup> BudgetGroups => Set<BudgetGroup>();
+    public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
+    public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
+    public DbSet<BudgetAuditLog> BudgetAuditLogs => Set<BudgetAuditLog>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

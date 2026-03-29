@@ -8,7 +8,6 @@ services:
       args:
         SOURCE_COMMIT: ${SOURCE_COMMIT:-}
     environment:
-      - ASPNETCORE_URLS=http://+:8080
       - ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
       - ConnectionStrings__DefaultConnection=Host=db;Database=humans;Username=humans;Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       - Authentication__Google__ClientId=${GOOGLE_CLIENT_ID}
