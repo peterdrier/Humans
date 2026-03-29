@@ -475,7 +475,8 @@ app.MapGet("/api/version", () =>
     var informationalVersion = attr?.InformationalVersion ?? "";
     var plusIndex = informationalVersion.IndexOf('+', StringComparison.Ordinal);
     var version = plusIndex >= 0 ? informationalVersion[..plusIndex] : informationalVersion;
-    var commit = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : "";
+    var fullCommit = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : "";
+    var commit = fullCommit.Length > 8 ? fullCommit[..8] : fullCommit;
 
     return Results.Ok(new { version, commit, informationalVersion });
 }).AllowAnonymous();
