@@ -212,6 +212,41 @@ else if (Model.PendingConsents > 0)
             </div>
         }
 
+        @if (Model.TicketsConfigured)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-ticket"></i> Ticket Sales
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>
+                            <strong>@Model.TicketsSold.ToString("N0")</strong>@(Model.TicketCapacity > 0 ? $" / {Model.TicketCapacity:N0}" : "") sold
+                        </span>
+                        @if (Model.TicketCapacity > 0)
+                        {
+                            <span class="fw-bold @(Model.TicketCoveragePercent >= 75 ? "text-success" : Model.TicketCoveragePercent >= 50 ? "text-warning" : "text-muted")">
+                                @Model.TicketCoveragePercent%
+                            </span>
+                        }
+                    </div>
+                    @if (Model.TicketCapacity > 0)
+                    {
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar @(Model.TicketCoveragePercent >= 75 ? "bg-success" : Model.TicketCoveragePercent >= 50 ? "bg-warning" : "bg-primary")"
+                                 style="width: @Model.TicketCoveragePercent%"></div>
+                        </div>
+                    }
+                    @if (Humans.Web.Authorization.RoleChecks.CanAccessTickets(User))
+                    {
+                        <div class="mt-2">
+                            <a asp-controller="Ticket" asp-action="Index" class="text-muted"><i class="fa-solid fa-arrow-right"></i> Ticket dashboard</a>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
         @if (Model.IsVolunteerMember)
         {
             @if (Model.MembershipTier != MembershipTier.Volunteer)

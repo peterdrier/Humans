@@ -44,4 +44,10 @@ public class DashboardViewModel
     // Quick stats
     public DateTime MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
+
+    // Ticket summary
+    public bool TicketsConfigured { get; set; }
+    public int TicketsSold { get; set; }
+    public int TicketCapacity { get; set; }
+    public decimal TicketCoveragePercent { get; set; }
 }
