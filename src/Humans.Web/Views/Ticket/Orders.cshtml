@@ -18,6 +18,7 @@
                 <option value="Paid" selected="@(Model.FilterPaymentStatus == "Paid" ? "selected" : null)">Paid</option>
                 <option value="Pending" selected="@(Model.FilterPaymentStatus == "Pending" ? "selected" : null)">Pending</option>
                 <option value="Refunded" selected="@(Model.FilterPaymentStatus == "Refunded" ? "selected" : null)">Refunded</option>
+                <option value="Cancelled" selected="@(Model.FilterPaymentStatus == "Cancelled" ? "selected" : null)">Cancelled</option>
             </select>
         </div>
         <div class="col-md-2">
@@ -101,6 +102,7 @@
                                     Humans.Domain.Enums.TicketPaymentStatus.Paid => "bg-success",
                                     Humans.Domain.Enums.TicketPaymentStatus.Pending => "bg-warning text-dark",
                                     Humans.Domain.Enums.TicketPaymentStatus.Refunded => "bg-danger",
+                                    Humans.Domain.Enums.TicketPaymentStatus.Cancelled => "bg-secondary",
                                     _ => "bg-secondary"
                                 };
                             }

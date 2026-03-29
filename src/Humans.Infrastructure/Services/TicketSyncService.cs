@@ -376,7 +376,8 @@ public class TicketSyncService : ITicketSyncService
         {
             "completed" or "paid" => TicketPaymentStatus.Paid,
             "pending" => TicketPaymentStatus.Pending,
-            "refunded" or "cancelled" => TicketPaymentStatus.Refunded,
+            "refunded" => TicketPaymentStatus.Refunded,
+            "cancelled" => TicketPaymentStatus.Cancelled,
             _ => TicketPaymentStatus.Pending
         };
 
