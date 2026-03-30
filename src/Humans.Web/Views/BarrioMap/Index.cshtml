@@ -190,6 +190,18 @@
                 paint: { 'text-color': '#000000', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }
             });
 
+            map.addSource('draw-edge-labels', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addLayer({
+                id: 'draw-edge-labels', type: 'symbol', source: 'draw-edge-labels',
+                layout: {
+                    'text-field': ['get', 'label'],
+                    'text-size': 11,
+                    'text-anchor': 'center',
+                    'text-allow-overlap': true
+                },
+                paint: { 'text-color': '#555555', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }
+            });
+
             state = await (await fetch('/api/camp-map/state')).json();
             renderMap();
             updateAddMyBarrioVisibility();
@@ -285,10 +297,11 @@
             map.on('mouseleave', 'polygons-fill', () => { map.getCanvas().style.cursor = ''; });
             map.on('mouseleave', 'polygons-fill-surprise', () => { map.getCanvas().style.cursor = ''; });
 
-            // Bring draw layers and area label above our polygon layers
+            // Bring draw layers and labels above our polygon layers
             map.getStyle().layers
                 .filter(l => l.id.startsWith('gl-draw-'))
                 .forEach(l => map.moveLayer(l.id));
+            map.moveLayer('draw-edge-labels');
             map.moveLayer('draw-label');
         }
 
@@ -359,16 +372,28 @@
 
         function clearDrawLabel() {
             map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [] });
+            map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: [] });
         }
 
         function updateSaveButton() {
             const features = draw.getAll().features;
             document.getElementById('save-btn').disabled = !(features.length > 0 && activeCampSeasonId);
             if (features.length > 0) {
-                const area = turf.area(features[0]);
-                const centroid = turf.centroid(features[0]);
+                const poly = features[0];
+                const area = turf.area(poly);
+                const centroid = turf.centroid(poly);
                 centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' };
                 map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [centroid] });
+
+                const coords = poly.geometry.coordinates[0];
+                const edgeFeatures = [];
+                for (let i = 0; i < coords.length - 1; i++) {
+                    const lengthM = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: 'meters' });
+                    const mid = turf.midpoint(turf.point(coords[i]), turf.point(coords[i + 1]));
+                    mid.properties = { label: Math.round(lengthM) + ' m' };
+                    edgeFeatures.push(mid);
+                }
+                map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: edgeFeatures });
             } else {
                 clearDrawLabel();
             }
