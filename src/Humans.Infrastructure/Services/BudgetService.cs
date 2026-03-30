@@ -30,11 +30,17 @@ public class BudgetService : IBudgetService
 
     // ───────────────────────── Budget Years ─────────────────────────
 
-    public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync()
+    public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(bool includeArchived = false)
     {
-        return await _dbContext.BudgetYears
+        var query = _dbContext.BudgetYears
             .Include(y => y.Groups)
                 .ThenInclude(g => g.Categories)
+            .AsQueryable();
+
+        if (!includeArchived)
+            query = query.Where(y => !y.IsDeleted);
+
+        return await query
             .OrderByDescending(y => y.Year)
             .ToListAsync();
     }
@@ -54,7 +60,7 @@ public class BudgetService : IBudgetService
     public async Task<BudgetYear?> GetActiveYearAsync()
     {
         var activeYear = await _dbContext.BudgetYears
-            .FirstOrDefaultAsync(y => y.Status == BudgetYearStatus.Active);
+            .FirstOrDefaultAsync(y => y.Status == BudgetYearStatus.Active && !y.IsDeleted);
 
         if (activeYear is null)
             return null;
@@ -208,17 +214,21 @@ public class BudgetService : IBudgetService
         if (year.Status == BudgetYearStatus.Active)
             throw new InvalidOperationException("Cannot delete an active budget year. Close it first.");
 
-        // Remove audit logs first — FK to BudgetYearId is Restrict,
-        // so the year can't be deleted while audit entries reference it.
-        var auditLogs = await _dbContext.Set<BudgetAuditLog>()
-            .Where(a => a.BudgetYearId == yearId)
-            .ToListAsync();
-        _dbContext.Set<BudgetAuditLog>().RemoveRange(auditLogs);
+        var now = _clock.GetCurrentInstant();
 
-        _dbContext.BudgetYears.Remove(year);
+        // Soft-delete: mark as archived, preserve all data and audit logs
+        year.IsDeleted = true;
+        year.DeletedAt = now;
+        year.Status = BudgetYearStatus.Closed;
+        year.UpdatedAt = now;
+
+        LogAudit(year.Id, nameof(BudgetYear), year.Id,
+            $"Archived budget year '{year.Name}' ({year.Year})",
+            actorUserId, now);
+
         await _dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Deleted budget year {YearId} ({Year})", yearId, year.Year);
+        _logger.LogInformation("Archived budget year {YearId} ({Year})", yearId, year.Year);
     }
 
     public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)

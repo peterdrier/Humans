@@ -71,6 +71,7 @@ BudgetYear ("2026", "2027-A", ...)
 - Each line item has: description, amount, responsible team (FK → Team), optional notes
 - CapEx/OpEx flag is on `BudgetCategory`, not line items
 - No arbitrary nesting beyond four levels
+- `BudgetYear` supports soft-delete (`IsDeleted`, `DeletedAt`): "deleting" a year archives it instead of removing data, preserving all audit log history. Archived years are hidden from non-admin views but remain visible on the Finance Admin page and in the audit log year filter.
 
 ### Budget Audit Log
 

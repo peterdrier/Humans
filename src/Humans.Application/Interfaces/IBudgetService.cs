@@ -10,7 +10,7 @@ namespace Humans.Application.Interfaces;
 public interface IBudgetService
 {
     // Budget Years
-    Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync();
+    Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(bool includeArchived = false);
     Task<BudgetYear?> GetYearByIdAsync(Guid id);
     Task<BudgetYear?> GetActiveYearAsync();
     Task<BudgetYear> CreateYearAsync(string year, string name, Guid actorUserId);

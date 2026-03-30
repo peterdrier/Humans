@@ -56,6 +56,10 @@
             <div>
                 <strong>@budgetYear.Name</strong>
                 <span class="badge bg-@(budgetYear.Status == BudgetYearStatus.Active ? "success" : budgetYear.Status == BudgetYearStatus.Draft ? "warning" : "secondary") ms-2">@budgetYear.Status</span>
+                @if (budgetYear.IsDeleted)
+                {
+                    <span class="badge bg-dark ms-1">Archived</span>
+                }
             </div>
             <div class="d-flex gap-1">
                 <a asp-action="YearDetail" asp-route-id="@budgetYear.Id" class="btn btn-outline-primary btn-sm">
@@ -66,11 +70,18 @@
         <div class="card-body">
             <!-- Year Settings -->
             <div class="mb-3">
-                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#@yearEditId">
-                    <i class="fa-solid fa-pen me-1"></i>Edit Year
-                </button>
+                @if (!budgetYear.IsDeleted)
+                {
+                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#@yearEditId">
+                        <i class="fa-solid fa-pen me-1"></i>Edit Year
+                    </button>
+                }
 
-                @if (budgetYear.Status == BudgetYearStatus.Draft)
+                @if (budgetYear.IsDeleted)
+                {
+                    <span class="text-muted small">Archived — audit logs preserved</span>
+                }
+                else if (budgetYear.Status == BudgetYearStatus.Draft)
                 {
                     <form asp-action="UpdateYearStatus" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
@@ -81,8 +92,8 @@
                     </form>
                     <form asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this budget year and all its data?')">
-                            <i class="fa-solid fa-trash me-1"></i>Delete
+                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.')">
+                            <i class="fa-solid fa-box-archive me-1"></i>Archive
                         </button>
                     </form>
                 }
@@ -107,8 +118,8 @@
                     </form>
                     <form asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this budget year and all its data?')">
-                            <i class="fa-solid fa-trash me-1"></i>Delete
+                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.')">
+                            <i class="fa-solid fa-box-archive me-1"></i>Archive
                         </button>
                     </form>
                 }

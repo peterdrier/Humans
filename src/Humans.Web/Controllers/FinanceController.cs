@@ -110,7 +110,7 @@ public class FinanceController : HumansControllerBase
 
             var entries = await _budgetService.GetAuditLogAsync(yearId);
             ViewBag.YearId = yearId;
-            ViewBag.Years = await _budgetService.GetAllYearsAsync();
+            ViewBag.Years = await _budgetService.GetAllYearsAsync(includeArchived: true);
             return View(entries);
         }
         catch (Exception ex)
@@ -126,7 +126,7 @@ public class FinanceController : HumansControllerBase
     {
         try
         {
-            var years = await _budgetService.GetAllYearsAsync();
+            var years = await _budgetService.GetAllYearsAsync(includeArchived: true);
             return View(years);
         }
         catch (Exception ex)

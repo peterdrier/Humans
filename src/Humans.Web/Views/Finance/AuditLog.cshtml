@@ -25,7 +25,7 @@
                         <option value="">All Years</option>
                         @foreach (var y in years)
                         {
-                            <option value="@y.Id" selected="@(yearId == y.Id)">@y.Name</option>
+                            <option value="@y.Id" selected="@(yearId == y.Id)">@y.Name@(y.IsDeleted ? " (Archived)" : "")</option>
                         }
                     </select>
                 </div>
