@@ -337,25 +337,50 @@ public class TeamService : ITeamService
         var memberships = await GetUserTeamsAsync(userId, cancellationToken);
         var isBoardMember = await IsUserBoardMemberAsync(userId, cancellationToken);
 
-        var manageableTeamIds = memberships
+        var coordinatorTeamIds = memberships
             .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
             .Select(m => m.TeamId)
+            .ToHashSet();
+
+        // Find child teams of coordinator departments for pending request counts
+        var childTeamsByParent = coordinatorTeamIds.Count > 0
+            ? await _dbContext.Teams
+                .AsNoTracking()
+                .Where(t => t.ParentTeamId != null && coordinatorTeamIds.Contains(t.ParentTeamId.Value) && t.IsActive)
+                .Select(t => new { t.Id, t.ParentTeamId })
+                .ToListAsync(cancellationToken)
+            : [];
+
+        var allManageableTeamIds = coordinatorTeamIds
+            .Union(childTeamsByParent.Select(c => c.Id))
             .ToList();
 
-        var pendingCounts = manageableTeamIds.Count > 0
-            ? await GetPendingRequestCountsByTeamIdsAsync(manageableTeamIds, cancellationToken)
+        var pendingCounts = allManageableTeamIds.Count > 0
+            ? await GetPendingRequestCountsByTeamIdsAsync(allManageableTeamIds, cancellationToken)
             : new Dictionary<Guid, int>();
 
         return memberships
-            .Select(m => new MyTeamMembershipSummary(
-                m.TeamId,
-                m.Team.DisplayName,
-                m.Team.Slug,
-                m.Team.IsSystemTeam,
-                m.Role,
-                m.JoinedAt,
-                CanLeave: !m.Team.IsSystemTeam,
-                PendingRequestCount: pendingCounts.GetValueOrDefault(m.TeamId, 0)))
+            .Select(m =>
+            {
+                var directCount = pendingCounts.GetValueOrDefault(m.TeamId, 0);
+
+                // For coordinator departments, aggregate pending counts from child teams
+                var childCount = coordinatorTeamIds.Contains(m.TeamId)
+                    ? childTeamsByParent
+                        .Where(c => c.ParentTeamId == m.TeamId)
+                        .Sum(c => pendingCounts.GetValueOrDefault(c.Id, 0))
+                    : 0;
+
+                return new MyTeamMembershipSummary(
+                    m.TeamId,
+                    m.Team.DisplayName,
+                    m.Team.Slug,
+                    m.Team.IsSystemTeam,
+                    m.Role,
+                    m.JoinedAt,
+                    CanLeave: !m.Team.IsSystemTeam,
+                    PendingRequestCount: directCount + childCount);
+            })
             .ToList();
     }
 
@@ -892,12 +917,23 @@ public class TeamService : ITeamService
         var isBoardMember = await IsUserBoardMemberAsync(approverUserId, cancellationToken);
         var isTeamsAdmin = !isBoardMember && await IsUserTeamsAdminAsync(approverUserId, cancellationToken);
 
-        // Get teams where user is coordinator
-        var leadTeamIds = await _dbContext.TeamMembers
+        // Get teams where user is coordinator (direct teams + child teams of coordinator departments)
+        var directLeadTeamIds = await _dbContext.TeamMembers
             .AsNoTracking()
             .Where(tm => tm.UserId == approverUserId && tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator)
             .Select(tm => tm.TeamId)
             .ToListAsync(cancellationToken);
+
+        // Include child teams of coordinator departments (parent coordinators manage child teams)
+        var childTeamIds = directLeadTeamIds.Count > 0
+            ? await _dbContext.Teams
+                .AsNoTracking()
+                .Where(t => t.ParentTeamId != null && directLeadTeamIds.Contains(t.ParentTeamId.Value) && t.IsActive)
+                .Select(t => t.Id)
+                .ToListAsync(cancellationToken)
+            : [];
+
+        var allLeadTeamIds = directLeadTeamIds.Union(childTeamIds).ToList();
 
         IQueryable<TeamJoinRequest> query = _dbContext.TeamJoinRequests
             .AsNoTracking()
@@ -909,9 +945,9 @@ public class TeamService : ITeamService
         {
             // Board members and TeamsAdmins can approve all requests
         }
-        else if (leadTeamIds.Count > 0)
+        else if (allLeadTeamIds.Count > 0)
         {
-            query = query.Where(r => leadTeamIds.Contains(r.TeamId));
+            query = query.Where(r => allLeadTeamIds.Contains(r.TeamId));
         }
         else
         {
@@ -991,11 +1027,18 @@ public class TeamService : ITeamService
     {
         var cached = await GetCachedTeamsAsync(cancellationToken);
         if (!cached.TryGetValue(teamId, out var team))
+        {
+            _logger.LogDebug("Coordinator check: team {TeamId} not found in cache for user {UserId}", teamId, userId);
             return false;
+        }
 
         // Check direct coordinator role on this team
         if (team.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator))
+        {
+            _logger.LogDebug("Coordinator check: user {UserId} is direct coordinator of team {TeamName} ({TeamId})",
+                userId, team.Name, teamId);
             return true;
+        }
 
         // Check IsManagement role assignment (source of truth — handles cases where
         // TeamMember.Role hasn't been reconciled yet)
@@ -1008,12 +1051,22 @@ public class TeamService : ITeamService
                 ra.TeamRoleDefinition.IsManagement,
                 cancellationToken);
         if (hasManagementRole)
+        {
+            _logger.LogDebug("Coordinator check: user {UserId} has IsManagement role on team {TeamName} ({TeamId})",
+                userId, team.Name, teamId);
             return true;
+        }
 
         // Check if user is coordinator of the parent team (department coordinators manage child teams)
         if (team.ParentTeamId.HasValue)
+        {
+            _logger.LogDebug("Coordinator check: checking parent team {ParentTeamId} for user {UserId} on team {TeamName} ({TeamId})",
+                team.ParentTeamId.Value, userId, team.Name, teamId);
             return await IsUserCoordinatorOfTeamAsync(team.ParentTeamId.Value, userId, cancellationToken);
+        }
 
+        _logger.LogDebug("Coordinator check: user {UserId} is NOT coordinator of team {TeamName} ({TeamId})",
+            userId, team.Name, teamId);
         return false;
     }
 

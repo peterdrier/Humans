@@ -235,6 +235,36 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_CoordinatorOfParentTeam_ReturnsTrueForChildTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_MemberOfParentTeam_NotCoordinator_ReturnsFalseForChildTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Member);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
+
+        result.Should().BeFalse();
+    }
+
     // ==========================================================================
     // CanUserApproveRequestsForTeamAsync
     // ==========================================================================
@@ -276,6 +306,21 @@ public class TeamServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfParentTeam_ReturnsTrueForChildTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.CanUserApproveRequestsForTeamAsync(child.Id, user.Id);
 
         result.Should().BeTrue();
     }
@@ -721,6 +766,24 @@ public class TeamServiceTests : IDisposable
 
         result.Should().ContainSingle();
         result[0].TeamId.Should().Be(teamA.Id);
+    }
+
+    [Fact]
+    public async Task GetPendingRequestsForApproverAsync_CoordinatorOfParent_IncludesChildTeamRequests()
+    {
+        var coordinator = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var requestor = SeedUser(displayName: "R1");
+        SeedJoinRequest(child.Id, requestor.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetPendingRequestsForApproverAsync(coordinator.Id);
+
+        result.Should().ContainSingle();
+        result[0].TeamId.Should().Be(child.Id);
     }
 
     [Fact]
