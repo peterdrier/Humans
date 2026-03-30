@@ -70,8 +70,10 @@ public class CampMapApiController : ControllerBase
             campSeasonId, request.GeoJson, request.AreaSqm, userId,
             cancellationToken: cancellationToken);
 
+        var soundZone = await _campMapService.GetCampSeasonSoundZoneAsync(campSeasonId, cancellationToken);
+        var soundZoneValue = soundZone.HasValue ? (int)soundZone.Value : -1;
         await _hubContext.Clients.All.SendAsync(
-            "PolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, cancellationToken);
+            "PolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, cancellationToken);
 
         return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
     }
@@ -91,8 +93,10 @@ public class CampMapApiController : ControllerBase
         var (polygon, _) = await _campMapService.RestorePolygonVersionAsync(
             campSeasonId, historyId, userId, cancellationToken);
 
+        var soundZone = await _campMapService.GetCampSeasonSoundZoneAsync(campSeasonId, cancellationToken);
+        var soundZoneValue = soundZone.HasValue ? (int)soundZone.Value : -1;
         await _hubContext.Clients.All.SendAsync(
-            "PolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, cancellationToken);
+            "PolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, cancellationToken);
 
         return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
     }
