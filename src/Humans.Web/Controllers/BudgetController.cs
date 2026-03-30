@@ -256,6 +256,8 @@ public class BudgetController : HumansControllerBase
         var category = await _budgetService.GetCategoryByIdAsync(categoryId);
         if (category is null) return NotFound();
 
+        if (category.BudgetGroup?.BudgetYear?.IsDeleted == true) return NotFound();
+
         if (category.BudgetGroup?.IsRestricted == true)
             return Forbid();
 
