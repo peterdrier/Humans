@@ -126,6 +126,20 @@ public class TicketSyncService : ITicketSyncService
 
             return result;
         }
+        catch (HttpRequestException ex) when (ex.StatusCode is null || (int)ex.StatusCode >= 500)
+        {
+            // Transient HTTP errors (network failures, 5xx responses) — log as warning,
+            // preserve last successful sync timestamp, don't mark as Error.
+            _logger.LogWarning(ex,
+                "Ticket sync encountered transient HTTP error for event {EventId}, will retry on next scheduled run",
+                eventId);
+
+            syncState.SyncStatus = TicketSyncStatus.Idle;
+            syncState.StatusChangedAt = _clock.GetCurrentInstant();
+            await _dbContext.SaveChangesAsync(CancellationToken.None);
+
+            return new TicketSyncResult(0, 0, 0, 0, 0);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ticket sync failed for event {EventId}", eventId);

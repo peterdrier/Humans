@@ -77,7 +77,20 @@ public class TicketTailorService : ITicketVendorService
                 url += $"&starting_after={cursor}";
 
             var response = await _httpClient.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if ((int)response.StatusCode >= 500)
+                {
+                    _logger.LogWarning(
+                        "TicketTailor orders API returned transient error {StatusCode} for event {EventId}, returning {Count} orders fetched so far",
+                        (int)response.StatusCode, eventId, orders.Count);
+                    break;
+                }
+
+                // Non-transient (4xx) — throw to surface config/auth issues
+                response.EnsureSuccessStatusCode();
+            }
 
             var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtOrder>>(JsonOptions, ct);
             if (body?.Data is null || body.Data.Count == 0)
@@ -132,7 +145,20 @@ public class TicketTailorService : ITicketVendorService
                 url += $"&starting_after={cursor}";
 
             var response = await _httpClient.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                if ((int)response.StatusCode >= 500)
+                {
+                    _logger.LogWarning(
+                        "TicketTailor tickets API returned transient error {StatusCode} for event {EventId}, returning {Count} tickets fetched so far",
+                        (int)response.StatusCode, eventId, tickets.Count);
+                    break;
+                }
+
+                // Non-transient (4xx) — throw to surface config/auth issues
+                response.EnsureSuccessStatusCode();
+            }
 
             var body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<TtIssuedTicket>>(JsonOptions, ct);
             if (body?.Data is null || body.Data.Count == 0)
@@ -163,7 +189,19 @@ public class TicketTailorService : ITicketVendorService
         string eventId, CancellationToken ct = default)
     {
         var response = await _httpClient.GetAsync($"{BaseUrl}/events/{eventId}", ct);
-        response.EnsureSuccessStatusCode();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            if ((int)response.StatusCode >= 500)
+            {
+                _logger.LogWarning(
+                    "TicketTailor event summary API returned transient error {StatusCode} for event {EventId}",
+                    (int)response.StatusCode, eventId);
+                return new VendorEventSummaryDto(eventId, "Unknown", 0, 0, 0);
+            }
+
+            response.EnsureSuccessStatusCode();
+        }
 
         var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct);
 
