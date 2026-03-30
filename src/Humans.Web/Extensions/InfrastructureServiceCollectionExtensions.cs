@@ -15,6 +15,18 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.Configure<GitHubSettings>(configuration.GetSection(GitHubSettings.SectionName));
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
+        services.PostConfigure<EmailSettings>(settings =>
+        {
+            if (settings.FromAddress.Contains("noreply", StringComparison.OrdinalIgnoreCase))
+            {
+                // Log at startup so operators notice the misconfiguration immediately.
+                // This uses Console.Error because ILogger isn't available during DI setup.
+                Console.Error.WriteLine(
+                    $"WARNING: Email:FromAddress is set to '{settings.FromAddress}'. " +
+                    "System emails should come from 'humans@nobodies.team'. " +
+                    "Check Coolify environment variable override.");
+            }
+        });
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
         services.Configure<TeamResourceManagementSettings>(configuration.GetSection(TeamResourceManagementSettings.SectionName));
 
