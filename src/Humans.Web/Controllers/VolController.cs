@@ -184,7 +184,7 @@ public class VolController : HumansControllerBase
                 .GroupBy(u => u.Shift.Rota.TeamId)
                 .Select(deptGroup =>
                 {
-                    var firstShift = deptGroup.First().Shift;
+                    var firstShift = deptGroup.OrderBy(x => x.Shift.Id).First().Shift;
                     return new DepartmentShiftGroup
                     {
                         TeamId = firstShift.Rota.TeamId,
@@ -193,7 +193,7 @@ public class VolController : HumansControllerBase
                         Rotas = deptGroup.GroupBy(u => u.Shift.RotaId)
                             .Select(rotaGroup =>
                             {
-                                var rota = rotaGroup.First().Shift.Rota;
+                                var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Shift.Rota;
                                 return new RotaShiftGroup
                                 {
                                     Rota = rota,
