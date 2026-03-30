@@ -33,6 +33,7 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 - Create individual shifts with day offset, start time, duration, min/max volunteers
 - Mark shifts as AdminOnly to restrict to coordinators/admins
 - Delete rotas/shifts (delete blocked if confirmed signups exist; no deactivate — delete is the only removal path)
+- Move a rota to a different department — updates the team FK while preserving all shifts and signups; only available to coordinators/admins; recorded in the audit log (`RotaMovedToTeam`); redirects to the target team's shift admin page
 
 ### US-25.3: Volunteer Browses and Signs Up
 **As a** volunteer
