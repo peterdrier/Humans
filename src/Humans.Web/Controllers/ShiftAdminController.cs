@@ -102,7 +102,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, team.Id);
 
         var allDepartments = new List<DepartmentOption>();
-        if (canManage)
+        if (RoleChecks.IsVolunteerManager(User))
         {
             var allTeams = await _teamService.GetAllTeamsAsync();
             allDepartments = allTeams
@@ -402,6 +402,9 @@ public class ShiftAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> MoveRota(string slug, Guid rotaId, MoveRotaModel model)
     {
+        if (!RoleChecks.IsVolunteerManager(User))
+            return Forbid();
+
         var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
