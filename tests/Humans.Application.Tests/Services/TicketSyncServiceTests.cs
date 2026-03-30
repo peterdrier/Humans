@@ -237,10 +237,24 @@ public class TicketSyncServiceTests : IDisposable
     // ==========================================================================
 
     [Fact]
-    public async Task SyncOrdersAndAttendeesAsync_SetsErrorStateOnFailure()
+    public async Task SyncOrdersAndAttendeesAsync_TransientError_ReturnsGracefully()
     {
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Throws(new HttpRequestException("API unavailable"));
+
+        var result = await _service.SyncOrdersAndAttendeesAsync();
+
+        result.OrdersSynced.Should().Be(0);
+        var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
+        syncState!.SyncStatus.Should().Be(TicketSyncStatus.Idle);
+        syncState.LastError.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SyncOrdersAndAttendeesAsync_NonTransientError_SetsErrorState()
+    {
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Throws(new HttpRequestException("Unauthorized", null, System.Net.HttpStatusCode.Unauthorized));
 
         var act = () => _service.SyncOrdersAndAttendeesAsync();
 
@@ -248,7 +262,7 @@ public class TicketSyncServiceTests : IDisposable
 
         var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
         syncState!.SyncStatus.Should().Be(TicketSyncStatus.Error);
-        syncState.LastError.Should().Be("API unavailable");
+        syncState.LastError.Should().Be("Unauthorized");
     }
 
     // ==========================================================================
