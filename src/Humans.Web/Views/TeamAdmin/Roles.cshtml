@@ -131,9 +131,9 @@
                         </div>
                     }
                     <div class="mb-3 form-check">
-                        <input type="hidden" name="IsPublic" value="false" />
                         <input type="checkbox" class="form-check-input" id="isPublic-@role.Id"
                                name="IsPublic" value="true" @(role.IsPublic ? "checked" : "") />
+                        <input type="hidden" name="IsPublic" value="false" />
                         <label class="form-check-label" for="isPublic-@role.Id">Visible to volunteers</label>
                         <div class="form-text">When unchecked, this role is hidden from volunteer-facing views.</div>
                     </div>
@@ -256,9 +256,9 @@ else
                 </div>
             </div>
             <div class="mt-2 form-check">
-                <input type="hidden" name="IsPublic" value="false" />
                 <input type="checkbox" class="form-check-input" id="isPublic-new"
                        name="IsPublic" value="true" checked />
+                <input type="hidden" name="IsPublic" value="false" />
                 <label class="form-check-label" for="isPublic-new">Visible to volunteers</label>
                 <div class="form-text">When unchecked, this role is hidden from volunteer-facing views.</div>
             </div>
