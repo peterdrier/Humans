@@ -3,9 +3,9 @@
 <div class="card mb-4 border-primary">
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0">
-            <i class="fa-solid fa-list-check me-2"></i>Things to do
+            <i class="fa-solid fa-list-check me-2"></i>@Localizer["Todo_Title"]
         </h5>
-        <span class="badge bg-light text-primary">@Model.PendingCount pending</span>
+        <span class="badge bg-light text-primary">@string.Format(Localizer["Todo_PendingBadge"].Value, Model.PendingCount)</span>
     </div>
     <ul class="list-group list-group-flush">
         @foreach (var item in Model.Items)

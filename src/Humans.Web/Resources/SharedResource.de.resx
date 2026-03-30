@@ -1245,4 +1245,26 @@
   <data name="SendMessage_Success" xml:space="preserve"><value>Deine Nachricht wurde an {0} gesendet.</value></data>
   <data name="SendMessage_Title" xml:space="preserve"><value>{0} eine Nachricht senden</value></data>
   <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Rechtliche Dokumente</value></data>
+
+  <!-- ======================== -->
+  <!-- Things To Do Wizard      -->
+  <!-- ======================== -->
+  <data name="Todo_Title" xml:space="preserve"><value>Aufgaben</value></data>
+  <data name="Todo_PendingBadge" xml:space="preserve"><value>{0} ausstehend</value></data>
+  <data name="Todo_Profile_Title" xml:space="preserve"><value>Profil vervollst&#xE4;ndigen</value></data>
+  <data name="Todo_Profile_Done" xml:space="preserve"><value>Ihr Profil ist vollst&#xE4;ndig.</value></data>
+  <data name="Todo_Profile_Pending" xml:space="preserve"><value>Erg&#xE4;nzen Sie Ihre Informationen, damit die Gemeinschaft Sie kennenlernen kann.</value></data>
+  <data name="Todo_Profile_Action" xml:space="preserve"><value>Profil bearbeiten</value></data>
+  <data name="Todo_Consents_Title" xml:space="preserve"><value>Vereinbarungen akzeptieren</value></data>
+  <data name="Todo_Consents_Done" xml:space="preserve"><value>Alle Vereinbarungen sind aktuell.</value></data>
+  <data name="Todo_Consents_Pending" xml:space="preserve"><value>{0} von {1} Dokumenten ben&#xF6;tigen Ihre Einwilligung.</value></data>
+  <data name="Todo_Consents_Action" xml:space="preserve"><value>Vereinbarungen pr&#xFC;fen</value></data>
+  <data name="Todo_ConsentCheck_Title" xml:space="preserve"><value>Koordinatorenpr&#xFC;fung</value></data>
+  <data name="Todo_ConsentCheck_Done" xml:space="preserve"><value>Ein Koordinator hat Ihre Dokumente gepr&#xFC;ft und freigegeben.</value></data>
+  <data name="Todo_ConsentCheck_Pending" xml:space="preserve"><value>Ein Koordinator wird Ihre Dokumente pr&#xFC;fen, sobald Profil und Vereinbarungen vollst&#xE4;ndig sind.</value></data>
+  <data name="Todo_ShiftInfo_Title" xml:space="preserve"><value>Schichtpr&#xE4;ferenzen festlegen</value></data>
+  <data name="Todo_ShiftInfo_Done" xml:space="preserve"><value>Ihre Schichtpr&#xE4;ferenzen sind festgelegt.</value></data>
+  <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>F&#xFC;llen Sie Ihre Schichtinformationen aus, damit Koordinatoren Ihre F&#xE4;higkeiten und Pr&#xE4;ferenzen kennen.</value></data>
+  <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Schichtinformationen ausf&#xFC;llen</value></data>
+
 </root>

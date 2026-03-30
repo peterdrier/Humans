@@ -1245,4 +1245,26 @@
   <data name="SendMessage_Success" xml:space="preserve"><value>Votre message a été envoyé à {0}.</value></data>
   <data name="SendMessage_Title" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
   <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Documents juridiques</value></data>
+
+  <!-- ======================== -->
+  <!-- Things To Do Wizard      -->
+  <!-- ======================== -->
+  <data name="Todo_Title" xml:space="preserve"><value>T&#xE2;ches &#xE0; faire</value></data>
+  <data name="Todo_PendingBadge" xml:space="preserve"><value>{0} en attente</value></data>
+  <data name="Todo_Profile_Title" xml:space="preserve"><value>Compl&#xE9;ter votre profil</value></data>
+  <data name="Todo_Profile_Done" xml:space="preserve"><value>Votre profil est complet.</value></data>
+  <data name="Todo_Profile_Pending" xml:space="preserve"><value>Ajoutez vos informations pour que la communaut&#xE9; puisse vous conna&#xEE;tre.</value></data>
+  <data name="Todo_Profile_Action" xml:space="preserve"><value>Modifier le profil</value></data>
+  <data name="Todo_Consents_Title" xml:space="preserve"><value>Accepter les accords</value></data>
+  <data name="Todo_Consents_Done" xml:space="preserve"><value>Tous les accords sont &#xE0; jour.</value></data>
+  <data name="Todo_Consents_Pending" xml:space="preserve"><value>{0} document(s) sur {1} n&#xE9;cessitent votre consentement.</value></data>
+  <data name="Todo_Consents_Action" xml:space="preserve"><value>Examiner les accords</value></data>
+  <data name="Todo_ConsentCheck_Title" xml:space="preserve"><value>V&#xE9;rification du coordinateur</value></data>
+  <data name="Todo_ConsentCheck_Done" xml:space="preserve"><value>Un coordinateur a v&#xE9;rifi&#xE9; et approuv&#xE9; vos documents.</value></data>
+  <data name="Todo_ConsentCheck_Pending" xml:space="preserve"><value>Un coordinateur v&#xE9;rifiera vos documents une fois le profil et les accords compl&#xE9;t&#xE9;s.</value></data>
+  <data name="Todo_ShiftInfo_Title" xml:space="preserve"><value>D&#xE9;finir vos pr&#xE9;f&#xE9;rences de quart</value></data>
+  <data name="Todo_ShiftInfo_Done" xml:space="preserve"><value>Vos pr&#xE9;f&#xE9;rences de quart sont d&#xE9;finies.</value></data>
+  <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>Remplissez vos informations de quart pour que les coordinateurs connaissent vos comp&#xE9;tences et pr&#xE9;f&#xE9;rences.</value></data>
+  <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Remplir les infos de quart</value></data>
+
 </root>

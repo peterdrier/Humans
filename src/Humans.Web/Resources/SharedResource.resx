@@ -1262,4 +1262,25 @@
   <!-- Camp Cards -->
   <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>This barrio needs a photo!</value></data>
 
+  <!-- ======================== -->
+  <!-- Things To Do Wizard      -->
+  <!-- ======================== -->
+  <data name="Todo_Title" xml:space="preserve"><value>Things to do</value></data>
+  <data name="Todo_PendingBadge" xml:space="preserve"><value>{0} pending</value><comment>{0} = pending count</comment></data>
+  <data name="Todo_Profile_Title" xml:space="preserve"><value>Complete your profile</value></data>
+  <data name="Todo_Profile_Done" xml:space="preserve"><value>Your profile is complete.</value></data>
+  <data name="Todo_Profile_Pending" xml:space="preserve"><value>Add your information so the community can get to know you.</value></data>
+  <data name="Todo_Profile_Action" xml:space="preserve"><value>Edit Profile</value></data>
+  <data name="Todo_Consents_Title" xml:space="preserve"><value>Accept agreements</value></data>
+  <data name="Todo_Consents_Done" xml:space="preserve"><value>All agreements are up to date.</value></data>
+  <data name="Todo_Consents_Pending" xml:space="preserve"><value>{0} of {1} documents need your consent.</value><comment>{0} = pending count, {1} = total required</comment></data>
+  <data name="Todo_Consents_Action" xml:space="preserve"><value>Review Agreements</value></data>
+  <data name="Todo_ConsentCheck_Title" xml:space="preserve"><value>Coordinator review</value></data>
+  <data name="Todo_ConsentCheck_Done" xml:space="preserve"><value>A coordinator has reviewed and cleared your documents.</value></data>
+  <data name="Todo_ConsentCheck_Pending" xml:space="preserve"><value>A coordinator will review your documents once profile and agreements are complete.</value></data>
+  <data name="Todo_ShiftInfo_Title" xml:space="preserve"><value>Set your shift preferences</value></data>
+  <data name="Todo_ShiftInfo_Done" xml:space="preserve"><value>Your shift preferences are set.</value></data>
+  <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>Fill out your shift info so coordinators know your skills and preferences.</value></data>
+  <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Fill Out Shift Info</value></data>
+
 </root>

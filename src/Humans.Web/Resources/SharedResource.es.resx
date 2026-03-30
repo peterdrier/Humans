@@ -1247,4 +1247,26 @@
   <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>Agregar direcciones de correo, establecer preferencias de notificación y controlar la visibilidad del perfil.</value></data>
   <data name="Profile_Day" xml:space="preserve"><value>Día</value></data>
   <data name="Profile_Month" xml:space="preserve"><value>Mes</value></data>
+
+  <!-- ======================== -->
+  <!-- Things To Do Wizard      -->
+  <!-- ======================== -->
+  <data name="Todo_Title" xml:space="preserve"><value>Tareas pendientes</value></data>
+  <data name="Todo_PendingBadge" xml:space="preserve"><value>{0} pendiente(s)</value></data>
+  <data name="Todo_Profile_Title" xml:space="preserve"><value>Completa tu perfil</value></data>
+  <data name="Todo_Profile_Done" xml:space="preserve"><value>Tu perfil est&#xE1; completo.</value></data>
+  <data name="Todo_Profile_Pending" xml:space="preserve"><value>A&#xF1;ade tu informaci&#xF3;n para que la comunidad pueda conocerte.</value></data>
+  <data name="Todo_Profile_Action" xml:space="preserve"><value>Editar perfil</value></data>
+  <data name="Todo_Consents_Title" xml:space="preserve"><value>Aceptar acuerdos</value></data>
+  <data name="Todo_Consents_Done" xml:space="preserve"><value>Todos los acuerdos est&#xE1;n al d&#xED;a.</value></data>
+  <data name="Todo_Consents_Pending" xml:space="preserve"><value>{0} de {1} documentos necesitan tu consentimiento.</value></data>
+  <data name="Todo_Consents_Action" xml:space="preserve"><value>Revisar acuerdos</value></data>
+  <data name="Todo_ConsentCheck_Title" xml:space="preserve"><value>Revisi&#xF3;n del coordinador</value></data>
+  <data name="Todo_ConsentCheck_Done" xml:space="preserve"><value>Un coordinador ha revisado y aprobado tus documentos.</value></data>
+  <data name="Todo_ConsentCheck_Pending" xml:space="preserve"><value>Un coordinador revisar&#xE1; tus documentos una vez que el perfil y los acuerdos est&#xE9;n completos.</value></data>
+  <data name="Todo_ShiftInfo_Title" xml:space="preserve"><value>Configura tus preferencias de turno</value></data>
+  <data name="Todo_ShiftInfo_Done" xml:space="preserve"><value>Tus preferencias de turno est&#xE1;n configuradas.</value></data>
+  <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>Completa tu informaci&#xF3;n de turno para que los coordinadores conozcan tus habilidades y preferencias.</value></data>
+  <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Completar info de turno</value></data>
+
 </root>

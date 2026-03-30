@@ -1,4 +1,6 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -10,15 +12,18 @@ public class ThingsToDoViewComponent : ViewComponent
 {
     private readonly IProfileService _profileService;
     private readonly IMembershipCalculator _membershipCalculator;
+    private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ThingsToDoViewComponent> _logger;
 
     public ThingsToDoViewComponent(
         IProfileService profileService,
         IMembershipCalculator membershipCalculator,
+        IStringLocalizer<SharedResource> localizer,
         ILogger<ThingsToDoViewComponent> logger)
     {
         _profileService = profileService;
         _membershipCalculator = membershipCalculator;
+        _localizer = localizer;
         _logger = logger;
     }
 
@@ -42,13 +47,13 @@ public class ThingsToDoViewComponent : ViewComponent
             model.Items.Add(new TodoItem
             {
                 Key = "profile",
-                Title = "Complete your profile",
+                Title = _localizer["Todo_Profile_Title"].Value,
                 Description = profileComplete
-                    ? "Your profile is complete."
-                    : "Add your information so the community can get to know you.",
+                    ? _localizer["Todo_Profile_Done"].Value
+                    : _localizer["Todo_Profile_Pending"].Value,
                 IsDone = profileComplete,
                 ActionUrl = profileComplete ? null : Url.Action("Edit", "Profile"),
-                ActionText = profileComplete ? null : "Edit Profile",
+                ActionText = profileComplete ? null : _localizer["Todo_Profile_Action"].Value,
                 IconClass = "fa-solid fa-user"
             });
 
@@ -58,13 +63,14 @@ public class ThingsToDoViewComponent : ViewComponent
                 model.Items.Add(new TodoItem
                 {
                     Key = "consents",
-                    Title = "Accept agreements",
+                    Title = _localizer["Todo_Consents_Title"].Value,
                     Description = consentsComplete
-                        ? "All agreements are up to date."
-                        : $"{membershipSnapshot.PendingConsentCount} of {membershipSnapshot.RequiredConsentCount} documents need your consent.",
+                        ? _localizer["Todo_Consents_Done"].Value
+                        : string.Format(CultureInfo.CurrentCulture, _localizer["Todo_Consents_Pending"].Value,
+                            membershipSnapshot.PendingConsentCount, membershipSnapshot.RequiredConsentCount),
                     IsDone = consentsComplete,
                     ActionUrl = consentsComplete ? null : Url.Action("Index", "Consent"),
-                    ActionText = consentsComplete ? null : "Review Agreements",
+                    ActionText = consentsComplete ? null : _localizer["Todo_Consents_Action"].Value,
                     IconClass = "fa-solid fa-file-signature"
                 });
             }
@@ -78,10 +84,10 @@ public class ThingsToDoViewComponent : ViewComponent
                 model.Items.Add(new TodoItem
                 {
                     Key = "consent-check",
-                    Title = "Coordinator review",
+                    Title = _localizer["Todo_ConsentCheck_Title"].Value,
                     Description = consentCheckCleared
-                        ? "A coordinator has reviewed and cleared your documents."
-                        : "A coordinator will review your documents once profile and agreements are complete.",
+                        ? _localizer["Todo_ConsentCheck_Done"].Value
+                        : _localizer["Todo_ConsentCheck_Pending"].Value,
                     IsDone = consentCheckCleared,
                     ActionUrl = null,
                     ActionText = null,
@@ -106,13 +112,13 @@ public class ThingsToDoViewComponent : ViewComponent
                 model.Items.Add(new TodoItem
                 {
                     Key = "shift-info",
-                    Title = "Set your shift preferences",
+                    Title = _localizer["Todo_ShiftInfo_Title"].Value,
                     Description = needsShiftInfo
-                        ? "Fill out your shift info so coordinators know your skills and preferences."
-                        : "Your shift preferences are set.",
+                        ? _localizer["Todo_ShiftInfo_Pending"].Value
+                        : _localizer["Todo_ShiftInfo_Done"].Value,
                     IsDone = !needsShiftInfo,
                     ActionUrl = needsShiftInfo ? Url.Action("ShiftInfo", "Profile") : null,
-                    ActionText = needsShiftInfo ? "Fill Out Shift Info" : null,
+                    ActionText = needsShiftInfo ? _localizer["Todo_ShiftInfo_Action"].Value : null,
                     IconClass = "fa-solid fa-calendar-check"
                 });
             }
