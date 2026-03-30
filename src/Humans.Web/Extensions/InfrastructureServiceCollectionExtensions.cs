@@ -30,6 +30,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICampaignService, CampaignService>();
         services.AddScoped<IContactFieldService, ContactFieldService>();
         services.AddScoped<IUserEmailService, UserEmailService>();
+        services.AddScoped<IEmailProvisioningService, EmailProvisioningService>();
         services.AddScoped<VolunteerHistoryService>();
         services.AddScoped<ILegalDocumentSyncService, LegalDocumentSyncService>();
         services.AddScoped<IAdminLegalDocumentService, AdminLegalDocumentService>();

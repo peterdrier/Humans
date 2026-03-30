@@ -112,6 +112,11 @@ public class TeamMemberViewModel
     public bool IsCoordinator { get; set; }
 
     /// <summary>
+    /// The @nobodies.team email address if provisioned, or null.
+    /// </summary>
+    public string? NobodiesTeamEmail { get; set; }
+
+    /// <summary>
     /// The effective profile picture URL (custom upload takes priority over Google avatar).
     /// </summary>
     public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
@@ -252,6 +257,7 @@ public class TeamMembersViewModel
     public List<TeamMemberViewModel> Members { get; set; } = [];
     public List<TeamJoinRequestViewModel> PendingRequests { get; set; } = [];
     public bool CanManageRoles { get; set; }
+    public bool CanProvisionEmails { get; set; }
 }
 
 public class BirthdayCalendarViewModel

@@ -21,6 +21,8 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IProfileService _profileService;
+    private readonly IUserEmailService _userEmailService;
+    private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
     private readonly ILogger<TeamAdminController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -30,6 +32,8 @@ public class TeamAdminController : HumansTeamControllerBase
         ITeamResourceService teamResourceService,
         IGoogleSyncService googleSyncService,
         IProfileService profileService,
+        IUserEmailService userEmailService,
+        IEmailProvisioningService emailProvisioningService,
         UserManager<User> userManager,
         ISystemTeamSync systemTeamSyncJob,
         ILogger<TeamAdminController> logger,
@@ -40,6 +44,8 @@ public class TeamAdminController : HumansTeamControllerBase
         _teamResourceService = teamResourceService;
         _googleSyncService = googleSyncService;
         _profileService = profileService;
+        _userEmailService = userEmailService;
+        _emailProvisioningService = emailProvisioningService;
         _systemTeamSyncJob = systemTeamSyncJob;
         _logger = logger;
         _localizer = localizer;
@@ -123,6 +129,9 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
+        // Batch-load @nobodies.team email status for all displayed members
+        var nobodiesEmails = await _userEmailService.GetNobodiesTeamEmailsByUserIdsAsync(memberUserIds);
+
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
@@ -134,7 +143,8 @@ public class TeamAdminController : HumansTeamControllerBase
                 CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
                 Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-                IsCoordinator = m.Role == TeamMemberRole.Coordinator
+                IsCoordinator = m.Role == TeamMemberRole.Coordinator,
+                NobodiesTeamEmail = nobodiesEmails.GetValueOrDefault(m.UserId)
             }).ToList();
 
         var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
@@ -160,6 +170,7 @@ public class TeamAdminController : HumansTeamControllerBase
             TeamSlug = team.Slug,
             IsSystemTeam = team.IsSystemTeam,
             CanManageRoles = !team.IsSystemTeam,
+            CanProvisionEmails = true,
             Members = members,
             PendingRequests = pendingRequestViewModels,
             TotalCount = totalCount,
@@ -217,6 +228,49 @@ public class TeamAdminController : HumansTeamControllerBase
         {
             _logger.LogWarning(ex, "Failed to add member {MemberUserId} to team {TeamId} by user {UserId}", model.UserId, team.Id, user.Id);
             SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
+    [HttpPost("Members/{userId}/ProvisionEmail")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ProvisionEmail(string slug, Guid userId, string emailPrefix)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (string.IsNullOrWhiteSpace(emailPrefix))
+        {
+            SetError("Email prefix is required.");
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
+        // Verify that the target user is actually a member of this team
+        var teamMembers = await _teamService.GetTeamMembersAsync(team.Id);
+        if (teamMembers.All(m => m.UserId != userId))
+        {
+            SetError("That human is not a member of this team.");
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
+        var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
+            userId, emailPrefix, user.Id, user.DisplayName);
+
+        if (!result.Success)
+        {
+            SetError(result.ErrorMessage ?? "Provisioning failed.");
+        }
+        else if (result.RecoveryEmail is not null)
+        {
+            SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
+        }
+        else
+        {
+            SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
         }
 
         return RedirectToAction(nameof(Members), new { slug });

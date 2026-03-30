@@ -13,7 +13,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
-using Humans.Web.Helpers;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -30,8 +29,8 @@ public class HumanController : HumansControllerBase
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftMgmt;
-    private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly IContactService _contactService;
     private readonly IClock _clock;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -47,8 +46,8 @@ public class HumanController : HumansControllerBase
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftMgmt,
-        IGoogleWorkspaceUserService workspaceUserService,
         IUserEmailService userEmailService,
+        IEmailProvisioningService emailProvisioningService,
         IContactService contactService,
         IClock clock,
         IStringLocalizer<SharedResource> localizer,
@@ -64,8 +63,8 @@ public class HumanController : HumansControllerBase
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
         _shiftMgmt = shiftMgmt;
-        _workspaceUserService = workspaceUserService;
         _userEmailService = userEmailService;
+        _emailProvisioningService = emailProvisioningService;
         _contactService = contactService;
         _clock = clock;
         _localizer = localizer;
@@ -415,103 +414,24 @@ public class HumanController : HumansControllerBase
             return RedirectToAction(nameof(HumanDetail), new { id });
         }
 
-        var user = await _dbContext.Users
-            .Include(u => u.UserEmails)
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == id);
-        if (user is null)
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
             return NotFound();
 
-        var fullEmail = $"{emailPrefix.Trim().ToLowerInvariant()}@nobodies.team";
+        var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
+            id, emailPrefix, currentUser.Id, currentUser.DisplayName);
 
-        try
+        if (!result.Success)
         {
-            // Check if account already exists in Google Workspace
-            var existing = await _workspaceUserService.GetAccountAsync(fullEmail);
-            if (existing is not null)
-            {
-                SetError($"Account {fullEmail} already exists in Google Workspace.");
-                return RedirectToAction(nameof(HumanDetail), new { id });
-            }
-
-            // Use real name from profile, not display/burner name
-            var firstName = user.Profile?.FirstName;
-            var lastName = user.Profile?.LastName;
-            if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
-            {
-                SetError("Cannot provision account: the human must have a first and last name in their profile.");
-                return RedirectToAction(nameof(HumanDetail), new { id });
-            }
-
-            // ──────────────────────────────────────────────────────────────
-            // ORDERING IS CRITICAL in this block.
-            //
-            // We must capture the user's personal (recovery) email BEFORE
-            // calling AddVerifiedEmailAsync, because that call switches the
-            // user's notification target to the new @nobodies.team address.
-            // If we resolved the recovery email after that point, we'd send
-            // the credentials email to the @nobodies.team mailbox — which the
-            // user can't access yet (they don't have the password).
-            //
-            // Sequence:
-            //   1. Capture recovery email  (personal address)
-            //   2. Provision Google Workspace account
-            //   3. Link @nobodies.team email  (changes notification target)
-            //   4. Send credentials to recovery email captured in step 1
-            //
-            // Do NOT reorder these steps.
-            // ──────────────────────────────────────────────────────────────
-
-            // Step 1: Capture recovery email BEFORE the notification target changes.
-            // This MUST happen before AddVerifiedEmailAsync (step 3).
-            var recoveryEmail = user.GetEffectiveEmail();
-            if (recoveryEmail?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
-                recoveryEmail = user.Email; // fall back to OAuth email
-
-            // Step 2: Generate temp password and provision in Google Workspace.
-            var tempPassword = PasswordGenerator.GenerateTemporary();
-            await _workspaceUserService.ProvisionAccountAsync(
-                fullEmail, firstName, lastName, tempPassword,
-                recoveryEmail);
-
-            // Step 3: Link the new email — this changes the notification target
-            // to @nobodies.team. Do NOT move this above step 1.
-            await _userEmailService.AddVerifiedEmailAsync(id, fullEmail);
-
-            user.GoogleEmail = fullEmail;
-            await _userManager.UpdateAsync(user);
-
-            // Audit
-            var currentUser = await GetCurrentUserAsync();
-            if (currentUser is not null)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.WorkspaceAccountProvisioned,
-                    "WorkspaceAccount", id,
-                    $"Provisioned and linked @nobodies.team account: {fullEmail}",
-                    currentUser.Id, currentUser.DisplayName);
-                await _dbContext.SaveChangesAsync();
-            }
-
-            // Step 4: Send credentials to the PERSONAL email captured in step 1.
-            // This uses recoveryEmail (personal address), NOT the user's current
-            // notification target (which is now @nobodies.team after step 3).
-            if (!string.IsNullOrEmpty(recoveryEmail))
-            {
-                await _emailService.SendWorkspaceCredentialsAsync(
-                    recoveryEmail, user.DisplayName, fullEmail, tempPassword,
-                    user.PreferredLanguage);
-                SetSuccess($"Account {fullEmail} provisioned and linked. Credentials sent to {recoveryEmail}.");
-            }
-            else
-            {
-                SetSuccess($"Account {fullEmail} provisioned and linked. No recovery email found — credentials not sent.");
-            }
+            SetError(result.ErrorMessage ?? "Provisioning failed.");
         }
-        catch (Exception ex)
+        else if (result.RecoveryEmail is not null)
         {
-            _logger.LogError(ex, "Failed to provision @nobodies.team account {Email} for user {UserId}", fullEmail, id);
-            SetError($"Failed to provision {fullEmail}. Check logs for details.");
+            SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
+        }
+        else
+        {
+            SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
         }
 
         return RedirectToAction(nameof(HumanDetail), new { id });

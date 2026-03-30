@@ -472,6 +472,24 @@ public class UserEmailService : IUserEmailService
                 g => g.Any(e => e.IsNotificationTarget));
     }
 
+    public async Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        var userIdList = userIds.ToList();
+        if (userIdList.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        return await _dbContext.UserEmails
+            .AsNoTracking()
+            .Where(ue => userIdList.Contains(ue.UserId)
+                && ue.IsVerified
+                && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
+            .GroupBy(ue => ue.UserId)
+            .Select(g => new { UserId = g.Key, Email = g.First().Email })
+            .ToDictionaryAsync(x => x.UserId, x => x.Email, cancellationToken);
+    }
+
     /// <summary>
     /// Returns the set of visibility levels a viewer with the given access level can see.
     /// Visibility is stored as string in DB, so >= comparison doesn't work correctly.

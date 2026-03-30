@@ -125,4 +125,12 @@ public interface IUserEmailService
     /// </summary>
     Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the verified @nobodies.team email for each of the given users (batch query).
+    /// Returns a dictionary of userId → email address. Users without a @nobodies.team email are omitted.
+    /// </summary>
+    Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default);
 }
