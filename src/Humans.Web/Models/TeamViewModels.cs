@@ -401,6 +401,7 @@ public class CreateRoleDefinitionModel
     public int SlotCount { get; set; } = 1;
     public List<string> Priorities { get; set; } = ["None"];
     public int SortOrder { get; set; }
+    public bool IsPublic { get; set; } = true;
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 }
 

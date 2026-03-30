@@ -578,7 +578,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
             await _teamService.CreateRoleDefinitionAsync(
                 team.Id, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.Period, user.Id, isPublic: true);
+                priorities, model.SortOrder, model.Period, user.Id, model.IsPublic);
 
             SetSuccess($"Role '{model.Name}' created.");
         }
