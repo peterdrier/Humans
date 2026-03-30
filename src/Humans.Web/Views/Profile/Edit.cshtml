@@ -317,6 +317,10 @@
                             var isAsociado = Model.SelectedTier == MembershipTier.Asociado;
                         }
                         <div class="mb-3">
+                            @if (Model.IsTierLocked)
+                            {
+                                <input type="hidden" asp-for="SelectedTier" />
+                            }
                             <div class="form-check mb-3">
                                 @if (Model.IsTierLocked)
                                 {
