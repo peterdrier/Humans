@@ -28,6 +28,7 @@ public partial class TeamResourceService : ITeamResourceService
     private readonly GoogleWorkspaceSettings _googleSettings;
     private readonly TeamResourceManagementSettings _resourceSettings;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
     private readonly ILogger<TeamResourceService> _logger;
 
@@ -40,6 +41,7 @@ public partial class TeamResourceService : ITeamResourceService
         IOptions<GoogleWorkspaceSettings> googleSettings,
         IOptions<TeamResourceManagementSettings> resourceSettings,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
         IClock clock,
         ILogger<TeamResourceService> logger)
     {
@@ -47,6 +49,7 @@ public partial class TeamResourceService : ITeamResourceService
         _googleSettings = googleSettings.Value;
         _resourceSettings = resourceSettings.Value;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
         _clock = clock;
         _logger = logger;
     }
@@ -392,6 +395,7 @@ public partial class TeamResourceService : ITeamResourceService
     {
         return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
             _teamService,
+            _roleAssignmentService,
             _resourceSettings,
             teamId,
             userId,

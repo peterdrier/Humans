@@ -15,6 +15,7 @@ public class ContactFieldService : IContactFieldService
 {
     private readonly HumansDbContext _dbContext;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
 
     // Request-scoped cache for viewer permissions to avoid N+1 queries during listing
@@ -25,10 +26,12 @@ public class ContactFieldService : IContactFieldService
     public ContactFieldService(
         HumansDbContext dbContext,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
         IClock clock)
     {
         _dbContext = dbContext;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
         _clock = clock;
     }
 
@@ -166,7 +169,7 @@ public class ContactFieldService : IContactFieldService
         }
 
         // Board member - can see everything
-        _cachedIsBoardMember ??= await _teamService.IsUserBoardMemberAsync(viewerUserId, cancellationToken);
+        _cachedIsBoardMember ??= await _roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, cancellationToken);
         if (_cachedIsBoardMember.Value)
         {
             return ContactFieldVisibility.BoardOnly;

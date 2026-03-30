@@ -20,6 +20,7 @@ public class StubTeamResourceService : ITeamResourceService
     private readonly HumansDbContext _dbContext;
     private readonly TeamResourceManagementSettings _resourceSettings;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
     private readonly ILogger<StubTeamResourceService> _logger;
 
@@ -27,12 +28,14 @@ public class StubTeamResourceService : ITeamResourceService
         HumansDbContext dbContext,
         IOptions<TeamResourceManagementSettings> resourceSettings,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
         IClock clock,
         ILogger<StubTeamResourceService> logger)
     {
         _dbContext = dbContext;
         _resourceSettings = resourceSettings.Value;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
         _clock = clock;
         _logger = logger;
     }
@@ -170,6 +173,7 @@ public class StubTeamResourceService : ITeamResourceService
     {
         return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
             _teamService,
+            _roleAssignmentService,
             _resourceSettings,
             teamId,
             userId,

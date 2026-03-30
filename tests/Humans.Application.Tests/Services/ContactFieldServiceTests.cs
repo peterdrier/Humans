@@ -17,6 +17,7 @@ public class ContactFieldServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly FakeClock _clock;
     private readonly ContactFieldService _service;
 
@@ -28,8 +29,9 @@ public class ContactFieldServiceTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _teamService = Substitute.For<ITeamService>();
+        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 12, 0, 0));
-        _service = new ContactFieldService(_dbContext, _teamService, _clock);
+        _service = new ContactFieldService(_dbContext, _teamService, _roleAssignmentService, _clock);
     }
 
     public void Dispose()
@@ -55,7 +57,7 @@ public class ContactFieldServiceTests : IDisposable
     {
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
-        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(true);
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId);

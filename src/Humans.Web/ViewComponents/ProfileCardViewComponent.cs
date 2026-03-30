@@ -26,6 +26,7 @@ public class ProfileCardViewComponent : ViewComponent
     private readonly IUserEmailService _userEmailService;
     private readonly VolunteerHistoryService _volunteerHistoryService;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IMembershipCalculator _membershipCalculator;
 
     public ProfileCardViewComponent(
@@ -35,6 +36,7 @@ public class ProfileCardViewComponent : ViewComponent
         IUserEmailService userEmailService,
         VolunteerHistoryService volunteerHistoryService,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
         IMembershipCalculator membershipCalculator)
     {
         _dbContext = dbContext;
@@ -43,6 +45,7 @@ public class ProfileCardViewComponent : ViewComponent
         _userEmailService = userEmailService;
         _volunteerHistoryService = volunteerHistoryService;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
         _membershipCalculator = membershipCalculator;
     }
 
@@ -72,7 +75,7 @@ public class ProfileCardViewComponent : ViewComponent
             if (viewer is not null)
             {
                 viewerUserId = viewer.Id;
-                canViewLegalName = await _teamService.IsUserBoardMemberAsync(viewer.Id);
+                canViewLegalName = await _roleAssignmentService.IsUserBoardMemberAsync(viewer.Id);
             }
         }
 
