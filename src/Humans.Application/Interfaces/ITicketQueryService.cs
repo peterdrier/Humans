@@ -43,6 +43,12 @@ public interface ITicketQueryService
     Task<TicketSalesAggregates> GetSalesAggregatesAsync();
 
     /// <summary>
+    /// Get the distinct ticket type names across all attendees, sorted alphabetically.
+    /// Used for filter dropdowns on orders/attendees pages.
+    /// </summary>
+    Task<List<string>> GetAvailableTicketTypesAsync();
+
+    /// <summary>
     /// Get code tracking data: campaign summaries and individual code details
     /// with redemption status. Optionally filters codes by search term.
     /// </summary>

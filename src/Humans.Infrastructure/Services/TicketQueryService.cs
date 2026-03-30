@@ -79,6 +79,15 @@ public class TicketQueryService : ITicketQueryService
         return attendeeUserIds.Union(buyerUserIds).ToHashSet();
     }
 
+    public Task<List<string>> GetAvailableTicketTypesAsync()
+    {
+        return _dbContext.TicketAttendees
+            .Select(a => a.TicketTypeName)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToListAsync();
+    }
+
     public async Task<HashSet<Guid>> GetAllMatchedUserIdsAsync()
     {
         var matchedFromAttendees = await _dbContext.TicketAttendees

@@ -178,7 +178,7 @@ public class TicketController : HumansControllerBase
             FilterPaymentStatus = filterPaymentStatus,
             FilterTicketType = filterTicketType,
             FilterMatched = filterMatched,
-            AvailableTicketTypes = await GetAvailableTicketTypesAsync(),
+            AvailableTicketTypes = await _ticketQueryService.GetAvailableTicketTypesAsync(),
         };
 
         return View(model);
@@ -229,7 +229,7 @@ public class TicketController : HumansControllerBase
             FilterStatus = filterStatus,
             FilterMatched = filterMatched,
             FilterOrderId = filterOrderId,
-            AvailableTicketTypes = await GetAvailableTicketTypesAsync(),
+            AvailableTicketTypes = await _ticketQueryService.GetAvailableTicketTypesAsync(),
         };
 
         return View(model);
@@ -461,15 +461,6 @@ public class TicketController : HumansControllerBase
 
         return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()),
             "text/csv", "orders-export.csv");
-    }
-
-    private Task<List<string>> GetAvailableTicketTypesAsync()
-    {
-        return _dbContext.TicketAttendees
-            .Select(a => a.TicketTypeName)
-            .Distinct()
-            .OrderBy(t => t)
-            .ToListAsync();
     }
 
     private IQueryable<TicketOrder> BuildOrdersQuery(
