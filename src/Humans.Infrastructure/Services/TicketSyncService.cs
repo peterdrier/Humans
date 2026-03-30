@@ -404,12 +404,23 @@ public class TicketSyncService : ITicketSyncService
         return result;
     }
 
-    private static TicketAttendeeStatus ParseAttendeeStatus(string status) =>
-        status.ToLowerInvariant() switch
+    private TicketAttendeeStatus ParseAttendeeStatus(string status)
+    {
+        var result = status.ToLowerInvariant() switch
         {
             "valid" or "active" => TicketAttendeeStatus.Valid,
             "void" or "voided" => TicketAttendeeStatus.Void,
             "checked_in" => TicketAttendeeStatus.CheckedIn,
-            _ => TicketAttendeeStatus.Valid
+            _ => TicketAttendeeStatus.Void
         };
+
+        if (result == TicketAttendeeStatus.Void &&
+            !string.Equals(status, "void", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(status, "voided", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("Unknown attendee status '{Status}' from vendor, defaulting to Void", status);
+        }
+
+        return result;
+    }
 }
