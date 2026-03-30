@@ -11,9 +11,10 @@
 # Excludes EF Core migrations. Separates test code from app code.
 #
 # Columns:
-#   Date | App Lines | Test Lines | Total Lines | App Bytes | Test Bytes |
-#   Files | Classes | Interfaces | Controllers | Views | Entities |
-#   Resx Keys | Commits (cumulative) | Day +Lines | Day -Lines
+#   Date | App Lines | Test Lines | Total Lines | CS Lines | CSHTML Lines |
+#   RESX Lines | JS Lines | App Bytes | Test Bytes | Files | Classes |
+#   Interfaces | Controllers | Views | Entities | Resx Keys |
+#   Commits (cumulative) | Day +Lines | Day -Lines
 
 set -euo pipefail
 
@@ -67,7 +68,7 @@ while read -r hash day; do
 done < <(git log --reverse --format="%H %ad" --date=format:"%Y-%m-%d")
 
 # 4) Header
-echo "Date|App Lines|Test Lines|Total Lines|App Bytes|Test Bytes|Files|Classes|Interfaces|Controllers|Views|Entities|Resx Keys|Commits|Day +Lines|Day -Lines"
+echo "Date|App Lines|Test Lines|Total Lines|CS Lines|CSHTML Lines|RESX Lines|JS Lines|App Bytes|Test Bytes|Files|Classes|Interfaces|Controllers|Views|Entities|Resx Keys|Commits|Day +Lines|Day -Lines"
 
 # 5) Snapshot each day
 for day in "${days[@]}"; do
@@ -75,11 +76,18 @@ for day in "${days[@]}"; do
   git checkout --quiet "$commit"
 
   # App code (exclude Migrations and Tests)
-  app_data=$(find src -type f \( -name '*.cs' -o -name '*.cshtml' -o -name '*.resx' -o -name '*.js' \) \
-    ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | \
-    xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
-  app_lines=$(echo "$app_data" | awk '{print $1+0}')
-  app_bytes=$(echo "$app_data" | awk '{print $2+0}')
+  cs_data=$(find src -type f -name '*.cs' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
+  cshtml_data=$(find src -type f -name '*.cshtml' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
+  resx_data=$(find src -type f -name '*.resx' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
+  js_data=$(find src -type f -name '*.js' ! -path '*/Migrations/*' ! -path '*Tests*' -print0 2>/dev/null | xargs -0 wc -l -c 2>/dev/null | tail -1 || echo "0 0")
+
+  cs_lines=$(echo "$cs_data" | awk '{print $1+0}')
+  cshtml_lines=$(echo "$cshtml_data" | awk '{print $1+0}')
+  resx_lines=$(echo "$resx_data" | awk '{print $1+0}')
+  js_lines=$(echo "$js_data" | awk '{print $1+0}')
+
+  app_lines=$((cs_lines + cshtml_lines + resx_lines + js_lines))
+  app_bytes=$(( $(echo "$cs_data" | awk '{print $2+0}') + $(echo "$cshtml_data" | awk '{print $2+0}') + $(echo "$resx_data" | awk '{print $2+0}') + $(echo "$js_data" | awk '{print $2+0}') ))
 
   # Test code
   test_data=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' -print0 2>/dev/null | \
@@ -90,8 +98,8 @@ for day in "${days[@]}"; do
   total_lines=$((app_lines + test_lines))
 
   # File counts
-  app_files=$(find src -type f \( -name '*.cs' -o -name '*.cshtml' -o -name '*.resx' -o -name '*.js' \) \
-    ! -path '*/Migrations/*' ! -path '*Tests*' 2>/dev/null | wc -l)
+  app_files=$(( $(find src -type f \( -name '*.cs' -o -name '*.cshtml' -o -name '*.resx' -o -name '*.js' \) \
+    ! -path '*/Migrations/*' ! -path '*Tests*' 2>/dev/null | wc -l) ))
   test_files=$(find . -type f -name '*.cs' -path '*Tests*' ! -path '*/Migrations/*' 2>/dev/null | wc -l)
 
   # Classes + records
@@ -108,5 +116,5 @@ for day in "${days[@]}"; do
   entities=$(find src -path '*/Entities/*.cs' 2>/dev/null | wc -l)
   resx_keys=$(grep -c '<data ' src/Humans.Web/Resources/SharedResource.resx 2>/dev/null || echo 0)
 
-  echo "${day}|${app_lines}|${test_lines}|${total_lines}|${app_bytes}|${test_bytes}|$((app_files + test_files))|${classes}|${interfaces}|${controllers}|${views}|${entities}|${resx_keys}|${cum_commits[$day]}|${day_adds[$day]:-0}|${day_dels[$day]:-0}"
+  echo "${day}|${app_lines}|${test_lines}|${total_lines}|${cs_lines}|${cshtml_lines}|${resx_lines}|${js_lines}|${app_bytes}|${test_bytes}|$((app_files + test_files))|${classes}|${interfaces}|${controllers}|${views}|${entities}|${resx_keys}|${cum_commits[$day]}|${day_adds[$day]:-0}|${day_dels[$day]:-0}"
 done
