@@ -1565,7 +1565,7 @@ public class TeamService : ITeamService
         var definitions = await GetAllRoleDefinitionsAsync(cancellationToken);
 
         var slots = new List<TeamRosterSlotSummary>();
-        foreach (var definition in definitions.Where(d => d.IsPublic))
+        foreach (var definition in definitions)
         {
             for (var slotIndex = 0; slotIndex < definition.SlotCount; slotIndex++)
             {
