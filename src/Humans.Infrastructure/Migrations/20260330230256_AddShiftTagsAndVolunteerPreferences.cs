@@ -79,14 +79,14 @@ namespace Humans.Infrastructure.Migrations
                 columns: new[] { "Id", "Name" },
                 values: new object[,]
                 {
-                    { new Guid("00000000-0000-0000-0002-000000000001"), "Heavy lifting" },
-                    { new Guid("00000000-0000-0000-0002-000000000002"), "Working in the sun" },
-                    { new Guid("00000000-0000-0000-0002-000000000003"), "Working in the shade" },
-                    { new Guid("00000000-0000-0000-0002-000000000004"), "Organisational task" },
-                    { new Guid("00000000-0000-0000-0002-000000000005"), "Meeting new people" },
-                    { new Guid("00000000-0000-0000-0002-000000000006"), "Looking after folks" },
-                    { new Guid("00000000-0000-0000-0002-000000000007"), "Exploring the site" },
-                    { new Guid("00000000-0000-0000-0002-000000000008"), "Feeding and hydrating folks" }
+                    { new Guid("00000000-0000-0000-0003-000000000001"), "Heavy lifting" },
+                    { new Guid("00000000-0000-0000-0003-000000000002"), "Working in the sun" },
+                    { new Guid("00000000-0000-0000-0003-000000000003"), "Working in the shade" },
+                    { new Guid("00000000-0000-0000-0003-000000000004"), "Organisational task" },
+                    { new Guid("00000000-0000-0000-0003-000000000005"), "Meeting new people" },
+                    { new Guid("00000000-0000-0000-0003-000000000006"), "Looking after folks" },
+                    { new Guid("00000000-0000-0000-0003-000000000007"), "Exploring the site" },
+                    { new Guid("00000000-0000-0000-0003-000000000008"), "Feeding and hydrating folks" }
                 });
 
             migrationBuilder.CreateIndex(

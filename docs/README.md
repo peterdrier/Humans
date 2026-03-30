@@ -35,6 +35,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 | Document | Description |
 |----------|-------------|
 | [Admin Role Setup](admin-role-setup.md) | Adding initial admin users via SQL |
+| [GUID Reservations](guid-reservations.md) | Reserved deterministic GUID blocks for seeded data |
 | [Google & External Service Setup](google-service-account-setup.md) | OAuth, service account, Maps, GitHub credentials |
 
 ## Historical Design Records

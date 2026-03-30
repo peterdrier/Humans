@@ -5,6 +5,7 @@ namespace Humans.Domain.Constants;
 /// </summary>
 public static class SystemTeamIds
 {
+    // Reserved GUID block: 0001. See docs/guid-reservations.md.
     public static readonly Guid Volunteers = Guid.Parse("00000000-0000-0000-0001-000000000001");
     public static readonly Guid Coordinators = Guid.Parse("00000000-0000-0000-0001-000000000002");
     public static readonly Guid Board = Guid.Parse("00000000-0000-0000-0001-000000000003");

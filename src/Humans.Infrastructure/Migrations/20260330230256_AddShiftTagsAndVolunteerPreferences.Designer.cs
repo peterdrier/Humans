@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260330223142_AddShiftTagsAndVolunteerPreferences")]
+    [Migration("20260330230256_AddShiftTagsAndVolunteerPreferences")]
     partial class AddShiftTagsAndVolunteerPreferences
     {
         /// <inheritdoc />
@@ -1984,42 +1984,42 @@ namespace Humans.Infrastructure.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0002-000000000001"),
+                            Id = new Guid("00000000-0000-0000-0003-000000000001"),
                             Name = "Heavy lifting"
                         },
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0002-000000000002"),
+                            Id = new Guid("00000000-0000-0000-0003-000000000002"),
                             Name = "Working in the sun"
                         },
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0002-000000000003"),
+                            Id = new Guid("00000000-0000-0000-0003-000000000003"),
                             Name = "Working in the shade"
                         },
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0002-000000000004"),
+                            Id = new Guid("00000000-0000-0000-0003-000000000004"),
                             Name = "Organisational task"
                         },
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0002-000000000005"),
+                            Id = new Guid("00000000-0000-0000-0003-000000000005"),
                             Name = "Meeting new people"
                         },
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0002-000000000006"),
+                            Id = new Guid("00000000-0000-0000-0003-000000000006"),
                             Name = "Looking after folks"
                         },
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0002-000000000007"),
+                            Id = new Guid("00000000-0000-0000-0003-000000000007"),
                             Name = "Exploring the site"
                         },
                         new
                         {
-                            Id = new Guid("00000000-0000-0000-0002-000000000008"),
+                            Id = new Guid("00000000-0000-0000-0003-000000000008"),
                             Name = "Feeding and hydrating folks"
                         });
                 });

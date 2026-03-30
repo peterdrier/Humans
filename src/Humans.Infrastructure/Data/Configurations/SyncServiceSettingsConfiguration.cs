@@ -37,7 +37,8 @@ public class SyncServiceSettingsConfiguration : IEntityTypeConfiguration<SyncSer
             .HasForeignKey(s => s.UpdatedByUserId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Seed one row per service type, all defaulting to None
+        // Reserved GUID block: 0002. See docs/guid-reservations.md.
+        // Seed one row per service type, all defaulting to None.
         builder.HasData(
             new
             {

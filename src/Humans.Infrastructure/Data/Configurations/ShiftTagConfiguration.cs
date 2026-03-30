@@ -31,15 +31,16 @@ public class ShiftTagConfiguration : IEntityTypeConfiguration<ShiftTag>
                     j.HasKey("RotaId", "ShiftTagId");
                 });
 
-        // Seed initial tags from coordinator feedback
+        // Reserved GUID block: 0003. See docs/guid-reservations.md.
+        // Seed initial tags from coordinator feedback.
         builder.HasData(
-            new { Id = new Guid("00000000-0000-0000-0002-000000000001"), Name = "Heavy lifting" },
-            new { Id = new Guid("00000000-0000-0000-0002-000000000002"), Name = "Working in the sun" },
-            new { Id = new Guid("00000000-0000-0000-0002-000000000003"), Name = "Working in the shade" },
-            new { Id = new Guid("00000000-0000-0000-0002-000000000004"), Name = "Organisational task" },
-            new { Id = new Guid("00000000-0000-0000-0002-000000000005"), Name = "Meeting new people" },
-            new { Id = new Guid("00000000-0000-0000-0002-000000000006"), Name = "Looking after folks" },
-            new { Id = new Guid("00000000-0000-0000-0002-000000000007"), Name = "Exploring the site" },
-            new { Id = new Guid("00000000-0000-0000-0002-000000000008"), Name = "Feeding and hydrating folks" });
+            new { Id = new Guid("00000000-0000-0000-0003-000000000001"), Name = "Heavy lifting" },
+            new { Id = new Guid("00000000-0000-0000-0003-000000000002"), Name = "Working in the sun" },
+            new { Id = new Guid("00000000-0000-0000-0003-000000000003"), Name = "Working in the shade" },
+            new { Id = new Guid("00000000-0000-0000-0003-000000000004"), Name = "Organisational task" },
+            new { Id = new Guid("00000000-0000-0000-0003-000000000005"), Name = "Meeting new people" },
+            new { Id = new Guid("00000000-0000-0000-0003-000000000006"), Name = "Looking after folks" },
+            new { Id = new Guid("00000000-0000-0000-0003-000000000007"), Name = "Exploring the site" },
+            new { Id = new Guid("00000000-0000-0000-0003-000000000008"), Name = "Feeding and hydrating folks" });
     }
 }
