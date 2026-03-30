@@ -42,6 +42,21 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 | `/Tickets/GateList` | Stub for June implementation |
 | `/Tickets/WhoHasntBought` | Active humans without ticket purchases |
 
+## Dashboard Widgets
+
+### Ticketing Dashboard (admin)
+
+- **Avg. Net Price** — net revenue divided by tickets sold (Stripe/TT fees deducted). Handles zero tickets gracefully.
+- **Volunteer Ticket Coverage** — percentage and count of active Volunteers team members matched as ticket attendees. Progress bar with color thresholds (green >= 75%, yellow >= 50%, red < 50%). Links to "Who Hasn't Bought?" detail view.
+
+### Homepage Dashboard (per-user)
+
+- **Your Ticket** card in sidebar — shows ticket status for the current user:
+  - **Has ticket(s)**: confirmation message with count when multiple
+  - **No ticket**: CTA button linking to `tickets.nobodies.team`
+  - **Not configured**: warning message
+- Matching checks attendee records via `MatchedUserId`, then falls back to all verified user emails against `TicketAttendee.AttendeeEmail` (case-insensitive). A buyer who purchased tickets for others does NOT count as having a ticket.
+
 ## Configuration
 
 - `TicketVendor:EventId` and `TicketVendor:SyncIntervalMinutes` in appsettings.json
