@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -32,8 +33,17 @@ public class CampMapService : ICampMapService
                 p.CampSeason.Name,
                 p.CampSeason.Camp.Slug,
                 p.GeoJson,
-                p.AreaSqm))
+                p.AreaSqm,
+                p.CampSeason.SoundZone))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<SoundZone?> GetCampSeasonSoundZoneAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.CampSeasons
+            .Where(s => s.Id == campSeasonId)
+            .Select(s => s.SoundZone)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutPolygonAsync(int year, CancellationToken cancellationToken = default)

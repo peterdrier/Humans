@@ -345,4 +345,53 @@ public class CampMapServiceTests : IDisposable
         history[0].AreaSqm.Should().Be(200.0); // Most recent first
         history[1].AreaSqm.Should().Be(100.0);
     }
+
+    [Fact]
+    public async Task GetPolygonsAsync_IncludesSoundZone_WhenSet()
+    {
+        var (_, season, user) = await SeedCampWithLeadAsync();
+        season.SoundZone = SoundZone.Blue;
+        await _dbContext.SaveChangesAsync();
+        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
+        await _sut.SavePolygonAsync(season.Id, geoJson, 100.0, user.Id);
+
+        var polygons = await _sut.GetPolygonsAsync(season.Year);
+
+        polygons.Single().SoundZone.Should().Be(SoundZone.Blue);
+    }
+
+    [Fact]
+    public async Task GetPolygonsAsync_SoundZoneIsNull_WhenNotSet()
+    {
+        var (_, season, user) = await SeedCampWithLeadAsync();
+        // SoundZone not set, defaults to null
+        const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[]]}}""";
+        await _sut.SavePolygonAsync(season.Id, geoJson, 100.0, user.Id);
+
+        var polygons = await _sut.GetPolygonsAsync(season.Year);
+
+        polygons.Single().SoundZone.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetCampSeasonSoundZoneAsync_ReturnsSoundZone_WhenSet()
+    {
+        var (_, season, _) = await SeedCampWithLeadAsync();
+        season.SoundZone = SoundZone.Red;
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _sut.GetCampSeasonSoundZoneAsync(season.Id);
+
+        result.Should().Be(SoundZone.Red);
+    }
+
+    [Fact]
+    public async Task GetCampSeasonSoundZoneAsync_ReturnsNull_WhenNotSet()
+    {
+        var (_, season, _) = await SeedCampWithLeadAsync();
+
+        var result = await _sut.GetCampSeasonSoundZoneAsync(season.Id);
+
+        result.Should().BeNull();
+    }
 }

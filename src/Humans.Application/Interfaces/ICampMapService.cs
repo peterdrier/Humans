@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using NodaTime;
 
 namespace Humans.Application.Interfaces;
@@ -9,6 +10,7 @@ public interface ICampMapService
     Task<List<CampPolygonDto>> GetPolygonsAsync(int year, CancellationToken cancellationToken = default);
     Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutPolygonAsync(int year, CancellationToken cancellationToken = default);
     Task<List<PolygonHistoryEntryDto>> GetPolygonHistoryAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
+    Task<SoundZone?> GetCampSeasonSoundZoneAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
     Task<Guid?> GetUserCampSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 
     // Writes
@@ -40,7 +42,8 @@ public record CampPolygonDto(
     string CampName,
     string CampSlug,
     string GeoJson,
-    double AreaSqm);
+    double AreaSqm,
+    SoundZone? SoundZone);
 
 public record CampSeasonSummaryDto(
     Guid CampSeasonId,
