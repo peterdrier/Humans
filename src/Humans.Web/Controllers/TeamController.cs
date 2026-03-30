@@ -12,6 +12,7 @@ using Humans.Web.Extensions;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -27,6 +28,7 @@ public class TeamController : HumansControllerBase
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IConfiguration _configuration;
     private readonly ILogger<TeamController> _logger;
+    private readonly IClock _clock;
 
     public TeamController(
         ITeamService teamService,
@@ -37,6 +39,7 @@ public class TeamController : HumansControllerBase
         ISystemTeamSync systemTeamSync,
         IStringLocalizer<SharedResource> localizer,
         IConfiguration configuration,
+        IClock clock,
         ILogger<TeamController> logger)
         : base(userManager)
     {
@@ -47,6 +50,7 @@ public class TeamController : HumansControllerBase
         _systemTeamSync = systemTeamSync;
         _localizer = localizer;
         _configuration = configuration;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -267,9 +271,10 @@ public class TeamController : HumansControllerBase
             return currentUserError;
         }
 
-        var currentMonth = month ?? DateTime.UtcNow.Month;
+        var currentZone = HttpContext.Session.GetUserTimeZone();
+        var currentMonth = month ?? _clock.GetCurrentInstant().InZone(currentZone).Month;
         if (currentMonth < 1 || currentMonth > 12)
-            currentMonth = DateTime.UtcNow.Month;
+            currentMonth = _clock.GetCurrentInstant().InZone(currentZone).Month;
 
         // Load all active profiles that have a date of birth
         var profilesWithBirthdays = await _profileService.GetBirthdayProfilesAsync(currentMonth);
