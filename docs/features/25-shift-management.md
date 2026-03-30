@@ -90,6 +90,29 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 - Clear CTAs to browse all shifts and view own shift schedule
 - When user has existing signups, the standard shift signups component and urgent shifts list are shown instead
 
+### US-25.8: Rota Tags and Volunteer Preferences
+**As a** coordinator
+**I want to** tag rotas with descriptive labels (e.g., "Heavy lifting", "Working in the sun")
+**So that** volunteers can filter and find shifts matching their interests
+
+**Acceptance Criteria:**
+- Coordinators can add/remove tags from rotas via the shift admin page
+- Tags are shared across all teams — any coordinator can use existing tags or create new ones
+- Tag picker shows existing tags as checkboxes plus an inline "create new tag" field
+- Tags displayed as badges on rota cards in both admin and browse views
+- Initial tags seeded from coordinator feedback: Heavy lifting, Working in the sun, Working in the shade, Organisational task, Meeting new people, Looking after folks, Exploring the site, Feeding and hydrating folks
+
+**As a** volunteer
+**I want to** filter shifts by tag and set tag preferences on the browse page
+**So that** I can find shifts that match the kind of work I enjoy
+
+**Acceptance Criteria:**
+- Tag filter bar on `/Shifts` browse page — click tags to toggle filter (additive)
+- Active tag filters shown as filled buttons with X to remove
+- Volunteers can set preferred tags via a collapsible preferences panel on the browse page
+- Shifts with matching tags are highlighted with a star icon
+- Tag preferences are accessible from the browse page directly (no need to navigate to profile)
+
 ### US-25.6: Post-Event No-Show Tracking
 **As a** coordinator
 **I want to** mark no-shows after shifts end
@@ -109,6 +132,9 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 | `ShiftSignup` | User-to-shift link with state machine; SignupBlockId groups range signups |
 | `GeneralAvailability` | Per-user per-event day availability (general volunteer pool) |
 | `VolunteerEventProfile` | Per-event skills, dietary, medical info, email preferences |
+| `ShiftTag` | Descriptive label for rotas (Id, Name); shared across all teams |
+| `RotaShiftTag` | Join table: Rota ↔ ShiftTag many-to-many |
+| `VolunteerTagPreference` | Links a volunteer to preferred tags for personalized recommendations |
 
 ## State Machine (ShiftSignup)
 
@@ -144,8 +170,9 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 | Route | Purpose |
 |-------|---------|
-| `/Shifts` | Browse all shifts (filtered by department, date range, period) |
+| `/Shifts` | Browse all shifts (filtered by department, date range, period, tags) |
 | `/Shifts/Mine` | View own signups (upcoming, pending, past) |
+| `/Shifts/Preferences/Tags` | POST: Save volunteer tag preferences |
 | `/Shifts/Settings` | Admin: manage EventSettings |
 | `/Teams/{slug}/Shifts` | Coordinator: manage rotas/shifts for a department |
 | `/` (Dashboard) | Shift signups ViewComponent + guided discovery when no signups |

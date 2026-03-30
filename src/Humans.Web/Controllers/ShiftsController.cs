@@ -40,7 +40,7 @@ public class ShiftsController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false)
+    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -96,8 +96,14 @@ public class ShiftsController : HumansControllerBase
             includeAdminOnly: isPrivileged, includeSignups: isPrivileged,
             includeHidden: isPrivileged);
 
+        // Apply tag filter — keep only shifts whose rota has at least one of the selected tags
+        var activeTagFilter = tagIds?.Where(id => id != Guid.Empty).ToList() ?? [];
+        var filteredShifts = activeTagFilter.Count > 0
+            ? urgentShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
+            : urgentShifts;
+
         // Group by department → rota → shift
-        var departments = urgentShifts
+        var departments = filteredShifts
             .GroupBy(u => u.Shift.Rota.TeamId)
             .Select(deptGroup =>
             {
@@ -118,13 +124,13 @@ public class ShiftsController : HumansControllerBase
                                 Shifts = rotaGroup
                                     .Select(u =>
                                     {
-                                        var (start, end, period) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
+                                        var (start, end, shiftPeriod) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
                                         return new ShiftDisplayItem
                                         {
                                             Shift = u.Shift,
                                             AbsoluteStart = start,
                                             AbsoluteEnd = end,
-                                            Period = period,
+                                            Period = shiftPeriod,
                                             ConfirmedCount = u.ConfirmedCount,
                                             RemainingSlots = u.RemainingSlots,
                                             Signups = u.Signups
@@ -161,6 +167,10 @@ public class ShiftsController : HumansControllerBase
                 .ToList();
         }
 
+        // Load all tags for filter UI and volunteer's preferred tags
+        var allTags = await _shiftMgmt.GetAllTagsAsync();
+        var userPreferredTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
+
         var model = new ShiftBrowseViewModel
         {
             EventSettings = es,
@@ -173,7 +183,10 @@ public class ShiftsController : HumansControllerBase
             UserSignupStatuses = userSignupStatuses,
             Departments = departments,
             AllDepartments = allDepartments,
-            ShowSignups = isPrivileged
+            ShowSignups = isPrivileged,
+            AllTags = allTags.ToList(),
+            FilterTagIds = activeTagFilter,
+            UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet()
         };
 
         return View(model);
@@ -384,6 +397,21 @@ public class ShiftsController : HumansControllerBase
 
         SetSuccess("iCal URL regenerated.");
         return RedirectToAction(nameof(Mine));
+    }
+
+    [HttpPost("Preferences/Tags")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveTagPreferences([FromForm(Name = "tagIds")] List<Guid>? tagIds)
+    {
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        await _shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []);
+        SetSuccess("Tag preferences saved.");
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("Settings")]

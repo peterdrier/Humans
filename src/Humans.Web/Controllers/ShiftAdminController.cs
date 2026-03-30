@@ -114,6 +114,8 @@ public class ShiftAdminController : HumansTeamControllerBase
                 .ToList();
         }
 
+        var allTags = await _shiftMgmt.GetAllTagsAsync();
+
         return View(new ShiftAdminViewModel
         {
             Department = team,
@@ -128,7 +130,8 @@ public class ShiftAdminController : HumansTeamControllerBase
             CanViewMedical = canViewMedical,
             StaffingData = staffingData.ToList(),
             Now = _clock.GetCurrentInstant(),
-            AllDepartments = allDepartments
+            AllDepartments = allDepartments,
+            AllTags = allTags.ToList()
         });
     }
 
@@ -163,6 +166,18 @@ public class ShiftAdminController : HumansTeamControllerBase
         };
 
         await _shiftMgmt.CreateRotaAsync(rota);
+
+        // Handle tag assignment
+        if (!string.IsNullOrWhiteSpace(model.TagIds))
+        {
+            var tagIdList = model.TagIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .ToList();
+            await _shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
+        }
+
         SetSuccess($"Rota '{model.Name}' created.");
         return Redirect(Url.Action(nameof(Index), new { slug }) + "#rota-" + rota.Id.ToString("N"));
     }
@@ -186,6 +201,19 @@ public class ShiftAdminController : HumansTeamControllerBase
         rota.PracticalInfo = model.PracticalInfo;
 
         await _shiftMgmt.UpdateRotaAsync(rota);
+
+        // Handle tag assignment
+        var tagIdList = new List<Guid>();
+        if (!string.IsNullOrWhiteSpace(model.TagIds))
+        {
+            tagIdList = model.TagIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .ToList();
+        }
+        await _shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
+
         SetSuccess($"Rota '{model.Name}' updated.");
         return RedirectToAction(nameof(Index), new { slug });
     }
@@ -720,6 +748,33 @@ public class ShiftAdminController : HumansTeamControllerBase
         return await ResolveDepartmentAccessAsync(
             slug,
             (team, user) => CanManageDepartmentAsync(user, team));
+    }
+
+    [HttpGet("Tags/Search")]
+    public async Task<IActionResult> SearchTags(string slug, string? q)
+    {
+        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
+        if (teamError is not null) return Forbid();
+
+        var tags = string.IsNullOrWhiteSpace(q)
+            ? await _shiftMgmt.GetAllTagsAsync()
+            : await _shiftMgmt.SearchTagsAsync(q);
+
+        return Json(tags.Select(t => new { t.Id, t.Name }));
+    }
+
+    [HttpPost("Tags/Create")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateTag(string slug, string name)
+    {
+        var (teamError, _, _) = await ResolveDepartmentManagementAsync(slug);
+        if (teamError is not null) return Forbid();
+
+        if (string.IsNullOrWhiteSpace(name) || name.Length > 100)
+            return BadRequest("Tag name is required and must be 100 characters or fewer.");
+
+        var tag = await _shiftMgmt.GetOrCreateTagAsync(name);
+        return Json(new { tag.Id, tag.Name });
     }
 
     private async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveDepartmentApprovalAsync(string slug)

@@ -69,6 +69,8 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
     public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
     public DbSet<BudgetAuditLog> BudgetAuditLogs => Set<BudgetAuditLog>();
+    public DbSet<ShiftTag> ShiftTags => Set<ShiftTag>();
+    public DbSet<VolunteerTagPreference> VolunteerTagPreferences => Set<VolunteerTagPreference>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

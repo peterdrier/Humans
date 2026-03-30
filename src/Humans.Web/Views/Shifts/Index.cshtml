@@ -88,13 +88,17 @@
                    min="@pickerMin.ToString("yyyy-MM-dd", null)"
                    max="@pickerMax.ToString("yyyy-MM-dd", null)" />
         </div>
-        @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod))
+        @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod) || Model.FilterTagIds.Count > 0)
         {
             <div class="col-auto">
                 <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear Filters</a>
             </div>
         }
         <input type="hidden" name="period" value="@Model.FilterPeriod" />
+        @foreach (var tagId in Model.FilterTagIds)
+        {
+            <input type="hidden" name="tags" value="@tagId" />
+        }
     </form>
     @{
         var activePeriod = Model.FilterPeriod ?? "";
@@ -109,6 +113,79 @@
         <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Strike" })"
            class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">Strike</a>
     </div>
+
+    @if (Model.AllTags.Count > 0)
+    {
+        <div class="mb-3">
+            <div class="d-flex flex-wrap gap-1 align-items-center">
+                <small class="text-muted me-1"><i class="fa-solid fa-tags me-1"></i>Filter by tag:</small>
+                @foreach (var tag in Model.AllTags)
+                {
+                    var isActive = Model.FilterTagIds.Contains(tag.Id);
+                    var newTagIds = isActive
+                        ? Model.FilterTagIds.Where(id => id != tag.Id).ToList()
+                        : Model.FilterTagIds.Concat(new[] { tag.Id }).ToList();
+                    var routeValues = new Dictionary<string, string?>();
+                    if (Model.FilterDepartmentId.HasValue)
+                        routeValues["departmentId"] = Model.FilterDepartmentId.Value.ToString();
+                    if (!string.IsNullOrEmpty(Model.FilterFromDate))
+                        routeValues["fromDate"] = Model.FilterFromDate;
+                    if (!string.IsNullOrEmpty(Model.FilterToDate))
+                        routeValues["toDate"] = Model.FilterToDate;
+                    if (!string.IsNullOrEmpty(Model.FilterPeriod))
+                        routeValues["period"] = Model.FilterPeriod;
+                    for (var i = 0; i < newTagIds.Count; i++)
+                        routeValues[$"tags[{i}]"] = newTagIds[i].ToString();
+                    @if (isActive)
+                    {
+                        <a href="@Url.Action("Index", routeValues)" class="btn btn-sm btn-primary">
+                            @tag.Name <i class="fa-solid fa-xmark ms-1"></i>
+                        </a>
+                    }
+                    else
+                    {
+                        <a href="@Url.Action("Index", routeValues)" class="btn btn-sm btn-outline-primary">
+                            @tag.Name
+                        </a>
+                    }
+                }
+            </div>
+        </div>
+    }
+
+    @if (Model.AllTags.Count > 0)
+    {
+        <div class="mb-3">
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#tag-preferences-panel">
+                <i class="fa-solid fa-sliders me-1"></i>Set your preferences
+                @if (Model.UserPreferredTagIds.Count > 0)
+                {
+                    <span class="badge bg-primary ms-1">@Model.UserPreferredTagIds.Count</span>
+                }
+            </button>
+            <div class="collapse @(Model.UserPreferredTagIds.Count == 0 ? "" : "")" id="tag-preferences-panel">
+                <div class="card card-body mt-2">
+                    <p class="small text-muted mb-2">Select tags that match the kind of work you enjoy. Matching shifts will be highlighted with a <i class="fa-solid fa-star text-warning"></i>.</p>
+                    <form asp-action="SaveTagPreferences" method="post">
+                        @Html.AntiForgeryToken()
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            @foreach (var tag in Model.AllTags)
+                            {
+                                var isPreferred = Model.UserPreferredTagIds.Contains(tag.Id);
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="tagIds" value="@tag.Id" id="pref-@tag.Id.ToString("N")"
+                                           @if (isPreferred) { <text>checked</text> } />
+                                    <label class="form-check-label" for="pref-@tag.Id.ToString("N")">@tag.Name</label>
+                                </div>
+                            }
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary">Save Preferences</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+
     <script>
         document.querySelectorAll('[name="departmentId"]').forEach(function(el) {
             el.addEventListener('change', function() { this.form.submit(); });
@@ -165,7 +242,14 @@
                         var hasAllDayShifts = rotaGroup.Shifts.Any(s => s.Shift.IsAllDay);
                         var hasTimedShifts = rotaGroup.Shifts.Any(s => !s.Shift.IsAllDay);
                         var isBuildStrike = rotaGroup.Rota.Period != RotaPeriod.Event;
-                        <h6 class="mt-3">@rotaGroup.Rota.Name
+                        var rotaMatchesPreference = Model.UserPreferredTagIds.Count > 0
+                            && rotaGroup.Rota.Tags.Any(t => Model.UserPreferredTagIds.Contains(t.Id));
+                        <h6 class="mt-3">
+                            @if (rotaMatchesPreference)
+                            {
+                                <i class="fa-solid fa-star text-warning me-1" title="Matches your preferences"></i>
+                            }
+                            @rotaGroup.Rota.Name
                             @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
                             {
                                 <span class="badge bg-danger ms-1">Essential</span>
@@ -178,6 +262,10 @@
                             @if (!rotaGroup.Rota.IsVisibleToVolunteers)
                             {
                                 <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
+                            }
+                            @foreach (var tag in rotaGroup.Rota.Tags.OrderBy(t => t.Name, StringComparer.Ordinal))
+                            {
+                                <span class="badge bg-light text-dark border ms-1"><i class="fa-solid fa-tag fa-xs me-1"></i>@tag.Name</span>
                             }
                         </h6>
                         @if (!string.IsNullOrEmpty(rotaGroup.Rota.Description))

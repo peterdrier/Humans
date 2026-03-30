@@ -318,6 +318,7 @@ public class ShiftManagementService : IShiftManagementService
     {
         return await _dbContext.Rotas
             .Include(r => r.EventSettings)
+            .Include(r => r.Tags)
             .Include(r => r.Shifts)
                 .ThenInclude(s => s.ShiftSignups)
                     .ThenInclude(su => su.User)
@@ -569,6 +570,7 @@ public class ShiftManagementService : IShiftManagementService
             query = _dbContext.Shifts
                 .Include(s => s.Rota).ThenInclude(r => r.Team)
                 .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+                .Include(s => s.Rota).ThenInclude(r => r.Tags)
                 .Include(s => s.ShiftSignups).ThenInclude(ss => ss.User);
         }
         else
@@ -576,6 +578,7 @@ public class ShiftManagementService : IShiftManagementService
             query = _dbContext.Shifts
                 .Include(s => s.Rota).ThenInclude(r => r.Team)
                 .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+                .Include(s => s.Rota).ThenInclude(r => r.Tags)
                 .Include(s => s.ShiftSignups);
         }
 
@@ -748,5 +751,101 @@ public class ShiftManagementService : IShiftManagementService
             .ToListAsync();
 
         return teams.Select(x => (x.Id, x.Name)).ToList();
+    }
+
+    // ============================================================
+    // Shift Tags
+    // ============================================================
+
+    public async Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync()
+    {
+        return await _dbContext.ShiftTags
+            .AsNoTracking()
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query)
+    {
+        return await _dbContext.ShiftTags
+            .AsNoTracking()
+            .Where(t => EF.Functions.ILike(t.Name, $"%{query}%"))
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task<ShiftTag> GetOrCreateTagAsync(string name)
+    {
+        var trimmed = name.Trim();
+        var existing = await _dbContext.ShiftTags
+            .FirstOrDefaultAsync(t => EF.Functions.ILike(t.Name, trimmed));
+
+        if (existing is not null)
+            return existing;
+
+        var tag = new ShiftTag
+        {
+            Id = Guid.NewGuid(),
+            Name = trimmed
+        };
+        _dbContext.ShiftTags.Add(tag);
+        await _dbContext.SaveChangesAsync();
+        return tag;
+    }
+
+    public async Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds)
+    {
+        var rota = await _dbContext.Rotas
+            .Include(r => r.Tags)
+            .FirstOrDefaultAsync(r => r.Id == rotaId);
+
+        if (rota is null) return;
+
+        rota.Tags.Clear();
+
+        if (tagIds.Count > 0)
+        {
+            var tags = await _dbContext.ShiftTags
+                .Where(t => tagIds.Contains(t.Id))
+                .ToListAsync();
+
+            foreach (var tag in tags)
+            {
+                rota.Tags.Add(tag);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(Guid userId)
+    {
+        return await _dbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Where(v => v.UserId == userId)
+            .Select(v => v.ShiftTag)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)
+    {
+        var existing = await _dbContext.VolunteerTagPreferences
+            .Where(v => v.UserId == userId)
+            .ToListAsync();
+
+        _dbContext.VolunteerTagPreferences.RemoveRange(existing);
+
+        foreach (var tagId in tagIds)
+        {
+            _dbContext.VolunteerTagPreferences.Add(new VolunteerTagPreference
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ShiftTagId = tagId
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
     }
 }
