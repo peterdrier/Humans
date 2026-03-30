@@ -117,7 +117,7 @@
                             else
                             {
                                 <input type="checkbox" class="form-check-input" id="isManagement-@role.Id"
-                                       name="IsManagement" value="true" @(role.IsManagement ? "checked" : "") />
+                                       name="IsManagement" value="true" @(role.IsManagement ? "checked" : null) />
                             }
                             <label class="form-check-label" for="isManagement-@role.Id">Coordinator role</label>
                             @if (role.IsManagement && hasAssignments)
@@ -132,7 +132,7 @@
                     }
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="isPublic-@role.Id"
-                               name="IsPublic" value="true" @(role.IsPublic ? "checked" : "") />
+                               name="IsPublic" value="true" @(role.IsPublic ? "checked" : null) />
                         <input type="hidden" name="IsPublic" value="false" />
                         <label class="form-check-label" for="isPublic-@role.Id">Visible to volunteers</label>
                         <div class="form-text">When unchecked, this role is hidden from volunteer-facing views.</div>

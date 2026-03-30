@@ -308,7 +308,7 @@
                                         {
                                             <input type="hidden" name="imageIds" value="@id" />
                                         }
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move up" @(currentIdx == 0 ? "disabled" : "")>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move up" @(currentIdx == 0 ? "disabled" : null)>
                                             <i class="fa-solid fa-arrow-up"></i>
                                         </button>
                                     </form>
@@ -326,7 +326,7 @@
                                         {
                                             <input type="hidden" name="imageIds" value="@id" />
                                         }
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move down" @(downIdx == Model.Images.Count - 1 ? "disabled" : "")>
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move down" @(downIdx == Model.Images.Count - 1 ? "disabled" : null)>
                                             <i class="fa-solid fa-arrow-down"></i>
                                         </button>
                                     </form>

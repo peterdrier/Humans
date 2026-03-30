@@ -30,7 +30,7 @@
                             <div class="col-md-4 mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" name="SelectedSkills" value="@skill" class="form-check-input"
-                                           @(Model.SelectedSkills.Contains(skill) ? "checked" : "") />
+                                           @(Model.SelectedSkills.Contains(skill) ? "checked" : null) />
                                     <label class="form-check-label">@skill</label>
                                 </div>
                             </div>
@@ -49,7 +49,7 @@
                             <div class="col-md-4 mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" name="SelectedQuirks" value="@quirk" class="form-check-input"
-                                           @(Model.SelectedQuirks.Contains(quirk) ? "checked" : "") />
+                                           @(Model.SelectedQuirks.Contains(quirk) ? "checked" : null) />
                                     <label class="form-check-label">@quirk</label>
                                 </div>
                             </div>
@@ -68,7 +68,7 @@
                             <div class="col-md-4 mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" name="SelectedLanguages" value="@lang" class="form-check-input"
-                                           @(Model.SelectedLanguages.Contains(lang) ? "checked" : "") />
+                                           @(Model.SelectedLanguages.Contains(lang) ? "checked" : null) />
                                     <label class="form-check-label">@lang</label>
                                 </div>
                             </div>
@@ -87,7 +87,7 @@
                             <div class="col-md-3 mb-1">
                                 <div class="form-check">
                                     <input type="radio" name="DietaryPreference" value="@diet" class="form-check-input"
-                                           @(string.Equals(Model.DietaryPreference, diet, StringComparison.Ordinal) ? "checked" : "") />
+                                           @(string.Equals(Model.DietaryPreference, diet, StringComparison.Ordinal) ? "checked" : null) />
                                     <label class="form-check-label">@diet</label>
                                 </div>
                             </div>
@@ -95,7 +95,7 @@
                         <div class="col-md-3 mb-1">
                             <div class="form-check">
                                 <input type="radio" name="DietaryPreference" value="" class="form-check-input"
-                                       @(string.IsNullOrEmpty(Model.DietaryPreference) ? "checked" : "") />
+                                       @(string.IsNullOrEmpty(Model.DietaryPreference) ? "checked" : null) />
                                 <label class="form-check-label text-muted">Not specified</label>
                             </div>
                         </div>
@@ -113,7 +113,7 @@
                             <div class="col-md-4 mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" name="SelectedAllergies" value="@allergy" class="form-check-input"
-                                           @(Model.SelectedAllergies.Contains(allergy) ? "checked" : "")
+                                           @(Model.SelectedAllergies.Contains(allergy) ? "checked" : null)
                                            @(string.Equals(allergy, "Other", StringComparison.Ordinal) ? "data-toggle-target=allergyOtherText" : "") />
                                     <label class="form-check-label">@allergy</label>
                                 </div>
@@ -137,7 +137,7 @@
                             <div class="col-md-4 mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" name="SelectedIntolerances" value="@intolerance" class="form-check-input"
-                                           @(Model.SelectedIntolerances.Contains(intolerance) ? "checked" : "")
+                                           @(Model.SelectedIntolerances.Contains(intolerance) ? "checked" : null)
                                            @(string.Equals(intolerance, "Other", StringComparison.Ordinal) ? "data-toggle-target=intoleranceOtherText" : "") />
                                     <label class="form-check-label">@intolerance</label>
                                 </div>

@@ -36,7 +36,7 @@
                                        name="Categories[@i].OptedOut"
                                        value="true"
                                        class="form-check-input"
-                                       @(item.OptedOut ? "checked" : "") />
+                                       @(item.OptedOut ? "checked" : null) />
                             }
                             else
                             {
@@ -44,7 +44,7 @@
                                        id="Categories_@(i)_OptedOut"
                                        class="form-check-input"
                                        disabled
-                                       @(item.OptedOut ? "checked" : "") />
+                                       @(item.OptedOut ? "checked" : null) />
                             }
                             <label for="Categories_@(i)_OptedOut" class="form-check-label">
                                 Unsubscribe from @item.DisplayName
