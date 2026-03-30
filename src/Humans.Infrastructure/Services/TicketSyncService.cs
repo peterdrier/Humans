@@ -128,11 +128,11 @@ public class TicketSyncService : ITicketSyncService
         }
         catch (HttpRequestException ex) when (ex.StatusCode is null || (int)ex.StatusCode >= 500)
         {
-            // Transient HTTP errors (network failures, 5xx responses) — log as warning,
-            // preserve last successful sync timestamp, don't mark as Error.
-            _logger.LogWarning(ex,
-                "Ticket sync encountered transient HTTP error for event {EventId}, will retry on next scheduled run",
-                eventId);
+            // Transient HTTP errors (network failures, 5xx responses) — expected.
+            // Log concisely (no stack trace), preserve LastSyncAt, retry next run.
+            _logger.LogWarning(
+                "Ticket sync: TicketTailor returned {StatusCode} for event {EventId}, will retry next run",
+                (int?)ex.StatusCode, eventId);
 
             syncState.SyncStatus = TicketSyncStatus.Idle;
             syncState.StatusChangedAt = _clock.GetCurrentInstant();
