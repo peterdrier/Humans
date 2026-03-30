@@ -151,6 +151,10 @@ public class FeedbackController : HumansControllerBase
             await _feedbackService.PostMessageAsync(id, user.Id, model.Content, isAdmin);
             SetSuccess("Message posted.");
         }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to post message on feedback {FeedbackId}", id);
@@ -173,6 +177,10 @@ public class FeedbackController : HumansControllerBase
             await _feedbackService.UpdateStatusAsync(id, model.Status, user.Id);
             SetSuccess("Status updated.");
         }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
@@ -191,6 +199,10 @@ public class FeedbackController : HumansControllerBase
         {
             await _feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
             SetSuccess("GitHub issue linked.");
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
         }
         catch (Exception ex)
         {
