@@ -45,6 +45,9 @@ public class DashboardViewModel
     public DateTime MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
 
+    // Things to do wizard
+    public bool HasShiftSignups { get; set; }
+
     // Per-user ticket status
     public bool TicketsConfigured { get; set; }
     public bool HasTicket { get; set; }

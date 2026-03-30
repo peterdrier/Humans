@@ -1,0 +1,46 @@
+@model Humans.Web.Models.ThingsToDoViewModel
+
+<div class="card mb-4 border-primary">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fa-solid fa-list-check me-2"></i>Things to do
+        </h5>
+        <span class="badge bg-light text-primary">@Model.PendingCount pending</span>
+    </div>
+    <ul class="list-group list-group-flush">
+        @foreach (var item in Model.Items)
+        {
+            <li class="list-group-item d-flex align-items-start py-3">
+                <div class="me-3 mt-1">
+                    @if (item.IsDone)
+                    {
+                        <i class="fa-solid fa-circle-check text-success fs-5"></i>
+                    }
+                    else
+                    {
+                        <i class="fa-regular fa-circle text-muted fs-5"></i>
+                    }
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong class="@(item.IsDone ? "text-muted text-decoration-line-through" : "")">
+                                <i class="@item.IconClass me-1 @(item.IsDone ? "text-muted" : "text-primary")"></i>
+                                @item.Title
+                            </strong>
+                            <div class="@(item.IsDone ? "text-muted" : "text-body-secondary") small mt-1">
+                                @item.Description
+                            </div>
+                        </div>
+                        @if (!item.IsDone && item.ActionUrl is not null)
+                        {
+                            <a href="@item.ActionUrl" class="btn btn-sm btn-outline-primary ms-3 text-nowrap">
+                                @item.ActionText
+                            </a>
+                        }
+                    </div>
+                </div>
+            </li>
+        }
+    </ul>
+</div>

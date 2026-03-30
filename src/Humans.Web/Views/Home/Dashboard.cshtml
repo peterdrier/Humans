@@ -30,92 +30,11 @@
     </div>
 }
 
-@if (!Model.IsVolunteerMember)
-{
-    var consentsComplete = Model.PendingConsents == 0 && Model.TotalRequiredConsents > 0;
-    var consentCheckCleared = Model.ConsentCheckStatus == ConsentCheckStatus.Cleared;
-    <div class="alert alert-info" role="alert">
-        <h5 class="alert-heading">@Localizer["Dashboard_OnboardingTitle"]</h5>
-        <p class="mb-2">@Localizer["Dashboard_OnboardingDescription"]</p>
-        <ol class="mb-0">
-            <li class="@(Model.ProfileComplete ? "text-decoration-line-through text-muted" : "fw-bold")">
-                @Localizer["Dashboard_Step_Profile"]
-            </li>
-            <li class="@(consentsComplete ? "text-decoration-line-through text-muted" : Model.ProfileComplete ? "fw-bold" : "")">
-                @Localizer["Dashboard_Step_Consents"]
-            </li>
-            <li class="@(consentCheckCleared ? "text-decoration-line-through text-muted" : consentsComplete ? "fw-bold" : "")">
-                @Localizer["Dashboard_Step_ConsentCheck"]
-            </li>
-        </ol>
-    </div>
-}
-else if (Model.PendingConsents > 0)
-{
-    <div class="alert alert-warning" role="alert">
-        @Html.Raw(string.Format(Localizer["Dashboard_PendingConsentsAlert"].Value, Model.PendingConsents))
-    </div>
-}
-
-@if (!Model.HasProfile || !Model.ProfileComplete)
-{
-    <div class="alert alert-info" role="alert">
-        @Html.Raw(Localizer["Dashboard_IncompleteProfileAlert"].Value)
-    </div>
-}
-
 <div class="row">
     <div class="col-md-8">
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">@Localizer["Dashboard_ProfileCard"]</h5>
-                        @if (Model.ProfileComplete)
-                        {
-                            <p class="card-text text-success mb-3">@Localizer["Dashboard_ProfileComplete"]</p>
-                        }
-                        else
-                        {
-                            <p class="card-text text-muted mb-3">@Localizer["Dashboard_ProfileIncomplete"]</p>
-                        }
-                        <a asp-controller="Profile" asp-action="Index" class="btn btn-outline-primary">@Localizer["Dashboard_ViewProfile"]</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">@Localizer["Dashboard_ConsentsCard"]</h5>
-                        @if (Model.PendingConsents > 0)
-                        {
-                            <p class="card-text text-warning mb-3">
-                                @Html.Raw(string.Format(Localizer["Dashboard_ConsentsNeeded"].Value, Model.PendingConsents, Model.TotalRequiredConsents))
-                            </p>
-                            <a asp-controller="Consent" asp-action="Index" class="btn btn-warning">@Localizer["Dashboard_ReviewConsents"]</a>
-                        }
-                        else if (Model.TotalRequiredConsents > 0)
-                        {
-                            <p class="card-text text-success mb-3">@Localizer["Dashboard_ConsentsUpToDate"]</p>
-                            <a asp-controller="Consent" asp-action="Index" class="btn btn-outline-primary">@Localizer["Dashboard_ViewConsents"]</a>
-                        }
-                        else
-                        {
-                            <p class="card-text text-muted mb-3">@Localizer["Dashboard_NoConsentsRequired"]</p>
-                            <a asp-controller="Consent" asp-action="Index" class="btn btn-outline-primary">@Localizer["Dashboard_ViewConsents"]</a>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        @if (ViewData["NeedsShiftInfo"] is true)
-        {
-            <div class="alert alert-info" role="alert">
-                <strong>Shift Info Needed</strong> &mdash; Please fill out your shift info so coordinators know your skills, dietary needs, and preferences.
-                <a asp-controller="Profile" asp-action="ShiftInfo" class="alert-link ms-1">Fill out Shift Info</a>
-            </div>
-        }
+        <vc:things-to-do user-id="@Model.UserId"
+                         is-volunteer-member="@Model.IsVolunteerMember"
+                         has-shift-signups="@Model.HasShiftSignups" />
 
         @{
             var shiftCards = ViewData["ShiftCards"] as Humans.Web.Models.ShiftCardsViewModel;
