@@ -59,6 +59,11 @@ public class EditRotaModel : CreateRotaModel
     public Guid RotaId { get; set; }
 }
 
+public class MoveRotaModel
+{
+    public Guid TargetTeamId { get; set; }
+}
+
 // === Shift ===
 
 public class CreateShiftModel
@@ -203,6 +208,7 @@ public class ShiftAdminViewModel
     public bool CanViewMedical { get; set; }
     public List<DailyStaffingData> StaffingData { get; set; } = [];
     public Instant Now { get; set; }
+    public List<DepartmentOption> AllDepartments { get; set; } = [];
 }
 
 // === Homepage ===

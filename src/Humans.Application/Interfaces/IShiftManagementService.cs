@@ -75,6 +75,12 @@ public interface IShiftManagementService
     Task UpdateRotaAsync(Rota rota);
 
     /// <summary>
+    /// Moves a rota to a different department (parent team).
+    /// Preserves all shifts and signups. Records an audit log entry.
+    /// </summary>
+    Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId, string actorDisplayName);
+
+    /// <summary>
     /// Deletes a rota. Throws if child shifts have confirmed signups.
     /// </summary>
     Task DeleteRotaAsync(Guid rotaId);

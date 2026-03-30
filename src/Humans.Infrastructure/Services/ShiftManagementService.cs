@@ -27,17 +27,20 @@ public class ShiftManagementService : IShiftManagementService
     };
 
     private readonly HumansDbContext _dbContext;
+    private readonly IAuditLogService _auditLogService;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly ILogger<ShiftManagementService> _logger;
 
     public ShiftManagementService(
         HumansDbContext dbContext,
+        IAuditLogService auditLogService,
         IMemoryCache cache,
         IClock clock,
         ILogger<ShiftManagementService> logger)
     {
         _dbContext = dbContext;
+        _auditLogService = auditLogService;
         _cache = cache;
         _clock = clock;
         _logger = logger;
@@ -233,6 +236,42 @@ public class ShiftManagementService : IShiftManagementService
         rota.UpdatedAt = _clock.GetCurrentInstant();
         _dbContext.Rotas.Update(rota);
         await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId, string actorDisplayName)
+    {
+        var rota = await _dbContext.Rotas
+            .Include(r => r.Team)
+            .FirstOrDefaultAsync(r => r.Id == rotaId);
+        if (rota is null)
+            throw new InvalidOperationException("Rota not found.");
+
+        var targetTeam = await _dbContext.Teams.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == targetTeamId);
+        if (targetTeam is null)
+            throw new InvalidOperationException("Target team not found.");
+        if (targetTeam.ParentTeamId is not null)
+            throw new InvalidOperationException("Rotas can only be moved to parent teams (departments).");
+        if (targetTeam.SystemTeamType != SystemTeamType.None)
+            throw new InvalidOperationException("Rotas cannot be moved to system teams.");
+        if (rota.TeamId == targetTeamId)
+            throw new InvalidOperationException("Rota is already in this team.");
+
+        var oldTeamName = rota.Team.Name;
+        rota.TeamId = targetTeamId;
+        rota.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _auditLogService.LogAsync(
+            AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
+            $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
+            actorUserId, actorDisplayName,
+            relatedEntityId: targetTeamId, relatedEntityType: nameof(Team));
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Rota {RotaId} '{RotaName}' moved from team '{OldTeam}' to '{NewTeam}' by user {ActorUserId}",
+            rota.Id, rota.Name, oldTeamName, targetTeam.Name, actorUserId);
     }
 
     public async Task DeleteRotaAsync(Guid rotaId)

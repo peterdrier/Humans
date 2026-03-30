@@ -160,6 +160,12 @@
                             }
                         </form>
                         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#edit-rota-@rota.Id.ToString("N")">Edit</button>
+                        @if (Model.AllDepartments.Count > 0)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#move-rota-@rota.Id.ToString("N")" title="Move to another team">
+                                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                            </button>
+                        }
                         <form asp-action="DeleteRota" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post" class="d-inline">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-outline-danger"
@@ -222,6 +228,35 @@
                         </form>
                     </div>
                 </div>
+                @if (Model.AllDepartments.Count > 0)
+                {
+                    <div class="collapse" id="move-rota-@rota.Id.ToString("N")">
+                        <div class="card-body border-bottom">
+                            <form asp-action="MoveRota" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Move to team</label>
+                                        <select name="TargetTeamId" class="form-select" required>
+                                            <option value="">Select a team...</option>
+                                            @foreach (var dept in Model.AllDepartments)
+                                            {
+                                                <option value="@dept.TeamId">@dept.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-warning"
+                                                data-confirm="Move this rota and all its shifts to the selected team?">
+                                            Move
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted mt-1 d-block">All shifts and signups will be preserved.</small>
+                            </form>
+                        </div>
+                    </div>
+                }
             }
             <div class="card-body">
                 @if (rota.Shifts.Count > 0)

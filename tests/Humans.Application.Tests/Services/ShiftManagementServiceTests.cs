@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -31,6 +33,7 @@ public class ShiftManagementServiceTests : IDisposable
 
         _service = new ShiftManagementService(
             _dbContext,
+            Substitute.For<IAuditLogService>(),
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
             NullLogger<ShiftManagementService>.Instance);

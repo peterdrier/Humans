@@ -18,6 +18,7 @@ namespace Humans.Web.Controllers;
 [Route("Teams/{slug}/Shifts")]
 public class ShiftAdminController : HumansTeamControllerBase
 {
+    private readonly ITeamService _teamService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
@@ -36,6 +37,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         ILogger<ShiftAdminController> logger)
         : base(userManager, teamService)
     {
+        _teamService = teamService;
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
@@ -99,6 +101,19 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, team.Id);
 
+        var allDepartments = new List<DepartmentOption>();
+        if (canManage)
+        {
+            var allTeams = await _teamService.GetAllTeamsAsync();
+            allDepartments = allTeams
+                .Where(t => t.ParentTeamId is null
+                            && t.SystemTeamType == SystemTeamType.None
+                            && t.Id != team.Id)
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(t => new DepartmentOption { TeamId = t.Id, Name = t.Name })
+                .ToList();
+        }
+
         return View(new ShiftAdminViewModel
         {
             Department = team,
@@ -112,7 +127,8 @@ public class ShiftAdminController : HumansTeamControllerBase
             VolunteerProfiles = profileDict,
             CanViewMedical = canViewMedical,
             StaffingData = staffingData.ToList(),
-            Now = _clock.GetCurrentInstant()
+            Now = _clock.GetCurrentInstant(),
+            AllDepartments = allDepartments
         });
     }
 
@@ -380,6 +396,39 @@ public class ShiftAdminController : HumansTeamControllerBase
         var label = rota.IsVisibleToVolunteers ? "visible to" : "hidden from";
         SetSuccess($"Rota '{rota.Name}' is now {label} volunteers.");
         return RedirectToAction(nameof(Index), new { slug });
+    }
+
+    [HttpPost("Rotas/{rotaId}/Move")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> MoveRota(string slug, Guid rotaId, MoveRotaModel model)
+    {
+        var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
+        if (teamError is not null) return teamError;
+
+        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        if (rota is null) return NotFound();
+        if (rota.TeamId != team.Id) return NotFound();
+
+        var targetTeam = await _teamService.GetTeamByIdAsync(model.TargetTeamId);
+        if (targetTeam is null)
+        {
+            SetError("Target team not found.");
+            return RedirectToAction(nameof(Index), new { slug });
+        }
+
+        try
+        {
+            await _shiftMgmt.MoveRotaToTeamAsync(rotaId, model.TargetTeamId, user.Id, user.DisplayName);
+            SetSuccess($"Rota '{rota.Name}' moved to {targetTeam.Name}.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Failed to move rota {RotaId} to team {TargetTeamId}", rotaId, model.TargetTeamId);
+            SetError(ex.Message);
+            return RedirectToAction(nameof(Index), new { slug });
+        }
+
+        return RedirectToAction(nameof(Index), new { slug = targetTeam.Slug });
     }
 
     [HttpPost("Rotas/{rotaId}/Delete")]
