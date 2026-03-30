@@ -181,7 +181,7 @@ public class CampAdminController : HumansControllerBase
         try
         {
             await _campService.ReactivateSeasonAsync(seasonId);
-            SetSuccess("Season reactivated.");
+            SetSuccess("Season status updated.");
         }
         catch (InvalidOperationException ex)
         {

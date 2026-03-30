@@ -751,12 +751,16 @@ public class CampService : ICampService
             throw new InvalidOperationException($"Cannot reactivate a season with status {season.Status}.");
 
         var now = _clock.GetCurrentInstant();
-        season.Status = CampSeasonStatus.Active;
+        // Withdrawn camps go back to Pending for re-approval; Full camps go back to Active
+        var previousStatus = season.Status;
+        season.Status = season.Status == CampSeasonStatus.Withdrawn
+            ? CampSeasonStatus.Pending
+            : CampSeasonStatus.Active;
         season.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
-            $"Season {season.Year} reactivated",
+            $"Season {season.Year} status changed from {previousStatus} to {season.Status}",
             "CampService",
             relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
 
