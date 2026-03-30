@@ -391,6 +391,7 @@ public interface ITeamService
     Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
+        bool isPublic = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -399,6 +400,7 @@ public interface ITeamService
     Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
+        bool isPublic = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>

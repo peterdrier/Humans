@@ -36,6 +36,10 @@
                         };
                         <span class="badge @rpBadge ms-2">@role.Period</span>
                     }
+                    @if (!role.IsPublic)
+                    {
+                        <span class="badge bg-secondary ms-1"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
+                    }
                     @if (role.IsManagement)
                     {
                         <span class="badge bg-warning text-dark ms-1">Management</span>
@@ -126,6 +130,12 @@
                             }
                         </div>
                     }
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="isPublic-@role.Id"
+                               name="IsPublic" value="true" @(role.IsPublic ? "checked" : "") />
+                        <label class="form-check-label" for="isPublic-@role.Id">Visible to volunteers</label>
+                        <div class="form-text">When unchecked, this role is hidden from volunteer-facing views.</div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Description</label>
                         <small class="text-muted ms-2">Markdown: **bold**, *italic*, - bullets, ## headings</small>

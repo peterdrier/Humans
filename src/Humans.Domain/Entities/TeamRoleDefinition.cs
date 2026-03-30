@@ -67,6 +67,12 @@ public class TeamRoleDefinition
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 
     /// <summary>
+    /// Whether this role is visible on public/volunteer-facing views.
+    /// When false, the role is hidden from volunteer-facing views but visible to coordinators and admins.
+    /// </summary>
+    public bool IsPublic { get; set; } = true;
+
+    /// <summary>
     /// Whether this role is the team's management/coordination role.
     /// At most one role per team can have this set to true.
     /// Assigning a member to this role automatically sets their TeamMemberRole to Coordinator.

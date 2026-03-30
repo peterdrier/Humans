@@ -578,7 +578,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
             await _teamService.CreateRoleDefinitionAsync(
                 team.Id, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.Period, user.Id);
+                priorities, model.SortOrder, model.Period, user.Id, isPublic: true);
 
             SetSuccess($"Role '{model.Name}' created.");
         }
@@ -609,7 +609,8 @@ public class TeamAdminController : HumansTeamControllerBase
 
             await _teamService.UpdateRoleDefinitionAsync(
                 roleId, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.IsManagement, model.Period, user.Id);
+                priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
+                model.IsPublic);
 
             SetSuccess($"Role '{model.Name}' updated.");
         }
