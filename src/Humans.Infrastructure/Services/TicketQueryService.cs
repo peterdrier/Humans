@@ -21,19 +21,18 @@ public class TicketQueryService : ITicketQueryService
 
     public async Task<int> GetUserTicketCountAsync(Guid userId)
     {
+        // Match on attendees only — a buyer who purchased tickets for others
+        // should NOT count as having a ticket themselves.
+
         // First check by MatchedUserId (set during sync)
         var attendeeCount = await _dbContext.TicketAttendees.CountAsync(a =>
             a.MatchedUserId == userId &&
             (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn));
 
-        var buyerCount = await _dbContext.TicketOrders.CountAsync(o =>
-            o.MatchedUserId == userId &&
-            o.PaymentStatus == TicketPaymentStatus.Paid);
+        if (attendeeCount > 0)
+            return attendeeCount;
 
-        if (attendeeCount > 0 || buyerCount > 0)
-            return Math.Max(attendeeCount, buyerCount);
-
-        // Fallback: check all verified user emails (case-insensitive)
+        // Fallback: check all verified user emails against attendee emails (case-insensitive)
         // ToUpper() translates to SQL UPPER() in EF/Npgsql — analyzer MA0011 is a false positive here
 #pragma warning disable MA0011
         var userEmails = await _dbContext.Set<UserEmail>()
@@ -48,20 +47,15 @@ public class TicketQueryService : ITicketQueryService
             a.AttendeeEmail != null &&
             userEmails.Contains(a.AttendeeEmail.ToUpper()) &&
             (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn));
-
-        if (attendeeCount > 0)
-            return attendeeCount;
-
-        buyerCount = await _dbContext.TicketOrders.CountAsync(o =>
-            userEmails.Contains(o.BuyerEmail.ToUpper()) &&
-            o.PaymentStatus == TicketPaymentStatus.Paid);
 #pragma warning restore MA0011
 
-        return buyerCount;
+        return attendeeCount;
     }
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
     {
+        // Match on attendees only — a buyer who purchased tickets for others
+        // should NOT count as having a ticket themselves.
         var attendeeUserIds = await _dbContext.TicketAttendees
             .Where(a => a.MatchedUserId != null &&
                 (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
@@ -69,14 +63,7 @@ public class TicketQueryService : ITicketQueryService
             .Distinct()
             .ToListAsync();
 
-        var buyerUserIds = await _dbContext.TicketOrders
-            .Where(o => o.MatchedUserId != null &&
-                o.PaymentStatus == TicketPaymentStatus.Paid)
-            .Select(o => o.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync();
-
-        return attendeeUserIds.Union(buyerUserIds).ToHashSet();
+        return attendeeUserIds.ToHashSet();
     }
 
     public Task<List<string>> GetAvailableTicketTypesAsync()

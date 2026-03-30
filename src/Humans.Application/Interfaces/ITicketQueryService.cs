@@ -10,16 +10,17 @@ namespace Humans.Application.Interfaces;
 public interface ITicketQueryService
 {
     /// <summary>
-    /// Count tickets associated with a user. Checks MatchedUserId on both
-    /// orders and attendees, then falls back to matching all verified user
-    /// emails against buyer/attendee emails (case-insensitive).
-    /// Only counts paid orders and valid/checked-in attendees.
+    /// Count tickets associated with a user as an attendee. Checks MatchedUserId
+    /// on attendees first, then falls back to matching all verified user emails
+    /// against attendee emails (case-insensitive). Only counts valid/checked-in attendees.
+    /// A buyer who purchased tickets for others does NOT count as having a ticket.
     /// </summary>
     Task<int> GetUserTicketCountAsync(Guid userId);
 
     /// <summary>
-    /// Get the set of user IDs that have at least one valid ticket,
-    /// using MatchedUserId on orders (paid only) and attendees (valid/checked-in).
+    /// Get the set of user IDs that have at least one valid ticket as an attendee,
+    /// using MatchedUserId on attendees (valid/checked-in only).
+    /// A buyer who purchased tickets for others does NOT count.
     /// Used for aggregate reporting like volunteer ticket coverage.
     /// </summary>
     Task<HashSet<Guid>> GetUserIdsWithTicketsAsync();
