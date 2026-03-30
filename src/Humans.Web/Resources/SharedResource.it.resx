@@ -1245,4 +1245,26 @@
   <data name="SendMessage_Success" xml:space="preserve"><value>Il tuo messaggio è stato inviato a {0}.</value></data>
   <data name="SendMessage_Title" xml:space="preserve"><value>Invia un messaggio a {0}</value></data>
   <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Documenti legali</value></data>
+
+  <!-- ======================== -->
+  <!-- Things To Do Wizard      -->
+  <!-- ======================== -->
+  <data name="Todo_Title" xml:space="preserve"><value>Cose da fare</value></data>
+  <data name="Todo_PendingBadge" xml:space="preserve"><value>{0} in sospeso</value></data>
+  <data name="Todo_Profile_Title" xml:space="preserve"><value>Completa il tuo profilo</value></data>
+  <data name="Todo_Profile_Done" xml:space="preserve"><value>Il tuo profilo &#xE8; completo.</value></data>
+  <data name="Todo_Profile_Pending" xml:space="preserve"><value>Aggiungi le tue informazioni per farti conoscere dalla comunit&#xE0;.</value></data>
+  <data name="Todo_Profile_Action" xml:space="preserve"><value>Modifica profilo</value></data>
+  <data name="Todo_Consents_Title" xml:space="preserve"><value>Accetta gli accordi</value></data>
+  <data name="Todo_Consents_Done" xml:space="preserve"><value>Tutti gli accordi sono aggiornati.</value></data>
+  <data name="Todo_Consents_Pending" xml:space="preserve"><value>{0} di {1} documenti richiedono il tuo consenso.</value></data>
+  <data name="Todo_Consents_Action" xml:space="preserve"><value>Esamina gli accordi</value></data>
+  <data name="Todo_ConsentCheck_Title" xml:space="preserve"><value>Revisione del coordinatore</value></data>
+  <data name="Todo_ConsentCheck_Done" xml:space="preserve"><value>Un coordinatore ha verificato e approvato i tuoi documenti.</value></data>
+  <data name="Todo_ConsentCheck_Pending" xml:space="preserve"><value>Un coordinatore verificher&#xE0; i tuoi documenti una volta completati profilo e accordi.</value></data>
+  <data name="Todo_ShiftInfo_Title" xml:space="preserve"><value>Imposta le tue preferenze di turno</value></data>
+  <data name="Todo_ShiftInfo_Done" xml:space="preserve"><value>Le tue preferenze di turno sono impostate.</value></data>
+  <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>Compila le informazioni del turno per far conoscere ai coordinatori le tue competenze e preferenze.</value></data>
+  <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Compila info turno</value></data>
+
 </root>
