@@ -1198,21 +1198,13 @@
   <data name="CompleteSignup_Title" xml:space="preserve"><value>Registrierung abschließen</value></data>
   <data name="Consent_ActionRequired" xml:space="preserve"><value>Handlung erforderlich</value></data>
   <data name="Consent_LastUpdated" xml:space="preserve"><value>Zuletzt aktualisiert</value></data>
-  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value><h2>Kontoverknüpfung bestätigen</h2>
-<p>Hallo {0},</p>
-<p>Du hast angefordert, <strong>{1}</strong> zu deinem Konto hinzuzufügen. Diese E-Mail-Adresse ist derzeit mit einem anderen Konto verknüpft.</p>
-<p>Wenn du diese E-Mail bestätigst, wird eine Zusammenführungsanfrage zur Überprüfung durch einen Administrator eingereicht. Nach Genehmigung werden die Daten des anderen Kontos in dein Konto übernommen und das doppelte Konto wird archiviert.</p>
-<p>Bitte klicke auf den folgenden Link, um die Zusammenführung zu bestätigen und anzufordern:</p>
-<p><a href="{2}">Bestätigen und Zusammenführung anfordern</a></p>
-<p>Dieser Link läuft in 24 Stunden ab.</p>
-<p>Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren. Es werden keine Änderungen vorgenommen.</p>
-<p>Das Humans Team</p></value></data>
-  <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value><h2>Nachricht von {1}</h2><p>Hallo {0},</p><p>{1} hat dir eine Nachricht über Humans gesendet:</p><hr /><p>{2}</p><hr />{3}</value></data>
+  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Kontoverknüpfung bestätigen&lt;/h2&gt;&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; zu deinem Konto hinzuzufügen. Diese E-Mail-Adresse ist derzeit mit einem anderen Konto verknüpft.&lt;/p&gt;&lt;p&gt;Wenn du diese E-Mail bestätigst, wird eine Zusammenführungsanfrage zur Überprüfung durch einen Administrator eingereicht. Nach Genehmigung werden die Daten des anderen Kontos in dein Konto übernommen und das doppelte Konto wird archiviert.&lt;/p&gt;&lt;p&gt;Bitte klicke auf den folgenden Link, um die Zusammenführung zu bestätigen und anzufordern:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Bestätigen und Zusammenführung anfordern&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren. Es werden keine Änderungen vorgenommen.&lt;/p&gt;&lt;p&gt;Das Humans Team&lt;/p&gt;</value></data>
+  <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Nachricht von {1}&lt;/h2&gt;&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;{1} hat dir eine Nachricht über Humans gesendet:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value></data>
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>Dieser Mensch hat sich entschieden, seine Kontaktdaten nicht zu teilen.</value></data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Humans Nachricht von: {0}</value></data>
-  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value><p>Hallo {0},</p><p>Klicke auf den folgenden Link, um dich anzumelden:</p><p><a href="{1}">Bei Nobodies anmelden</a></p><p>Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.</p><p>Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.</p></value></data>
+  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Klicke auf den folgenden Link, um dich anzumelden:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Bei Nobodies anmelden&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;</value></data>
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Dein Anmeldelink für Nobodies</value></data>
-  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value><p>Willkommen bei Nobodies!</p><p>Klicke auf den folgenden Link, um dein Konto zu erstellen:</p><p><a href="{0}">Konto erstellen</a></p><p>Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.</p><p>Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.</p></value></data>
+  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value>&lt;p&gt;Willkommen bei Nobodies!&lt;/p&gt;&lt;p&gt;Klicke auf den folgenden Link, um dein Konto zu erstellen:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Konto erstellen&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 15 Minuten ab und kann nur einmal verwendet werden.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;</value></data>
   <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Willkommen bei Nobodies — bestätige deine E-Mail</value></data>
   <data name="Emails_AddNew" xml:space="preserve"><value>E-Mail-Adresse hinzufügen</value></data>
   <data name="Emails_BackToEdit" xml:space="preserve"><value>Zurück zum Profil bearbeiten</value></data>

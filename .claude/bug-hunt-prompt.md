@@ -119,6 +119,24 @@ This project uses **Font Awesome 6 only**. Bootstrap Icons are NOT loaded.
 **How to fix:**
 - Replace `bi bi-*` with the equivalent `fa-solid fa-*` icon
 
+### Resx HTML Escaping *(production incident — 15 entries across 4 locale files)*
+
+Resx files are XML. HTML inside `<value>` elements must be XML-escaped (`<p>` → `&lt;p&gt;`). If HTML tags are left raw, the XML parser interprets them as child elements and silently strips them — the localizer returns plain text with no links, no formatting, no structure.
+
+**How to find them:**
+1. Search all `SharedResource.*.resx` files for `<value>` entries where the value starts with a raw HTML tag: `<value><[a-z]` (e.g., `<value><p>`, `<value><h2>`)
+2. Compare escaped entry counts between the English `.resx` (reference) and each locale file — a lower count means some entries have unescaped HTML
+3. Pay special attention to email body templates (`Email_*_Body`) — these contain the most HTML
+
+**How to fix:**
+- Replace all `<` with `&lt;` and `>` with `&gt;` within the `<value>` content (NOT the XML structure)
+- Keep the result on a single line (matching the English template format)
+- Verify the escaped entry count matches the English file after fixing
+
+**Why this happens:**
+- Translations are often added by pasting HTML content that hasn't been XML-escaped
+- The resx file still parses as valid XML (the HTML tags become invisible child elements), so there's no build error — the bug is completely silent
+
 ## Phase 2: Missing .Include() on EF Core Queries *(6+ historical fixes)*
 
 EF Core does NOT lazy-load. If a LINQ query materializes an entity and then accesses a navigation property that wasn't `.Include()`'d, it returns `null` — no exception, just silent missing data.

@@ -1198,21 +1198,13 @@
   <data name="CompleteSignup_Title" xml:space="preserve"><value>Completa la registrazione</value></data>
   <data name="Consent_ActionRequired" xml:space="preserve"><value>Azione richiesta</value></data>
   <data name="Consent_LastUpdated" xml:space="preserve"><value>Ultimo aggiornamento</value></data>
-  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value><h2>Verifica unione account</h2>
-<p>Ciao {0},</p>
-<p>Hai richiesto di aggiungere <strong>{1}</strong> al tuo account. Questo indirizzo e-mail è attualmente collegato a un altro account.</p>
-<p>Se verifichi questa e-mail, verrà inviata una richiesta di unione per la revisione dell'amministratore. Una volta approvata, i dati dell'altro account verranno uniti al tuo e l'account duplicato verrà archiviato.</p>
-<p>Fai clic sul link qui sotto per verificare e richiedere l'unione:</p>
-<p><a href="{2}">Verifica e richiedi unione</a></p>
-<p>Questo link scade tra 24 ore.</p>
-<p>Se non hai richiesto questo, puoi ignorare questa e-mail. Non verranno apportate modifiche.</p>
-<p>Il team di Humans</p></value></data>
-  <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value><h2>Messaggio da {1}</h2><p>Ciao {0},</p><p>{1} ti ha inviato un messaggio tramite Humans:</p><hr /><p>{2}</p><hr />{3}</value></data>
+  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Verifica unione account&lt;/h2&gt;&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Hai richiesto di aggiungere &lt;strong&gt;{1}&lt;/strong&gt; al tuo account. Questo indirizzo e-mail è attualmente collegato a un altro account.&lt;/p&gt;&lt;p&gt;Se verifichi questa e-mail, verrà inviata una richiesta di unione per la revisione dell'amministratore. Una volta approvata, i dati dell'altro account verranno uniti al tuo e l'account duplicato verrà archiviato.&lt;/p&gt;&lt;p&gt;Fai clic sul link qui sotto per verificare e richiedere l'unione:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Verifica e richiedi unione&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Questo link scade tra 24 ore.&lt;/p&gt;&lt;p&gt;Se non hai richiesto questo, puoi ignorare questa e-mail. Non verranno apportate modifiche.&lt;/p&gt;&lt;p&gt;Il team di Humans&lt;/p&gt;</value></data>
+  <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Messaggio da {1}&lt;/h2&gt;&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;{1} ti ha inviato un messaggio tramite Humans:&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value></data>
   <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>Questo umano ha scelto di non condividere le proprie informazioni di contatto.</value></data>
   <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Messaggio Humans da: {0}</value></data>
-  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value><p>Ciao {0},</p><p>Fai clic sul link qui sotto per accedere:</p><p><a href="{1}">Accedi a Nobodies</a></p><p>Questo link scade tra 15 minuti e può essere utilizzato solo una volta.</p><p>Se non hai richiesto questo, puoi ignorare questa e-mail.</p></value></data>
+  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Fai clic sul link qui sotto per accedere:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Accedi a Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Questo link scade tra 15 minuti e può essere utilizzato solo una volta.&lt;/p&gt;&lt;p&gt;Se non hai richiesto questo, puoi ignorare questa e-mail.&lt;/p&gt;</value></data>
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Il tuo link di accesso per Nobodies</value></data>
-  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value><p>Benvenuto su Nobodies!</p><p>Fai clic sul link qui sotto per creare il tuo account:</p><p><a href="{0}">Crea il tuo account</a></p><p>Questo link scade tra 15 minuti e può essere utilizzato solo una volta.</p><p>Se non hai richiesto questo, puoi ignorare questa e-mail.</p></value></data>
+  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value>&lt;p&gt;Benvenuto su Nobodies!&lt;/p&gt;&lt;p&gt;Fai clic sul link qui sotto per creare il tuo account:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Crea il tuo account&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Questo link scade tra 15 minuti e può essere utilizzato solo una volta.&lt;/p&gt;&lt;p&gt;Se non hai richiesto questo, puoi ignorare questa e-mail.&lt;/p&gt;</value></data>
   <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Benvenuto su Nobodies — conferma la tua e-mail</value></data>
   <data name="Emails_AddNew" xml:space="preserve"><value>Aggiungi indirizzo e-mail</value></data>
   <data name="Emails_BackToEdit" xml:space="preserve"><value>Torna alla modifica del profilo</value></data>

@@ -1216,18 +1216,10 @@
   <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve"><value>Nombre para mostrar</value></data>
   <data name="CompleteSignup_Submit" xml:space="preserve"><value>Crear cuenta</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve"><value>Completa tu registro</value></data>
-  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value><h2>Verificación de fusión de cuentas</h2>
-<p>Hola {0},</p>
-<p>Has solicitado agregar <strong>{1}</strong> a tu cuenta. Esta dirección de correo está actualmente vinculada a otra cuenta.</p>
-<p>Si verificas este correo, se enviará una solicitud de fusión para revisión del administrador. Una vez aprobada, los datos de la otra cuenta se fusionarán con la tuya y la cuenta duplicada será archivada.</p>
-<p>Haz clic en el siguiente enlace para verificar y solicitar la fusión:</p>
-<p><a href="{2}">Verificar y solicitar fusión</a></p>
-<p>Este enlace expira en 24 horas.</p>
-<p>Si no solicitaste esto, puedes ignorar este correo. No se realizarán cambios.</p>
-<p>El equipo de Humans</p></value></data>
-  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value><p>Hola {0},</p><p>Haz clic en el siguiente enlace para iniciar sesión:</p><p><a href="{1}">Iniciar sesión en Nobodies</a></p><p>Este enlace expira en 15 minutos y solo se puede usar una vez.</p><p>Si no solicitaste esto, puedes ignorar este correo.</p></value></data>
+  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Verificación de fusión de cuentas&lt;/h2&gt;&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Has solicitado agregar &lt;strong&gt;{1}&lt;/strong&gt; a tu cuenta. Esta dirección de correo está actualmente vinculada a otra cuenta.&lt;/p&gt;&lt;p&gt;Si verificas este correo, se enviará una solicitud de fusión para revisión del administrador. Una vez aprobada, los datos de la otra cuenta se fusionarán con la tuya y la cuenta duplicada será archivada.&lt;/p&gt;&lt;p&gt;Haz clic en el siguiente enlace para verificar y solicitar la fusión:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Verificar y solicitar fusión&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Este enlace expira en 24 horas.&lt;/p&gt;&lt;p&gt;Si no solicitaste esto, puedes ignorar este correo. No se realizarán cambios.&lt;/p&gt;&lt;p&gt;El equipo de Humans&lt;/p&gt;</value></data>
+  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Haz clic en el siguiente enlace para iniciar sesión:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Iniciar sesión en Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Este enlace expira en 15 minutos y solo se puede usar una vez.&lt;/p&gt;&lt;p&gt;Si no solicitaste esto, puedes ignorar este correo.&lt;/p&gt;</value></data>
   <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Tu enlace de inicio de sesión para Nobodies</value></data>
-  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value><p>¡Bienvenido a Nobodies!</p><p>Haz clic en el siguiente enlace para crear tu cuenta:</p><p><a href="{0}">Crear tu cuenta</a></p><p>Este enlace expira en 15 minutos y solo se puede usar una vez.</p><p>Si no solicitaste esto, puedes ignorar este correo.</p></value></data>
+  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value>&lt;p&gt;¡Bienvenido a Nobodies!&lt;/p&gt;&lt;p&gt;Haz clic en el siguiente enlace para crear tu cuenta:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Crear tu cuenta&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Este enlace expira en 15 minutos y solo se puede usar una vez.&lt;/p&gt;&lt;p&gt;Si no solicitaste esto, puedes ignorar este correo.&lt;/p&gt;</value></data>
   <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Bienvenido a Nobodies — confirma tu correo electrónico</value></data>
   <data name="Emails_AddNew" xml:space="preserve"><value>Agregar dirección de correo</value></data>
   <data name="Emails_BackToEdit" xml:space="preserve"><value>Volver a editar perfil</value></data>
