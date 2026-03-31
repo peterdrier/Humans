@@ -846,21 +846,12 @@ public class ProfileController : HumansControllerBase
 
             var shiftProfile = await _profileService.GetOrCreateShiftProfileAsync(user.Id);
 
-            var skills = model.SelectedSkills ?? [];
-            if (skills.Contains("Other", StringComparer.Ordinal) && !string.IsNullOrWhiteSpace(model.SkillOtherText))
-            {
-                skills.Remove("Other");
-                skills.Add($"Other: {model.SkillOtherText.Trim()}");
-            }
-            shiftProfile.Skills = skills;
-            shiftProfile.Quirks = ShiftInfoViewModel.MergeQuirks(model.TimePreference, model.SelectedQuirks ?? []);
-            var languages = model.SelectedLanguages ?? [];
-            if (languages.Contains("Other", StringComparer.Ordinal) && !string.IsNullOrWhiteSpace(model.LanguageOtherText))
-            {
-                languages.Remove("Other");
-                languages.Add($"Other: {model.LanguageOtherText.Trim()}");
-            }
-            shiftProfile.Languages = languages;
+            shiftProfile.Skills = ShiftInfoViewModel.MergeSkills(
+                model.SelectedSkills, model.SkillOtherText, shiftProfile.Skills);
+            shiftProfile.Quirks = ShiftInfoViewModel.MergePersistedQuirks(
+                model.TimePreference, model.SelectedQuirks, shiftProfile.Quirks);
+            shiftProfile.Languages = ShiftInfoViewModel.MergeLanguages(
+                model.SelectedLanguages, model.LanguageOtherText, shiftProfile.Languages);
 
             await _profileService.UpdateShiftProfileAsync(shiftProfile);
 

@@ -275,6 +275,9 @@ public class ShiftInfoViewModel
     // Toggle quirks — multi-select, separate from time preference
     public static readonly string[] ToggleQuirkOptions = ["Sober Shift", "Work In Shade", "Quiet Work", "Physical Work OK", "No Heights"];
 
+    private static readonly string[] StoredSkillOptions = SkillOptions.Where(s => !string.Equals(s, "Other", StringComparison.Ordinal)).ToArray();
+    private static readonly string[] StoredLanguageOptions = LanguageOptions.Where(l => !string.Equals(l, "Other", StringComparison.Ordinal)).ToArray();
+
     // Emoji maps for view rendering
     public static readonly Dictionary<string, string> SkillEmoji = new(StringComparer.Ordinal)
     {
@@ -332,6 +335,62 @@ public class ShiftInfoViewModel
         if (!string.IsNullOrEmpty(timePreference))
             result.Add(timePreference);
         return result;
+    }
+
+    public static List<string> ExtractUnknownSkills(List<string> skills)
+        => skills
+            .Where(s => !s.StartsWith("Other:", StringComparison.Ordinal) &&
+                !StoredSkillOptions.Contains(s, StringComparer.Ordinal))
+            .ToList();
+
+    public static List<string> ExtractUnknownLanguages(List<string> languages)
+        => languages
+            .Where(l => !l.StartsWith("Other:", StringComparison.Ordinal) &&
+                !StoredLanguageOptions.Contains(l, StringComparer.Ordinal))
+            .ToList();
+
+    public static List<string> ExtractUnknownQuirks(List<string> quirks)
+        => quirks
+            .Where(q => !TimePreferenceOptions.Contains(q, StringComparer.Ordinal) &&
+                !ToggleQuirkOptions.Contains(q, StringComparer.Ordinal))
+            .ToList();
+
+    public static List<string> MergeSkills(List<string>? selectedSkills, string? skillOtherText, List<string>? existingSkills)
+    {
+        var result = new List<string>(selectedSkills ?? []);
+        if (result.Contains("Other", StringComparer.Ordinal))
+        {
+            result.Remove("Other");
+            if (!string.IsNullOrWhiteSpace(skillOtherText))
+                result.Add($"Other: {skillOtherText.Trim()}");
+        }
+
+        result.AddRange(ExtractUnknownSkills(existingSkills ?? []));
+        return result.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    public static List<string> MergeLanguages(List<string>? selectedLanguages, string? languageOtherText, List<string>? existingLanguages)
+    {
+        var result = new List<string>(selectedLanguages ?? []);
+        if (result.Contains("Other", StringComparer.Ordinal))
+        {
+            result.Remove("Other");
+            if (!string.IsNullOrWhiteSpace(languageOtherText))
+                result.Add($"Other: {languageOtherText.Trim()}");
+        }
+
+        result.AddRange(ExtractUnknownLanguages(existingLanguages ?? []));
+        return result.Distinct(StringComparer.Ordinal).ToList();
+    }
+
+    public static List<string> MergePersistedQuirks(
+        string? timePreference,
+        List<string>? selectedQuirks,
+        List<string>? existingQuirks)
+    {
+        var result = MergeQuirks(timePreference, selectedQuirks ?? []);
+        result.AddRange(ExtractUnknownQuirks(existingQuirks ?? []));
+        return result.Distinct(StringComparer.Ordinal).ToList();
     }
 }
 

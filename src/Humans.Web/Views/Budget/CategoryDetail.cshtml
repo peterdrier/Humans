@@ -185,19 +185,7 @@
                                         </div>
                                         <div class="col-md-1">
                                             <label class="form-label form-label-sm">VAT %</label>
-                                            <select name="vatRate" class="form-select form-select-sm">
-                                                @foreach (var rate in new[] { 0, 10, 21 })
-                                                {
-                                                    if (item.VatRate == rate)
-                                                    {
-                                                        <option value="@rate" selected>@rate%</option>
-                                                    }
-                                                    else
-                                                    {
-                                                        <option value="@rate">@rate%</option>
-                                                    }
-                                                }
-                                            </select>
+                                            <input type="number" name="vatRate" class="form-control form-control-sm" min="0" max="21" step="1" value="@item.VatRate" required />
                                         </div>
                                         <div class="col-md-2">
                                             <label class="form-label form-label-sm">Responsible Team</label>
@@ -266,11 +254,7 @@
                 </div>
                 <div class="col-md-1">
                     <label class="form-label form-label-sm">VAT %</label>
-                    <select name="vatRate" class="form-select form-select-sm">
-                        <option value="0" selected>0%</option>
-                        <option value="10">10%</option>
-                        <option value="21">21%</option>
-                    </select>
+                    <input type="number" name="vatRate" class="form-control form-control-sm" min="0" max="21" step="1" value="0" required />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label form-label-sm">Responsible Team</label>

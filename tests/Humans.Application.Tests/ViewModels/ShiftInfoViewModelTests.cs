@@ -73,4 +73,37 @@ public class ShiftInfoViewModelTests
 
         result.Should().BeEquivalentTo(["Sober Shift"]);
     }
+
+    [Fact]
+    public void MergeSkills_preserves_unknown_existing_values_while_updating_known_and_other_values()
+    {
+        var result = ShiftInfoViewModel.MergeSkills(
+            ["Bartending", "Other"],
+            "Rigging",
+            ["Legacy Skill", "Other: Old", "Bartending"]);
+
+        result.Should().BeEquivalentTo(["Bartending", "Other: Rigging", "Legacy Skill"]);
+    }
+
+    [Fact]
+    public void MergeLanguages_preserves_unknown_existing_values_while_updating_known_and_other_values()
+    {
+        var result = ShiftInfoViewModel.MergeLanguages(
+            ["English", "Other"],
+            "Catalan",
+            ["Legacy Language", "Other: Old", "English"]);
+
+        result.Should().BeEquivalentTo(["English", "Other: Catalan", "Legacy Language"]);
+    }
+
+    [Fact]
+    public void MergePersistedQuirks_preserves_unknown_existing_values()
+    {
+        var result = ShiftInfoViewModel.MergePersistedQuirks(
+            "Night Owl",
+            ["Sober Shift"],
+            ["Legacy Quirk", "Early Bird"]);
+
+        result.Should().BeEquivalentTo(["Sober Shift", "Night Owl", "Legacy Quirk"]);
+    }
 }
