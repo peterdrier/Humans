@@ -278,24 +278,35 @@ public class ShiftInfoViewModel
     // Emoji maps for view rendering
     public static readonly Dictionary<string, string> SkillEmoji = new(StringComparer.Ordinal)
     {
-        ["Bartending"] = "\U0001f378", ["Cooking"] = "\U0001f373", ["Sound"] = "\U0001f39a\ufe0f",
-        ["DJ"] = "\U0001f3a7", ["First Aid"] = "\U0001fa7a", ["Electrical"] = "\u26a1",
-        ["Driving"] = "\U0001f697", ["Construction"] = "\U0001f528", ["Art"] = "\U0001f3a8",
+        ["Bartending"] = "\U0001f378",
+        ["Cooking"] = "\U0001f373",
+        ["Sound"] = "\U0001f39a\ufe0f",
+        ["DJ"] = "\U0001f3a7",
+        ["First Aid"] = "\U0001fa7a",
+        ["Electrical"] = "\u26a1",
+        ["Driving"] = "\U0001f697",
+        ["Construction"] = "\U0001f528",
+        ["Art"] = "\U0001f3a8",
         ["Other"] = "\u2728"
     };
 
     public static readonly Dictionary<string, string> LanguageEmoji = new(StringComparer.Ordinal)
     {
-        ["English"] = "EN", ["Spanish"] = "ES",
-        ["French"] = "FR", ["German"] = "DE",
-        ["Italian"] = "IT", ["Portuguese"] = "PT",
+        ["English"] = "EN",
+        ["Spanish"] = "ES",
+        ["French"] = "FR",
+        ["German"] = "DE",
+        ["Italian"] = "IT",
+        ["Portuguese"] = "PT",
         ["Other"] = "\U0001f30d"
     };
 
     public static readonly Dictionary<string, string> TimePreferenceEmoji = new(StringComparer.Ordinal)
     {
-        ["Early Bird"] = "\U0001f305", ["Night Owl"] = "\U0001f319",
-        ["All Day"] = "\u2600\ufe0f", ["No Preference"] = "\U0001f937"
+        ["Early Bird"] = "\U0001f305",
+        ["Night Owl"] = "\U0001f319",
+        ["All Day"] = "\u2600\ufe0f",
+        ["No Preference"] = "\U0001f937"
     };
 
     public static readonly Dictionary<string, string> TimePreferenceDesc = new(StringComparer.Ordinal)
