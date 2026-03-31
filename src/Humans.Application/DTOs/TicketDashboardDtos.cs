@@ -72,6 +72,7 @@ public class WeeklySalesAggregate
     public int OrderCount { get; init; }
     public decimal Donations { get; init; }
     public decimal VatAmount { get; init; }
+    public decimal VipDonations { get; init; }
 }
 
 public class QuarterlySalesAggregate

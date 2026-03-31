@@ -367,6 +367,7 @@ public class TicketController : HumansControllerBase
                 OrderCount = w.OrderCount,
                 Donations = w.Donations,
                 VatAmount = w.VatAmount,
+                VipDonations = w.VipDonations,
             }).ToList(),
             QuarterlySales = aggregates.QuarterlySales.Select(q => new QuarterlySalesRow
             {

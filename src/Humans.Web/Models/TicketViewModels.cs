@@ -194,6 +194,7 @@ public class WeeklySalesRow
     public int OrderCount { get; set; }
     public decimal Donations { get; set; }
     public decimal VatAmount { get; set; }
+    public decimal VipDonations { get; set; }
 }
 
 public class QuarterlySalesRow

@@ -326,10 +326,13 @@ public class TicketQueryService : ITicketQueryService
                 o.TotalAmount,
                 o.DonationAmount,
                 o.VatAmount,
-                AttendeeCount = o.Attendees.Count,
+                AttendeeCount = o.Attendees.Count(a =>
+                    a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn),
                 // VIP donations: sum of (price - threshold) for attendees priced above the threshold
                 VipDonations = o.Attendees
-                    .Where(a => a.Price > TicketConstants.VipThresholdEuros)
+                    .Where(a =>
+                        (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn) &&
+                        a.Price > TicketConstants.VipThresholdEuros)
                     .Sum(a => a.Price - TicketConstants.VipThresholdEuros)
             })
             .ToListAsync();
@@ -356,6 +359,7 @@ public class TicketQueryService : ITicketQueryService
                     OrderCount = g.Count(),
                     Donations = g.Sum(o => o.DonationAmount),
                     VatAmount = g.Sum(o => o.VatAmount),
+                    VipDonations = g.Sum(o => o.VipDonations),
                 };
             })
             .ToList();

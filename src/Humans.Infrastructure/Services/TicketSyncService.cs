@@ -415,10 +415,16 @@ public class TicketSyncService : ITicketSyncService
     /// </summary>
     internal static decimal ComputeOrderVat(TicketOrder order)
     {
+        if (order.PaymentStatus != TicketPaymentStatus.Paid)
+            return 0m;
+
         var totalVat = 0m;
 
         foreach (var attendee in order.Attendees)
         {
+            if (!IsRevenueAttendee(attendee))
+                continue;
+
             var taxableAmount = Math.Min(attendee.Price, TicketConstants.VipThresholdEuros);
 
             // VAT is inclusive in the taxable ticket price:
@@ -430,6 +436,9 @@ public class TicketSyncService : ITicketSyncService
 
         return Math.Round(totalVat, 2);
     }
+
+    private static bool IsRevenueAttendee(TicketAttendee attendee) =>
+        attendee.Status == TicketAttendeeStatus.Valid || attendee.Status == TicketAttendeeStatus.CheckedIn;
 
     private static Guid? LookupUserId(Dictionary<string, Guid> lookup, string? email) =>
         email is not null && lookup.TryGetValue(EmailNormalization.NormalizeForComparison(email), out var userId)
