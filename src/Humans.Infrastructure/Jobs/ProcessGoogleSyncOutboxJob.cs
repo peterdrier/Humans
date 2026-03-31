@@ -77,6 +77,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                 outboxEvent.ProcessedAt = _clock.GetCurrentInstant();
                 outboxEvent.LastError = null;
                 _metrics.RecordSyncOperation("success");
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -92,10 +93,10 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                     outboxEvent.Id,
                     outboxEvent.EventType,
                     outboxEvent.RetryCount);
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
         }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
         _metrics.RecordJobRun("process_google_sync_outbox", "success");
     }
 }

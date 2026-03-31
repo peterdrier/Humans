@@ -146,7 +146,7 @@ public class ShiftBrowseViewModel
     /// <summary>
     /// All available tags for the filter UI.
     /// </summary>
-    public List<ShiftTag> AllTags { get; set; } = [];
+    public List<Humans.Domain.Entities.ShiftTag> AllTags { get; set; } = [];
 
     /// <summary>
     /// Currently selected tag IDs for filtering.
@@ -233,7 +233,7 @@ public class ShiftAdminViewModel
     /// <summary>
     /// All available tags for the tag picker UI.
     /// </summary>
-    public List<ShiftTag> AllTags { get; set; } = [];
+    public List<Humans.Domain.Entities.ShiftTag> AllTags { get; set; } = [];
 }
 
 // === Homepage ===
