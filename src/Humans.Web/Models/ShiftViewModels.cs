@@ -259,26 +259,70 @@ public class UrgentShiftItem
 public class ShiftInfoViewModel
 {
     public List<string> SelectedSkills { get; set; } = [];
-    public List<string> SelectedQuirks { get; set; } = [];
-    public List<string> SelectedAllergies { get; set; } = [];
-    public List<string> SelectedIntolerances { get; set; } = [];
+    public List<string> SelectedQuirks { get; set; } = []; // Toggle quirks only (no time prefs)
+    public string? TimePreference { get; set; } // Mutually exclusive: Early Bird, Night Owl, All Day, No Preference
     public List<string> SelectedLanguages { get; set; } = [];
-    public string? DietaryPreference { get; set; }
 
-    [DataType(DataType.MultilineText)]
-    [Display(Name = "Medical Conditions")]
-    public string? MedicalConditions { get; set; }
-
-    // Defined options from spec
+    // Skill options with emoji prefixes for display
     public static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
-    public static readonly string[] QuirkOptions = ["Sober Shift", "Work In Shade", "Night Owl", "Early Bird", "Quiet Work", "Physical Work OK", "No Heights"];
-    public string? AllergyOtherText { get; set; }
-    public string? IntoleranceOtherText { get; set; }
-
-    public static readonly string[] AllergyOptions = ["Celiac", "Shellfish", "Nuts", "Tree Nuts", "Soy", "Egg", "Other"];
-    public static readonly string[] IntoleranceOptions = ["Gluten", "Peppers", "Shellfish", "Nuts", "Egg", "Lactose", "Other"];
-    public static readonly string[] DietaryOptions = ["Omnivore", "Vegetarian", "Vegan", "Pescatarian"];
     public static readonly string[] LanguageOptions = ["English", "Spanish", "German", "French", "Italian", "Portuguese", "Other"];
+
+    // Time preferences — mutually exclusive, stored as quirk value
+    public static readonly string[] TimePreferenceOptions = ["Early Bird", "Night Owl", "All Day", "No Preference"];
+
+    // Toggle quirks — multi-select, separate from time preference
+    public static readonly string[] ToggleQuirkOptions = ["Sober Shift", "Work In Shade", "Quiet Work", "Physical Work OK", "No Heights"];
+
+    // Combined QuirkOptions kept for backward compatibility (downstream consumers read quirks as flat array)
+    public static readonly string[] QuirkOptions = [.. ToggleQuirkOptions, .. TimePreferenceOptions];
+
+    // Emoji maps for view rendering
+    public static readonly Dictionary<string, string> SkillEmoji = new(StringComparer.Ordinal)
+    {
+        ["Bartending"] = "\U0001f378", ["Cooking"] = "\U0001f373", ["Sound"] = "\U0001f39a\ufe0f",
+        ["DJ"] = "\U0001f3a7", ["First Aid"] = "\U0001fa7a", ["Electrical"] = "\u26a1",
+        ["Driving"] = "\U0001f697", ["Construction"] = "\U0001f528", ["Art"] = "\U0001f3a8",
+        ["Other"] = "\u2728"
+    };
+
+    public static readonly Dictionary<string, string> LanguageEmoji = new(StringComparer.Ordinal)
+    {
+        ["English"] = "\U0001f1ec\U0001f1e7", ["Spanish"] = "\U0001f1ea\U0001f1f8",
+        ["French"] = "\U0001f1eb\U0001f1f7", ["German"] = "\U0001f1e9\U0001f1ea",
+        ["Italian"] = "\U0001f1ee\U0001f1f9", ["Portuguese"] = "\U0001f1f5\U0001f1f9",
+        ["Other"] = "\U0001f30d"
+    };
+
+    public static readonly Dictionary<string, string> TimePreferenceEmoji = new(StringComparer.Ordinal)
+    {
+        ["Early Bird"] = "\U0001f305", ["Night Owl"] = "\U0001f319",
+        ["All Day"] = "\u2600\ufe0f", ["No Preference"] = "\U0001f937"
+    };
+
+    public static readonly Dictionary<string, string> TimePreferenceDesc = new(StringComparer.Ordinal)
+    {
+        ["Early Bird"] = "Morning shifts, set up and prep",
+        ["Night Owl"] = "Evening and late-night shifts",
+        ["All Day"] = "Flexible, morning through evening",
+        ["No Preference"] = "I'll take whatever's needed"
+    };
+
+    /// <summary>Extract the time preference value from a flat quirks array.</summary>
+    public static string? ExtractTimePreference(List<string> quirks)
+        => quirks.FirstOrDefault(q => TimePreferenceOptions.Contains(q, StringComparer.Ordinal));
+
+    /// <summary>Extract toggle quirks (excluding time preferences) from a flat quirks array.</summary>
+    public static List<string> ExtractToggleQuirks(List<string> quirks)
+        => quirks.Where(q => !TimePreferenceOptions.Contains(q, StringComparer.Ordinal)).ToList();
+
+    /// <summary>Merge a time preference and toggle quirks back into a flat quirks array.</summary>
+    public static List<string> MergeQuirks(string? timePreference, List<string> toggleQuirks)
+    {
+        var result = new List<string>(toggleQuirks ?? []);
+        if (!string.IsNullOrEmpty(timePreference))
+            result.Add(timePreference);
+        return result;
+    }
 }
 
 // === Dashboard ===

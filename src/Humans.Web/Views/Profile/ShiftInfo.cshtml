@@ -13,7 +13,7 @@
         </nav>
 
         <h1>Shift Info</h1>
-        <p class="text-muted">Skills, dietary preferences, and other information for shift coordination.</p>
+        <p class="text-muted">Skills, preferences, and other information for shift coordination.</p>
 
         <vc:temp-data-alerts />
 
@@ -39,18 +39,37 @@
                 </div>
             </div>
 
-            @* Quirks *@
+            @* Work Preferences (Toggle Quirks) *@
             <div class="card mb-4">
                 <div class="card-body">
                     <label class="form-label fw-bold">Work Preferences</label>
                     <div class="row">
-                        @foreach (var quirk in Humans.Web.Models.ShiftInfoViewModel.QuirkOptions)
+                        @foreach (var quirk in Humans.Web.Models.ShiftInfoViewModel.ToggleQuirkOptions)
                         {
                             <div class="col-md-4 mb-1">
                                 <div class="form-check">
                                     <input type="checkbox" name="SelectedQuirks" value="@quirk" class="form-check-input"
                                            @(Model.SelectedQuirks.Contains(quirk) ? "checked" : null) />
                                     <label class="form-check-label">@quirk</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* Time Preference *@
+            <div class="card mb-4">
+                <div class="card-body">
+                    <label class="form-label fw-bold">Time Preference</label>
+                    <div class="row">
+                        @foreach (var pref in Humans.Web.Models.ShiftInfoViewModel.TimePreferenceOptions)
+                        {
+                            <div class="col-md-3 mb-1">
+                                <div class="form-check">
+                                    <input type="radio" name="TimePreference" value="@pref" class="form-check-input"
+                                           @(string.Equals(Model.TimePreference, pref, StringComparison.Ordinal) ? "checked" : "") />
+                                    <label class="form-check-label">@pref</label>
                                 </div>
                             </div>
                         }
@@ -168,20 +187,3 @@
         </form>
     </div>
 </div>
-
-@section Scripts {
-<script>
-document.querySelectorAll('[data-toggle-target]').forEach(function(cb) {
-    cb.addEventListener('change', function() {
-        var target = document.getElementById(this.dataset.toggleTarget);
-        if (target) {
-            target.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                var input = target.querySelector('input');
-                if (input) input.value = '';
-            }
-        }
-    });
-});
-</script>
-}
