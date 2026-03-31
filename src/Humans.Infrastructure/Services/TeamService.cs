@@ -24,6 +24,7 @@ public class TeamService : ITeamService
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IShiftManagementService _shiftManagementService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TeamService> _logger;
@@ -33,6 +34,7 @@ public class TeamService : ITeamService
         IAuditLogService auditLogService,
         IEmailService emailService,
         IRoleAssignmentService roleAssignmentService,
+        IShiftManagementService shiftManagementService,
         IClock clock,
         IMemoryCache cache,
         ILogger<TeamService> logger)
@@ -41,6 +43,7 @@ public class TeamService : ITeamService
         _auditLogService = auditLogService;
         _emailService = emailService;
         _roleAssignmentService = roleAssignmentService;
+        _shiftManagementService = shiftManagementService;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -1069,15 +1072,6 @@ public class TeamService : ITeamService
             userId, team.Name, teamId);
         return false;
     }
-
-    public Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default)
-        => _roleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
-
-    public Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default)
-        => _roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
-
-    public Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default)
-        => _roleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
 
     public async Task<bool> RemoveMemberAsync(
         Guid teamId,

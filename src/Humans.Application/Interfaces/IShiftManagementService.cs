@@ -217,6 +217,13 @@ public interface IShiftManagementService
     /// Sets a volunteer's tag preferences, replacing any existing ones.
     /// </summary>
     Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds);
+
+    /// <summary>
+    /// Gets the number of distinct pending shift signups per team for an event.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetPendingShiftSignupCountsByTeamAsync(
+        Guid eventSettingsId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

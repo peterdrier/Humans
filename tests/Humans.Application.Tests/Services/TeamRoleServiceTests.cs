@@ -35,11 +35,18 @@ public class TeamRoleServiceTests : IDisposable
             _clock,
             cache,
             NullLogger<RoleAssignmentService>.Instance);
+        var shiftManagementService = new ShiftManagementService(
+            _dbContext,
+            Substitute.For<IAuditLogService>(),
+            cache,
+            _clock,
+            NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
             roleAssignmentService,
+            shiftManagementService,
             _clock,
             cache,
             NullLogger<TeamService>.Instance);
