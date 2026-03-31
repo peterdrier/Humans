@@ -38,18 +38,12 @@ public class EmailRenderer : IEmailRenderer
     }
 
     public EmailContent RenderApplicationApproved(string userName, MembershipTier tier, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                L("Email_ApplicationApproved_Subject"),
-                Lf("Email_ApplicationApproved_Body", HtmlEncode(userName), tier, _settings.BaseUrl));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            L("Email_ApplicationApproved_Subject"),
+            Lf("Email_ApplicationApproved_Body", HtmlEncode(userName), tier, _settings.BaseUrl)));
 
     public EmailContent RenderApplicationRejected(string userName, MembershipTier tier, string reason, string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var reasonHtml = string.IsNullOrEmpty(reason)
                 ? ""
@@ -57,12 +51,10 @@ public class EmailRenderer : IEmailRenderer
             return new EmailContent(
                 L("Email_ApplicationRejected_Subject"),
                 Lf("Email_ApplicationRejected_Body", HtmlEncode(userName), tier, reasonHtml, _settings.AdminAddress));
-        }
-    }
+        });
 
     public EmailContent RenderSignupRejected(string userName, string? reason, string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var reasonHtml = string.IsNullOrEmpty(reason)
                 ? ""
@@ -70,12 +62,10 @@ public class EmailRenderer : IEmailRenderer
             return new EmailContent(
                 L("Email_SignupRejected_Subject"),
                 Lf("Email_SignupRejected_Body", HtmlEncode(userName), reasonHtml, _settings.AdminAddress));
-        }
-    }
+        });
 
     public EmailContent RenderReConsentsRequired(string userName, IReadOnlyList<string> documentNames, string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var subject = documentNames.Count == 1
                 ? Lf("Email_ReConsentRequired_Subject_Single", documentNames[0])
@@ -84,43 +74,29 @@ public class EmailRenderer : IEmailRenderer
             return new EmailContent(
                 subject,
                 Lf("Email_ReConsentsRequired_Body", HtmlEncode(userName), docsHtml, _settings.BaseUrl));
-        }
-    }
+        });
 
     public EmailContent RenderReConsentReminder(string userName, IReadOnlyList<string> documentNames, int daysRemaining, string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var docsHtml = string.Join("\n", documentNames.Select(d => $"<li>{HtmlEncode(d)}</li>"));
             return new EmailContent(
                 Lf("Email_ReConsentReminder_Subject", daysRemaining),
                 Lf("Email_ReConsentReminder_Body", HtmlEncode(userName), daysRemaining, docsHtml, _settings.BaseUrl));
-        }
-    }
+        });
 
     public EmailContent RenderWelcome(string userName, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                L("Email_Welcome_Subject"),
-                Lf("Email_Welcome_Body", HtmlEncode(userName), _settings.BaseUrl));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            L("Email_Welcome_Subject"),
+            Lf("Email_Welcome_Body", HtmlEncode(userName), _settings.BaseUrl)));
 
     public EmailContent RenderAccessSuspended(string userName, string reason, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                L("Email_AccessSuspended_Subject"),
-                Lf("Email_AccessSuspended_Body", HtmlEncode(userName), HtmlEncode(reason), _settings.BaseUrl, _settings.AdminAddress));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            L("Email_AccessSuspended_Subject"),
+            Lf("Email_AccessSuspended_Body", HtmlEncode(userName), HtmlEncode(reason), _settings.BaseUrl, _settings.AdminAddress)));
 
     public EmailContent RenderEmailVerification(string userName, string toEmail, string verificationUrl, bool isConflict = false, string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var templateKey = isConflict
                 ? "Email_EmailVerification_Merge_Body"
@@ -128,32 +104,20 @@ public class EmailRenderer : IEmailRenderer
             return new EmailContent(
                 L("Email_VerifyEmail_Subject"),
                 Lf(templateKey, HtmlEncode(userName), HtmlEncode(toEmail), verificationUrl));
-        }
-    }
+        });
 
     public EmailContent RenderAccountDeletionRequested(string userName, string formattedDeletionDate, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                L("Email_DeletionRequested_Subject"),
-                Lf("Email_AccountDeletionRequested_Body", HtmlEncode(userName), formattedDeletionDate, _settings.BaseUrl));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            L("Email_DeletionRequested_Subject"),
+            Lf("Email_AccountDeletionRequested_Body", HtmlEncode(userName), formattedDeletionDate, _settings.BaseUrl)));
 
     public EmailContent RenderAccountDeleted(string userName, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                L("Email_AccountDeleted_Subject"),
-                Lf("Email_AccountDeleted_Body", HtmlEncode(userName)));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            L("Email_AccountDeleted_Subject"),
+            Lf("Email_AccountDeleted_Body", HtmlEncode(userName))));
 
     public EmailContent RenderAddedToTeam(string userName, string teamName, string teamSlug, IReadOnlyList<(string Name, string? Url)> resources, string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var teamUrl = $"{_settings.BaseUrl}/Teams/{teamSlug}";
             var resourcesHtml = resources.Count > 0
@@ -166,22 +130,15 @@ public class EmailRenderer : IEmailRenderer
             return new EmailContent(
                 Lf("Email_AddedToTeam_Subject", teamName),
                 Lf("Email_AddedToTeam_Body", HtmlEncode(userName), HtmlEncode(teamName), resourcesHtml, teamUrl));
-        }
-    }
+        });
 
     public EmailContent RenderTermRenewalReminder(string userName, string tierName, string expiresAt, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                Lf("Email_TermRenewalReminder_Subject", tierName),
-                Lf("Email_TermRenewalReminder_Body", HtmlEncode(userName), HtmlEncode(tierName), HtmlEncode(expiresAt), _settings.BaseUrl));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            Lf("Email_TermRenewalReminder_Subject", tierName),
+            Lf("Email_TermRenewalReminder_Body", HtmlEncode(userName), HtmlEncode(tierName), HtmlEncode(expiresAt), _settings.BaseUrl)));
 
     public EmailContent RenderBoardDailyDigest(string boardMemberName, string date, IReadOnlyList<BoardDigestTierGroup> tierGroups, BoardDigestOutstandingCounts? outstandingCounts = null, string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var outstandingHtml = BuildOutstandingSection(outstandingCounts);
 
@@ -193,8 +150,7 @@ public class EmailRenderer : IEmailRenderer
             return new EmailContent(
                 Lf("Email_BoardDailyDigest_Subject", date),
                 Lf("Email_BoardDailyDigest_Body", HtmlEncode(boardMemberName), HtmlEncode(date), approvalsHtml, outstandingHtml));
-        }
-    }
+        });
 
     private string BuildOutstandingSection(BoardDigestOutstandingCounts? counts)
     {
@@ -269,15 +225,13 @@ public class EmailRenderer : IEmailRenderer
     }
 
     public EmailContent RenderFeedbackResponse(string userName, string originalDescription, string responseMessage, string reportLink, string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var responseHtml = Markdig.Markdown.ToHtml(responseMessage);
             return new EmailContent(
                 L("Email_FeedbackResponse_Subject"),
                 Lf("Email_FeedbackResponse_Body", HtmlEncode(userName), HtmlEncode(originalDescription), responseHtml, HtmlEncode(reportLink)));
-        }
-    }
+        });
 
     public EmailContent RenderFacilitatedMessage(
         string recipientName,
@@ -286,8 +240,7 @@ public class EmailRenderer : IEmailRenderer
         bool includeContactInfo,
         string? senderEmail,
         string? culture = null)
-    {
-        using (WithCulture(culture))
+        => RenderLocalized(culture, () =>
         {
             var sanitizedMessage = HtmlEncode(messageText).Replace("\n", "<br />", StringComparison.Ordinal);
 
@@ -298,38 +251,22 @@ public class EmailRenderer : IEmailRenderer
             return new EmailContent(
                 Lf("Email_FacilitatedMessage_Subject", senderName),
                 Lf("Email_FacilitatedMessage_Body", HtmlEncode(recipientName), HtmlEncode(senderName), sanitizedMessage, contactInfoHtml));
-        }
-    }
+        });
 
     public EmailContent RenderMagicLinkLogin(string displayName, string magicLinkUrl, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                L("Email_MagicLinkLogin_Subject"),
-                Lf("Email_MagicLinkLogin_Body", HtmlEncode(displayName), magicLinkUrl));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            L("Email_MagicLinkLogin_Subject"),
+            Lf("Email_MagicLinkLogin_Body", HtmlEncode(displayName), magicLinkUrl)));
 
     public EmailContent RenderMagicLinkSignup(string magicLinkUrl, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                L("Email_MagicLinkSignup_Subject"),
-                Lf("Email_MagicLinkSignup_Body", magicLinkUrl));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            L("Email_MagicLinkSignup_Subject"),
+            Lf("Email_MagicLinkSignup_Body", magicLinkUrl)));
 
     public EmailContent RenderWorkspaceCredentials(string userName, string workspaceEmail, string tempPassword, string? culture = null)
-    {
-        using (WithCulture(culture))
-        {
-            return new EmailContent(
-                L("Email_WorkspaceCredentials_Subject"),
-                Lf("Email_WorkspaceCredentials_Body", HtmlEncode(userName), HtmlEncode(workspaceEmail), HtmlEncode(tempPassword)));
-        }
-    }
+        => RenderLocalized(culture, () => new EmailContent(
+            L("Email_WorkspaceCredentials_Subject"),
+            Lf("Email_WorkspaceCredentials_Body", HtmlEncode(userName), HtmlEncode(workspaceEmail), HtmlEncode(tempPassword))));
 
     private string L(string key) => _localizer[key].Value;
 
@@ -339,6 +276,14 @@ public class EmailRenderer : IEmailRenderer
     private CultureScope WithCulture(string? culture)
     {
         return new CultureScope(culture, _logger);
+    }
+
+    private EmailContent RenderLocalized(string? culture, Func<EmailContent> render)
+    {
+        using (WithCulture(culture))
+        {
+            return render();
+        }
     }
 
     private sealed class CultureScope : IDisposable
