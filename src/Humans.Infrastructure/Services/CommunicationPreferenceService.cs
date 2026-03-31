@@ -194,7 +194,7 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
     {
         var token = GenerateUnsubscribeToken(userId, category);
         var oneClickUrl = $"{_baseUrl}/Unsubscribe/OneClick?token={WebUtility.UrlEncode(token)}";
-        var browserUrl = $"{_baseUrl}/Unsubscribe/{token}";
+        var browserUrl = $"{_baseUrl}/Unsubscribe/{Uri.EscapeDataString(token)}";
 
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
