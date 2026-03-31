@@ -525,7 +525,14 @@ public class UserEmailService : IUserEmailService
                 && ue.IsVerified
                 && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
             .GroupBy(ue => ue.UserId)
-            .Select(g => new { UserId = g.Key, Email = g.First().Email })
+            .Select(g => new
+            {
+                UserId = g.Key,
+                Email = g.OrderByDescending(ue => ue.IsNotificationTarget)
+                    .ThenBy(ue => ue.CreatedAt)
+                    .Select(ue => ue.Email)
+                    .First()
+            })
             .ToDictionaryAsync(x => x.UserId, x => x.Email, cancellationToken);
     }
 
