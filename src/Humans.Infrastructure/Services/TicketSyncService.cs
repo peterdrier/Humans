@@ -3,6 +3,7 @@ using Humans.Application.Interfaces;
 using Humans.Application;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -156,14 +157,14 @@ public class TicketSyncService : ITicketSyncService
     private async Task<Dictionary<string, Guid>> BuildEmailLookupAsync(CancellationToken ct)
     {
         // Match against ALL user emails (OAuth, verified, unverified)
-        // Case-insensitive via OrdinalIgnoreCase dictionary and GroupBy
+        // Normalize for comparison so gmail/googlemail aliases resolve to the same human.
         // If multiple users share same email, prefer the one where it's the OAuth email
         var userEmails = await _dbContext.Set<UserEmail>()
             .Select(ue => new { ue.Email, ue.UserId, ue.IsOAuth })
             .ToListAsync(ct);
 
-        var lookup = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-        var grouped = userEmails.GroupBy(e => e.Email, StringComparer.OrdinalIgnoreCase);
+        var lookup = new Dictionary<string, Guid>(NormalizingEmailComparer.Instance);
+        var grouped = userEmails.GroupBy(e => e.Email, NormalizingEmailComparer.Instance);
         foreach (var group in grouped)
         {
             var entries = group.ToList();
@@ -382,7 +383,9 @@ public class TicketSyncService : ITicketSyncService
     }
 
     private static Guid? LookupUserId(Dictionary<string, Guid> lookup, string? email) =>
-        email is not null && lookup.TryGetValue(email, out var userId) ? userId : null;
+        email is not null && lookup.TryGetValue(EmailNormalization.NormalizeForComparison(email), out var userId)
+            ? userId
+            : null;
 
     private TicketPaymentStatus ParsePaymentStatus(string status)
     {
