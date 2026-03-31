@@ -240,6 +240,20 @@ This resolution happens:
 - **In `AddUserToTeamResourcesAsync`** — when a user is added to a team, the max level is queried across all active resources with the same `GoogleId`.
 - **During reconciliation** — the daily job detects `WrongRole` drift when a user's current Google permission is lower than the resolved max, and upgrades it.
 
+## Subteam Member Rollup
+
+When a department (parent team) has child sub-teams, the effective membership for Google resource sync includes both direct department members and all active members of child teams. This ensures sub-team members automatically get access to department-level resources.
+
+**Key behaviors:**
+- Rollup is one-way: sub-team members get parent department resources. Parent members do NOT get sub-team resources.
+- On subteam join: `AddUserToTeamResourcesAsync` immediately adds the user to parent department resources.
+- On subteam leave: removal is deferred to the reconciliation job, which recomputes effective membership. If the user is still a direct department member or in another sub-team, they keep access.
+- The department detail page (`/Teams/{slug}`) shows a "Humans via sub-teams" section with source team badges, visually distinct from direct members.
+
+**Sync methods that include rollup:**
+- `SyncGroupResourceAsync` — includes child team members via `GetChildTeamMembersAsync`
+- `SyncDriveResourceGroupAsync` — includes child team members via `GetChildTeamMembersAsync`
+
 ## Permission Sync
 
 ### Full Sync (SyncResourcePermissionsAsync)
@@ -249,7 +263,8 @@ For Shared Drive folders:
 3. Filter to direct managed permissions only (exclude inherited, owner, service account)
 4. Add missing permissions (expected but not in Google)
 5. Remove stale permissions (in Google but not expected)
-6. Update `LastSyncedAt`
+6. Detect permission level drift (member has access but at wrong level) and upgrade
+7. Update `LastSyncedAt`
 
 For Google Groups:
 1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
