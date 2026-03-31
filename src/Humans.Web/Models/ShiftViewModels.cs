@@ -273,9 +273,6 @@ public class ShiftInfoViewModel
     // Toggle quirks — multi-select, separate from time preference
     public static readonly string[] ToggleQuirkOptions = ["Sober Shift", "Work In Shade", "Quiet Work", "Physical Work OK", "No Heights"];
 
-    // Combined QuirkOptions kept for backward compatibility (downstream consumers read quirks as flat array)
-    public static readonly string[] QuirkOptions = [.. ToggleQuirkOptions, .. TimePreferenceOptions];
-
     // Emoji maps for view rendering
     public static readonly Dictionary<string, string> SkillEmoji = new(StringComparer.Ordinal)
     {

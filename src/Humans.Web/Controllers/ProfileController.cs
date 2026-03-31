@@ -804,7 +804,7 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: true);
+            var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: false);
 
             var quirks = profile?.Quirks ?? [];
             var viewModel = new ShiftInfoViewModel

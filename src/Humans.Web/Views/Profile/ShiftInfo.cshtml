@@ -108,11 +108,11 @@
 
             @* ===== Navigation ===== *@
             <div class="d-flex justify-content-between align-items-center mt-4">
-                <button type="button" class="btn btn-outline-secondary" id="backBtn" style="display:none" onclick="prevStep()">
+                <button type="button" class="btn btn-outline-secondary" id="backBtn" style="display:none">
                     &larr; Back
                 </button>
                 <div></div>
-                <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextStep()">
+                <button type="button" class="btn btn-primary" id="nextBtn">
                     Continue &rarr;
                 </button>
                 <button type="submit" class="btn btn-primary" id="saveBtn" style="display:none">
@@ -212,8 +212,8 @@
         saveBtn.style.display = n === STEPS.length - 1 ? '' : 'none';
     }
 
-    window.nextStep = function() { if (current < STEPS.length - 1) setStep(current + 1); };
-    window.prevStep = function() { if (current > 0) setStep(current - 1); };
+    backBtn.addEventListener('click', function() { if (current > 0) setStep(current - 1); });
+    nextBtn.addEventListener('click', function() { if (current < STEPS.length - 1) setStep(current + 1); });
 
     // Chip toggle
     document.querySelectorAll('.chip').forEach(function(chip) {
