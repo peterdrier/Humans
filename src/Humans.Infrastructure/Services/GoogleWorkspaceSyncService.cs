@@ -1113,7 +1113,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             foreach (var resource in resources)
             {
-                var teamLink = new TeamLink(resource.Team.Name, resource.Team.Slug);
+                var level = resource.DrivePermissionLevel is DrivePermissionLevel.None
+                    ? null : resource.DrivePermissionLevel.ToString();
+                var teamLink = new TeamLink(resource.Team.Name, resource.Team.Slug, level);
                 foreach (var tm in resource.Team.Members)
                 {
                     var memberEmail = tm.User.GetGoogleServiceEmail();
@@ -1137,7 +1139,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     var memberEmail = cm.User.GetGoogleServiceEmail();
                     if (memberEmail is null) continue;
 
-                    var childTeamLink = new TeamLink(cm.Team.Name, cm.Team.Slug);
+                    var childTeamLink = new TeamLink(cm.Team.Name, cm.Team.Slug, level);
                     if (membersByEmail.TryGetValue(memberEmail, out var existing2))
                     {
                         if (!existing2.TeamLinks.Any(tl => string.Equals(tl.Name, childTeamLink.Name, StringComparison.Ordinal)))
@@ -1150,7 +1152,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 }
             }
 
-            var linkedTeams = resources.Select(r => new TeamLink(r.Team.Name, r.Team.Slug))
+            var linkedTeams = resources.Select(r => new TeamLink(r.Team.Name, r.Team.Slug,
+                    r.DrivePermissionLevel is DrivePermissionLevel.None ? null : r.DrivePermissionLevel.ToString()))
                 .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList();
 
             // Current: Drive permissions
@@ -1304,7 +1307,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
                 PermissionLevel = primary.DrivePermissionLevel.ToString(),
-                LinkedTeams = resources.Select(r => new TeamLink(r.Team.Name, r.Team.Slug))
+                LinkedTeams = resources.Select(r => new TeamLink(r.Team.Name, r.Team.Slug,
+                        r.DrivePermissionLevel is DrivePermissionLevel.None ? null : r.DrivePermissionLevel.ToString()))
                     .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList(),
                 ErrorMessage = ex.Message
             };

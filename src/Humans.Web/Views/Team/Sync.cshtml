@@ -194,7 +194,11 @@
             : escapeHtml(diff.resourceName);
 
         const teamsHtml = diff.linkedTeams && diff.linkedTeams.length > 0
-            ? diff.linkedTeams.map(function (t) { return '<a href="/Teams/' + encodeURIComponent(t.slug) + '" class="badge bg-light text-dark border me-1 text-decoration-none">' + escapeHtml(t.name) + '</a>'; }).join('')
+            ? diff.linkedTeams.map(function (t) {
+                var label = escapeHtml(t.name);
+                if (t.permissionLevel) label += ' <span class="text-muted fw-normal">\u00b7 ' + escapeHtml(t.permissionLevel) + '</span>';
+                return '<a href="/Teams/' + encodeURIComponent(t.slug) + '" class="badge bg-light text-dark border me-1 text-decoration-none">' + label + '</a>';
+            }).join('')
             : '<span class="text-muted">None</span>';
         const auditUrl = '@Url.Action("GoogleSyncResourceAudit", "Board", new { id = Guid.Empty })'.replace('00000000-0000-0000-0000-000000000000', diff.resourceId);
         const canViewAudit = @Json.Serialize(Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User));
@@ -209,9 +213,6 @@
         html += '<i class="fa-solid fa-chevron-right collapse-icon"></i>';
         html += '</button>';
         html += '<span>' + nameHtml + '</span> ' + statusBadge;
-        if (diff.permissionLevel) {
-            html += ' <span class="badge bg-light text-dark border">' + escapeHtml(diff.permissionLevel) + '</span>';
-        }
         html += '</div>';
         html += '<div class="d-flex align-items-center gap-2">';
         html += '<small class="text-muted">' + teamsHtml + '</small>';

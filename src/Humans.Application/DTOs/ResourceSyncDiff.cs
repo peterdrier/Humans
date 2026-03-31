@@ -5,7 +5,7 @@ namespace Humans.Application.DTOs;
 /// <summary>
 /// Lightweight team reference for sync display (name + slug for linking).
 /// </summary>
-public record TeamLink(string Name, string Slug);
+public record TeamLink(string Name, string Slug, string? PermissionLevel = null);
 
 /// <summary>
 /// Sync status of a single member relative to a resource.
