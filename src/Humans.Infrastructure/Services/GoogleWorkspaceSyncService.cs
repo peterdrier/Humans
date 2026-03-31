@@ -1277,7 +1277,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var existingActiveByEmail = await _dbContext.GoogleResources
             .Include(r => r.Team)
             .Where(r => r.IsActive && r.ResourceType == GoogleResourceType.Group)
-            .Where(r => r.Url != null && string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase))
+            .Where(r => r.Url != null && EF.Functions.ILike(r.Url!, expectedUrl))
             .FirstOrDefaultAsync(cancellationToken);
 
         if (existingActiveByEmail is not null)
@@ -1291,7 +1291,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         // Check for inactive resource for this team (reactivation scenario) BEFORE deactivating anything
         var inactiveForTeam = await _dbContext.GoogleResources
             .Where(r => !r.IsActive && r.ResourceType == GoogleResourceType.Group && r.TeamId == teamId)
-            .Where(r => r.Url != null && string.Equals(r.Url, expectedUrl, StringComparison.OrdinalIgnoreCase))
+            .Where(r => r.Url != null && EF.Functions.ILike(r.Url!, expectedUrl))
             .FirstOrDefaultAsync(cancellationToken);
 
         if (inactiveForTeam is not null && !confirmReactivation)
