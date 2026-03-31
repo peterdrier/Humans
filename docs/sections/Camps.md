@@ -1,36 +1,44 @@
 # Camps — Section Invariants
 
-> Version: 1.0 (draft — pending human review)
+## Concepts
+
+- A **Camp** (also called "Barrio") is a themed community camp. Each camp has a unique URL slug, one or more leads, and optional images.
+- A **Camp Season** is a per-year registration for a camp, containing the year-specific name, description, community info, and placement details.
+- A **Camp Lead** is a human responsible for managing a camp. Leads have a role: Primary or CoLead.
+- **Camp Settings** is a singleton controlling which year is public (shown in the directory) and which seasons accept new registrations.
 
 ## Actors & Roles
 
-| Actor | Access |
-|-------|--------|
-| Anonymous | Browse camps directory, view camp details and season details (public) |
-| Any authenticated user | Register a new camp; edit camps they lead; manage leads, images, historical names on their camp |
-| Camp lead | Edit camp details, manage season registrations, manage co-leads for their camp |
-| CampAdmin, Admin | All camp lead capabilities on all camps; approve/reject season registrations; manage CampSettings |
-| Admin only | Delete camps; manage global camp settings (public year, open seasons) |
+| Actor | Capabilities |
+|-------|-------------|
+| Anyone (including anonymous) | Browse the camps directory, view camp details and season details |
+| Any authenticated human | Register a new camp (which creates a new season in Pending status) |
+| Camp lead | Edit their camp's details, manage season registrations, manage co-leads, upload/manage images, manage historical names |
+| CampAdmin, Admin | All camp lead capabilities on all camps. Approve/reject season registrations. Manage camp settings (public year, open seasons, name lock dates). View withdrawn and rejected seasons. Export camp data |
+| Admin | Delete camps |
 
 ## Invariants
 
-- `CampController` has no controller-level `[Authorize]` — public pages (Index, Details, SeasonDetails) allow anonymous access.
-- Mutating actions on `CampController` require `[Authorize]` per-action and check camp lead status OR `RoleChecks.IsCampAdmin(User)`.
-- `CampAdminController` requires `RoleGroups.CampAdminOrAdmin` at the controller level.
-- Admin-only actions within CampAdmin (e.g., deleting camps) require `RoleNames.Admin`.
-- Camp has a unique `Slug` used for URL routing.
-- CampSeason tracks per-year data; status follows: Pending -> Active/Full/Rejected/Withdrawn.
-- CampLead has roles: Primary or CoLead. Only camp leads or CampAdmin can manage a camp.
-- CampImage files are stored on disk; `CampImage` entity tracks metadata and display order.
-- CampHistoricalName tracks previous names for camps that have been renamed.
-- CampSettings is a singleton controlling which year is public and which seasons accept registrations.
+- Each camp has a unique slug used for URL routing.
+- Camp season status follows: Pending then Active, Full, Rejected, or Withdrawn. Only CampAdmin can approve or reject a season.
+- Only camp leads or CampAdmin can edit a camp.
+- Camp images are stored on disk; metadata and display order are tracked per camp.
+- Historical names are recorded when a camp is renamed.
+- Camp settings control which year is shown publicly and which seasons accept registrations.
+
+## Negative Access Rules
+
+- Regular humans **cannot** edit camps they do not lead.
+- Camp leads **cannot** approve or reject season registrations — that requires CampAdmin or Admin.
+- CampAdmin **cannot** delete camps. Only Admin can delete a camp.
+- Anonymous visitors **cannot** register camps or edit any camp data.
 
 ## Triggers
 
 - When a camp is registered, its initial season is created with Pending status.
-- Season approval/rejection is done by CampAdmin via CampAdminController.
+- Season approval or rejection is performed by CampAdmin.
 
 ## Cross-Section Dependencies
 
-- **Profiles**: Camp leads are linked to Users; lead assignment requires a valid user.
-- **Admin**: CampSettings management is in CampAdminController (CampAdmin/Admin only).
+- **Profiles**: Camp leads are linked to humans. Lead assignment requires a valid human account.
+- **Admin**: Camp settings management is restricted to CampAdmin and Admin.

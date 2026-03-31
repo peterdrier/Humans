@@ -1,31 +1,41 @@
 # Budget — Section Invariants
 
-> Version: 1.0 (draft — pending human review)
+## Concepts
+
+- A **Budget Year** is the top-level container for a fiscal year's budget. It progresses through Draft, Active, and Closed stages.
+- A **Budget Group** is a second-level grouping within a year (e.g., "Departments", "Site Infrastructure"). Groups can be flagged as **restricted**, hiding them from coordinators.
+- A **Budget Category** is a third-level container within a group that holds the allocated budget amount. Categories can be linked to a department.
+- A **Budget Line Item** is a detail row within a category — a free-text description with an amount, expenditure type (CapEx or OpEx), and an optional responsible team.
+- The **Audit Log** is an append-only record of every field-level change to budget entities.
 
 ## Actors & Roles
 
-| Actor | Access |
-|-------|--------|
-| FinanceAdmin, Admin | Full CRUD on BudgetYear, BudgetGroup, BudgetCategory, BudgetLineItem; view audit log; sync departments |
-| Team coordinator | Edit line items within categories linked to their team(s) in the active budget year |
-| Any authenticated user | Read-only summary of the active budget year |
+| Actor | Capabilities |
+|-------|-------------|
+| Any active human | View a read-only summary of the active budget year |
+| Department coordinator | View the full budget for the active year. Create, edit, and delete line items within categories linked to a department they coordinate |
+| FinanceAdmin, Admin | Full management of all budget years, groups, categories, and line items. View audit log. Sync departments (auto-create categories for departments that lack one). Manage restricted groups |
 
 ## Invariants
 
-- `FinanceController` requires `RoleGroups.FinanceAdminOrAdmin` at the controller level — no action is accessible without FinanceAdmin or Admin.
-- `BudgetController` requires `[Authorize]` at the controller level; line item mutations check `RoleChecks.IsFinanceAdmin(User)` or coordinator team membership.
-- A coordinator can only create/edit/delete line items in categories linked to a team they coordinate.
-- BudgetYear status follows Draft -> Active -> Closed. Only one year can be Active at a time.
-- BudgetAuditLog is append-only: every field-level change records old value, new value, actor, and timestamp.
-- BudgetGroup has an `IsRestricted` flag; restricted groups are only visible/editable by FinanceAdmin/Admin.
-- Line items have ExpenditureType (CapEx/OpEx) and optional ResponsibleTeam.
-- "Sync Departments" creates categories for each parent-level team that doesn't already have one.
+- A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time.
+- A coordinator can only create, edit, or delete line items in categories linked to a department they coordinate.
+- Restricted groups are only visible and editable by FinanceAdmin and Admin. Coordinators cannot see them.
+- Every create, update, or delete on a group, category, or line item generates an audit log entry recording old value, new value, actor, and timestamp.
+- "Sync Departments" creates a category for each department that does not already have one in the selected year.
+
+## Negative Access Rules
+
+- Regular humans **cannot** edit any budget data. They can only view the summary.
+- Coordinators **cannot** edit budget groups, categories, or restricted groups. They can only manage line items in categories linked to their own department.
+- Coordinators **cannot** see restricted budget groups.
+- Coordinators **cannot** create, activate, or close budget years.
 
 ## Triggers
 
-- Every create/update/delete on BudgetGroup, BudgetCategory, or BudgetLineItem generates a BudgetAuditLog entry.
+- Every mutation to budget groups, categories, or line items generates an append-only audit log entry.
 
 ## Cross-Section Dependencies
 
-- **Teams**: BudgetCategory can be linked to a Team (department). Coordinator access is derived from team coordination status.
-- **Admin**: BudgetYear lifecycle management is in FinanceController (FinanceAdmin/Admin only).
+- **Teams**: Budget categories can be linked to a department. Coordinator status on the department determines line item editing access.
+- **Admin**: Budget year lifecycle management is restricted to FinanceAdmin and Admin.
