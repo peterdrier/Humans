@@ -92,20 +92,6 @@
                 </div>
             </div>
 
-            @* Preserve dietary/medical fields (added on main, not yet integrated into wizard UI) *@
-            <input type="hidden" name="DietaryPreference" value="@Model.DietaryPreference" />
-            @foreach (var allergy in Model.SelectedAllergies)
-            {
-                <input type="hidden" name="SelectedAllergies" value="@allergy" />
-            }
-            <input type="hidden" name="AllergyOtherText" value="@Model.AllergyOtherText" />
-            @foreach (var intolerance in Model.SelectedIntolerances)
-            {
-                <input type="hidden" name="SelectedIntolerances" value="@intolerance" />
-            }
-            <input type="hidden" name="IntoleranceOtherText" value="@Model.IntoleranceOtherText" />
-            <input type="hidden" name="MedicalConditions" value="@Model.MedicalConditions" />
-
             @* ===== Navigation ===== *@
             <div class="d-flex justify-content-between align-items-center mt-4">
                 <button type="button" class="btn btn-outline-secondary" id="backBtn" style="display:none">
