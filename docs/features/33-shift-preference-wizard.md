@@ -68,6 +68,10 @@ Time preferences (Early Bird, Night Owl, All Day, No Preference) are mutually ex
 
 The view model should expose `TimePreference` (string, nullable) separately from `SelectedQuirks` (list of toggle quirks) to make this split explicit in the view. The controller merges them back into a single `Quirks[]` on save.
 
+**null vs "No Preference":** `TimePreference = null` means the user has never set a time preference (no radio card pre-selected). "No Preference" is a deliberate choice ("I'll take whatever's needed") and is stored as a quirk value. The wizard allows submitting without selecting a time preference — it's not required.
+
+The set of time preference values should be a `static readonly` array (like the existing `SkillOptions`) so both the strip-on-save and extract-on-load logic reference the same source of truth.
+
 ### Fields Removed From This Page (Not Deleted)
 
 The following fields are no longer editable on `/Profile/ShiftInfo` but remain on `VolunteerEventProfile` and in the database. Existing data is preserved. These will move to the Dietary & Medical Nudge Modal (Feature 35):
