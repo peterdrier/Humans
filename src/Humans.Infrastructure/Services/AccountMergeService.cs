@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -106,7 +107,14 @@ public class AccountMergeService : IAccountMergeService
             role.ValidTo = now;
         }
 
-        // 4. Delete duplicate's email rows (must happen before verifying
+        // 4. Remove duplicate's external logins (prevents lockout when logging in
+        //    with a secondary email that was on the source account)
+        var sourceLogins = await _dbContext.Set<IdentityUserLogin<Guid>>()
+            .Where(l => l.UserId == sourceUser.Id)
+            .ToListAsync(ct);
+        _dbContext.Set<IdentityUserLogin<Guid>>().RemoveRange(sourceLogins);
+
+        // 5. Delete duplicate's email rows (must happen before verifying
         //    the pending email to avoid unique constraint violation)
         var sourceEmails = await _dbContext.UserEmails
             .Where(e => e.UserId == sourceUser.Id)
@@ -114,7 +122,7 @@ public class AccountMergeService : IAccountMergeService
         _dbContext.UserEmails.RemoveRange(sourceEmails);
         await _dbContext.SaveChangesAsync(ct);
 
-        // 5. Verify the pending email on the primary account
+        // 6. Verify the pending email on the primary account
         var pendingEmail = await _dbContext.UserEmails
             .FirstOrDefaultAsync(e => e.Id == request.PendingEmailId, ct)
             ?? throw new InvalidOperationException(
@@ -122,16 +130,16 @@ public class AccountMergeService : IAccountMergeService
         pendingEmail.IsVerified = true;
         pendingEmail.UpdatedAt = now;
 
-        // 6. Anonymize the duplicate account
+        // 7. Anonymize the duplicate account
         await AnonymizeSourceAccountAsync(sourceUser, now, ct);
 
-        // 6. Mark the merge request as accepted
+        // 8. Mark the merge request as accepted
         request.Status = AccountMergeRequestStatus.Accepted;
         request.ResolvedAt = now;
         request.ResolvedByUserId = adminUserId;
         request.AdminNotes = notes;
 
-        // 13. Audit log
+        // 9. Audit log
         await _auditLogService.LogAsync(
             AuditAction.AccountMergeAccepted,
             nameof(AccountMergeRequest), request.Id,

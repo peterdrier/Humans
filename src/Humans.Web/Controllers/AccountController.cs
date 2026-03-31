@@ -89,6 +89,56 @@ public class AccountController : Controller
 
         if (result.IsLockedOut)
         {
+            // The external login is linked to a locked-out account (e.g., a merged source account).
+            // Check if the OAuth email belongs to a different, active account and re-link.
+            var lockedOutEmail = info.Principal.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
+            if (!string.IsNullOrEmpty(lockedOutEmail))
+            {
+                var activeUser = await _magicLinkService.FindUserByVerifiedEmailAsync(lockedOutEmail);
+                if (activeUser is not null && activeUser.LockoutEnd is null)
+                {
+                    try
+                    {
+                        // Remove the stale login from the locked source account
+                        var lockedUser = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+                        if (lockedUser is not null && lockedUser.Id != activeUser.Id)
+                        {
+                            await _userManager.RemoveLoginAsync(lockedUser, info.LoginProvider, info.ProviderKey);
+                        }
+
+                        // Add the login to the active target account
+                        var linkResult = await _userManager.AddLoginAsync(activeUser, info);
+                        if (linkResult.Succeeded)
+                        {
+                            activeUser.LastLoginAt = _clock.GetCurrentInstant();
+                            var pictureUrlClaim = info.Principal.FindFirstValue("urn:google:picture");
+                            if (string.IsNullOrEmpty(activeUser.ProfilePictureUrl) && pictureUrlClaim is not null)
+                            {
+                                activeUser.ProfilePictureUrl = pictureUrlClaim;
+                            }
+                            await _userManager.UpdateAsync(activeUser);
+
+                            await _signInManager.SignInAsync(activeUser, isPersistent: false);
+                            _logger.LogInformation(
+                                "Re-linked {Provider} login from locked account to active user {UserId} via email match",
+                                info.LoginProvider, activeUser.Id);
+                            return RedirectToLocal(returnUrl);
+                        }
+
+                        _logger.LogWarning(
+                            "Failed to re-link {Provider} to active user {UserId} after lockout: {Errors}",
+                            info.LoginProvider, activeUser.Id,
+                            string.Join(", ", linkResult.Errors.Select(e => e.Description)));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Error re-linking {Provider} to active user {UserId} after lockout",
+                            info.LoginProvider, activeUser.Id);
+                    }
+                }
+            }
+
             return RedirectToPage("/Account/Lockout");
         }
 
