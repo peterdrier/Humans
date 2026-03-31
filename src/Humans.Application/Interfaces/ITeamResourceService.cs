@@ -60,4 +60,9 @@ public interface ITeamResourceService
     /// Gets a single Google resource by ID, including its team.
     /// </summary>
     Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates the Drive permission level for a resource.
+    /// </summary>
+    Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, CancellationToken ct = default);
 }

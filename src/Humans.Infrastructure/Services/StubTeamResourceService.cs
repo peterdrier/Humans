@@ -191,4 +191,15 @@ public class StubTeamResourceService : ITeamResourceService
     {
         return await TeamResourcePersistence.GetResourceByIdAsync(_dbContext, resourceId, ct);
     }
+
+    /// <inheritdoc />
+    public async Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, CancellationToken ct = default)
+    {
+        var resource = await _dbContext.GoogleResources.FindAsync([resourceId], ct);
+        if (resource is null) return;
+
+        resource.DrivePermissionLevel = level;
+        await _dbContext.SaveChangesAsync(ct);
+        _logger.LogInformation("[STUB] Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
+    }
 }

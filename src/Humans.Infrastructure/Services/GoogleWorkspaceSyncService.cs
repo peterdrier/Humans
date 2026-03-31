@@ -1000,21 +1000,21 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     ResourceType = resource.ResourceType.ToString(),
                     GoogleId = resource.GoogleId,
                     Url = resource.Url,
-                    LinkedTeams = [resource.Team.Name],
+                    LinkedTeams = [new TeamLink(resource.Team.Name, resource.Team.Slug)],
                     ErrorMessage = "Group not found in Google"
                 };
             }
 
             // Build member sync status list
             var members = new List<MemberSyncStatus>();
-            var teamName = resource.Team.Name;
+            var teamLink = new TeamLink(resource.Team.Name, resource.Team.Slug);
 
             foreach (var expected in expectedMembers)
             {
                 var state = currentEmails.Contains(expected.Email!)
                     ? MemberSyncState.Correct
                     : MemberSyncState.Missing;
-                members.Add(new MemberSyncStatus(expected.Email!, expected.DisplayName, state, [teamName]));
+                members.Add(new MemberSyncStatus(expected.Email!, expected.DisplayName, state, [teamLink]));
             }
 
             foreach (var email in currentEmails)
@@ -1072,7 +1072,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 ResourceType = resource.ResourceType.ToString(),
                 GoogleId = resource.GoogleId,
                 Url = resource.Url,
-                LinkedTeams = [teamName],
+                LinkedTeams = [teamLink],
                 Members = members
             };
         }
@@ -1088,7 +1088,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 ResourceType = resource.ResourceType.ToString(),
                 GoogleId = resource.GoogleId,
                 Url = resource.Url,
-                LinkedTeams = [resource.Team.Name],
+                LinkedTeams = [new TeamLink(resource.Team.Name, resource.Team.Slug)],
                 ErrorMessage = ex.Message
             };
         }
@@ -1108,12 +1108,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         try
         {
             // Expected: union of all linked teams' active members
-            var membersByEmail = new Dictionary<string, (string DisplayName, List<string> TeamNames)>(
+            var membersByEmail = new Dictionary<string, (string DisplayName, List<TeamLink> TeamLinks)>(
                 NormalizingEmailComparer.Instance);
 
             foreach (var resource in resources)
             {
-                var teamName = resource.Team.Name;
+                var teamLink = new TeamLink(resource.Team.Name, resource.Team.Slug);
                 foreach (var tm in resource.Team.Members)
                 {
                     var memberEmail = tm.User.GetGoogleServiceEmail();
@@ -1121,12 +1121,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
                     if (membersByEmail.TryGetValue(memberEmail, out var existing))
                     {
-                        if (!existing.TeamNames.Contains(teamName, StringComparer.Ordinal))
-                            existing.TeamNames.Add(teamName);
+                        if (!existing.TeamLinks.Any(tl => string.Equals(tl.Name, teamLink.Name, StringComparison.Ordinal)))
+                            existing.TeamLinks.Add(teamLink);
                     }
                     else
                     {
-                        membersByEmail[memberEmail] = (tm.User.DisplayName, new List<string> { teamName });
+                        membersByEmail[memberEmail] = (tm.User.DisplayName, new List<TeamLink> { teamLink });
                     }
                 }
 
@@ -1137,20 +1137,21 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     var memberEmail = cm.User.GetGoogleServiceEmail();
                     if (memberEmail is null) continue;
 
-                    var childTeamName = cm.Team.Name;
+                    var childTeamLink = new TeamLink(cm.Team.Name, cm.Team.Slug);
                     if (membersByEmail.TryGetValue(memberEmail, out var existing2))
                     {
-                        if (!existing2.TeamNames.Contains(childTeamName, StringComparer.Ordinal))
-                            existing2.TeamNames.Add(childTeamName);
+                        if (!existing2.TeamLinks.Any(tl => string.Equals(tl.Name, childTeamLink.Name, StringComparison.Ordinal)))
+                            existing2.TeamLinks.Add(childTeamLink);
                     }
                     else
                     {
-                        membersByEmail[memberEmail] = (cm.User.DisplayName, new List<string> { childTeamName });
+                        membersByEmail[memberEmail] = (cm.User.DisplayName, new List<TeamLink> { childTeamLink });
                     }
                 }
             }
 
-            var linkedTeams = resources.Select(r => r.Team.Name).Distinct(StringComparer.Ordinal).ToList();
+            var linkedTeams = resources.Select(r => new TeamLink(r.Team.Name, r.Team.Slug))
+                .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList();
 
             // Current: Drive permissions
             var drive = await GetDriveServiceAsync();
@@ -1175,7 +1176,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             // Build member sync status list
             var members = new List<MemberSyncStatus>();
 
-            foreach (var (email, (displayName, teamNames)) in membersByEmail)
+            foreach (var (email, (displayName, teamLinks)) in membersByEmail)
             {
                 MemberSyncState state;
                 roleByEmail.TryGetValue(email, out var currentRole);
@@ -1184,16 +1185,22 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 {
                     state = MemberSyncState.Missing;
                 }
+                else if (!directEmails.Contains(email))
+                {
+                    // Member has access but only via inherited Shared Drive permission —
+                    // the system can't manage this, so mark as Inherited
+                    state = MemberSyncState.Inherited;
+                }
                 else
                 {
-                    // Member has access — check if the permission level matches
+                    // Member has a direct permission — check if the level matches
                     var currentLevel = ParseApiRole(currentRole);
                     state = currentLevel.HasValue && currentLevel.Value < maxLevel
                         ? MemberSyncState.WrongRole
                         : MemberSyncState.Correct;
                 }
 
-                members.Add(new MemberSyncStatus(email, displayName, state, teamNames, currentRole, expectedApiRole));
+                members.Add(new MemberSyncStatus(email, displayName, state, teamLinks, currentRole, expectedApiRole));
             }
 
             var saEmail = await GetServiceAccountEmailAsync();
@@ -1209,7 +1216,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         ? MemberSyncState.Extra
                         : MemberSyncState.Inherited;
                     roleByEmail.TryGetValue(email, out var extraRole);
-                    members.Add(new MemberSyncStatus(email, email, state, [], extraRole));
+                    members.Add(new MemberSyncStatus(email, email, state, [], extraRole, expectedApiRole));
                 }
             }
 
@@ -1297,7 +1304,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
                 PermissionLevel = primary.DrivePermissionLevel.ToString(),
-                LinkedTeams = resources.Select(r => r.Team.Name).Distinct(StringComparer.Ordinal).ToList(),
+                LinkedTeams = resources.Select(r => new TeamLink(r.Team.Name, r.Team.Slug))
+                    .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList(),
                 ErrorMessage = ex.Message
             };
         }

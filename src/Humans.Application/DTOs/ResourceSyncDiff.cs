@@ -3,13 +3,18 @@ using Humans.Domain.Enums;
 namespace Humans.Application.DTOs;
 
 /// <summary>
+/// Lightweight team reference for sync display (name + slug for linking).
+/// </summary>
+public record TeamLink(string Name, string Slug);
+
+/// <summary>
 /// Sync status of a single member relative to a resource.
 /// </summary>
 public record MemberSyncStatus(
     string Email,
     string DisplayName,
     MemberSyncState State,
-    List<string> TeamNames,
+    List<TeamLink> TeamLinks,
     string? CurrentRole = null,
     string? ExpectedRole = null);
 
@@ -45,7 +50,7 @@ public class ResourceSyncDiff
     public string? PermissionLevel { get; init; }
 
     /// <summary>All teams that link to this resource.</summary>
-    public List<string> LinkedTeams { get; init; } = [];
+    public List<TeamLink> LinkedTeams { get; init; } = [];
 
     /// <summary>Per-member sync status (correct, missing, extra).</summary>
     public List<MemberSyncStatus> Members { get; init; } = [];

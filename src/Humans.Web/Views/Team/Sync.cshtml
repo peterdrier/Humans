@@ -194,9 +194,9 @@
             : escapeHtml(diff.resourceName);
 
         const teamsHtml = diff.linkedTeams && diff.linkedTeams.length > 0
-            ? diff.linkedTeams.map(function (t) { return '<span class="badge bg-light text-dark border me-1">' + escapeHtml(t) + '</span>'; }).join('')
+            ? diff.linkedTeams.map(function (t) { return '<a href="/Teams/' + encodeURIComponent(t.slug) + '" class="badge bg-light text-dark border me-1 text-decoration-none">' + escapeHtml(t.name) + '</a>'; }).join('')
             : '<span class="text-muted">None</span>';
-        const auditUrl = '@Url.Action("GoogleSyncResourceAudit", "Board", new { id = "__RESOURCE_ID__" })';
+        const auditUrl = '@Url.Action("GoogleSyncResourceAudit", "Board", new { id = Guid.Empty })'.replace('00000000-0000-0000-0000-000000000000', diff.resourceId);
         const canViewAudit = @Json.Serialize(Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User));
         const auditLinkHtml = canViewAudit
             ? '<a class="btn btn-sm btn-outline-secondary" href="' + auditUrl.replace('__RESOURCE_ID__', diff.resourceId) + '">Audit</a>'
@@ -255,8 +255,8 @@
                     stateLabel = 'Extra';
                     badgeClass = 'bg-danger';
                 }
-                const memberTeams = m.teamNames && m.teamNames.length > 0
-                    ? m.teamNames.map(function (t) { return '<span class="badge bg-light text-dark border me-1">' + escapeHtml(t) + '</span>'; }).join('')
+                const memberTeams = m.teamLinks && m.teamLinks.length > 0
+                    ? m.teamLinks.map(function (t) { return '<a href="/Teams/' + encodeURIComponent(t.slug) + '" class="badge bg-light text-dark border me-1 text-decoration-none">' + escapeHtml(t.name) + '</a>'; }).join('')
                     : '';
                 html += '<tr class="member-row" data-member-state="' + m.state + '">';
                 html += '<td>' + escapeHtml(m.email) + '</td>';

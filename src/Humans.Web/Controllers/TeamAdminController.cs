@@ -454,6 +454,39 @@ public class TeamAdminController : HumansTeamControllerBase
         return RedirectToAction(nameof(Resources), new { slug });
     }
 
+    [HttpPost("Resources/{resourceId}/PermissionLevel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdatePermissionLevel(string slug, Guid resourceId, DrivePermissionLevel level)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        {
+            return Forbid();
+        }
+
+        if (level == DrivePermissionLevel.None)
+        {
+            SetError("Invalid permission level.");
+            return RedirectToAction(nameof(Resources), new { slug });
+        }
+
+        await _teamResourceService.UpdatePermissionLevelAsync(resourceId, level);
+        SetSuccess($"Permission level updated to {level}.");
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
     [HttpPost("Resources/{resourceId}/Unlink")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnlinkResource(string slug, Guid resourceId)
