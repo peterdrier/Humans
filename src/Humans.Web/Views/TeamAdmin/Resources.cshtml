@@ -86,12 +86,21 @@
                                 {
                                     <form asp-action="UpdatePermissionLevel" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@resource.Id" method="post" class="d-inline permission-form">
                                         @Html.AntiForgeryToken()
-                                        <select name="level" class="form-select form-select-sm d-inline-block" style="width: auto; min-width: 140px;" data-original="@resource.DrivePermissionLevel" data-confirm="Are you sure you want to change the permission level?">
-                                            <option value="Viewer" selected="@(resource.DrivePermissionLevel == DrivePermissionLevel.Viewer ? "selected" : null)">Viewer</option>
-                                            <option value="Commenter" selected="@(resource.DrivePermissionLevel == DrivePermissionLevel.Commenter ? "selected" : null)">Commenter</option>
-                                            <option value="Contributor" selected="@(resource.DrivePermissionLevel == DrivePermissionLevel.Contributor ? "selected" : null)">Contributor</option>
-                                            <option value="ContentManager" selected="@(resource.DrivePermissionLevel == DrivePermissionLevel.ContentManager ? "selected" : null)">Content Manager</option>
-                                            <option value="Manager" selected="@(resource.DrivePermissionLevel == DrivePermissionLevel.Manager ? "selected" : null)">Manager</option>
+                                        @{
+                                            var currentLevel = resource.DrivePermissionLevel.ToString();
+                                        }
+                                        <select name="level" class="form-select form-select-sm d-inline-block permission-select" style="width: auto; min-width: 140px;" data-original="@currentLevel">
+                                            @foreach (var opt in new[] { ("Viewer", "Viewer"), ("Commenter", "Commenter"), ("Contributor", "Contributor"), ("ContentManager", "Content Manager"), ("Manager", "Manager") })
+                                            {
+                                                if (opt.Item1 == currentLevel)
+                                                {
+                                                    <option value="@opt.Item1" selected>@opt.Item2</option>
+                                                }
+                                                else
+                                                {
+                                                    <option value="@opt.Item1">@opt.Item2</option>
+                                                }
+                                            }
                                         </select>
                                     </form>
                                 }
@@ -179,7 +188,7 @@ else
         navigator.clipboard.writeText(document.getElementById('serviceAccountEmail').value);
     });
 
-    document.querySelectorAll('button[data-confirm]').forEach(function (button) {
+    document.querySelectorAll('[data-confirm]').forEach(function (button) {
         button.addEventListener('click', function (e) {
             if (!confirm(this.getAttribute('data-confirm'))) {
                 e.preventDefault();
@@ -187,9 +196,9 @@ else
         });
     });
 
-    document.querySelectorAll('.permission-form select[data-confirm]').forEach(function (select) {
+    document.querySelectorAll('.permission-select').forEach(function (select) {
         select.addEventListener('change', function () {
-            if (confirm(this.getAttribute('data-confirm'))) {
+            if (confirm('Are you sure you want to change the permission level?')) {
                 this.closest('form').submit();
             } else {
                 this.value = this.getAttribute('data-original');
