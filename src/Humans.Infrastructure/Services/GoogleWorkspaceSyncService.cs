@@ -195,32 +195,18 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <summary>
-    /// Resolves the maximum DrivePermissionLevel across a group of GoogleResource records
-    /// that share the same GoogleId. When a user belongs to multiple teams that link
-    /// the same Drive resource, they should get the highest permission level.
+    /// Resolves the maximum DrivePermissionLevel for a specific user on a Drive resource,
+    /// considering only resources whose teams the user is an active member of.
     /// </summary>
-    private static DrivePermissionLevel ResolveMaxPermissionLevel(IReadOnlyList<GoogleResource> resources)
-    {
-        var max = DrivePermissionLevel.None;
-        foreach (var resource in resources)
-        {
-            if (resource.DrivePermissionLevel > max)
-                max = resource.DrivePermissionLevel;
-        }
-        return max;
-    }
-
-    /// <summary>
-    /// Resolves the maximum DrivePermissionLevel across all active GoogleResource records
-    /// with the given GoogleId. Queries the database. Falls back to Contributor if no records found.
-    /// </summary>
-    private async Task<DrivePermissionLevel> ResolveMaxPermissionLevelForGoogleIdAsync(
+    private async Task<DrivePermissionLevel> ResolvePermissionLevelForUserAsync(
         string googleId,
+        Guid userId,
         CancellationToken cancellationToken)
     {
         var levels = await _dbContext.GoogleResources
             .AsNoTracking()
-            .Where(r => r.GoogleId == googleId && r.IsActive)
+            .Where(r => r.GoogleId == googleId && r.IsActive
+                && r.Team.Members.Any(tm => tm.UserId == userId && tm.LeftAt == null))
             .Select(r => r.DrivePermissionLevel)
             .Where(l => l != DrivePermissionLevel.None)
             .ToListAsync(cancellationToken);
@@ -713,10 +699,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             }
             else
             {
-                // Resolve max permission level across all resources with same GoogleId
-                var maxLevel = await ResolveMaxPermissionLevelForGoogleIdAsync(
-                    resource.GoogleId, cancellationToken);
-                await AddUserToDriveAsync(resource, googleEmail, maxLevel, cancellationToken);
+                // Resolve permission level based on this user's team memberships
+                var level = await ResolvePermissionLevelForUserAsync(
+                    resource.GoogleId, userId, cancellationToken);
+                await AddUserToDriveAsync(resource, googleEmail, level, cancellationToken);
             }
         }
 
@@ -737,9 +723,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 }
                 else
                 {
-                    var maxLevel = await ResolveMaxPermissionLevelForGoogleIdAsync(
-                        resource.GoogleId, cancellationToken);
-                    await AddUserToDriveAsync(resource, googleEmail, maxLevel, cancellationToken);
+                    var level = await ResolvePermissionLevelForUserAsync(
+                        resource.GoogleId, userId, cancellationToken);
+                    await AddUserToDriveAsync(resource, googleEmail, level, cancellationToken);
                 }
             }
         }
