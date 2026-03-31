@@ -95,7 +95,8 @@ public class AccountController : Controller
             if (!string.IsNullOrEmpty(lockedOutEmail))
             {
                 var activeUser = await _magicLinkService.FindUserByVerifiedEmailAsync(lockedOutEmail);
-                if (activeUser is not null && activeUser.LockoutEnd is null)
+                if (activeUser is not null &&
+                    (activeUser.LockoutEnd is null || activeUser.LockoutEnd <= DateTimeOffset.UtcNow))
                 {
                     try
                     {
