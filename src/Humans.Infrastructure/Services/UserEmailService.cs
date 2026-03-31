@@ -98,6 +98,8 @@ public class UserEmailService : IUserEmailService
         CancellationToken cancellationToken = default)
     {
         email = email.Trim();
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
 
         // Validate email format
         if (!new EmailAddressAttribute().IsValid(email))
@@ -106,8 +108,15 @@ public class UserEmailService : IUserEmailService
         }
 
         // Check if this email already exists for this user
-        var existingForUser = await _dbContext.UserEmails
-            .AnyAsync(e => e.UserId == userId && EF.Functions.ILike(e.Email, email), cancellationToken);
+        var existingForUser = alternateEmail is null
+            ? await _dbContext.UserEmails.AnyAsync(
+                e => e.UserId == userId && EF.Functions.ILike(e.Email, normalizedEmail),
+                cancellationToken)
+            : await _dbContext.UserEmails.AnyAsync(
+                e => e.UserId == userId &&
+                    (EF.Functions.ILike(e.Email, normalizedEmail) ||
+                     EF.Functions.ILike(e.Email, alternateEmail)),
+                cancellationToken);
 
         if (existingForUser)
         {
@@ -115,10 +124,18 @@ public class UserEmailService : IUserEmailService
         }
 
         // Check if there's already a pending merge request for this email from this user
-        var pendingMerge = await _dbContext.AccountMergeRequests
-            .AnyAsync(r => r.TargetUserId == userId
-                && EF.Functions.ILike(r.Email, email)
-                && r.Status == AccountMergeRequestStatus.Pending, cancellationToken);
+        var pendingMerge = alternateEmail is null
+            ? await _dbContext.AccountMergeRequests.AnyAsync(
+                r => r.TargetUserId == userId
+                    && EF.Functions.ILike(r.Email, normalizedEmail)
+                    && r.Status == AccountMergeRequestStatus.Pending,
+                cancellationToken)
+            : await _dbContext.AccountMergeRequests.AnyAsync(
+                r => r.TargetUserId == userId
+                    && (EF.Functions.ILike(r.Email, normalizedEmail) ||
+                        EF.Functions.ILike(r.Email, alternateEmail))
+                    && r.Status == AccountMergeRequestStatus.Pending,
+                cancellationToken);
 
         if (pendingMerge)
         {
@@ -127,14 +144,21 @@ public class UserEmailService : IUserEmailService
 
         // Check uniqueness among verified emails (case-insensitive)
         // Instead of blocking, flag as conflict for merge flow
-        var isConflict = await _dbContext.UserEmails
-            .AnyAsync(e => e.UserId != userId && e.IsVerified && EF.Functions.ILike(e.Email, email), cancellationToken);
+        var isConflict = alternateEmail is null
+            ? await _dbContext.UserEmails.AnyAsync(
+                e => e.UserId != userId && e.IsVerified && EF.Functions.ILike(e.Email, normalizedEmail),
+                cancellationToken)
+            : await _dbContext.UserEmails.AnyAsync(
+                e => e.UserId != userId && e.IsVerified &&
+                    (EF.Functions.ILike(e.Email, normalizedEmail) ||
+                     EF.Functions.ILike(e.Email, alternateEmail)),
+                cancellationToken);
 
         var user = await _userManager.FindByIdAsync(userId.ToString())
             ?? throw new InvalidOperationException("User not found.");
 
         // Check if same as OAuth login email
-        if (string.Equals(email, user.Email, StringComparison.OrdinalIgnoreCase))
+        if (EmailNormalization.EmailsMatch(email, user.Email))
         {
             throw new ValidationException("This is already your sign-in email.");
         }
@@ -202,10 +226,16 @@ public class UserEmailService : IUserEmailService
         }
 
         // Check if this email is verified on another account
-        var conflictingEmail = await _dbContext.UserEmails
-            .FirstOrDefaultAsync(e => e.Id != pendingEmail.Id
+        var normalizedPendingEmail = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
+        var alternatePendingEmail = GetAlternateComparableEmail(normalizedPendingEmail);
+        var conflictingEmail = alternatePendingEmail is null
+            ? await _dbContext.UserEmails.FirstOrDefaultAsync(e => e.Id != pendingEmail.Id
                 && e.IsVerified
-                && EF.Functions.ILike(e.Email, pendingEmail.Email), cancellationToken);
+                && EF.Functions.ILike(e.Email, normalizedPendingEmail), cancellationToken)
+            : await _dbContext.UserEmails.FirstOrDefaultAsync(e => e.Id != pendingEmail.Id
+                && e.IsVerified
+                && (EF.Functions.ILike(e.Email, normalizedPendingEmail) ||
+                    EF.Functions.ILike(e.Email, alternatePendingEmail)), cancellationToken);
 
         if (conflictingEmail is not null)
         {
@@ -361,10 +391,19 @@ public class UserEmailService : IUserEmailService
         string email,
         CancellationToken cancellationToken = default)
     {
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
+
         // Skip if email already exists for this user
-        var exists = await _dbContext.UserEmails
-            .AnyAsync(ue => ue.UserId == userId
-                && EF.Functions.ILike(ue.Email, email), cancellationToken);
+        var exists = alternateEmail is null
+            ? await _dbContext.UserEmails.AnyAsync(
+                ue => ue.UserId == userId && EF.Functions.ILike(ue.Email, normalizedEmail),
+                cancellationToken)
+            : await _dbContext.UserEmails.AnyAsync(
+                ue => ue.UserId == userId &&
+                    (EF.Functions.ILike(ue.Email, normalizedEmail) ||
+                     EF.Functions.ILike(ue.Email, alternateEmail)),
+                cancellationToken);
         if (exists)
             return;
 
@@ -502,4 +541,15 @@ public class UserEmailService : IUserEmailService
             ContactFieldVisibility.MyTeams => [ContactFieldVisibility.MyTeams, ContactFieldVisibility.AllActiveProfiles],
             _ => [ContactFieldVisibility.AllActiveProfiles]
         };
+
+    private static string? GetAlternateComparableEmail(string normalizedEmail)
+    {
+        if (normalizedEmail.EndsWith("@gmail.com", StringComparison.Ordinal))
+            return $"{normalizedEmail[..^"@gmail.com".Length]}@googlemail.com";
+
+        if (normalizedEmail.EndsWith("@googlemail.com", StringComparison.Ordinal))
+            return $"{normalizedEmail[..^"@googlemail.com".Length]}@gmail.com";
+
+        return null;
+    }
 }
