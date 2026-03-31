@@ -150,7 +150,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(DrivePermissionLevel),
-            new[] { "Viewer", "Commenter", "Contributor", "ContentManager", "Manager" }
+            new[] { "None", "Viewer", "Commenter", "Contributor", "ContentManager", "Manager" }
         },
         {
             typeof(BudgetYearStatus),

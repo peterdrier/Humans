@@ -201,7 +201,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     /// </summary>
     private static DrivePermissionLevel ResolveMaxPermissionLevel(IReadOnlyList<GoogleResource> resources)
     {
-        var max = DrivePermissionLevel.Viewer;
+        var max = DrivePermissionLevel.None;
         foreach (var resource in resources)
         {
             if (resource.DrivePermissionLevel > max)
@@ -222,6 +222,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             .AsNoTracking()
             .Where(r => r.GoogleId == googleId && r.IsActive)
             .Select(r => r.DrivePermissionLevel)
+            .Where(l => l != DrivePermissionLevel.None)
             .ToListAsync(cancellationToken);
 
         if (levels.Count == 0)

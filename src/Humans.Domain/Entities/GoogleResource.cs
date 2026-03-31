@@ -66,7 +66,7 @@ public class GoogleResource
     /// <summary>
     /// Permission level for team members on this Drive resource.
     /// Only applicable to Drive resources (folders, files, shared drives), not Groups.
-    /// Default is Contributor (writer) for backward compatibility.
+    /// None (CLR default) for Groups; Drive resources must set an explicit level.
     /// </summary>
-    public DrivePermissionLevel DrivePermissionLevel { get; set; } = DrivePermissionLevel.Contributor;
+    public DrivePermissionLevel DrivePermissionLevel { get; set; }
 }
