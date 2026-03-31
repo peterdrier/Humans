@@ -99,6 +99,7 @@ public class TicketTailorService : ITicketVendorService
                 // code embedded in description like "NCA Contributor Discount (DISC25-OPGYT8-004)"
                 var discountCode = ExtractDiscountCode(order.LineItems);
                 var discountAmount = ExtractDiscountAmount(order.LineItems);
+                var donationAmount = ExtractDonationAmount(order.LineItems);
 
                 orders.Add(new VendorOrderDto(
                     VendorOrderId: order.Id,
@@ -112,7 +113,8 @@ public class TicketTailorService : ITicketVendorService
                     PurchasedAt: purchasedAt,
                     Tickets: [],
                     StripePaymentIntentId: order.TxnId,
-                    DiscountAmount: discountAmount));
+                    DiscountAmount: discountAmount,
+                    DonationAmount: donationAmount));
             }
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
@@ -296,6 +298,22 @@ public class TicketTailorService : ITicketVendorService
             .Sum(li => Math.Abs(li.Total ?? 0));
 
         return discountCents > 0 ? discountCents / 100m : null;
+    }
+
+    /// <summary>
+    /// Sum standalone donation line items from TT (type "donation").
+    /// These are VAT-exempt add-on donations. Returns 0 if none.
+    /// TT amounts are in cents — converted to euros.
+    /// </summary>
+    private static decimal ExtractDonationAmount(List<TtLineItem>? lineItems)
+    {
+        if (lineItems is null) return 0m;
+
+        var donationCents = lineItems
+            .Where(li => string.Equals(li.Type, "donation", StringComparison.OrdinalIgnoreCase))
+            .Sum(li => li.Total ?? 0);
+
+        return donationCents > 0 ? donationCents / 100m : 0m;
     }
 
     // --- TicketTailor API response models ---

@@ -56,6 +56,8 @@
                     <th><a asp-action="Orders" asp-route-sortBy="tickets" asp-route-sortDesc="@(string.Equals(Model.SortBy, "tickets", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Tickets</a></th>
                     <th><a asp-action="Orders" asp-route-sortBy="amount" asp-route-sortDesc="@(string.Equals(Model.SortBy, "amount", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Amount</a></th>
                     <th>Discount</th>
+                    <th>Donation</th>
+                    <th>VAT</th>
                     <th>Method</th>
                     <th>Stripe Fee</th>
                     <th>TT Fee</th>
@@ -77,6 +79,26 @@
                             @if (order.DiscountAmount.HasValue)
                             {
                                 <span title="@(order.DiscountCode ?? "")">-@order.DiscountAmount.Value.ToString("N2")</span>
+                            }
+                            else
+                            {
+                                <text>&mdash;</text>
+                            }
+                        </td>
+                        <td>
+                            @if (order.DonationAmount > 0)
+                            {
+                                <span>@order.DonationAmount.ToString("N2")</span>
+                            }
+                            else
+                            {
+                                <text>&mdash;</text>
+                            }
+                        </td>
+                        <td>
+                            @if (order.VatAmount > 0)
+                            {
+                                <span>@order.VatAmount.ToString("N2")</span>
                             }
                             else
                             {
@@ -124,7 +146,7 @@
                 }
                 @if (Model.Orders.Count == 0)
                 {
-                    <tr><td colspan="13" class="text-muted text-center">No orders found</td></tr>
+                    <tr><td colspan="15" class="text-muted text-center">No orders found</td></tr>
                 }
             </tbody>
         </table>

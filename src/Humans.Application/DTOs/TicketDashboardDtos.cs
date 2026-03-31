@@ -70,6 +70,8 @@ public class WeeklySalesAggregate
     public int TicketsSold { get; init; }
     public decimal GrossRevenue { get; init; }
     public int OrderCount { get; init; }
+    public decimal Donations { get; init; }
+    public decimal VatAmount { get; init; }
 }
 
 public class QuarterlySalesAggregate
@@ -80,6 +82,9 @@ public class QuarterlySalesAggregate
     public int TicketsSold { get; init; }
     public decimal GrossRevenue { get; init; }
     public int OrderCount { get; init; }
+    public decimal Donations { get; init; }
+    public decimal VatAmount { get; init; }
+    public decimal VipDonations { get; init; }
 }
 
 /// <summary>Aggregated code tracking data: campaign summaries + individual code details.</summary>
