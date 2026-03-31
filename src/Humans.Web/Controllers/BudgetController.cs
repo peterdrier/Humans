@@ -106,24 +106,23 @@ public class BudgetController : HumansControllerBase
                 })
                 .ToList();
 
-            // Income = positive line items (excluding donations) + VAT credits from expenses
-            var nonDonationIncome = allLineItems.Where(li => li.Amount > 0 && !li.IsDonation).Sum(li => li.Amount);
-            var donations = allLineItems.Where(li => li.IsDonation && li.Amount > 0).Sum(li => li.Amount);
+            // Income = positive line items + VAT credits from expenses
+            var income = allLineItems.Where(li => li.Amount > 0).Sum(li => li.Amount);
             var expenses = allLineItems.Where(li => li.Amount < 0).Sum(li => li.Amount); // negative
             var vatExpenses = vatProjections.Where(v => v.IsExpense).Sum(v => v.VatAmount);
             var vatCredits = vatProjections.Where(v => !v.IsExpense).Sum(v => v.VatAmount);
 
-            var totalIncome = nonDonationIncome + vatCredits;
+            var totalIncome = income + vatCredits;
             var totalExpenses = expenses - vatExpenses; // expenses is negative, subtract positive VAT expenses
-            var netBalance = totalIncome + donations + totalExpenses;
+            var netBalance = totalIncome + totalExpenses;
 
-            // Build income slices (categories with positive totals, excluding donations)
+            // Build income slices (categories with positive totals)
             var incomeCategories = visibleGroups
                 .SelectMany(g => g.Categories)
                 .Select(c => new
                 {
                     c.Name,
-                    Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsDonation).Sum(li => li.Amount)
+                    Total = c.LineItems.Where(li => li.Amount > 0).Sum(li => li.Amount)
                 })
                 .Where(c => c.Total > 0)
                 .OrderByDescending(c => c.Total)
@@ -163,8 +162,8 @@ public class BudgetController : HumansControllerBase
                 expenseCategories.Add(new { Name = "VAT Liability", Total = vatExpenses });
             }
 
-            // Add profit distribution if profitable (non-donation income > |expenses|)
-            var profit = nonDonationIncome + vatCredits - (Math.Abs(expenses) + vatExpenses);
+            // Add profit distribution if profitable (income > |expenses|)
+            var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
             if (profit > 0)
             {
                 expenseCategories.Add(new { Name = "Cash Reserves (90%)", Total = profit * 0.9m });
@@ -186,8 +185,7 @@ public class BudgetController : HumansControllerBase
             var model = new BudgetSummaryViewModel
             {
                 YearName = activeYear.Name,
-                TotalIncome = nonDonationIncome + vatCredits,
-                TotalDonations = donations,
+                TotalIncome = totalIncome,
                 TotalExpenses = totalExpenses,
                 NetBalance = netBalance,
                 TotalLineItems = totalLineItems,
@@ -270,7 +268,7 @@ public class BudgetController : HumansControllerBase
     [HttpPost("LineItems/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, bool isDonation, int vatRate)
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -282,7 +280,7 @@ public class BudgetController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, isDonation, vatRate, user.Id);
+            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             SetSuccess($"Line item '{description}' created.");
         }
         catch (Exception ex)
@@ -296,7 +294,7 @@ public class BudgetController : HumansControllerBase
     [HttpPost("LineItems/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLineItem(Guid id, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, bool isDonation, int vatRate, Guid budgetCategoryId)
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate, Guid budgetCategoryId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -311,7 +309,7 @@ public class BudgetController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, isDonation, vatRate, user.Id);
+            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             SetSuccess($"Line item '{description}' updated.");
         }
         catch (Exception ex)

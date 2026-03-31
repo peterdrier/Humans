@@ -512,7 +512,7 @@ public class BudgetService : IBudgetService
     public async Task<BudgetLineItem> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
-        bool isDonation, int vatRate, Guid actorUserId)
+        int vatRate, Guid actorUserId)
     {
         var category = await _dbContext.BudgetCategories
             .Include(c => c.BudgetGroup)
@@ -536,7 +536,6 @@ public class BudgetService : IBudgetService
             ResponsibleTeamId = responsibleTeamId,
             Notes = notes,
             ExpectedDate = expectedDate,
-            IsDonation = isDonation,
             VatRate = vatRate,
             SortOrder = maxSortOrder + 1,
             CreatedAt = now,
@@ -559,7 +558,7 @@ public class BudgetService : IBudgetService
     public async Task UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
-        bool isDonation, int vatRate, Guid actorUserId)
+        int vatRate, Guid actorUserId)
     {
         var lineItem = await _dbContext.BudgetLineItems
             .Include(li => li.BudgetCategory)
@@ -613,15 +612,6 @@ public class BudgetService : IBudgetService
                 expectedDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 actorUserId, now);
             lineItem.ExpectedDate = expectedDate;
-        }
-
-        if (lineItem.IsDonation != isDonation)
-        {
-            LogAudit(budgetYearId, nameof(BudgetLineItem), lineItem.Id,
-                nameof(BudgetLineItem.IsDonation),
-                lineItem.IsDonation.ToString(), isDonation.ToString(),
-                actorUserId, now);
-            lineItem.IsDonation = isDonation;
         }
 
         if (lineItem.VatRate != vatRate)

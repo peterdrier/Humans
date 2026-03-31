@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260331123939_AddBudgetSignConventionAndVat")]
-    partial class AddBudgetSignConventionAndVat
+    [Migration("20260331193116_AddBudgetVatRate")]
+    partial class AddBudgetVatRate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -472,9 +472,6 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<LocalDate?>("ExpectedDate")
                         .HasColumnType("date");
-
-                    b.Property<bool>("IsDonation")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)

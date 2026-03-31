@@ -28,7 +28,6 @@ public class BudgetSummaryViewModel
 {
     public required string YearName { get; init; }
     public decimal TotalIncome { get; init; }
-    public decimal TotalDonations { get; init; }
     public decimal TotalExpenses { get; init; }
     public decimal NetBalance { get; init; }
     public decimal TotalLineItems { get; init; }

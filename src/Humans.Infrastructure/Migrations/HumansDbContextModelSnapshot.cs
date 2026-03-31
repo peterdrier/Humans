@@ -470,9 +470,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<LocalDate?>("ExpectedDate")
                         .HasColumnType("date");
 
-                    b.Property<bool>("IsDonation")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");

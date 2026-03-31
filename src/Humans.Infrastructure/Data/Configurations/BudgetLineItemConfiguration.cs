@@ -14,7 +14,6 @@ public class BudgetLineItemConfiguration : IEntityTypeConfiguration<BudgetLineIt
         builder.Property(l => l.Description).HasMaxLength(500).IsRequired();
         builder.Property(l => l.Amount).HasPrecision(18, 2).IsRequired();
         builder.Property(l => l.Notes).HasMaxLength(2000);
-        builder.Property(l => l.IsDonation).IsRequired();
         builder.Property(l => l.VatRate).IsRequired();
         builder.Property(l => l.SortOrder).IsRequired();
         builder.Property(l => l.CreatedAt).IsRequired();

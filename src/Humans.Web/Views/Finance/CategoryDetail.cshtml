@@ -155,7 +155,6 @@
                         <th>Responsible Team</th>
                         <th>Notes</th>
                         <th>Expected Date</th>
-                        <th>Flags</th>
                         <th class="text-end" style="min-width: 120px;">Actions</th>
                     </tr>
                 </thead>
@@ -180,12 +179,6 @@
                             <td>@(item.ResponsibleTeam?.Name ?? "\u2014")</td>
                             <td class="text-muted">@(item.Notes ?? "")</td>
                             <td>@item.ExpectedDate?.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
-                            <td>
-                                @if (item.IsDonation)
-                                {
-                                    <span class="badge bg-info">Donation</span>
-                                }
-                            </td>
                             <td class="text-end">
                                 <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#@editId">
                                     <i class="fa-solid fa-pen"></i>
@@ -200,7 +193,7 @@
                             </td>
                         </tr>
                         <tr class="collapse" id="@editId">
-                            <td colspan="8" class="bg-light">
+                            <td colspan="7" class="bg-light">
                                 <form asp-action="UpdateLineItem" asp-route-id="@item.Id" method="post" class="row g-2 p-2 align-items-end">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="budgetCategoryId" value="@Model.Id" />
@@ -247,26 +240,13 @@
                                             }
                                         </select>
                                     </div>
-                                    <div class="col-md-1">
+                                    <div class="col-md-2">
                                         <label class="form-label form-label-sm">Notes</label>
                                         <input type="text" name="notes" class="form-control form-control-sm" value="@item.Notes" />
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">Expected Date</label>
                                         <input type="date" name="expectedDate" class="form-control form-control-sm" value="@item.ExpectedDate?.ToDateTimeUnspecified().ToString("yyyy-MM-dd")" />
-                                    </div>
-                                    <div class="col-md-1">
-                                        <div class="form-check mt-4">
-                                            @if (item.IsDonation)
-                                            {
-                                                <input type="checkbox" name="isDonation" value="true" class="form-check-input" id="donation-@item.Id.ToString("N")" checked />
-                                            }
-                                            else
-                                            {
-                                                <input type="checkbox" name="isDonation" value="true" class="form-check-input" id="donation-@item.Id.ToString("N")" />
-                                            }
-                                            <label class="form-check-label form-label-sm" for="donation-@item.Id.ToString("N")">Donation</label>
-                                        </div>
                                     </div>
                                     <div class="col-md-1">
                                         <button type="submit" class="btn btn-primary btn-sm w-100">Save</button>
@@ -325,19 +305,13 @@
                     }
                 </select>
             </div>
-            <div class="col-md-1">
+            <div class="col-md-2">
                 <label class="form-label form-label-sm">Notes</label>
                 <input type="text" name="notes" class="form-control form-control-sm" />
             </div>
             <div class="col-md-2">
                 <label class="form-label form-label-sm">Expected Date</label>
                 <input type="date" name="expectedDate" class="form-control form-control-sm" />
-            </div>
-            <div class="col-md-1">
-                <div class="form-check mt-4">
-                    <input type="checkbox" name="isDonation" value="true" class="form-check-input" id="isDonation-new" />
-                    <label class="form-check-label form-label-sm" for="isDonation-new">Donation</label>
-                </div>
             </div>
             <div class="col-md-1">
                 <button type="submit" class="btn btn-primary btn-sm w-100">

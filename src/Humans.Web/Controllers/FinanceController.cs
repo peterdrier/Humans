@@ -384,7 +384,7 @@ public class FinanceController : HumansControllerBase
     [HttpPost("LineItems/Create")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateLineItem(Guid budgetCategoryId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, bool isDonation, int vatRate)
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -393,7 +393,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, isDonation, vatRate, user.Id);
+            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             SetSuccess($"Line item '{description}' created.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
@@ -408,7 +408,7 @@ public class FinanceController : HumansControllerBase
     [HttpPost("LineItems/{id:guid}/Update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateLineItem(Guid id, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, bool isDonation, int vatRate, Guid budgetCategoryId)
+        Guid? responsibleTeamId, string? notes, DateTime? expectedDate, int vatRate, Guid budgetCategoryId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
@@ -417,7 +417,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, isDonation, vatRate, user.Id);
+            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
             SetSuccess($"Line item '{description}' updated.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
