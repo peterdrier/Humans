@@ -112,6 +112,113 @@ public class ShiftUrgencyTests : IDisposable
         tomorrowScore.Should().BeGreaterThan(distantScore);
     }
 
+    [Fact]
+    public void ApplyPeriodDiverseLimit_EnsuresEventAndStrikeRepresented()
+    {
+        // 3 build shifts with highest scores, 1 event, 1 strike
+        var es = new EventSettings
+        {
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            EventEndOffset = 3,
+            StrikeEndOffset = 5,
+            TimeZoneId = "UTC"
+        };
+
+        var buildShifts = Enumerable.Range(0, 3).Select(i =>
+            MakeUrgentShift(dayOffset: -5 + i, score: 100 - i, remaining: 10)).ToList();
+        var eventShift = MakeUrgentShift(dayOffset: 1, score: 20, remaining: 3);
+        var strikeShift = MakeUrgentShift(dayOffset: 4, score: 15, remaining: 2);
+
+        var ranked = buildShifts
+            .Append(eventShift)
+            .Append(strikeShift)
+            .OrderByDescending(u => u.UrgencyScore)
+            .ToList();
+
+        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 3, es);
+
+        result.Should().HaveCount(3);
+        // Must include the event and strike shifts despite lower scores
+        result.Should().Contain(u => u.Shift.GetShiftPeriod(es) == ShiftPeriod.Event);
+        result.Should().Contain(u => u.Shift.GetShiftPeriod(es) == ShiftPeriod.Strike);
+        // Plus one build shift (highest scoring)
+        result.Should().Contain(u => u.Shift.GetShiftPeriod(es) == ShiftPeriod.Build);
+    }
+
+    [Fact]
+    public void ApplyPeriodDiverseLimit_OnlyBuildShifts_TakesTopN()
+    {
+        var es = new EventSettings
+        {
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            EventEndOffset = 3,
+            StrikeEndOffset = 5,
+            TimeZoneId = "UTC"
+        };
+
+        var ranked = Enumerable.Range(0, 5).Select(i =>
+            MakeUrgentShift(dayOffset: -5 + i, score: 50 - i * 5, remaining: 10))
+            .OrderByDescending(u => u.UrgencyScore)
+            .ToList();
+
+        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 3, es);
+
+        result.Should().HaveCount(3);
+        // All build shifts — no diversity needed, just takes top 3
+        result.Should().OnlyContain(u => u.Shift.GetShiftPeriod(es) == ShiftPeriod.Build);
+        result[0].UrgencyScore.Should().BeGreaterThanOrEqualTo(result[1].UrgencyScore);
+    }
+
+    [Fact]
+    public void ApplyPeriodDiverseLimit_FewShifts_ReturnsAll()
+    {
+        var es = new EventSettings
+        {
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            EventEndOffset = 3,
+            StrikeEndOffset = 5,
+            TimeZoneId = "UTC"
+        };
+
+        var ranked = new List<UrgentShift>
+        {
+            MakeUrgentShift(dayOffset: -1, score: 50, remaining: 5),
+            MakeUrgentShift(dayOffset: 1, score: 30, remaining: 3)
+        };
+
+        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 5, es);
+
+        result.Should().HaveCount(2); // Only 2 available, returns all
+    }
+
+    [Fact]
+    public void ApplyPeriodDiverseLimit_ResultIsSortedByScoreDescending()
+    {
+        var es = new EventSettings
+        {
+            GateOpeningDate = new LocalDate(2026, 7, 1),
+            EventEndOffset = 3,
+            StrikeEndOffset = 5,
+            TimeZoneId = "UTC"
+        };
+
+        var ranked = new List<UrgentShift>
+        {
+            MakeUrgentShift(dayOffset: -3, score: 100, remaining: 10),
+            MakeUrgentShift(dayOffset: -2, score: 90, remaining: 8),
+            MakeUrgentShift(dayOffset: -1, score: 80, remaining: 6),
+            MakeUrgentShift(dayOffset: 1, score: 25, remaining: 3),
+            MakeUrgentShift(dayOffset: 4, score: 10, remaining: 2)
+        };
+
+        var result = ShiftManagementService.ApplyPeriodDiverseLimit(ranked, 3, es);
+
+        for (var i = 1; i < result.Count; i++)
+        {
+            result[i - 1].UrgencyScore.Should().BeGreaterThanOrEqualTo(result[i].UrgencyScore);
+        }
+    }
+
     private static Shift MakeShift(ShiftPriority priority, int minVol, int maxVol, double durationHours)
     {
         var rota = new Rota { Priority = priority };
@@ -125,5 +232,21 @@ public class ShiftUrgencyTests : IDisposable
             StartTime = new LocalTime(8, 0),
             Rota = rota
         };
+    }
+
+    private static UrgentShift MakeUrgentShift(int dayOffset, double score, int remaining)
+    {
+        var rota = new Rota { Priority = ShiftPriority.Normal, Team = new Team { Name = "Test" } };
+        var shift = new Shift
+        {
+            Id = Guid.NewGuid(),
+            DayOffset = dayOffset,
+            StartTime = new LocalTime(8, 0),
+            Duration = Duration.FromHours(4),
+            MinVolunteers = 1,
+            MaxVolunteers = remaining + 1,
+            Rota = rota
+        };
+        return new UrgentShift(shift, score, 1, remaining, "Test", []);
     }
 }

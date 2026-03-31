@@ -549,7 +549,7 @@ public class ShiftManagementService : IShiftManagementService
             .ToList();
 
         if (limit.HasValue)
-            return urgentShifts.Take(limit.Value).ToList();
+            return ApplyPeriodDiverseLimit(urgentShifts, limit.Value, es);
 
         return urgentShifts;
     }
@@ -646,6 +646,52 @@ public class ShiftManagementService : IShiftManagementService
         var proximityBoost = 1.0 + (10.0 / (1.0 + daysUntilStart));
 
         return remainingSlots * priorityWeight * durationHours * understaffedMultiplier * proximityBoost;
+    }
+
+    /// <summary>
+    /// Selects top-N shifts with period diversity so build shifts don't monopolize the list.
+    /// Reserves one slot per non-Build period (Event, Strike) that has eligible shifts,
+    /// fills remaining slots from the overall top scorers.
+    /// </summary>
+    public static List<UrgentShift> ApplyPeriodDiverseLimit(
+        List<UrgentShift> rankedShifts, int limit, EventSettings es)
+    {
+        if (rankedShifts.Count <= limit)
+            return rankedShifts;
+
+        // Group by computed period
+        var byPeriod = rankedShifts
+            .GroupBy(u => u.Shift.GetShiftPeriod(es))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Reserve one slot for each non-Build period that has shifts
+        var reserved = new List<UrgentShift>();
+        var reservedIds = new HashSet<Guid>();
+        foreach (var period in new[] { ShiftPeriod.Event, ShiftPeriod.Strike })
+        {
+            if (byPeriod.TryGetValue(period, out var periodShifts) && periodShifts.Count > 0)
+            {
+                // Take the highest-scoring shift from this period
+                var best = periodShifts[0]; // already sorted by score desc
+                reserved.Add(best);
+                reservedIds.Add(best.Shift.Id);
+            }
+        }
+
+        // If we reserved more slots than the limit allows, just take top N from reserved
+        if (reserved.Count >= limit)
+            return reserved.OrderByDescending(u => u.UrgencyScore).Take(limit).ToList();
+
+        // Fill remaining slots from the overall ranked list, skipping already-reserved
+        var result = new List<UrgentShift>(reserved);
+        foreach (var shift in rankedShifts)
+        {
+            if (result.Count >= limit) break;
+            if (!reservedIds.Contains(shift.Shift.Id))
+                result.Add(shift);
+        }
+
+        return result.OrderByDescending(u => u.UrgencyScore).ToList();
     }
 
     // ============================================================

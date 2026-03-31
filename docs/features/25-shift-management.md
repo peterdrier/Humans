@@ -165,6 +165,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - Understaffed multiplier: 2x when confirmed < minVolunteers, else 1x
 - Proximity boost: `1 + 10 / (1 + daysUntilStart)` — today ~11x, tomorrow ~6x, 7 days ~2.25x, 30 days ~1.3x
 - Score=0 when fully staffed (remaining=0)
+- **Period diversity (homepage top-N):** When a limit is applied (e.g., homepage top 3), the system reserves one slot per non-Build period (Event, Strike) that has eligible shifts. This prevents build shifts from monopolizing the homepage even when they have more total slots. Remaining slots are filled from the overall top scorers.
 
 ## Routes
 
