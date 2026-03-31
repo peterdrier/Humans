@@ -1101,9 +1101,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         CancellationToken cancellationToken)
     {
         var primary = resources[0];
-        // Resolve the maximum permission level across all resource records with same GoogleId
-        var maxLevel = ResolveMaxPermissionLevel(resources);
-        var expectedApiRole = maxLevel.ToApiRole();
+        // Build a lookup from team slug to permission level for per-member resolution
+        var levelByTeamSlug = new Dictionary<string, DrivePermissionLevel>(StringComparer.Ordinal);
+        foreach (var resource in resources)
+        {
+            var slug = resource.Team.Slug;
+            if (!levelByTeamSlug.TryGetValue(slug, out var existing) || resource.DrivePermissionLevel > existing)
+                levelByTeamSlug[slug] = resource.DrivePermissionLevel;
+        }
 
         try
         {
@@ -1181,6 +1186,16 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             foreach (var (email, (displayName, teamLinks)) in membersByEmail)
             {
+                // Resolve this member's expected level from their specific team memberships
+                var memberMaxLevel = DrivePermissionLevel.None;
+                foreach (var tl in teamLinks)
+                {
+                    if (levelByTeamSlug.TryGetValue(tl.Slug, out var tlLevel) && tlLevel > memberMaxLevel)
+                        memberMaxLevel = tlLevel;
+                }
+                var memberExpectedRole = memberMaxLevel > DrivePermissionLevel.None
+                    ? memberMaxLevel.ToApiRole() : null;
+
                 MemberSyncState state;
                 roleByEmail.TryGetValue(email, out var currentRole);
 
@@ -1196,14 +1211,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 }
                 else
                 {
-                    // Member has a direct permission — check if the level matches
+                    // Member has a direct permission — check if the level matches their expected
                     var currentLevel = ParseApiRole(currentRole);
-                    state = currentLevel.HasValue && currentLevel.Value < maxLevel
+                    state = currentLevel.HasValue && currentLevel.Value < memberMaxLevel
                         ? MemberSyncState.WrongRole
                         : MemberSyncState.Correct;
                 }
 
-                members.Add(new MemberSyncStatus(email, displayName, state, teamLinks, currentRole, expectedApiRole));
+                members.Add(new MemberSyncStatus(email, displayName, state, teamLinks, currentRole, memberExpectedRole));
             }
 
             var saEmail = await GetServiceAccountEmailAsync();
@@ -1219,7 +1234,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         ? MemberSyncState.Extra
                         : MemberSyncState.Inherited;
                     roleByEmail.TryGetValue(email, out var extraRole);
-                    members.Add(new MemberSyncStatus(email, email, state, [], extraRole, expectedApiRole));
+                    members.Add(new MemberSyncStatus(email, email, state, [], extraRole));
                 }
             }
 
@@ -1231,7 +1246,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 {
                     try
                     {
-                        await AddUserToDriveAsync(primary, member.Email, maxLevel, cancellationToken);
+                        var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
+                        await AddUserToDriveAsync(primary, member.Email, memberLevel, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -1284,7 +1300,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 ResourceType = primary.ResourceType.ToString(),
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
-                PermissionLevel = maxLevel.ToString(),
+                PermissionLevel = primary.DrivePermissionLevel.ToString(),
                 LinkedTeams = linkedTeams,
                 Members = members
             };
