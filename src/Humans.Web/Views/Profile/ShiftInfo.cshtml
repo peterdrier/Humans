@@ -43,6 +43,10 @@
                         </label>
                     }
                 </div>
+                <div class="other-text-input mt-3" style="display: @(Model.SelectedSkills.Contains("Other") ? "block" : "none");">
+                    <input type="text" name="SkillOtherText" class="form-control" maxlength="200"
+                           value="@Model.SkillOtherText" placeholder="What other skills do you have?" />
+                </div>
             </div>
 
             @* ===== STEP 1: Work Style ===== *@
@@ -90,6 +94,10 @@
                         </label>
                     }
                 </div>
+                <div class="other-text-input mt-3" style="display: @(Model.SelectedLanguages.Contains("Other") ? "block" : "none");">
+                    <input type="text" name="LanguageOtherText" class="form-control" maxlength="200"
+                           value="@Model.LanguageOtherText" placeholder="What other languages do you speak?" />
+                </div>
             </div>
 
             @* ===== Navigation ===== *@
@@ -135,7 +143,7 @@
     .chip.selected {
         background: #e7f1ff; border-color: #0d6efd; color: #0d6efd; font-weight: 500;
     }
-    .chip-emoji { font-size: 16px; }
+    .chip-emoji { font-size: 16px; min-width: 1.5em; text-align: center; }
 
     /* Radio cards */
     .radio-card-grid {
@@ -205,9 +213,15 @@
             cb.checked = !cb.checked;
             chip.classList.toggle('selected', cb.checked);
             chip.setAttribute('aria-checked', cb.checked ? 'true' : 'false');
+            // Show/hide "Other" text input if this chip is the Other option
+            var otherInput = chip.closest('.step-pane')?.querySelector('.other-text-input');
+            if (otherInput && chip.textContent.trim().endsWith('Other')) {
+                otherInput.style.display = cb.checked ? 'block' : 'none';
+            }
         }
         chip.addEventListener('click', function(e) {
-            if (e.target.tagName !== 'INPUT') toggle();
+            e.preventDefault();
+            toggle();
         });
         chip.addEventListener('keydown', function(e) {
             if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); }

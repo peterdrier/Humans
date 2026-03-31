@@ -259,9 +259,11 @@ public class UrgentShiftItem
 public class ShiftInfoViewModel
 {
     public List<string> SelectedSkills { get; set; } = [];
+    public string? SkillOtherText { get; set; }
     public List<string> SelectedQuirks { get; set; } = []; // Toggle quirks only (no time prefs)
     public string? TimePreference { get; set; } // Mutually exclusive: Early Bird, Night Owl, All Day, No Preference
     public List<string> SelectedLanguages { get; set; } = [];
+    public string? LanguageOtherText { get; set; }
 
     // Skill options with emoji prefixes for display
     public static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
@@ -284,9 +286,9 @@ public class ShiftInfoViewModel
 
     public static readonly Dictionary<string, string> LanguageEmoji = new(StringComparer.Ordinal)
     {
-        ["English"] = "\U0001f1ec\U0001f1e7", ["Spanish"] = "\U0001f1ea\U0001f1f8",
-        ["French"] = "\U0001f1eb\U0001f1f7", ["German"] = "\U0001f1e9\U0001f1ea",
-        ["Italian"] = "\U0001f1ee\U0001f1f9", ["Portuguese"] = "\U0001f1f5\U0001f1f9",
+        ["English"] = "EN", ["Spanish"] = "ES",
+        ["French"] = "FR", ["German"] = "DE",
+        ["Italian"] = "IT", ["Portuguese"] = "PT",
         ["Other"] = "\U0001f30d"
     };
 
