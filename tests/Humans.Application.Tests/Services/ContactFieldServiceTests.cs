@@ -70,7 +70,7 @@ public class ContactFieldServiceTests : IDisposable
     {
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
-        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamMember>
@@ -92,7 +92,7 @@ public class ContactFieldServiceTests : IDisposable
         var viewerId = Guid.NewGuid();
         var sharedTeamId = Guid.NewGuid();
 
-        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamMember>
@@ -116,7 +116,7 @@ public class ContactFieldServiceTests : IDisposable
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
 
-        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamMember>
@@ -142,7 +142,7 @@ public class ContactFieldServiceTests : IDisposable
         var viewerId = Guid.NewGuid();
         var volunteersTeamId = Guid.NewGuid();
 
-        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamMember>
@@ -170,7 +170,7 @@ public class ContactFieldServiceTests : IDisposable
         var sharedTeamId = Guid.NewGuid();
         var volunteersTeamId = Guid.NewGuid();
 
-        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamMember>
@@ -211,7 +211,7 @@ public class ContactFieldServiceTests : IDisposable
         var profile = await CreateProfileWithFields(ownerId);
 
         // Viewer is just a regular member (no shared teams)
-        _teamService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         _teamService.GetUserTeamsAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(new List<TeamMember>());

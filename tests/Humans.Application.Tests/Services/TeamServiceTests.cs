@@ -21,6 +21,7 @@ public class TeamServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly TeamService _service;
+    private readonly RoleAssignmentService _roleAssignmentService;
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public TeamServiceTests()
@@ -30,7 +31,7 @@ public class TeamServiceTests : IDisposable
             .Options;
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        var roleAssignmentService = new RoleAssignmentService(
+        _roleAssignmentService = new RoleAssignmentService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
             Substitute.For<ISystemTeamSync>(),
@@ -47,7 +48,8 @@ public class TeamServiceTests : IDisposable
             _dbContext,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
-            roleAssignmentService,
+            _roleAssignmentService,
+            shiftManagementService,
             _clock,
             _cache,
             NullLogger<TeamService>.Instance);
@@ -72,7 +74,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(10));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeTrue();
     }
@@ -83,7 +85,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -97,7 +99,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -110,7 +112,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() + Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -123,7 +125,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(10));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -140,7 +142,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(10));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
         result.Should().BeTrue();
     }
@@ -151,7 +153,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -165,7 +167,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -178,7 +180,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(10));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
         result.Should().BeFalse();
     }

@@ -205,10 +205,10 @@ public class TeamService : ITeamService
                 SystemTeams: []);
         }
 
-        var isBoardMember = await IsUserBoardMemberAsync(userId.Value, cancellationToken);
+        var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
         var canCreateTeam = isBoardMember ||
-            await IsUserAdminAsync(userId.Value, cancellationToken) ||
-            await IsUserTeamsAdminAsync(userId.Value, cancellationToken);
+            await _roleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken) ||
+            await _roleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
 
         var summaries = cachedTeams.Values
             .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
@@ -287,9 +287,9 @@ public class TeamService : ITeamService
         var currentUserId = userId.Value;
         var isCurrentUserMember = activeMembers.Any(m => m.UserId == currentUserId);
         var isCurrentUserCoordinator = await IsUserCoordinatorOfTeamAsync(team.Id, currentUserId, cancellationToken);
-        var isBoardMember = await IsUserBoardMemberAsync(currentUserId, cancellationToken);
-        var isAdmin = await IsUserAdminAsync(currentUserId, cancellationToken);
-        var isTeamsAdmin = await IsUserTeamsAdminAsync(currentUserId, cancellationToken);
+        var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(currentUserId, cancellationToken);
+        var isAdmin = await _roleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
+        var isTeamsAdmin = await _roleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
         var canManage = isCurrentUserCoordinator || isBoardMember || isAdmin || isTeamsAdmin;
         var pendingRequest = await GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
         var pendingRequestCount = canManage
@@ -338,7 +338,7 @@ public class TeamService : ITeamService
         CancellationToken cancellationToken = default)
     {
         var memberships = await GetUserTeamsAsync(userId, cancellationToken);
-        var isBoardMember = await IsUserBoardMemberAsync(userId, cancellationToken);
+        var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
 
         var coordinatorTeamIds = memberships
             .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
@@ -917,8 +917,8 @@ public class TeamService : ITeamService
         Guid approverUserId,
         CancellationToken cancellationToken = default)
     {
-        var isBoardMember = await IsUserBoardMemberAsync(approverUserId, cancellationToken);
-        var isTeamsAdmin = !isBoardMember && await IsUserTeamsAdminAsync(approverUserId, cancellationToken);
+        var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(approverUserId, cancellationToken);
+        var isTeamsAdmin = !isBoardMember && await _roleAssignmentService.IsUserTeamsAdminAsync(approverUserId, cancellationToken);
 
         // Get teams where user is coordinator (direct teams + child teams of coordinator departments)
         var directLeadTeamIds = await _dbContext.TeamMembers
@@ -990,21 +990,21 @@ public class TeamService : ITeamService
         CancellationToken cancellationToken = default)
     {
         // Admins can approve any team
-        var isAdmin = await IsUserAdminAsync(userId, cancellationToken);
+        var isAdmin = await _roleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
         if (isAdmin)
         {
             return true;
         }
 
         // Board members can approve any team
-        var isBoardMember = await IsUserBoardMemberAsync(userId, cancellationToken);
+        var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
         if (isBoardMember)
         {
             return true;
         }
 
         // TeamsAdmin can approve for any team
-        var isTeamsAdmin = await IsUserTeamsAdminAsync(userId, cancellationToken);
+        var isTeamsAdmin = await _roleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
         if (isTeamsAdmin)
         {
             return true;
@@ -1952,21 +1952,10 @@ public class TeamService : ITeamService
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
-        // Count distinct signup applications (not individual days).
-        // Multi-day signups share a SignupBlockId; fall back to signup Id for singles.
         var pendingShiftCounts = activeEventId == Guid.Empty
             ? new Dictionary<Guid, int>()
-            : await (
-                from rota in _dbContext.Rotas
-                where rota.EventSettingsId == activeEventId
-                join shift in _dbContext.Shifts on rota.Id equals shift.RotaId
-                join signup in _dbContext.ShiftSignups on shift.Id equals signup.ShiftId
-                where signup.Status == SignupStatus.Pending
-                select new { rota.TeamId, BlockKey = signup.SignupBlockId ?? signup.Id }
-            ).Distinct()
-             .GroupBy(x => x.TeamId)
-             .Select(g => new { TeamId = g.Key, Count = g.Count() })
-             .ToDictionaryAsync(x => x.TeamId, x => x.Count, cancellationToken);
+            : await _shiftManagementService.GetPendingShiftSignupCountsByTeamAsync(
+                activeEventId, cancellationToken);
 
         return new AdminTeamListResult(BuildAdminTeamSummaries(items, pendingShiftCounts), totalCount);
     }

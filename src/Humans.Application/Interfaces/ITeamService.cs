@@ -285,21 +285,6 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a user is an admin (has active Admin RoleAssignment).
-    /// </summary>
-    Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks if a user is a board member (has active Board RoleAssignment).
-    /// </summary>
-    Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks if a user is a teams admin (has active TeamsAdmin RoleAssignment).
-    /// </summary>
-    Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Removes a member from a team (admin action).
     /// </summary>
     Task<bool> RemoveMemberAsync(
