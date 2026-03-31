@@ -8,7 +8,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 
 ### New Entities
 
-- **TicketOrder** — one record per purchase from vendor. Fields: VendorOrderId, BuyerName, BuyerEmail, MatchedUserId (auto-matched by email), TotalAmount, Currency, DiscountCode, DiscountAmount, PaymentStatus, VendorEventId, PurchasedAt, SyncedAt, StripePaymentIntentId, PaymentMethod, PaymentMethodDetail, StripeFee, ApplicationFee
+- **TicketOrder** — one record per purchase from vendor. Fields: VendorOrderId, BuyerName, BuyerEmail, MatchedUserId (auto-matched by email), TotalAmount, Currency, DiscountCode, DiscountAmount, DonationAmount, VatAmount, PaymentStatus, VendorEventId, PurchasedAt, SyncedAt, StripePaymentIntentId, PaymentMethod, PaymentMethodDetail, StripeFee, ApplicationFee
 - **TicketAttendee** — one per issued ticket (multiple per order). Fields: VendorTicketId, TicketOrderId, AttendeeName, AttendeeEmail, MatchedUserId, TicketTypeName, Price, Status (Valid/Void/CheckedIn), VendorEventId, SyncedAt
 - **TicketSyncState** — singleton (Id=1) tracking sync operational state. Fields: VendorEventId, LastSyncAt, SyncStatus (Idle/Running/Error), LastError, StatusChangedAt
 
@@ -21,8 +21,24 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 - **ITicketVendorService** — vendor-agnostic interface (Application layer)
 - **TicketTailorService** — TicketTailor API client (Infrastructure layer). Basic Auth, cursor-based pagination. Captures `txn_id` (Stripe PaymentIntent ID) and discount amounts from line items.
 - **IStripeService / StripeService** — Stripe API client (read-only). Looks up PaymentIntent → Charge → BalanceTransaction to get payment method type and fee breakdown (Stripe processing fee vs TT application fee).
-- **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees, upsert, email-match to users, match discount codes to campaign grants, enrich orders with Stripe fee data
+- **ITicketSyncService / TicketSyncService** — sync orchestration: fetch orders/attendees, upsert, email-match to users, match discount codes to campaign grants, enrich orders with Stripe fee data, compute VAT using VIP split logic
 - **TicketSyncJob** — Hangfire recurring job (default every 15 min)
+
+## VAT and Donation Tracking
+
+### VIP Ticket Split
+Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEuros`) are split:
+- First 315 EUR = taxable ticket revenue at 10% Spanish event VAT
+- Remainder = VAT-free donation (VIP premium)
+
+### Data Fields
+- **DonationAmount** on TicketOrder — standalone donations parsed from TicketTailor `donation` line items (VAT-exempt)
+- **VatAmount** on TicketOrder — correctly computed VAT using the VIP split logic (ignores TT's own incorrect tax line item)
+
+### Reporting
+- `/Tickets/SalesAggregates` — weekly and quarterly views with real Donations, VIP Donations, VAT, and Net columns
+- `/Tickets/Orders` — donation and VAT columns per order
+- `/Tickets/Attendees` — VIP badge and taxable/donation split per attendee
 
 ## Authorization
 
@@ -41,6 +57,7 @@ Nobodies Collective sells event tickets through external vendors (currently Tick
 | `/Tickets/Codes` | Discount code redemption tracking tied to campaigns |
 | `/Tickets/GateList` | Stub for June implementation |
 | `/Tickets/WhoHasntBought` | Active humans without ticket purchases |
+| `/Tickets/SalesAggregates` | Weekly (Mon–Sun) and quarterly (Spanish tax Q1–Q4) aggregate reports with real VAT/donation data |
 
 ## Dashboard Widgets
 

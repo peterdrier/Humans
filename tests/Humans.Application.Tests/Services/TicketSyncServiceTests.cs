@@ -335,6 +335,61 @@ public class TicketSyncServiceTests : IDisposable
         dbAttendees[0].AttendeeName.Should().Be("Alice");
     }
 
+    [Fact]
+    public async Task SyncOrdersAndAttendeesAsync_ComputesVatUsingOnlyNonVoidTickets()
+    {
+        var orders = new List<VendorOrderDto>
+        {
+            MakeOrderDto("ord_vat", "Buyer", "buyer@example.com", totalAmount: 900m)
+        };
+
+        var tickets = new List<VendorTicketDto>
+        {
+            MakeTicketDto("tkt_valid_vip", "ord_vat", "Valid VIP", "valid@example.com", 400m, "valid"),
+            MakeTicketDto("tkt_void_vip", "ord_vat", "Void VIP", "void@example.com", 500m, "void")
+        };
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(orders);
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(tickets);
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        var order = await _dbContext.TicketOrders.SingleAsync();
+        order.VatAmount.Should().Be(28.64m);
+    }
+
+    [Fact]
+    public async Task SyncOrdersAndAttendeesAsync_StoresZeroVatForRefundedOrCancelledOrders()
+    {
+        var orders = new List<VendorOrderDto>
+        {
+            MakeOrderDto("ord_refunded", "Refunded Buyer", "refunded@example.com", totalAmount: 400m, paymentStatus: "refunded"),
+            MakeOrderDto("ord_cancelled", "Cancelled Buyer", "cancelled@example.com", totalAmount: 400m, paymentStatus: "cancelled")
+        };
+
+        var tickets = new List<VendorTicketDto>
+        {
+            MakeTicketDto("tkt_refunded", "ord_refunded", "Refunded VIP", "refunded@example.com", 400m, "valid"),
+            MakeTicketDto("tkt_cancelled", "ord_cancelled", "Cancelled VIP", "cancelled@example.com", 400m, "valid")
+        };
+
+        _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(orders);
+        _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(tickets);
+
+        await _service.SyncOrdersAndAttendeesAsync();
+
+        var syncedOrders = await _dbContext.TicketOrders
+            .OrderBy(o => o.VendorOrderId)
+            .ToListAsync();
+
+        syncedOrders.Should().HaveCount(2);
+        syncedOrders.Should().OnlyContain(o => o.VatAmount == 0m);
+    }
+
     // ==========================================================================
     // SyncOrdersAndAttendeesAsync_HandlesRealisticScale
     // ==========================================================================
@@ -421,7 +476,8 @@ public class TicketSyncServiceTests : IDisposable
         string buyerName,
         string buyerEmail,
         decimal totalAmount = 100m,
-        string? discountCode = null)
+        string? discountCode = null,
+        string paymentStatus = "completed")
     {
         return new VendorOrderDto(
             VendorOrderId: vendorOrderId,
@@ -430,7 +486,7 @@ public class TicketSyncServiceTests : IDisposable
             TotalAmount: totalAmount,
             Currency: "EUR",
             DiscountCode: discountCode,
-            PaymentStatus: "completed",
+            PaymentStatus: paymentStatus,
             VendorDashboardUrl: null,
             PurchasedAt: Instant.FromUtc(2026, 2, 15, 10, 0),
             Tickets: []);
@@ -440,7 +496,9 @@ public class TicketSyncServiceTests : IDisposable
         string vendorTicketId,
         string vendorOrderId,
         string attendeeName,
-        string? attendeeEmail)
+        string? attendeeEmail,
+        decimal price = 50m,
+        string status = "valid")
     {
         return new VendorTicketDto(
             VendorTicketId: vendorTicketId,
@@ -448,7 +506,7 @@ public class TicketSyncServiceTests : IDisposable
             AttendeeName: attendeeName,
             AttendeeEmail: attendeeEmail,
             TicketTypeName: "Full Week",
-            Price: 50m,
-            Status: "valid");
+            Price: price,
+            Status: status);
     }
 }

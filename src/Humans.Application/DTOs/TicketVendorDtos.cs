@@ -15,7 +15,8 @@ public record VendorOrderDto(
     Instant PurchasedAt,
     IReadOnlyList<VendorTicketDto> Tickets,
     string? StripePaymentIntentId = null,
-    decimal? DiscountAmount = null);
+    decimal? DiscountAmount = null,
+    decimal DonationAmount = 0m);
 
 /// <summary>Vendor-agnostic issued ticket data.</summary>
 public record VendorTicketDto(

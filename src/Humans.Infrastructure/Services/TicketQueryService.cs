@@ -2,8 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using NodaTime;
@@ -317,10 +317,24 @@ public class TicketQueryService : ITicketQueryService
 
     public async Task<TicketSalesAggregates> GetSalesAggregatesAsync()
     {
-        // Load all paid orders with attendee counts in memory (small dataset at ~1,500 orders)
+        // Load all paid orders with attendee data in memory (small dataset at ~1,500 orders)
         var orders = await _dbContext.TicketOrders
             .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
-            .Select(o => new { o.PurchasedAt, o.TotalAmount, AttendeeCount = o.Attendees.Count })
+            .Select(o => new
+            {
+                o.PurchasedAt,
+                o.TotalAmount,
+                o.DonationAmount,
+                o.VatAmount,
+                AttendeeCount = o.Attendees.Count(a =>
+                    a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn),
+                // VIP donations: sum of (price - threshold) for attendees priced above the threshold
+                VipDonations = o.Attendees
+                    .Where(a =>
+                        (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn) &&
+                        a.Price > TicketConstants.VipThresholdEuros)
+                    .Sum(a => a.Price - TicketConstants.VipThresholdEuros)
+            })
             .ToListAsync();
 
         // Weekly aggregates (ISO weeks, Mon–Sun)
@@ -342,7 +356,10 @@ public class TicketQueryService : ITicketQueryService
                     WeekLabel = $"{monday.ToString("MMM d", null)} – {sunday.ToString("MMM d", null)}",
                     TicketsSold = g.Sum(o => o.AttendeeCount),
                     GrossRevenue = g.Sum(o => o.TotalAmount),
-                    OrderCount = g.Count()
+                    OrderCount = g.Count(),
+                    Donations = g.Sum(o => o.DonationAmount),
+                    VatAmount = g.Sum(o => o.VatAmount),
+                    VipDonations = g.Sum(o => o.VipDonations),
                 };
             })
             .ToList();
@@ -363,7 +380,10 @@ public class TicketQueryService : ITicketQueryService
                 Quarter = g.Key.quarter,
                 TicketsSold = g.Sum(o => o.AttendeeCount),
                 GrossRevenue = g.Sum(o => o.TotalAmount),
-                OrderCount = g.Count()
+                OrderCount = g.Count(),
+                Donations = g.Sum(o => o.DonationAmount),
+                VatAmount = g.Sum(o => o.VatAmount),
+                VipDonations = g.Sum(o => o.VipDonations),
             })
             .ToList();
 

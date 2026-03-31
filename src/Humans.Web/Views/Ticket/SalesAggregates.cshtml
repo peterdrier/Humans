@@ -26,25 +26,45 @@
                             <th class="text-end">Orders</th>
                             <th class="text-end">Tickets Sold</th>
                             <th class="text-end">Gross Revenue</th>
+                            <th class="text-end">Donations</th>
+                            <th class="text-end">VIP Donations</th>
+                            <th class="text-end">VAT</th>
+                            <th class="text-end">Net</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var week in Model.WeeklySales)
                         {
+                            var net = week.GrossRevenue - week.VatAmount - week.Donations - week.VipDonations;
                             <tr>
                                 <td>@week.WeekLabel</td>
                                 <td class="text-end">@week.OrderCount.ToString("N0")</td>
                                 <td class="text-end">@week.TicketsSold.ToString("N0")</td>
                                 <td class="text-end">@Model.Currency @week.GrossRevenue.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @week.Donations.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @week.VipDonations.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @week.VatAmount.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @net.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
                     <tfoot>
+                        @{
+                            var weeklyTotalGross = Model.WeeklySales.Sum(w => w.GrossRevenue);
+                            var weeklyTotalDonations = Model.WeeklySales.Sum(w => w.Donations);
+                            var weeklyTotalVipDonations = Model.WeeklySales.Sum(w => w.VipDonations);
+                            var weeklyTotalVat = Model.WeeklySales.Sum(w => w.VatAmount);
+                            var weeklyTotalNet = weeklyTotalGross - weeklyTotalVat - weeklyTotalDonations - weeklyTotalVipDonations;
+                        }
                         <tr class="fw-bold">
                             <td>Total</td>
                             <td class="text-end">@Model.WeeklySales.Sum(w => w.OrderCount).ToString("N0")</td>
                             <td class="text-end">@Model.WeeklySales.Sum(w => w.TicketsSold).ToString("N0")</td>
-                            <td class="text-end">@Model.Currency @Model.WeeklySales.Sum(w => w.GrossRevenue).ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @weeklyTotalGross.ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @weeklyTotalDonations.ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @weeklyTotalVipDonations.ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @weeklyTotalVat.ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @weeklyTotalNet.ToString("N2")</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -71,47 +91,54 @@
                             <th class="text-end">Orders</th>
                             <th class="text-end">Tickets Sold</th>
                             <th class="text-end">Gross Revenue</th>
-                            <th class="text-end text-muted">VAT (est. 10%)</th>
-                            <th class="text-end text-muted">Net (est.)</th>
+                            <th class="text-end">Donations</th>
+                            <th class="text-end">VIP Donations</th>
+                            <th class="text-end">VAT</th>
+                            <th class="text-end">Net Revenue</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var q in Model.QuarterlySales)
                         {
-                            var estimatedVat = Math.Round(q.GrossRevenue / 1.10m * 0.10m, 2);
-                            var estimatedNet = q.GrossRevenue - estimatedVat;
+                            var net = q.GrossRevenue - q.VatAmount - q.Donations - q.VipDonations;
                             <tr>
                                 <td>@q.QuarterLabel</td>
                                 <td class="text-end">@q.OrderCount.ToString("N0")</td>
                                 <td class="text-end">@q.TicketsSold.ToString("N0")</td>
                                 <td class="text-end">@Model.Currency @q.GrossRevenue.ToString("N2")</td>
-                                <td class="text-end text-muted">@Model.Currency @estimatedVat.ToString("N2")</td>
-                                <td class="text-end text-muted">@Model.Currency @estimatedNet.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @q.Donations.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @q.VipDonations.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @q.VatAmount.ToString("N2")</td>
+                                <td class="text-end">@Model.Currency @net.ToString("N2")</td>
                             </tr>
                         }
                     </tbody>
                     <tfoot>
                         @{
                             var totalGross = Model.QuarterlySales.Sum(q => q.GrossRevenue);
-                            var totalVat = Math.Round(totalGross / 1.10m * 0.10m, 2);
-                            var totalNet = totalGross - totalVat;
+                            var totalDonations = Model.QuarterlySales.Sum(q => q.Donations);
+                            var totalVipDonations = Model.QuarterlySales.Sum(q => q.VipDonations);
+                            var totalVat = Model.QuarterlySales.Sum(q => q.VatAmount);
+                            var totalNet = totalGross - totalVat - totalDonations - totalVipDonations;
                         }
                         <tr class="fw-bold">
                             <td>Total</td>
                             <td class="text-end">@Model.QuarterlySales.Sum(q => q.OrderCount).ToString("N0")</td>
                             <td class="text-end">@Model.QuarterlySales.Sum(q => q.TicketsSold).ToString("N0")</td>
                             <td class="text-end">@Model.Currency @totalGross.ToString("N2")</td>
-                            <td class="text-end text-muted">@Model.Currency @totalVat.ToString("N2")</td>
-                            <td class="text-end text-muted">@Model.Currency @totalNet.ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @totalDonations.ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @totalVipDonations.ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @totalVat.ToString("N2")</td>
+                            <td class="text-end">@Model.Currency @totalNet.ToString("N2")</td>
                         </tr>
                     </tfoot>
                 </table>
                 <div class="px-3 py-2">
                     <small class="text-muted">
                         <i class="fa-solid fa-circle-info"></i>
-                        VAT and net estimates assume 10% Spanish event ticket rate applied uniformly.
-                        Accurate VAT split (distinguishing VIP donations and standalone donations) requires
-                        additional data fields — see <a href="https://github.com/nobodies-collective/Humans/issues/217">#217</a> for details.
+                        VAT is computed at 10% on ticket revenue only (up to @(Humans.Domain.Constants.TicketConstants.VipThresholdEuros.ToString("N0")) EUR per ticket).
+                        Amounts above this threshold are classified as VIP donations (VAT-free).
+                        Standalone donations from TicketTailor are also VAT-free.
                     </small>
                 </div>
             }

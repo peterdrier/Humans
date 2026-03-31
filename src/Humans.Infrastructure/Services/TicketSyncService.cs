@@ -1,6 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -101,6 +102,10 @@ public class TicketSyncService : ITicketSyncService
                     attendeesMatched++;
             }
 
+            await _dbContext.SaveChangesAsync(ct);
+
+            // Compute VAT for all orders using VIP split logic on attendee prices
+            await ComputeVatForOrdersAsync(ct);
             await _dbContext.SaveChangesAsync(ct);
 
             // Match discount codes to campaign grants
@@ -214,6 +219,7 @@ public class TicketSyncService : ITicketSyncService
             existing.MatchedUserId = LookupUserId(emailLookup, dto.BuyerEmail);
             existing.StripePaymentIntentId = dto.StripePaymentIntentId;
             existing.DiscountAmount = dto.DiscountAmount;
+            existing.DonationAmount = dto.DonationAmount;
             return existing;
         }
 
@@ -234,6 +240,7 @@ public class TicketSyncService : ITicketSyncService
             MatchedUserId = LookupUserId(emailLookup, dto.BuyerEmail),
             StripePaymentIntentId = dto.StripePaymentIntentId,
             DiscountAmount = dto.DiscountAmount,
+            DonationAmount = dto.DonationAmount,
         };
 
         _dbContext.TicketOrders.Add(order);
@@ -381,6 +388,57 @@ public class TicketSyncService : ITicketSyncService
 
         await _dbContext.SaveChangesAsync(ct);
     }
+
+    /// <summary>
+    /// Compute VAT for all orders using VIP split logic.
+    /// For each attendee: ticket revenue up to VipThresholdEuros is taxable at VatRate,
+    /// any amount above is a VIP donation (VAT-free). Standalone donations are always VAT-free.
+    /// We ignore TT's own tax line item because TT incorrectly applies 10% to the full ticket price.
+    /// </summary>
+    private async Task ComputeVatForOrdersAsync(CancellationToken ct)
+    {
+        var orders = await _dbContext.TicketOrders
+            .Include(o => o.Attendees)
+            .ToListAsync(ct);
+
+        foreach (var order in orders)
+        {
+            order.VatAmount = ComputeOrderVat(order);
+        }
+    }
+
+    /// <summary>
+    /// Compute VAT for a single order based on its attendees' prices.
+    /// For each attendee: the taxable portion is min(Price, VipThreshold).
+    /// VAT = taxable / (1 + VatRate) * VatRate (VAT-inclusive calculation).
+    /// VIP premiums (price above threshold) and standalone donations are VAT-free.
+    /// </summary>
+    internal static decimal ComputeOrderVat(TicketOrder order)
+    {
+        if (order.PaymentStatus != TicketPaymentStatus.Paid)
+            return 0m;
+
+        var totalVat = 0m;
+
+        foreach (var attendee in order.Attendees)
+        {
+            if (!IsRevenueAttendee(attendee))
+                continue;
+
+            var taxableAmount = Math.Min(attendee.Price, TicketConstants.VipThresholdEuros);
+
+            // VAT is inclusive in the taxable ticket price:
+            // taxableAmount = net + VAT, where VAT = net * rate
+            // So: VAT = taxableAmount * rate / (1 + rate)
+            var vat = Math.Round(taxableAmount * TicketConstants.VatRate / (1 + TicketConstants.VatRate), 2);
+            totalVat += vat;
+        }
+
+        return Math.Round(totalVat, 2);
+    }
+
+    private static bool IsRevenueAttendee(TicketAttendee attendee) =>
+        attendee.Status == TicketAttendeeStatus.Valid || attendee.Status == TicketAttendeeStatus.CheckedIn;
 
     private static Guid? LookupUserId(Dictionary<string, Guid> lookup, string? email) =>
         email is not null && lookup.TryGetValue(EmailNormalization.NormalizeForComparison(email), out var userId)

@@ -144,6 +144,8 @@ public class TicketController : HumansControllerBase
                 Currency = o.Currency,
                 DiscountCode = o.DiscountCode,
                 DiscountAmount = o.DiscountAmount,
+                DonationAmount = o.DonationAmount,
+                VatAmount = o.VatAmount,
                 PaymentMethod = o.PaymentMethod,
                 PaymentMethodDetail = o.PaymentMethodDetail,
                 StripeFee = o.StripeFee,
@@ -198,6 +200,13 @@ public class TicketController : HumansControllerBase
                 AttendeeEmail = a.AttendeeEmail,
                 TicketTypeName = a.TicketTypeName,
                 Price = a.Price,
+                IsVip = a.Price > Domain.Constants.TicketConstants.VipThresholdEuros,
+                TaxableAmount = a.Price > Domain.Constants.TicketConstants.VipThresholdEuros
+                    ? Domain.Constants.TicketConstants.VipThresholdEuros
+                    : a.Price,
+                VipDonation = a.Price > Domain.Constants.TicketConstants.VipThresholdEuros
+                    ? a.Price - Domain.Constants.TicketConstants.VipThresholdEuros
+                    : 0m,
                 Status = a.Status,
                 MatchedUserId = a.MatchedUserId,
                 MatchedUserName = a.MatchedUser != null ? a.MatchedUser.DisplayName : null,
@@ -356,6 +365,9 @@ public class TicketController : HumansControllerBase
                 TicketsSold = w.TicketsSold,
                 GrossRevenue = w.GrossRevenue,
                 OrderCount = w.OrderCount,
+                Donations = w.Donations,
+                VatAmount = w.VatAmount,
+                VipDonations = w.VipDonations,
             }).ToList(),
             QuarterlySales = aggregates.QuarterlySales.Select(q => new QuarterlySalesRow
             {
@@ -365,6 +377,9 @@ public class TicketController : HumansControllerBase
                 TicketsSold = q.TicketsSold,
                 GrossRevenue = q.GrossRevenue,
                 OrderCount = q.OrderCount,
+                Donations = q.Donations,
+                VatAmount = q.VatAmount,
+                VipDonations = q.VipDonations,
             }).ToList(),
         };
 
@@ -429,7 +444,7 @@ public class TicketController : HumansControllerBase
 
         var csv = new System.Text.StringBuilder();
         csv.AppendCsvRow("Date", "Purchaser", "Email", "Tickets", "Amount", "Currency",
-            "Code", "Discount", "Payment Method", "Stripe Fee", "TT Fee", "Status");
+            "Code", "Discount", "Donation", "VAT", "Payment Method", "Stripe Fee", "TT Fee", "Status");
         foreach (var o in orderList)
         {
             var method = o.PaymentMethodDetail != null ? $"{o.PaymentMethod}/{o.PaymentMethodDetail}" : o.PaymentMethod;
@@ -442,6 +457,8 @@ public class TicketController : HumansControllerBase
                 o.Currency,
                 o.DiscountCode,
                 o.DiscountAmount,
+                o.DonationAmount,
+                o.VatAmount,
                 method,
                 o.StripeFee,
                 o.ApplicationFee,

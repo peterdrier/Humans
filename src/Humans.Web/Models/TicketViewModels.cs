@@ -100,6 +100,8 @@ public class TicketOrderRow
     public string Currency { get; set; } = "EUR";
     public string? DiscountCode { get; set; }
     public decimal? DiscountAmount { get; set; }
+    public decimal DonationAmount { get; set; }
+    public decimal VatAmount { get; set; }
     public string? PaymentMethod { get; set; }
     public string? PaymentMethodDetail { get; set; }
     public decimal? StripeFee { get; set; }
@@ -134,6 +136,9 @@ public class TicketAttendeeRow
     public string? AttendeeEmail { get; set; }
     public string TicketTypeName { get; set; } = string.Empty;
     public decimal Price { get; set; }
+    public bool IsVip { get; set; }
+    public decimal TaxableAmount { get; set; }
+    public decimal VipDonation { get; set; }
     public TicketAttendeeStatus Status { get; set; }
     public Guid? MatchedUserId { get; set; }
     public string? MatchedUserName { get; set; }
@@ -187,6 +192,9 @@ public class WeeklySalesRow
     public int TicketsSold { get; set; }
     public decimal GrossRevenue { get; set; }
     public int OrderCount { get; set; }
+    public decimal Donations { get; set; }
+    public decimal VatAmount { get; set; }
+    public decimal VipDonations { get; set; }
 }
 
 public class QuarterlySalesRow
@@ -197,6 +205,9 @@ public class QuarterlySalesRow
     public int TicketsSold { get; set; }
     public decimal GrossRevenue { get; set; }
     public int OrderCount { get; set; }
+    public decimal Donations { get; set; }
+    public decimal VatAmount { get; set; }
+    public decimal VipDonations { get; set; }
 }
 
 public class WhoHasntBoughtViewModel : PagedListViewModel
