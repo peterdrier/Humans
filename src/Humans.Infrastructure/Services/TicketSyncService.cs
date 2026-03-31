@@ -113,7 +113,7 @@ public class TicketSyncService : ITicketSyncService
             await _dbContext.SaveChangesAsync(ct);
 
             // Dashboard event summary is cached separately; refresh it after successful sync.
-            _cache.Remove(CacheKeys.TicketEventSummary);
+            _cache.Remove(CacheKeys.TicketEventSummary(eventId));
 
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,
                 ordersMatched, attendeesMatched, codesRedeemed);

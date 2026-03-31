@@ -3,8 +3,10 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -34,7 +36,10 @@ public class TicketVendorSettings
 public class TicketTailorService : ITicketVendorService
 {
     private const string BaseUrl = "https://api.tickettailor.com/v1";
+    private static readonly TimeSpan EventSummaryCacheTtl = TimeSpan.FromMinutes(15);
+
     private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TicketTailorService> _logger;
     private readonly TicketVendorSettings _settings;
 
@@ -47,9 +52,11 @@ public class TicketTailorService : ITicketVendorService
     public TicketTailorService(
         HttpClient httpClient,
         IOptions<TicketVendorSettings> settings,
+        IMemoryCache cache,
         ILogger<TicketTailorService> logger)
     {
         _httpClient = httpClient;
+        _cache = cache;
         _settings = settings.Value;
         _logger = logger;
 
@@ -162,36 +169,42 @@ public class TicketTailorService : ITicketVendorService
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
         string eventId, CancellationToken ct = default)
     {
-        var response = await _httpClient.GetAsync($"{BaseUrl}/events/{eventId}", ct);
-
-        if (!response.IsSuccessStatusCode)
+        var cacheKey = CacheKeys.TicketEventSummary(eventId);
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
-            _logger.LogWarning(
-                "TicketTailor event summary API returned {StatusCode} for event {EventId}",
-                (int)response.StatusCode, eventId);
+            entry.AbsoluteExpirationRelativeToNow = EventSummaryCacheTtl;
 
-            if ((int)response.StatusCode >= 500)
-                return new VendorEventSummaryDto(eventId, "Unknown", 0, 0, 0);
+            var response = await _httpClient.GetAsync($"{BaseUrl}/events/{eventId}", ct);
 
-            response.EnsureSuccessStatusCode();
-        }
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "TicketTailor event summary API returned {StatusCode} for event {EventId}",
+                    (int)response.StatusCode, eventId);
 
-        var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct);
+                if ((int)response.StatusCode >= 500)
+                    return new VendorEventSummaryDto(eventId, "Unknown", 0, 0, 0);
 
-        // Capacity comes from ticket_groups (waves share the same pool).
-        // Summing ticket_types.quantity_total is wrong — waves are subdivisions, not additive.
-        var totalCapacity = evt?.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
-        // Fall back to ungrouped ticket types if no groups defined
-        if (totalCapacity == 0)
-            totalCapacity = evt?.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
-        var ticketsSold = evt?.TotalIssuedTickets ?? 0;
+                response.EnsureSuccessStatusCode();
+            }
 
-        return new VendorEventSummaryDto(
-            EventId: eventId,
-            EventName: evt?.Name ?? "Unknown",
-            TotalCapacity: totalCapacity,
-            TicketsSold: ticketsSold,
-            TicketsRemaining: totalCapacity - ticketsSold);
+            var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct);
+
+            // Capacity comes from ticket_groups (waves share the same pool).
+            // Summing ticket_types.quantity_total is wrong — waves are subdivisions, not additive.
+            var totalCapacity = evt?.TicketGroups?.Sum(g => g.MaxQuantity ?? 0) ?? 0;
+            // Fall back to ungrouped ticket types if no groups defined
+            if (totalCapacity == 0)
+                totalCapacity = evt?.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
+            var ticketsSold = evt?.TotalIssuedTickets ?? 0;
+
+            return new VendorEventSummaryDto(
+                EventId: eventId,
+                EventName: evt?.Name ?? "Unknown",
+                TotalCapacity: totalCapacity,
+                TicketsSold: ticketsSold,
+                TicketsRemaining: totalCapacity - ticketsSold);
+        }) ?? new VendorEventSummaryDto(eventId, "Unknown", 0, 0, 0);
     }
 
     public async Task<IReadOnlyList<string>> GenerateDiscountCodesAsync(

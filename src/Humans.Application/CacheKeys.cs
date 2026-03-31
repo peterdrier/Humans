@@ -6,7 +6,8 @@ public static class CacheKeys
     public const string ApprovedProfiles = "ApprovedProfiles";
     public const string ActiveTeams = "ActiveTeams";
     public const string CampSettings = "CampSettings";
-    public const string TicketEventSummary = "TicketEventSummary";
+
+    public static string TicketEventSummary(string eventId) => $"TicketEventSummary:{eventId}";
 
     public static string CampSeasonsByYear(int year) => $"camps_year_{year}";
 

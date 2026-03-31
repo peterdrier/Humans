@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Web.Controllers;
@@ -23,13 +22,10 @@ namespace Humans.Web.Controllers;
 [Route("Tickets")]
 public class TicketController : HumansControllerBase
 {
-    private static readonly TimeSpan EventSummaryCacheTtl = TimeSpan.FromMinutes(15);
-
     private readonly HumansDbContext _dbContext;
     private readonly ITicketVendorService _vendorService;
     private readonly TicketVendorSettings _settings;
     private readonly ITicketQueryService _ticketQueryService;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<TicketController> _logger;
 
     public TicketController(
@@ -37,7 +33,6 @@ public class TicketController : HumansControllerBase
         ITicketVendorService vendorService,
         IOptions<TicketVendorSettings> settings,
         ITicketQueryService ticketQueryService,
-        IMemoryCache cache,
         UserManager<User> userManager,
         ILogger<TicketController> logger)
         : base(userManager)
@@ -46,7 +41,6 @@ public class TicketController : HumansControllerBase
         _vendorService = vendorService;
         _settings = settings.Value;
         _ticketQueryService = ticketQueryService;
-        _cache = cache;
         _logger = logger;
     }
 
@@ -60,15 +54,10 @@ public class TicketController : HumansControllerBase
 
         var stats = await _ticketQueryService.GetDashboardStatsAsync();
 
-        // Cache vendor event summary (15-min TTL) to avoid API call on every page load
         int totalCapacity = 0;
         try
         {
-            var summary = await _cache.GetOrCreateAsync(CacheKeys.TicketEventSummary, async entry =>
-            {
-                entry.AbsoluteExpirationRelativeToNow = EventSummaryCacheTtl;
-                return await _vendorService.GetEventSummaryAsync(_settings.EventId);
-            });
+            var summary = await _vendorService.GetEventSummaryAsync(_settings.EventId);
             totalCapacity = summary?.TotalCapacity ?? 0;
         }
         catch (Exception ex)
