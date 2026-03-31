@@ -194,6 +194,56 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Resolves the maximum DrivePermissionLevel across a group of GoogleResource records
+    /// that share the same GoogleId. When a user belongs to multiple teams that link
+    /// the same Drive resource, they should get the highest permission level.
+    /// </summary>
+    private static DrivePermissionLevel ResolveMaxPermissionLevel(IReadOnlyList<GoogleResource> resources)
+    {
+        var max = DrivePermissionLevel.Viewer;
+        foreach (var resource in resources)
+        {
+            if (resource.DrivePermissionLevel > max)
+                max = resource.DrivePermissionLevel;
+        }
+        return max;
+    }
+
+    /// <summary>
+    /// Resolves the maximum DrivePermissionLevel across all active GoogleResource records
+    /// with the given GoogleId. Queries the database. Falls back to Contributor if no records found.
+    /// </summary>
+    private async Task<DrivePermissionLevel> ResolveMaxPermissionLevelForGoogleIdAsync(
+        string googleId,
+        CancellationToken cancellationToken)
+    {
+        var levels = await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Where(r => r.GoogleId == googleId && r.IsActive)
+            .Select(r => r.DrivePermissionLevel)
+            .ToListAsync(cancellationToken);
+
+        if (levels.Count == 0)
+            return DrivePermissionLevel.Contributor;
+
+        return levels.Max();
+    }
+
+    /// <summary>
+    /// Maps a Google Drive API role string to the corresponding DrivePermissionLevel enum.
+    /// Returns null if the role is not recognized.
+    /// </summary>
+    private static DrivePermissionLevel? ParseApiRole(string? role) => role switch
+    {
+        "reader" => DrivePermissionLevel.Viewer,
+        "commenter" => DrivePermissionLevel.Commenter,
+        "writer" => DrivePermissionLevel.Contributor,
+        "fileOrganizer" => DrivePermissionLevel.ContentManager,
+        "organizer" => DrivePermissionLevel.Manager,
+        _ => null
+    };
+
     /// <inheritdoc />
     public async Task<GoogleResource> ProvisionTeamFolderAsync(
         Guid teamId,
@@ -463,9 +513,18 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     /// All code paths (outbox, reconciliation, manual sync) must call this method.
     /// Respects SyncSettings — skips if GoogleDrive mode is None.
     /// </summary>
+    /// <param name="resource">The Google resource to grant access on.</param>
+    /// <param name="userEmail">The user's email address.</param>
+    /// <param name="permissionLevelOverride">
+    /// Optional override for the permission level. When the same Drive resource is linked
+    /// to multiple teams, this should be the resolved maximum level across all teams.
+    /// If null, uses the resource's own DrivePermissionLevel.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     private async Task AddUserToDriveAsync(
         GoogleResource resource,
         string userEmail,
+        DrivePermissionLevel? permissionLevelOverride = null,
         CancellationToken cancellationToken = default)
     {
         var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleDrive, cancellationToken);
@@ -475,8 +534,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
+        var effectiveLevel = permissionLevelOverride ?? resource.DrivePermissionLevel;
         var drive = await GetDriveServiceAsync();
-        var apiRole = resource.DrivePermissionLevel.ToApiRole();
+        var apiRole = effectiveLevel.ToApiRole();
         var permission = new Google.Apis.Drive.v3.Data.Permission
         {
             Type = "user",
@@ -492,11 +552,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             await _auditLogService.LogGoogleSyncAsync(
                 AuditAction.GoogleResourceAccessGranted, resource.Id,
-                $"Granted Drive access ({resource.DrivePermissionLevel}) to {userEmail} ({resource.Name})",
+                $"Granted Drive access ({effectiveLevel}) to {userEmail} ({resource.Name})",
                 nameof(GoogleWorkspaceSyncService),
                 userEmail, apiRole, GoogleSyncSource.ManualSync, success: true);
 
-            _logger.LogInformation("Granted Drive access to {Email} on {GoogleId}", userEmail, resource.GoogleId);
+            _logger.LogInformation("Granted Drive access to {Email} on {GoogleId} at level {Level}",
+                userEmail, resource.GoogleId, effectiveLevel);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400)
         {
@@ -651,7 +712,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             }
             else
             {
-                await AddUserToDriveAsync(resource, googleEmail, cancellationToken);
+                // Resolve max permission level across all resources with same GoogleId
+                var maxLevel = await ResolveMaxPermissionLevelForGoogleIdAsync(
+                    resource.GoogleId, cancellationToken);
+                await AddUserToDriveAsync(resource, googleEmail, maxLevel, cancellationToken);
             }
         }
 
@@ -672,7 +736,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 }
                 else
                 {
-                    await AddUserToDriveAsync(resource, googleEmail, cancellationToken);
+                    var maxLevel = await ResolveMaxPermissionLevelForGoogleIdAsync(
+                        resource.GoogleId, cancellationToken);
+                    await AddUserToDriveAsync(resource, googleEmail, maxLevel, cancellationToken);
                 }
             }
         }
@@ -1034,6 +1100,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         CancellationToken cancellationToken)
     {
         var primary = resources[0];
+        // Resolve the maximum permission level across all resource records with same GoogleId
+        var maxLevel = ResolveMaxPermissionLevel(resources);
+        var expectedApiRole = maxLevel.ToApiRole();
 
         try
         {
@@ -1107,11 +1176,23 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             foreach (var (email, (displayName, teamNames)) in membersByEmail)
             {
-                var state = allEmails.Contains(email)
-                    ? MemberSyncState.Correct
-                    : MemberSyncState.Missing;
+                MemberSyncState state;
                 roleByEmail.TryGetValue(email, out var currentRole);
-                members.Add(new MemberSyncStatus(email, displayName, state, teamNames, currentRole));
+
+                if (!allEmails.Contains(email))
+                {
+                    state = MemberSyncState.Missing;
+                }
+                else
+                {
+                    // Member has access — check if the permission level matches
+                    var currentLevel = ParseApiRole(currentRole);
+                    state = currentLevel.HasValue && currentLevel.Value < maxLevel
+                        ? MemberSyncState.WrongRole
+                        : MemberSyncState.Correct;
+                }
+
+                members.Add(new MemberSyncStatus(email, displayName, state, teamNames, currentRole, expectedApiRole));
             }
 
             var saEmail = await GetServiceAccountEmailAsync();
@@ -1134,11 +1215,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             // Execute if not Preview
             if (action == SyncAction.Execute)
             {
-                foreach (var member in members.Where(m => m.State == MemberSyncState.Missing))
+                // Add missing members and fix wrong permission levels
+                foreach (var member in members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
                 {
                     try
                     {
-                        await AddUserToDriveAsync(primary, member.Email, cancellationToken);
+                        await AddUserToDriveAsync(primary, member.Email, maxLevel, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -1191,7 +1273,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 ResourceType = primary.ResourceType.ToString(),
                 GoogleId = primary.GoogleId,
                 Url = primary.Url,
-                PermissionLevel = primary.DrivePermissionLevel.ToString(),
+                PermissionLevel = maxLevel.ToString(),
                 LinkedTeams = linkedTeams,
                 Members = members
             };

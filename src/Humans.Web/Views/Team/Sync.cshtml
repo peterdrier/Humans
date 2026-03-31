@@ -234,7 +234,7 @@
         } else if (diff.members && diff.members.length > 0) {
             html += '<table class="table table-sm mb-0">';
             var showPermission = diff.permissionLevel != null;
-            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th>' + (showPermission ? '<th>Current Role</th>' : '') + '<th>Teams</th></tr></thead>';
+            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th>' + (showPermission ? '<th>Role (current / expected)</th>' : '') + '<th>Teams</th></tr></thead>';
             html += '<tbody>';
             for (let j = 0; j < diff.members.length; j++) {
                 const m = diff.members[j];
@@ -248,6 +248,9 @@
                 } else if (m.state === 3) { // Inherited
                     stateLabel = 'Inherited';
                     badgeClass = 'bg-secondary';
+                } else if (m.state === 4) { // WrongRole
+                    stateLabel = 'Wrong Role';
+                    badgeClass = 'bg-info text-dark';
                 } else { // Extra
                     stateLabel = 'Extra';
                     badgeClass = 'bg-danger';
@@ -262,7 +265,8 @@
                 html += '<td><span class="badge ' + badgeClass + '">' + stateLabel + '</span></td>';
                 if (showPermission) {
                     var role = m.currentRole || '—';
-                    html += '<td>' + escapeHtml(role) + '</td>';
+                    var expected = m.expectedRole || '—';
+                    html += '<td>' + escapeHtml(role) + ' / ' + escapeHtml(expected) + '</td>';
                 }
                 html += '<td>' + memberTeams + '</td>';
                 html += '</tr>';

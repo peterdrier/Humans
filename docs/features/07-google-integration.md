@@ -231,6 +231,15 @@ All Drive API calls MUST use:
 - `SupportsAllDrives = true`
 - `Fields` including `permissionDetails` when listing permissions
 
+### Multi-Team Permission Level Resolution
+When the same Drive resource (same `GoogleId`) is linked to multiple teams with different `DrivePermissionLevel` values, the system resolves the **maximum** level before setting permissions. For example, if Team A links a folder as Viewer and Team B links the same folder as Contributor, a user who belongs to both teams gets Contributor access.
+
+This resolution happens:
+- **Before the Drive API call** — not after. The max level is computed and passed to `AddUserToDriveAsync`.
+- **In `SyncDriveResourceGroupAsync`** — resources are grouped by `GoogleId`, and the max level across the group is used for all adds.
+- **In `AddUserToTeamResourcesAsync`** — when a user is added to a team, the max level is queried across all active resources with the same `GoogleId`.
+- **During reconciliation** — the daily job detects `WrongRole` drift when a user's current Google permission is lower than the resolved max, and upgrades it.
+
 ## Permission Sync
 
 ### Full Sync (SyncResourcePermissionsAsync)
