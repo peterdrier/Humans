@@ -38,20 +38,13 @@ else
                 @foreach (var holder in roleSection.Holders)
                 {
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                        <div class="text-center">
-                            <a asp-controller="Human" asp-action="HumanProfile" asp-route-id="@holder.UserId"
-                               class="text-decoration-none text-body">
-                                <div class="d-flex justify-content-center mb-2">
-                                    @await Component.InvokeAsync("UserAvatar", new {
-                                        profilePictureUrl = holder.ProfilePictureUrl,
-                                        displayName = holder.DisplayName,
-                                        size = 80,
-                                        bgColor = "bg-primary"
-                                    })
-                                </div>
-                                <div class="fw-semibold small">@holder.DisplayName</div>
-                            </a>
-                        </div>
+                        <human-link user-id="@holder.UserId"
+                                    display-name="@holder.DisplayName"
+                                    profile-picture-url="@holder.ProfilePictureUrl"
+                                    mode="Card"
+                                    size="80"
+                                    avatar-bg-color="bg-primary"
+                                    show-popover="true" />
                     </div>
                 }
             </div>

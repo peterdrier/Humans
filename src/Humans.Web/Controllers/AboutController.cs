@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -12,17 +13,20 @@ namespace Humans.Web.Controllers;
 public class AboutController : HumansControllerBase
 {
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IProfileService _profileService;
     private readonly IClock _clock;
     private readonly ILogger<AboutController> _logger;
 
     public AboutController(
         UserManager<User> userManager,
         IRoleAssignmentService roleAssignmentService,
+        IProfileService profileService,
         IClock clock,
         ILogger<AboutController> logger)
         : base(userManager)
     {
         _roleAssignmentService = roleAssignmentService;
+        _profileService = profileService;
         _clock = clock;
         _logger = logger;
     }
@@ -45,6 +49,11 @@ public class AboutController : HumansControllerBase
             var (assignments, _) = await _roleAssignmentService.GetFilteredAsync(
                 roleFilter: null, activeOnly: true, page: 1, pageSize: 500, now);
 
+            // Resolve effective profile picture URLs (custom uploads take priority over Google avatars)
+            var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
+                _profileService, Url,
+                assignments.Select(ra => (ra.UserId, ra.User.ProfilePictureUrl)));
+
             // Define role display order and metadata
             var roleDefinitions = StaffViewModel.GetRoleDefinitions();
 
@@ -58,7 +67,7 @@ public class AboutController : HumansControllerBase
                     {
                         UserId = ra.UserId,
                         DisplayName = ra.User.DisplayName,
-                        ProfilePictureUrl = ra.User.ProfilePictureUrl
+                        ProfilePictureUrl = effectiveUrls.GetValueOrDefault(ra.UserId)
                     })
                     .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
                     .ToList();
