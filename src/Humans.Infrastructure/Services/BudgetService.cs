@@ -496,9 +496,6 @@ public class BudgetService : IBudgetService
         if (group.IsDepartmentGroup)
             throw new InvalidOperationException("Cannot delete the auto-generated Departments group.");
 
-        if (group.IsTicketingGroup)
-            throw new InvalidOperationException("Cannot delete the auto-generated Ticketing group.");
-
         var now = _clock.GetCurrentInstant();
 
         LogAudit(group.BudgetYearId, nameof(BudgetGroup), group.Id,
