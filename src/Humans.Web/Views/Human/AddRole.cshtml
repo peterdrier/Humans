@@ -7,7 +7,7 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Board" asp-action="Index">@Localizer["Nav_Admin"]</a></li>
         <li class="breadcrumb-item"><a asp-action="Humans">@Localizer["AdminHumans_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="HumanDetail" asp-route-id="@Model.UserId">@Model.UserDisplayName</a></li>
+        <li class="breadcrumb-item"><a asp-action="HumanProfileAdmin" asp-route-id="@Model.UserId">@Model.UserDisplayName</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminAddRole_Title"]</li>
     </ol>
 </nav>
@@ -52,7 +52,7 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">@Localizer["AdminHuman_AddRole"]</button>
-                        <a asp-action="HumanDetail" asp-route-id="@Model.UserId" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
+                        <a asp-action="HumanProfileAdmin" asp-route-id="@Model.UserId" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
                     </div>
                 </form>
             </div>

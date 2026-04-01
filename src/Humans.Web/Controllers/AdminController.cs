@@ -61,7 +61,7 @@ public class AdminController : HumansControllerBase
         if (user.Id == currentUser?.Id)
         {
             SetError("You cannot purge your own account.");
-            return RedirectToAction("HumanDetail", "Human", new { id });
+            return RedirectToAction("HumanProfileAdmin", "Human", new { id });
         }
 
         var displayName = user.DisplayName;

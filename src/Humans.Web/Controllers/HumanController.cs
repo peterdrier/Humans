@@ -73,7 +73,7 @@ public class HumanController : HumansControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> View(Guid id)
+    public async Task<IActionResult> HumanProfile(Guid id)
     {
         var profile = await _profileService.GetProfileAsync(id);
 
@@ -178,7 +178,7 @@ public class HumanController : HumansControllerBase
             return NotFound();
 
         if (currentUser.Id == id)
-            return RedirectToAction(nameof(View), new { id });
+            return RedirectToAction(nameof(HumanProfile), new { id });
 
         var targetUser = await FindUserByIdAsync(id);
         if (targetUser is null)
@@ -202,7 +202,7 @@ public class HumanController : HumansControllerBase
             return NotFound();
 
         if (currentUser.Id == id)
-            return RedirectToAction(nameof(View), new { id });
+            return RedirectToAction(nameof(HumanProfile), new { id });
 
         var targetUser = await _userManager.Users
             .Include(u => u.UserEmails)
@@ -258,7 +258,7 @@ public class HumanController : HumansControllerBase
             _localizer["SendMessage_Success"].Value,
             targetUser.DisplayName));
 
-        return RedirectToAction(nameof(View), new { id });
+        return RedirectToAction(nameof(HumanProfile), new { id });
     }
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
@@ -324,7 +324,7 @@ public class HumanController : HumansControllerBase
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("{id:guid}/Admin")]
-    public async Task<IActionResult> HumanDetail(Guid id)
+    public async Task<IActionResult> HumanProfileAdmin(Guid id)
     {
         var data = await _profileService.GetAdminHumanDetailAsync(id);
         if (data is null)
@@ -430,7 +430,7 @@ public class HumanController : HumansControllerBase
             return NotFound();
 
         SetSuccess(_localizer["Admin_MemberSuspended"].Value);
-        return RedirectToAction(nameof(HumanDetail), new { id });
+        return RedirectToAction(nameof(HumanProfileAdmin), new { id });
     }
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
@@ -447,7 +447,7 @@ public class HumanController : HumansControllerBase
             return NotFound();
 
         SetSuccess(_localizer["Admin_MemberUnsuspended"].Value);
-        return RedirectToAction(nameof(HumanDetail), new { id });
+        return RedirectToAction(nameof(HumanProfileAdmin), new { id });
     }
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
@@ -464,7 +464,7 @@ public class HumanController : HumansControllerBase
             return NotFound();
 
         SetSuccess(_localizer["Admin_VolunteerApproved"].Value);
-        return RedirectToAction(nameof(HumanDetail), new { id });
+        return RedirectToAction(nameof(HumanProfileAdmin), new { id });
     }
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
@@ -483,11 +483,11 @@ public class HumanController : HumansControllerBase
                 SetError("This human has already been rejected.");
             else
                 return NotFound();
-            return RedirectToAction(nameof(HumanDetail), new { id });
+            return RedirectToAction(nameof(HumanProfileAdmin), new { id });
         }
 
         SetSuccess("Signup rejected.");
-        return RedirectToAction(nameof(HumanDetail), new { id });
+        return RedirectToAction(nameof(HumanProfileAdmin), new { id });
     }
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
@@ -548,11 +548,11 @@ public class HumanController : HumansControllerBase
         if (!result.Success)
         {
             SetError(string.Format(_localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
-            return RedirectToAction(nameof(HumanDetail), new { id });
+            return RedirectToAction(nameof(HumanProfileAdmin), new { id });
         }
 
         SetSuccess(string.Format(_localizer["Admin_RoleAssigned"].Value, model.RoleName));
-        return RedirectToAction(nameof(HumanDetail), new { id });
+        return RedirectToAction(nameof(HumanProfileAdmin), new { id });
     }
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
@@ -585,11 +585,11 @@ public class HumanController : HumansControllerBase
         if (!result.Success)
         {
             SetError(_localizer["Admin_RoleNotActive"].Value);
-            return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
+            return RedirectToAction(nameof(HumanProfileAdmin), new { id = roleAssignment.UserId });
         }
 
         SetSuccess(string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, roleAssignment.User.DisplayName));
-        return RedirectToAction(nameof(HumanDetail), new { id = roleAssignment.UserId });
+        return RedirectToAction(nameof(HumanProfileAdmin), new { id = roleAssignment.UserId });
     }
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]

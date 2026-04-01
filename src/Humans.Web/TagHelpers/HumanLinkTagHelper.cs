@@ -67,8 +67,8 @@ public class HumanLinkTagHelper : TagHelper
     {
         var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
         var href = Admin
-            ? urlHelper.Action("HumanDetail", "Human", new { id = UserId })
-            : urlHelper.Action("View", "Human", new { id = UserId });
+            ? urlHelper.Action("HumanProfileAdmin", "Human", new { id = UserId })
+            : urlHelper.Action("HumanProfile", "Human", new { id = UserId });
 
         output.TagName = "a";
         output.TagMode = TagMode.StartTagAndEndTag;
