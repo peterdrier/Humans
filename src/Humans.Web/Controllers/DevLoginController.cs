@@ -218,15 +218,45 @@ public class DevLoginController : Controller
             UpdatedAt = now
         });
 
+        var profileId = Guid.NewGuid();
         _db.Profiles.Add(new Profile
         {
-            Id = Guid.NewGuid(),
+            Id = profileId,
             UserId = id,
             BurnerName = displayName,
             FirstName = firstName,
             LastName = lastName,
             IsApproved = true,
             ConsentCheckStatus = ConsentCheckStatus.Cleared,
+            City = "Barcelona",
+            CountryCode = "ES",
+            Bio = $"Dev persona for testing the {info.DisplayName} role.",
+            Pronouns = "they/them",
+            DateOfBirth = new LocalDate(4, 6, 15), // June 15 (year 4 = leap year placeholder)
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        // Seed sample contact fields so profile page exercises the contact rendering path
+        _db.ContactFields.Add(new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profileId,
+            FieldType = ContactFieldType.Signal,
+            Value = $"+34 600 000 {id.ToString()[..3]}",
+            Visibility = ContactFieldVisibility.AllActiveProfiles,
+            DisplayOrder = 0,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        _db.ContactFields.Add(new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profileId,
+            FieldType = ContactFieldType.Telegram,
+            Value = $"@dev_{info.Slug}",
+            Visibility = ContactFieldVisibility.MyTeams,
+            DisplayOrder = 1,
             CreatedAt = now,
             UpdatedAt = now
         });
