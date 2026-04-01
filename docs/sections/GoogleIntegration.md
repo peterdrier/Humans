@@ -37,6 +37,7 @@ Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminCont
 
 - All Google Drive resources are on Shared Drives. The system does not use regular (My Drive) folders.
 - Only direct permissions are managed by the system. Inherited Shared Drive permissions are excluded from drift detection and sync.
+- Drive folders with `RestrictInheritedAccess = true` have `inheritedPermissionsDisabled` enforced by the reconciliation job. Drift (manual re-enablement of inheritance) is detected and corrected automatically, with an audit trail entry.
 - Sync settings are per-service (Google Drive, Google Groups, Discord). Setting a service to None disables sync without redeploying.
 - A human's Google service email is their @nobodies.team email if provisioned, otherwise their OAuth login email.
 - The system authenticates to Google APIs as a service account — no domain-wide delegation or user impersonation.

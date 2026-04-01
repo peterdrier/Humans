@@ -133,7 +133,9 @@ GoogleResource
 ├── ProvisionedAt: Instant
 ├── LastSyncedAt: Instant?
 ├── IsActive: bool
-└── ErrorMessage: string? (2000)
+├── ErrorMessage: string? (2000)
+├── DrivePermissionLevel: DrivePermissionLevel [enum, Drive only]
+└── RestrictInheritedAccess: bool [default false, Drive folders only]
 ```
 
 ### GoogleResourceType Enum
