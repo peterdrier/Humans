@@ -1,0 +1,453 @@
+@{
+    ViewData["Title"] = "Color Palette";
+    Layout = "_Layout";
+}
+
+<style nonce="@Context.Items["CspNonce"]">
+    .cp-swatch {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border: 1px solid var(--h-border);
+        border-radius: var(--h-radius);
+        overflow: hidden;
+        background: var(--h-bg-card);
+        box-shadow: var(--h-shadow-sm);
+        transition: box-shadow 0.2s ease;
+        min-width: 130px;
+    }
+    .cp-swatch:hover {
+        box-shadow: var(--h-shadow);
+    }
+    .cp-swatch-color {
+        width: 100%;
+        height: 64px;
+    }
+    .cp-swatch-info {
+        padding: 0.5rem;
+        text-align: center;
+        font-size: 0.75rem;
+        line-height: 1.3;
+        width: 100%;
+    }
+    .cp-swatch-var {
+        font-family: 'Source Sans 3', monospace;
+        font-weight: 600;
+        color: var(--h-aged-ink);
+        word-break: break-all;
+    }
+    .cp-swatch-hex {
+        font-family: 'Source Sans 3', monospace;
+        color: var(--h-sepia);
+        font-size: 0.7rem;
+    }
+    .cp-swatch-label {
+        color: var(--h-sepia-light);
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .cp-section {
+        margin-bottom: 3rem;
+    }
+    .cp-section h2 {
+        font-family: var(--h-font-display);
+        border-bottom: 2px solid var(--h-gold);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .cp-section h3 {
+        font-family: var(--h-font-display);
+        color: var(--h-sepia);
+        margin-bottom: 1rem;
+    }
+    .cp-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .cp-controls-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+    }
+    .cp-variant-card {
+        border: 1px solid var(--h-border-light);
+        border-radius: var(--h-radius-lg);
+        padding: 1.25rem;
+        background: var(--h-bg-card);
+    }
+    .cp-variant-card h5 {
+        font-family: var(--h-font-display);
+        margin-bottom: 1rem;
+        text-transform: capitalize;
+    }
+    .cp-typo-sample {
+        border: 1px solid var(--h-border-light);
+        border-radius: var(--h-radius);
+        padding: 1.5rem;
+        background: var(--h-bg-card);
+        margin-bottom: 1rem;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="text-center mb-5">
+        <h1 style="font-family: var(--h-font-display); font-size: 2.5rem;">Humans Design System</h1>
+        <p class="text-muted" style="max-width: 600px; margin: 0 auto;">
+            Da Vinci Renaissance Brand. Visual reference for all CSS custom properties, semantic Bootstrap
+            overrides, UI controls, and typography.
+        </p>
+    </div>
+
+    @* ============================== *@
+    @* SECTION 1: COLOR SWATCHES      *@
+    @* ============================== *@
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-palette me-2"></i>Brand Palette</h2>
+        <p class="text-muted mb-3">Renaissance parchment and ink tones.</p>
+        <div class="cp-grid">
+            @await Html.PartialAsync("_Swatch", ("--h-parchment", "#f5e6c8", "Parchment"))
+            @await Html.PartialAsync("_Swatch", ("--h-parchment-light", "#faf3e6", "Parchment Light"))
+            @await Html.PartialAsync("_Swatch", ("--h-parchment-dark", "#e8d4ab", "Parchment Dark"))
+            @await Html.PartialAsync("_Swatch", ("--h-aged-ink", "#3d2b1f", "Aged Ink"))
+            @await Html.PartialAsync("_Swatch", ("--h-aged-ink-light", "#5a4535", "Aged Ink Light"))
+            @await Html.PartialAsync("_Swatch", ("--h-gold", "#c9a96e", "Gold"))
+            @await Html.PartialAsync("_Swatch", ("--h-gold-light", "#d9c08e", "Gold Light"))
+            @await Html.PartialAsync("_Swatch", ("--h-gold-dark", "#a88a4e", "Gold Dark"))
+            @await Html.PartialAsync("_Swatch", ("--h-warm-white", "#fefaf3", "Warm White"))
+            @await Html.PartialAsync("_Swatch", ("--h-sepia", "#8b7355", "Sepia"))
+            @await Html.PartialAsync("_Swatch", ("--h-sepia-light", "#a69178", "Sepia Light"))
+            @await Html.PartialAsync("_Swatch", ("--h-umber", "#6b5340", "Umber"))
+            @await Html.PartialAsync("_Swatch", ("--h-vellum", "#f0e2c8", "Vellum"))
+            @await Html.PartialAsync("_Swatch", ("--h-border", "#d4c4a8", "Border"))
+            @await Html.PartialAsync("_Swatch", ("--h-border-light", "#e2d6bf", "Border Light"))
+        </div>
+    </div>
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-circle-check me-2"></i>Status / Semantic Colors</h2>
+        <p class="text-muted mb-3">Warm-shifted status colors and their semantic mappings.</p>
+        <div class="cp-grid">
+            @await Html.PartialAsync("_Swatch", ("--h-sage", "#6b8f71", "Success"))
+            @await Html.PartialAsync("_Swatch", ("--h-sage-dark", "#4f7054", "Success Dark"))
+            @await Html.PartialAsync("_Swatch", ("--h-amber", "#c48a2a", "Warning"))
+            @await Html.PartialAsync("_Swatch", ("--h-amber-light", "#daa84a", "Warning Light"))
+            @await Html.PartialAsync("_Swatch", ("--h-rust", "#a04030", "Danger"))
+            @await Html.PartialAsync("_Swatch", ("--h-blue-muted", "#5b7d8f", "Primary / Info"))
+        </div>
+    </div>
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-wand-magic-sparkles me-2"></i>Semantic Tokens</h2>
+        <p class="text-muted mb-3">Abstracted tokens that reference the brand palette.</p>
+        <div class="cp-grid">
+            @await Html.PartialAsync("_Swatch", ("--h-text", "#3d2b1f", "Text (aged-ink)"))
+            @await Html.PartialAsync("_Swatch", ("--h-text-secondary", "#8b7355", "Text Secondary (sepia)"))
+            @await Html.PartialAsync("_Swatch", ("--h-bg", "#faf3e6", "Background (parchment-light)"))
+            @await Html.PartialAsync("_Swatch", ("--h-bg-card", "#fefaf3", "Card Background (warm-white)"))
+            @await Html.PartialAsync("_Swatch", ("--h-bg-elevated", "#ffffff", "Elevated Background"))
+            @await Html.PartialAsync("_Swatch", ("--h-accent", "#c9a96e", "Accent (gold)"))
+            @await Html.PartialAsync("_Swatch", ("--h-accent-hover", "#a88a4e", "Accent Hover (gold-dark)"))
+        </div>
+    </div>
+
+    @* ============================== *@
+    @* SECTION 2: UI CONTROLS         *@
+    @* ============================== *@
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-sliders me-2"></i>UI Controls</h2>
+        <p class="text-muted mb-3">Live Bootstrap controls showing how the custom color overrides render.</p>
+
+        @* --- Buttons --- *@
+        <h3>Buttons</h3>
+        <div class="cp-controls-grid mb-4">
+            @{
+                var btnVariants = new[] { "primary", "secondary", "success", "warning", "danger", "info" };
+            }
+            @foreach (var v in btnVariants)
+            {
+                <div class="cp-variant-card">
+                    <h5>@v</h5>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        <button type="button" class="btn btn-@v">Solid</button>
+                        <button type="button" class="btn btn-outline-@v">Outline</button>
+                        <button type="button" class="btn btn-@v" disabled>Disabled</button>
+                        <button type="button" class="btn btn-outline-@v" disabled>Outline Disabled</button>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-@v">Small</button>
+                        <button type="button" class="btn btn-lg btn-@v">Large</button>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* --- Badges --- *@
+        <h3>Badges &amp; Pills</h3>
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            @foreach (var v in btnVariants)
+            {
+                <span class="badge bg-@v">@v</span>
+            }
+            @foreach (var v in btnVariants)
+            {
+                <span class="badge rounded-pill bg-@v">@v pill</span>
+            }
+        </div>
+
+        @* --- Alerts --- *@
+        <h3>Alerts</h3>
+        <div class="row mb-4">
+            @{
+                var alertVariants = new[] { "primary", "secondary", "success", "warning", "danger", "info" };
+            }
+            @foreach (var v in alertVariants)
+            {
+                <div class="col-md-6 mb-2">
+                    <div class="alert alert-@v mb-0" role="alert">
+                        <strong>@v:</strong> Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* --- Cards --- *@
+        <h3>Cards with Headers</h3>
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-header">Default Card Header</div>
+                    <div class="card-body">
+                        <h5 class="card-title">Card Title</h5>
+                        <p class="card-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus lacinia odio vitae vestibulum.</p>
+                        <a href="#" class="btn btn-primary">Action</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fa-solid fa-lock me-1"></i> Private Information
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt.</p>
+                        <a href="#" class="btn btn-outline-primary">Edit</a>
+                    </div>
+                    <div class="card-footer text-muted">
+                        Updated 2 days ago
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-header">List Card</div>
+                    <div class="list-group list-group-flush">
+                        <a href="#" class="list-group-item list-group-item-action">First item</a>
+                        <a href="#" class="list-group-item list-group-item-action active">Active item</a>
+                        <a href="#" class="list-group-item list-group-item-action">Third item</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* --- Form Controls --- *@
+        <h3>Form Controls</h3>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="cp-variant-card">
+                    <div class="mb-3">
+                        <label class="form-label">Text Input</label>
+                        <input type="text" class="form-control" placeholder="Lorem ipsum..." />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Select</label>
+                        <select class="form-select">
+                            <option selected>Choose an option...</option>
+                            <option>Parchment</option>
+                            <option>Vellum</option>
+                            <option>Papyrus</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Textarea</label>
+                        <textarea class="form-control" rows="3" placeholder="Nulla facilisi. Morbi tempus..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="cp-variant-card">
+                    <div class="mb-3">
+                        <label class="form-label">Disabled Input</label>
+                        <input type="text" class="form-control" value="Disabled value" disabled />
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="cp-check-1" checked />
+                            <label class="form-check-label" for="cp-check-1">Checked checkbox</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="cp-check-2" />
+                            <label class="form-check-label" for="cp-check-2">Unchecked checkbox</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="cp-check-3" disabled checked />
+                            <label class="form-check-label" for="cp-check-3">Disabled checked</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="cp-radio" id="cp-radio-1" checked />
+                            <label class="form-check-label" for="cp-radio-1">Selected radio</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="cp-radio" id="cp-radio-2" />
+                            <label class="form-check-label" for="cp-radio-2">Unselected radio</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="cp-radio-disabled" id="cp-radio-3" disabled checked />
+                            <label class="form-check-label" for="cp-radio-3">Disabled selected</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* --- Progress Bars --- *@
+        <h3>Progress Bars</h3>
+        <div class="mb-4">
+            @foreach (var v in btnVariants)
+            {
+                <div class="mb-2">
+                    <small class="text-muted">@v</small>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar bg-@v" role="progressbar" style="width: 65%;" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100">65%</div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* --- Toasts --- *@
+        <h3>Toasts (Static Preview)</h3>
+        <div class="d-flex flex-wrap gap-3 mb-4">
+            @foreach (var v in new[] { ("success", "fa-check-circle", "Success"), ("warning", "fa-exclamation-triangle", "Warning"), ("danger", "fa-times-circle", "Error"), ("info", "fa-info-circle", "Info") })
+            {
+                <div class="toast show" role="alert" style="min-width: 250px;">
+                    <div class="toast-header">
+                        <i class="fa-solid @v.Item2 text-@v.Item1 me-2"></i>
+                        <strong class="me-auto">@v.Item3</strong>
+                        <small class="text-muted">just now</small>
+                        <button type="button" class="btn-close" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* ============================== *@
+    @* SECTION 3: TYPOGRAPHY           *@
+    @* ============================== *@
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-font me-2"></i>Typography</h2>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="cp-typo-sample">
+                    <h4 class="text-muted mb-3">Display Font: Cormorant Garamond</h4>
+                    <h1>Heading 1 &mdash; De Artibus</h1>
+                    <h2>Heading 2 &mdash; Humanitas et Veritas</h2>
+                    <h3>Heading 3 &mdash; Codex Naturae</h3>
+                    <h4>Heading 4 &mdash; Lumen Scientiae</h4>
+                    <h5>Heading 5 &mdash; Virtus et Ingenium</h5>
+                    <h6>Heading 6 &mdash; Ars Longa, Vita Brevis</h6>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="cp-typo-sample">
+                    <h4 class="text-muted mb-3">Body Font: Source Sans 3</h4>
+                    <p style="font-size: 1.25rem;">
+                        <strong>Large (1.25rem):</strong> Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+                        Vivamus lacinia odio vitae vestibulum vestibulum.
+                    </p>
+                    <p>
+                        <strong>Regular (1rem):</strong> Cras mattis consectetur purus sit amet fermentum.
+                        Donec sed odio dui. Nulla vitae elit libero, a pharetra augue. Nullam id dolor id
+                        nibh ultricies vehicula ut id elit.
+                    </p>
+                    <p style="font-size: 0.875rem;">
+                        <strong>Small (0.875rem):</strong> Aenean eu leo quam. Pellentesque ornare sem lacinia
+                        quam venenatis vestibulum. Donec id elit non mi porta gravida at eget metus.
+                    </p>
+                    <p style="font-size: 0.75rem;" class="text-muted">
+                        <strong>Caption (0.75rem):</strong> Maecenas faucibus mollis interdum.
+                        Integer posuere erat a ante venenatis dapibus posuere velit aliquet.
+                    </p>
+                    <hr />
+                    <p>
+                        <strong>Bold text.</strong> <em>Italic text.</em>
+                        <a href="#">Link text.</a>
+                        <small>Small text.</small>
+                        <code>Inline code.</code>
+                        <mark>Highlighted text.</mark>
+                    </p>
+                    <p class="lead">Lead paragraph &mdash; Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* ============================== *@
+    @* SECTION 4: TABLES               *@
+    @* ============================== *@
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-table me-2"></i>Tables</h2>
+        <div class="card">
+            <div class="card-header">Sample Data Table</div>
+            <div class="card-body p-0">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Marcus Aurelius</td>
+                            <td><span class="badge bg-primary">Admin</span></td>
+                            <td><span class="badge bg-success">Active</span></td>
+                            <td>15 Mar 2024</td>
+                        </tr>
+                        <tr>
+                            <td>Leonardo da Vinci</td>
+                            <td><span class="badge bg-info">Board</span></td>
+                            <td><span class="badge bg-success">Active</span></td>
+                            <td>02 Jan 2024</td>
+                        </tr>
+                        <tr>
+                            <td>Hypatia of Alexandria</td>
+                            <td><span class="badge bg-secondary">Volunteer</span></td>
+                            <td><span class="badge bg-warning">Pending</span></td>
+                            <td>28 Feb 2025</td>
+                        </tr>
+                        <tr>
+                            <td>Hildegard von Bingen</td>
+                            <td><span class="badge bg-secondary">Volunteer</span></td>
+                            <td><span class="badge bg-danger">Suspended</span></td>
+                            <td>10 Dec 2023</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
