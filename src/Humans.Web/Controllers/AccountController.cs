@@ -140,7 +140,7 @@ public class AccountController : Controller
                 }
             }
 
-            return RedirectToPage("/Account/Lockout");
+            return RedirectToAction(nameof(Login), new { returnUrl, error = "lockedout" });
         }
 
         // No existing login — try to link to an existing account by email
