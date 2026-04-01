@@ -10,7 +10,7 @@
         @currentLanguageName
     </button>
     <ul class="dropdown-menu dropdown-menu-end">
-        @foreach (var culture in CultureCatalog.SupportedCultureCodes)
+        @foreach (var culture in CultureCatalog.SupportedCultureCodes.OrderBy(c => c.ToDisplayLanguageName(), StringComparer.Ordinal))
         {
             <li>
                 <form asp-controller="Language" asp-action="SetLanguage" method="post">

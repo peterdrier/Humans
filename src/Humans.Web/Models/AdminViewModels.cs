@@ -335,6 +335,7 @@ public class ProfileSummaryViewModel
 
 public class EmailOutboxViewModel
 {
+    public int TotalMessageCount { get; set; }
     public int QueuedCount { get; set; }
     public int SentLast24HoursCount { get; set; }
     public int FailedCount { get; set; }

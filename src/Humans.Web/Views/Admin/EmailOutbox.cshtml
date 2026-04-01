@@ -3,6 +3,14 @@
 @{
     ViewData["Title"] = "Email Outbox";
 }
+@functions {
+    static string FormatApproxCount(int count)
+    {
+        if (count < 1000) return count.ToString();
+        if (count < 10_000) return $"~{count / 1000.0:0.#}k";
+        return $"~{count / 1000}k";
+    }
+}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
@@ -42,7 +50,15 @@
 <vc:temp-data-alerts />
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-primary">@FormatApproxCount(Model.TotalMessageCount)</div>
+                <div class="text-muted small">Total Messages</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
         <div class="card text-center">
             <div class="card-body">
                 <div class="display-6 fw-bold text-warning">@Model.QueuedCount</div>
@@ -50,7 +66,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
         <div class="card text-center">
             <div class="card-body">
                 <div class="display-6 fw-bold text-success">@Model.SentLast24HoursCount</div>
@@ -58,7 +74,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
         <div class="card text-center">
             <div class="card-body">
                 <div class="display-6 fw-bold text-danger">@Model.FailedCount</div>
@@ -66,7 +82,7 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md">
         <div class="card text-center">
             <div class="card-body">
                 <div class="display-6 fw-bold text-secondary">10/min</div>

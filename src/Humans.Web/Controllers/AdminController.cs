@@ -391,6 +391,7 @@ public class AdminController : HumansControllerBase
         var now = clock.GetCurrentInstant();
         var cutoff24h = now - Duration.FromHours(24);
 
+        var totalCount = await _dbContext.EmailOutboxMessages.CountAsync();
         var queuedCount = await _dbContext.EmailOutboxMessages
             .CountAsync(m => m.Status == EmailOutboxStatus.Queued);
         var sentLast24H = await _dbContext.EmailOutboxMessages
@@ -410,6 +411,7 @@ public class AdminController : HumansControllerBase
 
         var viewModel = new EmailOutboxViewModel
         {
+            TotalMessageCount = totalCount,
             QueuedCount = queuedCount,
             SentLast24HoursCount = sentLast24H,
             FailedCount = failedCount,
