@@ -494,7 +494,10 @@ public class FinanceController : HumansControllerBase
             await _budgetService.UpdateTicketingProjectionAsync(groupId, nodaStart, nodaEvent,
                 initialSalesCount, dailySalesRate, averageTicketPrice, vatRate,
                 stripeFeePercent, stripeFeeFixed, ticketTailorFeePercent, user.Id);
-            SetSuccess("Ticketing projection updated.");
+
+            // Refresh projections after saving parameters (no actuals sync needed)
+            var count = await _ticketingBudgetService.RefreshProjectionsAsync(budgetYearId);
+            SetSuccess($"Ticketing projection saved — {count} projected line item(s) generated.");
         }
         catch (Exception ex)
         {

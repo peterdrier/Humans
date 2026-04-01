@@ -33,12 +33,7 @@ public class TicketingBudgetService : ITicketingBudgetService
 
     public async Task<int> SyncActualsAsync(Guid budgetYearId)
     {
-        var ticketingGroup = await _dbContext.BudgetGroups
-            .Include(g => g.Categories)
-                .ThenInclude(c => c.LineItems)
-            .Include(g => g.TicketingProjection)
-            .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsTicketingGroup);
-
+        var ticketingGroup = await LoadTicketingGroupAsync(budgetYearId);
         if (ticketingGroup is null)
         {
             _logger.LogDebug("No ticketing group found for budget year {YearId}", budgetYearId);
@@ -71,12 +66,6 @@ public class TicketingBudgetService : ITicketingBudgetService
                     a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn)
             })
             .ToListAsync();
-
-        if (orders.Count == 0)
-        {
-            _logger.LogDebug("No paid orders found for ticketing budget sync");
-            return 0;
-        }
 
         // Group by ISO week (Mon-Sun)
         var today = _clock.GetCurrentInstant().InUtc().Date;
@@ -137,6 +126,34 @@ public class TicketingBudgetService : ITicketingBudgetService
             lineItemsCreated, weeklyData.Count);
 
         return lineItemsCreated;
+    }
+
+    public async Task<int> RefreshProjectionsAsync(Guid budgetYearId)
+    {
+        var ticketingGroup = await LoadTicketingGroupAsync(budgetYearId);
+        if (ticketingGroup is null) return 0;
+
+        var revenueCategory = ticketingGroup.Categories.FirstOrDefault(c => string.Equals(c.Name, "Ticket Revenue", StringComparison.Ordinal));
+        var feesCategory = ticketingGroup.Categories.FirstOrDefault(c => string.Equals(c.Name, "Processing Fees", StringComparison.Ordinal));
+        if (revenueCategory is null || feesCategory is null) return 0;
+
+        var now = _clock.GetCurrentInstant();
+        var created = MaterializeProjections(ticketingGroup, revenueCategory, feesCategory, now);
+
+        if (_dbContext.ChangeTracker.HasChanges())
+            await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Ticketing projections refreshed: {Count} line items", created);
+        return created;
+    }
+
+    private async Task<BudgetGroup?> LoadTicketingGroupAsync(Guid budgetYearId)
+    {
+        return await _dbContext.BudgetGroups
+            .Include(g => g.Categories)
+                .ThenInclude(c => c.LineItems)
+            .Include(g => g.TicketingProjection)
+            .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsTicketingGroup);
     }
 
     public async Task<IReadOnlyList<TicketingWeekProjection>> GetProjectionsAsync(Guid budgetGroupId)
