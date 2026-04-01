@@ -1948,6 +1948,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         MemberCount = (int)(group.DirectMembersCount ?? 0),
                         LinkedTeamName = linkedTeam?.Name,
                         LinkedTeamId = linkedTeam?.Id,
+                        LinkedTeamSlug = linkedTeam?.Slug,
                         ActualSettings = actualSettings,
                         Drifts = drifts,
                         ErrorMessage = errorMessage

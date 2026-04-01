@@ -8,6 +8,7 @@ public class DomainGroupInfo
     public int MemberCount { get; init; }
     public string? LinkedTeamName { get; init; }
     public Guid? LinkedTeamId { get; init; }
+    public string? LinkedTeamSlug { get; init; }
     public Dictionary<string, string> ActualSettings { get; init; } = [];
     public List<GroupSettingDrift> Drifts { get; init; } = [];
     public bool HasDrift => Drifts.Count > 0;

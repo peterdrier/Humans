@@ -117,9 +117,9 @@
                                 @group.DisplayName
                             </td>
                             <td>
-                                @if (group.LinkedTeamId is not null)
+                                @if (!string.IsNullOrWhiteSpace(group.LinkedTeamSlug))
                                 {
-                                    <a asp-controller="Team" asp-action="Detail" asp-route-id="@group.LinkedTeamId"
+                                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@group.LinkedTeamSlug"
                                        class="badge bg-primary text-decoration-none">
                                         @group.LinkedTeamName
                                     </a>
