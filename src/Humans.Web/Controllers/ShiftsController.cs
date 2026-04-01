@@ -329,7 +329,7 @@ public class ShiftsController : HumansControllerBase
 
             switch (signup.Status)
             {
-                case SignupStatus.Confirmed when item.AbsoluteStart > now:
+                case SignupStatus.Confirmed when item.AbsoluteEnd > now:
                     model.Upcoming.Add(item);
                     break;
                 case SignupStatus.Pending:
