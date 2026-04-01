@@ -170,11 +170,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         // Handle tag assignment
         if (!string.IsNullOrWhiteSpace(model.TagIds))
         {
-            var tagIdList = model.TagIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
-                .Where(id => id.HasValue)
-                .Select(id => id!.Value)
-                .ToList();
+            var tagIdList = ParseTagIds(model.TagIds);
             await _shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
         }
 
@@ -189,9 +185,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
-        if (rota.TeamId != team.Id) return NotFound();
 
         rota.Name = model.Name;
         rota.Description = model.Description;
@@ -203,15 +198,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         await _shiftMgmt.UpdateRotaAsync(rota);
 
         // Handle tag assignment
-        var tagIdList = new List<Guid>();
-        if (!string.IsNullOrWhiteSpace(model.TagIds))
-        {
-            tagIdList = model.TagIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
-                .Where(id => id.HasValue)
-                .Select(id => id!.Value)
-                .ToList();
-        }
+        var tagIdList = ParseTagIds(model.TagIds);
         await _shiftMgmt.SetRotaTagsAsync(rota.Id, tagIdList);
 
         SetSuccess($"Rota '{model.Name}' updated.");
@@ -225,9 +212,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
-        if (rota.TeamId != team.Id) return NotFound();
 
         var dailyStaffing = model.Days.ToDictionary(
             d => d.DayOffset,
@@ -254,9 +240,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
-        if (rota.TeamId != team.Id) return NotFound();
 
         var timeSlots = new List<(LocalTime StartTime, double DurationHours)>();
         foreach (var slot in model.TimeSlots)
@@ -304,9 +289,8 @@ public class ShiftAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Index), new { slug });
         }
 
-        var rota = await _shiftMgmt.GetRotaByIdAsync(model.RotaId);
+        var rota = await GetRotaForTeamAsync(model.RotaId, team.Id);
         if (rota is null) return NotFound();
-        if (rota.TeamId != team.Id) return NotFound();
 
         if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
@@ -366,9 +350,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
         if (shift is null) return NotFound();
-        if (shift.Rota.TeamId != team.Id) return NotFound();
 
         if (!model.StartTime.TryParseInvariantLocalTime(out var parsedTime))
         {
@@ -414,9 +397,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, _, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
-        if (rota.TeamId != team.Id) return NotFound();
 
         rota.IsVisibleToVolunteers = !rota.IsVisibleToVolunteers;
         await _shiftMgmt.UpdateRotaAsync(rota);
@@ -436,9 +418,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, user, team) = await ResolveDepartmentManagementAsync(slug);
         if (teamError is not null) return teamError;
 
-        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
-        if (rota.TeamId != team.Id) return NotFound();
 
         var targetTeam = await _teamService.GetTeamByIdAsync(model.TargetTeamId);
         if (targetTeam is null)
@@ -532,8 +513,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        var probe = await _signupService.GetByBlockIdFirstAsync(signupBlockId);
-        if (probe is null || probe.Shift.Rota.TeamId != team.Id) return NotFound();
+        var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id);
+        if (probe is null) return NotFound();
 
         var result = await _signupService.ApproveRangeAsync(signupBlockId, user.Id);
         if (result.Success)
@@ -551,8 +532,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        var probe = await _signupService.GetByBlockIdFirstAsync(signupBlockId);
-        if (probe is null || probe.Shift.Rota.TeamId != team.Id) return NotFound();
+        var probe = await GetSignupBlockForTeamAsync(signupBlockId, team.Id);
+        if (probe is null) return NotFound();
 
         var result = await _signupService.RefuseRangeAsync(signupBlockId, user.Id, reason);
         if (result.Success)
@@ -570,9 +551,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        var signup = await _signupService.GetByIdAsync(signupId);
+        var signup = await GetSignupForTeamAsync(signupId, team.Id);
         if (signup is null) return NotFound();
-        if (signup.Shift.Rota.TeamId != team.Id) return NotFound();
 
         var result = await _signupService.ApproveAsync(signupId, user.Id);
         if (result.Success)
@@ -594,9 +574,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        var signup = await _signupService.GetByIdAsync(signupId);
+        var signup = await GetSignupForTeamAsync(signupId, team.Id);
         if (signup is null) return NotFound();
-        if (signup.Shift.Rota.TeamId != team.Id) return NotFound();
 
         var result = await _signupService.RefuseAsync(signupId, user.Id, reason);
         if (result.Success)
@@ -618,9 +597,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        var signupCheck = await _signupService.GetByIdAsync(signupId);
+        var signupCheck = await GetSignupForTeamAsync(signupId, team.Id);
         if (signupCheck is null) return NotFound();
-        if (signupCheck.Shift.Rota.TeamId != team.Id) return NotFound();
 
         var result = await _signupService.MarkNoShowAsync(signupId, user.Id);
         if (result.Success)
@@ -642,9 +620,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, user, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        var signupCheck = await _signupService.GetByIdAsync(signupId);
+        var signupCheck = await GetSignupForTeamAsync(signupId, team.Id);
         if (signupCheck is null) return NotFound();
-        if (signupCheck.Shift.Rota.TeamId != team.Id) return NotFound();
 
         var result = await _signupService.RemoveSignupAsync(signupId, user.Id, reason);
         if (result.Success)
@@ -668,9 +645,8 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
+            var shift = await GetShiftForTeamAsync(shiftId, team.Id);
             if (shift is null) return NotFound();
-            if (shift.Rota.TeamId != team.Id) return NotFound();
 
             var es = shift.Rota.EventSettings ?? await _shiftMgmt.GetActiveAsync();
             if (es is null) return NotFound();
@@ -700,9 +676,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, currentUser, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
+        var shift = await GetShiftForTeamAsync(shiftId, team.Id);
         if (shift is null) return NotFound();
-        if (shift.Rota.TeamId != team.Id) return NotFound();
 
         var result = await _signupService.VoluntellAsync(userId, shiftId, currentUser.Id);
         if (result.Success)
@@ -724,9 +699,8 @@ public class ShiftAdminController : HumansTeamControllerBase
         var (teamError, currentUser, team) = await ResolveDepartmentApprovalAsync(slug);
         if (teamError is not null) return teamError;
 
-        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        var rota = await GetRotaForTeamAsync(rotaId, team.Id);
         if (rota is null) return NotFound();
-        if (rota.TeamId != team.Id) return NotFound();
 
         var result = await _signupService.VoluntellRangeAsync(userId, rotaId, startDayOffset, endDayOffset, currentUser.Id);
         if (result.Success)
@@ -782,6 +756,42 @@ public class ShiftAdminController : HumansTeamControllerBase
         return await ResolveDepartmentAccessAsync(
             slug,
             (team, user) => CanApproveDepartmentAsync(user, team));
+    }
+
+    private async Task<Rota?> GetRotaForTeamAsync(Guid rotaId, Guid teamId)
+    {
+        var rota = await _shiftMgmt.GetRotaByIdAsync(rotaId);
+        return rota is not null && rota.TeamId == teamId ? rota : null;
+    }
+
+    private async Task<Shift?> GetShiftForTeamAsync(Guid shiftId, Guid teamId)
+    {
+        var shift = await _shiftMgmt.GetShiftByIdAsync(shiftId);
+        return shift is not null && shift.Rota.TeamId == teamId ? shift : null;
+    }
+
+    private async Task<ShiftSignup?> GetSignupForTeamAsync(Guid signupId, Guid teamId)
+    {
+        var signup = await _signupService.GetByIdAsync(signupId);
+        return signup is not null && signup.Shift.Rota.TeamId == teamId ? signup : null;
+    }
+
+    private async Task<ShiftSignup?> GetSignupBlockForTeamAsync(Guid signupBlockId, Guid teamId)
+    {
+        var signup = await _signupService.GetByBlockIdFirstAsync(signupBlockId);
+        return signup is not null && signup.Shift.Rota.TeamId == teamId ? signup : null;
+    }
+
+    private static List<Guid> ParseTagIds(string? tagIds)
+    {
+        if (string.IsNullOrWhiteSpace(tagIds))
+            return [];
+
+        return tagIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(id => Guid.TryParse(id, out var guid) ? guid : (Guid?)null)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToList();
     }
 
     private async Task<bool> CanManageDepartmentAsync(User user, Team team)
