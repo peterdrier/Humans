@@ -2080,14 +2080,34 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         if (restrict && existing.Capabilities?.CanDisableInheritedPermissions != true)
         {
-            var isSharedDriveRoot = string.Equals(existing.DriveId, googleFileId, StringComparison.Ordinal) ||
-                                    existing.Parents == null ||
-                                    existing.Parents.Count == 0;
-            throw new InvalidOperationException(isSharedDriveRoot
-                ? $"Cannot restrict inherited permissions on '{existing.Name}' — it is a Shared Drive root (no parent to inherit from)."
-                : $"Cannot restrict inherited permissions on '{existing.Name}' ({googleFileId}). " +
-                  $"driveId={existing.DriveId}, parents={string.Join(",", existing.Parents ?? [])}, " +
-                  $"canDisable={existing.Capabilities?.CanDisableInheritedPermissions}");
+            // Check what role the service account actually has on the Shared Drive
+            string driveCapabilities = "unknown";
+            if (!string.IsNullOrEmpty(existing.DriveId))
+            {
+                try
+                {
+                    var driveGet = drive.Drives.Get(existing.DriveId);
+                    driveGet.Fields = "id, name, capabilities";
+                    var sharedDrive = await driveGet.ExecuteAsync(cancellationToken);
+                    driveCapabilities = $"canManageMembers={sharedDrive.Capabilities?.CanManageMembers}, " +
+                                        $"canDeleteDrive={sharedDrive.Capabilities?.CanDeleteDrive}, " +
+                                        $"canRenameDrive={sharedDrive.Capabilities?.CanRenameDrive}, " +
+                                        $"canChangeDomainUsersOnlyRestriction={sharedDrive.Capabilities?.CanChangeDomainUsersOnlyRestriction}";
+                    _logger.LogWarning(
+                        "Shared Drive {DriveId} capabilities for service account: {Capabilities}",
+                        existing.DriveId, driveCapabilities);
+                }
+                catch (Exception ex)
+                {
+                    driveCapabilities = $"error: {ex.Message}";
+                }
+            }
+
+            throw new InvalidOperationException(
+                $"Cannot restrict inherited permissions on '{existing.Name}' ({googleFileId}). " +
+                $"driveId={existing.DriveId}, parents={string.Join(",", existing.Parents ?? [])}, " +
+                $"canDisable={existing.Capabilities?.CanDisableInheritedPermissions}. " +
+                $"Shared Drive capabilities: {driveCapabilities}");
         }
 
         if (!restrict && existing.Capabilities?.CanEnableInheritedPermissions != true)
