@@ -100,7 +100,7 @@ public class BudgetController : HumansControllerBase
                 .Select(li => new VatProjection
                 {
                     SourceDescription = li.Description,
-                    VatAmount = Math.Abs(li.Amount) * li.VatRate / 100m,
+                    VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
                     SettlementDate = ComputeVatSettlementDate(li.ExpectedDate!.Value),
                     VatRate = li.VatRate,
                     // Income line item -> VAT is an expense; Expense line item -> VAT is income
