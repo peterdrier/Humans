@@ -20,6 +20,6 @@ public sealed class ConfigurationEntry
     /// <summary>Whether the setting resolved to a non-empty value at access time.</summary>
     public bool IsSet { get; set; }
 
-    /// <summary>The resolved value. Only stored for non-sensitive settings.</summary>
+    /// <summary>The resolved value. Stored for all settings; display layer handles masking.</summary>
     public string? Value { get; set; }
 }

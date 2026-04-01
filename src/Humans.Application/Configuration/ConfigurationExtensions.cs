@@ -60,7 +60,7 @@ public static class ConfigurationExtensions
             IsSensitive = isSensitive,
             Importance = importance,
             IsSet = isSet,
-            Value = isSensitive ? null : (isSet ? rawValue : defaultValue?.ToString())
+            Value = isSet ? rawValue : defaultValue?.ToString()
         });
 
         return value!;
@@ -87,7 +87,7 @@ public static class ConfigurationExtensions
             IsSensitive = isSensitive,
             Importance = importance,
             IsSet = isSet,
-            Value = isSensitive ? null : value
+            Value = value
         });
 
         return value;
@@ -111,7 +111,7 @@ public static class ConfigurationExtensions
             IsSensitive = isSensitive,
             Importance = importance,
             IsSet = isSet,
-            Value = isSensitive ? null : value
+            Value = value
         });
 
         return value;
