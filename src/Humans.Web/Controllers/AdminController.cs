@@ -113,10 +113,11 @@ public class AdminController : HumansControllerBase
             }
             else if (e.IsSensitive)
             {
-                // Show first 4 chars of longer secrets so you can tell which key is in use
+                // Show first 4 chars so you can tell which key is in use;
+                // fully mask only very short values (≤4 chars) where the prefix IS the secret
                 displayValue = e.Value switch
                 {
-                    { Length: > 8 } v => v[..4] + "••••••",
+                    { Length: > 4 } v => v[..4] + "••••••",
                     not null => "••••••",
                     _ => "••••••"
                 };
