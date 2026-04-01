@@ -7,7 +7,7 @@
     <h1>Contacts</h1>
     <div class="d-flex align-items-center gap-3">
         <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
-        <a asp-action="CreateContact" class="btn btn-primary btn-sm">
+        <a asp-action="Create" class="btn btn-primary btn-sm">
             <i class="fa-solid fa-plus"></i> Add Contact
         </a>
     </div>
@@ -24,7 +24,7 @@
                 <button type="submit" class="btn btn-primary">@Localizer["Admin_Search"]</button>
                 @if (!string.IsNullOrEmpty(Model.SearchTerm))
                 {
-                    <a asp-action="Contacts" class="btn btn-outline-secondary">@Localizer["Admin_Clear"]</a>
+                    <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Admin_Clear"]</a>
                 }
             </div>
         </form>
@@ -32,7 +32,7 @@
 </div>
 
 <div class="mb-3">
-    <a asp-action="Humans" class="btn btn-outline-secondary btn-sm">
+    <a asp-controller="Profile" asp-action="AdminList" class="btn btn-outline-secondary btn-sm">
         <i class="fa-solid fa-arrow-left"></i> Back to Humans
     </a>
 </div>
@@ -82,7 +82,7 @@
                                 }
                             </td>
                             <td>
-                                <a asp-action="ContactDetail" asp-route-id="@contact.Id"
+                                <a asp-action="Detail" asp-route-id="@contact.Id"
                                    class="btn btn-sm btn-outline-primary">Detail</a>
                             </td>
                         </tr>

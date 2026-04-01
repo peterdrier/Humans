@@ -8,12 +8,12 @@ namespace Humans.Web.Controllers;
 
 [Authorize]
 [ApiController]
-[Route("api/humans")]
-public class HumanApiController : ControllerBase
+[Route("api/profiles")]
+public class ProfileApiController : ControllerBase
 {
     private readonly IProfileService _profileService;
 
-    public HumanApiController(IProfileService profileService)
+    public ProfileApiController(IProfileService profileService)
     {
         _profileService = profileService;
     }

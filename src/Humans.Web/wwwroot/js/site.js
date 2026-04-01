@@ -234,7 +234,7 @@ document.addEventListener('click', function (e) {
         if (cache[userId]) {
             popover.setContent({ '.popover-body': cache[userId] });
         } else {
-            fetch('/Human/' + userId + '/Popover')
+            fetch('/Profile/' + userId + '/Popover')
                 .then(function (r) { return r.ok ? r.text() : ''; })
                 .then(function (html) {
                     if (html) {

@@ -9,7 +9,7 @@ namespace Humans.Web.TagHelpers;
 
 /// <summary>
 /// Renders a link to a human's profile with configurable display modes.
-/// Replaces all raw asp-controller="Human" anchor tags across the app.
+/// Replaces all raw asp-controller="Profile" anchor tags across the app.
 /// </summary>
 [HtmlTargetElement("human-link", TagStructure = TagStructure.NormalOrSelfClosing)]
 public class HumanLinkTagHelper : TagHelper
@@ -67,8 +67,8 @@ public class HumanLinkTagHelper : TagHelper
     {
         var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
         var href = Admin
-            ? urlHelper.Action("HumanProfileAdmin", "Human", new { id = UserId })
-            : urlHelper.Action("HumanProfile", "Human", new { id = UserId });
+            ? urlHelper.Action("AdminDetail", "Profile", new { id = UserId })
+            : urlHelper.Action("ViewProfile", "Profile", new { id = UserId });
 
         output.TagName = "a";
         output.TagMode = TagMode.StartTagAndEndTag;

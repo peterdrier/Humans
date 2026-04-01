@@ -137,7 +137,7 @@
         @if (Model.CanSendMessage)
         {
             <hr />
-            <a asp-controller="Human" asp-action="SendMessage" asp-route-id="@Model.UserId"
+            <a asp-controller="Profile" asp-action="SendMessage" asp-route-id="@Model.UserId"
                class="btn btn-outline-primary">
                 <i class="fa-solid fa-envelope me-1"></i>
                 @string.Format(Localizer["SendMessage_Button"].Value, Model.DisplayName)

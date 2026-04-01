@@ -6,7 +6,7 @@
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@Localizer["Teams_Title"]</a></li>
-        <li class="breadcrumb-item"><a asp-action="HumanProfile" asp-route-id="@Model.RecipientId">@Model.RecipientDisplayName</a></li>
+        <li class="breadcrumb-item"><a asp-action="ViewProfile" asp-route-id="@Model.RecipientId">@Model.RecipientDisplayName</a></li>
         <li class="breadcrumb-item active" aria-current="page">@Localizer["SendMessage_Breadcrumb"]</li>
     </ol>
 </nav>
@@ -39,7 +39,7 @@
 
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary">@Localizer["SendMessage_Send"]</button>
-                <a asp-action="HumanProfile" asp-route-id="@Model.RecipientId" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
+                <a asp-action="ViewProfile" asp-route-id="@Model.RecipientId" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
             </div>
         </form>
     </div>

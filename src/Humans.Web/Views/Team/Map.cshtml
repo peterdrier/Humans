@@ -65,7 +65,7 @@ else
                 return '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">' +
                     avatarHtml(m, 36) +
                     '<div>' +
-                    '<a href="/Human/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + escapeHtml(m.displayName) + '</a>' +
+                    '<a href="/Profile/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + escapeHtml(m.displayName) + '</a>' +
                     (location ? '<br><span style="color:#666;font-size:0.85em;">' + escapeHtml(location) + '</span>' : '') +
                     '</div></div>';
             }

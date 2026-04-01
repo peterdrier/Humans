@@ -312,25 +312,6 @@ public class TeamController : HumansControllerBase
         return View(viewModel);
     }
 
-    [HttpGet("Search")]
-    public async Task<IActionResult> Search(string? q)
-    {
-        var viewModel = new HumanSearchViewModel { Query = q };
-
-        if (!q.HasSearchTerm())
-        {
-            return View(viewModel);
-        }
-
-        var results = await _profileService.SearchHumansAsync(q);
-
-        viewModel.Results = results
-            .Select(r => r.ToHumanSearchViewModel(Url))
-            .ToList();
-
-        return View(viewModel);
-    }
-
     [HttpGet("Roster")]
     public async Task<IActionResult> Roster(string? priority, string? status, string? period)
     {

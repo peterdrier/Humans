@@ -9,7 +9,7 @@
     <h1>@Localizer["AdminHumans_Title"]</h1>
     <div class="d-flex align-items-center gap-3">
         <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
-        <a asp-action="Contacts" class="btn btn-outline-secondary btn-sm">
+        <a asp-controller="Contacts" asp-action="Index" class="btn btn-outline-secondary btn-sm">
             <i class="fa-solid fa-address-book"></i> Contacts
         </a>
     </div>
@@ -29,7 +29,7 @@
                 <button type="submit" class="btn btn-primary">@Localizer["Admin_Search"]</button>
                 @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.StatusFilter) || Model.SortBy != "name" || Model.SortDir != "asc")
                 {
-                    <a asp-action="Humans" class="btn btn-outline-secondary">@Localizer["Admin_Clear"]</a>
+                    <a asp-action="AdminList" class="btn btn-outline-secondary">@Localizer["Admin_Clear"]</a>
                 }
             </div>
         </form>
@@ -39,31 +39,31 @@
 <div class="card mb-4">
     <div class="card-body d-flex flex-wrap gap-3 align-items-center">
         <div class="btn-group" role="group">
-            <a asp-action="Humans" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+            <a asp-action="AdminList" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_AllStatuses"]
             </a>
-            <a asp-action="Humans" asp-route-filter="active" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+            <a asp-action="AdminList" asp-route-filter="active" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "active" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Active"]
             </a>
-            <a asp-action="Humans" asp-route-filter="pending" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+            <a asp-action="AdminList" asp-route-filter="pending" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "pending" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_PendingApproval"]
             </a>
-            <a asp-action="Humans" asp-route-filter="missingconsents" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+            <a asp-action="AdminList" asp-route-filter="missingconsents" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "missingconsents" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_MissingConsents"]
             </a>
-            <a asp-action="Humans" asp-route-filter="incomplete" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+            <a asp-action="AdminList" asp-route-filter="incomplete" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "incomplete" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_IncompleteSignup"]
             </a>
-            <a asp-action="Humans" asp-route-filter="suspended" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+            <a asp-action="AdminList" asp-route-filter="suspended" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "suspended" ? "btn-primary" : "btn-outline-primary")">
                 @Localizer["AdminHumans_Suspended"]
             </a>
-            <a asp-action="Humans" asp-route-filter="deleting" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+            <a asp-action="AdminList" asp-route-filter="deleting" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
                class="btn @(Model.StatusFilter == "deleting" ? "btn-danger" : "btn-outline-danger")">
                 @Localizer["AdminHumans_Deleting"]
             </a>
@@ -83,19 +83,19 @@
                 <thead>
                     <tr>
                         <th>
-                            <a asp-action="Humans" asp-route-sort="name" asp-route-dir="@ToggleDir("name")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
+                            <a asp-action="AdminList" asp-route-sort="name" asp-route-dir="@ToggleDir("name")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
                                style="text-decoration:none; color:inherit;">@Localizer["Teams_Member"]@SortIndicator("name")</a>
                         </th>
                         <th>
-                            <a asp-action="Humans" asp-route-sort="joined" asp-route-dir="@ToggleDir("joined")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
+                            <a asp-action="AdminList" asp-route-sort="joined" asp-route-dir="@ToggleDir("joined")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
                                style="text-decoration:none; color:inherit;">@Localizer["Admin_Joined"]@SortIndicator("joined")</a>
                         </th>
                         <th>
-                            <a asp-action="Humans" asp-route-sort="login" asp-route-dir="@ToggleDir("login")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
+                            <a asp-action="AdminList" asp-route-sort="login" asp-route-dir="@ToggleDir("login")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
                                style="text-decoration:none; color:inherit;">@Localizer["Admin_LastLogin"]@SortIndicator("login")</a>
                         </th>
                         <th>
-                            <a asp-action="Humans" asp-route-sort="status" asp-route-dir="@ToggleDir("status")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
+                            <a asp-action="AdminList" asp-route-sort="status" asp-route-dir="@ToggleDir("status")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
                                style="text-decoration:none; color:inherit;">@Localizer["Common_Status"]@SortIndicator("status")</a>
                         </th>
                         <th></th>
@@ -149,7 +149,7 @@
                                 }
                             </td>
                             <td class="text-end">
-                                <a asp-action="HumanProfileAdmin" asp-route-id="@member.Id" class="btn btn-sm btn-outline-primary">
+                                <a asp-action="AdminDetail" asp-route-id="@member.Id" class="btn btn-sm btn-outline-primary">
                                     @Localizer["MyTeams_View"]
                                 </a>
                             </td>
@@ -168,7 +168,7 @@
             @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
             {
                 <li class="page-item @(i == Model.PageNumber ? "active" : "")">
-                    <a class="page-link" asp-action="Humans" asp-route-page="@i" asp-route-search="@Model.SearchTerm"
+                    <a class="page-link" asp-action="AdminList" asp-route-page="@i" asp-route-search="@Model.SearchTerm"
                        asp-route-filter="@Model.StatusFilter" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir">@i</a>
                 </li>
             }

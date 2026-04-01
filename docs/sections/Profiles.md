@@ -8,13 +8,44 @@
 - **Membership Tier** is tracked on the profile: Volunteer (default), Colaborador, or Asociado.
 - **Communication Preferences** control per-category email opt-in/opt-out (System, EventOperations, CommunityUpdates, Marketing).
 
+## Routing
+
+All profile-related functionality lives under `/Profile`:
+
+| Route | Purpose |
+|-------|---------|
+| `/Profile/Me` | View own profile |
+| `/Profile/Me/Edit` | Edit own profile |
+| `/Profile/Me/Emails` | Email management |
+| `/Profile/Me/ShiftInfo` | Shift preferences |
+| `/Profile/Me/Notifications` | Communication preferences |
+| `/Profile/Me/Privacy` | Privacy / deletion |
+| `/Profile/Me/Outbox` | Own email outbox |
+| `/Profile/{id}` | View another human's profile |
+| `/Profile/{id}/Popover` | Quick profile popup |
+| `/Profile/{id}/SendMessage` | Send facilitated message |
+| `/Profile/{id}/Admin` | Admin detail view |
+| `/Profile/{id}/Admin/Outbox` | Admin view of person's outbox |
+| `/Profile/{id}/Admin/Suspend` | Suspend member |
+| `/Profile/{id}/Admin/Approve` | Approve volunteer |
+| `/Profile/{id}/Admin/Reject` | Reject signup |
+| `/Profile/{id}/Admin/Roles/*` | Role management |
+| `/Profile/Admin` | Admin list of all humans |
+| `/Profile/Search` | People search |
+| `/Profile/Picture` | Profile picture endpoint |
+| `/api/profiles/search` | API search endpoint |
+
+External contacts are managed separately at `/Contacts` (ContactsController).
+
+Old `/Human/*` routes redirect permanently to their `/Profile/*` equivalents.
+
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|-------------|
 | Any authenticated human | View and edit own profile, manage own emails, manage own contact fields, upload profile picture, set notification and communication preferences, request data export (GDPR Article 15), request account deletion |
-| Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans |
-| HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, update tier, view audit log) |
+| Any active human | View other active humans' profiles (contact fields restricted by per-field visibility). Send facilitated messages to other humans. Search for humans |
+| HumanAdmin, Board, Admin | View any profile with full detail. Manage humans via admin pages (suspend, unsuspend, update tier, view audit log, manage roles) |
 
 ## Invariants
 

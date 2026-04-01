@@ -44,7 +44,7 @@ test.describe('Profile (02-profiles)', () => {
 
   test('US-9.2: board can view human detail with admin actions', async ({ page }) => {
     await loginAsBoard(page);
-    await page.goto('/Human/Admin');
+    await page.goto('/Profile/Admin');
 
     // Human list loads
     await expect(page.locator('h1, h2').first()).toBeVisible();

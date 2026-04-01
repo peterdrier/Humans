@@ -136,7 +136,7 @@ public class ShiftsController : HumansControllerBase
                                             Signups = u.Signups
                                                 .Select(s => new ShiftSignupInfo(
                                                     s.UserId, s.DisplayName, s.Status,
-                                                    s.HasProfilePicture ? $"/Human/{s.UserId}/Picture" : null))
+                                                    s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
                                                 .ToList()
                                         };
                                     })

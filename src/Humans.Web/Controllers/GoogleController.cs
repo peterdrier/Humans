@@ -517,7 +517,7 @@ public class GoogleController : HumansControllerBase
         var entries = await _auditLogService.GetGoogleSyncByUserAsync(id);
         return GoogleSyncAuditView(
             $"Google Sync Audit: {user.DisplayName}",
-            Url.Action("HumanProfileAdmin", "Human", new { id }),
+            Url.Action("AdminDetail", "Profile", new { id }),
             "Back to Member Detail",
             entries);
     }
@@ -532,7 +532,7 @@ public class GoogleController : HumansControllerBase
         if (string.IsNullOrWhiteSpace(emailPrefix))
         {
             SetError("Email prefix is required.");
-            return RedirectToAction("HumanProfileAdmin", "Human", new { id });
+            return RedirectToAction("AdminDetail", "Profile", new { id });
         }
 
         var currentUser = await GetCurrentUserAsync();
@@ -555,7 +555,7 @@ public class GoogleController : HumansControllerBase
             SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
         }
 
-        return RedirectToAction("HumanProfileAdmin", "Human", new { id });
+        return RedirectToAction("AdminDetail", "Profile", new { id });
     }
 
     // --- Workspace Accounts (from AdminEmailController) ---
