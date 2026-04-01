@@ -93,7 +93,11 @@
                     <label asp-for="BlurbLong" class="form-label">Full Description</label>
                     <textarea asp-for="BlurbLong" class="form-control" rows="6"
                               placeholder="Tell the world about your camp. Markdown is supported." required></textarea>
-                    <div class="form-text">Markdown formatting is supported.</div>
+                    <div class="form-text">
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                            <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                        </a>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label asp-for="Languages" class="form-label">Languages Spoken</label>
@@ -127,6 +131,11 @@
                     <label asp-for="KidsAreaDescription" class="form-label">Kids Area Description</label>
                     <textarea asp-for="KidsAreaDescription" class="form-control" rows="2"
                               placeholder="Describe your kids area if applicable"></textarea>
+                    <div class="form-text">
+                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                            <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                        </a>
+                    </div>
                 </div>
                 <div class="col-md-4">
                     <label asp-for="AdultPlayspace" class="form-label">Adult Playspace</label>
@@ -234,6 +243,8 @@
         </button>
     </div>
 </form>
+
+<partial name="_MarkdownHelp" />
 
 @section Scripts {
     <partial name="_LinksEditorScripts" />

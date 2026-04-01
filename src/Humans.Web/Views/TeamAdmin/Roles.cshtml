@@ -139,8 +139,12 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Description</label>
-                        <small class="text-muted ms-2">Markdown: **bold**, *italic*, - bullets, ## headings</small>
                         <textarea class="form-control" name="Description" rows="3" maxlength="2000">@role.Description</textarea>
+                        <div class="form-text">
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                            </a>
+                        </div>
                     </div>
                 </form>
 
@@ -264,8 +268,12 @@ else
             </div>
             <div class="mt-2">
                 <label class="form-label">Description</label>
-                <small class="text-muted ms-2">Markdown: **bold**, *italic*, - bullets, ## headings</small>
                 <textarea class="form-control" name="Description" rows="3" maxlength="2000"></textarea>
+                <div class="form-text">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                        <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                    </a>
+                </div>
             </div>
         </form>
     </div>
@@ -275,6 +283,8 @@ else
     <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">@Localizer["TeamAdmin_BackToTeam"]</a>
     <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">@Localizer["TeamAdmin_ManageMembers"]</a>
 </div>
+
+<partial name="_MarkdownHelp" />
 
 @section Scripts {
 <script>

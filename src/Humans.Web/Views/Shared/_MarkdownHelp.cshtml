@@ -1,0 +1,119 @@
+@* Shared markdown quick-reference modal. Include once per page, trigger with data-bs-toggle="modal" data-bs-target="#markdownHelpModal". *@
+<div class="modal fade" id="markdownHelpModal" tabindex="-1" aria-labelledby="markdownHelpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="markdownHelpModalLabel">
+                    <i class="fa-solid fa-circle-info me-1"></i> Markdown Quick Reference
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    Markdown is a simple way to format text. Type the syntax on the left and it renders as shown on the right.
+                </p>
+
+                <table class="table table-sm table-bordered align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 50%;">You type</th>
+                            <th style="width: 50%;">You get</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>**bold**</code></td>
+                            <td><strong>bold</strong></td>
+                        </tr>
+                        <tr>
+                            <td><code>*italic*</code></td>
+                            <td><em>italic</em></td>
+                        </tr>
+                        <tr>
+                            <td><code>~~strikethrough~~</code></td>
+                            <td><del>strikethrough</del></td>
+                        </tr>
+                        <tr>
+                            <td><code>[link text](https://example.com)</code></td>
+                            <td><a href="#">link text</a></td>
+                        </tr>
+                        <tr>
+                            <td><code># Heading 1</code></td>
+                            <td><strong style="font-size: 1.3em;">Heading 1</strong></td>
+                        </tr>
+                        <tr>
+                            <td><code>## Heading 2</code></td>
+                            <td><strong style="font-size: 1.1em;">Heading 2</strong></td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <code>- item one</code><br />
+                                <code>- item two</code>
+                            </td>
+                            <td>
+                                <ul class="mb-0"><li>item one</li><li>item two</li></ul>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <code>1. first</code><br />
+                                <code>2. second</code>
+                            </td>
+                            <td>
+                                <ol class="mb-0"><li>first</li><li>second</li></ol>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>&gt; quote text</code></td>
+                            <td><blockquote class="mb-0 ps-2 border-start border-3">quote text</blockquote></td>
+                        </tr>
+                        <tr>
+                            <td><code>`inline code`</code></td>
+                            <td><code>inline code</code></td>
+                        </tr>
+                        <tr>
+                            <td><code>---</code></td>
+                            <td><hr class="my-1" /></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h6 class="mt-4 mb-2">Tables</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <pre class="bg-light p-2 rounded small mb-0">| Name   | Role  |
+|--------|-------|
+| Alice  | Admin |
+| Bob    | Human |</pre>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-sm table-bordered mb-0">
+                            <thead><tr><th>Name</th><th>Role</th></tr></thead>
+                            <tbody>
+                                <tr><td>Alice</td><td>Admin</td></tr>
+                                <tr><td>Bob</td><td>Human</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <h6 class="mt-4 mb-2">Task Lists</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <pre class="bg-light p-2 rounded small mb-0">- [x] Done
+- [ ] To do</pre>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled mb-0">
+                            <li><input type="checkbox" checked disabled /> Done</li>
+                            <li><input type="checkbox" disabled /> To do</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

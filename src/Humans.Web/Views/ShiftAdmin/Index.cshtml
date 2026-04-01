@@ -209,6 +209,11 @@
                                 <div class="col-md-3">
                                     <label class="form-label">Description</label>
                                     <textarea name="Description" class="form-control" rows="2">@rota.Description</textarea>
+                                    <div class="form-text">
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                             <div class="row g-2 mt-2 align-items-end">
@@ -224,6 +229,11 @@
                                 <div class="col-md-6">
                                     <label class="form-label">Practical Info</label>
                                     <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions...">@rota.PracticalInfo</textarea>
+                                    <div class="form-text">
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                        </a>
+                                    </div>
                                 </div>
                                 <div class="col-md-2">
                                     <button type="submit" class="btn btn-primary">Save</button>
@@ -433,6 +443,11 @@
                                                     @Html.AntiForgeryToken()
                                                     <div class="mb-2">
                                                         <textarea name="Description" class="form-control form-control-sm" rows="2" placeholder="Shift duties, notes...">@shift.Description</textarea>
+                                                        <div class="form-text">
+                                                            <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                                                <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                                            </a>
+                                                        </div>
                                                     </div>
                                                     @{
                                                         var (editPeriodStart, editPeriodEnd) = rota.Period switch
@@ -930,10 +945,20 @@
                         <div class="col-md-6">
                             <label class="form-label">Description</label>
                             <textarea name="Description" class="form-control" rows="2"></textarea>
+                            <div class="form-text">
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                    <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                </a>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Practical Info</label>
                             <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions..."></textarea>
+                            <div class="form-text">
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                    <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                </a>
+                            </div>
                         </div>
                     </div>
                     @if (Model.AllTags.Count > 0)
@@ -971,6 +996,8 @@
         </div>
     }
 </div>
+
+<partial name="_MarkdownHelp" />
 
 <script>
 (function() {

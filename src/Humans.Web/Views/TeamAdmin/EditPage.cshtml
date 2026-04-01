@@ -63,7 +63,9 @@
                 <textarea asp-for="PageContent" class="form-control font-monospace" rows="15"
                           placeholder="Write your team's page content here..."></textarea>
                 <div class="form-text">
-                    Markdown formatting is supported. Use headings, lists, bold, italic, and links to create rich content.
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                        <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                    </a>
                 </div>
             </div>
         </div>
@@ -108,3 +110,5 @@
         <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">Cancel</a>
     </div>
 </form>
+
+<partial name="_MarkdownHelp" />
