@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
 using NodaTime;
@@ -89,6 +90,9 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
         npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
+    // Suppress "First/FirstOrDefault without OrderBy" warning — the codebase universally uses
+    // .FirstOrDefaultAsync(e => e.Id == id) for PK lookups which are deterministic by definition.
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
