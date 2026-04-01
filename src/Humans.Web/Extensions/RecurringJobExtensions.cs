@@ -1,4 +1,5 @@
 using Hangfire;
+using Humans.Application.Configuration;
 using Humans.Infrastructure.Jobs;
 using Microsoft.Extensions.Logging;
 
@@ -11,7 +12,9 @@ public static class RecurringJobExtensions
         var logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(RecurringJobExtensions));
 
-        var ticketSyncInterval = app.Configuration.GetValue("TicketVendor:SyncIntervalMinutes", 15);
+        var registry = app.Services.GetRequiredService<ConfigurationRegistry>();
+        var ticketSyncInterval = app.Configuration.GetSettingValue(
+            registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
 
         var jobs = new (string Id, Action Register)[]
         {

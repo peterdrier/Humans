@@ -17,6 +17,7 @@
 ## Invariants
 
 - Admin can assign all roles (including Admin). Board and HumanAdmin can assign all roles except Admin.
+- Configuration settings are auto-discovered via `ConfigurationRegistry` — any setting accessed through the `GetRequiredSetting`/`GetOptionalSetting` extension methods is automatically surfaced on the Configuration page. Settings are classified as critical (app won't function), recommended (feature degrades), or optional. Non-sensitive values display in full; sensitive values are masked.
 - The email outbox can be paused and resumed. While paused, no outgoing emails are processed.
 - Individual failed emails can be retried (re-queued) or discarded (permanently deleted).
 - Sync settings control per-service Google sync behavior (None / AddOnly / AddAndRemove). Setting a service to None disables sync without redeploying.

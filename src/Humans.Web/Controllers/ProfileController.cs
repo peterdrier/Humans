@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
+using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -30,6 +31,7 @@ public class ProfileController : HumansControllerBase
     private readonly IUserEmailService _userEmailService;
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly IConfiguration _configuration;
+    private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<ProfileController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
@@ -66,6 +68,7 @@ public class ProfileController : HumansControllerBase
         IUserEmailService userEmailService,
         ICommunicationPreferenceService commPrefService,
         IConfiguration configuration,
+        ConfigurationRegistry configRegistry,
         ILogger<ProfileController> logger,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext)
@@ -79,6 +82,7 @@ public class ProfileController : HumansControllerBase
         _userEmailService = userEmailService;
         _commPrefService = commPrefService;
         _configuration = configuration;
+        _configRegistry = configRegistry;
         _logger = logger;
         _localizer = localizer;
         _dbContext = dbContext;
@@ -200,7 +204,7 @@ public class ProfileController : HumansControllerBase
             }).ToList()
         };
 
-        ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+        ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
     }
 
@@ -210,7 +214,7 @@ public class ProfileController : HumansControllerBase
     {
         if (!ModelState.IsValid)
         {
-            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -238,7 +242,7 @@ public class ProfileController : HumansControllerBase
 
         if (ModelState.ErrorCount > 0)
         {
-            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -255,7 +259,7 @@ public class ProfileController : HumansControllerBase
             model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                 && string.IsNullOrEmpty(model.LastName)
                 && string.IsNullOrEmpty(model.EmergencyContactName);
-            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -273,7 +277,7 @@ public class ProfileController : HumansControllerBase
                 model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                     && string.IsNullOrEmpty(model.LastName)
                     && string.IsNullOrEmpty(model.EmergencyContactName);
-                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -295,7 +299,7 @@ public class ProfileController : HumansControllerBase
                     model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                         && string.IsNullOrEmpty(model.LastName)
                         && string.IsNullOrEmpty(model.EmergencyContactName);
-                    ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                    ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                     return View(model);
                 }
             }
@@ -310,7 +314,7 @@ public class ProfileController : HumansControllerBase
             {
                 ModelState.AddModelError(nameof(model.ProfilePictureUpload),
                     _localizer["Profile_PictureTooLarge"].Value);
-                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -328,7 +332,7 @@ public class ProfileController : HumansControllerBase
             {
                 ModelState.AddModelError(nameof(model.ProfilePictureUpload),
                     _localizer["Profile_PictureInvalidFormat"].Value);
-                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -339,7 +343,7 @@ public class ProfileController : HumansControllerBase
             {
                 ModelState.AddModelError(nameof(model.ProfilePictureUpload),
                     _localizer["Profile_PictureInvalidFormat"].Value);
-                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -400,7 +404,7 @@ public class ProfileController : HumansControllerBase
         {
             _logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", user.Id, profileId);
             ModelState.AddModelError(string.Empty, ex.Message);
-            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -746,7 +750,7 @@ public class ProfileController : HumansControllerBase
             DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc()
         };
 
-        ViewData["DpoEmail"] = _configuration["Email:DpoAddress"];
+        ViewData["DpoEmail"] = _configuration.GetOptionalSetting(_configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
         return View(viewModel);
     }
 

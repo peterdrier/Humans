@@ -17,6 +17,7 @@ using NodaTime.Serialization.SystemTextJson;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Humans.Application.Configuration;
 using Humans.Domain.Entities;
 using Humans.Web.Extensions;
 using Humans.Infrastructure.Data;
@@ -57,6 +58,11 @@ builder.Host.UseSerilog();
 
 // Add services to the container
 
+// Configuration registry — auto-collects metadata about every config setting the app touches.
+// Created as a concrete instance so it can be used during startup config (before DI is built).
+var configRegistry = new ConfigurationRegistry();
+builder.Services.AddSingleton(configRegistry);
+
 // Configure NodaTime clock
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 
@@ -65,6 +71,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 });
+
+// Register connection string in the config registry for the Admin Configuration page
+builder.Configuration.GetRequiredSetting(
+    configRegistry, "ConnectionStrings:DefaultConnection", "Database", isSensitive: true);
 
 // Configure Npgsql data source with NodaTime and dynamic JSON (for jsonb Dictionary columns).
 // Registered as a DI singleton so the connection string is resolved at service-resolution time,
@@ -126,9 +136,11 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddAuthentication()
     .AddGoogle(options =>
     {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"]
+        options.ClientId = builder.Configuration.GetRequiredSetting(
+                configRegistry, "Authentication:Google:ClientId", "Authentication", isSensitive: true)
             ?? throw new InvalidOperationException("Google ClientId not configured.");
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]
+        options.ClientSecret = builder.Configuration.GetRequiredSetting(
+                configRegistry, "Authentication:Google:ClientSecret", "Authentication", isSensitive: true)
             ?? throw new InvalidOperationException("Google ClientSecret not configured.");
         options.Scope.Add("profile");
         options.Scope.Add("email");
@@ -196,7 +208,9 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter(options =>
         {
             options.Endpoint = new Uri(
-                builder.Configuration["OpenTelemetry:OtlpEndpoint"] ?? "http://localhost:4317");
+                builder.Configuration.GetOptionalSetting(
+                    configRegistry, "OpenTelemetry:OtlpEndpoint", "OpenTelemetry")
+                ?? "http://localhost:4317");
         }))
     .WithMetrics(metrics => metrics
         .AddAspNetCoreInstrumentation()
@@ -218,7 +232,7 @@ builder.Services.AddHealthChecks()
     .AddCheck<GitHubHealthCheck>("github")
     .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace");
 
-builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
 
 // Configure Response Compression
 builder.Services.AddResponseCompression(options =>

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -19,13 +20,15 @@ public class AdminController : HumansControllerBase
     private readonly ILogger<AdminController> _logger;
     private readonly IWebHostEnvironment _environment;
     private readonly IOnboardingService _onboardingService;
+    private readonly ConfigurationRegistry _configRegistry;
 
     public AdminController(
         HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<AdminController> logger,
         IWebHostEnvironment environment,
-        IOnboardingService onboardingService)
+        IOnboardingService onboardingService,
+        ConfigurationRegistry configRegistry)
         : base(userManager)
     {
         _dbContext = dbContext;
@@ -33,6 +36,7 @@ public class AdminController : HumansControllerBase
         _logger = logger;
         _environment = environment;
         _onboardingService = onboardingService;
+        _configRegistry = configRegistry;
     }
 
     [HttpGet("")]
@@ -96,73 +100,44 @@ public class AdminController : HumansControllerBase
     }
 
     [HttpGet("Configuration")]
-    public IActionResult Configuration([FromServices] IConfiguration configuration)
+    public IActionResult Configuration()
     {
-        var keys = new (string Section, string Key, bool Required)[]
-        {
-            ("Authentication", "Authentication:Google:ClientId", true),
-            ("Authentication", "Authentication:Google:ClientSecret", true),
-            ("Database", "ConnectionStrings:DefaultConnection", true),
-            ("Email", "Email:SmtpHost", true),
-            ("Email", "Email:Username", true),
-            ("Email", "Email:Password", true),
-            ("Email", "Email:FromAddress", true),
-            ("Email", "Email:BaseUrl", true),
-            ("GitHub", "GitHub:Owner", true),
-            ("GitHub", "GitHub:Repository", true),
-            ("GitHub", "GitHub:AccessToken", true),
-            ("Google Maps", "GoogleMaps:ApiKey", true),
-            ("Google Workspace", "GoogleWorkspace:ServiceAccountKeyPath", false),
-            ("Google Workspace", "GoogleWorkspace:ServiceAccountKeyJson", false),
-            ("Google Workspace", "GoogleWorkspace:Domain", false),
-            ("OpenTelemetry", "OpenTelemetry:OtlpEndpoint", false),
-            ("Ticket Vendor", "TicketVendor:EventId", false),
-            ("Ticket Vendor", "TicketVendor:Provider", false),
-            ("Ticket Vendor", "TicketVendor:SyncIntervalMinutes", false),
-        };
+        var entries = _configRegistry.GetAll();
 
-        var items = keys.Select(k =>
+        var items = entries.Select(e =>
         {
-            var value = configuration[k.Key];
-            var isSet = !string.IsNullOrEmpty(value);
-            string preview = "(not set)";
-            if (isSet)
+            string? displayValue;
+            if (!e.IsSet)
             {
-                preview = value![..Math.Min(3, value!.Length)] + "...";
+                displayValue = "(not set)";
+            }
+            else if (e.IsSensitive)
+            {
+                // Mask sensitive values — show first 3 chars + "..."
+                displayValue = e.Value is not null
+                    ? e.Value[..Math.Min(3, e.Value.Length)] + "..."
+                    : "***";
+            }
+            else
+            {
+                displayValue = e.Value ?? "(set)";
             }
 
             return new ConfigurationItemViewModel
             {
-                Section = k.Section,
-                Key = k.Key,
-                IsSet = isSet,
-                Preview = preview,
-                IsRequired = k.Required,
+                Section = e.Section,
+                Key = e.Key,
+                IsSet = e.IsSet,
+                DisplayValue = displayValue,
+                IsSensitive = e.IsSensitive,
+                Importance = e.Importance switch
+                {
+                    ConfigurationImportance.Critical => "critical",
+                    ConfigurationImportance.Recommended => "recommended",
+                    _ => "optional"
+                },
             };
         }).ToList();
-
-        // Env var keys (inserted in alphabetical order by section)
-        var feedbackApiKey = Environment.GetEnvironmentVariable("FEEDBACK_API_KEY");
-        items.Insert(
-            items.FindIndex(i => string.Equals(i.Section, "GitHub", StringComparison.Ordinal)),
-            new ConfigurationItemViewModel
-            {
-                Section = "Feedback API",
-                Key = "FEEDBACK_API_KEY (env)",
-                IsSet = !string.IsNullOrEmpty(feedbackApiKey),
-                Preview = !string.IsNullOrEmpty(feedbackApiKey) ? feedbackApiKey[..Math.Min(3, feedbackApiKey.Length)] + "..." : "(not set)",
-                IsRequired = false,
-            });
-
-        var apiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY");
-        items.Add(new ConfigurationItemViewModel
-        {
-            Section = "Ticket Vendor",
-            Key = "TICKET_VENDOR_API_KEY (env)",
-            IsSet = !string.IsNullOrEmpty(apiKey),
-            Preview = !string.IsNullOrEmpty(apiKey) ? apiKey[..Math.Min(3, apiKey.Length)] + "..." : "(not set)",
-            IsRequired = false,
-        });
 
         return View(new AdminConfigurationViewModel { Items = items });
     }

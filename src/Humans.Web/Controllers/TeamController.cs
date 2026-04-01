@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -27,6 +28,7 @@ public class TeamController : HumansControllerBase
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IConfiguration _configuration;
+    private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<TeamController> _logger;
     private readonly IClock _clock;
 
@@ -39,6 +41,7 @@ public class TeamController : HumansControllerBase
         ISystemTeamSync systemTeamSync,
         IStringLocalizer<SharedResource> localizer,
         IConfiguration configuration,
+        ConfigurationRegistry configRegistry,
         IClock clock,
         ILogger<TeamController> logger)
         : base(userManager)
@@ -50,6 +53,7 @@ public class TeamController : HumansControllerBase
         _systemTeamSync = systemTeamSync;
         _localizer = localizer;
         _configuration = configuration;
+        _configRegistry = configRegistry;
         _clock = clock;
         _logger = logger;
     }
@@ -371,7 +375,8 @@ public class TeamController : HumansControllerBase
             CountryCode = p.CountryCode
         }).ToList();
 
-        ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+        ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(
+            _configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
 
         return View(new MapViewModel { Markers = markers });
     }

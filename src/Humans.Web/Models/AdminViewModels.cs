@@ -259,8 +259,9 @@ public class ConfigurationItemViewModel
     public string Section { get; set; } = string.Empty;
     public string Key { get; set; } = string.Empty;
     public bool IsSet { get; set; }
-    public string? Preview { get; set; }
-    public bool IsRequired { get; set; }
+    public string? DisplayValue { get; set; }
+    public bool IsSensitive { get; set; }
+    public string Importance { get; set; } = "optional";
 }
 
 public class AdminConfigurationViewModel

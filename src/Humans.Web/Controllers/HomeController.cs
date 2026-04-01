@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -18,6 +19,7 @@ public class HomeController : HumansControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _shiftSignup;
     private readonly IConfiguration _configuration;
+    private readonly ConfigurationRegistry _configRegistry;
     private readonly IClock _clock;
     private readonly TicketVendorSettings _ticketSettings;
     private readonly ITicketQueryService _ticketQueryService;
@@ -31,6 +33,7 @@ public class HomeController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService shiftSignup,
         IConfiguration configuration,
+        ConfigurationRegistry configRegistry,
         IClock clock,
         IOptions<TicketVendorSettings> ticketSettings,
         ITicketQueryService ticketQueryService,
@@ -43,6 +46,7 @@ public class HomeController : HumansControllerBase
         _shiftMgmt = shiftMgmt;
         _shiftSignup = shiftSignup;
         _configuration = configuration;
+        _configRegistry = configRegistry;
         _clock = clock;
         _ticketSettings = ticketSettings.Value;
         _ticketQueryService = ticketQueryService;
@@ -247,7 +251,8 @@ public class HomeController : HumansControllerBase
 
     public IActionResult Privacy()
     {
-        ViewData["DpoEmail"] = _configuration["Email:DpoAddress"];
+        ViewData["DpoEmail"] = _configuration.GetOptionalSetting(
+            _configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
         return View();
     }
 
