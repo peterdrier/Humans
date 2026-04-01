@@ -62,7 +62,7 @@ public class NotificationController : HumansControllerBase
         // Tab filter
         if (string.Equals(tab, "unread", StringComparison.OrdinalIgnoreCase))
         {
-            query = query.Where(nr => nr.Notification.ResolvedAt == null);
+            query = query.Where(nr => nr.Notification.ResolvedAt == null && nr.ReadAt == null);
         }
         else
         {
@@ -195,7 +195,7 @@ public class NotificationController : HumansControllerBase
             notification.ResolvedAt = _clock.GetCurrentInstant();
             notification.ResolvedByUserId = user.Id;
             await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches(user.Id);
+            InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId));
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -231,7 +231,7 @@ public class NotificationController : HumansControllerBase
             notification.ResolvedAt = _clock.GetCurrentInstant();
             notification.ResolvedByUserId = user.Id;
             await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches(user.Id);
+            InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId));
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -257,6 +257,7 @@ public class NotificationController : HumansControllerBase
         {
             recipient.ReadAt = _clock.GetCurrentInstant();
             await _dbContext.SaveChangesAsync();
+            InvalidateBadgeCaches([user.Id]);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -286,7 +287,7 @@ public class NotificationController : HumansControllerBase
         if (unread.Count > 0)
         {
             await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches(user.Id);
+            InvalidateBadgeCaches([user.Id]);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -326,7 +327,8 @@ public class NotificationController : HumansControllerBase
         if (notifications.Count > 0)
         {
             await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches(user.Id);
+            var affectedUserIds = notifications.SelectMany(n => n.Recipients.Select(r => r.UserId)).Distinct();
+            InvalidateBadgeCaches(affectedUserIds);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -366,7 +368,8 @@ public class NotificationController : HumansControllerBase
         if (notifications.Count > 0)
         {
             await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches(user.Id);
+            var affectedUserIds = notifications.SelectMany(n => n.Recipients.Select(r => r.UserId)).Distinct();
+            InvalidateBadgeCaches(affectedUserIds);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -393,6 +396,7 @@ public class NotificationController : HumansControllerBase
         {
             recipient.ReadAt = _clock.GetCurrentInstant();
             await _dbContext.SaveChangesAsync();
+            InvalidateBadgeCaches([user.Id]);
         }
 
         var url = recipient.Notification.ActionUrl;
@@ -441,9 +445,11 @@ public class NotificationController : HumansControllerBase
             : parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
     }
 
-    private void InvalidateBadgeCaches(Guid userId)
+    private void InvalidateBadgeCaches(IEnumerable<Guid> userIds)
     {
-        _cache.Remove(CacheKeys.NavBadgeCounts);
-        _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
+        foreach (var userId in userIds)
+        {
+            _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
+        }
     }
 }

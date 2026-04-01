@@ -74,18 +74,18 @@ public class CleanupNotificationsJobTests : IDisposable
             ResolvedByUserId = userId,
         };
 
-        // Unresolved — should NOT be deleted
-        var unresolved = new Notification
+        // Unresolved actionable — should NOT be deleted (actionable are never auto-cleaned)
+        var unresolvedActionable = new Notification
         {
             Id = Guid.NewGuid(),
-            Title = "Unresolved",
+            Title = "Unresolved actionable",
             Source = NotificationSource.ShiftCoverageGap,
             Class = NotificationClass.Actionable,
             Priority = NotificationPriority.High,
             CreatedAt = now - Duration.FromDays(20),
         };
 
-        await _dbContext.Notifications.AddRangeAsync(oldResolved, recentResolved, unresolved);
+        await _dbContext.Notifications.AddRangeAsync(oldResolved, recentResolved, unresolvedActionable);
         await _dbContext.SaveChangesAsync();
 
         await _job.ExecuteAsync();
@@ -93,6 +93,55 @@ public class CleanupNotificationsJobTests : IDisposable
         var remaining = await _dbContext.Notifications.ToListAsync();
         remaining.Should().HaveCount(2);
         remaining.Select(n => n.Title).Should().Contain("Recent resolved");
-        remaining.Select(n => n.Title).Should().Contain("Unresolved");
+        remaining.Select(n => n.Title).Should().Contain("Unresolved actionable");
+    }
+
+    [Fact]
+    public async Task DeletesStaleInformationalNotificationsOlderThan30Days()
+    {
+        var now = _clock.GetCurrentInstant();
+
+        // Unresolved informational, 35 days old — should be deleted
+        var staleInformational = new Notification
+        {
+            Id = Guid.NewGuid(),
+            Title = "Stale informational",
+            Source = NotificationSource.TeamMemberAdded,
+            Class = NotificationClass.Informational,
+            Priority = NotificationPriority.Normal,
+            CreatedAt = now - Duration.FromDays(35),
+        };
+
+        // Unresolved informational, 10 days old — should NOT be deleted
+        var recentInformational = new Notification
+        {
+            Id = Guid.NewGuid(),
+            Title = "Recent informational",
+            Source = NotificationSource.TeamMemberAdded,
+            Class = NotificationClass.Informational,
+            Priority = NotificationPriority.Normal,
+            CreatedAt = now - Duration.FromDays(10),
+        };
+
+        // Unresolved actionable, 60 days old — should NOT be deleted (actionable never auto-cleaned)
+        var oldActionable = new Notification
+        {
+            Id = Guid.NewGuid(),
+            Title = "Old actionable",
+            Source = NotificationSource.ConsentReviewNeeded,
+            Class = NotificationClass.Actionable,
+            Priority = NotificationPriority.High,
+            CreatedAt = now - Duration.FromDays(60),
+        };
+
+        await _dbContext.Notifications.AddRangeAsync(staleInformational, recentInformational, oldActionable);
+        await _dbContext.SaveChangesAsync();
+
+        await _job.ExecuteAsync();
+
+        var remaining = await _dbContext.Notifications.ToListAsync();
+        remaining.Should().HaveCount(2);
+        remaining.Select(n => n.Title).Should().Contain("Recent informational");
+        remaining.Select(n => n.Title).Should().Contain("Old actionable");
     }
 }

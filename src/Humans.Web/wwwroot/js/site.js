@@ -70,29 +70,46 @@ document.addEventListener('click', function (e) {
     if (!wrapper || !btn || !popup) return;
 
     var isOpen = false;
-    var loaded = false;
+
+    function updateBellBadge() {
+        // Count remaining rows in the popup by class
+        var actionableRows = popup.querySelectorAll('.notification-row-actionable');
+        var informationalRows = popup.querySelectorAll('.notification-row-informational');
+        var badge = btn.querySelector('.notification-badge');
+        var actionableCount = actionableRows.length;
+        var informationalCount = informationalRows.length;
+
+        // Remove existing badge
+        if (badge) badge.remove();
+
+        if (actionableCount > 0) {
+            var newBadge = document.createElement('span');
+            newBadge.className = 'notification-badge notification-badge-danger';
+            newBadge.textContent = actionableCount > 9 ? '9+' : actionableCount.toString();
+            btn.appendChild(newBadge);
+        } else if (informationalCount > 0) {
+            var dot = document.createElement('span');
+            dot.className = 'notification-badge notification-badge-dot';
+            btn.appendChild(dot);
+        }
+    }
 
     function openPopup() {
         popup.style.display = 'block';
         btn.setAttribute('aria-expanded', 'true');
         isOpen = true;
-        if (!loaded) {
-            fetch('/Notifications/Popup')
-                .then(function (r) { return r.ok ? r.text() : ''; })
-                .then(function (html) {
-                    if (html) {
-                        var content = document.getElementById('notificationPopupContent');
-                        if (content) content.innerHTML = html;
-                        loaded = true;
-                        bindPopupClose();
-                        bindPopupDismiss();
-                        bindPopupMarkAllRead();
-                        trapFocus();
-                    }
-                });
-        } else {
-            trapFocus();
-        }
+        fetch('/Notifications/Popup')
+            .then(function (r) { return r.ok ? r.text() : ''; })
+            .then(function (html) {
+                if (html) {
+                    var content = document.getElementById('notificationPopupContent');
+                    if (content) content.innerHTML = html;
+                    bindPopupClose();
+                    bindPopupDismiss();
+                    bindPopupMarkAllRead();
+                    trapFocus();
+                }
+            });
     }
 
     function closePopup() {
@@ -122,6 +139,7 @@ document.addEventListener('click', function (e) {
                     if (r.ok) {
                         var row = dismissBtn.closest('.notification-row');
                         if (row) row.remove();
+                        updateBellBadge();
                     }
                 });
             });
@@ -138,7 +156,12 @@ document.addEventListener('click', function (e) {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     body: new FormData(form)
                 }).then(function (r) {
-                    if (r.ok) closePopup();
+                    if (r.ok) {
+                        // Remove badge — all marked as read
+                        var badge = btn.querySelector('.notification-badge');
+                        if (badge) badge.remove();
+                        closePopup();
+                    }
                 });
             });
         });

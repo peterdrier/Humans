@@ -1864,8 +1864,15 @@ public class TeamService : ITeamService
                 resources.Select(r => (r.Name, r.Url)),
                 user.PreferredLanguage,
                 cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send added-to-team email for user {UserId} team {TeamId}", userId, team.Id);
+        }
 
-            // Dispatch in-app notification (informational, individual target)
+        // Dispatch in-app notification independently of email success
+        try
+        {
             await _notificationService.SendAsync(
                 NotificationSource.TeamMemberAdded,
                 NotificationClass.Informational,
@@ -1877,7 +1884,7 @@ public class TeamService : ITeamService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send added-to-team notification for user {UserId} team {TeamId}", userId, team.Id);
+            _logger.LogError(ex, "Failed to dispatch added-to-team inbox notification for user {UserId} team {TeamId}", userId, team.Id);
         }
     }
 

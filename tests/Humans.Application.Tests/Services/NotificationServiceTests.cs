@@ -250,19 +250,31 @@ public class NotificationServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SendAsync_InvalidatesNavBadgeCache()
+    public async Task SendAsync_InvalidatesPerUserBadgeCache()
     {
-        // Seed the cache
-        _cache.Set(CacheKeys.NavBadgeCounts, (Review: 1, Voting: 2, Feedback: 0));
+        var userId = Guid.NewGuid();
+
+        // Seed the per-user notification badge cache
+        _cache.Set(CacheKeys.NotificationBadgeCounts(userId), new { ActionableUnreadCount = 0, InformationalUnreadCount = 0 });
 
         await _service.SendAsync(
             NotificationSource.TeamMemberAdded,
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Test",
-            [Guid.NewGuid()]);
+            [userId]);
 
-        // Cache should be evicted
-        _cache.TryGetValue(CacheKeys.NavBadgeCounts, out _).Should().BeFalse();
+        // Per-user cache should be evicted
+        _cache.TryGetValue(CacheKeys.NotificationBadgeCounts(userId), out _).Should().BeFalse();
+
+        // Global NavBadgeCounts should NOT be affected (it's for admin queues, not notifications)
+        _cache.Set(CacheKeys.NavBadgeCounts, (Review: 1, Voting: 2, Feedback: 0));
+        await _service.SendAsync(
+            NotificationSource.TeamMemberAdded,
+            NotificationClass.Informational,
+            NotificationPriority.Normal,
+            "Test2",
+            [Guid.NewGuid()]);
+        _cache.TryGetValue(CacheKeys.NavBadgeCounts, out _).Should().BeTrue();
     }
 }

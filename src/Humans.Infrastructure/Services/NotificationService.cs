@@ -284,7 +284,6 @@ public class NotificationService : INotificationService
 
     private void InvalidateBadgeCaches(IReadOnlyList<Guid> userIds)
     {
-        _cache.Remove(CacheKeys.NavBadgeCounts);
         foreach (var userId in userIds)
         {
             _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
