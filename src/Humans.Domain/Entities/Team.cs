@@ -113,6 +113,14 @@ public class Team
     public bool HasBudget { get; set; }
 
     /// <summary>
+    /// Whether this team is hidden from non-admin users.
+    /// Hidden teams do not appear on profile cards, team listings, or public pages,
+    /// but remain fully visible and manageable by Admin/TeamsAdmin.
+    /// Campaigns can still target hidden teams for code distribution.
+    /// </summary>
+    public bool IsHidden { get; set; }
+
+    /// <summary>
     /// Optional parent team ID for one-level hierarchy (departments).
     /// A team with a parent cannot itself be a parent.
     /// </summary>

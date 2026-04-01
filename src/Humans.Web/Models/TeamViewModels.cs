@@ -494,6 +494,7 @@ public class AdminTeamViewModel
     public DateTime CreatedAt { get; set; }
     public bool IsChildTeam { get; set; }
     public int PendingShiftSignupCount { get; set; }
+    public bool IsHidden { get; set; }
 }
 
 /// <summary>

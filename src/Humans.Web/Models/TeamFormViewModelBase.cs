@@ -18,6 +18,8 @@ public abstract class TeamFormViewModelBase
 
     public bool RequiresApproval { get; set; } = true;
 
+    public bool IsHidden { get; set; }
+
     public Guid? ParentTeamId { get; set; }
 
     /// <summary>

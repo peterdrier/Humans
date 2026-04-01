@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces;
 public record CachedTeam(
     Guid Id, string Name, string? Description, string Slug,
     bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
-    bool IsPublicPage, Instant CreatedAt, List<CachedTeamMember> Members,
+    bool IsPublicPage, bool IsHidden, Instant CreatedAt, List<CachedTeamMember> Members,
     Guid? ParentTeamId = null);
 
 public record CachedTeamMember(
@@ -102,7 +102,8 @@ public record AdminTeamSummary(
     int RoleSlotCount,
     Instant CreatedAt,
     bool IsChildTeam,
-    int PendingShiftSignupCount);
+    int PendingShiftSignupCount,
+    bool IsHidden);
 
 public record AdminTeamListResult(
     IReadOnlyList<AdminTeamSummary> Teams,
@@ -122,6 +123,7 @@ public interface ITeamService
         bool requiresApproval,
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
+        bool isHidden = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -180,6 +182,7 @@ public interface ITeamService
         string? googleGroupPrefix = null,
         string? customSlug = null,
         bool? hasBudget = null,
+        bool? isHidden = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

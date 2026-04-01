@@ -111,7 +111,7 @@ public class ProfileCardViewComponent : ViewComponent
         // Get user's teams (excluding Volunteers system team)
         var userTeams = await _teamService.GetUserTeamsAsync(userId);
         var displayableTeams = userTeams
-            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers)
+            .Where(tm => tm.Team.SystemTeamType != SystemTeamType.Volunteers && !tm.Team.IsHidden)
             .OrderBy(tm => tm.Team.Name, StringComparer.Ordinal)
             .Select(tm => new TeamMembershipViewModel
             {

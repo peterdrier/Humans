@@ -121,6 +121,10 @@
                             {
                                 <span class="badge bg-secondary">@Localizer["AdminTeams_Inactive"]</span>
                             }
+                            @if (team.IsHidden)
+                            {
+                                <span class="badge bg-dark" title="This team is hidden from non-admin users"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
+                            }
                         </td>
                         <td>@team.CreatedAt.ToDisplayCompactDate()</td>
                         @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))

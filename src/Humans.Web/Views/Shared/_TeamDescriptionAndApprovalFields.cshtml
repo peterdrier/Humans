@@ -21,4 +21,10 @@
             <div class="form-text">@Localizer["AdminTeams_RequireApprovalHelp"]</div>
         }
     </div>
+
+    <div class="mb-3 form-check">
+        <input asp-for="IsHidden" type="checkbox" class="form-check-input" disabled="@(isReadOnly ? "disabled" : null)" />
+        <label asp-for="IsHidden" class="form-check-label">Hidden team</label>
+        <div class="form-text">When enabled, this team is invisible to non-admin users. It will not appear on profile cards, team listings, or public pages. Useful for privacy-sensitive groups (e.g., assistance programs).</div>
+    </div>
 }

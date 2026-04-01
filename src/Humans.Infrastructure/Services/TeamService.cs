@@ -55,6 +55,7 @@ public class TeamService : ITeamService
         bool requiresApproval,
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
+        bool isHidden = false,
         CancellationToken cancellationToken = default)
     {
         var baseSlug = Helpers.SlugHelper.GenerateSlug(name);
@@ -98,6 +99,7 @@ public class TeamService : ITeamService
                 Slug = slug,
                 IsActive = true,
                 RequiresApproval = requiresApproval,
+                IsHidden = isHidden,
                 ParentTeamId = parentTeamId,
                 GoogleGroupPrefix = googleGroupPrefix,
                 SystemTeamType = SystemTeamType.None,
@@ -122,8 +124,8 @@ public class TeamService : ITeamService
                 }
 
                 UpsertCachedTeam(new CachedTeam(team.Id, team.Name, team.Description, team.Slug,
-                    team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.IsPublicPage, team.CreatedAt, [],
-                    ParentTeamId: parentTeamId));
+                    team.IsSystemTeam, team.SystemTeamType, team.RequiresApproval, team.IsPublicPage, team.IsHidden,
+                    team.CreatedAt, [], ParentTeamId: parentTeamId));
                 _logger.LogInformation("Created team {TeamName} with slug {Slug}", name, slug);
                 return team;
             }
@@ -192,7 +194,7 @@ public class TeamService : ITeamService
         if (!userId.HasValue)
         {
             var publicDepartments = cachedTeams.Values
-                .Where(t => t.IsPublicPage && !t.IsSystemTeam && t.ParentTeamId is null)
+                .Where(t => t.IsPublicPage && !t.IsSystemTeam && !t.IsHidden && t.ParentTeamId is null)
                 .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
                 .ToList();
@@ -206,11 +208,16 @@ public class TeamService : ITeamService
         }
 
         var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
-        var canCreateTeam = isBoardMember ||
-            await _roleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken) ||
-            await _roleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
+        var isAdmin = await _roleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken);
+        var isTeamsAdmin = await _roleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
+        var canCreateTeam = isBoardMember || isAdmin || isTeamsAdmin;
+        var canSeeHiddenTeams = canCreateTeam; // Admin, Board, and TeamsAdmin can see hidden teams
 
-        var summaries = cachedTeams.Values
+        var visibleTeams = canSeeHiddenTeams
+            ? cachedTeams.Values
+            : cachedTeams.Values.Where(t => !t.IsHidden);
+
+        var summaries = visibleTeams
             .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
             .ToList();
 
@@ -248,7 +255,7 @@ public class TeamService : ITeamService
             return null;
         }
 
-        if (!userId.HasValue && !team.IsPublicPage)
+        if (!userId.HasValue && (!team.IsPublicPage || team.IsHidden))
         {
             return null;
         }
@@ -269,7 +276,7 @@ public class TeamService : ITeamService
                 Team: team,
                 Members: coordinators,
                 ChildTeams: team.ChildTeams
-                    .Where(c => c.IsActive && c.IsPublicPage)
+                    .Where(c => c.IsActive && c.IsPublicPage && !c.IsHidden)
                     .OrderBy(c => c.Name, StringComparer.Ordinal)
                     .ToList(),
                 RoleDefinitions: [],
@@ -291,6 +298,12 @@ public class TeamService : ITeamService
         var isAdmin = await _roleAssignmentService.IsUserAdminAsync(currentUserId, cancellationToken);
         var isTeamsAdmin = await _roleAssignmentService.IsUserTeamsAdminAsync(currentUserId, cancellationToken);
         var canManage = isCurrentUserCoordinator || isBoardMember || isAdmin || isTeamsAdmin;
+
+        // Hidden teams are only visible to Admin, Board, and TeamsAdmin
+        if (team.IsHidden && !isBoardMember && !isAdmin && !isTeamsAdmin)
+        {
+            return null;
+        }
         var pendingRequest = await GetUserPendingRequestAsync(team.Id, currentUserId, cancellationToken);
         var pendingRequestCount = canManage
             ? (await GetPendingRequestsForTeamAsync(team.Id, cancellationToken)).Count
@@ -337,8 +350,15 @@ public class TeamService : ITeamService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var memberships = await GetUserTeamsAsync(userId, cancellationToken);
+        var allMemberships = await GetUserTeamsAsync(userId, cancellationToken);
         var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
+        var isAdmin = await _roleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
+        var isTeamsAdmin = await _roleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
+        var canSeeHidden = isBoardMember || isAdmin || isTeamsAdmin;
+
+        var memberships = canSeeHidden
+            ? allMemberships
+            : allMemberships.Where(m => !m.Team.IsHidden).ToList();
 
         var coordinatorTeamIds = memberships
             .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
@@ -397,6 +417,7 @@ public class TeamService : ITeamService
         string? googleGroupPrefix = null,
         string? customSlug = null,
         bool? hasBudget = null,
+        bool? isHidden = null,
         CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams.FindAsync(new object[] { teamId }, cancellationToken)
@@ -487,6 +508,8 @@ public class TeamService : ITeamService
         team.CustomSlug = customSlug;
         if (hasBudget.HasValue)
             team.HasBudget = hasBudget.Value;
+        if (isHidden.HasValue)
+            team.IsHidden = isHidden.Value;
         team.UpdatedAt = _clock.GetCurrentInstant();
 
         if (becomingChild)
@@ -1902,7 +1925,7 @@ public class TeamService : ITeamService
         var cached = await GetCachedTeamsAsync(cancellationToken);
         var result = new Dictionary<Guid, List<string>>();
 
-        foreach (var team in cached.Values.Where(t => t.SystemTeamType == SystemTeamType.None))
+        foreach (var team in cached.Values.Where(t => t.SystemTeamType == SystemTeamType.None && !t.IsHidden))
         {
             foreach (var member in team.Members.Where(m => userIdSet.Contains(m.UserId)))
             {
@@ -1993,6 +2016,7 @@ public class TeamService : ITeamService
         SystemTeamType: team.SystemTeamType,
         RequiresApproval: team.RequiresApproval,
         IsPublicPage: team.IsPublicPage,
+        IsHidden: team.IsHidden,
         CreatedAt: team.CreatedAt,
         Members: team.Members
             .Where(m => m.LeftAt is null)
@@ -2060,7 +2084,8 @@ public class TeamService : ITeamService
             team.RoleDefinitions.Sum(role => role.SlotCount),
             team.CreatedAt,
             isChildTeam,
-            pendingShiftCounts.GetValueOrDefault(team.Id));
+            pendingShiftCounts.GetValueOrDefault(team.Id),
+            team.IsHidden);
     }
 
     private static TeamDirectorySummary CreateDirectorySummary(
