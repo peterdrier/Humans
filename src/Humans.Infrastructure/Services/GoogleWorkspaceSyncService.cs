@@ -2068,15 +2068,17 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                             "capabilities(canDisableInheritedPermissions, canEnableInheritedPermissions)";
         var existing = await getRequest.ExecuteAsync(cancellationToken);
 
+        var saEmail = await GetServiceAccountEmailAsync();
         _logger.LogInformation(
             "inheritedPermissionsDisabled check for {GoogleId}: name={Name}, mimeType={MimeType}, " +
             "driveId={DriveId}, parents={Parents}, current={Current}, " +
-            "canDisable={CanDisable}, canEnable={CanEnable}",
+            "canDisable={CanDisable}, canEnable={CanEnable}, serviceAccount={ServiceAccount}",
             googleFileId, existing.Name, existing.MimeType,
             existing.DriveId, existing.Parents != null ? string.Join(",", existing.Parents) : "(none)",
             existing.InheritedPermissionsDisabled,
             existing.Capabilities?.CanDisableInheritedPermissions,
-            existing.Capabilities?.CanEnableInheritedPermissions);
+            existing.Capabilities?.CanEnableInheritedPermissions,
+            saEmail);
 
         if (restrict && existing.Capabilities?.CanDisableInheritedPermissions != true)
         {
@@ -2093,9 +2095,23 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                                         $"canDeleteDrive={sharedDrive.Capabilities?.CanDeleteDrive}, " +
                                         $"canRenameDrive={sharedDrive.Capabilities?.CanRenameDrive}, " +
                                         $"canChangeDomainUsersOnlyRestriction={sharedDrive.Capabilities?.CanChangeDomainUsersOnlyRestriction}";
+
+                    // Also list the service account's actual permission on this Shared Drive
+                    var permList = drive.Permissions.List(existing.DriveId);
+                    permList.SupportsAllDrives = true;
+                    permList.UseDomainAdminAccess = true;
+                    permList.Fields = "permissions(id, emailAddress, role, type)";
+                    var perms = await permList.ExecuteAsync(cancellationToken);
+                    var saPerms = perms.Permissions?
+                        .Where(p => string.Equals(p.EmailAddress, saEmail, StringComparison.OrdinalIgnoreCase))
+                        .Select(p => $"role={p.Role}, type={p.Type}")
+                        .ToList();
+                    var saRole = saPerms?.Count > 0 ? string.Join("; ", saPerms) : "NOT FOUND on this Shared Drive";
+
+                    driveCapabilities += $". SA role on drive: {saRole}";
                     _logger.LogWarning(
-                        "Shared Drive {DriveId} capabilities for service account: {Capabilities}",
-                        existing.DriveId, driveCapabilities);
+                        "Shared Drive {DriveId} capabilities for service account {SA}: {Capabilities}",
+                        existing.DriveId, saEmail, driveCapabilities);
                 }
                 catch (Exception ex)
                 {
@@ -2105,7 +2121,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             throw new InvalidOperationException(
                 $"Cannot restrict inherited permissions on '{existing.Name}' ({googleFileId}). " +
-                $"driveId={existing.DriveId}, parents={string.Join(",", existing.Parents ?? [])}, " +
+                $"serviceAccount={saEmail}, driveId={existing.DriveId}, " +
+                $"parents={string.Join(",", existing.Parents ?? [])}, " +
                 $"canDisable={existing.Capabilities?.CanDisableInheritedPermissions}. " +
                 $"Shared Drive capabilities: {driveCapabilities}");
         }
