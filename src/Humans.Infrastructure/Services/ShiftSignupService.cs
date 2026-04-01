@@ -493,9 +493,23 @@ public class ShiftSignupService : IShiftSignupService
         // EE cap check for build shifts
         if (rota.Period == RotaPeriod.Build)
         {
-            var eeWarning = await CheckEeCapAsync(es, shiftsInRange[0].DayOffset);
-            if (eeWarning is not null)
+            var fullEeDays = new List<int>();
+            foreach (var dayOffset in shiftsInRange
+                         .Where(shift => shift.IsEarlyEntry)
+                         .Select(shift => shift.DayOffset)
+                         .Distinct()
+                         .OrderBy(day => day))
+            {
+                var eeWarning = await CheckEeCapAsync(es, dayOffset);
+                if (eeWarning is not null)
+                    fullEeDays.Add(dayOffset);
+            }
+
+            if (fullEeDays.Count > 0)
+            {
+                var eeWarning = $"Early entry capacity reached for day(s): {string.Join(", ", fullEeDays)}.";
                 warning = warning is null ? eeWarning : $"{warning} {eeWarning}";
+            }
         }
 
         // Create signups
@@ -754,7 +768,7 @@ public class ShiftSignupService : IShiftSignupService
         var currentEeCount = await _dbContext.ShiftSignups
             .Where(d => d.Status == SignupStatus.Confirmed &&
                         d.Shift.Rota.EventSettingsId == es.Id &&
-                        d.Shift.DayOffset < 0)
+                        d.Shift.DayOffset == dayOffset)
             .Select(d => d.UserId)
             .Distinct()
             .CountAsync();
