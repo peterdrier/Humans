@@ -198,13 +198,13 @@ public class TicketingBudgetService : ITicketingBudgetService
 
         // If we already have actuals, use observed daily sales velocity
         var remainingTickets = projection.InitialSalesCount +
-            (int)(projection.DailySalesRate * (decimal)Period.Between(projection.StartDate.Value, eventDate).Days)
+            (int)(projection.DailySalesRate * (decimal)Period.Between(projection.StartDate.Value, eventDate, PeriodUnits.Days).Days)
             - totalActualTickets;
 
         if (remainingTickets <= 0)
             return [];
 
-        var remainingDays = Period.Between(projectionStart, eventDate).Days;
+        var remainingDays = Period.Between(projectionStart, eventDate, PeriodUnits.Days).Days;
         if (remainingDays <= 0)
             return [];
 
@@ -218,7 +218,7 @@ public class TicketingBudgetService : ITicketingBudgetService
             var weekEnd = weekStart.PlusDays(6);
             if (weekEnd > eventDate) weekEnd = eventDate;
 
-            var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1)).Days;
+            var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
             var weekTickets = (int)Math.Round(projectedDailyRate * daysInWeek);
             if (weekTickets <= 0) weekTickets = 1;
 
@@ -283,7 +283,7 @@ public class TicketingBudgetService : ITicketingBudgetService
         }
 
         var totalProjectedTickets = projection.InitialSalesCount +
-            (int)(projection.DailySalesRate * (decimal)Period.Between(projection.StartDate.Value, eventDate).Days);
+            (int)(projection.DailySalesRate * (decimal)Period.Between(projection.StartDate.Value, eventDate, PeriodUnits.Days).Days);
         var remainingTickets = totalProjectedTickets - totalActualTickets;
 
         if (remainingTickets <= 0) return 0;
@@ -292,7 +292,7 @@ public class TicketingBudgetService : ITicketingBudgetService
             ? currentWeekMonday
             : GetIsoMonday(projection.StartDate.Value);
 
-        var remainingDays = Period.Between(projectionStart, eventDate).Days;
+        var remainingDays = Period.Between(projectionStart, eventDate, PeriodUnits.Days).Days;
         if (remainingDays <= 0) return 0;
 
         var projectedDailyRate = (decimal)remainingTickets / remainingDays;
@@ -304,7 +304,7 @@ public class TicketingBudgetService : ITicketingBudgetService
             var weekEnd = weekStart.PlusDays(6);
             if (weekEnd > eventDate) weekEnd = eventDate;
 
-            var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1)).Days;
+            var daysInWeek = Period.Between(weekStart, weekEnd.PlusDays(1), PeriodUnits.Days).Days;
             var weekTickets = (int)Math.Round(projectedDailyRate * daysInWeek);
             if (weekTickets <= 0) weekTickets = 1;
 
