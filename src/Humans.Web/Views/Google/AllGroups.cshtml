@@ -29,6 +29,30 @@
     var allSettingKeys = standardKeys.Concat(extraKeys).Concat(deprecatedKeys).ToList();
 }
 
+<style>
+    .all-groups-table .sticky-col-email {
+        position: sticky;
+        left: 0;
+        min-width: 12rem;
+        background: #fff;
+        z-index: 2;
+    }
+
+    .all-groups-table .sticky-col-name {
+        position: sticky;
+        left: 12rem;
+        min-width: 14rem;
+        background: #fff;
+        z-index: 2;
+    }
+
+    .all-groups-table thead .sticky-col-email,
+    .all-groups-table thead .sticky-col-name {
+        background: #f8f9fa;
+        z-index: 3;
+    }
+</style>
+
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h1>All Domain Groups</h1>
@@ -79,11 +103,11 @@
         </div>
 
         <div style="overflow-x: auto;">
-            <table class="table table-sm table-hover" style="white-space: nowrap;">
+            <table class="table table-sm table-hover all-groups-table" style="white-space: nowrap;">
                 <thead class="table-light">
                     <tr>
-                        <th style="position: sticky; left: 0; background: inherit; z-index: 1;">Group Email</th>
-                        <th style="position: sticky; left: 0; background: inherit; z-index: 1;">Display Name</th>
+                        <th class="sticky-col-email">Group Email</th>
+                        <th class="sticky-col-name">Display Name</th>
                         <th>Team</th>
                         <th class="text-end">Members</th>
                         @foreach (var key in allSettingKeys)
@@ -110,10 +134,10 @@
                     @foreach (var group in Model.Groups)
                     {
                         <tr class="@(group.ErrorMessage is not null ? "table-danger" : "")">
-                            <td style="position: sticky; left: 0; background: white; z-index: 1;">
+                            <td class="sticky-col-email">
                                 <code class="small">@(group.GroupEmail.Split('@')[0])@@</code>
                             </td>
-                            <td style="position: sticky; left: 0; background: white; z-index: 1;">
+                            <td class="sticky-col-name">
                                 @group.DisplayName
                             </td>
                             <td>
