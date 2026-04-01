@@ -114,6 +114,9 @@ public class ProfileController : HumansControllerBase
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
 
+    [HttpGet("")]
+    public IActionResult Index() => RedirectToAction(nameof(Me));
+
     [HttpGet("Me")]
     public async Task<IActionResult> Me()
     {
