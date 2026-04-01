@@ -6,7 +6,9 @@ namespace Humans.Web.Controllers;
 /// <summary>
 /// Temporary redirects from old /Human/* routes to new /Profile/* routes.
 /// This controller exists to prevent broken bookmarks and external links.
+/// Clean up after 2026-05-01 — by then all cached links and bookmarks should have updated.
 /// </summary>
+[Obsolete("Temporary redirect shim. Remove after 2026-05-01.")]
 [Authorize]
 [Route("Human")]
 public class HumanRedirectController : Controller
