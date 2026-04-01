@@ -113,10 +113,13 @@ public class AdminController : HumansControllerBase
             }
             else if (e.IsSensitive)
             {
-                // Mask sensitive values — show first 3 chars + "..."
-                displayValue = e.Value is not null
-                    ? e.Value[..Math.Min(3, e.Value.Length)] + "..."
-                    : "***";
+                // Show first 4 chars of longer secrets so you can tell which key is in use
+                displayValue = e.Value switch
+                {
+                    { Length: > 8 } v => v[..4] + "••••••",
+                    not null => "••••••",
+                    _ => "••••••"
+                };
             }
             else
             {
