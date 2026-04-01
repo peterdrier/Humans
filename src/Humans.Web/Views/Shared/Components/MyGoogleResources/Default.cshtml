@@ -1,0 +1,48 @@
+@model Humans.Web.ViewComponents.MyGoogleResourcesViewModel
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-cloud me-1"></i> Your Google Resources
+    </div>
+    <div class="list-group list-group-flush">
+        @foreach (var item in Model.Resources)
+        {
+            var icon = item.Resource.ResourceType == Humans.Domain.Enums.GoogleResourceType.Group
+                ? "fa-solid fa-users"
+                : "fa-solid fa-folder";
+            var typeLabel = item.Resource.ResourceType == Humans.Domain.Enums.GoogleResourceType.Group
+                ? "Group"
+                : "Drive";
+
+            if (item.Resource.Url is not null)
+            {
+                <a href="@item.Resource.Url" target="_blank" rel="noopener noreferrer" class="list-group-item list-group-item-action d-flex justify-content-between align-items-start">
+                    <div>
+                        <i class="@icon me-1 text-muted"></i>
+                        @item.Resource.Name
+                        <br />
+                        <small class="text-muted">
+                            <span class="badge bg-light text-dark border">@typeLabel</span>
+                            via <a asp-controller="Team" asp-action="Detail" asp-route-slug="@item.TeamSlug" class="text-decoration-none" @* prevent outer link navigation *@ onclick="event.stopPropagation();">@item.TeamName</a>
+                        </small>
+                    </div>
+                    <i class="fa-solid fa-external-link-alt text-muted align-self-center"></i>
+                </a>
+            }
+            else
+            {
+                <div class="list-group-item d-flex justify-content-between align-items-start">
+                    <div>
+                        <i class="@icon me-1 text-muted"></i>
+                        @item.Resource.Name
+                        <br />
+                        <small class="text-muted">
+                            <span class="badge bg-light text-dark border">@typeLabel</span>
+                            via <a asp-controller="Team" asp-action="Detail" asp-route-slug="@item.TeamSlug" class="text-decoration-none">@item.TeamName</a>
+                        </small>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>

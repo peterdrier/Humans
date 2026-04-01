@@ -237,6 +237,11 @@
             </div>
         </div>
 
+        @if (Model.IsVolunteerMember)
+        {
+            @await Component.InvokeAsync("MyGoogleResources")
+        }
+
         <div class="card mb-4">
             <div class="card-header">@Localizer["Dashboard_YourMembership"]</div>
             <div class="card-body">
