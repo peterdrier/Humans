@@ -2062,23 +2062,38 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     {
         var drive = await GetDriveServiceAsync();
 
-        // Check capabilities before attempting the update
         var getRequest = drive.Files.Get(googleFileId);
         getRequest.SupportsAllDrives = true;
-        getRequest.Fields = "id, capabilities(canDisableInheritedPermissions, canEnableInheritedPermissions)";
+        getRequest.Fields = "id, name, mimeType, driveId, parents, inheritedPermissionsDisabled, " +
+                            "capabilities(canDisableInheritedPermissions, canEnableInheritedPermissions)";
         var existing = await getRequest.ExecuteAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "inheritedPermissionsDisabled check for {GoogleId}: name={Name}, mimeType={MimeType}, " +
+            "driveId={DriveId}, parents={Parents}, current={Current}, " +
+            "canDisable={CanDisable}, canEnable={CanEnable}",
+            googleFileId, existing.Name, existing.MimeType,
+            existing.DriveId, existing.Parents != null ? string.Join(",", existing.Parents) : "(none)",
+            existing.InheritedPermissionsDisabled,
+            existing.Capabilities?.CanDisableInheritedPermissions,
+            existing.Capabilities?.CanEnableInheritedPermissions);
 
         if (restrict && existing.Capabilities?.CanDisableInheritedPermissions != true)
         {
-            throw new InvalidOperationException(
-                $"Google Drive does not allow disabling inherited permissions on file {googleFileId}. " +
-                "This may be a Shared Drive root or a file where the service account lacks organizer access.");
+            var isSharedDriveRoot = string.Equals(existing.DriveId, googleFileId, StringComparison.Ordinal) ||
+                                    existing.Parents == null ||
+                                    existing.Parents.Count == 0;
+            throw new InvalidOperationException(isSharedDriveRoot
+                ? $"Cannot restrict inherited permissions on '{existing.Name}' — it is a Shared Drive root (no parent to inherit from)."
+                : $"Cannot restrict inherited permissions on '{existing.Name}' ({googleFileId}). " +
+                  $"driveId={existing.DriveId}, parents={string.Join(",", existing.Parents ?? [])}, " +
+                  $"canDisable={existing.Capabilities?.CanDisableInheritedPermissions}");
         }
 
         if (!restrict && existing.Capabilities?.CanEnableInheritedPermissions != true)
         {
             throw new InvalidOperationException(
-                $"Google Drive does not allow enabling inherited permissions on file {googleFileId}.");
+                $"Cannot re-enable inherited permissions on '{existing.Name}' ({googleFileId}).");
         }
 
         var fileMetadata = new Google.Apis.Drive.v3.Data.File
