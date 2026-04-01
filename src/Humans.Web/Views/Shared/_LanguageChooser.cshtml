@@ -16,7 +16,7 @@
                 <form asp-controller="Language" asp-action="SetLanguage" method="post">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="culture" value="@culture" />
-                    <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                    <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
                     <button type="submit" class="dropdown-item @(string.Equals(culture, currentCulture, StringComparison.Ordinal) ? "active" : "")">
                         @culture.ToDisplayLanguageName()
                     </button>
