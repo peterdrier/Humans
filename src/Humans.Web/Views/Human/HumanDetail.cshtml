@@ -308,7 +308,7 @@
         <div class="card mb-4">
             <div class="card-header">Google Sync</div>
             <div class="card-body">
-                <a asp-action="HumanGoogleSyncAudit" asp-route-id="@Model.UserId"
+                <a asp-controller="Google" asp-action="HumanGoogleSyncAudit" asp-route-id="@Model.UserId"
                    class="btn btn-outline-secondary w-100">View Google Sync Audit</a>
             </div>
         </div>
@@ -325,7 +325,7 @@
                 }
                 else
                 {
-                    <form asp-action="ProvisionEmail" asp-route-id="@Model.UserId" method="post">
+                    <form asp-controller="Google" asp-action="ProvisionEmail" asp-route-id="@Model.UserId" method="post">
                         @Html.AntiForgeryToken()
                         <div class="input-group mb-2">
                             <input type="text" name="emailPrefix" class="form-control form-control-sm"

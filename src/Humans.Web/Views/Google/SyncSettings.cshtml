@@ -1,0 +1,56 @@
+@model Humans.Web.Models.SyncSettingsViewModel
+@{
+    ViewData["Title"] = "Sync Settings";
+}
+
+<h2>Sync Settings</h2>
+<p class="text-muted">Configure how automated sync jobs handle each service.</p>
+
+<vc:temp-data-alerts />
+
+<div class="row g-4">
+    @foreach (var setting in Model.Settings)
+    {
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>@setting.ServiceName</strong>
+                    @{
+                        var badgeClass = setting.CurrentMode switch
+                        {
+                            SyncMode.None => "bg-secondary",
+                            SyncMode.AddOnly => "bg-info",
+                            SyncMode.AddAndRemove => "bg-success",
+                            _ => "bg-secondary"
+                        };
+                    }
+                    <span class="badge @badgeClass">@setting.CurrentMode</span>
+                </div>
+                <div class="card-body">
+                    <form method="post" asp-action="UpdateSyncSetting">
+                        <input type="hidden" name="serviceType" value="@setting.ServiceType" />
+                        <div class="mb-3">
+                            <label class="form-label">Sync Mode</label>
+                            <select name="mode" class="form-select">
+                                <option value="None" selected="@(setting.CurrentMode == SyncMode.None ? "selected" : null)">None — Jobs skip this service</option>
+                                <option value="AddOnly" selected="@(setting.CurrentMode == SyncMode.AddOnly ? "selected" : null)">Add Only — Jobs add missing humans</option>
+                                <option value="AddAndRemove" selected="@(setting.CurrentMode == SyncMode.AddAndRemove ? "selected" : null)">Add & Remove — Jobs add + remove</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                    </form>
+                </div>
+                @if (setting.UpdatedAt.HasValue)
+                {
+                    <div class="card-footer text-muted small">
+                        Last updated: @setting.UpdatedAt.Value.ToDisplayGeneralDateTime()
+                        @if (setting.UpdatedByName != null)
+                        {
+                            <text> by @setting.UpdatedByName</text>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>

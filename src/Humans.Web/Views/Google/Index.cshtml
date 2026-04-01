@@ -1,0 +1,94 @@
+@{
+    ViewData["Title"] = "Google Integration";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Google Integration</h1>
+    <vc:access-matrix section="Google" />
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Google Tools</div>
+            <div class="list-group list-group-flush">
+                <a asp-action="SyncSettings" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-sliders me-2"></i>Sync Settings
+                </a>
+                <a asp-action="Sync" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-arrows-rotate me-2"></i>Resource Sync Status
+                </a>
+                <a asp-action="AllGroups" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-globe me-2"></i>All Domain Groups
+                </a>
+                <a asp-action="Accounts" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-at me-2"></i>@@nobodies.team Accounts
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">System Team Sync</div>
+            <div class="card-body">
+                <form asp-action="SyncSystemTeams" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-arrows-rotate me-1"></i>Sync System Teams
+                    </button>
+                    <small class="text-muted d-block mt-1">Recalculates Volunteers, Leads, and Board team membership.</small>
+                </form>
+                <a asp-action="SyncResults" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Sync Results
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Google Group Settings</div>
+            <div class="card-body">
+                <form asp-action="CheckGroupSettings" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-magnifying-glass me-1"></i>Check Group Settings
+                    </button>
+                    <small class="text-muted d-block mt-1">Checks all Google Groups for settings drift. Does not modify anything.</small>
+                </form>
+                <a asp-action="GroupSettingsResults" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Group Settings Results
+                </a>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Email Backfill</div>
+            <div class="card-body">
+                <form asp-action="CheckEmailMismatches" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-envelope-circle-check me-1"></i>Check Email Mismatches
+                    </button>
+                    <small class="text-muted d-block mt-1">Compares stored emails against Google Admin SDK. Detects case differences in @@nobodies.team addresses.</small>
+                </form>
+                <a asp-action="EmailBackfillReview" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Results
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">Quick Links</div>
+            <div class="list-group list-group-flush">
+                <a asp-controller="Admin" asp-action="Index" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-gear me-2"></i>Admin Tools
+                </a>
+                <a asp-controller="Board" asp-action="AuditLog" class="list-group-item list-group-item-action">
+                    <i class="fa-solid fa-clipboard-list me-2"></i>Audit Log
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

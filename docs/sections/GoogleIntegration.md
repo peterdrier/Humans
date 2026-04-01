@@ -1,5 +1,20 @@
 # Google Integration — Section Invariants
 
+## Controller Structure
+
+All Google integration management is consolidated in `GoogleController` (`/Google`), with team-level resource linking remaining in `TeamAdminController`. Key routes:
+
+- `/Google` — Google integration dashboard
+- `/Google/SyncSettings` — per-service sync mode management
+- `/Google/Sync` — resource sync status dashboard (preview/execute)
+- `/Google/AllGroups` — domain-wide group management
+- `/Google/Accounts` — @nobodies.team Workspace account management
+- `/Google/Human/{id}/SyncAudit` — per-human sync audit
+- `/Google/Sync/Resource/{id}/Audit` — per-resource sync audit
+- `/Google/CheckGroupSettings`, `/Google/CheckEmailMismatches` — diagnostic tools
+
+Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminController`.
+
 ## Concepts
 
 - **Google Resources** are Shared Drive folders, Shared Drives, Drive files, and Google Groups linked to a team. When a human joins or leaves a team, their access to the team's linked Google resources is automatically managed.
@@ -11,9 +26,11 @@
 
 | Actor | Capabilities |
 |-------|-------------|
-| Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections |
-| TeamsAdmin, Board, Admin | Link and unlink Google resources (Drive folders, Groups) to teams. View resource status. Trigger per-resource sync |
-| Coordinator | Link and unlink Google resources for their own department. Trigger per-resource sync for their own department |
+| Admin | Manage sync settings (per-service mode). Trigger manual syncs and execute sync actions. View reconciliation results. Check and remediate Google Group settings drift. Link unlinked groups to teams. Review and apply email backfill corrections. Manage @nobodies.team Workspace accounts (provision, suspend, reactivate, reset password, link). Provision per-human @nobodies.team email |
+| TeamsAdmin, Board, Admin | View resource sync status dashboard. Link and unlink Google resources (Drive folders, Groups) to teams via TeamAdminController. View resource status. Trigger per-resource sync |
+| Coordinator | Link and unlink Google resources for their own department (via TeamAdminController). Trigger per-resource sync for their own department |
+| Board, Admin | View Drive activity anomaly check results. View sync audit logs |
+| HumanAdmin, Board, Admin | View per-human Google sync audit |
 | Background jobs | Automated sync: system team sync (hourly), resource reconciliation (daily at 03:00), sync outbox processing, resource provisioning |
 
 ## Invariants

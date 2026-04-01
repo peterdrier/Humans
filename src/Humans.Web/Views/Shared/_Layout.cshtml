@@ -96,6 +96,9 @@
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Google" asp-action="Index">Google</a>
+                            </li>
                         }
                         @if (Humans.Web.Authorization.RoleChecks.CanAccessTickets(User))
                         {

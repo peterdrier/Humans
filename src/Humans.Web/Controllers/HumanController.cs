@@ -403,40 +403,6 @@ public class HumanController : HumansControllerBase
         return View(viewModel);
     }
 
-    [Authorize(Roles = RoleGroups.HumanAdminOrAdmin)]
-    [HttpPost("{id:guid}/ProvisionEmail")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ProvisionEmail(Guid id, string emailPrefix)
-    {
-        if (string.IsNullOrWhiteSpace(emailPrefix))
-        {
-            SetError("Email prefix is required.");
-            return RedirectToAction(nameof(HumanDetail), new { id });
-        }
-
-        var currentUser = await GetCurrentUserAsync();
-        if (currentUser is null)
-            return NotFound();
-
-        var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
-            id, emailPrefix, currentUser.Id, currentUser.DisplayName);
-
-        if (!result.Success)
-        {
-            SetError(result.ErrorMessage ?? "Provisioning failed.");
-        }
-        else if (result.RecoveryEmail is not null)
-        {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
-        }
-        else
-        {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
-        }
-
-        return RedirectToAction(nameof(HumanDetail), new { id });
-    }
-
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
     [HttpGet("{id:guid}/Outbox")]
     public async Task<IActionResult> Outbox(Guid id)
@@ -522,25 +488,6 @@ public class HumanController : HumansControllerBase
 
         SetSuccess("Signup rejected.");
         return RedirectToAction(nameof(HumanDetail), new { id });
-    }
-
-    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
-    [HttpGet("{id:guid}/Admin/GoogleSyncAudit")]
-    public async Task<IActionResult> HumanGoogleSyncAudit(Guid id)
-    {
-        var user = await FindUserByIdAsync(id);
-
-        if (user is null)
-        {
-            return NotFound();
-        }
-
-        var entries = await _auditLogService.GetGoogleSyncByUserAsync(id);
-        return GoogleSyncAuditView(
-            $"Google Sync Audit: {user.DisplayName}",
-            Url.Action(nameof(HumanDetail), new { id }),
-            "Back to Member Detail",
-            entries);
     }
 
     [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]

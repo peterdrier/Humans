@@ -2,7 +2,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Audit Log</h1>
-    <form asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm">
+    <form asp-controller="Google" asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm">
         @Html.AntiForgeryToken()
         <button type="submit" class="btn btn-outline-warning" id="checkBtn">
             Check Drive Activity Now

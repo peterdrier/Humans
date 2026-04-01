@@ -2,18 +2,17 @@
 
 ## Concepts
 
-- **System administration** covers infrastructure-level operations: sync settings, email outbox, background jobs, configuration, logs, Google group management, and database health.
-- **Human administration** covers person-level operations: viewing the humans list, managing role assignments, provisioning workspace accounts, suspending/unsuspending, tier management, and account merging.
+- **System administration** covers infrastructure-level operations: email outbox, background jobs, configuration, logs, and database health. Google integration tools have been consolidated into the Google section (`/Google`).
+- **Human administration** covers person-level operations: viewing the humans list, managing role assignments, suspending/unsuspending, tier management, and account merging.
 - **Purge** permanently deletes a human and all associated data. Only available in non-production environments.
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|-------------|
-| Admin | Full system administration: sync settings, email outbox (pause/resume/retry/discard), Hangfire dashboard, configuration review, in-memory logs, Google group management (check settings, remediate drift, link groups to teams), system team sync, database version, clear Hangfire locks, email preview, email backfill, purge humans |
-| HumanAdmin, Board, Admin | Human administration: view humans list with admin detail, view/edit role assignments, provision @nobodies.team email accounts, manage tier, suspend/unsuspend, view audit log and email outbox per human |
-| Board, Admin | Legal document management (create/edit documents and versions). Email administration (workspace account management) |
-| HumanAdmin, Admin | Provision @nobodies.team workspace email accounts |
+| Admin | Full system administration: email outbox (pause/resume/retry/discard), Hangfire dashboard, configuration review, in-memory logs, database version, clear Hangfire locks, email preview, purge humans. Google integration tools are consolidated at `/Google` |
+| HumanAdmin, Board, Admin | Human administration: view humans list with admin detail, view/edit role assignments, manage tier, suspend/unsuspend, view audit log and email outbox per human |
+| Board, Admin | Legal document management (create/edit documents and versions) |
 
 ## Invariants
 

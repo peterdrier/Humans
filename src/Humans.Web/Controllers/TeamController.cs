@@ -564,43 +564,6 @@ public class TeamController : HumansControllerBase
         return RedirectToAction(nameof(MyTeams));
     }
 
-    [HttpGet("Sync")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
-    public IActionResult Sync()
-    {
-        var viewModel = new TeamSyncViewModel
-        {
-            CanExecuteActions = RoleChecks.IsAdmin(User)
-        };
-        return View(viewModel);
-    }
-
-    [HttpGet("Sync/Preview/{resourceType}")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
-    public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
-    {
-        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview);
-        return Json(result);
-    }
-
-    [HttpPost("Sync/Execute/{resourceId}")]
-    [Authorize(Roles = RoleNames.Admin)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SyncExecute(Guid resourceId)
-    {
-        var result = await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
-        return Json(result);
-    }
-
-    [HttpPost("Sync/ExecuteAll/{resourceType}")]
-    [Authorize(Roles = RoleNames.Admin)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SyncExecuteAll(GoogleResourceType resourceType)
-    {
-        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute);
-        return Json(result);
-    }
-
     [HttpGet("Summary")]
     [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> Summary()
