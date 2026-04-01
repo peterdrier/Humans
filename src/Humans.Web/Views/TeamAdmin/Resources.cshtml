@@ -44,6 +44,7 @@
                         <th>@Localizer["AdminTeams_Name"]</th>
                         <th>@Localizer["AdminTeams_Type"]</th>
                         <th>Permission</th>
+                        <th>Restrict Inheritance</th>
                         <th>@Localizer["TeamAdmin_LastSynced"]</th>
                         <th>@Localizer["Common_Status"]</th>
                         <th>@Localizer["MyTeams_Actions"]</th>
@@ -102,6 +103,31 @@
                                                 }
                                             }
                                         </select>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (resource.IsDriveFolder)
+                                {
+                                    <form asp-action="ToggleRestrictInheritedAccess" asp-route-slug="@Model.TeamSlug" asp-route-resourceId="@resource.Id" method="post" class="d-inline restrict-form">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="restrict" value="@((!resource.RestrictInheritedAccess).ToString().ToLowerInvariant())" />
+                                        @if (resource.RestrictInheritedAccess)
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-warning" data-confirm="This will re-enable inherited permissions on this folder. Are you sure?">
+                                                <i class="fa-solid fa-lock me-1"></i>Restricted
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" data-confirm="This will disable inherited permissions on this folder, restricting access to only direct permissions. Are you sure?">
+                                                <i class="fa-solid fa-lock-open me-1"></i>Inherited
+                                            </button>
+                                        }
                                     </form>
                                 }
                                 else

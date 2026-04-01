@@ -69,4 +69,12 @@ public class GoogleResource
     /// None (CLR default) for Groups; Drive resources must set an explicit level.
     /// </summary>
     public DrivePermissionLevel DrivePermissionLevel { get; set; }
+
+    /// <summary>
+    /// When true, the system enforces inheritedPermissionsDisabled on the corresponding
+    /// Google Drive folder, preventing parent permission inheritance. The reconciliation
+    /// job detects and corrects drift if someone re-enables inheritance manually.
+    /// Only applicable to Drive folders.
+    /// </summary>
+    public bool RestrictInheritedAccess { get; set; }
 }

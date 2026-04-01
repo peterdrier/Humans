@@ -29,6 +29,7 @@ public partial class TeamResourceService : ITeamResourceService
     private readonly TeamResourceManagementSettings _resourceSettings;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IGoogleSyncService _googleSyncService;
     private readonly IClock _clock;
     private readonly ILogger<TeamResourceService> _logger;
 
@@ -42,6 +43,7 @@ public partial class TeamResourceService : ITeamResourceService
         IOptions<TeamResourceManagementSettings> resourceSettings,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
+        IGoogleSyncService googleSyncService,
         IClock clock,
         ILogger<TeamResourceService> logger)
     {
@@ -50,6 +52,7 @@ public partial class TeamResourceService : ITeamResourceService
         _resourceSettings = resourceSettings.Value;
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
+        _googleSyncService = googleSyncService;
         _clock = clock;
         _logger = logger;
     }
@@ -674,5 +677,35 @@ public partial class TeamResourceService : ITeamResourceService
         resource.DrivePermissionLevel = level;
         await _dbContext.SaveChangesAsync(ct);
         _logger.LogInformation("Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
+    }
+
+    /// <inheritdoc />
+    public async Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default)
+    {
+        var resource = await _dbContext.GoogleResources.FindAsync([resourceId], ct);
+        if (resource is null) return;
+
+        if (resource.ResourceType != GoogleResourceType.DriveFolder)
+        {
+            _logger.LogWarning("Cannot set RestrictInheritedAccess on non-folder resource {ResourceId} (type: {Type})",
+                resourceId, resource.ResourceType);
+            return;
+        }
+
+        resource.RestrictInheritedAccess = restrict;
+        await _dbContext.SaveChangesAsync(ct);
+
+        try
+        {
+            await _googleSyncService.SetInheritedPermissionsDisabledAsync(resource.GoogleId, restrict, ct);
+            _logger.LogInformation("Set RestrictInheritedAccess={Restrict} for resource {ResourceId} ({GoogleId})",
+                restrict, resourceId, resource.GoogleId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set inheritedPermissionsDisabled on Google Drive for resource {ResourceId} ({GoogleId})",
+                resourceId, resource.GoogleId);
+            throw;
+        }
     }
 }

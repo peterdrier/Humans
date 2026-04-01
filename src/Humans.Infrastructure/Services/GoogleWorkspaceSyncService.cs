@@ -2056,4 +2056,81 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         segments.Reverse();
         return string.Join(" / ", segments);
     }
+
+    /// <inheritdoc />
+    public async Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken cancellationToken = default)
+    {
+        var drive = await GetDriveServiceAsync();
+        var fileMetadata = new Google.Apis.Drive.v3.Data.File
+        {
+            InheritedPermissionsDisabled = restrict
+        };
+        var updateRequest = drive.Files.Update(fileMetadata, googleFileId);
+        updateRequest.SupportsAllDrives = true;
+        updateRequest.Fields = "id, inheritedPermissionsDisabled";
+        await updateRequest.ExecuteAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default)
+    {
+        var restrictedResources = await _dbContext.GoogleResources
+            .Where(r => r.RestrictInheritedAccess
+                && r.ResourceType == GoogleResourceType.DriveFolder
+                && r.IsActive)
+            .ToListAsync(cancellationToken);
+
+        if (restrictedResources.Count == 0)
+            return 0;
+
+        var drive = await GetDriveServiceAsync();
+        var correctedCount = 0;
+
+        foreach (var resource in restrictedResources)
+        {
+            try
+            {
+                var getRequest = drive.Files.Get(resource.GoogleId);
+                getRequest.SupportsAllDrives = true;
+                getRequest.Fields = "id, inheritedPermissionsDisabled";
+                var file = await getRequest.ExecuteAsync(cancellationToken);
+
+                if (file.InheritedPermissionsDisabled != true)
+                {
+                    _logger.LogWarning(
+                        "Inherited access drift detected for resource {ResourceId} ({GoogleId}): " +
+                        "inheritedPermissionsDisabled is {Actual}, expected true. Correcting.",
+                        resource.Id, resource.GoogleId, file.InheritedPermissionsDisabled);
+
+                    await SetInheritedPermissionsDisabledAsync(resource.GoogleId, true, cancellationToken);
+
+                    await _auditLogService.LogAsync(
+                        AuditAction.GoogleResourceInheritanceDriftCorrected,
+                        nameof(GoogleResource), resource.Id,
+                        $"Corrected inherited access drift for Drive folder '{resource.Name}' — " +
+                        "re-disabled inherited permissions",
+                        "GoogleResourceReconciliationJob");
+
+                    correctedCount++;
+                }
+            }
+            catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
+            {
+                _logger.LogWarning(
+                    "Drive folder {GoogleId} not found (resource {ResourceId}) during inherited access check — may have been deleted",
+                    resource.GoogleId, resource.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to check/enforce inherited access restriction for resource {ResourceId} ({GoogleId})",
+                    resource.Id, resource.GoogleId);
+            }
+        }
+
+        if (correctedCount > 0)
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return correctedCount;
+    }
 }

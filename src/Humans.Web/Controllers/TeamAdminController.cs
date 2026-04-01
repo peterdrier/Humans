@@ -355,7 +355,9 @@ public class TeamAdminController : HumansTeamControllerBase
                 IsActive = r.IsActive,
                 ErrorMessage = r.ErrorMessage,
                 DrivePermissionLevel = r.DrivePermissionLevel,
-                IsDriveResource = r.ResourceType is GoogleResourceType.DriveFolder or GoogleResourceType.DriveFile or GoogleResourceType.SharedDrive
+                IsDriveResource = r.ResourceType is GoogleResourceType.DriveFolder or GoogleResourceType.DriveFile or GoogleResourceType.SharedDrive,
+                RestrictInheritedAccess = r.RestrictInheritedAccess,
+                IsDriveFolder = r.ResourceType is GoogleResourceType.DriveFolder
             }).ToList()
         };
 
@@ -483,6 +485,42 @@ public class TeamAdminController : HumansTeamControllerBase
 
         await _teamResourceService.UpdatePermissionLevelAsync(resourceId, level);
         SetSuccess($"Permission level updated to {level}.");
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/{resourceId}/RestrictInheritedAccess")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleRestrictInheritedAccess(string slug, Guid resourceId, bool restrict)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await _teamResourceService.SetRestrictInheritedAccessAsync(resourceId, restrict, CancellationToken.None);
+            var label = restrict ? "enabled" : "disabled";
+            SetSuccess($"Inherited access restriction {label}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle RestrictInheritedAccess for resource {ResourceId}", resourceId);
+            SetError($"Failed to update inherited access setting: {ex.Message}");
+        }
 
         return RedirectToAction(nameof(Resources), new { slug });
     }

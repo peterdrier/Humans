@@ -45,6 +45,13 @@ public class GoogleResourceReconciliationJob : IRecurringJob
                 _logger.LogInformation("Updated {Count} Drive folder path(s) during reconciliation", pathUpdates);
             }
 
+            // Enforce inherited access restrictions on Drive folders
+            var inheritanceCorrected = await _googleSyncService.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
+            if (inheritanceCorrected > 0)
+            {
+                _logger.LogWarning("Corrected inherited access drift on {Count} Drive folder(s)", inheritanceCorrected);
+            }
+
             // Check Google Group settings for drift and auto-remediate
             var settingsResult = await _googleSyncService.CheckGroupSettingsAsync(cancellationToken);
             if (!settingsResult.Skipped && settingsResult.DriftCount > 0)

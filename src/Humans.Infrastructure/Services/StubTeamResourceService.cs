@@ -202,4 +202,15 @@ public class StubTeamResourceService : ITeamResourceService
         await _dbContext.SaveChangesAsync(ct);
         _logger.LogInformation("[STUB] Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
     }
+
+    /// <inheritdoc />
+    public async Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default)
+    {
+        var resource = await _dbContext.GoogleResources.FindAsync([resourceId], ct);
+        if (resource is null) return;
+
+        resource.RestrictInheritedAccess = restrict;
+        await _dbContext.SaveChangesAsync(ct);
+        _logger.LogInformation("[STUB] Set RestrictInheritedAccess={Restrict} for resource {ResourceId}", restrict, resourceId);
+    }
 }

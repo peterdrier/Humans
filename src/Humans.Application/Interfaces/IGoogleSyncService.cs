@@ -150,4 +150,19 @@ public interface IGoogleSyncService
     /// </summary>
     /// <returns>Number of resources whose name was updated.</returns>
     Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets inheritedPermissionsDisabled on a Google Drive folder.
+    /// When restrict is true, disables inherited permissions; when false, re-enables them.
+    /// </summary>
+    /// <param name="googleFileId">The Google Drive file/folder ID.</param>
+    /// <param name="restrict">True to disable inheritance, false to enable.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks and corrects inherited access drift for all Drive folders that have
+    /// RestrictInheritedAccess enabled. Returns the number of folders corrected.
+    /// </summary>
+    Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default);
 }

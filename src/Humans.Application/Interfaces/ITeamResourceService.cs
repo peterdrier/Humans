@@ -65,4 +65,10 @@ public interface ITeamResourceService
     /// Updates the Drive permission level for a resource.
     /// </summary>
     Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets the RestrictInheritedAccess flag on a Drive folder resource and immediately
+    /// enforces the corresponding inheritedPermissionsDisabled setting on Google Drive.
+    /// </summary>
+    Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default);
 }

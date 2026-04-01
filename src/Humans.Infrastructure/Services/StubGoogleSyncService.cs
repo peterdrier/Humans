@@ -159,4 +159,16 @@ public class StubGoogleSyncService : IGoogleSyncService
         _logger.LogInformation("[STUB] Would sync single resource {ResourceId} with action {Action}", resourceId, action);
         return Task.FromResult(new ResourceSyncDiff { ResourceId = resourceId });
     }
+
+    public Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would set inheritedPermissionsDisabled={Restrict} on Drive file {GoogleFileId}", restrict, googleFileId);
+        return Task.CompletedTask;
+    }
+
+    public Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would enforce inherited access restrictions on Drive folders");
+        return Task.FromResult(0);
+    }
 }
