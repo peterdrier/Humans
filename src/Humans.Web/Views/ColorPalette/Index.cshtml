@@ -201,10 +201,7 @@
         @* --- Alerts --- *@
         <h3>Alerts</h3>
         <div class="row mb-4">
-            @{
-                var alertVariants = new[] { "primary", "secondary", "success", "warning", "danger", "info" };
-            }
-            @foreach (var v in alertVariants)
+            @foreach (var v in btnVariants)
             {
                 <div class="col-md-6 mb-2">
                     <div class="alert alert-@v mb-0" role="alert">
