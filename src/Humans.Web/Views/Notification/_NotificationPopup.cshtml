@@ -1,0 +1,61 @@
+@model Humans.Web.Models.NotificationPopupViewModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Web.SharedResource> Localizer
+
+<div class="notification-popup-header">
+    <div class="d-flex align-items-center gap-2">
+        <i class="fa-solid fa-bell"></i>
+        <span>@Localizer["Notification_Popup_Title"]</span>
+        @if (Model.ActionableCount > 0)
+        {
+            <span class="badge rounded-pill notification-action-pill">
+                @Model.ActionableCount @Localizer["Notification_Popup_NeedAction"]
+            </span>
+        }
+    </div>
+    <button type="button" class="notification-popup-close" id="notificationPopupClose"
+            aria-label="@Localizer["Notification_Popup_Close"]">
+        <i class="fa-solid fa-xmark"></i>
+    </button>
+</div>
+
+@if (Model.Actionable.Count == 0 && Model.Informational.Count == 0)
+{
+    <div class="notification-popup-empty">
+        <i class="fa-solid fa-bell notification-empty-icon"></i>
+        <p class="mb-0">@Localizer["Notification_Popup_CaughtUp"]</p>
+        <p class="text-muted small">@Localizer["Notification_Popup_NoUnread"]</p>
+    </div>
+}
+else
+{
+    <div class="notification-popup-body">
+        @if (Model.Actionable.Count > 0)
+        {
+            <div class="notification-section-label">@Localizer["Notification_Section_NeedsAttention"]</div>
+            @foreach (var item in Model.Actionable)
+            {
+                <partial name="_NotificationRow" model="item" />
+            }
+        }
+        @if (Model.Informational.Count > 0)
+        {
+            <div class="notification-section-label">@Localizer["Notification_Section_Recent"]</div>
+            @foreach (var item in Model.Informational)
+            {
+                <partial name="_NotificationRow" model="item" />
+            }
+        }
+    </div>
+}
+
+<div class="notification-popup-footer">
+    <form method="post" asp-controller="Notification" asp-action="MarkAllRead" class="d-inline">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="notification-mark-all-read" data-ajax-markallread>
+            @Localizer["Notification_MarkAllRead"]
+        </button>
+    </form>
+    <a href="@Url.Action("Index", "Notification")" class="btn btn-sm btn-outline-secondary">
+        @Localizer["Notification_SeeAll"]
+    </a>
+</div>

@@ -1,0 +1,134 @@
+@model Humans.Web.Models.NotificationInboxViewModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Web.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["Notification_PageTitle"];
+}
+
+<h1>@Localizer["Notification_PageTitle"]</h1>
+
+<!-- Toolbar: search + filter pills -->
+<div class="notification-toolbar mb-3">
+    <form method="get" asp-action="Index" class="notification-search-form">
+        <input type="hidden" name="filter" value="@Model.ActiveFilter" />
+        <input type="hidden" name="tab" value="@Model.ActiveTab" />
+        <div class="input-group input-group-sm">
+            <input type="text" name="search" class="form-control" value="@Model.SearchTerm"
+                   placeholder="@Localizer["Notification_SearchPlaceholder"]" />
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-search"></i>
+            </button>
+        </div>
+    </form>
+    <div class="notification-filter-pills">
+        @{
+            var filters = new[] {
+                ("all", Localizer["Notification_Filter_All"].Value),
+                ("action", Localizer["Notification_Filter_NeedsAction"].Value),
+                ("shifts", Localizer["Notification_Filter_Shifts"].Value),
+                ("approvals", Localizer["Notification_Filter_Approvals"].Value),
+                ("resolved", Localizer["Notification_Filter_Resolved"].Value)
+            };
+        }
+        @foreach (var (value, label) in filters)
+        {
+            var active = string.Equals(Model.ActiveFilter, value, StringComparison.OrdinalIgnoreCase);
+            <a href="@Url.Action("Index", new { filter = value, tab = Model.ActiveTab, search = Model.SearchTerm })"
+               class="btn btn-sm @(active ? "btn-primary" : "btn-outline-secondary") notification-filter-pill">
+                @label
+            </a>
+        }
+    </div>
+</div>
+
+<!-- Inbox card -->
+<div class="card notification-inbox-card">
+    <div class="notification-inbox-header">
+        <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-bell"></i>
+            <span>@Localizer["Notification_Inbox_Title"]</span>
+            @if (Model.UnreadCount > 0)
+            {
+                <span class="badge rounded-pill bg-danger">@Model.UnreadCount</span>
+            }
+        </div>
+        <div class="notification-tab-toggle">
+            @{
+                var unreadActive = string.Equals(Model.ActiveTab, "unread", StringComparison.OrdinalIgnoreCase);
+            }
+            <a href="@Url.Action("Index", new { filter = Model.ActiveFilter, tab = "unread", search = Model.SearchTerm })"
+               class="notification-tab @(unreadActive ? "active" : "")">@Localizer["Notification_Tab_Unread"]</a>
+            <a href="@Url.Action("Index", new { filter = Model.ActiveFilter, tab = "all", search = Model.SearchTerm })"
+               class="notification-tab @(!unreadActive ? "active" : "")">@Localizer["Notification_Tab_All"]</a>
+        </div>
+    </div>
+
+    <div class="notification-inbox-body" id="notificationInboxBody">
+        @if (Model.NeedsAttention.Count == 0 && Model.Informational.Count == 0 && Model.Resolved.Count == 0)
+        {
+            <div class="notification-empty-state">
+                <i class="fa-solid fa-bell notification-empty-icon"></i>
+                <p>@Localizer["Notification_Popup_CaughtUp"]</p>
+            </div>
+        }
+        else
+        {
+            @if (Model.NeedsAttention.Count > 0)
+            {
+                <div class="notification-section-label">@Localizer["Notification_Section_NeedsAttention"]</div>
+                @foreach (var item in Model.NeedsAttention)
+                {
+                    <partial name="_NotificationRow" model="item" />
+                }
+            }
+            @if (Model.Informational.Count > 0)
+            {
+                <div class="notification-section-label">@Localizer["Notification_Section_Informational"]</div>
+                @foreach (var item in Model.Informational)
+                {
+                    <partial name="_NotificationRow" model="item" />
+                }
+            }
+            @if (Model.Resolved.Count > 0)
+            {
+                <div class="notification-section-label">@Localizer["Notification_Section_Resolved"]</div>
+                @foreach (var item in Model.Resolved)
+                {
+                    <partial name="_NotificationRow" model="item" />
+                }
+            }
+        }
+    </div>
+
+    <div class="notification-inbox-footer">
+        <form method="post" asp-controller="Notification" asp-action="MarkAllRead">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                @Localizer["Notification_MarkAllRead"]
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function() {
+    // AJAX dismiss
+    document.querySelectorAll('[data-ajax-dismiss]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var form = btn.closest('form');
+            fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: new FormData(form)
+            }).then(function(r) {
+                if (r.ok) {
+                    var row = btn.closest('.notification-row');
+                    if (row) row.remove();
+                }
+            });
+        });
+    });
+})();
+</script>
+}

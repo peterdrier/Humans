@@ -126,6 +126,10 @@
                         }
                     </ul>
                     <div class="d-flex align-items-center gap-2">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            @await Component.InvokeAsync("NotificationBell")
+                        }
                         <partial name="_LanguageChooser" />
                         <partial name="_LoginPartial" />
                     </div>

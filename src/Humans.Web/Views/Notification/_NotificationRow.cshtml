@@ -1,0 +1,112 @@
+@model Humans.Web.Models.NotificationRowViewModel
+@using Humans.Domain.Enums
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Web.SharedResource> Localizer
+
+@{
+    // Left border accent color
+    var borderClass = Model switch
+    {
+        { IsResolved: true } => "notification-border-resolved",
+        { Class: NotificationClass.Actionable, Priority: NotificationPriority.Critical } => "notification-border-danger",
+        { Class: NotificationClass.Actionable, Priority: NotificationPriority.High } => "notification-border-warning",
+        { Class: NotificationClass.Actionable } => "notification-border-success",
+        _ => "notification-border-muted"
+    };
+
+    // Row background
+    var bgClass = Model switch
+    {
+        { IsResolved: true } => "notification-row-resolved",
+        { Class: NotificationClass.Actionable } => "notification-row-actionable",
+        _ => "notification-row-informational"
+    };
+
+    // Type tag
+    var (tagText, tagClass) = Model switch
+    {
+        { Priority: NotificationPriority.Critical } => (Localizer["Notification_Tag_Urgent"].Value, "notification-tag-urgent"),
+        { Class: NotificationClass.Actionable } => (Localizer["Notification_Tag_Action"].Value, "notification-tag-action"),
+        _ => (Localizer["Notification_Tag_Info"].Value, "notification-tag-info")
+    };
+
+    // Time ago
+    var timeAgo = TimeAgo(Model.CreatedAt);
+    var resolvedTimeAgo = Model.ResolvedAt.HasValue ? TimeAgo(Model.ResolvedAt.Value) : "";
+}
+
+<div class="notification-row @borderClass @bgClass" data-notification-id="@Model.Id">
+    <div class="notification-row-top">
+        <span class="notification-title">@Model.Title</span>
+        <span class="notification-timestamp">@timeAgo</span>
+    </div>
+    @if (!string.IsNullOrEmpty(Model.Body))
+    {
+        <div class="notification-body">@Model.Body</div>
+    }
+    <div class="notification-row-bottom">
+        <div class="notification-meta">
+            <span class="notification-tag @tagClass">@tagText</span>
+            @if (!string.IsNullOrEmpty(Model.TargetGroupName) && Model.RecipientInitials.Count > 0)
+            {
+                <span class="notification-avatar-cluster">
+                    @foreach (var initials in Model.RecipientInitials)
+                    {
+                        <span class="notification-avatar-circle">@initials</span>
+                    }
+                    @if (Model.TotalRecipientCount > 3)
+                    {
+                        <span class="notification-avatar-overflow">+@(Model.TotalRecipientCount - 3)</span>
+                    }
+                    <span class="notification-group-label">@Model.TargetGroupName</span>
+                </span>
+            }
+        </div>
+        <div class="notification-actions">
+            @if (Model.IsResolved)
+            {
+                <span class="notification-resolved-label">
+                    @string.Format(Localizer["Notification_HandledBy"].Value, Model.ResolvedByName ?? "?", resolvedTimeAgo)
+                </span>
+            }
+            else if (Model.Class == NotificationClass.Actionable)
+            {
+                @if (!string.IsNullOrEmpty(Model.ActionUrl))
+                {
+                    <a href="@Url.Action("ClickThrough", "Notification", new { id = Model.Id })"
+                       class="btn btn-sm btn-outline-primary notification-action-btn">
+                        @Model.ActionLabel
+                    </a>
+                }
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(Model.ActionUrl))
+                {
+                    <a href="@Url.Action("ClickThrough", "Notification", new { id = Model.Id })"
+                       class="notification-text-link">@Model.ActionLabel</a>
+                }
+                <form method="post" asp-controller="Notification" asp-action="Dismiss" asp-route-id="@Model.Id"
+                      class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="notification-dismiss-btn" data-ajax-dismiss
+                            aria-label="@Localizer["Notification_Dismiss"]"
+                            title="@Localizer["Notification_Dismiss"]">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+@functions {
+    static string TimeAgo(DateTime utcTime)
+    {
+        var span = DateTime.UtcNow - utcTime;
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
+        return utcTime.ToString("MMM d");
+    }
+}

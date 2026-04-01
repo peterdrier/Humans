@@ -1267,4 +1267,35 @@
   <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>Compila le informazioni del turno per far conoscere ai coordinatori le tue competenze e preferenze.</value></data>
   <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Compila info turno</value></data>
 
+  <!-- Notification Inbox -->
+  <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notification_Popup_AriaLabel" xml:space="preserve"><value>Notification popup</value></data>
+  <data name="Notification_Popup_Title" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notification_Popup_NeedAction" xml:space="preserve"><value>need action</value></data>
+  <data name="Notification_Popup_Close" xml:space="preserve"><value>Close notifications</value></data>
+  <data name="Notification_Popup_CaughtUp" xml:space="preserve"><value>You're all caught up.</value></data>
+  <data name="Notification_Popup_NoUnread" xml:space="preserve"><value>No unread notifications.</value></data>
+  <data name="Notification_Section_NeedsAttention" xml:space="preserve"><value>Needs your attention</value></data>
+  <data name="Notification_Section_Recent" xml:space="preserve"><value>Recent</value></data>
+  <data name="Notification_Section_Informational" xml:space="preserve"><value>Informational</value></data>
+  <data name="Notification_Section_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Notification_MarkAllRead" xml:space="preserve"><value>Mark all as read</value></data>
+  <data name="Notification_SeeAll" xml:space="preserve"><value>See all notifications</value></data>
+  <data name="Notification_PageTitle" xml:space="preserve"><value>All notifications</value></data>
+  <data name="Notification_SearchPlaceholder" xml:space="preserve"><value>Search notifications...</value></data>
+  <data name="Notification_Filter_All" xml:space="preserve"><value>All</value></data>
+  <data name="Notification_Filter_NeedsAction" xml:space="preserve"><value>Needs action</value></data>
+  <data name="Notification_Filter_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Notification_Filter_Approvals" xml:space="preserve"><value>Approvals</value></data>
+  <data name="Notification_Filter_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Notification_Tab_Unread" xml:space="preserve"><value>Unread</value></data>
+  <data name="Notification_Tab_All" xml:space="preserve"><value>All</value></data>
+  <data name="Notification_Inbox_Title" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notification_Tag_Urgent" xml:space="preserve"><value>Urgent</value></data>
+  <data name="Notification_Tag_Action" xml:space="preserve"><value>Action</value></data>
+  <data name="Notification_Tag_Info" xml:space="preserve"><value>Info</value></data>
+  <data name="Notification_Dismiss" xml:space="preserve"><value>Dismiss</value></data>
+  <data name="Notification_HandledBy" xml:space="preserve"><value>Handled by {0}, {1}</value></data>
+  <data name="Notification_Pref_InboxEnabled" xml:space="preserve"><value>In-app notifications</value></data>
+
 </root>
