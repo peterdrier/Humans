@@ -19,8 +19,6 @@ public class TicketingBudgetService : ITicketingBudgetService
     private const string RevenuePrefix = "Week of ";
     private const string StripePrefix = "Stripe fees: ";
     private const string TtPrefix = "TT fees: ";
-    private const string VatPrefix = "VAT: ";
-    private const string DonationPrefix = "Donations: ";
     private const string ProjectedPrefix = "Projected: ";
 
     public TicketingBudgetService(
@@ -50,14 +48,15 @@ public class TicketingBudgetService : ITicketingBudgetService
         // Get categories by name
         var revenueCategory = ticketingGroup.Categories.FirstOrDefault(c => string.Equals(c.Name, "Ticket Revenue", StringComparison.Ordinal));
         var feesCategory = ticketingGroup.Categories.FirstOrDefault(c => string.Equals(c.Name, "Processing Fees", StringComparison.Ordinal));
-        var vatCategory = ticketingGroup.Categories.FirstOrDefault(c => string.Equals(c.Name, "VAT Liability", StringComparison.Ordinal));
-        var donationCategory = ticketingGroup.Categories.FirstOrDefault(c => string.Equals(c.Name, "Donations", StringComparison.Ordinal));
 
-        if (revenueCategory is null || feesCategory is null || vatCategory is null || donationCategory is null)
+        if (revenueCategory is null || feesCategory is null)
         {
             _logger.LogWarning("Ticketing group missing expected categories for year {YearId}", budgetYearId);
             return 0;
         }
+
+        // Get the VAT rate from the projection parameters (for setting on revenue line items)
+        var projectionVatRate = ticketingGroup.TicketingProjection?.VatRate ?? 0;
 
         // Load all paid orders with fees
         var orders = await _dbContext.TicketOrders
@@ -66,8 +65,6 @@ public class TicketingBudgetService : ITicketingBudgetService
             {
                 o.PurchasedAt,
                 o.TotalAmount,
-                o.DonationAmount,
-                o.VatAmount,
                 o.StripeFee,
                 o.ApplicationFee,
                 TicketCount = o.Attendees.Count(a =>
@@ -105,9 +102,7 @@ public class TicketingBudgetService : ITicketingBudgetService
                     TicketCount = g.Sum(o => o.TicketCount),
                     Revenue = g.Sum(o => o.TotalAmount),
                     StripeFees = g.Sum(o => o.StripeFee ?? 0m),
-                    TtFees = g.Sum(o => o.ApplicationFee ?? 0m),
-                    VatAmount = g.Sum(o => o.VatAmount),
-                    Donations = g.Sum(o => o.DonationAmount)
+                    TtFees = g.Sum(o => o.ApplicationFee ?? 0m)
                 };
             })
             .ToList();
@@ -119,68 +114,21 @@ public class TicketingBudgetService : ITicketingBudgetService
         {
             var weekDesc = week.Label;
 
-            // Quarter-boundary split: check if the week spans a quarter boundary
-            var startQuarter = GetSpanishQuarter(week.Monday);
-            var endQuarter = GetSpanishQuarter(week.Sunday);
+            // Revenue with VatRate set — existing VAT projection system handles the rest
+            lineItemsCreated += UpsertLineItem(revenueCategory, $"{RevenuePrefix}{weekDesc}",
+                week.Revenue, week.Monday, projectionVatRate, false, $"{week.TicketCount} tickets", now);
 
-            if (startQuarter != endQuarter)
-            {
-                // Split the week at the quarter boundary for VAT attribution
-                // Revenue and fees use the full week amounts, but VAT is split proportionally
-                var quarterBoundary = GetQuarterStart(endQuarter.year, endQuarter.quarter);
-                var daysInQ1 = Period.Between(week.Monday, quarterBoundary).Days;
-                var daysInQ2 = Period.Between(quarterBoundary, week.Sunday.PlusDays(1)).Days;
-                var totalDays = daysInQ1 + daysInQ2;
-                var q1Fraction = (decimal)daysInQ1 / totalDays;
-
-                // Revenue line item for the full week (attributed to the week start)
-                lineItemsCreated += UpsertLineItem(revenueCategory, $"{RevenuePrefix}{weekDesc}",
-                    week.Revenue, week.Monday, 0, false, $"{week.TicketCount} tickets", now);
-
-                // Fees for the full week
-                if (week.StripeFees > 0)
-                    lineItemsCreated += UpsertLineItem(feesCategory, $"{StripePrefix}{weekDesc}",
-                        -week.StripeFees, week.Monday, 0, false, null, now);
-                if (week.TtFees > 0)
-                    lineItemsCreated += UpsertLineItem(feesCategory, $"{TtPrefix}{weekDesc}",
-                        -week.TtFees, week.Monday, 0, false, null, now);
-
-                // VAT split across quarters
-                var vatQ1 = Math.Round(week.VatAmount * q1Fraction, 2);
-                var vatQ2 = week.VatAmount - vatQ1;
-                if (vatQ1 > 0)
-                    lineItemsCreated += UpsertLineItem(vatCategory, $"{VatPrefix}{weekDesc} (Q{startQuarter.quarter})",
-                        -vatQ1, week.Monday, 0, false, $"Q{startQuarter.quarter} portion", now);
-                if (vatQ2 > 0)
-                    lineItemsCreated += UpsertLineItem(vatCategory, $"{VatPrefix}{weekDesc} (Q{endQuarter.quarter})",
-                        -vatQ2, quarterBoundary, 0, false, $"Q{endQuarter.quarter} portion", now);
-            }
-            else
-            {
-                // Normal week — no quarter split needed
-                lineItemsCreated += UpsertLineItem(revenueCategory, $"{RevenuePrefix}{weekDesc}",
-                    week.Revenue, week.Monday, 0, false, $"{week.TicketCount} tickets", now);
-
-                if (week.StripeFees > 0)
-                    lineItemsCreated += UpsertLineItem(feesCategory, $"{StripePrefix}{weekDesc}",
-                        -week.StripeFees, week.Monday, 0, false, null, now);
-                if (week.TtFees > 0)
-                    lineItemsCreated += UpsertLineItem(feesCategory, $"{TtPrefix}{weekDesc}",
-                        -week.TtFees, week.Monday, 0, false, null, now);
-                if (week.VatAmount > 0)
-                    lineItemsCreated += UpsertLineItem(vatCategory, $"{VatPrefix}{weekDesc}",
-                        -week.VatAmount, week.Monday, 0, false, null, now);
-            }
-
-            // Donations are always cashflow-only
-            if (week.Donations > 0)
-                lineItemsCreated += UpsertLineItem(donationCategory, $"{DonationPrefix}{weekDesc}",
-                    week.Donations, week.Monday, 0, true, null, now);
+            // Fees (negative amounts)
+            if (week.StripeFees > 0)
+                lineItemsCreated += UpsertLineItem(feesCategory, $"{StripePrefix}{weekDesc}",
+                    -week.StripeFees, week.Monday, 0, false, null, now);
+            if (week.TtFees > 0)
+                lineItemsCreated += UpsertLineItem(feesCategory, $"{TtPrefix}{weekDesc}",
+                    -week.TtFees, week.Monday, 0, false, null, now);
         }
 
         // Materialize projections for future weeks
-        lineItemsCreated += MaterializeProjections(ticketingGroup, revenueCategory, feesCategory,
-            vatCategory, donationCategory, now);
+        lineItemsCreated += MaterializeProjections(ticketingGroup, revenueCategory, feesCategory, now);
 
         if (_dbContext.ChangeTracker.HasChanges())
             await _dbContext.SaveChangesAsync();
@@ -212,14 +160,10 @@ public class TicketingBudgetService : ITicketingBudgetService
 
         // Find the last completed week with actuals to calibrate from
         var revenueCategory = group.Categories.FirstOrDefault(c => string.Equals(c.Name, "Ticket Revenue", StringComparison.Ordinal));
-        var actualLineItems = revenueCategory?.LineItems
-            .Where(li => li.IsAutoGenerated && li.ExpectedDate.HasValue)
-            .ToList() ?? [];
 
         // Compute actual tickets sold so far from notes (format: "N tickets")
         var totalActualTickets = 0;
-        var lastActualWeekEnd = LocalDate.MinIsoValue;
-        foreach (var li in actualLineItems)
+        foreach (var li in revenueCategory?.LineItems.Where(li => li.IsAutoGenerated && !li.Description.StartsWith(ProjectedPrefix, StringComparison.Ordinal)) ?? [])
         {
             if (li.Notes is not null && li.Notes.EndsWith(" tickets", StringComparison.Ordinal))
             {
@@ -227,22 +171,7 @@ public class TicketingBudgetService : ITicketingBudgetService
                 if (int.TryParse(parts[0], System.Globalization.CultureInfo.InvariantCulture, out var count))
                     totalActualTickets += count;
             }
-            if (li.ExpectedDate.HasValue)
-            {
-                var weekEnd = li.ExpectedDate.Value.PlusDays(6);
-                if (weekEnd > lastActualWeekEnd)
-                    lastActualWeekEnd = weekEnd;
-            }
         }
-
-        // Compute observed donation rate from actuals
-        var donationCategory = group.Categories.FirstOrDefault(c => string.Equals(c.Name, "Donations", StringComparison.Ordinal));
-        var totalActualRevenue = actualLineItems.Sum(li => li.Amount);
-        var totalActualDonations = donationCategory?.LineItems
-            .Where(li => li.IsAutoGenerated).Sum(li => li.Amount) ?? 0;
-        var observedDonationRate = totalActualRevenue > 0
-            ? totalActualDonations / totalActualRevenue
-            : 0m;
 
         // Project future weeks from current week to event date
         var projectionStart = currentWeekMonday > projection.StartDate.Value
@@ -277,16 +206,9 @@ public class TicketingBudgetService : ITicketingBudgetService
             if (weekTickets <= 0) weekTickets = 1;
 
             var weekRevenue = weekTickets * projection.AverageTicketPrice;
-            var weekDonations = weekRevenue * observedDonationRate;
-
-            // Fees on revenue + donations
-            var totalForFees = weekRevenue + weekDonations;
-            var stripeFees = totalForFees * projection.StripeFeePercent / 100m +
+            var stripeFees = weekRevenue * projection.StripeFeePercent / 100m +
                              weekTickets * projection.StripeFeeFixed;
-            var ttFees = totalForFees * projection.TicketTailorFeePercent / 100m;
-
-            // VAT on ticket revenue only (not donations) — inclusive calculation
-            var vatAmount = weekRevenue * projection.VatRate / (100m + projection.VatRate);
+            var ttFees = weekRevenue * projection.TicketTailorFeePercent / 100m;
 
             projections.Add(new TicketingWeekProjection
             {
@@ -296,9 +218,7 @@ public class TicketingBudgetService : ITicketingBudgetService
                 ProjectedTickets = weekTickets,
                 ProjectedRevenue = Math.Round(weekRevenue, 2),
                 ProjectedStripeFees = Math.Round(stripeFees, 2),
-                ProjectedTtFees = Math.Round(ttFees, 2),
-                ProjectedVat = Math.Round(vatAmount, 2),
-                ProjectedDonations = Math.Round(weekDonations, 2)
+                ProjectedTtFees = Math.Round(ttFees, 2)
             });
 
             weekStart = weekEnd.PlusDays(1);
@@ -315,20 +235,19 @@ public class TicketingBudgetService : ITicketingBudgetService
     /// Returns number of items created.
     /// </summary>
     private int MaterializeProjections(BudgetGroup ticketingGroup,
-        BudgetCategory revenueCategory, BudgetCategory feesCategory,
-        BudgetCategory vatCategory, BudgetCategory donationCategory, Instant now)
+        BudgetCategory revenueCategory, BudgetCategory feesCategory, Instant now)
     {
         var projection = ticketingGroup.TicketingProjection;
         if (projection is null || projection.StartDate is null || projection.EventDate is null
             || projection.AverageTicketPrice == 0)
         {
             // No projection configured — remove any stale projected items
-            RemoveProjectedItems(revenueCategory, feesCategory, vatCategory, donationCategory);
+            RemoveProjectedItems(revenueCategory, feesCategory);
             return 0;
         }
 
         // Remove old projected items first
-        RemoveProjectedItems(revenueCategory, feesCategory, vatCategory, donationCategory);
+        RemoveProjectedItems(revenueCategory, feesCategory);
 
         var today = _clock.GetCurrentInstant().InUtc().Date;
         var currentWeekMonday = GetIsoMonday(today);
@@ -345,15 +264,6 @@ public class TicketingBudgetService : ITicketingBudgetService
                     totalActualTickets += count;
             }
         }
-
-        // Compute observed donation rate
-        var totalActualRevenue = revenueCategory.LineItems
-            .Where(li => li.IsAutoGenerated && !li.Description.StartsWith(ProjectedPrefix, StringComparison.Ordinal))
-            .Sum(li => li.Amount);
-        var totalActualDonations = donationCategory.LineItems
-            .Where(li => li.IsAutoGenerated && !li.Description.StartsWith(ProjectedPrefix, StringComparison.Ordinal))
-            .Sum(li => li.Amount);
-        var observedDonationRate = totalActualRevenue > 0 ? totalActualDonations / totalActualRevenue : 0m;
 
         var totalProjectedTickets = projection.InitialSalesCount +
             (int)(projection.DailySalesRate * (decimal)Period.Between(projection.StartDate.Value, eventDate).Days);
@@ -382,17 +292,17 @@ public class TicketingBudgetService : ITicketingBudgetService
             if (weekTickets <= 0) weekTickets = 1;
 
             var weekRevenue = weekTickets * projection.AverageTicketPrice;
-            var weekDonations = weekRevenue * observedDonationRate;
-            var totalForFees = weekRevenue + weekDonations;
-            var stripeFees = totalForFees * projection.StripeFeePercent / 100m +
+
+            // Fees on revenue only
+            var stripeFees = weekRevenue * projection.StripeFeePercent / 100m +
                              weekTickets * projection.StripeFeeFixed;
-            var ttFees = totalForFees * projection.TicketTailorFeePercent / 100m;
-            var vatAmount = weekRevenue * projection.VatRate / (100m + projection.VatRate);
+            var ttFees = weekRevenue * projection.TicketTailorFeePercent / 100m;
 
             var weekLabel = FormatWeekLabel(weekStart, weekEnd);
 
+            // Revenue with VatRate — existing VAT projection system handles VAT automatically
             created += UpsertLineItem(revenueCategory, $"{ProjectedPrefix}{RevenuePrefix}{weekLabel}",
-                Math.Round(weekRevenue, 2), weekStart, 0, false, $"~{weekTickets} tickets", now);
+                Math.Round(weekRevenue, 2), weekStart, projection.VatRate, false, $"~{weekTickets} tickets", now);
 
             if (stripeFees > 0)
                 created += UpsertLineItem(feesCategory, $"{ProjectedPrefix}{StripePrefix}{weekLabel}",
@@ -400,12 +310,6 @@ public class TicketingBudgetService : ITicketingBudgetService
             if (ttFees > 0)
                 created += UpsertLineItem(feesCategory, $"{ProjectedPrefix}{TtPrefix}{weekLabel}",
                     -Math.Round(ttFees, 2), weekStart, 0, false, null, now);
-            if (vatAmount > 0)
-                created += UpsertLineItem(vatCategory, $"{ProjectedPrefix}{VatPrefix}{weekLabel}",
-                    -Math.Round(vatAmount, 2), weekStart, 0, false, null, now);
-            if (weekDonations > 0)
-                created += UpsertLineItem(donationCategory, $"{ProjectedPrefix}{DonationPrefix}{weekLabel}",
-                    Math.Round(weekDonations, 2), weekStart, 0, true, null, now);
 
             weekStart = weekEnd.PlusDays(1);
             weekStart = GetIsoMonday(weekStart);
@@ -487,23 +391,5 @@ public class TicketingBudgetService : ITicketingBudgetService
     private static string FormatWeekLabel(LocalDate monday, LocalDate sunday)
     {
         return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
-    }
-
-    private static (int year, int quarter) GetSpanishQuarter(LocalDate date)
-    {
-        var quarter = (date.Month - 1) / 3 + 1;
-        return (date.Year, quarter);
-    }
-
-    private static LocalDate GetQuarterStart(int year, int quarter)
-    {
-        return quarter switch
-        {
-            1 => new LocalDate(year, 1, 1),
-            2 => new LocalDate(year, 4, 1),
-            3 => new LocalDate(year, 7, 1),
-            4 => new LocalDate(year, 10, 1),
-            _ => throw new ArgumentOutOfRangeException(nameof(quarter))
-        };
     }
 }

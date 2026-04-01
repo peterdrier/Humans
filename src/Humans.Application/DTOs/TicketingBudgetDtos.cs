@@ -14,6 +14,4 @@ public class TicketingWeekProjection
     public decimal ProjectedRevenue { get; init; }
     public decimal ProjectedStripeFees { get; init; }
     public decimal ProjectedTtFees { get; init; }
-    public decimal ProjectedVat { get; init; }
-    public decimal ProjectedDonations { get; init; }
 }
