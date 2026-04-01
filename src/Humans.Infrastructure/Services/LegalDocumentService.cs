@@ -17,6 +17,7 @@ public partial class LegalDocumentService : ILegalDocumentService
     ];
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
+    private static readonly TimeSpan FailureCacheTtl = TimeSpan.FromSeconds(30);
 
     [GeneratedRegex(@"^(?<name>.+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$", RegexOptions.None, 1000)]
     private static partial Regex LanguageFilePattern();
@@ -64,7 +65,9 @@ public partial class LegalDocumentService : ILegalDocumentService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to fetch legal document {Slug} from GitHub", slug);
-            return new Dictionary<string, string>(StringComparer.Ordinal);
+            var emptyContent = new Dictionary<string, string>(StringComparer.Ordinal);
+            _cache.Set(cacheKey, emptyContent, FailureCacheTtl);
+            return emptyContent;
         }
     }
 
