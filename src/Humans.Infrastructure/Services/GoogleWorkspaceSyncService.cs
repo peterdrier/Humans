@@ -2061,6 +2061,26 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken cancellationToken = default)
     {
         var drive = await GetDriveServiceAsync();
+
+        // Check capabilities before attempting the update
+        var getRequest = drive.Files.Get(googleFileId);
+        getRequest.SupportsAllDrives = true;
+        getRequest.Fields = "id, capabilities(canDisableInheritedPermissions, canEnableInheritedPermissions)";
+        var existing = await getRequest.ExecuteAsync(cancellationToken);
+
+        if (restrict && existing.Capabilities?.CanDisableInheritedPermissions != true)
+        {
+            throw new InvalidOperationException(
+                $"Google Drive does not allow disabling inherited permissions on file {googleFileId}. " +
+                "This may be a Shared Drive root or a file where the service account lacks organizer access.");
+        }
+
+        if (!restrict && existing.Capabilities?.CanEnableInheritedPermissions != true)
+        {
+            throw new InvalidOperationException(
+                $"Google Drive does not allow enabling inherited permissions on file {googleFileId}.");
+        }
+
         var fileMetadata = new Google.Apis.Drive.v3.Data.File
         {
             InheritedPermissionsDisabled = restrict
