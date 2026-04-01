@@ -136,6 +136,12 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(new AllGroupsResult());
     }
 
+    public Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("[STUB] Would update Drive folder paths");
+        return Task.FromResult(0);
+    }
+
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,

@@ -500,6 +500,8 @@ Process: Reads SyncMode per service from sync_service_settings, then calls
 - `SyncMode.AddOnly` — job computes diff and only adds missing members
 - `SyncMode.AddAndRemove` — job computes diff, adds missing and removes extra members
 
+**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Teams/Sync` page accurate without requiring manual intervention.
+
 > **Currently disabled:** All jobs that modify Google permissions are disabled until the system is validated. Use the manual "Sync Now" button at `/Teams/Sync` or change sync modes at `/Admin/SyncSettings` instead.
 
 ### SystemTeamSyncJob

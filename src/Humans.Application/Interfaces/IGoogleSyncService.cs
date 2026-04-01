@@ -142,4 +142,12 @@ public interface IGoogleSyncService
     /// Returns drift status for each group relative to the expected settings.
     /// </summary>
     Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Fetches the current Drive folder path for each active Drive resource
+    /// and updates GoogleResource.Name when the folder has been moved or renamed.
+    /// Called during nightly reconciliation.
+    /// </summary>
+    /// <returns>Number of resources whose name was updated.</returns>
+    Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default);
 }

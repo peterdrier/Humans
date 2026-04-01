@@ -38,6 +38,13 @@ public class GoogleResourceReconciliationJob : IRecurringJob
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, cancellationToken);
 
+            // Update Drive folder paths (detects renames and moves)
+            var pathUpdates = await _googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);
+            if (pathUpdates > 0)
+            {
+                _logger.LogInformation("Updated {Count} Drive folder path(s) during reconciliation", pathUpdates);
+            }
+
             // Check Google Group settings for drift and auto-remediate
             var settingsResult = await _googleSyncService.CheckGroupSettingsAsync(cancellationToken);
             if (!settingsResult.Skipped && settingsResult.DriftCount > 0)

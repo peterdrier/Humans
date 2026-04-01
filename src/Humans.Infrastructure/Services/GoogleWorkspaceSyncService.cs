@@ -1976,4 +1976,83 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             };
         }
     }
+
+    /// <inheritdoc />
+    public async Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
+    {
+        var driveResources = await _dbContext.GoogleResources
+            .Where(r => r.ResourceType == GoogleResourceType.DriveFolder && r.IsActive)
+            .ToListAsync(cancellationToken);
+
+        if (driveResources.Count == 0)
+            return 0;
+
+        var drive = await GetDriveServiceAsync();
+        var updatedCount = 0;
+
+        foreach (var resource in driveResources)
+        {
+            try
+            {
+                var fullPath = await ResolveDriveFolderPathAsync(drive, resource.GoogleId, cancellationToken);
+                if (fullPath is not null && !string.Equals(resource.Name, fullPath, StringComparison.Ordinal))
+                {
+                    _logger.LogInformation(
+                        "Drive folder path changed for resource {ResourceId}: '{OldName}' -> '{NewName}'",
+                        resource.Id, resource.Name, fullPath);
+                    resource.Name = fullPath;
+                    updatedCount++;
+                }
+            }
+            catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
+            {
+                _logger.LogWarning("Drive folder {GoogleId} not found (resource {ResourceId}) — may have been deleted",
+                    resource.GoogleId, resource.Id);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to resolve Drive folder path for resource {ResourceId} ({GoogleId})",
+                    resource.Id, resource.GoogleId);
+            }
+        }
+
+        if (updatedCount > 0)
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return updatedCount;
+    }
+
+    /// <summary>
+    /// Resolves the full path of a Drive folder by walking the parent chain.
+    /// Returns a path like "Shared Drive / Department / Subfolder".
+    /// </summary>
+    private async Task<string?> ResolveDriveFolderPathAsync(
+        DriveService drive, string fileId, CancellationToken cancellationToken)
+    {
+        var segments = new List<string>();
+        var currentId = fileId;
+        // Safety limit to prevent infinite loops on circular references
+        const int maxDepth = 20;
+
+        for (var depth = 0; depth < maxDepth; depth++)
+        {
+            var request = drive.Files.Get(currentId);
+            request.SupportsAllDrives = true;
+            request.Fields = "name, parents";
+            var file = await request.ExecuteAsync(cancellationToken);
+
+            segments.Add(file.Name);
+
+            if (file.Parents is null || file.Parents.Count == 0)
+                break;
+
+            currentId = file.Parents[0];
+        }
+
+        if (segments.Count == 0)
+            return null;
+
+        segments.Reverse();
+        return string.Join(" / ", segments);
+    }
 }
