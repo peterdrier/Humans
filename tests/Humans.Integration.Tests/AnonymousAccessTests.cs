@@ -20,7 +20,7 @@ public class AnonymousAccessTests : IntegrationTestBase
     [Fact]
     public async Task AboutPage_IsAccessibleAnonymously()
     {
-        var response = await Client.GetAsync("/Home/About");
+        var response = await Client.GetAsync("/About");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }

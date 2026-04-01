@@ -151,7 +151,7 @@
     <footer class="border-top py-3 text-muted text-center">
         <div class="container d-flex justify-content-between align-items-center">
             <div class="d-flex gap-3">
-                <a asp-controller="Home" asp-action="About" class="text-muted small">About</a>
+                <a asp-controller="About" asp-action="Index" class="text-muted small">About</a>
                 <a asp-controller="Home" asp-action="Privacy" class="text-muted small">@Localizer["Nav_Privacy"]</a>
                 @if (User.Identity?.IsAuthenticated == true)
                 {

@@ -145,7 +145,7 @@ dotnet run --project src/Humans.Web
 
 ## About Page / License Attribution
 
-The About page (`Views/Home/About.cshtml`) lists all production NuGet packages and frontend CDN dependencies with versions and licenses. **After any NuGet package update, add the new package versions to the About page.** This is tracked as a monthly maintenance task tied to the NuGet full update cycle.
+The About page (`Views/About/Index.cshtml`) lists all production NuGet packages and frontend CDN dependencies with versions and licenses. **After any NuGet package update, add the new package versions to the About page.** This is tracked as a monthly maintenance task tied to the NuGet full update cycle.
 
 The project is licensed under **AGPL-3.0** (`LICENSE` at repo root).
 

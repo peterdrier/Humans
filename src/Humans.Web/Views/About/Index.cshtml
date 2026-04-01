@@ -21,6 +21,14 @@
         <a href="https://github.com/jokin" target="_blank" rel="noopener noreferrer">Jokin</a>
         and <a href="https://github.com/veryaaron" target="_blank" rel="noopener noreferrer">Aaron</a>.
     </p>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <p class="mt-4">
+            <a asp-controller="About" asp-action="Staff" class="btn btn-outline-primary">
+                <i class="fa-solid fa-users me-1"></i> Meet the Staff
+            </a>
+        </p>
+    }
 </div>
 
 <div class="card border-primary mb-5" style="max-width: 720px; margin: 0 auto;">
