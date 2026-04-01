@@ -648,8 +648,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 team.Name, toAdd.Count, toRemove.Count);
         }
 
-        // Send "added to team" emails for newly added members
-        if (toAdd.Count > 0)
+        // Send "added to team" emails for newly added members (skip hidden teams)
+        if (toAdd.Count > 0 && !team.IsHidden)
         {
             var resources = await _dbContext.GoogleResources
                 .AsNoTracking()

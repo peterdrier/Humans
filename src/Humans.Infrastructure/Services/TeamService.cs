@@ -1833,6 +1833,8 @@ public class TeamService : ITeamService
 
     private async Task SendAddedToTeamEmailAsync(Guid userId, Team team, CancellationToken cancellationToken)
     {
+        if (team.IsHidden) return;
+
         try
         {
             var user = await _dbContext.Users
