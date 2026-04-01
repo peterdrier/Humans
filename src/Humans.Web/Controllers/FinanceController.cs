@@ -16,17 +16,20 @@ namespace Humans.Web.Controllers;
 public class FinanceController : HumansControllerBase
 {
     private readonly IBudgetService _budgetService;
+    private readonly ITicketingBudgetService _ticketingBudgetService;
     private readonly HumansDbContext _dbContext;
     private readonly ILogger<FinanceController> _logger;
 
     public FinanceController(
         IBudgetService budgetService,
+        ITicketingBudgetService ticketingBudgetService,
         HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<FinanceController> logger)
         : base(userManager)
     {
         _budgetService = budgetService;
+        _ticketingBudgetService = ticketingBudgetService;
         _dbContext = dbContext;
         _logger = logger;
     }
@@ -448,5 +451,54 @@ public class FinanceController : HumansControllerBase
             SetError($"Failed to delete line item: {ex.Message}");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
+    }
+
+    [HttpPost("TicketingProjection/{groupId:guid}/Update")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateTicketingProjection(Guid groupId, DateTime? startDate, DateTime? eventDate,
+        int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
+        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid budgetYearId)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        var nodaStart = startDate.HasValue ? LocalDate.FromDateTime(startDate.Value) : (LocalDate?)null;
+        var nodaEvent = eventDate.HasValue ? LocalDate.FromDateTime(eventDate.Value) : (LocalDate?)null;
+
+        try
+        {
+            await _budgetService.UpdateTicketingProjectionAsync(groupId, nodaStart, nodaEvent,
+                initialSalesCount, dailySalesRate, averageTicketPrice, vatRate,
+                stripeFeePercent, stripeFeeFixed, ticketTailorFeePercent, user.Id);
+            SetSuccess("Ticketing projection updated.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating ticketing projection for group {GroupId}", groupId);
+            SetError($"Failed to update projection: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
+    }
+
+    [HttpPost("TicketingBudget/{yearId:guid}/Sync")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SyncTicketingBudget(Guid yearId)
+    {
+        try
+        {
+            var count = await _ticketingBudgetService.SyncActualsAsync(yearId);
+            if (count > 0)
+                SetSuccess($"Synced {count} ticketing line item(s) from ticket sales data.");
+            else
+                SetInfo("No new ticket sales data to sync.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error syncing ticketing budget for year {YearId}", yearId);
+            SetError($"Failed to sync ticketing data: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(YearDetail), new { id = yearId });
     }
 }

@@ -3,7 +3,7 @@
     ViewData["Title"] = $"Finance - {Model.Name}";
     var allYears = ViewBag.AllYears as IReadOnlyList<BudgetYear> ?? [];
     var totalAllocated = Model.Groups.SelectMany(g => g.Categories).Sum(c => c.AllocatedAmount);
-    var totalLineItems = Model.Groups.SelectMany(g => g.Categories).SelectMany(c => c.LineItems).Sum(li => li.Amount);
+    var totalLineItems = Model.Groups.SelectMany(g => g.Categories).SelectMany(c => c.LineItems).Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
     var unallocated = totalAllocated - totalLineItems;
 }
 
@@ -93,7 +93,7 @@
 @foreach (var group in Model.Groups.OrderBy(g => g.SortOrder))
 {
     var groupAllocated = group.Categories.Sum(c => c.AllocatedAmount);
-    var groupLineItems = group.Categories.SelectMany(c => c.LineItems).Sum(li => li.Amount);
+    var groupLineItems = group.Categories.SelectMany(c => c.LineItems).Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
     var collapseId = $"group-{group.Id.ToString("N")}";
 
     <div class="card mb-3">
@@ -108,6 +108,10 @@
                 @if (group.IsDepartmentGroup)
                 {
                     <span class="badge bg-info ms-1">Department</span>
+                }
+                @if (group.IsTicketingGroup)
+                {
+                    <span class="badge bg-warning text-dark ms-1">Ticketing</span>
                 }
             </div>
             <span class="text-muted">&euro;@groupAllocated.ToString("N2")</span>
@@ -130,7 +134,7 @@
                         <tbody>
                             @foreach (var cat in group.Categories.OrderBy(c => c.SortOrder))
                             {
-                                var catLineItemTotal = cat.LineItems.Sum(li => li.Amount);
+                                var catLineItemTotal = cat.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
                                 var catUnallocated = cat.AllocatedAmount - catLineItemTotal;
                                 <tr>
                                     <td>@cat.Name</td>
@@ -154,33 +158,112 @@
                         </tbody>
                     </table>
                 }
-                <div class="p-3 border-top bg-light">
-                    <form asp-action="CreateCategory" method="post" class="row g-2 align-items-end">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="budgetGroupId" value="@group.Id" />
-                        <input type="hidden" name="budgetYearId" value="@Model.Id" />
-                        <div class="col-md-4">
-                            <label class="form-label form-label-sm">Category Name</label>
-                            <input type="text" name="name" class="form-control form-control-sm" required />
+                @if (group.IsTicketingGroup && group.TicketingProjection is not null)
+                {
+                    var proj = group.TicketingProjection;
+                    var projCollapseId = $"proj-{group.Id.ToString("N")}";
+                    <div class="p-3 border-top bg-light">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong role="button" data-bs-toggle="collapse" data-bs-target="#@projCollapseId">
+                                <i class="fa-solid fa-chart-line me-1"></i>Projection Parameters
+                            </strong>
+                            <form asp-action="SyncTicketingBudget" asp-route-yearId="@Model.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Actuals
+                                </button>
+                            </form>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label form-label-sm">Allocated Amount (&euro;)</label>
-                            <input type="number" name="allocatedAmount" class="form-control form-control-sm" step="0.01" value="0" required />
+                        <div id="@projCollapseId" class="collapse">
+                            <form asp-action="UpdateTicketingProjection" asp-route-groupId="@group.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="budgetYearId" value="@Model.Id" />
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Start Date</label>
+                                        <input type="date" name="startDate" class="form-control form-control-sm"
+                                               value="@(proj.StartDate?.ToString("yyyy-MM-dd", null))" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Event Date</label>
+                                        <input type="date" name="eventDate" class="form-control form-control-sm"
+                                               value="@(proj.EventDate?.ToString("yyyy-MM-dd", null))" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Initial Sales Count</label>
+                                        <input type="number" name="initialSalesCount" class="form-control form-control-sm"
+                                               value="@proj.InitialSalesCount" />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Daily Sales Rate</label>
+                                        <input type="number" name="dailySalesRate" class="form-control form-control-sm"
+                                               step="0.1" value="@proj.DailySalesRate" />
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Avg Ticket Price (&euro;)</label>
+                                        <input type="number" name="averageTicketPrice" class="form-control form-control-sm"
+                                               step="0.01" value="@proj.AverageTicketPrice" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">VAT Rate (%)</label>
+                                        <input type="number" name="vatRate" class="form-control form-control-sm"
+                                               min="0" max="21" value="@proj.VatRate" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">Stripe Fee (%)</label>
+                                        <input type="number" name="stripeFeePercent" class="form-control form-control-sm"
+                                               step="0.01" value="@proj.StripeFeePercent" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">Stripe Fixed (&euro;)</label>
+                                        <input type="number" name="stripeFeeFixed" class="form-control form-control-sm"
+                                               step="0.01" value="@proj.StripeFeeFixed" />
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label form-label-sm">TT Fee (%)</label>
+                                        <input type="number" name="ticketTailorFeePercent" class="form-control form-control-sm"
+                                               step="0.01" value="@proj.TicketTailorFeePercent" />
+                                    </div>
+                                    <div class="col-md-1 d-flex align-items-end">
+                                        <button type="submit" class="btn btn-primary btn-sm w-100">Save</button>
+                                    </div>
+                                </div>
+                            </form>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label form-label-sm">Type</label>
-                            <select name="expenditureType" class="form-select form-select-sm">
-                                <option value="@ExpenditureType.OpEx">OpEx</option>
-                                <option value="@ExpenditureType.CapEx">CapEx</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn btn-primary btn-sm w-100">
-                                <i class="fa-solid fa-plus me-1"></i>Add
-                            </button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="p-3 border-top bg-light">
+                        <form asp-action="CreateCategory" method="post" class="row g-2 align-items-end">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="budgetGroupId" value="@group.Id" />
+                            <input type="hidden" name="budgetYearId" value="@Model.Id" />
+                            <div class="col-md-4">
+                                <label class="form-label form-label-sm">Category Name</label>
+                                <input type="text" name="name" class="form-control form-control-sm" required />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label form-label-sm">Allocated Amount (&euro;)</label>
+                                <input type="number" name="allocatedAmount" class="form-control form-control-sm" step="0.01" value="0" required />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label form-label-sm">Type</label>
+                                <select name="expenditureType" class="form-select form-select-sm">
+                                    <option value="@ExpenditureType.OpEx">OpEx</option>
+                                    <option value="@ExpenditureType.CapEx">CapEx</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary btn-sm w-100">
+                                    <i class="fa-solid fa-plus me-1"></i>Add
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                }
             </div>
         </div>
     </div>

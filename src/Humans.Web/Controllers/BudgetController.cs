@@ -90,10 +90,12 @@ public class BudgetController : HumansControllerBase
                 .SelectMany(c => c.LineItems)
                 .ToList();
 
-            var totalLineItems = allLineItems.Sum(li => li.Amount);
+            // Budget line items exclude cashflow-only items (e.g. ticketing donations)
+            var budgetLineItems = allLineItems.Where(li => !li.IsCashflowOnly).ToList();
+            var totalLineItems = budgetLineItems.Sum(li => li.Amount);
 
-            // Compute VAT projections for all line items
-            var vatProjections = allLineItems
+            // Compute VAT projections for all budget line items (not cashflow-only)
+            var vatProjections = budgetLineItems
                 .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
                 .Select(li => new VatProjection
                 {
@@ -106,9 +108,9 @@ public class BudgetController : HumansControllerBase
                 })
                 .ToList();
 
-            // Income = positive line items + VAT credits from expenses
-            var income = allLineItems.Where(li => li.Amount > 0).Sum(li => li.Amount);
-            var expenses = allLineItems.Where(li => li.Amount < 0).Sum(li => li.Amount); // negative
+            // Income = positive budget line items + VAT credits from expenses
+            var income = budgetLineItems.Where(li => li.Amount > 0).Sum(li => li.Amount);
+            var expenses = budgetLineItems.Where(li => li.Amount < 0).Sum(li => li.Amount); // negative
             var vatExpenses = vatProjections.Where(v => v.IsExpense).Sum(v => v.VatAmount);
             var vatCredits = vatProjections.Where(v => !v.IsExpense).Sum(v => v.VatAmount);
 
@@ -116,13 +118,13 @@ public class BudgetController : HumansControllerBase
             var totalExpenses = expenses - vatExpenses; // expenses is negative, subtract positive VAT expenses
             var netBalance = totalIncome + totalExpenses;
 
-            // Build income slices (categories with positive totals)
+            // Build income slices (categories with positive totals, excluding cashflow-only)
             var incomeCategories = visibleGroups
                 .SelectMany(g => g.Categories)
                 .Select(c => new
                 {
                     c.Name,
-                    Total = c.LineItems.Where(li => li.Amount > 0).Sum(li => li.Amount)
+                    Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount)
                 })
                 .Where(c => c.Total > 0)
                 .OrderByDescending(c => c.Total)
@@ -144,13 +146,13 @@ public class BudgetController : HumansControllerBase
                 })
                 .ToList();
 
-            // Build expense slices (categories with negative totals, displayed as absolute values)
+            // Build expense slices (categories with negative totals, excluding cashflow-only)
             var expenseCategories = visibleGroups
                 .SelectMany(g => g.Categories)
                 .Select(c => new
                 {
                     c.Name,
-                    Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0).Sum(li => li.Amount))
+                    Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount))
                 })
                 .Where(c => c.Total > 0)
                 .OrderByDescending(c => c.Total)

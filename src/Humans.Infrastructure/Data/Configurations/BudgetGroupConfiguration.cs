@@ -15,10 +15,12 @@ public class BudgetGroupConfiguration : IEntityTypeConfiguration<BudgetGroup>
         builder.Property(g => g.SortOrder).IsRequired();
         builder.Property(g => g.IsRestricted).IsRequired();
         builder.Property(g => g.IsDepartmentGroup).IsRequired();
+        builder.Property(g => g.IsTicketingGroup).IsRequired();
         builder.Property(g => g.CreatedAt).IsRequired();
         builder.Property(g => g.UpdatedAt).IsRequired();
 
         builder.HasMany(g => g.Categories).WithOne(c => c.BudgetGroup).HasForeignKey(c => c.BudgetGroupId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(g => g.TicketingProjection).WithOne(p => p.BudgetGroup).HasForeignKey<TicketingProjection>(p => p.BudgetGroupId).OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(g => new { g.BudgetYearId, g.SortOrder });
     }

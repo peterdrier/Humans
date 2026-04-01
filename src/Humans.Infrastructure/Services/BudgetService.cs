@@ -54,6 +54,8 @@ public class BudgetService : IBudgetService
             .Include(y => y.Groups)
                 .ThenInclude(g => g.Categories)
                     .ThenInclude(c => c.Team)
+            .Include(y => y.Groups)
+                .ThenInclude(g => g.TicketingProjection)
             .FirstOrDefaultAsync(y => y.Id == id);
     }
 
@@ -123,6 +125,55 @@ public class BudgetService : IBudgetService
             };
 
             _dbContext.BudgetCategories.Add(category);
+        }
+
+        // Auto-create "Ticketing" group with projection defaults
+        var ticketingGroup = new BudgetGroup
+        {
+            Id = Guid.NewGuid(),
+            BudgetYearId = budgetYear.Id,
+            Name = "Ticketing",
+            SortOrder = 1,
+            IsRestricted = false,
+            IsTicketingGroup = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.BudgetGroups.Add(ticketingGroup);
+
+        var ticketingProjection = new TicketingProjection
+        {
+            Id = Guid.NewGuid(),
+            BudgetGroupId = ticketingGroup.Id,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.TicketingProjections.Add(ticketingProjection);
+
+        // Auto-create categories for the ticketing group
+        var ticketingCategories = new[]
+        {
+            ("Ticket Revenue", 0),
+            ("Processing Fees", 1),
+            ("VAT Liability", 2),
+            ("Donations", 3)
+        };
+
+        foreach (var (catName, catSort) in ticketingCategories)
+        {
+            _dbContext.BudgetCategories.Add(new BudgetCategory
+            {
+                Id = Guid.NewGuid(),
+                BudgetGroupId = ticketingGroup.Id,
+                Name = catName,
+                AllocatedAmount = 0,
+                ExpenditureType = ExpenditureType.OpEx,
+                SortOrder = catSort,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
         }
 
         LogAudit(budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
@@ -374,6 +425,9 @@ public class BudgetService : IBudgetService
 
         if (group.IsDepartmentGroup)
             throw new InvalidOperationException("Cannot delete the auto-generated Departments group.");
+
+        if (group.IsTicketingGroup)
+            throw new InvalidOperationException("Cannot delete the auto-generated Ticketing group.");
 
         var now = _clock.GetCurrentInstant();
 
@@ -662,6 +716,53 @@ public class BudgetService : IBudgetService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Deleted line item {LineItemId} ('{Description}')", lineItemId, lineItem.Description);
+    }
+
+    // ───────────────────────── Ticketing Projection ─────────────────────────
+
+    public async Task<TicketingProjection?> GetTicketingProjectionAsync(Guid budgetGroupId)
+    {
+        return await _dbContext.TicketingProjections
+            .FirstOrDefaultAsync(p => p.BudgetGroupId == budgetGroupId);
+    }
+
+    public async Task UpdateTicketingProjectionAsync(
+        Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
+        int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
+        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId)
+    {
+        var group = await _dbContext.BudgetGroups.FindAsync(budgetGroupId)
+            ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
+
+        if (!group.IsTicketingGroup)
+            throw new InvalidOperationException("Projection parameters can only be set on ticketing groups.");
+
+        await EnsureYearNotClosedAsync(group.BudgetYearId);
+
+        var projection = await _dbContext.TicketingProjections
+            .FirstOrDefaultAsync(p => p.BudgetGroupId == budgetGroupId)
+            ?? throw new InvalidOperationException("No ticketing projection found for this group.");
+
+        var now = _clock.GetCurrentInstant();
+
+        projection.StartDate = startDate;
+        projection.EventDate = eventDate;
+        projection.InitialSalesCount = initialSalesCount;
+        projection.DailySalesRate = dailySalesRate;
+        projection.AverageTicketPrice = averageTicketPrice;
+        projection.VatRate = vatRate;
+        projection.StripeFeePercent = stripeFeePercent;
+        projection.StripeFeeFixed = stripeFeeFixed;
+        projection.TicketTailorFeePercent = ticketTailorFeePercent;
+        projection.UpdatedAt = now;
+
+        LogAudit(group.BudgetYearId, nameof(TicketingProjection), projection.Id,
+            "Updated ticketing projection parameters",
+            actorUserId, now);
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
     }
 
     // ───────────────────────── Audit Log ─────────────────────────

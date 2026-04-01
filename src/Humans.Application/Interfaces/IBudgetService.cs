@@ -20,6 +20,12 @@ public interface IBudgetService
 
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
 
+    // Ticketing Projection
+    Task<TicketingProjection?> GetTicketingProjectionAsync(Guid budgetGroupId);
+    Task UpdateTicketingProjectionAsync(Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
+        int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
+        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId);
+
     // Budget Groups
     Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId);
     Task UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId);
