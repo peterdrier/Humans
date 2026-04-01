@@ -927,6 +927,18 @@ tr[data-href] {
     color: var(--h-aged-ink);
 }
 
+.notification-see-all {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--h-aged-ink);
+    text-decoration: none;
+}
+
+.notification-see-all:hover {
+    color: var(--h-aged-ink-light);
+    text-decoration: underline;
+}
+
 /* --- Section Labels --- */
 .notification-section-label {
     font-family: var(--h-font-body);
