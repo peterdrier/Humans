@@ -43,9 +43,10 @@
 
 <!-- Bulk action toolbar (hidden until items selected) -->
 <div class="notification-bulk-toolbar mb-2" id="bulkToolbar" style="display: none;">
-    <span class="notification-bulk-count" id="bulkCount">0 selected</span>
-    <button type="button" class="btn btn-sm btn-outline-primary" id="bulkResolveBtn">Resolve selected</button>
-    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDismissBtn">Dismiss selected</button>
+    <span class="notification-bulk-count" id="bulkCount"
+          data-template="@Localizer["Notification_Bulk_Selected"]">@string.Format(Localizer["Notification_Bulk_Selected"].Value, 0)</span>
+    <button type="button" class="btn btn-sm btn-outline-primary" id="bulkResolveBtn">@Localizer["Notification_Bulk_Resolve"]</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkDismissBtn">@Localizer["Notification_Bulk_Dismiss"]</button>
 </div>
 
 <!-- Inbox card -->
@@ -174,7 +175,7 @@
             return;
         }
         toolbar.style.display = 'flex';
-        countEl.textContent = selected.length + ' selected';
+        countEl.textContent = countEl.dataset.template.replace('{0}', selected.length);
 
         var hasActionable = selected.some(function(cb) { return cb.dataset.notificationClass === 'actionable'; });
         var hasInformational = selected.some(function(cb) { return cb.dataset.notificationClass === 'informational'; });

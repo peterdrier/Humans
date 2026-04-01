@@ -47,6 +47,10 @@ public class NotificationController : HumansControllerBase
         var (err, user) = await RequireCurrentUserAsync();
         if (err is not null) return err;
 
+        // Resolved filter is incompatible with unread tab — resolved items are never unread
+        if (string.Equals(filter, "resolved", StringComparison.OrdinalIgnoreCase))
+            tab = "all";
+
         var now = _clock.GetCurrentInstant();
         var cutoff = now - Duration.FromDays(7);
 
@@ -400,13 +404,13 @@ public class NotificationController : HumansControllerBase
         }
 
         var url = recipient.Notification.ActionUrl;
-        if (!string.IsNullOrEmpty(url) && url.StartsWith('/'))
-            return Redirect(url);
+        if (!string.IsNullOrEmpty(url) && Url.IsLocalUrl(url))
+            return LocalRedirect(url);
 
         return RedirectToAction(nameof(Index));
     }
 
-    private static NotificationRowViewModel MapToRow(NotificationRecipient nr)
+    private NotificationRowViewModel MapToRow(NotificationRecipient nr)
     {
         var n = nr.Notification;
         var allRecipients = n.Recipients?.ToList() ?? [];
@@ -417,7 +421,7 @@ public class NotificationController : HumansControllerBase
             Title = n.Title,
             Body = n.Body,
             ActionUrl = n.ActionUrl,
-            ActionLabel = n.ActionLabel ?? "View \u2192",
+            ActionLabel = n.ActionLabel ?? _localizer["Notification_DefaultActionLabel"].Value,
             Priority = n.Priority,
             Source = n.Source,
             Class = n.Class,

@@ -1299,5 +1299,13 @@
   <data name="Notification_Dismiss" xml:space="preserve"><value>Dismiss</value></data>
   <data name="Notification_HandledBy" xml:space="preserve"><value>Handled by {0}, {1}</value></data>
   <data name="Notification_Pref_InboxEnabled" xml:space="preserve"><value>In-app notifications</value></data>
+  <data name="Notification_DefaultActionLabel" xml:space="preserve"><value>View →</value></data>
+  <data name="Notification_TimeAgo_JustNow" xml:space="preserve"><value>just now</value></data>
+  <data name="Notification_TimeAgo_Minutes" xml:space="preserve"><value>{0}m ago</value></data>
+  <data name="Notification_TimeAgo_Hours" xml:space="preserve"><value>{0}h ago</value></data>
+  <data name="Notification_TimeAgo_Days" xml:space="preserve"><value>{0}d ago</value></data>
+  <data name="Notification_Bulk_Selected" xml:space="preserve"><value>{0} selected</value></data>
+  <data name="Notification_Bulk_Resolve" xml:space="preserve"><value>Resolve selected</value></data>
+  <data name="Notification_Bulk_Dismiss" xml:space="preserve"><value>Dismiss selected</value></data>
 
 </root>
