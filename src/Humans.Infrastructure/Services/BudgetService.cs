@@ -339,6 +339,80 @@ public class BudgetService : IBudgetService
         return budgetTeams.Count;
     }
 
+    public async Task<bool> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId)
+    {
+        await EnsureYearNotClosedAsync(budgetYearId);
+
+        var exists = await _dbContext.BudgetGroups
+            .AnyAsync(g => g.BudgetYearId == budgetYearId && g.IsTicketingGroup);
+
+        if (exists)
+            return false;
+
+        var now = _clock.GetCurrentInstant();
+
+        var maxSortOrder = await _dbContext.BudgetGroups
+            .Where(g => g.BudgetYearId == budgetYearId)
+            .MaxAsync(g => (int?)g.SortOrder) ?? -1;
+
+        var ticketingGroup = new BudgetGroup
+        {
+            Id = Guid.NewGuid(),
+            BudgetYearId = budgetYearId,
+            Name = "Ticketing",
+            SortOrder = maxSortOrder + 1,
+            IsRestricted = false,
+            IsTicketingGroup = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.BudgetGroups.Add(ticketingGroup);
+
+        var ticketingProjection = new TicketingProjection
+        {
+            Id = Guid.NewGuid(),
+            BudgetGroupId = ticketingGroup.Id,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.TicketingProjections.Add(ticketingProjection);
+
+        var ticketingCategories = new[]
+        {
+            ("Ticket Revenue", 0),
+            ("Processing Fees", 1),
+            ("VAT Liability", 2),
+            ("Donations", 3)
+        };
+
+        foreach (var (catName, catSort) in ticketingCategories)
+        {
+            _dbContext.BudgetCategories.Add(new BudgetCategory
+            {
+                Id = Guid.NewGuid(),
+                BudgetGroupId = ticketingGroup.Id,
+                Name = catName,
+                AllocatedAmount = 0,
+                ExpenditureType = ExpenditureType.OpEx,
+                SortOrder = catSort,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        LogAudit(budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
+            "Added Ticketing group with projection parameters",
+            actorUserId, now);
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Added ticketing group to budget year {YearId}", budgetYearId);
+
+        return true;
+    }
+
     // ───────────────────────── Budget Groups ─────────────────────────
 
     public async Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)

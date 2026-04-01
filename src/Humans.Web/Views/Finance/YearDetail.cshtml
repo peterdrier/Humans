@@ -38,6 +38,15 @@
                 <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Departments
             </button>
         </form>
+        @if (!Model.Groups.Any(g => g.IsTicketingGroup))
+        {
+            <form asp-action="EnsureTicketingGroup" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-warning">
+                    <i class="fa-solid fa-ticket me-1"></i>Add Ticketing Group
+                </button>
+            </form>
+        }
         <a asp-action="AuditLog" asp-route-yearId="@Model.Id" class="btn btn-outline-secondary">
             <i class="fa-solid fa-clock-rotate-left me-1"></i>Audit Log
         </a>

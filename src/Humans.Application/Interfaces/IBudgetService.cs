@@ -19,6 +19,7 @@ public interface IBudgetService
     Task DeleteYearAsync(Guid yearId, Guid actorUserId);
 
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
+    Task<bool> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId);
 
     // Ticketing Projection
     Task<TicketingProjection?> GetTicketingProjectionAsync(Guid budgetGroupId);

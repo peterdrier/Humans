@@ -453,6 +453,30 @@ public class FinanceController : HumansControllerBase
         }
     }
 
+    [HttpPost("Years/{id:guid}/EnsureTicketingGroup")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EnsureTicketingGroup(Guid id)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var added = await _budgetService.EnsureTicketingGroupAsync(id, user.Id);
+            if (added)
+                SetSuccess("Ticketing group added to this budget year.");
+            else
+                SetInfo("Ticketing group already exists for this budget year.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error ensuring ticketing group for year {YearId}", id);
+            SetError($"Failed to add ticketing group: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(YearDetail), new { id });
+    }
+
     [HttpPost("TicketingProjection/{groupId:guid}/Update")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateTicketingProjection(Guid groupId, DateTime? startDate, DateTime? eventDate,
