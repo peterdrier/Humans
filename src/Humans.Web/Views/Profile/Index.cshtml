@@ -57,7 +57,14 @@
             </div>
         }
 
-        <vc:profile-card user-id="@Model.UserId" view-mode="@(Model.IsOwnProfile ? ProfileCardViewMode.Self : ProfileCardViewMode.Public)" />
+        @{
+            var cardViewMode = Model.IsOwnProfile
+                ? ProfileCardViewMode.Self
+                : Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User)
+                    ? ProfileCardViewMode.Admin
+                    : ProfileCardViewMode.Public;
+        }
+        <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
 
         @if (Model.NoShowHistory != null && Model.NoShowHistory.Count > 0)
         {

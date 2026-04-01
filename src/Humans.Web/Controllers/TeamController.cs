@@ -483,6 +483,11 @@ public class TeamController : HumansControllerBase
             return BadRequest();
         }
 
+        if (team.IsHidden && !RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+        {
+            return NotFound();
+        }
+
         try
         {
             if (team.RequiresApproval)

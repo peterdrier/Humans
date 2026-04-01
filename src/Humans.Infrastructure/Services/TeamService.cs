@@ -350,15 +350,12 @@ public class TeamService : ITeamService
         Guid userId,
         CancellationToken cancellationToken = default)
     {
+        // This is the current user's own My Teams page — show all their memberships including hidden teams
         var allMemberships = await GetUserTeamsAsync(userId, cancellationToken);
+        var memberships = allMemberships;
         var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
         var isAdmin = await _roleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
         var isTeamsAdmin = await _roleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
-        var canSeeHidden = isBoardMember || isAdmin || isTeamsAdmin;
-
-        var memberships = canSeeHidden
-            ? allMemberships
-            : allMemberships.Where(m => !m.Team.IsHidden).ToList();
 
         var coordinatorTeamIds = memberships
             .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)
@@ -632,6 +629,11 @@ public class TeamService : ITeamService
             throw new InvalidOperationException("Cannot request to join system team");
         }
 
+        if (team.IsHidden)
+        {
+            throw new InvalidOperationException("Cannot request to join a hidden team");
+        }
+
         if (!team.RequiresApproval)
         {
             throw new InvalidOperationException("This team does not require approval. Use JoinTeamDirectlyAsync instead.");
@@ -682,6 +684,11 @@ public class TeamService : ITeamService
         if (team.IsSystemTeam)
         {
             throw new InvalidOperationException("Cannot directly join system team");
+        }
+
+        if (team.IsHidden)
+        {
+            throw new InvalidOperationException("Cannot directly join a hidden team");
         }
 
         if (team.RequiresApproval)
@@ -1833,6 +1840,8 @@ public class TeamService : ITeamService
 
     private async Task SendAddedToTeamEmailAsync(Guid userId, Team team, CancellationToken cancellationToken)
     {
+        if (team.IsHidden) return;
+
         try
         {
             var user = await _dbContext.Users
