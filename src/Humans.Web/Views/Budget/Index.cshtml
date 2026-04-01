@@ -7,7 +7,7 @@
         .OrderBy(g => g.SortOrder)
         .ToList();
     var totalAllocated = groups.SelectMany(g => g.Categories).Sum(c => c.AllocatedAmount);
-    var totalLineItems = groups.SelectMany(g => g.Categories).SelectMany(c => c.LineItems).Sum(li => li.Amount);
+    var totalLineItems = groups.SelectMany(g => g.Categories).SelectMany(c => c.LineItems).Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
     var unallocated = totalAllocated - totalLineItems;
 }
 
@@ -67,7 +67,7 @@
 @foreach (var group in groups)
 {
     var groupAllocated = group.Categories.Sum(c => c.AllocatedAmount);
-    var groupLineItems = group.Categories.SelectMany(c => c.LineItems).Sum(li => li.Amount);
+    var groupLineItems = group.Categories.SelectMany(c => c.LineItems).Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
     var collapseId = $"group-{group.Id.ToString("N")}";
 
     <div class="card mb-3">
@@ -100,7 +100,7 @@
                         <tbody>
                             @foreach (var cat in group.Categories.OrderBy(c => c.SortOrder))
                             {
-                                var catLineItemTotal = cat.LineItems.Sum(li => li.Amount);
+                                var catLineItemTotal = cat.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
                                 var catUnallocated = cat.AllocatedAmount - catLineItemTotal;
                                 var isOwnDept = cat.TeamId.HasValue && Model.EditableTeamIds.Contains(cat.TeamId.Value);
                                 var isEditable = Model.IsFinanceAdmin || isOwnDept;

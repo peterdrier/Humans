@@ -3,6 +3,7 @@ using System;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    partial class HumansDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260401211716_AddTicketingProjectionAndBudgetFlags")]
+    partial class AddTicketingProjectionAndBudgetFlags
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -990,11 +993,6 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<bool>("InboxEnabled")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
                     b.Property<bool>("OptedOut")
                         .HasColumnType("boolean");
 
@@ -1497,9 +1495,6 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<bool>("RestrictInheritedAccess")
-                        .HasColumnType("boolean");
-
                     b.Property<Guid>("TeamId")
                         .HasColumnType("uuid");
 
@@ -1620,85 +1615,6 @@ namespace Humans.Infrastructure.Migrations
                     b.HasIndex("TeamId", "IsActive");
 
                     b.ToTable("legal_documents", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.Notification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ActionLabel")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("ActionUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("Body")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("Class")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Priority")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Instant?>("ResolvedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ResolvedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("TargetGroupName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("ResolvedByUserId");
-
-                    b.ToTable("notifications", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.NotificationRecipient", b =>
-                {
-                    b.Property<Guid>("NotificationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant?>("ReadAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("NotificationId", "UserId");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("IX_NotificationRecipient_UserId");
-
-                    b.ToTable("notification_recipients", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>
@@ -3789,35 +3705,6 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("Team");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.Notification", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
-                        .WithMany()
-                        .HasForeignKey("ResolvedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ResolvedByUser");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.NotificationRecipient", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.Notification", "Notification")
-                        .WithMany("Recipients")
-                        .HasForeignKey("NotificationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Notification");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", "User")
@@ -4262,11 +4149,6 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.LegalDocument", b =>
                 {
                     b.Navigation("Versions");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.Notification", b =>
-                {
-                    b.Navigation("Recipients");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>

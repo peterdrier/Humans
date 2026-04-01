@@ -150,6 +150,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IMagicLinkService, MagicLinkService>();
         services.AddScoped<IFeedbackService, FeedbackService>();
         services.AddScoped<IBudgetService, BudgetService>();
+        services.AddScoped<ITicketingBudgetService, TicketingBudgetService>();
         services.AddScoped<IApplicationDecisionService, ApplicationDecisionService>();
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IConsentService, ConsentService>();
@@ -166,6 +167,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ProcessEmailOutboxJob>();
         services.AddScoped<CleanupEmailOutboxJob>();
         services.AddScoped<TicketSyncJob>();
+        services.AddScoped<TicketingBudgetSyncJob>();
         services.AddScoped<SendAdminDailyDigestJob>();
         services.AddScoped<SendBoardDailyDigestJob>();
         services.AddScoped<TermRenewalReminderJob>();

@@ -71,6 +71,10 @@ public static class RecurringJobExtensions
             // Sync ticket data from vendor at configured interval (default 15 min).
             ("ticket-vendor-sync", () => RecurringJob.AddOrUpdate<TicketSyncJob>(
                 "ticket-vendor-sync", job => job.ExecuteAsync(CancellationToken.None), $"*/{ticketSyncInterval} * * * *")),
+
+            // Materialize ticket sales actuals into budget line items daily at 04:30.
+            ("ticketing-budget-sync", () => RecurringJob.AddOrUpdate<TicketingBudgetSyncJob>(
+                "ticketing-budget-sync", job => job.ExecuteAsync(CancellationToken.None), "30 4 * * *")),
         };
 
         foreach (var (id, register) in jobs)
