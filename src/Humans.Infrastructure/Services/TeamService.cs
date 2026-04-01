@@ -258,7 +258,8 @@ public class TeamService : ITeamService
             return null;
         }
 
-        if (!userId.HasValue && (!team.IsPublicPage || team.IsHidden))
+        if (!userId.HasValue &&
+            (!team.IsPublicPage || team.IsHidden || team.IsSystemTeam || team.ParentTeamId.HasValue))
         {
             return null;
         }
@@ -513,6 +514,11 @@ public class TeamService : ITeamService
             team.IsHidden = isHidden.Value;
         if (isSensitive.HasValue)
             team.IsSensitive = isSensitive.Value;
+        if (team.IsSystemTeam || parentTeamId.HasValue)
+        {
+            team.IsPublicPage = false;
+            team.ShowCoordinatorsOnPublicPage = false;
+        }
         team.UpdatedAt = _clock.GetCurrentInstant();
 
         if (becomingChild)
@@ -569,15 +575,20 @@ public class TeamService : ITeamService
         if (callsToAction.Count(c => c.Style == CallToActionStyle.Primary) > 1)
             throw new InvalidOperationException("Only one primary call to action is allowed.");
 
+        var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
+
         // Only departments (no parent, non-system) can be made public
-        if (isPublicPage && (team.IsSystemTeam || team.ParentTeamId.HasValue))
+        if (isPublicPage && !canBePublic)
             throw new InvalidOperationException("Only departments (non-system, top-level teams) can be made public.");
+
+        var normalizedShowCoordinatorsOnPublicPage =
+            canBePublic && isPublicPage && showCoordinatorsOnPublicPage;
 
         var now = _clock.GetCurrentInstant();
         team.PageContent = pageContent;
         team.CallsToAction = callsToAction;
         team.IsPublicPage = isPublicPage;
-        team.ShowCoordinatorsOnPublicPage = showCoordinatorsOnPublicPage;
+        team.ShowCoordinatorsOnPublicPage = normalizedShowCoordinatorsOnPublicPage;
         team.PageContentUpdatedAt = now;
         team.PageContentUpdatedByUserId = updatedByUserId;
         team.UpdatedAt = now;
