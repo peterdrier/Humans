@@ -101,7 +101,7 @@ public class NotificationService : INotificationService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        InvalidateNavBadgeCache();
+        InvalidateBadgeCaches(recipientUserIds);
 
         _logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to {Count} individual recipient(s)",
@@ -192,7 +192,7 @@ public class NotificationService : INotificationService
 
         _dbContext.Notifications.Add(notification);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        InvalidateNavBadgeCache();
+        InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId).ToList());
 
         _logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to team '{TeamName}' ({Count} recipients)",
@@ -275,15 +275,19 @@ public class NotificationService : INotificationService
 
         _dbContext.Notifications.Add(notification);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        InvalidateNavBadgeCache();
+        InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId).ToList());
 
         _logger.LogInformation(
             "Dispatched {Source} notification '{Title}' to role '{RoleName}' ({Count} recipients)",
             source, title, roleName, notification.Recipients.Count);
     }
 
-    private void InvalidateNavBadgeCache()
+    private void InvalidateBadgeCaches(IReadOnlyList<Guid> userIds)
     {
         _cache.Remove(CacheKeys.NavBadgeCounts);
+        foreach (var userId in userIds)
+        {
+            _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
+        }
     }
 }

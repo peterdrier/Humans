@@ -202,20 +202,32 @@ public class NotificationServiceTests : IDisposable
 
         _dbContext.RoleAssignments.Add(new RoleAssignment
         {
-            Id = Guid.NewGuid(), UserId = user1, RoleName = "Board",
-            ValidFrom = now - Duration.FromDays(30), CreatedAt = now, CreatedByUserId = Guid.NewGuid()
+            Id = Guid.NewGuid(),
+            UserId = user1,
+            RoleName = "Board",
+            ValidFrom = now - Duration.FromDays(30),
+            CreatedAt = now,
+            CreatedByUserId = Guid.NewGuid()
         });
         _dbContext.RoleAssignments.Add(new RoleAssignment
         {
-            Id = Guid.NewGuid(), UserId = user2, RoleName = "Board",
-            ValidFrom = now - Duration.FromDays(30), CreatedAt = now, CreatedByUserId = Guid.NewGuid()
+            Id = Guid.NewGuid(),
+            UserId = user2,
+            RoleName = "Board",
+            ValidFrom = now - Duration.FromDays(30),
+            CreatedAt = now,
+            CreatedByUserId = Guid.NewGuid()
         });
         // Expired role - should NOT be included
         _dbContext.RoleAssignments.Add(new RoleAssignment
         {
-            Id = Guid.NewGuid(), UserId = Guid.NewGuid(), RoleName = "Board",
-            ValidFrom = now - Duration.FromDays(60), ValidTo = now - Duration.FromDays(10),
-            CreatedAt = now, CreatedByUserId = Guid.NewGuid()
+            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
+            RoleName = "Board",
+            ValidFrom = now - Duration.FromDays(60),
+            ValidTo = now - Duration.FromDays(10),
+            CreatedAt = now,
+            CreatedByUserId = Guid.NewGuid()
         });
         await _dbContext.SaveChangesAsync();
 

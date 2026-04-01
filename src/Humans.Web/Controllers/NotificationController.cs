@@ -195,7 +195,7 @@ public class NotificationController : HumansControllerBase
             notification.ResolvedAt = _clock.GetCurrentInstant();
             notification.ResolvedByUserId = user.Id;
             await _dbContext.SaveChangesAsync();
-            _cache.Remove(CacheKeys.NavBadgeCounts);
+            InvalidateBadgeCaches(user.Id);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -231,7 +231,7 @@ public class NotificationController : HumansControllerBase
             notification.ResolvedAt = _clock.GetCurrentInstant();
             notification.ResolvedByUserId = user.Id;
             await _dbContext.SaveChangesAsync();
-            _cache.Remove(CacheKeys.NavBadgeCounts);
+            InvalidateBadgeCaches(user.Id);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -286,7 +286,7 @@ public class NotificationController : HumansControllerBase
         if (unread.Count > 0)
         {
             await _dbContext.SaveChangesAsync();
-            _cache.Remove(CacheKeys.NavBadgeCounts);
+            InvalidateBadgeCaches(user.Id);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -326,7 +326,7 @@ public class NotificationController : HumansControllerBase
         if (notifications.Count > 0)
         {
             await _dbContext.SaveChangesAsync();
-            _cache.Remove(CacheKeys.NavBadgeCounts);
+            InvalidateBadgeCaches(user.Id);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -366,7 +366,7 @@ public class NotificationController : HumansControllerBase
         if (notifications.Count > 0)
         {
             await _dbContext.SaveChangesAsync();
-            _cache.Remove(CacheKeys.NavBadgeCounts);
+            InvalidateBadgeCaches(user.Id);
         }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
@@ -439,5 +439,11 @@ public class NotificationController : HumansControllerBase
         return parts.Length >= 2
             ? $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
             : parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+    }
+
+    private void InvalidateBadgeCaches(Guid userId)
+    {
+        _cache.Remove(CacheKeys.NavBadgeCounts);
+        _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
     }
 }
