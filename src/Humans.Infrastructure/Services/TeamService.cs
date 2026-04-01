@@ -629,6 +629,11 @@ public class TeamService : ITeamService
             throw new InvalidOperationException("Cannot request to join system team");
         }
 
+        if (team.IsHidden)
+        {
+            throw new InvalidOperationException("Cannot request to join a hidden team");
+        }
+
         if (!team.RequiresApproval)
         {
             throw new InvalidOperationException("This team does not require approval. Use JoinTeamDirectlyAsync instead.");
@@ -679,6 +684,11 @@ public class TeamService : ITeamService
         if (team.IsSystemTeam)
         {
             throw new InvalidOperationException("Cannot directly join system team");
+        }
+
+        if (team.IsHidden)
+        {
+            throw new InvalidOperationException("Cannot directly join a hidden team");
         }
 
         if (team.RequiresApproval)
