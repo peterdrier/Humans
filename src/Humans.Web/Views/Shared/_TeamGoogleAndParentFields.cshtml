@@ -28,9 +28,76 @@
 {
     <div class="mb-3">
         <label asp-for="ParentTeamId" class="form-label">Department (optional)</label>
-        <select asp-for="ParentTeamId" asp-items="Model.EligibleParents" class="form-select">
+        <select asp-for="ParentTeamId" asp-items="Model.EligibleParents" class="form-select" id="parentTeamSelect">
             <option value="">None (standalone team)</option>
         </select>
         <div class="form-text">Place this team under an existing team as a sub-team.</div>
     </div>
+
+    <div id="parentResourceWarning" class="alert alert-warning d-none">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        <strong>Department resource inheritance:</strong>
+        Humans in this team will be included in the selected department and will inherit access to its Google resources.
+        <div id="parentResourceList" class="mt-2"></div>
+    </div>
+
+    <script>
+        (function () {
+            var select = document.getElementById('parentTeamSelect');
+            var warningDiv = document.getElementById('parentResourceWarning');
+            var resourceList = document.getElementById('parentResourceList');
+
+            if (!select || !warningDiv || !resourceList) return;
+
+            function updateWarning() {
+                var teamId = select.value;
+                if (!teamId) {
+                    warningDiv.classList.add('d-none');
+                    resourceList.innerHTML = '';
+                    return;
+                }
+
+                fetch('/Teams/' + teamId + '/GoogleResources', {
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Failed to fetch resources');
+                    return response.json();
+                })
+                .then(function (resources) {
+                    if (resources.length === 0) {
+                        warningDiv.classList.add('d-none');
+                        resourceList.innerHTML = '';
+                        return;
+                    }
+
+                    var html = '<ul class="mb-0">';
+                    resources.forEach(function (r) {
+                        html += '<li><strong>' + escapeHtml(r.name) + '</strong> <span class="badge bg-secondary">' + escapeHtml(r.type) + '</span></li>';
+                    });
+                    html += '</ul>';
+
+                    resourceList.innerHTML = html;
+                    warningDiv.classList.remove('d-none');
+                })
+                .catch(function () {
+                    warningDiv.classList.add('d-none');
+                    resourceList.innerHTML = '';
+                });
+            }
+
+            function escapeHtml(text) {
+                var div = document.createElement('div');
+                div.appendChild(document.createTextNode(text));
+                return div.innerHTML;
+            }
+
+            select.addEventListener('change', updateWarning);
+
+            // Show warning on initial load if a parent is already selected
+            if (select.value) {
+                updateWarning();
+            }
+        })();
+    </script>
 }

@@ -24,6 +24,7 @@ public class TeamController : HumansControllerBase
     private readonly ITeamPageService _teamPageService;
     private readonly IProfileService _profileService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly ITeamResourceService _teamResourceService;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IConfiguration _configuration;
@@ -36,6 +37,7 @@ public class TeamController : HumansControllerBase
         UserManager<User> userManager,
         IProfileService profileService,
         IGoogleSyncService googleSyncService,
+        ITeamResourceService teamResourceService,
         ISystemTeamSync systemTeamSync,
         IStringLocalizer<SharedResource> localizer,
         IConfiguration configuration,
@@ -47,6 +49,7 @@ public class TeamController : HumansControllerBase
         _teamPageService = teamPageService;
         _profileService = profileService;
         _googleSyncService = googleSyncService;
+        _teamResourceService = teamResourceService;
         _systemTeamSync = systemTeamSync;
         _localizer = localizer;
         _configuration = configuration;
@@ -800,6 +803,26 @@ public class TeamController : HumansControllerBase
         PendingShiftSignupCount = team.PendingShiftSignupCount,
         IsHidden = team.IsHidden
     };
+
+    [HttpGet("{teamId:guid}/GoogleResources")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    public async Task<IActionResult> GetTeamGoogleResources(Guid teamId, CancellationToken cancellationToken)
+    {
+        var resources = await _teamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
+        var result = resources.Select(r => new
+        {
+            name = r.Name,
+            type = r.ResourceType switch
+            {
+                GoogleResourceType.DriveFolder => "Drive Folder",
+                GoogleResourceType.SharedDrive => "Shared Drive",
+                GoogleResourceType.Group => "Google Group",
+                GoogleResourceType.DriveFile => "Drive File",
+                _ => r.ResourceType.ToString()
+            }
+        });
+        return Json(result);
+    }
 
     private async Task<List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> GetEligibleParentTeamsAsync(
         Guid? excludeTeamId, CancellationToken cancellationToken)
