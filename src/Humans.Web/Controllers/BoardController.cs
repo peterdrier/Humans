@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -18,24 +17,18 @@ public class BoardController : HumansControllerBase
 {
     private readonly IAuditLogService _auditLogService;
     private readonly IOnboardingService _onboardingService;
-    private readonly ITeamResourceService _teamResourceService;
     private readonly HumansDbContext _dbContext;
-    private readonly ILogger<BoardController> _logger;
 
     public BoardController(
         IAuditLogService auditLogService,
         IOnboardingService onboardingService,
-        ITeamResourceService teamResourceService,
         UserManager<User> userManager,
-        HumansDbContext dbContext,
-        ILogger<BoardController> logger)
+        HumansDbContext dbContext)
         : base(userManager)
     {
         _auditLogService = auditLogService;
         _onboardingService = onboardingService;
-        _teamResourceService = teamResourceService;
         _dbContext = dbContext;
-        _logger = logger;
     }
 
     [HttpGet("")]
@@ -107,5 +100,4 @@ public class BoardController : HumansControllerBase
 
         return View("~/Views/Shared/AuditLog.cshtml", viewModel);
     }
-
 }

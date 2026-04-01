@@ -30,7 +30,6 @@ public class HumanController : HumansControllerBase
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IUserEmailService _userEmailService;
-    private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly IContactService _contactService;
     private readonly IClock _clock;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -47,7 +46,6 @@ public class HumanController : HumansControllerBase
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftMgmt,
         IUserEmailService userEmailService,
-        IEmailProvisioningService emailProvisioningService,
         IContactService contactService,
         IClock clock,
         IStringLocalizer<SharedResource> localizer,
@@ -64,7 +62,6 @@ public class HumanController : HumansControllerBase
         _shiftSignupService = shiftSignupService;
         _shiftMgmt = shiftMgmt;
         _userEmailService = userEmailService;
-        _emailProvisioningService = emailProvisioningService;
         _contactService = contactService;
         _clock = clock;
         _localizer = localizer;
