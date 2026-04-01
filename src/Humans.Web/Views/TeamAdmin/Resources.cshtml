@@ -218,14 +218,6 @@ else
         navigator.clipboard.writeText(document.getElementById('serviceAccountEmail').value);
     });
 
-    document.querySelectorAll('[data-confirm]').forEach(function (button) {
-        button.addEventListener('click', function (e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
-
     document.querySelectorAll('.permission-select').forEach(function (select) {
         select.addEventListener('change', function () {
             if (confirm('Are you sure you want to change the permission level?')) {
