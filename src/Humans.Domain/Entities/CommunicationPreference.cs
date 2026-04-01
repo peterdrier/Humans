@@ -24,6 +24,13 @@ public class CommunicationPreference
     public bool OptedOut { get; set; }
 
     /// <summary>
+    /// Whether in-app inbox notifications are enabled for this category.
+    /// Default true. When false, informational notifications for this category are suppressed.
+    /// Actionable notifications are always shown regardless of this setting.
+    /// </summary>
+    public bool InboxEnabled { get; set; } = true;
+
+    /// <summary>
     /// When this preference was last changed.
     /// </summary>
     public Instant UpdatedAt { get; set; }

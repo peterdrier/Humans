@@ -3,6 +3,8 @@ namespace Humans.Application;
 public static class CacheKeys
 {
     public const string NavBadgeCounts = "NavBadgeCounts";
+
+    public static string NotificationBadgeCounts(Guid userId) => $"NotificationBadge:{userId:N}";
     public const string ApprovedProfiles = "ApprovedProfiles";
     public const string ActiveTeams = "ActiveTeams";
     public const string CampSettings = "CampSettings";

@@ -61,6 +61,10 @@ public static class RecurringJobExtensions
             ("cleanup-email-outbox", () => RecurringJob.AddOrUpdate<CleanupEmailOutboxJob>(
                 "cleanup-email-outbox", job => job.ExecuteAsync(CancellationToken.None), "0 3 * * 0")),
 
+            // Clean up resolved notifications older than 7 days — daily at 04:30 UTC.
+            ("cleanup-notifications", () => RecurringJob.AddOrUpdate<CleanupNotificationsJob>(
+                "cleanup-notifications", job => job.ExecuteAsync(CancellationToken.None), "30 4 * * *")),
+
             // Sync ticket data from vendor at configured interval (default 15 min).
             ("ticket-vendor-sync", () => RecurringJob.AddOrUpdate<TicketSyncJob>(
                 "ticket-vendor-sync", job => job.ExecuteAsync(CancellationToken.None), $"*/{ticketSyncInterval} * * * *")),

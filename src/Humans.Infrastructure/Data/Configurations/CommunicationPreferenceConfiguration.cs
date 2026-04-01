@@ -20,6 +20,11 @@ public class CommunicationPreferenceConfiguration : IEntityTypeConfiguration<Com
         builder.Property(cp => cp.OptedOut)
             .IsRequired();
 
+        builder.Property(cp => cp.InboxEnabled)
+            .IsRequired()
+            .HasDefaultValue(true)
+            .HasSentinel(true);
+
         builder.Property(cp => cp.UpdatedAt)
             .IsRequired();
 
