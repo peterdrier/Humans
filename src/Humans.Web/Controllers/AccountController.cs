@@ -56,14 +56,14 @@ public class AccountController : Controller
         if (remoteError is not null)
         {
             _logger.LogWarning("External login error: {Error}", remoteError);
-            return RedirectToAction(nameof(Login));
+            return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
         var info = await _signInManager.GetExternalLoginInfoAsync();
         if (info is null)
         {
             _logger.LogWarning("Could not get external login info");
-            return RedirectToAction(nameof(Login));
+            return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
         // Sign in the user with this external login provider if the user already has a login
@@ -151,7 +151,7 @@ public class AccountController : Controller
         if (string.IsNullOrEmpty(email))
         {
             _logger.LogWarning("Email not provided by external provider");
-            return RedirectToAction(nameof(Login));
+            return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
         // Account linking: check if a user already exists with this email
@@ -222,6 +222,7 @@ public class AccountController : Controller
             ModelState.AddModelError(string.Empty, error.Description);
         }
 
+        ViewData["ReturnUrl"] = returnUrl;
         return View(nameof(Login));
     }
 
