@@ -98,17 +98,22 @@ document.addEventListener('click', function (e) {
         popup.style.display = 'block';
         btn.setAttribute('aria-expanded', 'true');
         isOpen = true;
-        fetch('/Notifications/Popup')
-            .then(function (r) { return r.ok ? r.text() : ''; })
+        var content = document.getElementById('notificationPopupContent');
+        if (content) content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+        fetch('/Notifications/Popup', { redirect: 'error' })
+            .then(function (r) {
+                if (!r.ok) throw new Error(r.status);
+                return r.text();
+            })
             .then(function (html) {
-                if (html) {
-                    var content = document.getElementById('notificationPopupContent');
-                    if (content) content.innerHTML = html;
-                    bindPopupClose();
-                    bindPopupDismiss();
-                    bindPopupMarkAllRead();
-                    trapFocus();
-                }
+                if (content) content.innerHTML = html;
+                bindPopupClose();
+                bindPopupDismiss();
+                bindPopupMarkAllRead();
+                trapFocus();
+            })
+            .catch(function () {
+                if (content) content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-bell text-muted mb-2" style="font-size:1.5rem"></i><p class="mb-0 small">Could not load notifications.</p></div>';
             });
     }
 

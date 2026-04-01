@@ -30,6 +30,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Feedback",         // Feedback submission — accessible to all authenticated users
         "FeedbackApi",      // API key auth, no membership required
         "Legal",            // Public legal documents ([AllowAnonymous])
+        "Notification",     // Notification inbox — accessible to all authenticated users
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
