@@ -57,7 +57,7 @@ public class NotificationController : HumansControllerBase
             .Include(nr => nr.Notification)
                 .ThenInclude(n => n.Recipients)
                     .ThenInclude(r => r.User)
-            .AsNoTracking();
+            .AsNoTrackingWithIdentityResolution();
 
         // Tab filter
         if (string.Equals(tab, "unread", StringComparison.OrdinalIgnoreCase))
@@ -148,7 +148,7 @@ public class NotificationController : HumansControllerBase
             .Include(nr => nr.Notification)
                 .ThenInclude(n => n.Recipients)
                     .ThenInclude(r => r.User)
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .OrderByDescending(nr => nr.Notification.CreatedAt)
             .ToListAsync();
 
