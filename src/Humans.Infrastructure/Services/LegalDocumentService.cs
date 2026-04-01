@@ -40,30 +40,32 @@ public partial class LegalDocumentService : ILegalDocumentService
     public async Task<Dictionary<string, string>> GetDocumentContentAsync(string slug)
     {
         var cacheKey = CacheKeys.LegalDocument(slug);
-
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        if (_cache.TryGetValue<Dictionary<string, string>>(cacheKey, out var cachedContent) &&
+            cachedContent is not null)
         {
-            entry.AbsoluteExpirationRelativeToNow = CacheTtl;
+            return cachedContent;
+        }
 
-            try
+        try
+        {
+            var definition = Documents.FirstOrDefault(d =>
+                string.Equals(d.Slug, slug, StringComparison.OrdinalIgnoreCase));
+
+            if (definition is null)
             {
-                var definition = Documents.FirstOrDefault(d =>
-                    string.Equals(d.Slug, slug, StringComparison.OrdinalIgnoreCase));
-
-                if (definition is null)
-                {
-                    _logger.LogWarning("Unknown legal document slug: {Slug}", slug);
-                    return new Dictionary<string, string>(StringComparer.Ordinal);
-                }
-
-                return await GetDocumentContentAsync(definition);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to fetch legal document {Slug} from GitHub", slug);
+                _logger.LogWarning("Unknown legal document slug: {Slug}", slug);
                 return new Dictionary<string, string>(StringComparer.Ordinal);
             }
-        }) ?? new Dictionary<string, string>(StringComparer.Ordinal);
+
+            var content = await GetDocumentContentAsync(definition);
+            _cache.Set(cacheKey, content, CacheTtl);
+            return content;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch legal document {Slug} from GitHub", slug);
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
     }
 
     private async Task<Dictionary<string, string>> GetDocumentContentAsync(LegalDocumentDefinition definition)
