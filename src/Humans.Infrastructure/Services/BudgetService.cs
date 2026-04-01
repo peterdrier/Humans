@@ -156,9 +156,7 @@ public class BudgetService : IBudgetService
         var ticketingCategories = new[]
         {
             ("Ticket Revenue", 0),
-            ("Processing Fees", 1),
-            ("VAT Liability", 2),
-            ("Donations", 3)
+            ("Processing Fees", 1)
         };
 
         foreach (var (catName, catSort) in ticketingCategories)
@@ -382,9 +380,7 @@ public class BudgetService : IBudgetService
         var ticketingCategories = new[]
         {
             ("Ticket Revenue", 0),
-            ("Processing Fees", 1),
-            ("VAT Liability", 2),
-            ("Donations", 3)
+            ("Processing Fees", 1)
         };
 
         foreach (var (catName, catSort) in ticketingCategories)
