@@ -20,7 +20,7 @@ public static class ProfilePictureUrlHelper
         IEnumerable<(Guid UserId, string? GoogleProfilePictureUrl)> users,
         CancellationToken ct = default)
     {
-        var userList = users.ToList();
+        var userList = users.DistinctBy(u => u.UserId).ToList();
         var userIds = userList.Select(u => u.UserId).ToList();
 
         var customPictures = await profileService.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
