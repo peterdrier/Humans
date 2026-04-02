@@ -1330,6 +1330,43 @@ tr[data-href] {
     border-bottom: none;
 }
 
+/* --- Notification Meters --- */
+.notification-meter-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--h-border-light);
+}
+
+.notification-meter-row:last-child {
+    border-bottom: none;
+}
+
+.notification-meter-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.notification-meter-title {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--h-ink);
+}
+
+.notification-meter-badge {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.notification-meter-action {
+    font-size: 0.75rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 /* --- Mobile (< 576px) --- */
 @media (max-width: 575.98px) {
     .notification-popup {
