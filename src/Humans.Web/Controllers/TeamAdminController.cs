@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
 using Humans.Web.Authorization;
@@ -23,6 +24,7 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly IProfileService _profileService;
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TeamAdminController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -34,6 +36,7 @@ public class TeamAdminController : HumansTeamControllerBase
         IEmailProvisioningService emailProvisioningService,
         UserManager<User> userManager,
         ISystemTeamSync systemTeamSyncJob,
+        IMemoryCache cache,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager, teamService)
@@ -44,6 +47,7 @@ public class TeamAdminController : HumansTeamControllerBase
         _profileService = profileService;
         _emailProvisioningService = emailProvisioningService;
         _systemTeamSyncJob = systemTeamSyncJob;
+        _cache = cache;
         _logger = logger;
         _localizer = localizer;
     }
@@ -306,13 +310,19 @@ public class TeamAdminController : HumansTeamControllerBase
         {
             SetError(result.ErrorMessage ?? "Provisioning failed.");
         }
-        else if (result.RecoveryEmail is not null)
-        {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
-        }
         else
         {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
+            _cache.Remove("NobodiesTeamEmails_All");
+
+            if (result.RecoveryEmail is not null)
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
+            }
+            else
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            }
         }
 
         return RedirectToAction(nameof(Members), new { slug });

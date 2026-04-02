@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -20,6 +21,7 @@ public class GoogleController : HumansControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly IGoogleAdminService _googleAdminService;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<GoogleController> _logger;
 
     public GoogleController(
@@ -29,6 +31,7 @@ public class GoogleController : HumansControllerBase
         ITeamResourceService teamResourceService,
         IEmailProvisioningService emailProvisioningService,
         IGoogleAdminService googleAdminService,
+        IMemoryCache cache,
         ILogger<GoogleController> logger)
         : base(userManager)
     {
@@ -37,6 +40,7 @@ public class GoogleController : HumansControllerBase
         _teamResourceService = teamResourceService;
         _emailProvisioningService = emailProvisioningService;
         _googleAdminService = googleAdminService;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -490,13 +494,19 @@ public class GoogleController : HumansControllerBase
         {
             SetError(result.ErrorMessage ?? "Provisioning failed.");
         }
-        else if (result.RecoveryEmail is not null)
-        {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
-        }
         else
         {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
+            _cache.Remove("NobodiesTeamEmails_All");
+
+            if (result.RecoveryEmail is not null)
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
+            }
+            else
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            }
         }
 
         return RedirectToAction("AdminDetail", "Profile", new { id });
