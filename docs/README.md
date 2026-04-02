@@ -73,4 +73,6 @@ Infrastructure  EF Core, Services, Jobs
 Domain          Entities, Enums, Value Objects
 ```
 
+Primary macro-level guidance lives in [architecture.md](architecture.md).
+
 See the [root CLAUDE.md](../CLAUDE.md) for build commands, coding rules, and project conventions.
