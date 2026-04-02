@@ -163,6 +163,48 @@ public class TeamAdminController : HumansTeamControllerBase
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
             }).ToList();
 
+        // Load Google resources for the resource access summary card
+        var allTeamResources = await _teamResourceService.GetTeamResourcesAsync(team.Id);
+        var teamResources = allTeamResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
+
+        var parentDepartmentResources = new List<GoogleResource>();
+        string? parentDepartmentName = null;
+        string? parentDepartmentSlug = null;
+        if (team.ParentTeam is not null)
+        {
+            parentDepartmentName = team.ParentTeam.Name;
+            parentDepartmentSlug = team.ParentTeam.CustomSlug ?? team.ParentTeam.Slug;
+            var allParentResources = await _teamResourceService.GetTeamResourcesAsync(team.ParentTeam.Id);
+            parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
+        }
+
+        static ResourceAccessViewModel MapResource(GoogleResource r) => new()
+        {
+            Name = r.Name,
+            ResourceType = r.ResourceType switch
+            {
+                GoogleResourceType.DriveFolder => "Drive Folder",
+                GoogleResourceType.SharedDrive => "Shared Drive",
+                GoogleResourceType.DriveFile => "Drive File",
+                GoogleResourceType.Group => "Google Group",
+                _ => r.ResourceType.ToString()
+            },
+            PermissionLevel = r.ResourceType == GoogleResourceType.Group
+                ? null
+                : r.DrivePermissionLevel != DrivePermissionLevel.None
+                    ? r.DrivePermissionLevel.ToString()
+                    : null,
+            Url = r.Url,
+            IconClass = r.ResourceType switch
+            {
+                GoogleResourceType.DriveFolder => "fa-solid fa-folder",
+                GoogleResourceType.SharedDrive => "fa-solid fa-hard-drive",
+                GoogleResourceType.DriveFile => "fa-solid fa-file",
+                GoogleResourceType.Group => "fa-solid fa-users",
+                _ => "fa-solid fa-link"
+            }
+        };
+
         var viewModel = new TeamMembersViewModel
         {
             TeamId = team.Id,
@@ -175,7 +217,13 @@ public class TeamAdminController : HumansTeamControllerBase
             PendingRequests = pendingRequestViewModels,
             TotalCount = totalCount,
             PageNumber = page,
-            PageSize = pageSize
+            PageSize = pageSize,
+            TeamResources = teamResources.Select(MapResource).ToList(),
+            ParentDepartmentResources = parentDepartmentResources.Select(MapResource).ToList(),
+            ParentDepartmentName = parentDepartmentName,
+            ParentDepartmentSlug = parentDepartmentSlug,
+            IsSensitive = team.IsSensitive,
+            ActorDisplayName = user.DisplayName
         };
 
         return View(viewModel);

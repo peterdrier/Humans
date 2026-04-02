@@ -69,6 +69,15 @@
                         </div>
                     }
 
+                    @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
+                    {
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsSensitive" type="checkbox" class="form-check-input" />
+                            <label asp-for="IsSensitive" class="form-check-label">Sensitive team</label>
+                            <div class="form-text">When enabled, adding or approving humans triggers a confirmation modal showing the audit record that will be created. This flag is not visible to non-admin users.</div>
+                        </div>
+                    }
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
                         <a asp-action="Summary" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>

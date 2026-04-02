@@ -121,6 +121,13 @@ public class Team
     public bool IsHidden { get; set; }
 
     /// <summary>
+    /// Whether this team handles sensitive information. Admin-only flag, not publicly visible.
+    /// When true, adding or approving members triggers a deterrent confirmation modal
+    /// showing the audit record that will be created.
+    /// </summary>
+    public bool IsSensitive { get; set; }
+
+    /// <summary>
     /// Optional parent team ID for one-level hierarchy (departments).
     /// A team with a parent cannot itself be a parent.
     /// </summary>

@@ -418,6 +418,7 @@ public class TeamService : ITeamService
         string? customSlug = null,
         bool? hasBudget = null,
         bool? isHidden = null,
+        bool? isSensitive = null,
         CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams.FindAsync(new object[] { teamId }, cancellationToken)
@@ -510,6 +511,8 @@ public class TeamService : ITeamService
             team.HasBudget = hasBudget.Value;
         if (isHidden.HasValue)
             team.IsHidden = isHidden.Value;
+        if (isSensitive.HasValue)
+            team.IsSensitive = isSensitive.Value;
         team.UpdatedAt = _clock.GetCurrentInstant();
 
         if (becomingChild)

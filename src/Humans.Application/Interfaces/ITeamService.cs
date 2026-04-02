@@ -183,6 +183,7 @@ public interface ITeamService
         string? customSlug = null,
         bool? hasBudget = null,
         bool? isHidden = null,
+        bool? isSensitive = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

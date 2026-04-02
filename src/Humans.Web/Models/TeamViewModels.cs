@@ -215,6 +215,7 @@ public class EditTeamViewModel : TeamFormViewModelBase
     public bool IsActive { get; set; }
     public bool IsSystemTeam { get; set; }
     public bool HasBudget { get; set; }
+    public bool IsSensitive { get; set; }
 }
 
 public class EditTeamPageViewModel
@@ -258,6 +259,45 @@ public class TeamMembersViewModel
     public List<TeamJoinRequestViewModel> PendingRequests { get; set; } = [];
     public bool CanManageRoles { get; set; }
     public bool CanProvisionEmails { get; set; }
+
+    /// <summary>
+    /// Google resources linked to this team (active only). For the resource access summary card.
+    /// </summary>
+    public List<ResourceAccessViewModel> TeamResources { get; set; } = [];
+
+    /// <summary>
+    /// Google resources linked to the parent department (active only). Shown separately when this is a sub-team.
+    /// </summary>
+    public List<ResourceAccessViewModel> ParentDepartmentResources { get; set; } = [];
+
+    /// <summary>
+    /// Parent department name, if this is a sub-team.
+    /// </summary>
+    public string? ParentDepartmentName { get; set; }
+
+    /// <summary>
+    /// Parent department slug, for linking to its Resources page.
+    /// </summary>
+    public string? ParentDepartmentSlug { get; set; }
+
+    /// <summary>
+    /// Whether the team is flagged as sensitive (admin-only).
+    /// </summary>
+    public bool IsSensitive { get; set; }
+
+    /// <summary>
+    /// The current actor's display name (for audit preview in sensitive team modal).
+    /// </summary>
+    public string? ActorDisplayName { get; set; }
+}
+
+public class ResourceAccessViewModel
+{
+    public string Name { get; set; } = string.Empty;
+    public string ResourceType { get; set; } = string.Empty;
+    public string? PermissionLevel { get; set; }
+    public string? Url { get; set; }
+    public string IconClass { get; set; } = string.Empty;
 }
 
 public class BirthdayCalendarViewModel

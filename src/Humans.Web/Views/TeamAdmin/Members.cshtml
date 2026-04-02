@@ -24,6 +24,75 @@
     </div>
 }
 
+@if (Model.TeamResources.Any() || Model.ParentDepartmentResources.Any())
+{
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning bg-opacity-10 d-flex align-items-center">
+            <i class="fa-solid fa-shield-halved me-2 text-warning"></i>
+            <strong>Resource Access</strong>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-3">
+                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>
+                Adding or approving humans for this team grants access to the resources listed below.
+            </p>
+            @if (Model.TeamResources.Any())
+            {
+                <h6 class="mb-2">@Model.TeamName</h6>
+                <ul class="list-unstyled mb-2">
+                    @foreach (var resource in Model.TeamResources)
+                    {
+                        <li class="mb-1">
+                            <i class="@resource.IconClass me-1 text-muted"></i>
+                            @if (resource.Url is not null)
+                            {
+                                <a href="@resource.Url" target="_blank" rel="noopener">@resource.Name</a>
+                            }
+                            else
+                            {
+                                @resource.Name
+                            }
+                            <span class="badge bg-secondary ms-1">@resource.ResourceType</span>
+                            @if (resource.PermissionLevel is not null)
+                            {
+                                <span class="badge bg-info ms-1">@resource.PermissionLevel</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            @if (Model.ParentDepartmentResources.Any())
+            {
+                <h6 class="mb-2">@Model.ParentDepartmentName (department)</h6>
+                <ul class="list-unstyled mb-2">
+                    @foreach (var resource in Model.ParentDepartmentResources)
+                    {
+                        <li class="mb-1">
+                            <i class="@resource.IconClass me-1 text-muted"></i>
+                            @if (resource.Url is not null)
+                            {
+                                <a href="@resource.Url" target="_blank" rel="noopener">@resource.Name</a>
+                            }
+                            else
+                            {
+                                @resource.Name
+                            }
+                            <span class="badge bg-secondary ms-1">@resource.ResourceType</span>
+                            @if (resource.PermissionLevel is not null)
+                            {
+                                <span class="badge bg-info ms-1">@resource.PermissionLevel</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+            <a asp-action="Resources" asp-route-slug="@Model.TeamSlug" class="btn btn-sm btn-outline-info">
+                <i class="fa-solid fa-gear me-1"></i> Manage Resources
+            </a>
+        </div>
+    </div>
+}
+
 @if (Model.PendingRequests.Any())
 {
     <div class="card mb-4">
@@ -231,6 +300,67 @@ else
     <a asp-action="Resources" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-info">@Localizer["TeamAdmin_ManageResources"]</a>
 </div>
 
+@if (Model.IsSensitive)
+{
+    <div class="modal fade" id="sensitiveConfirmModal" tabindex="-1" aria-labelledby="sensitiveConfirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger bg-opacity-10">
+                    <h5 class="modal-title" id="sensitiveConfirmModalLabel">
+                        <i class="fa-solid fa-shield-halved text-danger me-2"></i>
+                        Sensitive Team — Confirm Access Grant
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger mb-3">
+                        <strong>This team handles sensitive information.</strong> Adding a human to this team grants them access to the resources listed below.
+                    </div>
+
+                    @if (Model.TeamResources.Any() || Model.ParentDepartmentResources.Any())
+                    {
+                        <h6>Resources that will be granted:</h6>
+                        <ul class="list-unstyled mb-3">
+                            @foreach (var resource in Model.TeamResources.Concat(Model.ParentDepartmentResources))
+                            {
+                                <li class="mb-1">
+                                    <i class="@resource.IconClass me-1 text-muted"></i>
+                                    @resource.Name
+                                    <span class="badge bg-secondary ms-1">@resource.ResourceType</span>
+                                    @if (resource.PermissionLevel is not null)
+                                    {
+                                        <span class="badge bg-info ms-1">@resource.PermissionLevel</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    <div class="card bg-light mb-3">
+                        <div class="card-body py-2">
+                            <strong>This action will be recorded:</strong>
+                            <em id="sensitiveAuditPreview">
+                                @Model.ActorDisplayName granting <span id="sensitiveTargetName">this human</span> access to @Model.TeamName on @DateTime.UtcNow.ToString("d MMM yyyy") at @DateTime.UtcNow.ToString("HH:mm") UTC
+                            </em>
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-2">
+                        <input type="checkbox" class="form-check-input" id="sensitiveAcknowledge" />
+                        <label class="form-check-label" for="sensitiveAcknowledge">
+                            <strong>I understand that this action is logged, attributed to me, and grants access to sensitive resources.</strong>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="sensitiveConfirmBtn" disabled>Confirm Access Grant</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @if (Model.CanManageRoles)
 {
     <script nonce="@Context.Items["CspNonce"]">
@@ -245,5 +375,81 @@ else
             ["NoResultsText"] = Localizer["TeamAdmin_NoResults"].Value,
             ["AddText"] = Localizer["TeamAdmin_Add"].Value
         })
+    </script>
+}
+
+@if (Model.IsSensitive)
+{
+    <script nonce="@Context.Items["CspNonce"]">
+    (function() {
+        var modal = document.getElementById('sensitiveConfirmModal');
+        if (!modal) return;
+        var bsModal = new bootstrap.Modal(modal);
+        var confirmBtn = document.getElementById('sensitiveConfirmBtn');
+        var acknowledgeBox = document.getElementById('sensitiveAcknowledge');
+        var targetNameSpan = document.getElementById('sensitiveTargetName');
+        var pendingForm = null;
+
+        acknowledgeBox.addEventListener('change', function() {
+            confirmBtn.disabled = !this.checked;
+        });
+
+        confirmBtn.addEventListener('click', function() {
+            if (pendingForm) {
+                pendingForm.submit();
+                pendingForm = null;
+            }
+            bsModal.hide();
+        });
+
+        // Intercept approve buttons (they have data-confirm attributes)
+        document.addEventListener('submit', function(e) {
+            var form = e.target;
+            var action = form.getAttribute('action') || '';
+            var isApprove = action.indexOf('/Approve') !== -1;
+            var isAdd = action.indexOf('/AddMember') !== -1;
+            if (!isApprove && !isAdd) return;
+
+            // Don't intercept if already confirmed
+            if (form.dataset.sensitiveConfirmed === 'true') return;
+
+            e.preventDefault();
+            pendingForm = form;
+
+            // Try to find the target name
+            var targetName = 'this human';
+            if (isApprove) {
+                var row = form.closest('tr');
+                if (row) {
+                    var nameEl = row.querySelector('strong, .fw-bold, [data-display-name]');
+                    if (nameEl) targetName = nameEl.textContent.trim();
+                }
+            } else if (isAdd) {
+                var parentItem = form.closest('.list-group-item');
+                if (parentItem) {
+                    var nameEl = parentItem.querySelector('strong');
+                    if (nameEl) targetName = nameEl.textContent.trim();
+                }
+            }
+            targetNameSpan.textContent = targetName;
+
+            // Reset checkbox
+            acknowledgeBox.checked = false;
+            confirmBtn.disabled = true;
+
+            // Mark form so it won't be intercepted again
+            form.dataset.sensitiveConfirmed = 'true';
+
+            bsModal.show();
+        });
+
+        // Reset confirmed flag when modal is hidden without confirming
+        modal.addEventListener('hidden.bs.modal', function() {
+            if (pendingForm) {
+                delete pendingForm.dataset.sensitiveConfirmed;
+                pendingForm = null;
+            }
+        });
+    })();
     </script>
 }

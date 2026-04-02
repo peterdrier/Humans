@@ -72,6 +72,9 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
         builder.Property(t => t.IsHidden)
             .IsRequired();
 
+        builder.Property(t => t.IsSensitive)
+            .IsRequired();
+
         builder.Property(t => t.PageContent)
             .HasMaxLength(50000);
 
@@ -151,7 +154,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 CustomSlug = (string?)null,
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
-                IsHidden = false
+                IsHidden = false,
+                IsSensitive = false
             },
             new
             {
@@ -174,7 +178,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 CustomSlug = (string?)null,
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
-                IsHidden = false
+                IsHidden = false,
+                IsSensitive = false
             },
             new
             {
@@ -197,7 +202,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 CustomSlug = (string?)null,
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
-                IsHidden = false
+                IsHidden = false,
+                IsSensitive = false
             },
             new
             {
@@ -220,7 +226,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 CustomSlug = (string?)null,
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
-                IsHidden = false
+                IsHidden = false,
+                IsSensitive = false
             },
             new
             {
@@ -243,7 +250,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 CustomSlug = (string?)null,
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
-                IsHidden = false
+                IsHidden = false,
+                IsSensitive = false
             },
             new
             {
@@ -266,7 +274,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 CustomSlug = (string?)null,
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
-                IsHidden = false
+                IsHidden = false,
+                IsSensitive = false
             });
     }
 }
