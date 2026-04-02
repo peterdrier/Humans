@@ -27,13 +27,13 @@
 @if (Model.TeamResources.Any() || Model.ParentDepartmentResources.Any())
 {
     <div class="card mb-4 border-danger">
-        <div class="card-header bg-danger bg-opacity-10 d-flex align-items-center">
-            <i class="fa-solid fa-shield-halved me-2 text-danger"></i>
-            <strong>Resource Access</strong>
+        <div class="card-header bg-danger text-white d-flex align-items-center">
+            <i class="fa-solid fa-shield-halved me-2"></i>
+            <strong>Resource Access — Sensitive Team!</strong>
         </div>
         <div class="card-body">
-            <p class="text-muted mb-3">
-                <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i>
+            <p class="mb-3">
+                <i class="fa-solid fa-hand text-danger me-1" style="font-size: 2.5rem; vertical-align: middle;"></i>
                 Adding or approving humans for this team grants access to the resources listed below.
             </p>
             @if (Model.TeamResources.Any())
