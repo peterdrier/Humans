@@ -21,7 +21,7 @@
 
 ## Invariants
 
-- A department can have zero or one role flagged as management (coordinator). If present, members assigned to it gain coordinator-level access over the whole department: member management, join request handling, role management, and team page editing.
+- A department can have **at most one** role flagged as management (coordinator). This is enforced in both the toggle and edit paths. If present, members assigned to it gain coordinator-level access over the whole department: member management, join request handling, role management, and team page editing.
 - Sub-teams do not have coordinator roles.
 - Members of sub-teams are also considered members of the department. They appear in the department's member roster and inherit the department's legal requirements and Google resource access (Drive folders, Groups).
 - A human can be a member of multiple teams simultaneously.

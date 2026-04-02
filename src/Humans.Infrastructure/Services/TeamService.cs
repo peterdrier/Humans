@@ -1419,6 +1419,17 @@ public class TeamService : ITeamService
                     .ToListAsync(cancellationToken)
                 : [];
 
+        // If setting IsManagement, check no other role in the same team already has it
+        if (isManagement && !definition.IsManagement)
+        {
+            var existingManagement = await _dbContext.Set<TeamRoleDefinition>()
+                .AnyAsync(d => d.TeamId == definition.TeamId && d.Id != roleDefinitionId && d.IsManagement, cancellationToken);
+            if (existingManagement)
+            {
+                throw new InvalidOperationException("Another role in this team is already marked as the management role");
+            }
+        }
+
         // If clearing IsManagement, demote any coordinators who have no other management assignments
         if (definition.IsManagement && !isManagement)
         {
@@ -1515,6 +1526,7 @@ public class TeamService : ITeamService
         var definition = await _dbContext.Set<TeamRoleDefinition>()
             .Include(d => d.Team)
             .Include(d => d.Assignments)
+                .ThenInclude(a => a.TeamMember)
             .FirstOrDefaultAsync(d => d.Id == roleDefinitionId, cancellationToken)
             ?? throw new InvalidOperationException($"Role definition {roleDefinitionId} not found");
 
@@ -1525,19 +1537,51 @@ public class TeamService : ITeamService
             throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
         }
 
-        if (definition.Assignments.Count > 0)
-        {
-            throw new InvalidOperationException("Cannot change IsManagement while members are assigned to the role");
-        }
+        // Collect affected user IDs for shift auth invalidation (before any changes)
+        var usersNeedingShiftAuthorizationInvalidation =
+            IsShiftAuthorizationDefinition(definition) &&
+            definition.IsManagement != isManagement &&
+            definition.Assignments.Count > 0
+                ? definition.Assignments.Select(a => a.TeamMember.UserId).Distinct().ToList()
+                : [];
+        var demotedMembers = false;
 
         if (isManagement)
         {
+            // Cannot promote a role with assigned members (would bulk-promote without individual review)
+            if (definition.Assignments.Count > 0)
+            {
+                throw new InvalidOperationException("Cannot set IsManagement while members are assigned to the role");
+            }
+
             // Check no other role in the same team already has IsManagement = true
             var existingManagement = await _dbContext.Set<TeamRoleDefinition>()
                 .AnyAsync(d => d.TeamId == definition.TeamId && d.Id != roleDefinitionId && d.IsManagement, cancellationToken);
             if (existingManagement)
             {
                 throw new InvalidOperationException("Another role in this team is already marked as the management role");
+            }
+        }
+        else if (definition.IsManagement && definition.Assignments.Count > 0)
+        {
+            // Clearing IsManagement with assigned members — demote coordinators who have no other management role
+            var assignedMemberIds = definition.Assignments.Select(a => a.TeamMemberId).ToList();
+            var members = await _dbContext.TeamMembers
+                .Where(m => assignedMemberIds.Contains(m.Id) && m.Role == TeamMemberRole.Coordinator)
+                .ToListAsync(cancellationToken);
+
+            foreach (var member in members)
+            {
+                var hasOtherManagement = await _dbContext.Set<TeamRoleAssignment>()
+                    .AnyAsync(a => a.TeamMemberId == member.Id
+                        && a.TeamRoleDefinitionId != roleDefinitionId
+                        && a.TeamRoleDefinition.IsManagement, cancellationToken);
+
+                if (!hasOtherManagement)
+                {
+                    member.Role = TeamMemberRole.Member;
+                    demotedMembers = true;
+                }
             }
         }
 
@@ -1552,6 +1596,12 @@ public class TeamService : ITeamService
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        if (demotedMembers)
+        {
+            _cache.InvalidateActiveTeams();
+        }
+        InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
         _logger.LogInformation("Set IsManagement={IsManagement} on role definition {RoleDefinitionId}", isManagement, roleDefinitionId);
     }
