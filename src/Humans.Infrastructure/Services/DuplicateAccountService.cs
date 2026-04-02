@@ -222,6 +222,8 @@ public class DuplicateAccountService : IDuplicateAccountService
             }
         }
 
+        await _dbContext.SaveChangesAsync(ct);
+
         // 2. Add target to any non-system teams the source is in
         var sourceTeams = await _teamService.GetUserTeamsAsync(sourceUserId, ct);
         var targetTeamIds = (await _teamService.GetUserTeamsAsync(targetUserId, ct))
