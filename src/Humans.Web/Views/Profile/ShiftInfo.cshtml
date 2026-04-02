@@ -122,9 +122,9 @@
     /* Progress dots */
     .progress-dot {
         width: 10px; height: 10px; border-radius: 50%;
-        background: #dee2e6; display: inline-block; transition: background 0.2s;
+        background: var(--h-muted-border); display: inline-block; transition: background 0.2s;
     }
-    .progress-dot.active, .progress-dot.done { background: #0d6efd; }
+    .progress-dot.active, .progress-dot.done { background: var(--h-focus-ring); }
 
     /* Step panes */
     .step-pane { display: none; }
@@ -135,13 +135,13 @@
     .chip {
         display: inline-flex; align-items: center; gap: 4px;
         padding: 9px 16px; border-radius: 10px; cursor: pointer;
-        background: #f8f9fa; border: 1.5px solid #dee2e6; color: #495057;
+        background: var(--h-muted-bg); border: 1.5px solid var(--h-muted-border); color: var(--h-chip-text);
         font-size: 14px; user-select: none; transition: all 0.15s;
     }
-    .chip:hover { border-color: #adb5bd; }
-    .chip:focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
+    .chip:hover { border-color: var(--h-muted-border-hover); }
+    .chip:focus-visible { outline: 2px solid var(--h-focus-ring); outline-offset: 2px; }
     .chip.selected {
-        background: #e7f1ff; border-color: #0d6efd; color: #0d6efd; font-weight: 500;
+        background: var(--h-selected-bg); border-color: var(--h-focus-ring); color: var(--h-focus-ring); font-weight: 500;
     }
     .chip-emoji { font-size: 16px; min-width: 1.5em; text-align: center; }
 
@@ -155,16 +155,16 @@
     .radio-card {
         display: flex; flex-direction: column; align-items: center;
         padding: 16px 12px; border-radius: 10px; cursor: pointer; text-align: center;
-        background: #f8f9fa; border: 1.5px solid #dee2e6; transition: all 0.15s;
+        background: var(--h-muted-bg); border: 1.5px solid var(--h-muted-border); transition: all 0.15s;
     }
-    .radio-card:hover { border-color: #adb5bd; }
-    .radio-card:focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
+    .radio-card:hover { border-color: var(--h-muted-border-hover); }
+    .radio-card:focus-visible { outline: 2px solid var(--h-focus-ring); outline-offset: 2px; }
     .radio-card.selected {
-        background: #e7f1ff; border-color: #0d6efd;
+        background: var(--h-selected-bg); border-color: var(--h-focus-ring);
     }
     .rc-emoji { font-size: 24px; margin-bottom: 6px; }
-    .rc-label { font-weight: 600; font-size: 14px; color: #212529; }
-    .rc-desc { font-size: 12px; color: #6c757d; margin-top: 2px; }
+    .rc-label { font-weight: 600; font-size: 14px; color: var(--h-text); }
+    .rc-desc { font-size: 12px; color: var(--h-muted-text); margin-top: 2px; }
 </style>
 <script>
 (function() {

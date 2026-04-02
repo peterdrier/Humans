@@ -51,13 +51,26 @@ else
 
             @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
 
+            // Read CSS variables for JS-generated markup
+            const _cs = getComputedStyle(document.documentElement);
+            const cssVar = (name) => _cs.getPropertyValue(name).trim();
+            const clrMutedText = cssVar('--h-muted-text');
+            const clrTextOnDark = cssVar('--h-text-on-dark');
+            const clrTextSecondary = cssVar('--h-text-secondary');
+            const clrMapPin = cssVar('--h-map-pin');
+            const clrMapPinBorder = cssVar('--h-map-pin-border');
+            const clrMapClusterLarge = cssVar('--h-map-cluster-large');
+            const clrMapClusterLargeBorder = cssVar('--h-map-cluster-large-border');
+            const clrMapClusterMedium = cssVar('--h-map-cluster-medium');
+            const clrMapClusterMediumBorder = cssVar('--h-map-cluster-medium-border');
+
             function avatarHtml(m, size) {
                 const s = size || 40;
                 if (m.profilePictureUrl) {
                     return '<img src="' + escapeHtml(m.profilePictureUrl) + '" alt="" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:cover;">';
                 }
                 const initials = (m.displayName || '?').split(' ').map(function(w){return w[0];}).join('').substring(0, 2).toUpperCase();
-                return '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:#6c757d;color:#fff;display:flex;align-items:center;justify-content:center;font-size:' + Math.round(s * 0.4) + 'px;font-weight:600;">' + escapeHtml(initials) + '</div>';
+                return '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:' + clrMutedText + ';color:' + clrTextOnDark + ';display:flex;align-items:center;justify-content:center;font-size:' + Math.round(s * 0.4) + 'px;font-weight:600;">' + escapeHtml(initials) + '</div>';
             }
 
             function personHtml(m) {
@@ -66,7 +79,7 @@ else
                     avatarHtml(m, 36) +
                     '<div>' +
                     '<a href="/Profile/' + m.userId + '" style="font-weight:600;text-decoration:none;">' + escapeHtml(m.displayName) + '</a>' +
-                    (location ? '<br><span style="color:#666;font-size:0.85em;">' + escapeHtml(location) + '</span>' : '') +
+                    (location ? '<br><span style="color:' + clrTextSecondary + ';font-size:0.85em;">' + escapeHtml(location) + '</span>' : '') +
                     '</div></div>';
             }
 
@@ -103,9 +116,9 @@ else
                         // Multi-person pin with count
                         const pin = new PinElement({
                             glyph: '' + group.length,
-                            glyphColor: '#fff',
-                            background: '#1a73e8',
-                            borderColor: '#1558b0',
+                            glyphColor: clrTextOnDark,
+                            background: clrMapPin,
+                            borderColor: clrMapPinBorder,
                             scale: 1.1
                         });
                         pinContent = pin.element;
@@ -150,9 +163,9 @@ else
                             }
                             var pin = new PinElement({
                                 glyph: '' + totalPeople,
-                                glyphColor: '#fff',
-                                background: totalPeople > 10 ? '#d93025' : totalPeople > 5 ? '#e8710a' : '#1a73e8',
-                                borderColor: totalPeople > 10 ? '#a5211a' : totalPeople > 5 ? '#b85a08' : '#1558b0',
+                                glyphColor: clrTextOnDark,
+                                background: totalPeople > 10 ? clrMapClusterLarge : totalPeople > 5 ? clrMapClusterMedium : clrMapPin,
+                                borderColor: totalPeople > 10 ? clrMapClusterLargeBorder : totalPeople > 5 ? clrMapClusterMediumBorder : clrMapPinBorder,
                                 scale: 1.2 + Math.min(totalPeople / 50, 0.6)
                             });
                             return new AdvancedMarkerElement({

@@ -173,15 +173,21 @@
     }
 
     function renderBudgetCharts() {
+        var cs = getComputedStyle(document.documentElement);
+        var cv = function(n) { return cs.getPropertyValue(n).trim(); };
         var incomeColors = [
-            '#198754', '#20c997', '#0dcaf0', '#0d6efd', '#6f42c1',
-            '#d63384', '#ffc107', '#fd7e14', '#6610f2', '#adb5bd',
-            '#495057', '#e83e8c', '#17a2b8', '#28a745', '#007bff'
+            cv('--h-chart-cat-1'), cv('--h-chart-cat-2'), cv('--h-chart-cat-3'),
+            cv('--h-chart-cat-4'), cv('--h-chart-cat-5'), cv('--h-chart-cat-6'),
+            cv('--h-chart-cat-7'), cv('--h-chart-cat-8'), cv('--h-chart-cat-9'),
+            cv('--h-chart-cat-10'), cv('--h-chart-cat-11'), cv('--h-chart-cat-12'),
+            cv('--h-chart-cat-13'), cv('--h-chart-cat-14'), cv('--h-chart-cat-15')
         ];
         var expenseColors = [
-            '#dc3545', '#fd7e14', '#ffc107', '#e83e8c', '#6f42c1',
-            '#0d6efd', '#0dcaf0', '#20c997', '#198754', '#adb5bd',
-            '#495057', '#d63384', '#17a2b8', '#6610f2', '#28a745'
+            cv('--h-chart-exp-1'), cv('--h-chart-exp-2'), cv('--h-chart-exp-3'),
+            cv('--h-chart-exp-4'), cv('--h-chart-exp-5'), cv('--h-chart-exp-6'),
+            cv('--h-chart-exp-7'), cv('--h-chart-exp-8'), cv('--h-chart-exp-9'),
+            cv('--h-chart-exp-10'), cv('--h-chart-exp-11'), cv('--h-chart-exp-12'),
+            cv('--h-chart-exp-13'), cv('--h-chart-exp-14'), cv('--h-chart-exp-15')
         ];
         var tooltipCallback = {
             label: function(ctx) {
@@ -207,7 +213,7 @@
                         data: incomeData,
                         backgroundColor: incomeColors.slice(0, incomeData.length),
                         borderWidth: 2,
-                        borderColor: '#fff'
+                        borderColor: cv('--h-bg-elevated')
                     }]
                 },
                 options: {
@@ -229,7 +235,7 @@
                         data: expenseData,
                         backgroundColor: expenseColors.slice(0, expenseData.length),
                         borderWidth: 2,
-                        borderColor: '#fff'
+                        borderColor: cv('--h-bg-elevated')
                     }]
                 },
                 options: {

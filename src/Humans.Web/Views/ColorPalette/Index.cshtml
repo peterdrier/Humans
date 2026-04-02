@@ -133,6 +133,7 @@
             @await Html.PartialAsync("_Swatch", ("--h-sage", "Success"))
             @await Html.PartialAsync("_Swatch", ("--h-sage-dark", "Success Dark"))
             @await Html.PartialAsync("_Swatch", ("--h-amber", "Warning"))
+            @await Html.PartialAsync("_Swatch", ("--h-amber-dark", "Warning Dark"))
             @await Html.PartialAsync("_Swatch", ("--h-amber-light", "Warning Light"))
             @await Html.PartialAsync("_Swatch", ("--h-rust", "Danger"))
             @await Html.PartialAsync("_Swatch", ("--h-blue-muted", "Primary / Info"))
@@ -145,11 +146,52 @@
         <div class="cp-grid">
             @await Html.PartialAsync("_Swatch", ("--h-text", "Text (aged-ink)"))
             @await Html.PartialAsync("_Swatch", ("--h-text-secondary", "Text Secondary (sepia)"))
+            @await Html.PartialAsync("_Swatch", ("--h-text-on-dark", "Text on Dark"))
             @await Html.PartialAsync("_Swatch", ("--h-bg", "Background (parchment-light)"))
             @await Html.PartialAsync("_Swatch", ("--h-bg-card", "Card Background (warm-white)"))
             @await Html.PartialAsync("_Swatch", ("--h-bg-elevated", "Elevated Background"))
             @await Html.PartialAsync("_Swatch", ("--h-accent", "Accent (gold)"))
             @await Html.PartialAsync("_Swatch", ("--h-accent-hover", "Accent Hover (gold-dark)"))
+        </div>
+    </div>
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-triangle-exclamation me-2"></i>Alert Tokens</h2>
+        <p class="text-muted mb-3">Background and text colors for alert/feedback UI.</p>
+        <div class="cp-grid">
+            @await Html.PartialAsync("_Swatch", ("--h-alert-warning-bg", "Warning BG"))
+            @await Html.PartialAsync("_Swatch", ("--h-alert-warning-text", "Warning Text"))
+            @await Html.PartialAsync("_Swatch", ("--h-alert-info-bg", "Info BG"))
+            @await Html.PartialAsync("_Swatch", ("--h-alert-info-text", "Info Text"))
+            @await Html.PartialAsync("_Swatch", ("--h-alert-success-bg", "Success BG"))
+            @await Html.PartialAsync("_Swatch", ("--h-alert-success-text", "Success Text"))
+            @await Html.PartialAsync("_Swatch", ("--h-alert-danger-bg", "Danger BG"))
+            @await Html.PartialAsync("_Swatch", ("--h-alert-danger-text", "Danger Text"))
+        </div>
+    </div>
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-toggle-on me-2"></i>Interactive Tokens</h2>
+        <p class="text-muted mb-3">Colors for form elements, chips, and interactive UI.</p>
+        <div class="cp-grid">
+            @await Html.PartialAsync("_Swatch", ("--h-muted-bg", "Muted Background"))
+            @await Html.PartialAsync("_Swatch", ("--h-muted-border", "Muted Border"))
+            @await Html.PartialAsync("_Swatch", ("--h-muted-border-hover", "Muted Border Hover"))
+            @await Html.PartialAsync("_Swatch", ("--h-muted-text", "Muted Text"))
+            @await Html.PartialAsync("_Swatch", ("--h-focus-ring", "Focus Ring"))
+            @await Html.PartialAsync("_Swatch", ("--h-selected-bg", "Selected Background"))
+            @await Html.PartialAsync("_Swatch", ("--h-chip-text", "Chip Text"))
+        </div>
+    </div>
+
+    <div class="cp-section">
+        <h2><i class="fa-solid fa-chart-pie me-2"></i>Chart Tokens</h2>
+        <p class="text-muted mb-3">Colors for Chart.js and data visualization.</p>
+        <div class="cp-grid">
+            @await Html.PartialAsync("_Swatch", ("--h-chart-success", "Chart Success"))
+            @await Html.PartialAsync("_Swatch", ("--h-chart-warning", "Chart Warning"))
+            @await Html.PartialAsync("_Swatch", ("--h-chart-danger", "Chart Danger"))
+            @await Html.PartialAsync("_Swatch", ("--h-chart-muted", "Chart Muted"))
         </div>
     </div>
 

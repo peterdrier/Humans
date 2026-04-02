@@ -404,7 +404,7 @@
                                                                                    profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
                                                                                    title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
                                                                                    class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
-                                                                                   style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
+                                                                                   style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
                                                                     }
                                                                 </div>
                                                             </td>
@@ -455,7 +455,7 @@
                                                                                profile-picture-url="@signup.ProfilePictureUrl" show-popover="true"
                                                                                title="@signup.DisplayName@(signup.Status == SignupStatus.Pending ? $" {Localizer["Shifts_Pending"]}" : "")"
                                                                                class="@(signup.Status == SignupStatus.Pending ? "opacity-50" : "")"
-                                                                               style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
+                                                                               style="@(signup.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
                                                                 }
                                                             </div>
                                                         </td>

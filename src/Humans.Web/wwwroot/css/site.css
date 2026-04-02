@@ -35,6 +35,7 @@ html { scrollbar-gutter: stable; }
     --h-sage:            #6b8f71;
     --h-sage-dark:       #4f7054;
     --h-amber:           #c48a2a;
+    --h-amber-dark:      #a87520;
     --h-amber-light:     #daa84a;
     --h-rust:            #a04030;
     --h-blue-muted:      #5b7d8f;
@@ -42,11 +43,59 @@ html { scrollbar-gutter: stable; }
     /* Semantic tokens */
     --h-text:            var(--h-aged-ink);
     --h-text-secondary:  var(--h-sepia);
+    --h-text-on-dark:    #fff;
     --h-bg:              var(--h-parchment-light);
     --h-bg-card:         var(--h-warm-white);
     --h-bg-elevated:     #fff;
     --h-accent:          var(--h-gold);
     --h-accent-hover:    var(--h-gold-dark);
+
+    /* Alert semantic tokens */
+    --h-alert-warning-bg:    #fdf1dc;
+    --h-alert-warning-text:  #6b5520;
+    --h-alert-info-bg:       #e5eff5;
+    --h-alert-info-text:     #2c5a72;
+    --h-alert-success-bg:    #e6f0e7;
+    --h-alert-success-text:  #3b5e3e;
+    --h-alert-danger-bg:     #f5e5e3;
+    --h-alert-danger-text:   #6e2e25;
+
+    /* Interactive/form tokens */
+    --h-muted-bg:            #f8f9fa;
+    --h-muted-border:        #dee2e6;
+    --h-muted-border-hover:  #adb5bd;
+    --h-muted-text:          #6c757d;
+    --h-focus-ring:          #0d6efd;
+    --h-selected-bg:         #e7f1ff;
+    --h-chip-text:           #495057;
+
+    /* Chart semantic tokens */
+    --h-chart-success:       #198754;
+    --h-chart-warning:       #ffc107;
+    --h-chart-danger:        #dc3545;
+    --h-chart-muted:         #e9ecef;
+
+    /* Map marker tokens */
+    --h-map-pin:             #1a73e8;
+    --h-map-pin-border:      #1558b0;
+    --h-map-cluster-large:   #d93025;
+    --h-map-cluster-large-border: #a5211a;
+    --h-map-cluster-medium:  #e8710a;
+    --h-map-cluster-medium-border: #b85a08;
+
+    /* Chart categorical palette (income) */
+    --h-chart-cat-1:  #198754; --h-chart-cat-2:  #20c997; --h-chart-cat-3:  #0dcaf0;
+    --h-chart-cat-4:  #0d6efd; --h-chart-cat-5:  #6f42c1; --h-chart-cat-6:  #d63384;
+    --h-chart-cat-7:  #ffc107; --h-chart-cat-8:  #fd7e14; --h-chart-cat-9:  #6610f2;
+    --h-chart-cat-10: #adb5bd; --h-chart-cat-11: #495057; --h-chart-cat-12: #e83e8c;
+    --h-chart-cat-13: #17a2b8; --h-chart-cat-14: #28a745; --h-chart-cat-15: #007bff;
+
+    /* Chart categorical palette (expense) — same colors in different order */
+    --h-chart-exp-1:  #dc3545; --h-chart-exp-2:  #fd7e14; --h-chart-exp-3:  #ffc107;
+    --h-chart-exp-4:  #e83e8c; --h-chart-exp-5:  #6f42c1; --h-chart-exp-6:  #0d6efd;
+    --h-chart-exp-7:  #0dcaf0; --h-chart-exp-8:  #20c997; --h-chart-exp-9:  #198754;
+    --h-chart-exp-10: #adb5bd; --h-chart-exp-11: #495057; --h-chart-exp-12: #d63384;
+    --h-chart-exp-13: #17a2b8; --h-chart-exp-14: #6610f2; --h-chart-exp-15: #28a745;
 
     /* Typography */
     --h-font-display:    'Cormorant Garamond', 'Garamond', 'Georgia', serif;
@@ -69,7 +118,7 @@ html { scrollbar-gutter: stable; }
 /* --- Environment Banner (non-production) --- */
 .env-banner {
     background: var(--h-rust);
-    color: #fff;
+    color: var(--h-text-on-dark);
     text-align: center;
     font-family: var(--h-font-body);
     font-size: 0.7rem;
@@ -401,15 +450,15 @@ h5, .h5 { font-size: 1.1rem; }
 .btn-warning {
     background-color: var(--h-amber);
     border-color: var(--h-amber);
-    color: #fff;
+    color: var(--h-text-on-dark);
     border-radius: var(--h-radius);
     font-weight: 700;
 }
 
 .btn-warning:hover {
-    background-color: #a87520;
-    border-color: #a87520;
-    color: #fff;
+    background-color: var(--h-amber-dark);
+    border-color: var(--h-amber-dark);
+    color: var(--h-text-on-dark);
 }
 
 .btn-outline-dark {
@@ -450,7 +499,7 @@ h5, .h5 { font-size: 1.1rem; }
 
 .bg-warning {
     background-color: var(--h-amber) !important;
-    color: #fff !important;
+    color: var(--h-text-on-dark) !important;
 }
 
 .bg-secondary {
@@ -473,26 +522,26 @@ h5, .h5 { font-size: 1.1rem; }
 }
 
 .alert-warning {
-    background-color: #fdf1dc;
-    color: #6b5520;
+    background-color: var(--h-alert-warning-bg);
+    color: var(--h-alert-warning-text);
     border-left: 4px solid var(--h-amber);
 }
 
 .alert-info {
-    background-color: #e5eff5;
-    color: #2c5a72;
+    background-color: var(--h-alert-info-bg);
+    color: var(--h-alert-info-text);
     border-left: 4px solid var(--h-blue-muted);
 }
 
 .alert-success {
-    background-color: #e6f0e7;
-    color: #3b5e3e;
+    background-color: var(--h-alert-success-bg);
+    color: var(--h-alert-success-text);
     border-left: 4px solid var(--h-sage);
 }
 
 .alert-danger {
-    background-color: #f5e5e3;
-    color: #6e2e25;
+    background-color: var(--h-alert-danger-bg);
+    color: var(--h-alert-danger-text);
     border-left: 4px solid var(--h-rust);
 }
 
@@ -529,7 +578,7 @@ h5, .h5 { font-size: 1.1rem; }
 .form-select:focus {
     border-color: var(--h-gold);
     box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
-    background-color: #fff;
+    background-color: var(--h-bg-elevated);
 }
 
 .form-label {
@@ -893,7 +942,7 @@ tr[data-href] {
 
 .notification-badge-danger {
     background-color: var(--h-rust);
-    color: #fff;
+    color: var(--h-text-on-dark);
     font-size: 0.6rem;
     font-weight: 700;
     line-height: 1;
@@ -967,7 +1016,7 @@ tr[data-href] {
 
 .notification-action-pill {
     background-color: var(--h-rust);
-    color: #fff;
+    color: var(--h-text-on-dark);
     font-size: 0.65rem;
     font-weight: 700;
 }
@@ -1117,17 +1166,17 @@ tr[data-href] {
 
 .notification-tag-urgent {
     background-color: var(--h-rust);
-    color: #fff;
+    color: var(--h-text-on-dark);
 }
 
 .notification-tag-action {
     background-color: var(--h-amber);
-    color: #fff;
+    color: var(--h-text-on-dark);
 }
 
 .notification-tag-info {
     background-color: var(--h-sage);
-    color: #fff;
+    color: var(--h-text-on-dark);
 }
 
 /* --- Group Avatar Cluster --- */
@@ -1243,7 +1292,7 @@ tr[data-href] {
 
 .notification-inbox-header {
     background-color: var(--h-sage-dark);
-    color: #fff;
+    color: var(--h-text-on-dark);
     padding: 0.6rem 1rem;
     display: flex;
     justify-content: space-between;
@@ -1266,12 +1315,12 @@ tr[data-href] {
 }
 
 .notification-tab.active {
-    color: #fff;
+    color: var(--h-text-on-dark);
     background-color: rgba(255, 255, 255, 0.2);
 }
 
 .notification-tab:hover {
-    color: #fff;
+    color: var(--h-text-on-dark);
 }
 
 .notification-inbox-body {
