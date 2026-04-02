@@ -1,0 +1,135 @@
+@model Humans.Web.Models.DuplicateAccountListViewModel
+@{
+    ViewData["Title"] = "Duplicate Account Detection";
+}
+
+<h1>Duplicate Account Detection</h1>
+
+<vc:temp-data-alerts />
+
+<p class="text-muted">
+    Scans for email addresses that appear on more than one account (across login emails and registered emails).
+    Includes gmail/googlemail equivalence. Resolve duplicates by archiving the empty account and re-linking its login to the real one.
+</p>
+
+@if (Model.Groups.Count == 0)
+{
+    <div class="alert alert-success">
+        <i class="fa-solid fa-circle-check me-2"></i>No duplicate accounts detected.
+    </div>
+}
+else
+{
+    <div class="alert alert-warning">
+        <i class="fa-solid fa-triangle-exclamation me-2"></i>
+        Found <strong>@Model.Groups.Count</strong> email conflict(s) across accounts.
+    </div>
+
+    foreach (var group in Model.Groups)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-clone me-2"></i>Shared email: <code>@group.SharedEmail</code>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    @foreach (var account in group.Accounts)
+                    {
+                        <div class="col-md-6">
+                            <div class="card mb-2 @(account.IsProfileComplete ? "border-success" : "border-secondary")">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-2">
+                                        @if (!string.IsNullOrEmpty(account.ProfilePictureUrl))
+                                        {
+                                            <img src="@account.ProfilePictureUrl" alt="" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" />
+                                        }
+                                        else
+                                        {
+                                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
+                                                <i class="fa-solid fa-user text-white"></i>
+                                            </div>
+                                        }
+                                        <div>
+                                            <strong>@account.DisplayName</strong>
+                                            <br />
+                                            <small class="text-muted">@account.Email</small>
+                                        </div>
+                                    </div>
+                                    <table class="table table-sm table-borderless mb-2">
+                                        <tbody>
+                                            <tr>
+                                                <td class="text-muted" style="width: 120px;">Profile</td>
+                                                <td>
+                                                    @if (account.IsProfileComplete)
+                                                    {
+                                                        <span class="badge bg-success">Complete</span>
+                                                    }
+                                                    else if (account.HasProfile)
+                                                    {
+                                                        <span class="badge bg-warning text-dark">Incomplete</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="badge bg-secondary">None</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Status</td>
+                                                <td>@(account.MembershipStatus ?? "No profile")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Tier</td>
+                                                <td>@(account.MembershipTier ?? "N/A")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Last login</td>
+                                                <td>@(account.LastLogin?.ToString("g") ?? "Never")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Created</td>
+                                                <td>@(account.CreatedAt?.ToString("g") ?? "Unknown")</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Teams</td>
+                                                <td>@account.TeamCount</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-muted">Roles</td>
+                                                <td>@account.RoleAssignmentCount</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <div class="small text-muted">
+                                        <strong>Email sources:</strong>
+                                        <ul class="mb-0 ps-3">
+                                            @foreach (var source in account.EmailSources)
+                                            {
+                                                <li>@source</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                @if (group.Accounts.Count == 2)
+                {
+                    <div class="text-end mt-2">
+                        <a asp-action="Detail"
+                           asp-route-userId1="@group.Accounts[0].UserId"
+                           asp-route-userId2="@group.Accounts[1].UserId"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="fa-solid fa-eye me-1"></i>Review &amp; Resolve
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+<a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary mt-3">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back to Admin
+</a>

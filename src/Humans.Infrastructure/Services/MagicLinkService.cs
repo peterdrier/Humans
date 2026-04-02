@@ -154,6 +154,29 @@ public class MagicLinkService : IMagicLinkService
         return await _userManager.FindByEmailAsync(email);
     }
 
+    public async Task<User?> FindUserByAnyEmailAsync(string email, CancellationToken ct = default)
+    {
+        // 1. Check verified UserEmails first (strongest match)
+        var verified = await FindUserByVerifiedEmailAsync(email, ct);
+        if (verified is not null)
+            return verified;
+
+        // 2. Check unverified UserEmails (prevents duplicate when email was added but not yet verified)
+#pragma warning disable MA0011, RCS1155 // EF Core can only translate parameterless ToUpper()
+        var unverifiedEmail = await _dbContext.UserEmails
+            .Include(ue => ue.User)
+            .FirstOrDefaultAsync(ue => !ue.IsVerified &&
+                ue.Email.ToUpper() == email.ToUpper(), ct);
+#pragma warning restore MA0011, RCS1155
+
+        if (unverifiedEmail is not null)
+        {
+            return unverifiedEmail.User;
+        }
+
+        return null;
+    }
+
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)
     {
         // Rate limit: one magic link per 60 seconds per user

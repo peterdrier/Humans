@@ -190,6 +190,43 @@ public class AccountController : Controller
             }
         }
 
+        // Before creating a new account, check unverified UserEmails and User.Email
+        // to prevent duplicates (e.g., email added to another account but not yet verified)
+        var existingByAnyEmail = await _magicLinkService.FindUserByAnyEmailAsync(email);
+        if (existingByAnyEmail is not null)
+        {
+            try
+            {
+                var linkAnyResult = await _userManager.AddLoginAsync(existingByAnyEmail, info);
+                if (linkAnyResult.Succeeded)
+                {
+                    existingByAnyEmail.LastLoginAt = _clock.GetCurrentInstant();
+                    if (string.IsNullOrEmpty(existingByAnyEmail.ProfilePictureUrl) && pictureUrl is not null)
+                    {
+                        existingByAnyEmail.ProfilePictureUrl = pictureUrl;
+                    }
+                    await _userManager.UpdateAsync(existingByAnyEmail);
+
+                    await _signInManager.SignInAsync(existingByAnyEmail, isPersistent: false);
+                    _logger.LogInformation(
+                        "Linked {Provider} login to existing user {UserId} via unverified/User.Email match",
+                        info.LoginProvider, existingByAnyEmail.Id);
+                    return RedirectToLocal(returnUrl);
+                }
+
+                _logger.LogWarning(
+                    "Failed to link {Provider} to existing user {UserId} via unverified email: {Errors}",
+                    info.LoginProvider, existingByAnyEmail.Id,
+                    string.Join(", ", linkAnyResult.Errors.Select(e => e.Description)));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error linking {Provider} to existing user {UserId} via unverified email, falling through to create new account",
+                    info.LoginProvider, existingByAnyEmail.Id);
+            }
+        }
+
         // No existing account — create a new one
         var user = new User
         {

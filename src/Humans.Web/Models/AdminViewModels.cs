@@ -343,3 +343,41 @@ public class EmailOutboxViewModel
     public bool IsPaused { get; set; }
     public List<EmailOutboxMessage> Messages { get; set; } = [];
 }
+
+public class DuplicateAccountListViewModel
+{
+    public List<DuplicateAccountGroupViewModel> Groups { get; set; } = [];
+}
+
+public class DuplicateAccountGroupViewModel
+{
+    public string SharedEmail { get; set; } = string.Empty;
+    public List<DuplicateAccountItemViewModel> Accounts { get; set; } = [];
+}
+
+public class DuplicateAccountItemViewModel
+{
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? ProfilePictureUrl { get; set; }
+    public string? MembershipTier { get; set; }
+    public string? MembershipStatus { get; set; }
+    public DateTime? LastLogin { get; set; }
+    public DateTime? CreatedAt { get; set; }
+    public int TeamCount { get; set; }
+    public int RoleAssignmentCount { get; set; }
+    public bool HasProfile { get; set; }
+    public bool IsProfileComplete { get; set; }
+    public List<string> EmailSources { get; set; } = [];
+    public List<string> Teams { get; set; } = [];
+}
+
+public class DuplicateAccountDetailViewModel
+{
+    public string SharedEmail { get; set; } = string.Empty;
+    public ProfileSummaryViewModel Account1 { get; set; } = new();
+    public ProfileSummaryViewModel Account2 { get; set; } = new();
+    public List<string> Account1EmailSources { get; set; } = [];
+    public List<string> Account2EmailSources { get; set; } = [];
+}

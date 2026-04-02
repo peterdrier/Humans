@@ -1,0 +1,126 @@
+@model Humans.Web.Models.DuplicateAccountDetailViewModel
+@{
+    ViewData["Title"] = "Resolve Duplicate Account";
+}
+
+<h1>Resolve Duplicate Account</h1>
+
+<vc:temp-data-alerts />
+
+<div class="card mb-4">
+    <div class="card-header d-flex align-items-center">
+        <i class="fa-solid fa-clone me-2"></i>Email Conflict
+        <span class="badge bg-warning text-dark ms-2">Needs Resolution</span>
+    </div>
+    <div class="card-body">
+        <p class="mb-0">
+            Shared email: <code>@Model.SharedEmail</code>
+        </p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fa-solid fa-user me-1"></i>Account A
+            </div>
+            <div class="card-body">
+                <partial name="_ProfileCard" model="Model.Account1" />
+                <div class="small text-muted mt-3">
+                    <strong>Email sources:</strong>
+                    <ul class="mb-0 ps-3">
+                        @foreach (var source in Model.Account1EmailSources)
+                        {
+                            <li>@source</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <i class="fa-solid fa-user me-1"></i>Account B
+            </div>
+            <div class="card-body">
+                <partial name="_ProfileCard" model="Model.Account2" />
+                <div class="small text-muted mt-3">
+                    <strong>Email sources:</strong>
+                    <ul class="mb-0 ps-3">
+                        @foreach (var source in Model.Account2EmailSources)
+                        {
+                            <li>@source</li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="alert alert-warning">
+    <i class="fa-solid fa-triangle-exclamation me-2"></i>
+    <strong>Review carefully.</strong> Choose which account to keep. The other will be:
+    <ul class="mb-0 mt-2">
+        <li>Its external logins re-linked to the kept account</li>
+        <li>Its team memberships migrated to the kept account</li>
+        <li>Archived (anonymized) — this cannot be undone</li>
+    </ul>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card border-success mb-3">
+            <div class="card-header bg-success text-white">Keep Account A, Archive Account B</div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    Archive <strong>@Model.Account2.DisplayName</strong> and re-link its logins to
+                    <strong>@Model.Account1.DisplayName</strong>.
+                </p>
+                <form asp-action="Resolve" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="targetUserId" value="@Model.Account1.UserId" />
+                    <input type="hidden" name="sourceUserId" value="@Model.Account2.UserId" />
+                    <div class="mb-3">
+                        <label for="notes-a" class="form-label">Notes (optional)</label>
+                        <textarea id="notes-a" name="notes" class="form-control" rows="2" placeholder="Reason for resolution..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success"
+                            data-confirm="Archive Account B and re-link its logins to Account A? This cannot be undone.">
+                        <i class="fa-solid fa-check me-1"></i>Keep A, Archive B
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-success mb-3">
+            <div class="card-header bg-success text-white">Keep Account B, Archive Account A</div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    Archive <strong>@Model.Account1.DisplayName</strong> and re-link its logins to
+                    <strong>@Model.Account2.DisplayName</strong>.
+                </p>
+                <form asp-action="Resolve" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="targetUserId" value="@Model.Account2.UserId" />
+                    <input type="hidden" name="sourceUserId" value="@Model.Account1.UserId" />
+                    <div class="mb-3">
+                        <label for="notes-b" class="form-label">Notes (optional)</label>
+                        <textarea id="notes-b" name="notes" class="form-control" rows="2" placeholder="Reason for resolution..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success"
+                            data-confirm="Archive Account A and re-link its logins to Account B? This cannot be undone.">
+                        <i class="fa-solid fa-check me-1"></i>Keep B, Archive A
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-outline-secondary mt-3">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back to Duplicate Accounts
+</a>
