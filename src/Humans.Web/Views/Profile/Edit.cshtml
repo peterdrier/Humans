@@ -8,7 +8,12 @@
         <h1>@Localizer["ProfileEdit_Title"]</h1>
 
         <form asp-action="Edit" method="post" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            @if (ViewData.ModelState!.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3" id="validationSummary">
+                    <div asp-validation-summary="All"></div>
+                </div>
+            }
 
             @* === Section ordering: Private first when fields are empty (new user) === *@
             @if (Model.ShowPrivateFirst)
@@ -289,6 +294,9 @@
                         <label asp-for="NoPriorBurnExperience" class="form-check-label">@Localizer["Profile_NoPriorBurnExperience"]</label>
                         <span asp-validation-for="NoPriorBurnExperience" class="text-danger d-block"></span>
                     </div>
+                    <div id="cvRequiredAlert" class="alert alert-danger d-none">
+                        @Localizer["Profile_BurnerCVRequired"]
+                    </div>
 
                     <hr />
 
@@ -415,6 +423,13 @@
             @if (!Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />
+            }
+
+            @if (ViewData.ModelState!.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3">
+                    <div asp-validation-summary="All"></div>
+                </div>
             }
 
             <div class="d-flex justify-content-between">
@@ -784,15 +799,19 @@
             const form = document.querySelector('form[action*="Edit"]');
             const checkbox = document.getElementById('noPriorBurnCheckbox');
             const historyContainer = document.getElementById('volunteerHistoryContainer');
-            if (!form || !checkbox || !historyContainer) return;
+            const cvAlert = document.getElementById('cvRequiredAlert');
+            if (!form || !checkbox || !historyContainer || !cvAlert) return;
+
+            checkbox.addEventListener('change', () => cvAlert.classList.add('d-none'));
 
             form.addEventListener('submit', function(e) {
                 const hasRows = historyContainer.querySelectorAll('.volunteer-history-row').length > 0;
                 if (!checkbox.checked && !hasRows) {
                     e.preventDefault();
-                    // Focus the checkbox area
-                    checkbox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    checkbox.focus();
+                    cvAlert.classList.remove('d-none');
+                    cvAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    cvAlert.classList.add('d-none');
                 }
             });
         })();
@@ -847,10 +866,13 @@
             lastNameInput?.addEventListener('input', checkBurnerNameMatch);
             checkBurnerNameMatch();
 
-            // Scroll to first validation error
-            const firstError = document.querySelector('.field-validation-error:not(:empty), .text-danger:not(:empty)');
-            if (firstError) {
-                firstError.closest('.mb-3, .col-md-3, .card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Scroll to validation summary if present, else first inline error
+            const summary = document.getElementById('validationSummary');
+            if (summary) {
+                summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                const firstError = document.querySelector('.field-validation-error:not(:empty)');
+                firstError?.closest('.mb-3, .col-md-3, .card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
             // Clear on submit so saving doesn't trigger warning
