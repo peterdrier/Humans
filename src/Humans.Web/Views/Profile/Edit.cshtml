@@ -289,10 +289,13 @@
                         <i class="fa-solid fa-plus me-1"></i> @Localizer["ProfileEdit_AddEntry"]
                     </button>
 
-                    <div class="form-check mb-3" id="noPriorBurnContainer" data-cv-required="@Localizer["Profile_BurnerCVRequired"].Value">
+                    <div class="form-check mb-3" id="noPriorBurnContainer">
                         <input type="checkbox" asp-for="NoPriorBurnExperience" class="form-check-input" id="noPriorBurnCheckbox" />
                         <label asp-for="NoPriorBurnExperience" class="form-check-label">@Localizer["Profile_NoPriorBurnExperience"]</label>
                         <span asp-validation-for="NoPriorBurnExperience" class="text-danger d-block"></span>
+                    </div>
+                    <div id="cvRequiredAlert" class="alert alert-danger d-none">
+                        @Localizer["Profile_BurnerCVRequired"]
                     </div>
 
                     <hr />
@@ -795,34 +798,20 @@
         (function() {
             const form = document.querySelector('form[action*="Edit"]');
             const checkbox = document.getElementById('noPriorBurnCheckbox');
-            const container = document.getElementById('noPriorBurnContainer');
             const historyContainer = document.getElementById('volunteerHistoryContainer');
-            if (!form || !checkbox || !container || !historyContainer) return;
+            const cvAlert = document.getElementById('cvRequiredAlert');
+            if (!form || !checkbox || !historyContainer || !cvAlert) return;
 
-            const message = container.dataset.cvRequired;
-            const errorSpan = container.querySelector('.text-danger');
-
-            function clearCvError() {
-                if (errorSpan) {
-                    errorSpan.textContent = '';
-                    errorSpan.classList.remove('field-validation-error');
-                }
-            }
-
-            checkbox.addEventListener('change', clearCvError);
+            checkbox.addEventListener('change', () => cvAlert.classList.add('d-none'));
 
             form.addEventListener('submit', function(e) {
                 const hasRows = historyContainer.querySelectorAll('.volunteer-history-row').length > 0;
                 if (!checkbox.checked && !hasRows) {
                     e.preventDefault();
-                    if (errorSpan) {
-                        errorSpan.textContent = message;
-                        errorSpan.classList.add('field-validation-error');
-                    }
-                    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    checkbox.focus();
+                    cvAlert.classList.remove('d-none');
+                    cvAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else {
-                    clearCvError();
+                    cvAlert.classList.add('d-none');
                 }
             });
         })();
