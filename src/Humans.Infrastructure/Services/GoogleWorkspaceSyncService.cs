@@ -2039,8 +2039,26 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             var request = drive.Files.Get(currentId);
             request.SupportsAllDrives = true;
-            request.Fields = "name, parents";
+            request.Fields = "name, parents, driveId";
             var file = await request.ExecuteAsync(cancellationToken);
+
+            // When the file IS the shared drive root, Files.Get returns "Drive" as the name.
+            // Use Drives.Get to get the actual drive name.
+            if (!string.IsNullOrEmpty(file.DriveId)
+                && string.Equals(currentId, file.DriveId, StringComparison.Ordinal))
+            {
+                try
+                {
+                    var driveInfo = await drive.Drives.Get(file.DriveId).ExecuteAsync(cancellationToken);
+                    segments.Add(driveInfo.Name);
+                }
+                catch (Google.GoogleApiException ex)
+                {
+                    _logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", file.DriveId);
+                    segments.Add(file.Name);
+                }
+                break;
+            }
 
             segments.Add(file.Name);
 

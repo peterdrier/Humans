@@ -449,6 +449,23 @@ public partial class TeamResourceService : ITeamResourceService
     private async Task<string> BuildFolderPathAsync(
         DriveService drive, Google.Apis.Drive.v3.Data.File file, CancellationToken ct)
     {
+        // When the file IS the shared drive root, Files.Get returns "Drive" as the name.
+        // Use Drives.Get to get the actual drive name.
+        if (!string.IsNullOrEmpty(file.DriveId)
+            && string.Equals(file.Id, file.DriveId, StringComparison.Ordinal))
+        {
+            try
+            {
+                var driveInfo = await drive.Drives.Get(file.DriveId).ExecuteAsync(ct);
+                return driveInfo.Name;
+            }
+            catch (Google.GoogleApiException ex)
+            {
+                _logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", file.DriveId);
+                return file.Name;
+            }
+        }
+
         var segments = new List<string> { file.Name };
         var currentParents = file.Parents;
         var driveId = file.DriveId;
