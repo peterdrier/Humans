@@ -1142,10 +1142,8 @@ public class ProfileController : HumansControllerBase
         var allRows = await _profileService.GetFilteredHumansAsync(search, filter);
         var totalCount = allRows.Count;
 
-        // Load @nobodies.team email status for all users (fine at ~500 users)
-        var nobodiesTeamByUser = await _userEmailService.GetNobodiesTeamEmailStatusByUserAsync();
-
         // Materialize for flexible sorting (fine at ~500 users)
+        // nobodies.team email status is now resolved by NobodiesEmailBadgeViewComponent in the view
         var allMatching = allRows.Select(r => new AdminHumanViewModel
         {
             Id = r.UserId,
@@ -1156,9 +1154,7 @@ public class ProfileController : HumansControllerBase
             LastLoginAt = r.LastLoginAt,
             HasProfile = r.HasProfile,
             IsApproved = r.IsApproved,
-            MembershipStatus = r.MembershipStatus,
-            HasNobodiesTeamEmail = nobodiesTeamByUser.ContainsKey(r.UserId),
-            NobodiesTeamEmailIsPrimary = nobodiesTeamByUser.TryGetValue(r.UserId, out var isPrimary) && isPrimary
+            MembershipStatus = r.MembershipStatus
         }).ToList();
 
         var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
@@ -1264,8 +1260,7 @@ public class ProfileController : HumansControllerBase
             }).ToList(),
         };
 
-        // Check for @nobodies.team email
-        viewModel.NobodiesTeamEmail = await _userEmailService.GetNobodiesTeamEmailAsync(id);
+        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
 
         return View("AdminDetail", viewModel);
     }

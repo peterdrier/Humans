@@ -21,7 +21,6 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IProfileService _profileService;
-    private readonly IUserEmailService _userEmailService;
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
     private readonly ILogger<TeamAdminController> _logger;
@@ -32,7 +31,6 @@ public class TeamAdminController : HumansTeamControllerBase
         ITeamResourceService teamResourceService,
         IGoogleSyncService googleSyncService,
         IProfileService profileService,
-        IUserEmailService userEmailService,
         IEmailProvisioningService emailProvisioningService,
         UserManager<User> userManager,
         ISystemTeamSync systemTeamSyncJob,
@@ -44,7 +42,6 @@ public class TeamAdminController : HumansTeamControllerBase
         _teamResourceService = teamResourceService;
         _googleSyncService = googleSyncService;
         _profileService = profileService;
-        _userEmailService = userEmailService;
         _emailProvisioningService = emailProvisioningService;
         _systemTeamSyncJob = systemTeamSyncJob;
         _logger = logger;
@@ -129,9 +126,7 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
-        // Batch-load @nobodies.team email status for all displayed members
-        var nobodiesEmails = await _userEmailService.GetNobodiesTeamEmailsByUserIdsAsync(memberUserIds);
-
+        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
@@ -143,8 +138,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
                 Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-                IsCoordinator = m.Role == TeamMemberRole.Coordinator,
-                NobodiesTeamEmail = nobodiesEmails.GetValueOrDefault(m.UserId)
+                IsCoordinator = m.Role == TeamMemberRole.Coordinator
             }).ToList();
 
         var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
