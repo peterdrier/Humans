@@ -136,13 +136,7 @@ public class VolController : HumansControllerBase
             if (!es.IsShiftBrowsingOpen && !isPrivileged && !hasSignups)
                 return View("BrowsingClosed");
 
-            var userSignupShiftIds = userSignups
-                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                .Select(s => s.ShiftId)
-                .ToHashSet();
-            var userSignupStatuses = userSignups
-                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                .ToDictionary(s => s.ShiftId, s => s.Status);
+            var (userSignupShiftIds, userSignupStatuses) = ShiftSignupHelper.ResolveActiveStatuses(userSignups);
 
             // Parse date range filters
             LocalDate? filterFromDate = null;
@@ -485,13 +479,7 @@ public class VolController : HumansControllerBase
                 });
             }
 
-            var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
-            var userSignupShiftIds = userSignups
-                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                .Select(s => s.ShiftId).ToHashSet();
-            var userSignupStatuses = userSignups
-                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                .ToDictionary(s => s.ShiftId, s => s.Status);
+            var (userSignupShiftIds, userSignupStatuses) = await _signupService.GetActiveSignupStatusesAsync(user.Id, es.Id);
 
             var pendingRequests = isCoordinator
                 ? (await _teamService.GetPendingRequestsForTeamAsync(child.Id)).ToList()

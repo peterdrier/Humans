@@ -60,13 +60,7 @@ public class ShiftsController : HumansControllerBase
         if (!es.IsShiftBrowsingOpen && !isPrivileged && !hasSignups)
             return View("BrowsingClosed");
 
-        var userSignupShiftIds = userSignups
-            .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-            .Select(s => s.ShiftId)
-            .ToHashSet();
-        var userSignupStatuses = userSignups
-            .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-            .ToDictionary(s => s.ShiftId, s => s.Status);
+        var (userSignupShiftIds, userSignupStatuses) = ShiftSignupHelper.ResolveActiveStatuses(userSignups);
 
         // Parse date range filters
         LocalDate? filterFromDate = null;
