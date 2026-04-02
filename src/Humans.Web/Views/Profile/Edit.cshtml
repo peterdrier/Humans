@@ -8,7 +8,12 @@
         <h1>@Localizer["ProfileEdit_Title"]</h1>
 
         <form asp-action="Edit" method="post" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            @if (ViewData.ModelState!.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3" id="validationSummary">
+                    <div asp-validation-summary="All"></div>
+                </div>
+            }
 
             @* === Section ordering: Private first when fields are empty (new user) === *@
             @if (Model.ShowPrivateFirst)
@@ -847,10 +852,13 @@
             lastNameInput?.addEventListener('input', checkBurnerNameMatch);
             checkBurnerNameMatch();
 
-            // Scroll to first validation error
-            const firstError = document.querySelector('.field-validation-error:not(:empty), .text-danger:not(:empty)');
-            if (firstError) {
-                firstError.closest('.mb-3, .col-md-3, .card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Scroll to validation summary if present, else first inline error
+            const summary = document.getElementById('validationSummary');
+            if (summary) {
+                summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                const firstError = document.querySelector('.field-validation-error:not(:empty)');
+                firstError?.closest('.mb-3, .col-md-3, .card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
             // Clear on submit so saving doesn't trigger warning
