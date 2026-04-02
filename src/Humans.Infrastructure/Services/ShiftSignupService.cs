@@ -286,6 +286,9 @@ public class ShiftSignupService : IShiftSignupService
 
         await _dbContext.SaveChangesAsync();
 
+        await DispatchSignupChangeNotificationAsync(signup,
+            $"Voluntold for '{shift.Rota.Name}' on day {shift.DayOffset}.");
+
         return SignupResult.Ok(signup);
     }
 
@@ -375,6 +378,9 @@ public class ShiftSignupService : IShiftSignupService
 
         await _dbContext.SaveChangesAsync();
 
+        await DispatchSignupChangeNotificationAsync(firstSignup!,
+            $"Voluntold range for '{rota.Name}' ({assignable.Count} shifts).");
+
         return SignupResult.Ok(firstSignup!, warning);
     }
 
@@ -419,6 +425,10 @@ public class ShiftSignupService : IShiftSignupService
             removedByUserId, "Reviewer");
 
         await _dbContext.SaveChangesAsync();
+
+        await DispatchSignupChangeNotificationAsync(signup,
+            $"Removed from '{signup.Shift.Rota.Name}' on day {signup.Shift.DayOffset}.");
+        await CheckAndNotifyCoverageGapAsync(signup);
 
         return SignupResult.Ok(signup);
     }
@@ -574,6 +584,12 @@ public class ShiftSignupService : IShiftSignupService
 
         await _dbContext.SaveChangesAsync();
 
+        if (autoConfirm)
+        {
+            await DispatchSignupChangeNotificationAsync(lastSignup!,
+                $"Range signup for '{rota.Name}' ({shiftsInRange.Count} shifts, confirmed).");
+        }
+
         return SignupResult.Ok(lastSignup!, warning);
     }
 
@@ -625,6 +641,10 @@ public class ShiftSignupService : IShiftSignupService
         }
 
         await _dbContext.SaveChangesAsync();
+
+        await DispatchSignupChangeNotificationAsync(signups[0],
+            $"Range approved ({signups.Count} shifts) for '{signups[0].Shift.Rota.Name}'.");
+
         var warning = warnings.Count > 0 ? string.Join(" ", warnings.Distinct(StringComparer.Ordinal)) : null;
         return SignupResult.Ok(signups[0], warning);
     }
@@ -650,6 +670,10 @@ public class ShiftSignupService : IShiftSignupService
         }
 
         await _dbContext.SaveChangesAsync();
+
+        await DispatchSignupChangeNotificationAsync(signups[0],
+            $"Range refused ({signups.Count} shifts) for '{signups[0].Shift.Rota.Name}'.");
+
         return SignupResult.Ok(signups[0]);
     }
 
@@ -689,6 +713,15 @@ public class ShiftSignupService : IShiftSignupService
         }
 
         await _dbContext.SaveChangesAsync();
+
+        await DispatchSignupChangeNotificationAsync(firstSignup,
+            $"Range bail from '{firstSignup.Shift.Rota.Name}' ({signups.Count} shifts).");
+
+        // Check coverage gaps for each bailed shift
+        foreach (var signup in signups)
+        {
+            await CheckAndNotifyCoverageGapAsync(signup);
+        }
     }
 
     public async Task<IReadOnlyList<ShiftSignup>> GetByUserAsync(Guid userId, Guid? eventSettingsId = null)
@@ -840,7 +873,7 @@ public class ShiftSignupService : IShiftSignupService
                 $"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}",
                 coordinatorIds,
                 body: $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.",
-                actionUrl: $"/ShiftDashboard?teamId={teamId}",
+                actionUrl: $"/Shifts/Dashboard?departmentId={teamId}",
                 actionLabel: "Find cover \u2192");
         }
         catch (Exception ex)
@@ -878,7 +911,7 @@ public class ShiftSignupService : IShiftSignupService
                 $"Shift signup change: {rotaName}",
                 coordinatorIds,
                 body: changeDescription,
-                actionUrl: $"/ShiftDashboard?teamId={teamId}",
+                actionUrl: $"/Shifts/Dashboard?departmentId={teamId}",
                 actionLabel: "View \u2192");
         }
         catch (Exception ex)

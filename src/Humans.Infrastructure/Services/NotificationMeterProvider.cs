@@ -75,7 +75,7 @@ public class NotificationMeterProvider : INotificationMeterProvider
             {
                 Title = "Pending account deletions",
                 Count = counts.PendingDeletions,
-                ActionUrl = "/Admin/DataRequests",
+                ActionUrl = "/Admin",
                 Priority = 8,
             });
         }
@@ -87,7 +87,7 @@ public class NotificationMeterProvider : INotificationMeterProvider
             {
                 Title = "Failed Google sync events",
                 Count = counts.FailedSyncEvents,
-                ActionUrl = "/Admin/SyncDashboard",
+                ActionUrl = "/Google/Sync",
                 Priority = 7,
             });
         }
@@ -112,7 +112,7 @@ public class NotificationMeterProvider : INotificationMeterProvider
             {
                 Title = "Team join requests pending",
                 Count = counts.TeamJoinRequestsPending,
-                ActionUrl = "/Admin/TeamJoinRequests",
+                ActionUrl = "/Admin",
                 Priority = 5,
             });
         }
@@ -124,7 +124,7 @@ public class NotificationMeterProvider : INotificationMeterProvider
             {
                 Title = "Ticket sync error",
                 Count = 1,
-                ActionUrl = "/Admin/TicketSync",
+                ActionUrl = "/Tickets",
                 Priority = 4,
             });
         }
@@ -173,9 +173,9 @@ public class NotificationMeterProvider : INotificationMeterProvider
         var failedSyncEvents = await _dbContext.GoogleSyncOutboxEvents
             .CountAsync(e => e.ProcessedAt == null && e.LastError != null, cancellationToken);
 
-        // Onboarding profiles pending (not approved, not suspended)
+        // Onboarding profiles pending (not approved, not rejected — matches OnboardingService.GetReviewQueueAsync)
         var onboardingPending = await _dbContext.Profiles
-            .CountAsync(p => !p.IsApproved && !p.IsSuspended, cancellationToken);
+            .CountAsync(p => !p.IsApproved && p.RejectedAt == null, cancellationToken);
 
         // Team join requests pending
         var teamJoinRequestsPending = await _dbContext.TeamJoinRequests
