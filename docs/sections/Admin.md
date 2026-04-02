@@ -23,6 +23,7 @@
 - Sync settings control per-service Google sync behavior (None / AddOnly / AddAndRemove). Setting a service to None disables sync without redeploying.
 - Purging a human permanently deletes the account and all associated data, including severing the OAuth link so the next Google login creates a fresh account.
 - User merge consolidates two accounts into one, transferring all associated data to the surviving account.
+- Duplicate account detection scans for email addresses appearing on multiple accounts (across User.Email and UserEmail.Email, with gmail/googlemail equivalence). Admin can resolve by archiving the duplicate and re-linking its logins to the real account.
 - Hangfire locks can be cleared if background jobs are stuck; the application must be restarted afterward to re-register recurring jobs.
 
 ## Negative Access Rules

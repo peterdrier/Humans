@@ -10,7 +10,7 @@
 
 | Actor | Capabilities |
 |-------|-------------|
-| Unauthenticated visitor | Sign up via Google OAuth |
+| Unauthenticated visitor | Sign up via Google OAuth (or magic link) |
 | Authenticated human (pre-approval) | Complete profile, sign legal documents, submit a tier application (optional), submit feedback |
 | ConsentCoordinator | Clear or flag consent checks in the onboarding review queue |
 | VolunteerCoordinator | Read-only access to the onboarding review queue (cannot clear/flag or reject) |
@@ -22,6 +22,7 @@
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - The ActiveMember status is derived from membership in the Volunteers system team.
 - All admin and coordinator roles bypass the membership gate entirely — they can access the full application regardless of membership status.
+- OAuth login checks verified UserEmails, unverified UserEmails, and User.Email before creating a new account — preventing duplicate accounts when the same email exists on another user in any form.
 
 ## Negative Access Rules
 
