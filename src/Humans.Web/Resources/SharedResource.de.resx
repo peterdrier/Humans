@@ -105,23 +105,27 @@
   <!-- Home (Landing Page)      -->
   <!-- ======================== -->
   <data name="Home_Title" xml:space="preserve"><value>Startseite</value></data>
-  <data name="Home_Tagline" xml:space="preserve"><value>Mitgliederportal für Nobodies Collective</value></data>
-  <data name="Home_CTA" xml:space="preserve"><value>Neu hier? Melden Sie sich an, um loszulegen.</value></data>
-  <data name="Home_WhyTitle" xml:space="preserve"><value>Warum brauchen wir das?</value></data>
-  <data name="Home_WhyDescription" xml:space="preserve"><value>Als eingetragener Verein in Spanien hat Nobodies Collective gesetzliche Verpflichtungen. Bevor jemand auf gemeinsame Ressourcen zugreifen kann, müssen wir die Zustimmung zu unseren Richtlinien bestätigen. Dieses System erledigt das auf einfache Weise und hält alles aktuell.</value></data>
-  <data name="Home_ComplianceTitle" xml:space="preserve"><value>Rechtliche Compliance</value></data>
-  <data name="Home_ComplianceDescription" xml:space="preserve"><value>Um auf Vereinsressourcen zugreifen zu können, muss jeder unseren Richtlinien zustimmen: DSGVO-Datenverarbeitung, Datenschutzrichtlinie, Einwilligungsbedingungen und Creative-Commons-Lizenzierung. Dies ist ein einmaliger Vorgang (es sei denn, Dokumente werden aktualisiert).</value></data>
-  <data name="Home_ResourceAccessTitle" xml:space="preserve"><value>Ressourcenzugang</value></data>
-  <data name="Home_ResourceAccessDescription" xml:space="preserve"><value>Sobald Sie Ihr Profil und Ihre Einwilligungen abgeschlossen haben, erhalten Sie Zugang zu gemeinsamen Ressourcen: Google Drive-Ordnern, Team-Arbeitsbereichen und Kollaborations-Tools. Teams können für verschiedene Arbeitsgruppen konfiguriert werden.</value></data>
-  <data name="Home_DocumentUpdatesTitle" xml:space="preserve"><value>Dokumentenaktualisierungen</value></data>
-  <data name="Home_DocumentUpdatesDescription" xml:space="preserve"><value>Rechtliche Dokumente entwickeln sich weiter. Wenn sich Richtlinien wesentlich ändern, werden Sie aufgefordert, diese zu prüfen und erneut zuzustimmen. So wird sichergestellt, dass alle unter denselben aktuellen Vereinbarungen arbeiten.</value></data>
-  <data name="Home_VotingMembershipTitle" xml:space="preserve"><value>Stimmberechtigte Mitgliedschaft</value></data>
-  <data name="Home_VotingMembershipDescription" xml:space="preserve"><value>Unsere Satzung erfordert ein Verzeichnis stimmberechtigter Mitglieder für die Governance (Mitgliederversammlungen, Wahlen usw.). Wenn Sie an der Governance teilnehmen möchten, können Sie sich als stimmberechtigtes Mitglied bewerben. Dies ist vollkommen freiwillig.</value></data>
-  <data name="Home_GettingStartedTitle" xml:space="preserve"><value>Erste Schritte</value></data>
-  <data name="Home_Step1" xml:space="preserve"><value>&lt;strong&gt;Melden Sie sich an&lt;/strong&gt; mit Ihrem Google-Konto</value></data>
-  <data name="Home_Step2" xml:space="preserve"><value>&lt;strong&gt;Vervollständigen Sie Ihr Profil&lt;/strong&gt; mit grundlegenden Informationen</value></data>
-  <data name="Home_Step3" xml:space="preserve"><value>&lt;strong&gt;Prüfen und stimmen Sie zu&lt;/strong&gt; unseren rechtlichen Dokumenten (spanische Originale mit englischen Übersetzungen)</value></data>
-  <data name="Home_GettingStartedSummary" xml:space="preserve"><value>Das war's! Sobald Ihre Einwilligungen vorliegen, haben Sie Zugang zu den Vereinsressourcen. Wenn Sie daran interessiert sind, als stimmberechtigtes Mitglied an der Governance teilzunehmen, können Sie optional über Ihr Dashboard einen Antrag stellen.</value></data>
+  <data name="Home_Tagline" xml:space="preserve"><value>Wo Nobodies Collective sich organisiert</value></data>
+  <data name="Home_HeroDescription" xml:space="preserve"><value>Die Community-Plattform f&#xFC;r unsere humans &#x2014; melde dich f&#xFC;r Schichten an, tritt Teams bei, registriere dein Camp und hilf mit, dass Dinge passieren.</value></data>
+  <data name="Home_CTA" xml:space="preserve"><value>Loslegen</value></data>
+  <data name="Home_FeaturesTitle" xml:space="preserve"><value>Alles, was du zum Mitmachen brauchst</value></data>
+  <data name="Home_ShiftsTitle" xml:space="preserve"><value>Schichten &amp; Freiwilligenarbeit</value></data>
+  <data name="Home_ShiftsDescription" xml:space="preserve"><value>Schau dir verf&#xFC;gbare Schichten an, melde dich f&#xFC;r Event-Rollen an und behalte deinen Zeitplan im Blick. Sieh, was dringend ist und wo Hilfe am meisten gebraucht wird.</value></data>
+  <data name="Home_TeamsTitle" xml:space="preserve"><value>Teams &amp; Arbeitsgruppen</value></data>
+  <data name="Home_TeamsDescription" xml:space="preserve"><value>Selbstorganisierte Arbeitsgruppen mit Koordinatoren, geteilten Ressourcen und Genehmigungs-Workflows. Finde dein Team.</value></data>
+  <data name="Home_CampsTitle" xml:space="preserve"><value>Camps &amp; Barrios</value></data>
+  <data name="Home_CampsDescription" xml:space="preserve"><value>Registriere dein Camp, entdecke Nachbarn nach Stimmung oder Soundzone und melde dich jede Saison an.</value></data>
+  <data name="Home_TicketsTitle" xml:space="preserve"><value>Tickets &amp; Events</value></data>
+  <data name="Home_TicketsDescription" xml:space="preserve"><value>Ticketverkauf-Integration, Teilnehmer-Matching und Rabattaktionen &#x2014; alles mit deinem Profil verkn&#xFC;pft.</value></data>
+  <data name="Home_BudgetTitle" xml:space="preserve"><value>Budget-Transparenz</value></data>
+  <data name="Home_BudgetDescription" xml:space="preserve"><value>Sieh, wie Mittel auf Abteilungen verteilt werden. Offene Budgetplanung mit &#xF6;ffentlichen Zusammenfassungen.</value></data>
+  <data name="Home_ProfilesTitle" xml:space="preserve"><value>Profile &amp; Verzeichnis</value></data>
+  <data name="Home_ProfilesDescription" xml:space="preserve"><value>Ausf&#xFC;hrliche Profile mit Burner-Namen, Standorten und Notfallkontakten. Ein Geburtstagskalender und Verzeichnis f&#xFC;r die Community.</value></data>
+  <data name="Home_GettingStartedTitle" xml:space="preserve"><value>Schnelles Onboarding</value></data>
+  <data name="Home_Step1" xml:space="preserve"><value>&lt;strong&gt;Melde dich an&lt;/strong&gt; mit deinem Google-Konto</value></data>
+  <data name="Home_Step2" xml:space="preserve"><value>&lt;strong&gt;Richte dein Profil ein&lt;/strong&gt; &#x2014; Name, Standort und wie du erreichbar sein m&#xF6;chtest</value></data>
+  <data name="Home_Step3" xml:space="preserve"><value>&lt;strong&gt;Stimme dem Grundlegenden zu&lt;/strong&gt; &#x2014; wir k&#xFC;mmern uns um den Papierkram, damit du dich aufs Mitmachen konzentrieren kannst</value></data>
+  <data name="Home_GettingStartedSummary" xml:space="preserve"><value>Dauert nur ein paar Minuten. Danach bist du dabei &#x2014; Schichten durchst&#xF6;bern, Teams beitreten und loslegen.</value></data>
 
   <!-- ======================== -->
   <!-- Dashboard                -->

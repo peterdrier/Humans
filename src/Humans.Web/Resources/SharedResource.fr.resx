@@ -105,23 +105,27 @@
   <!-- Home (Landing Page)      -->
   <!-- ======================== -->
   <data name="Home_Title" xml:space="preserve"><value>Accueil</value></data>
-  <data name="Home_Tagline" xml:space="preserve"><value>Portail des membres de Nobodies Collective</value></data>
-  <data name="Home_CTA" xml:space="preserve"><value>Nouveau/nouvelle ici&#xA0;? Connectez-vous pour commencer.</value></data>
-  <data name="Home_WhyTitle" xml:space="preserve"><value>Pourquoi avons-nous besoin de cela&#xA0;?</value></data>
-  <data name="Home_WhyDescription" xml:space="preserve"><value>En tant qu'association enregistr&#xE9;e en Espagne, Nobodies Collective a des obligations l&#xE9;gales. Avant que quiconque puisse acc&#xE9;der aux ressources partag&#xE9;es, nous devons confirmer l'acceptation de nos politiques. Ce syst&#xE8;me g&#xE8;re cela simplement et maintient tout &#xE0; jour.</value></data>
-  <data name="Home_ComplianceTitle" xml:space="preserve"><value>Conformit&#xE9; l&#xE9;gale</value></data>
-  <data name="Home_ComplianceDescription" xml:space="preserve"><value>Pour acc&#xE9;der aux ressources de l'association, chacun doit accepter nos politiques : traitement des donn&#xE9;es RGPD, politique de confidentialit&#xE9;, conditions de consentement et licence Creative Commons. C'est un processus unique (sauf mise &#xE0; jour des documents).</value></data>
-  <data name="Home_ResourceAccessTitle" xml:space="preserve"><value>Acc&#xE8;s aux ressources</value></data>
-  <data name="Home_ResourceAccessDescription" xml:space="preserve"><value>Une fois votre profil et vos consentements compl&#xE9;t&#xE9;s, vous aurez acc&#xE8;s aux ressources partag&#xE9;es : dossiers Google Drive, espaces de travail d'&#xE9;quipe et outils de collaboration. Les &#xE9;quipes peuvent &#xEA;tre configur&#xE9;es pour diff&#xE9;rents groupes de travail.</value></data>
-  <data name="Home_DocumentUpdatesTitle" xml:space="preserve"><value>Mises &#xE0; jour des documents</value></data>
-  <data name="Home_DocumentUpdatesDescription" xml:space="preserve"><value>Les documents l&#xE9;gaux &#xE9;voluent. Lorsque les politiques changent de mani&#xE8;re significative, il vous sera demand&#xE9; de les revoir et de renouveler votre consentement. Cela garantit que tous travaillent sous les m&#xEA;mes accords en vigueur.</value></data>
-  <data name="Home_VotingMembershipTitle" xml:space="preserve"><value>Adh&#xE9;sion avec droit de vote</value></data>
-  <data name="Home_VotingMembershipDescription" xml:space="preserve"><value>Nos statuts exigent un registre des membres votants pour la gouvernance (assembl&#xE9;es g&#xE9;n&#xE9;rales, &#xE9;lections, etc.). Si vous souhaitez participer &#xE0; la gouvernance, vous pouvez demander &#xE0; devenir membre votant. Cela est enti&#xE8;rement facultatif.</value></data>
-  <data name="Home_GettingStartedTitle" xml:space="preserve"><value>Pour commencer</value></data>
-  <data name="Home_Step1" xml:space="preserve"><value>&lt;strong&gt;Connectez-vous&lt;/strong&gt; avec votre compte Google</value></data>
-  <data name="Home_Step2" xml:space="preserve"><value>&lt;strong&gt;Compl&#xE9;tez votre profil&lt;/strong&gt; avec les informations de base</value></data>
-  <data name="Home_Step3" xml:space="preserve"><value>&lt;strong&gt;Consultez et consentez&lt;/strong&gt; &#xE0; nos documents l&#xE9;gaux (originaux en espagnol avec traductions en anglais)</value></data>
-  <data name="Home_GettingStartedSummary" xml:space="preserve"><value>C'est tout&#xA0;! Une fois vos consentements en ordre, vous aurez acc&#xE8;s aux ressources de l'association. Si vous souhaitez participer &#xE0; la gouvernance en tant que membre votant, vous pouvez &#xE9;ventuellement soumettre une candidature depuis votre tableau de bord.</value></data>
+  <data name="Home_Tagline" xml:space="preserve"><value>L&#xE0; o&#xF9; Nobodies Collective s'organise</value></data>
+  <data name="Home_HeroDescription" xml:space="preserve"><value>La plateforme communautaire pour nos humans &#x2014; inscris-toi aux cr&#xE9;neaux, rejoins des &#xE9;quipes, enregistre ton camp et aide &#xE0; faire bouger les choses.</value></data>
+  <data name="Home_CTA" xml:space="preserve"><value>C'est parti</value></data>
+  <data name="Home_FeaturesTitle" xml:space="preserve"><value>Tout ce qu'il faut pour participer</value></data>
+  <data name="Home_ShiftsTitle" xml:space="preserve"><value>Cr&#xE9;neaux &amp; b&#xE9;n&#xE9;volat</value></data>
+  <data name="Home_ShiftsDescription" xml:space="preserve"><value>Consulte les cr&#xE9;neaux disponibles, inscris-toi &#xE0; des r&#xF4;les d'&#xE9;v&#xE9;nement et suis ton planning. Vois ce qui est urgent et o&#xF9; l'aide est la plus n&#xE9;cessaire.</value></data>
+  <data name="Home_TeamsTitle" xml:space="preserve"><value>&#xC9;quipes &amp; groupes de travail</value></data>
+  <data name="Home_TeamsDescription" xml:space="preserve"><value>Des groupes de travail auto-organis&#xE9;s avec coordinateurs, ressources partag&#xE9;es et workflows d'approbation. Trouve ton &#xE9;quipe.</value></data>
+  <data name="Home_CampsTitle" xml:space="preserve"><value>Camps &amp; barrios</value></data>
+  <data name="Home_CampsDescription" xml:space="preserve"><value>Enregistre ton camp, d&#xE9;couvre tes voisins par ambiance ou zone sonore, et confirme ta participation chaque saison.</value></data>
+  <data name="Home_TicketsTitle" xml:space="preserve"><value>Billetterie &amp; &#xE9;v&#xE9;nements</value></data>
+  <data name="Home_TicketsDescription" xml:space="preserve"><value>Int&#xE9;gration de la vente de billets, mise en relation des participants et campagnes de r&#xE9;duction &#x2014; le tout li&#xE9; &#xE0; ton profil.</value></data>
+  <data name="Home_BudgetTitle" xml:space="preserve"><value>Transparence budg&#xE9;taire</value></data>
+  <data name="Home_BudgetDescription" xml:space="preserve"><value>Vois comment les fonds sont r&#xE9;partis entre les d&#xE9;partements. Planification budg&#xE9;taire ouverte avec des r&#xE9;sum&#xE9;s publics.</value></data>
+  <data name="Home_ProfilesTitle" xml:space="preserve"><value>Profils &amp; annuaire</value></data>
+  <data name="Home_ProfilesDescription" xml:space="preserve"><value>Des profils riches avec noms de playa, localisations et contacts d'urgence. Un calendrier d'anniversaires et un annuaire pour la communaut&#xE9;.</value></data>
+  <data name="Home_GettingStartedTitle" xml:space="preserve"><value>Inscription rapide</value></data>
+  <data name="Home_Step1" xml:space="preserve"><value>&lt;strong&gt;Connecte-toi&lt;/strong&gt; avec ton compte Google</value></data>
+  <data name="Home_Step2" xml:space="preserve"><value>&lt;strong&gt;Configure ton profil&lt;/strong&gt; &#x2014; nom, localisation et comment tu pr&#xE9;f&#xE8;res &#xEA;tre contact&#xE9;(e)</value></data>
+  <data name="Home_Step3" xml:space="preserve"><value>&lt;strong&gt;Accepte les bases&lt;/strong&gt; &#x2014; on s'occupe de la paperasse pour que tu puisses te concentrer sur la participation</value></data>
+  <data name="Home_GettingStartedSummary" xml:space="preserve"><value>&#xC7;a prend quelques minutes. Apr&#xE8;s, tu es dedans &#x2014; consulte les cr&#xE9;neaux, rejoins des &#xE9;quipes et commence &#xE0; contribuer.</value></data>
 
   <!-- ======================== -->
   <!-- Dashboard                -->
