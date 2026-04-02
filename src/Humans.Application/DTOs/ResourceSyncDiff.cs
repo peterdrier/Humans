@@ -16,7 +16,9 @@ public record MemberSyncStatus(
     MemberSyncState State,
     List<TeamLink> TeamLinks,
     string? CurrentRole = null,
-    string? ExpectedRole = null);
+    string? ExpectedRole = null,
+    Guid? UserId = null,
+    string? ProfilePictureUrl = null);
 
 /// <summary>
 /// Whether a member is correctly synced, missing, or extra.

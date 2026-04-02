@@ -922,7 +922,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             // Expected: team's active members (use Google service email preference)
             var expectedMembers = resource.Team.Members
                 .Where(tm => tm.User.GetGoogleServiceEmail() is not null)
-                .Select(tm => new { Email = tm.User.GetGoogleServiceEmail(), tm.User.DisplayName })
+                .Select(tm => new { Email = tm.User.GetGoogleServiceEmail(), tm.User.DisplayName, tm.User.Id, tm.User.ProfilePictureUrl })
                 .ToList();
 
             // Subteam member rollup: include child team members for departments
@@ -933,7 +933,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 if (email is not null && !expectedMembers.Any(m =>
                     NormalizingEmailComparer.Instance.Equals(m.Email, email)))
                 {
-                    expectedMembers.Add(new { Email = (string?)email, cm.User.DisplayName });
+                    expectedMembers.Add(new { Email = (string?)email, cm.User.DisplayName, cm.User.Id, cm.User.ProfilePictureUrl });
                 }
             }
 
@@ -1001,7 +1001,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 var state = currentEmails.Contains(expected.Email!)
                     ? MemberSyncState.Correct
                     : MemberSyncState.Missing;
-                members.Add(new MemberSyncStatus(expected.Email!, expected.DisplayName, state, [teamLink]));
+                members.Add(new MemberSyncStatus(expected.Email!, expected.DisplayName, state, [teamLink],
+                    UserId: expected.Id, ProfilePictureUrl: expected.ProfilePictureUrl));
             }
 
             foreach (var email in currentEmails)
@@ -1100,7 +1101,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         try
         {
             // Expected: union of all linked teams' active members
-            var membersByEmail = new Dictionary<string, (string DisplayName, List<TeamLink> TeamLinks)>(
+            var membersByEmail = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl, List<TeamLink> TeamLinks)>(
                 NormalizingEmailComparer.Instance);
 
             foreach (var resource in resources)
@@ -1120,7 +1121,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     }
                     else
                     {
-                        membersByEmail[memberEmail] = (tm.User.DisplayName, new List<TeamLink> { teamLink });
+                        membersByEmail[memberEmail] = (tm.User.DisplayName, tm.User.Id, tm.User.ProfilePictureUrl, new List<TeamLink> { teamLink });
                     }
                 }
 
@@ -1139,7 +1140,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     }
                     else
                     {
-                        membersByEmail[memberEmail] = (cm.User.DisplayName, new List<TeamLink> { childTeamLink });
+                        membersByEmail[memberEmail] = (cm.User.DisplayName, cm.User.Id, cm.User.ProfilePictureUrl, new List<TeamLink> { childTeamLink });
                     }
                 }
             }
@@ -1171,7 +1172,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             // Build member sync status list
             var members = new List<MemberSyncStatus>();
 
-            foreach (var (email, (displayName, teamLinks)) in membersByEmail)
+            foreach (var (email, (displayName, userId, profilePictureUrl, teamLinks)) in membersByEmail)
             {
                 // Resolve this member's expected level from their specific team memberships
                 var memberMaxLevel = DrivePermissionLevel.None;
@@ -1205,7 +1206,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         : MemberSyncState.Correct;
                 }
 
-                members.Add(new MemberSyncStatus(email, displayName, state, teamLinks, currentRole, memberExpectedRole));
+                members.Add(new MemberSyncStatus(email, displayName, state, teamLinks, currentRole, memberExpectedRole,
+                    UserId: userId, ProfilePictureUrl: profilePictureUrl));
             }
 
             var saEmail = await GetServiceAccountEmailAsync();
