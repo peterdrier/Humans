@@ -688,14 +688,100 @@ a:hover {
     background: var(--h-sepia-light);
 }
 
-/* --- Home hero section --- */
-.text-center.mb-5 {
-    padding: 3rem 0 2rem;
+/* --- Home (unauthenticated landing page) --- */
+.home-hero {
+    padding: 3.5rem 1rem 2.5rem;
+    margin-bottom: 2rem;
 }
 
-.text-center.mb-5 .display-4 {
+.home-hero .display-4 {
     color: var(--h-aged-ink);
     margin-bottom: 0.5rem;
+}
+
+.home-hero-subtitle {
+    font-size: 1.35rem;
+    margin-bottom: 0.75rem;
+}
+
+.home-hero-description {
+    max-width: 600px;
+    margin: 0 auto 1rem;
+    color: var(--h-sepia);
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
+/* Feature cards grid */
+.home-feature-card {
+    border-color: var(--h-border-light);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.home-feature-card:hover {
+    box-shadow: var(--h-shadow-lg);
+    transform: translateY(-2px);
+}
+
+.home-feature-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: var(--h-parchment);
+    color: var(--h-gold-dark);
+    font-size: 1.4rem;
+}
+
+/* Onboarding steps */
+.home-onboarding-card {
+    border-left: 4px solid var(--h-gold);
+}
+
+.home-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.home-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1rem;
+}
+
+.home-step-number {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: var(--h-gold);
+    color: var(--h-aged-ink);
+    font-weight: 700;
+    font-size: 0.9rem;
+    font-family: var(--h-font-body);
+}
+
+/* Responsive: stack feature cards nicely on mobile */
+@media (max-width: 767.98px) {
+    .home-hero {
+        padding: 2rem 0.5rem 1.5rem;
+    }
+
+    .home-hero .display-4 {
+        font-size: 2.2rem;
+    }
+
+    .home-hero-subtitle {
+        font-size: 1.1rem;
+    }
 }
 
 /* --- Decorative rule — used as section separator --- */

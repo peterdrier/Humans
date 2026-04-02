@@ -105,23 +105,27 @@
   <!-- Home (Landing Page)      -->
   <!-- ======================== -->
   <data name="Home_Title" xml:space="preserve"><value>Home</value></data>
-  <data name="Home_Tagline" xml:space="preserve"><value>Membership portal for Nobodies Collective</value></data>
-  <data name="Home_CTA" xml:space="preserve"><value>New here? Sign in to get started.</value></data>
-  <data name="Home_WhyTitle" xml:space="preserve"><value>Why do we need this?</value></data>
-  <data name="Home_WhyDescription" xml:space="preserve"><value>As a registered association in Spain, Nobodies Collective has legal obligations. Before anyone can access shared resources, we need to confirm agreement to our policies. This system handles that simply and keeps everything current.</value></data>
-  <data name="Home_ComplianceTitle" xml:space="preserve"><value>Legal Compliance</value></data>
-  <data name="Home_ComplianceDescription" xml:space="preserve"><value>To access association resources, everyone needs to agree to our policies: GDPR data handling, privacy policy, consent terms, and Creative Commons licensing. This is a one-time process (unless documents are updated).</value></data>
-  <data name="Home_ResourceAccessTitle" xml:space="preserve"><value>Resource Access</value></data>
-  <data name="Home_ResourceAccessDescription" xml:space="preserve"><value>Once you've completed your profile and consents, you'll have access to shared resources: Google Drive folders, team workspaces, and collaboration tools. Teams can be configured for different working groups.</value></data>
-  <data name="Home_DocumentUpdatesTitle" xml:space="preserve"><value>Document Updates</value></data>
-  <data name="Home_DocumentUpdatesDescription" xml:space="preserve"><value>Legal documents evolve. When policies change in meaningful ways, you'll be asked to review and re-consent. This ensures everyone is working under the same current agreements.</value></data>
-  <data name="Home_VotingMembershipTitle" xml:space="preserve"><value>Voting Membership</value></data>
-  <data name="Home_VotingMembershipDescription" xml:space="preserve"><value>Our by-laws require a roll of voting members for governance (general assemblies, elections, etc.). If you'd like to participate in governance, you can apply to become a voting member. This is entirely optional.</value></data>
-  <data name="Home_GettingStartedTitle" xml:space="preserve"><value>Getting started</value></data>
+  <data name="Home_Tagline" xml:space="preserve"><value>Where Nobodies Collective organizes</value></data>
+  <data name="Home_HeroDescription" xml:space="preserve"><value>The community platform for our humans — sign up for shifts, join teams, register your camp, and help make things happen.</value></data>
+  <data name="Home_CTA" xml:space="preserve"><value>Get started</value></data>
+  <data name="Home_FeaturesTitle" xml:space="preserve"><value>Everything you need to participate</value></data>
+  <data name="Home_ShiftsTitle" xml:space="preserve"><value>Shifts &amp; Volunteering</value></data>
+  <data name="Home_ShiftsDescription" xml:space="preserve"><value>Browse open shifts, sign up for event roles, and track your schedule. See what's urgent and where help is needed most.</value></data>
+  <data name="Home_TeamsTitle" xml:space="preserve"><value>Teams &amp; Working Groups</value></data>
+  <data name="Home_TeamsDescription" xml:space="preserve"><value>Self-organizing working groups with coordinators, shared resources, and approval workflows. Find your crew.</value></data>
+  <data name="Home_CampsTitle" xml:space="preserve"><value>Camps &amp; Barrios</value></data>
+  <data name="Home_CampsDescription" xml:space="preserve"><value>Register your camp, discover neighbors by vibe or sound zone, and opt in each season. Find your spot on the map.</value></data>
+  <data name="Home_TicketsTitle" xml:space="preserve"><value>Ticketing &amp; Events</value></data>
+  <data name="Home_TicketsDescription" xml:space="preserve"><value>Ticket sales integration, attendee matching, and discount campaigns — all linked to your profile.</value></data>
+  <data name="Home_BudgetTitle" xml:space="preserve"><value>Budget Transparency</value></data>
+  <data name="Home_BudgetDescription" xml:space="preserve"><value>See how funds are allocated across departments. Open budget planning with public summaries everyone can review.</value></data>
+  <data name="Home_ProfilesTitle" xml:space="preserve"><value>Profiles &amp; Directory</value></data>
+  <data name="Home_ProfilesDescription" xml:space="preserve"><value>Rich profiles with burner names, locations, and emergency contacts. A birthday calendar and human directory for the community.</value></data>
+  <data name="Home_GettingStartedTitle" xml:space="preserve"><value>Quick onboarding</value></data>
   <data name="Home_Step1" xml:space="preserve"><value>&lt;strong&gt;Sign in&lt;/strong&gt; with your Google account</value></data>
-  <data name="Home_Step2" xml:space="preserve"><value>&lt;strong&gt;Complete your profile&lt;/strong&gt; with basic information</value></data>
-  <data name="Home_Step3" xml:space="preserve"><value>&lt;strong&gt;Review and consent&lt;/strong&gt; to our legal documents (Spanish originals with translations)</value></data>
-  <data name="Home_GettingStartedSummary" xml:space="preserve"><value>That's it! Once your consents are in place, you'll have access to association resources. If you're interested in participating in governance as a voting member, you can optionally submit an application from your dashboard.</value></data>
+  <data name="Home_Step2" xml:space="preserve"><value>&lt;strong&gt;Set up your profile&lt;/strong&gt; — name, location, and how you'd like to be reached</value></data>
+  <data name="Home_Step3" xml:space="preserve"><value>&lt;strong&gt;Agree to the basics&lt;/strong&gt; — we handle the paperwork so you can focus on participating</value></data>
+  <data name="Home_GettingStartedSummary" xml:space="preserve"><value>Takes a couple of minutes. After that, you're in — browse shifts, join teams, and start contributing.</value></data>
 
   <!-- ======================== -->
   <!-- Dashboard                -->
