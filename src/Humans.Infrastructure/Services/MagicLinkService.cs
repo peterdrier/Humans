@@ -161,20 +161,13 @@ public class MagicLinkService : IMagicLinkService
         if (verified is not null)
             return verified;
 
-        // 2. Check unverified UserEmails (prevents duplicate when email was added but not yet verified)
-#pragma warning disable MA0011, RCS1155 // EF Core can only translate parameterless ToUpper()
-        var unverifiedEmail = await _dbContext.UserEmails
-            .Include(ue => ue.User)
-            .FirstOrDefaultAsync(ue => !ue.IsVerified &&
-                ue.Email.ToUpper() == email.ToUpper(), ct);
-#pragma warning restore MA0011, RCS1155
-
-        if (unverifiedEmail is not null)
-        {
-            return unverifiedEmail.User;
-        }
-
-        return null;
+        // 2. Check User.Email on other accounts (the account's identity email).
+        // We intentionally skip unverified UserEmail rows — those are in a "pending
+        // verification/merge review" state and auto-linking would bypass the
+        // AccountMergeRequest admin review gate.
+        var normalizedEmail = _userManager.NormalizeEmail(email);
+        return await _userManager.Users
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
     }
 
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)

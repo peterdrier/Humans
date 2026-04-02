@@ -197,6 +197,8 @@ public class DuplicateAccountService : IDuplicateAccountService
             "Admin {AdminId} resolving duplicate: archiving {SourceUserId} ({SourceName}), keeping {TargetUserId} ({TargetName})",
             adminUserId, sourceUserId, sourceDisplayName, targetUserId, targetUser.DisplayName);
 
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(ct);
+
         // 1. Re-link external logins from source to target
         var sourceLogins = await _dbContext.Set<IdentityUserLogin<Guid>>()
             .Where(l => l.UserId == sourceUserId)
@@ -224,14 +226,21 @@ public class DuplicateAccountService : IDuplicateAccountService
 
         await _dbContext.SaveChangesAsync(ct);
 
-        // 2. Add target to any non-system teams the source is in
+        // 2. Add target to any non-system teams the source is in, preserving coordinator role
         var sourceTeams = await _teamService.GetUserTeamsAsync(sourceUserId, ct);
-        var targetTeamIds = (await _teamService.GetUserTeamsAsync(targetUserId, ct))
-            .Select(m => m.TeamId).ToHashSet();
+        var targetTeams = await _teamService.GetUserTeamsAsync(targetUserId, ct);
+        var targetTeamIds = targetTeams.Select(m => m.TeamId).ToHashSet();
 
         foreach (var membership in sourceTeams.Where(m => !m.Team.IsSystemTeam && !targetTeamIds.Contains(m.TeamId)))
         {
-            await _teamService.AddMemberToTeamAsync(membership.TeamId, targetUserId, adminUserId, ct);
+            var newMember = await _teamService.AddMemberToTeamAsync(membership.TeamId, targetUserId, adminUserId, ct);
+
+            // Preserve coordinator role from source
+            if (membership.Role == TeamMemberRole.Coordinator)
+            {
+                newMember.Role = TeamMemberRole.Coordinator;
+                await _dbContext.SaveChangesAsync(ct);
+            }
         }
 
         // 3. Remove source from all non-system teams
@@ -240,9 +249,28 @@ public class DuplicateAccountService : IDuplicateAccountService
             await _teamService.RemoveMemberAsync(membership.TeamId, sourceUserId, adminUserId, ct);
         }
 
-        // 4. End source's active role assignments
+        // 4. Migrate source's active global role assignments to target (if target doesn't already have them)
+        var targetRoleNames = await _dbContext.Set<RoleAssignment>()
+            .Where(r => r.UserId == targetUserId && r.ValidTo == null)
+            .Select(r => r.RoleName)
+            .ToHashSetAsync(ct);
+
         foreach (var role in sourceUser.RoleAssignments.Where(r => r.ValidTo == null))
         {
+            if (!targetRoleNames.Contains(role.RoleName))
+            {
+                _dbContext.Set<RoleAssignment>().Add(new RoleAssignment
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = targetUserId,
+                    RoleName = role.RoleName,
+                    ValidFrom = now,
+                    Notes = $"Migrated from merged account {sourceUserId}",
+                    CreatedAt = now,
+                    CreatedByUserId = adminUserId
+                });
+            }
+
             role.ValidTo = now;
         }
 
@@ -264,6 +292,7 @@ public class DuplicateAccountService : IDuplicateAccountService
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
         await _dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         // Invalidate caches
         _profileService.UpdateProfileCache(sourceUserId, null);
