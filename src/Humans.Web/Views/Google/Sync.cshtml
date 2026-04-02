@@ -261,8 +261,7 @@
                     : '';
                 html += '<tr class="member-row" data-member-state="' + m.state + '">';
                 html += '<td>' + escapeHtml(m.email) + '</td>';
-                var nameDisplay = m.displayName && m.displayName !== m.email ? m.displayName : '';
-                html += '<td>' + escapeHtml(nameDisplay) + '</td>';
+                html += '<td>' + renderHumanLink(m) + '</td>';
                 html += '<td><span class="badge ' + badgeClass + '">' + stateLabel + '</span></td>';
                 if (showPermission) {
                     var role = m.currentRole || '—';
@@ -281,6 +280,23 @@
         html += '</div>';
 
         return html;
+    }
+
+    function renderHumanLink(m) {
+        var nameDisplay = m.displayName && m.displayName !== m.email ? m.displayName : '';
+        if (!nameDisplay) return '';
+        if (!m.userId) return escapeHtml(nameDisplay);
+
+        var initial = nameDisplay.charAt(0);
+        var avatarHtml;
+        if (m.profilePictureUrl) {
+            avatarHtml = '<img src="' + escapeHtml(m.profilePictureUrl) + '" alt="' + escapeHtml(nameDisplay) + '" class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;" />';
+        } else {
+            avatarHtml = '<div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white me-2" style="width: 24px; height: 24px; font-size: 0.7rem; display: inline-flex !important;">' + escapeHtml(initial) + '</div>';
+        }
+
+        return '<a href="/Profile/' + encodeURIComponent(m.userId) + '/Admin" class="d-inline-flex align-items-center text-decoration-none text-reset" data-human-popover="true" data-user-id="' + escapeHtml(m.userId) + '">' +
+            avatarHtml + '<span>' + escapeHtml(nameDisplay) + '</span></a>';
     }
 
     function applyFilter(pane, changesOnly) {
