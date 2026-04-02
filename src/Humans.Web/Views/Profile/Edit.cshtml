@@ -422,6 +422,13 @@
                 <partial name="_EditSectionPrivate" model="Model" />
             }
 
+            @if (ViewData.ModelState!.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3">
+                    <div asp-validation-summary="All"></div>
+                </div>
+            }
+
             <div class="d-flex justify-content-between">
                 <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["Common_Cancel"]</a>
                 <button type="submit" class="btn btn-primary">@Localizer["Common_Save"]</button>
