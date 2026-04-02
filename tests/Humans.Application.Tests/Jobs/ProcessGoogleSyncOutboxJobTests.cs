@@ -37,7 +37,8 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             Substitute.For<ILogger<HumansMetricsService>>());
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
 
-        _job = new ProcessGoogleSyncOutboxJob(_dbContext, _googleSyncService, _metrics, _clock, logger);
+        var notificationService = Substitute.For<INotificationService>();
+        _job = new ProcessGoogleSyncOutboxJob(_dbContext, _googleSyncService, notificationService, _metrics, _clock, logger);
     }
 
     public void Dispose()

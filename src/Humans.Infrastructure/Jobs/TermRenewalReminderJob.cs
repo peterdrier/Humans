@@ -13,6 +13,7 @@ public class TermRenewalReminderJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly HumansMetricsService _metrics;
     private readonly ILogger<TermRenewalReminderJob> _logger;
     private readonly IClock _clock;
@@ -22,12 +23,14 @@ public class TermRenewalReminderJob : IRecurringJob
     public TermRenewalReminderJob(
         HumansDbContext dbContext,
         IEmailService emailService,
+        INotificationService notificationService,
         HumansMetricsService metrics,
         ILogger<TermRenewalReminderJob> logger,
         IClock clock)
     {
         _dbContext = dbContext;
         _emailService = emailService;
+        _notificationService = notificationService;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -109,6 +112,27 @@ public class TermRenewalReminderJob : IRecurringJob
                     _logger.LogInformation(
                         "Sent term renewal reminder to user {UserId} ({Email}) for {Tier} expiring {ExpiresAt}",
                         application.UserId, email, application.MembershipTier, application.TermExpiresAt);
+
+                    // Dispatch in-app notification alongside email
+                    try
+                    {
+                        await _notificationService.SendAsync(
+                            NotificationSource.TermRenewalReminder,
+                            NotificationClass.Actionable,
+                            NotificationPriority.Normal,
+                            $"Your {application.MembershipTier} term expires {expiresFormatted}",
+                            [application.UserId],
+                            body: "Submit a renewal application to maintain your membership tier.",
+                            actionUrl: "/Application",
+                            actionLabel: "Renew \u2192",
+                            cancellationToken: cancellationToken);
+                    }
+                    catch (Exception notifEx)
+                    {
+                        _logger.LogError(notifEx,
+                            "Failed to dispatch TermRenewalReminder notification for user {UserId}",
+                            application.UserId);
+                    }
                 }
                 catch (Exception ex)
                 {
