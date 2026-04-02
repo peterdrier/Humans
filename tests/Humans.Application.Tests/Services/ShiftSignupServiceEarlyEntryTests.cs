@@ -45,6 +45,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
             _dbContext,
             _shiftMgmt,
             _auditLog,
+            Substitute.For<INotificationService>(),
             _clock,
             NullLogger<ShiftSignupService>.Instance);
     }
