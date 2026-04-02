@@ -21,6 +21,9 @@ public class TicketingBudgetService : ITicketingBudgetService
     private const string TtPrefix = "TT fees: ";
     private const string ProjectedPrefix = "Projected: ";
 
+    // Spanish IVA rate applied to Stripe and TicketTailor processing fees
+    private const int FeeVatRate = 21;
+
     public TicketingBudgetService(
         HumansDbContext dbContext,
         IClock clock,
@@ -107,13 +110,13 @@ public class TicketingBudgetService : ITicketingBudgetService
             lineItemsCreated += UpsertLineItem(revenueCategory, $"{RevenuePrefix}{weekDesc}",
                 week.Revenue, week.Monday, projectionVatRate, false, $"{week.TicketCount} tickets", now);
 
-            // Fees (negative amounts)
+            // Fees (negative amounts) — both Stripe and TT charge 21% IVA on fees
             if (week.StripeFees > 0)
                 lineItemsCreated += UpsertLineItem(feesCategory, $"{StripePrefix}{weekDesc}",
-                    -week.StripeFees, week.Monday, 0, false, null, now);
+                    -week.StripeFees, week.Monday, FeeVatRate, false, null, now);
             if (week.TtFees > 0)
                 lineItemsCreated += UpsertLineItem(feesCategory, $"{TtPrefix}{weekDesc}",
-                    -week.TtFees, week.Monday, 0, false, null, now);
+                    -week.TtFees, week.Monday, FeeVatRate, false, null, now);
         }
 
         // Materialize projections for future weeks
@@ -304,10 +307,10 @@ public class TicketingBudgetService : ITicketingBudgetService
 
             if (stripeFees > 0)
                 created += UpsertLineItem(feesCategory, $"{ProjectedPrefix}{StripePrefix}{weekLabel}",
-                    -Math.Round(stripeFees, 2), weekStart, 0, false, null, now);
+                    -Math.Round(stripeFees, 2), weekStart, FeeVatRate, false, null, now);
             if (ttFees > 0)
                 created += UpsertLineItem(feesCategory, $"{ProjectedPrefix}{TtPrefix}{weekLabel}",
-                    -Math.Round(ttFees, 2), weekStart, 0, false, null, now);
+                    -Math.Round(ttFees, 2), weekStart, FeeVatRate, false, null, now);
 
             weekStart = weekEnd.PlusDays(1);
             weekStart = GetIsoMonday(weekStart);
