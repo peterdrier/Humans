@@ -349,10 +349,12 @@ public class TicketingBudgetService : ITicketingBudgetService
         if (existing is not null)
         {
             // Update if values changed
-            if (existing.Amount == amount && string.Equals(existing.Notes, notes, StringComparison.Ordinal))
+            if (existing.Amount == amount && existing.VatRate == vatRate
+                && string.Equals(existing.Notes, notes, StringComparison.Ordinal))
                 return 0;
 
             existing.Amount = amount;
+            existing.VatRate = vatRate;
             existing.Notes = notes;
             existing.ExpectedDate = expectedDate;
             existing.UpdatedAt = now;
