@@ -5,7 +5,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using Octokit;
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
