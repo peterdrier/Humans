@@ -44,8 +44,7 @@ public class EmailProvisioningService : IEmailProvisioningService
     public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,
-        Guid provisionedByUserId,
-        string provisionedByDisplayName)
+        Guid provisionedByUserId)
     {
         var user = await _dbContext.Users
             .Include(u => u.UserEmails)
@@ -112,7 +111,7 @@ public class EmailProvisioningService : IEmailProvisioningService
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", userId,
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
-                provisionedByUserId, provisionedByDisplayName);
+                provisionedByUserId);
             await _dbContext.SaveChangesAsync();
 
             // Step 4: Send credentials to the PERSONAL email captured in step 1.

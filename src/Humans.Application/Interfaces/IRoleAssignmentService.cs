@@ -28,11 +28,11 @@ public interface IRoleAssignmentService
     Task<IReadOnlyList<RoleAssignment>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     Task<OnboardingResult> AssignRoleAsync(
-        Guid userId, string roleName, Guid assignerId, string assignerDisplayName,
+        Guid userId, string roleName, Guid assignerId,
         string? notes, CancellationToken ct = default);
 
     Task<OnboardingResult> EndRoleAsync(
-        Guid assignmentId, Guid enderId, string enderDisplayName,
+        Guid assignmentId, Guid enderId,
         string? notes, CancellationToken ct = default);
 
     /// <summary>

@@ -178,7 +178,7 @@ public class DuplicateAccountService : IDuplicateAccountService
     }
 
     public async Task ResolveAsync(
-        Guid sourceUserId, Guid targetUserId, Guid adminUserId, string adminDisplayName,
+        Guid sourceUserId, Guid targetUserId, Guid adminUserId,
         string? notes = null, CancellationToken ct = default)
     {
         var sourceUser = await _dbContext.Users
@@ -287,8 +287,8 @@ public class DuplicateAccountService : IDuplicateAccountService
         await _auditLogService.LogAsync(
             AuditAction.AccountMergeAccepted,
             nameof(User), sourceUserId,
-            $"Admin resolved duplicate: archived {sourceDisplayName} (source: {sourceUserId}), kept {targetUser.DisplayName} (target: {targetUserId}). Notes: {notes ?? "(none)"}",
-            adminUserId, adminDisplayName,
+            $"Duplicate resolved: archived source ({sourceUserId}), kept target ({targetUserId}). Notes: {notes ?? "(none)"}",
+            adminUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
         await _dbContext.SaveChangesAsync(ct);

@@ -118,7 +118,7 @@ public class AdminMergeController : HumansControllerBase
 
         try
         {
-            await _mergeService.AcceptAsync(id, user.Id, user.DisplayName, notes);
+            await _mergeService.AcceptAsync(id, user.Id, notes);
             SetSuccess("Account merge completed. Duplicate account has been archived.");
         }
         catch (InvalidOperationException ex)
@@ -139,7 +139,7 @@ public class AdminMergeController : HumansControllerBase
 
         try
         {
-            await _mergeService.RejectAsync(id, user.Id, user.DisplayName, notes);
+            await _mergeService.RejectAsync(id, user.Id, notes);
             SetSuccess("Merge request rejected. No changes were made.");
         }
         catch (InvalidOperationException ex)

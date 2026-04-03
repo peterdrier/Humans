@@ -17,7 +17,6 @@ Background jobs and admin actions make changes on members' behalf (team enrollme
 | Description | string | Human-readable text |
 | OccurredAt | Instant | When |
 | ActorUserId | Guid? | Human actor (null for jobs) |
-| ActorName | string | "SystemTeamSyncJob" (for jobs) or "Jane Doe" (for admins) |
 | RelatedEntityId | Guid? | Secondary entity |
 | RelatedEntityType | string? | "User", "Team", etc. |
 | ResourceId | Guid? | FK to GoogleResource (Google sync only) |
@@ -41,7 +40,7 @@ Stored as string in the database. Values:
 
 ### Immutability
 
-Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching the pattern used for `consent_records`. The `ActorName` field preserves the actor's identity even if the user is later anonymized (FK uses `SetNull` on delete).
+Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching the pattern used for `consent_records`. The `ActorUserId` FK uses `SetNull` on delete, so deleted/anonymized users show as "Deleted User" in the UI.
 
 ### AuditAction Enum
 
@@ -69,8 +68,8 @@ Stored as string in the database. New values can be appended without migration.
 
 `IAuditLogService` provides two overloads:
 
-1. **Job overload** — no human actor, accepts job name string
-2. **Admin overload** — accepts actor user ID and display name
+1. **Job overload** — no human actor, accepts job name (prefixed to description)
+2. **Human overload** — accepts actor user ID
 
 The service adds entries to the `DbContext` without calling `SaveChangesAsync`. Entries are saved atomically with the caller's business operation.
 
@@ -158,7 +157,7 @@ Displays the 50 most recent audit entries affecting a user, queried by:
 Each entry shows:
 - Description (bold)
 - Badge: "System" (info) for job-generated entries, "Admin" (secondary) for human-initiated entries
-- Actor name: the actual person's display name (e.g. "Peter D"), not a generic label
+- Actor name: resolved at render time from ActorUserId via batch lookup
 - Timestamp (right-aligned)
 
 ## Authorization

@@ -111,7 +111,7 @@ public class GoogleAdminService : IGoogleAdminService
 
     public async Task<WorkspaceAccountActionResult> ProvisionStandaloneAccountAsync(
         string emailPrefix, string firstName, string lastName,
-        Guid actorUserId, string actorDisplayName,
+        Guid actorUserId,
         CancellationToken ct = default)
     {
         var fullEmail = $"{emailPrefix.Trim().ToLowerInvariant()}@{NobodiesTeamDomain}";
@@ -135,7 +135,7 @@ public class GoogleAdminService : IGoogleAdminService
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", Guid.Empty,
                 $"Provisioned @{NobodiesTeamDomain} account: {fullEmail}",
-                actorUserId, actorDisplayName);
+                actorUserId);
             await _dbContext.SaveChangesAsync(ct);
 
             return new WorkspaceAccountActionResult(true,
@@ -151,7 +151,7 @@ public class GoogleAdminService : IGoogleAdminService
     }
 
     public async Task<WorkspaceAccountActionResult> SuspendAccountAsync(
-        string email, Guid actorUserId, string actorDisplayName,
+        string email, Guid actorUserId,
         CancellationToken ct = default)
     {
         try
@@ -162,7 +162,7 @@ public class GoogleAdminService : IGoogleAdminService
                 AuditAction.WorkspaceAccountSuspended,
                 "WorkspaceAccount", Guid.Empty,
                 $"Suspended @{NobodiesTeamDomain} account: {email}",
-                actorUserId, actorDisplayName);
+                actorUserId);
             await _dbContext.SaveChangesAsync(ct);
 
             return new WorkspaceAccountActionResult(true,
@@ -177,7 +177,7 @@ public class GoogleAdminService : IGoogleAdminService
     }
 
     public async Task<WorkspaceAccountActionResult> ReactivateAccountAsync(
-        string email, Guid actorUserId, string actorDisplayName,
+        string email, Guid actorUserId,
         CancellationToken ct = default)
     {
         try
@@ -188,7 +188,7 @@ public class GoogleAdminService : IGoogleAdminService
                 AuditAction.WorkspaceAccountReactivated,
                 "WorkspaceAccount", Guid.Empty,
                 $"Reactivated @{NobodiesTeamDomain} account: {email}",
-                actorUserId, actorDisplayName);
+                actorUserId);
             await _dbContext.SaveChangesAsync(ct);
 
             return new WorkspaceAccountActionResult(true,
@@ -203,7 +203,7 @@ public class GoogleAdminService : IGoogleAdminService
     }
 
     public async Task<WorkspaceAccountActionResult> ResetPasswordAsync(
-        string email, Guid actorUserId, string actorDisplayName,
+        string email, Guid actorUserId,
         CancellationToken ct = default)
     {
         try
@@ -215,7 +215,7 @@ public class GoogleAdminService : IGoogleAdminService
                 AuditAction.WorkspaceAccountPasswordReset,
                 "WorkspaceAccount", Guid.Empty,
                 $"Reset password for @{NobodiesTeamDomain} account: {email}",
-                actorUserId, actorDisplayName);
+                actorUserId);
             await _dbContext.SaveChangesAsync(ct);
 
             return new WorkspaceAccountActionResult(true,
@@ -232,7 +232,7 @@ public class GoogleAdminService : IGoogleAdminService
 
     public async Task<WorkspaceAccountActionResult> LinkAccountAsync(
         string email, Guid userId,
-        Guid actorUserId, string actorDisplayName,
+        Guid actorUserId,
         CancellationToken ct = default)
     {
         try
@@ -264,8 +264,8 @@ public class GoogleAdminService : IGoogleAdminService
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountLinked,
                 "WorkspaceAccount", userId,
-                $"Linked @{NobodiesTeamDomain} account {email} to {user.DisplayName}",
-                actorUserId, actorDisplayName);
+                $"Linked @{NobodiesTeamDomain} account {email}",
+                actorUserId);
             await _dbContext.SaveChangesAsync(ct);
 
             return new WorkspaceAccountActionResult(true,

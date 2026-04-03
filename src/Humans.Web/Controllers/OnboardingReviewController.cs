@@ -98,7 +98,7 @@ public class OnboardingReviewController : HumansControllerBase
         try
         {
             var result = await _onboardingService.ClearConsentCheckAsync(
-                userId, currentUser.Id, currentUser.DisplayName, notes);
+                userId, currentUser.Id, notes);
 
             if (!result.Success)
             {
@@ -132,7 +132,7 @@ public class OnboardingReviewController : HumansControllerBase
         try
         {
             var result = await _onboardingService.FlagConsentCheckAsync(
-                userId, currentUser.Id, currentUser.DisplayName, notes);
+                userId, currentUser.Id, notes);
 
             if (!result.Success)
             {
@@ -162,7 +162,7 @@ public class OnboardingReviewController : HumansControllerBase
         try
         {
             var result = await _onboardingService.RejectSignupAsync(
-                userId, currentUser.Id, currentUser.DisplayName, reason);
+                userId, currentUser.Id, reason);
 
             if (!result.Success)
             {
@@ -352,13 +352,13 @@ public class OnboardingReviewController : HumansControllerBase
             if (model.Approved)
             {
                 result = await _applicationDecisionService.ApproveAsync(
-                    model.ApplicationId, currentUser.Id, currentUser.DisplayName,
+                    model.ApplicationId, currentUser.Id,
                     model.DecisionNote, meetingDate);
             }
             else
             {
                 result = await _applicationDecisionService.RejectAsync(
-                    model.ApplicationId, currentUser.Id, currentUser.DisplayName,
+                    model.ApplicationId, currentUser.Id,
                     model.DecisionNote ?? string.Empty, meetingDate);
             }
 

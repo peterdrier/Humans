@@ -60,7 +60,7 @@ public class AccountMergeService : IAccountMergeService
     }
 
     public async Task AcceptAsync(
-        Guid requestId, Guid adminUserId, string adminDisplayName,
+        Guid requestId, Guid adminUserId,
         string? notes = null, CancellationToken ct = default)
     {
         var request = await _dbContext.AccountMergeRequests
@@ -143,8 +143,8 @@ public class AccountMergeService : IAccountMergeService
         await _auditLogService.LogAsync(
             AuditAction.AccountMergeAccepted,
             nameof(AccountMergeRequest), request.Id,
-            $"Merged account {sourceDisplayName} (source: {sourceUser.Id}) into {targetUser.DisplayName} (target: {targetUser.Id}) — email: {request.Email}",
-            adminUserId, adminDisplayName,
+            $"Merged account (source: {sourceUser.Id}) into (target: {targetUser.Id}) — email: {request.Email}",
+            adminUserId,
             relatedEntityId: targetUser.Id, relatedEntityType: nameof(User));
 
         await _dbContext.SaveChangesAsync(ct);
@@ -159,7 +159,7 @@ public class AccountMergeService : IAccountMergeService
     }
 
     public async Task RejectAsync(
-        Guid requestId, Guid adminUserId, string adminDisplayName,
+        Guid requestId, Guid adminUserId,
         string? notes = null, CancellationToken ct = default)
     {
         var request = await _dbContext.AccountMergeRequests
@@ -191,7 +191,7 @@ public class AccountMergeService : IAccountMergeService
             AuditAction.AccountMergeRejected,
             nameof(AccountMergeRequest), request.Id,
             $"Rejected merge request for email {request.Email} (target: {request.TargetUserId}, source: {request.SourceUserId})",
-            adminUserId, adminDisplayName);
+            adminUserId);
 
         await _dbContext.SaveChangesAsync(ct);
 

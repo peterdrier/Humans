@@ -304,7 +304,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
 
         var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
-            userId, emailPrefix, user.Id, user.DisplayName);
+            userId, emailPrefix, user.Id);
 
         if (!result.Success)
         {

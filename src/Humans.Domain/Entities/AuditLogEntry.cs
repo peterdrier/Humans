@@ -51,12 +51,6 @@ public class AuditLogEntry
     public User? ActorUser { get; set; }
 
     /// <summary>
-    /// Display name of the actor (e.g. "SystemTeamSyncJob" or "Admin: Jane Doe").
-    /// Preserved even if the user is later anonymized.
-    /// </summary>
-    public string ActorName { get; init; } = string.Empty;
-
-    /// <summary>
     /// ID of a secondary related entity (e.g. UserId when EntityType=Team).
     /// Enables per-user views across both direct and related entries.
     /// </summary>

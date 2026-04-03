@@ -27,7 +27,6 @@ public interface IDuplicateAccountService
         Guid sourceUserId,
         Guid targetUserId,
         Guid adminUserId,
-        string adminDisplayName,
         string? notes = null,
         CancellationToken ct = default);
 }

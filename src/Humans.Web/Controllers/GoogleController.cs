@@ -488,7 +488,7 @@ public class GoogleController : HumansControllerBase
             return NotFound();
 
         var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
-            id, emailPrefix, currentUser.Id, currentUser.DisplayName);
+            id, emailPrefix, currentUser.Id);
 
         if (!result.Success)
         {
@@ -566,7 +566,7 @@ public class GoogleController : HumansControllerBase
 
         var result = await _googleAdminService.ProvisionStandaloneAccountAsync(
             model.EmailPrefix, model.FirstName, model.LastName,
-            currentUser.Id, currentUser.DisplayName);
+            currentUser.Id);
 
         if (result.Success)
             SetSuccess(result.Message!);
@@ -589,7 +589,7 @@ public class GoogleController : HumansControllerBase
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.SuspendAccountAsync(
-            email, currentUser.Id, currentUser.DisplayName);
+            email, currentUser.Id);
 
         if (result.Success)
             SetSuccess(result.Message!);
@@ -612,7 +612,7 @@ public class GoogleController : HumansControllerBase
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.ReactivateAccountAsync(
-            email, currentUser.Id, currentUser.DisplayName);
+            email, currentUser.Id);
 
         if (result.Success)
             SetSuccess(result.Message!);
@@ -635,7 +635,7 @@ public class GoogleController : HumansControllerBase
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.ResetPasswordAsync(
-            email, currentUser.Id, currentUser.DisplayName);
+            email, currentUser.Id);
 
         if (result.Success)
             SetSuccess(result.Message!);
@@ -659,7 +659,7 @@ public class GoogleController : HumansControllerBase
         if (currentUser is null) return Unauthorized();
 
         var result = await _googleAdminService.LinkAccountAsync(
-            email, userId, currentUser.Id, currentUser.DisplayName);
+            email, userId, currentUser.Id);
 
         if (result.Success)
         {

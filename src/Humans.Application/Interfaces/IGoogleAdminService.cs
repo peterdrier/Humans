@@ -18,28 +18,28 @@ public interface IGoogleAdminService
     /// </summary>
     Task<WorkspaceAccountActionResult> ProvisionStandaloneAccountAsync(
         string emailPrefix, string firstName, string lastName,
-        Guid actorUserId, string actorDisplayName,
+        Guid actorUserId,
         CancellationToken ct = default);
 
     /// <summary>
     /// Suspends a @nobodies.team account.
     /// </summary>
     Task<WorkspaceAccountActionResult> SuspendAccountAsync(
-        string email, Guid actorUserId, string actorDisplayName,
+        string email, Guid actorUserId,
         CancellationToken ct = default);
 
     /// <summary>
     /// Reactivates a suspended @nobodies.team account.
     /// </summary>
     Task<WorkspaceAccountActionResult> ReactivateAccountAsync(
-        string email, Guid actorUserId, string actorDisplayName,
+        string email, Guid actorUserId,
         CancellationToken ct = default);
 
     /// <summary>
     /// Resets the password for a @nobodies.team account.
     /// </summary>
     Task<WorkspaceAccountActionResult> ResetPasswordAsync(
-        string email, Guid actorUserId, string actorDisplayName,
+        string email, Guid actorUserId,
         CancellationToken ct = default);
 
     /// <summary>
@@ -47,7 +47,7 @@ public interface IGoogleAdminService
     /// </summary>
     Task<WorkspaceAccountActionResult> LinkAccountAsync(
         string email, Guid userId,
-        Guid actorUserId, string actorDisplayName,
+        Guid actorUserId,
         CancellationToken ct = default);
 
     /// <summary>

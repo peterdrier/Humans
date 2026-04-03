@@ -65,10 +65,12 @@ else
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
-                        <th>Action</th>
-                        <th>Description</th>
-                        <th>Actor</th>
                         <th>When</th>
+                        <th>Actor</th>
+                        <th>Action</th>
+                        <th>Subject</th>
+                        <th>Description</th>
+                        <th>Target</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -76,22 +78,41 @@ else
                     {
                         var rowClass = entry.Action.ToAuditEntryRowClass();
                         <tr class="@rowClass">
-                            <td>
-                                <span class="badge @entry.Action.ToAuditBadgeClass()">@entry.Action.ToAuditBadgeLabel()</span>
-                            </td>
-                            <td>@entry.Description</td>
+                            <td class="text-nowrap">@entry.OccurredAt.ToAuditTimestamp()</td>
                             <td>
                                 @if (entry.IsSystemAction)
                                 {
                                     <span class="badge bg-info">System</span>
                                 }
-                                else
+                                else if (entry.ActorUserId.HasValue && Model.UserDisplayNames.TryGetValue(entry.ActorUserId.Value, out var actorName))
                                 {
-                                    <span class="badge bg-secondary">Admin</span>
+                                    <human-link user-id="@entry.ActorUserId.Value" display-name="@actorName" mode="Text" />
                                 }
-                                <span class="ms-1">@entry.ActorName</span>
+                                else if (entry.ActorUserId.HasValue)
+                                {
+                                    <span class="text-muted">Deleted User</span>
+                                }
                             </td>
-                            <td class="text-nowrap">@entry.OccurredAt.ToAuditTimestamp()</td>
+                            <td>
+                                <span class="badge @entry.Action.ToAuditBadgeClass()">@entry.Action.ToAuditBadgeLabel()</span>
+                            </td>
+                            <td>
+                                @if (entry.SubjectUserId.HasValue && Model.UserDisplayNames.TryGetValue(entry.SubjectUserId.Value, out var subjectName))
+                                {
+                                    <human-link user-id="@entry.SubjectUserId.Value" display-name="@subjectName" mode="Text" />
+                                }
+                                else if (entry.SubjectUserId.HasValue)
+                                {
+                                    <span class="text-muted">Deleted User</span>
+                                }
+                            </td>
+                            <td>@entry.Description</td>
+                            <td>
+                                @if (entry.TargetTeamId.HasValue && Model.TeamNames.TryGetValue(entry.TargetTeamId.Value, out var team))
+                                {
+                                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug" class="text-decoration-none">@team.Name</a>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>

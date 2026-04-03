@@ -234,7 +234,7 @@ public class ShiftManagementService : IShiftManagementService
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId, string actorDisplayName)
+    public async Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId)
     {
         var rota = await _dbContext.Rotas
             .Include(r => r.Team)
@@ -260,7 +260,7 @@ public class ShiftManagementService : IShiftManagementService
         await _auditLogService.LogAsync(
             AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
             $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
-            actorUserId, actorDisplayName,
+            actorUserId,
             relatedEntityId: targetTeamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync();

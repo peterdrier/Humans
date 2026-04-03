@@ -21,7 +21,7 @@ public class GoogleAdminServiceTests : IDisposable
     private readonly GoogleAdminService _service;
 
     private readonly Guid _actorUserId = Guid.NewGuid();
-    private const string ActorDisplayName = "Admin User";
+
 
     public GoogleAdminServiceTests()
     {
@@ -117,7 +117,7 @@ public class GoogleAdminServiceTests : IDisposable
                 DateTime.UtcNow, null));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
-            "test", "Test", "User", _actorUserId, ActorDisplayName);
+            "test", "Test", "User", _actorUserId);
 
         result.Success.Should().BeTrue();
         result.TemporaryPassword.Should().NotBeNullOrEmpty();
@@ -126,7 +126,7 @@ public class GoogleAdminServiceTests : IDisposable
         await _auditLogService.Received(1).LogAsync(
             Arg.Any<Domain.Enums.AuditAction>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Any<string>(), _actorUserId, ActorDisplayName,
+            Arg.Any<string>(), _actorUserId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -138,7 +138,7 @@ public class GoogleAdminServiceTests : IDisposable
                 DateTime.UtcNow, null));
 
         var result = await _service.ProvisionStandaloneAccountAsync(
-            "test", "Test", "User", _actorUserId, ActorDisplayName);
+            "test", "Test", "User", _actorUserId);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("already exists");
@@ -150,7 +150,7 @@ public class GoogleAdminServiceTests : IDisposable
     public async Task SuspendAccountAsync_SuspendsAndAudits()
     {
         var result = await _service.SuspendAccountAsync(
-            "test@nobodies.team", _actorUserId, ActorDisplayName);
+            "test@nobodies.team", _actorUserId);
 
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("suspended");
@@ -166,7 +166,7 @@ public class GoogleAdminServiceTests : IDisposable
             .ThrowsAsync(new Exception("API error"));
 
         var result = await _service.SuspendAccountAsync(
-            "test@nobodies.team", _actorUserId, ActorDisplayName);
+            "test@nobodies.team", _actorUserId);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Failed to suspend");
@@ -178,7 +178,7 @@ public class GoogleAdminServiceTests : IDisposable
     public async Task ReactivateAccountAsync_ReactivatesAndAudits()
     {
         var result = await _service.ReactivateAccountAsync(
-            "test@nobodies.team", _actorUserId, ActorDisplayName);
+            "test@nobodies.team", _actorUserId);
 
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("reactivated");
@@ -193,7 +193,7 @@ public class GoogleAdminServiceTests : IDisposable
     public async Task ResetPasswordAsync_ResetsAndReturnsNewPassword()
     {
         var result = await _service.ResetPasswordAsync(
-            "test@nobodies.team", _actorUserId, ActorDisplayName);
+            "test@nobodies.team", _actorUserId);
 
         result.Success.Should().BeTrue();
         result.TemporaryPassword.Should().NotBeNullOrEmpty();
@@ -214,7 +214,7 @@ public class GoogleAdminServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.LinkAccountAsync(
-            "alice@nobodies.team", userId, _actorUserId, ActorDisplayName);
+            "alice@nobodies.team", userId, _actorUserId);
 
         result.Success.Should().BeTrue();
         result.Message.Should().Contain("Linked");
@@ -231,7 +231,7 @@ public class GoogleAdminServiceTests : IDisposable
     public async Task LinkAccountAsync_ReturnsErrorIfUserNotFound()
     {
         var result = await _service.LinkAccountAsync(
-            "alice@nobodies.team", Guid.NewGuid(), _actorUserId, ActorDisplayName);
+            "alice@nobodies.team", Guid.NewGuid(), _actorUserId);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("not found");
@@ -255,7 +255,7 @@ public class GoogleAdminServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.LinkAccountAsync(
-            "alice@nobodies.team", userId, _actorUserId, ActorDisplayName);
+            "alice@nobodies.team", userId, _actorUserId);
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().NotBeNullOrEmpty();

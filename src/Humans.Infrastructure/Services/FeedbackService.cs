@@ -170,26 +170,19 @@ public class FeedbackService : IFeedbackService
             report.ResolvedByUserId = null;
         }
 
-        string actorName = "API";
-        if (actorUserId.HasValue)
-        {
-            var actor = await _dbContext.Users.FindAsync(new object[] { actorUserId.Value }, cancellationToken);
-            actorName = actor?.DisplayName ?? actorUserId.Value.ToString();
-        }
-
         if (actorUserId.HasValue)
         {
             await _auditLogService.LogAsync(
                 AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
                 $"Feedback {id} status changed to {status}",
-                actorUserId.Value, actorName);
+                actorUserId.Value);
         }
         else
         {
             await _auditLogService.LogAsync(
                 AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
                 $"Feedback {id} status changed to {status}",
-                actorName);
+                "API");
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);

@@ -333,7 +333,7 @@ public class ProfileServiceTests : IDisposable
 
         await _auditLogService.Received().LogAsync(
             AuditAction.MembershipsRevokedOnDeletionRequest,
-            nameof(User), userId, Arg.Any<string>(), userId, Arg.Any<string>(),
+            nameof(User), userId, Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -906,7 +906,6 @@ public class ProfileServiceTests : IDisposable
             EntityId = userId,
             Description = "Test entry",
             OccurredAt = _clock.GetCurrentInstant(),
-            ActorName = "System"
         });
         await _dbContext.SaveChangesAsync();
 

@@ -155,7 +155,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string reviewerDisplayName, string? notes, CancellationToken ct = default)
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
             .Include(p => p.User)
@@ -178,8 +178,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckCleared, nameof(Profile), userId,
-            $"Consent check cleared by {reviewerDisplayName}",
-            reviewerId, reviewerDisplayName);
+            $"Consent check cleared",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -213,7 +213,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string reviewerDisplayName, string? notes, CancellationToken ct = default)
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
@@ -232,8 +232,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckFlagged, nameof(Profile), userId,
-            $"Consent check flagged by {reviewerDisplayName}: {notes}",
-            reviewerId, reviewerDisplayName);
+            $"Consent check flagged: {notes}",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -299,7 +299,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> RejectSignupAsync(
-        Guid userId, Guid reviewerId, string reviewerDisplayName, string? reason, CancellationToken ct = default)
+        Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
             .Include(p => p.User)
@@ -321,8 +321,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.SignupRejected, nameof(Profile), userId,
-            $"Signup rejected by {reviewerDisplayName}{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
-            reviewerId, reviewerDisplayName);
+            $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -353,7 +353,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> ApproveVolunteerAsync(
-        Guid userId, Guid adminId, string adminDisplayName, CancellationToken ct = default)
+        Guid userId, Guid adminId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users
             .Include(u => u.Profile)
@@ -369,8 +369,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
-            $"{user.DisplayName} approved as volunteer by {adminDisplayName}",
-            adminId, adminDisplayName);
+            "Approved as volunteer",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 
@@ -392,7 +392,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string adminDisplayName, string? notes, CancellationToken ct = default)
+        Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
     {
         var user = await _dbContext.Users
             .Include(u => u.Profile)
@@ -407,8 +407,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.MemberSuspended, nameof(User), userId,
-            $"{user.DisplayName} suspended by {adminDisplayName}{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
-            adminId, adminDisplayName);
+            $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 
@@ -422,7 +422,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, string adminDisplayName, CancellationToken ct = default)
+        Guid userId, Guid adminId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users
             .Include(u => u.Profile)
@@ -436,8 +436,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.MemberUnsuspended, nameof(User), userId,
-            $"{user.DisplayName} unsuspended by {adminDisplayName}",
-            adminId, adminDisplayName);
+            "Unsuspended",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 

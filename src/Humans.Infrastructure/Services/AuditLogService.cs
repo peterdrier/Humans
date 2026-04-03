@@ -40,10 +40,9 @@ public class AuditLogService : IAuditLogService
             Action = action,
             EntityType = entityType,
             EntityId = entityId,
-            Description = description,
+            Description = $"{jobName}: {description}",
             OccurredAt = _clock.GetCurrentInstant(),
             ActorUserId = null,
-            ActorName = jobName,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType
         };
@@ -58,7 +57,7 @@ public class AuditLogService : IAuditLogService
 
     /// <inheritdoc />
     public Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, Guid actorUserId, string actorDisplayName,
+        string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null)
     {
         var entry = new AuditLogEntry
@@ -70,15 +69,14 @@ public class AuditLogService : IAuditLogService
             Description = description,
             OccurredAt = _clock.GetCurrentInstant(),
             ActorUserId = actorUserId,
-            ActorName = actorDisplayName,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType
         };
 
         _dbContext.AuditLogEntries.Add(entry);
 
-        _logger.LogDebug("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
-            action, entityType, entityId, actorDisplayName, description);
+        _logger.LogDebug("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
+            action, entityType, entityId, actorUserId, description);
 
         return Task.CompletedTask;
     }
@@ -96,10 +94,9 @@ public class AuditLogService : IAuditLogService
             Action = action,
             EntityType = "GoogleResource",
             EntityId = resourceId,
-            Description = description,
+            Description = $"{jobName}: {description}",
             OccurredAt = _clock.GetCurrentInstant(),
             ActorUserId = null,
-            ActorName = jobName,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType,
             ResourceId = resourceId,
