@@ -11,7 +11,7 @@ namespace Humans.Web.TagHelpers;
 /// Delegates to <see cref="IAuthorizationService"/> so that the same registered
 /// ASP.NET Core policies used by controllers are evaluated consistently in views.
 ///
-/// Unknown policy names fail closed (element hidden) and log a warning in Development.
+/// Unknown policy names fail closed (element hidden) and log a warning.
 ///
 /// Usage:
 ///   &lt;li authorize-policy="AdminOnly"&gt;Only admins see this&lt;/li&gt;
@@ -23,18 +23,15 @@ public class AuthorizeViewTagHelper : TagHelper
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IAuthorizationService _authorizationService;
     private readonly ILogger<AuthorizeViewTagHelper> _logger;
-    private readonly IHostEnvironment _environment;
 
     public AuthorizeViewTagHelper(
         IHttpContextAccessor httpContextAccessor,
         IAuthorizationService authorizationService,
-        ILogger<AuthorizeViewTagHelper> logger,
-        IHostEnvironment environment)
+        ILogger<AuthorizeViewTagHelper> logger)
     {
         _httpContextAccessor = httpContextAccessor;
         _authorizationService = authorizationService;
         _logger = logger;
-        _environment = environment;
     }
 
     /// <summary>
@@ -75,11 +72,7 @@ public class AuthorizeViewTagHelper : TagHelper
         catch (InvalidOperationException)
         {
             // Unknown policy name — fail closed (hide the element)
-            if (_environment.IsDevelopment())
-            {
-                _logger.LogWarning("Unknown authorize-policy \"{PolicyName}\" — element suppressed (fail closed)", Policy);
-            }
-
+            _logger.LogWarning("Unknown authorize-policy \"{PolicyName}\" — element suppressed (fail closed)", Policy);
             output.SuppressOutput();
             return;
         }

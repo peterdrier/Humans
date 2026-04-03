@@ -3,9 +3,10 @@ using Microsoft.AspNetCore.Authorization;
 namespace Humans.Web.Authorization.Requirements;
 
 /// <summary>
-/// Requirement satisfied when the user is an active member (has ActiveMember claim)
-/// OR has shift dashboard access roles (Admin, NoInfoAdmin, VolunteerCoordinator)
-/// OR is TeamsAdmin/Board/Admin.
-/// Used for Shifts nav visibility.
+/// Requirement satisfied when:
+/// - User has the ActiveMember claim, OR
+/// - User has TeamsAdmin/Board/Admin roles (admin bypass), OR
+/// - User has shift dashboard roles (Admin, NoInfoAdmin, VolunteerCoordinator).
+/// Used for Shifts section nav visibility.
 /// </summary>
 public class ActiveMemberOrShiftAccessRequirement : IAuthorizationRequirement;

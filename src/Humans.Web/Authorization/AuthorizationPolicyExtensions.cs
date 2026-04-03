@@ -61,6 +61,9 @@ public static class AuthorizationPolicyExtensions
             options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
 
+            // ShiftDashboardAccess and ShiftDepartmentManager are intentionally identical today
+            // (both map to ShiftRoleChecks.CanManageDepartment). Kept separate so they can
+            // diverge when per-department manager roles are introduced.
             options.AddPolicy(PolicyNames.ShiftDashboardAccess, policy =>
                 policy.RequireRole(RoleNames.Admin, RoleNames.NoInfoAdmin, RoleNames.VolunteerCoordinator));
 

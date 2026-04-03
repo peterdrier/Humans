@@ -65,6 +65,13 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().Be(expected);
     }
 
+    [Fact]
+    public async Task BoardOnly_DeniesUnauthenticated()
+    {
+        var result = await AuthorizeAnonymousAsync(PolicyNames.BoardOnly);
+        result.Succeeded.Should().BeFalse();
+    }
+
     // --- BoardOrAdmin ---
 
     [Theory]
