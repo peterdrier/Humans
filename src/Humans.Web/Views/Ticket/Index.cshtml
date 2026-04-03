@@ -299,14 +299,14 @@
             <form asp-action="Sync" method="post" class="d-inline" authorize-policy="CanManageTickets">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-primary">
-                    <i class="fa-solid fa-sync"></i> Sync Now
+                    <i class="fa-solid fa-sync"></i> Sync Now <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </button>
             </form>
             <form asp-action="FullResync" method="post" class="d-inline ms-2" authorize-policy="Admin"
                   onsubmit="return confirm('This will re-fetch ALL orders from the vendor. Continue?');">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-danger">
-                    <i class="fa-solid fa-arrows-rotate"></i> Full Re-sync
+                    <i class="fa-solid fa-arrows-rotate"></i> Full Re-sync <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </button>
             </form>
         </div>
