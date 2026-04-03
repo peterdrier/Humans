@@ -1,0 +1,95 @@
+@model Humans.Web.ViewComponents.AuditLogComponentViewModel
+
+@if (Model.ShowCard)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Model.Title</div>
+        @if (Model.Entries.Count > 0)
+        {
+            <div class="list-group list-group-flush">
+                @foreach (var entry in Model.Entries)
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>@entry.Description</strong>
+                                <br />
+                                <small class="text-muted">
+                                    @if (entry.ActorUserId is null)
+                                    {
+                                        <span class="badge bg-info">System</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Admin</span>
+                                    }
+                                    @if (entry.ActorUserId.HasValue)
+                                    {
+                                        <human-link user-id="@entry.ActorUserId.Value" display-name="@entry.ActorName" mode="Text" />
+                                    }
+                                    else
+                                    {
+                                        @entry.ActorName
+                                    }
+                                </small>
+                            </div>
+                            <small class="text-muted text-nowrap ms-2">
+                                @entry.OccurredAt.ToAuditTimestamp()
+                            </small>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="card-body text-muted">
+                No audit history.
+            </div>
+        }
+    </div>
+}
+else
+{
+    @if (Model.Entries.Count > 0)
+    {
+        <div class="list-group list-group-flush">
+            @foreach (var entry in Model.Entries)
+            {
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>@entry.Description</strong>
+                            <br />
+                            <small class="text-muted">
+                                @if (entry.ActorUserId is null)
+                                {
+                                    <span class="badge bg-info">System</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Admin</span>
+                                }
+                                @if (entry.ActorUserId.HasValue)
+                                {
+                                    <human-link user-id="@entry.ActorUserId.Value" display-name="@entry.ActorName" mode="Text" />
+                                }
+                                else
+                                {
+                                    @entry.ActorName
+                                }
+                            </small>
+                        </div>
+                        <small class="text-muted text-nowrap ms-2">
+                            @entry.OccurredAt.ToAuditTimestamp()
+                        </small>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="text-muted mb-0">No audit history.</p>
+    }
+}
