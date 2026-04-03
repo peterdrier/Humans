@@ -214,7 +214,7 @@ public class AuditLogEntryViewModel
     public AuditAction Action { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateTime OccurredAt { get; set; }
-    public string ActorName { get; set; } = string.Empty;
+    public Guid? ActorUserId { get; set; }
     public bool IsSystemAction { get; set; }
 }
 
@@ -227,6 +227,7 @@ public class AuditLogListViewModel : PagedListViewModel
     public List<AuditLogEntryViewModel> Entries { get; set; } = [];
     public string? ActionFilter { get; set; }
     public int AnomalyCount { get; set; }
+    public Dictionary<Guid, string> UserDisplayNames { get; set; } = new();
 }
 
 public class GoogleSyncAuditEntryViewModel
@@ -239,7 +240,6 @@ public class GoogleSyncAuditEntryViewModel
     public DateTime OccurredAt { get; set; }
     public bool? Success { get; set; }
     public string? ErrorMessage { get; set; }
-    public string ActorName { get; set; } = string.Empty;
     public string? ResourceName { get; set; }
     public Guid? ResourceId { get; set; }
     public Guid? RelatedEntityId { get; set; }

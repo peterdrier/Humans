@@ -18,10 +18,10 @@ public interface IAuditLogService
         Guid? relatedEntityId = null, string? relatedEntityType = null);
 
     /// <summary>
-    /// Logs an action performed by a human admin.
+    /// Logs an action performed by a human actor.
     /// </summary>
     Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, Guid actorUserId, string actorDisplayName,
+        string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null);
 
     /// <summary>

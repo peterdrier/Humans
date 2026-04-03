@@ -112,7 +112,7 @@ public class EmailProvisioningService : IEmailProvisioningService
                 AuditAction.WorkspaceAccountProvisioned,
                 "WorkspaceAccount", userId,
                 $"Provisioned and linked @nobodies.team account: {fullEmail}",
-                provisionedByUserId, provisionedByDisplayName);
+                provisionedByUserId);
             await _dbContext.SaveChangesAsync();
 
             // Step 4: Send credentials to the PERSONAL email captured in step 1.

@@ -88,8 +88,15 @@ else
                                 else
                                 {
                                     <span class="badge bg-secondary">Admin</span>
+                                    @if (entry.ActorUserId.HasValue && Model.UserDisplayNames.TryGetValue(entry.ActorUserId.Value, out var actorName))
+                                    {
+                                        <span class="ms-1">@actorName</span>
+                                    }
+                                    else if (entry.ActorUserId.HasValue)
+                                    {
+                                        <span class="ms-1 text-muted">Deleted User</span>
+                                    }
                                 }
-                                <span class="ms-1">@entry.ActorName</span>
                             </td>
                             <td class="text-nowrap">@entry.OccurredAt.ToAuditTimestamp()</td>
                         </tr>

@@ -67,7 +67,7 @@ public class CampContactServiceTests : IDisposable
             _campId,
             Arg.Any<string>(),
             _senderId,
-            "Alice");
+            Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [Fact]

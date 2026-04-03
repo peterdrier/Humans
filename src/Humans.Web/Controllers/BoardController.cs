@@ -84,9 +84,22 @@ public class BoardController : HumansControllerBase
             Action = e.Action,
             Description = e.Description,
             OccurredAt = e.OccurredAt.ToDateTimeUtc(),
-            ActorName = e.ActorName,
+            ActorUserId = e.ActorUserId,
             IsSystemAction = e.ActorUserId is null
         }).ToList();
+
+        // Batch-load display names for actor user IDs
+        var actorUserIds = entries
+            .Where(e => e.ActorUserId.HasValue)
+            .Select(e => e.ActorUserId!.Value)
+            .Distinct()
+            .ToList();
+
+        var userDisplayNames = actorUserIds.Count > 0
+            ? await _dbContext.Users.AsNoTracking()
+                .Where(u => actorUserIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.DisplayName)
+            : new Dictionary<Guid, string>();
 
         var viewModel = new AuditLogListViewModel
         {
@@ -95,7 +108,8 @@ public class BoardController : HumansControllerBase
             AnomalyCount = anomalyCount,
             TotalCount = totalCount,
             PageNumber = page,
-            PageSize = pageSize
+            PageSize = pageSize,
+            UserDisplayNames = userDisplayNames
         };
 
         return View("~/Views/Shared/AuditLog.cshtml", viewModel);

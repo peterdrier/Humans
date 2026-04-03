@@ -46,7 +46,6 @@ public class ApplicationDecisionService : IApplicationDecisionService
     public async Task<ApplicationDecisionResult> ApproveAsync(
         Guid applicationId,
         Guid reviewerUserId,
-        string reviewerDisplayName,
         string? notes,
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default)
@@ -84,8 +83,8 @@ public class ApplicationDecisionService : IApplicationDecisionService
         // Audit
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationApproved, nameof(Humans.Domain.Entities.Application), application.Id,
-            $"{application.MembershipTier} application approved for {application.User.DisplayName} by {reviewerDisplayName}",
-            reviewerUserId, reviewerDisplayName);
+            $"{application.MembershipTier} application approved for {application.User.DisplayName}",
+            reviewerUserId);
 
         // GDPR: delete individual board votes
         _dbContext.BoardVotes.RemoveRange(application.BoardVotes);
@@ -147,7 +146,6 @@ public class ApplicationDecisionService : IApplicationDecisionService
     public async Task<ApplicationDecisionResult> RejectAsync(
         Guid applicationId,
         Guid reviewerUserId,
-        string reviewerDisplayName,
         string reason,
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default)
@@ -172,8 +170,8 @@ public class ApplicationDecisionService : IApplicationDecisionService
         // Audit
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationRejected, nameof(Humans.Domain.Entities.Application), application.Id,
-            $"{application.MembershipTier} application rejected for {application.User.DisplayName} by {reviewerDisplayName}",
-            reviewerUserId, reviewerDisplayName);
+            $"{application.MembershipTier} application rejected for {application.User.DisplayName}",
+            reviewerUserId);
 
         // GDPR: delete individual board votes
         _dbContext.BoardVotes.RemoveRange(application.BoardVotes);

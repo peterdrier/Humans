@@ -288,7 +288,7 @@ public class DuplicateAccountService : IDuplicateAccountService
             AuditAction.AccountMergeAccepted,
             nameof(User), sourceUserId,
             $"Admin resolved duplicate: archived {sourceDisplayName} (source: {sourceUserId}), kept {targetUser.DisplayName} (target: {targetUserId}). Notes: {notes ?? "(none)"}",
-            adminUserId, adminDisplayName,
+            adminUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
         await _dbContext.SaveChangesAsync(ct);

@@ -593,11 +593,10 @@ public class TeamService : ITeamService
         team.PageContentUpdatedByUserId = updatedByUserId;
         team.UpdatedAt = now;
 
-        var actor = await _dbContext.Users.FindAsync(new object[] { updatedByUserId }, cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamPageContentUpdated, nameof(Team), teamId,
             $"Team page content updated. Public: {isPublicPage}",
-            updatedByUserId, actor?.DisplayName ?? updatedByUserId.ToString());
+            updatedByUserId);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         TryUpdateCachedTeam(teamId, cachedTeam => cachedTeam with { IsPublicPage = isPublicPage });
@@ -734,11 +733,10 @@ public class TeamService : ITeamService
 
         _dbContext.TeamMembers.Add(member);
 
-        var joiningUser = await _dbContext.Users.FindAsync([userId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamJoinedDirectly, nameof(Team), teamId,
-            $"{joiningUser?.DisplayName ?? userId.ToString()} joined {team.Name} directly",
-            userId, joiningUser?.DisplayName ?? userId.ToString(),
+            $"Joined {team.Name} directly",
+            userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
         EnqueueGoogleSyncOutboxEvent(
             member.Id,
@@ -765,7 +763,7 @@ public class TeamService : ITeamService
         _logger.LogInformation("User {UserId} joined team {TeamId} directly", userId, teamId);
 
         // Update cache
-        var joinedUser = joiningUser ?? await _dbContext.Users.FindAsync([userId], cancellationToken);
+        var joinedUser = await _dbContext.Users.FindAsync([userId], cancellationToken);
         if (joinedUser is not null)
         {
             AddMemberToTeamCache(teamId, new CachedTeamMember(
@@ -814,11 +812,10 @@ public class TeamService : ITeamService
 
         member.LeftAt = _clock.GetCurrentInstant();
 
-        var leavingUser = await _dbContext.Users.FindAsync([userId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamLeft, nameof(Team), teamId,
-            $"{leavingUser?.DisplayName ?? userId.ToString()} left {team.Name}",
-            userId, leavingUser?.DisplayName ?? userId.ToString(),
+            $"Left {team.Name}",
+            userId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
         EnqueueGoogleSyncOutboxEvent(
             member.Id,
@@ -883,11 +880,10 @@ public class TeamService : ITeamService
 
         _dbContext.TeamMembers.Add(member);
 
-        var approver = await _dbContext.Users.FindAsync([approverUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamJoinRequestApproved, nameof(Team), request.TeamId,
             $"Join request for {request.Team.Name} approved",
-            approverUserId, approver?.DisplayName ?? approverUserId.ToString(),
+            approverUserId,
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
         EnqueueGoogleSyncOutboxEvent(
             member.Id,
@@ -948,11 +944,10 @@ public class TeamService : ITeamService
 
         request.Reject(approverUserId, reason, _clock);
 
-        var rejecter = await _dbContext.Users.FindAsync([approverUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamJoinRequestRejected, nameof(Team), request.TeamId,
             $"Join request for team rejected: {reason}",
-            approverUserId, rejecter?.DisplayName ?? approverUserId.ToString(),
+            approverUserId,
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -1160,11 +1155,10 @@ public class TeamService : ITeamService
 
         member.LeftAt = _clock.GetCurrentInstant();
 
-        var actor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamMemberRemoved, nameof(Team), teamId,
             $"Member removed from {team.Name}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString(),
+            actorUserId,
             relatedEntityId: userId, relatedEntityType: nameof(User));
         EnqueueGoogleSyncOutboxEvent(
             member.Id,
@@ -1225,11 +1219,10 @@ public class TeamService : ITeamService
 
         _dbContext.TeamMembers.Add(member);
 
-        var actor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamMemberAdded, nameof(Team), teamId,
-            $"Member added to {team.Name} by {actor?.DisplayName ?? actorUserId.ToString()}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString(),
+            $"Member added to {team.Name}",
+            actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
         EnqueueGoogleSyncOutboxEvent(
             member.Id,
@@ -1348,11 +1341,10 @@ public class TeamService : ITeamService
 
         _dbContext.Set<TeamRoleDefinition>().Add(definition);
 
-        var actor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionCreated, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{name}' created for team {team.Name}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString(),
+            actorUserId,
             relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -1475,11 +1467,10 @@ public class TeamService : ITeamService
         definition.Period = period;
         definition.UpdatedAt = _clock.GetCurrentInstant();
 
-        var actor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{name}' updated for team {definition.Team.Name}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString(),
+            actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -1518,11 +1509,10 @@ public class TeamService : ITeamService
             throw new InvalidOperationException("User does not have permission to manage role definitions for this team");
         }
 
-        var actor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionDeleted, nameof(TeamRoleDefinition), definition.Id,
             $"Role definition '{definition.Name}' deleted from team {definition.Team.Name}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString(),
+            actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
         _dbContext.Set<TeamRoleDefinition>().Remove(definition);
@@ -1602,11 +1592,10 @@ public class TeamService : ITeamService
         definition.IsManagement = isManagement;
         definition.UpdatedAt = _clock.GetCurrentInstant();
 
-        var actor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamRoleDefinitionUpdated, nameof(TeamRoleDefinition), definition.Id,
             $"IsManagement set to {isManagement} on role '{definition.Name}' in {definition.Team.Name}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString(),
+            actorUserId,
             relatedEntityId: definition.TeamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -1770,11 +1759,10 @@ public class TeamService : ITeamService
                 teamMember.Id, definition.TeamId, targetUserId,
                 GoogleSyncOutboxEventTypes.AddUserToTeamResources);
 
-            var actorForAdd = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
             await _auditLogService.LogAsync(
                 AuditAction.TeamMemberAdded, nameof(Team), definition.TeamId,
                 $"Auto-added to {definition.Team.Name} via role assignment",
-                actorUserId, actorForAdd?.DisplayName ?? actorUserId.ToString(),
+                actorUserId,
                 relatedEntityId: targetUserId, relatedEntityType: nameof(User));
         }
 
@@ -1813,18 +1801,17 @@ public class TeamService : ITeamService
             teamMember.Role = TeamMemberRole.Coordinator;
         }
 
-        var actor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
-        var targetUser = await _dbContext.Users.FindAsync([targetUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamRoleAssigned, nameof(TeamRoleDefinition), roleDefinitionId,
-            $"{targetUser?.DisplayName ?? targetUserId.ToString()} assigned to role '{definition.Name}' in {definition.Team.Name}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString(),
+            $"Assigned to role '{definition.Name}' in {definition.Team.Name}",
+            actorUserId,
             relatedEntityId: targetUserId, relatedEntityType: nameof(User));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         InvalidateShiftAuthorizationIfNeeded(definition, targetUserId);
 
         // Update cache: if auto-added to team, add member; if promoted to Lead, update role
+        var targetUser = await _dbContext.Users.FindAsync([targetUserId], cancellationToken);
         if (targetUser is not null)
         {
             var cachedMember = new CachedTeamMember(
@@ -1868,11 +1855,10 @@ public class TeamService : ITeamService
             throw new InvalidOperationException("User does not have permission to manage role assignments for this team");
         }
 
-        var actor = await _dbContext.Users.FindAsync([actorUserId], cancellationToken);
         await _auditLogService.LogAsync(
             AuditAction.TeamRoleUnassigned, nameof(TeamRoleDefinition), roleDefinitionId,
-            $"{assignment.TeamMember.User.DisplayName} unassigned from role '{definition.Name}' in {definition.Team.Name}",
-            actorUserId, actor?.DisplayName ?? actorUserId.ToString(),
+            $"Unassigned from role '{definition.Name}' in {definition.Team.Name}",
+            actorUserId,
             relatedEntityId: assignment.TeamMember.UserId, relatedEntityType: nameof(User));
 
         _dbContext.Set<TeamRoleAssignment>().Remove(assignment);

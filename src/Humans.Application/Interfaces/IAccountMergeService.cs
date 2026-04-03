@@ -20,10 +20,10 @@ public interface IAccountMergeService
     /// <summary>
     /// Accepts a merge request: migrates data from source to target, archives source account.
     /// </summary>
-    Task AcceptAsync(Guid requestId, Guid adminUserId, string adminDisplayName, string? notes = null, CancellationToken ct = default);
+    Task AcceptAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
 
     /// <summary>
     /// Rejects a merge request: removes the pending email, no changes to accounts.
     /// </summary>
-    Task RejectAsync(Guid requestId, Guid adminUserId, string adminDisplayName, string? notes = null, CancellationToken ct = default);
+    Task RejectAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
 }

@@ -115,7 +115,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampCreated, nameof(Camp), camp.Id,
             $"Registered camp '{name}' for {year}",
-            createdByUserId, createdByUserId.ToString());
+            createdByUserId);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(createdByUserId, cancellationToken);
@@ -670,7 +670,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampSeasonApproved, nameof(CampSeason), seasonId,
             $"Approved season {season.Year}",
-            reviewedByUserId, reviewedByUserId.ToString(),
+            reviewedByUserId,
             relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -695,7 +695,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampSeasonRejected, nameof(CampSeason), seasonId,
             $"Rejected season {season.Year}: {notes}",
-            reviewedByUserId, reviewedByUserId.ToString(),
+            reviewedByUserId,
             relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -859,7 +859,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampLeadAdded, nameof(CampLead), lead.Id,
             "Added as camp lead",
-            userId, userId.ToString(),
+            userId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -883,7 +883,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampLeadRemoved, nameof(CampLead), leadId,
             "Removed from camp leads",
-            lead.UserId, lead.UserId.ToString(),
+            lead.UserId,
             relatedEntityId: lead.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);

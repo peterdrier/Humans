@@ -58,13 +58,12 @@ public class AuditLogServiceTests : IDisposable
 
         await _service.LogAsync(
             AuditAction.MemberSuspended, nameof(User), entityId,
-            "Suspended for inactivity", actorId, "Admin User");
+            "Suspended for inactivity", actorId);
 
         await _dbContext.SaveChangesAsync();
 
         var entry = _dbContext.AuditLogEntries.Single();
         entry.ActorUserId.Should().Be(actorId);
-        entry.ActorName.Should().Be("Admin User");
         entry.Action.Should().Be(AuditAction.MemberSuspended);
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);

@@ -1102,7 +1102,7 @@ public class ProfileController : HumansControllerBase
             AuditAction.FacilitatedMessageSent,
             nameof(User), targetUser.Id,
             $"Message sent to {targetUser.DisplayName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
-            currentUser.Id, currentUser.DisplayName);
+            currentUser.Id);
 
         SetSuccess(string.Format(
             _localizer["SendMessage_Success"].Value,

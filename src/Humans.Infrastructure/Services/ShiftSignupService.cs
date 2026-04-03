@@ -112,7 +112,7 @@ public class ShiftSignupService : IShiftSignupService
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
                 $"Auto-confirmed signup for shift '{shift.Rota.Name}'",
-                userId, "Self");
+                userId);
         }
 
         await _dbContext.SaveChangesAsync();
@@ -162,7 +162,7 @@ public class ShiftSignupService : IShiftSignupService
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
             $"Approved signup for shift '{signup.Shift.Rota.Name}'",
-            reviewerUserId, "Reviewer");
+            reviewerUserId);
 
         await _dbContext.SaveChangesAsync();
 
@@ -179,7 +179,7 @@ public class ShiftSignupService : IShiftSignupService
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
             $"Refused signup for shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
-            reviewerUserId, "Reviewer");
+            reviewerUserId);
 
         await _dbContext.SaveChangesAsync();
 
@@ -209,7 +209,7 @@ public class ShiftSignupService : IShiftSignupService
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
             $"Bailed from shift '{signup.Shift.Rota.Name}'" + (reason is not null ? $": {reason}" : ""),
-            actorUserId, "Actor");
+            actorUserId);
 
         await _dbContext.SaveChangesAsync();
 
@@ -259,7 +259,7 @@ public class ShiftSignupService : IShiftSignupService
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
             $"Voluntold for shift '{shift.Rota.Name}'",
-            enrollerUserId, "Enroller",
+            enrollerUserId,
             userId, nameof(User));
 
         await _dbContext.SaveChangesAsync();
@@ -347,7 +347,7 @@ public class ShiftSignupService : IShiftSignupService
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupVoluntold, nameof(ShiftSignup), signup.Id,
                 $"Voluntold range for '{rota.Name}' day {shift.DayOffset} (block {blockId})",
-                enrollerUserId, "Enroller",
+                enrollerUserId,
                 userId, nameof(User));
         }
 
@@ -373,7 +373,7 @@ public class ShiftSignupService : IShiftSignupService
         await _auditLogService.LogAsync(
             AuditAction.ShiftSignupNoShow, nameof(ShiftSignup), signup.Id,
             $"Marked no-show for shift '{signup.Shift.Rota.Name}'",
-            reviewerUserId, "Reviewer");
+            reviewerUserId);
 
         await _dbContext.SaveChangesAsync();
 
@@ -394,7 +394,7 @@ public class ShiftSignupService : IShiftSignupService
             AuditAction.ShiftSignupCancelled, nameof(ShiftSignup), signup.Id,
             $"Removed from shift '{signup.Shift.Rota.Name}'" +
             (reason is not null ? $": {reason}" : ""),
-            removedByUserId, "Reviewer");
+            removedByUserId);
 
         await _dbContext.SaveChangesAsync();
 
@@ -546,7 +546,7 @@ public class ShiftSignupService : IShiftSignupService
                     AuditAction.ShiftSignupConfirmed,
                     nameof(ShiftSignup), signup.Id,
                     $"Range signup for '{rota.Name}' day {shift.DayOffset} (block {blockId})",
-                    userId, "Self");
+                    userId);
             }
         }
 
@@ -599,7 +599,7 @@ public class ShiftSignupService : IShiftSignupService
             await _auditLogService.LogAsync(
                 AuditAction.ShiftSignupConfirmed, nameof(ShiftSignup), signup.Id,
                 $"Range approved for shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (block {signupBlockId})",
-                reviewerUserId, "Reviewer");
+                reviewerUserId);
         }
 
         await _dbContext.SaveChangesAsync();
@@ -624,7 +624,7 @@ public class ShiftSignupService : IShiftSignupService
                 AuditAction.ShiftSignupRefused, nameof(ShiftSignup), signup.Id,
                 $"Range refused for shift '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (block {signupBlockId})" +
                 (reason is not null ? $": {reason}" : ""),
-                reviewerUserId, "Reviewer");
+                reviewerUserId);
         }
 
         await _dbContext.SaveChangesAsync();
@@ -663,7 +663,7 @@ public class ShiftSignupService : IShiftSignupService
                 AuditAction.ShiftSignupBailed, nameof(ShiftSignup), signup.Id,
                 $"Range bail from '{signup.Shift.Rota.Name}' day {signup.Shift.DayOffset} (block {signupBlockId})" +
                 (reason is not null ? $": {reason}" : ""),
-                actorUserId, "Actor");
+                actorUserId);
         }
 
         await _dbContext.SaveChangesAsync();

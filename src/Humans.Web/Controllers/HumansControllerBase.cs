@@ -105,7 +105,6 @@ public abstract class HumansControllerBase : Controller
                 OccurredAt = entry.OccurredAt.ToDateTimeUtc(),
                 Success = entry.Success,
                 ErrorMessage = entry.ErrorMessage,
-                ActorName = entry.ActorName,
                 ResourceName = entry.Resource?.Name,
                 ResourceId = entry.ResourceId,
                 RelatedEntityId = entry.RelatedEntityId

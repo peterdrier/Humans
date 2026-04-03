@@ -171,8 +171,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckCleared, nameof(Profile), userId,
-            $"Consent check cleared by {reviewerDisplayName}",
-            reviewerId, reviewerDisplayName);
+            $"Consent check cleared",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -224,8 +224,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckFlagged, nameof(Profile), userId,
-            $"Consent check flagged by {reviewerDisplayName}: {notes}",
-            reviewerId, reviewerDisplayName);
+            $"Consent check flagged: {notes}",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -312,8 +312,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.SignupRejected, nameof(Profile), userId,
-            $"Signup rejected by {reviewerDisplayName}{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
-            reviewerId, reviewerDisplayName);
+            $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -359,8 +359,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
-            $"{user.DisplayName} approved as volunteer by {adminDisplayName}",
-            adminId, adminDisplayName);
+            $"{user.DisplayName} approved as volunteer",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 
@@ -396,8 +396,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.MemberSuspended, nameof(User), userId,
-            $"{user.DisplayName} suspended by {adminDisplayName}{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
-            adminId, adminDisplayName);
+            $"{user.DisplayName} suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 
@@ -425,8 +425,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.MemberUnsuspended, nameof(User), userId,
-            $"{user.DisplayName} unsuspended by {adminDisplayName}",
-            adminId, adminDisplayName);
+            $"{user.DisplayName} unsuspended",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 

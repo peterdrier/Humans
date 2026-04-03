@@ -430,7 +430,7 @@ public class ShiftAdminController : HumansTeamControllerBase
 
         try
         {
-            await _shiftMgmt.MoveRotaToTeamAsync(rotaId, model.TargetTeamId, user.Id, user.DisplayName);
+            await _shiftMgmt.MoveRotaToTeamAsync(rotaId, model.TargetTeamId, user.Id);
             SetSuccess($"Rota '{rota.Name}' moved to {targetTeam.Name}.");
         }
         catch (InvalidOperationException ex)

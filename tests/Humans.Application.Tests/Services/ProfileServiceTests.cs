@@ -333,7 +333,7 @@ public class ProfileServiceTests : IDisposable
 
         await _auditLogService.Received().LogAsync(
             AuditAction.MembershipsRevokedOnDeletionRequest,
-            nameof(User), userId, Arg.Any<string>(), userId, Arg.Any<string>(),
+            nameof(User), userId, Arg.Any<string>(), userId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

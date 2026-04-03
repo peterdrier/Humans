@@ -148,7 +148,7 @@ public class RoleAssignmentService : IRoleAssignmentService
         await _auditLogService.LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,
             $"Role '{roleName}' assigned to {user?.DisplayName ?? userId.ToString()}",
-            assignerId, assignerDisplayName);
+            assignerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -197,7 +197,7 @@ public class RoleAssignmentService : IRoleAssignmentService
         await _auditLogService.LogAsync(
             AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
             $"Role '{roleAssignment.RoleName}' ended for {roleAssignment.User.DisplayName}",
-            enderId, enderDisplayName);
+            enderId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();

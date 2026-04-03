@@ -170,7 +170,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     {
         var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
 
-        var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Admin", "Approved", null);
+        var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Approved", null);
 
         result.Success.Should().BeTrue();
         var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
@@ -182,7 +182,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     {
         var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
 
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Admin", null, null);
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
         var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
         var today = _clock.GetCurrentInstant().InUtc().Date;
@@ -195,7 +195,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     {
         var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
 
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Admin", null, null);
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
         profile.MembershipTier.Should().Be(MembershipTier.Asociado);
@@ -215,7 +215,7 @@ public class ApplicationDecisionServiceTests : IDisposable
         });
         await _dbContext.SaveChangesAsync();
 
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Admin", null, null);
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
         var votes = await _dbContext.BoardVotes.Where(v => v.ApplicationId == app.Id).ToListAsync();
         votes.Should().BeEmpty();
@@ -226,7 +226,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     {
         var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
 
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Admin", null, null);
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
         await _syncJob.Received().SyncColaboradorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
         await _syncJob.DidNotReceive().SyncAsociadosMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -237,7 +237,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     {
         var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
 
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Admin", null, null);
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
         await _syncJob.Received().SyncAsociadosMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
         await _syncJob.DidNotReceive().SyncColaboradorsMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -250,7 +250,7 @@ public class ApplicationDecisionServiceTests : IDisposable
         app.Withdraw(_clock);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Admin", null, null);
+        var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotSubmitted");
@@ -259,7 +259,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task ApproveAsync_NotFound_ReturnsError()
     {
-        var result = await _service.ApproveAsync(Guid.NewGuid(), Guid.NewGuid(), "Admin", null, null);
+        var result = await _service.ApproveAsync(Guid.NewGuid(), Guid.NewGuid(), null, null);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -272,7 +272,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     {
         var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
 
-        var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "Admin", "Not ready", null);
+        var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "Not ready", null);
 
         result.Success.Should().BeTrue();
         var updated = await _dbContext.Applications.FirstAsync(a => a.Id == app.Id);
@@ -294,7 +294,7 @@ public class ApplicationDecisionServiceTests : IDisposable
         });
         await _dbContext.SaveChangesAsync();
 
-        await _service.RejectAsync(app.Id, Guid.NewGuid(), "Admin", "reason", null);
+        await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
         var votes = await _dbContext.BoardVotes.Where(v => v.ApplicationId == app.Id).ToListAsync();
         votes.Should().BeEmpty();
@@ -305,7 +305,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     {
         var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
 
-        await _service.RejectAsync(app.Id, Guid.NewGuid(), "Admin", "reason", null);
+        await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
         profile.MembershipTier.Should().Be(MembershipTier.Volunteer);
@@ -316,7 +316,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     {
         var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
 
-        await _service.RejectAsync(app.Id, Guid.NewGuid(), "Admin", "reason", null);
+        await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
         await _syncJob.DidNotReceive().SyncColaboradorsMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
         await _syncJob.DidNotReceive().SyncAsociadosMembershipForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
@@ -329,7 +329,7 @@ public class ApplicationDecisionServiceTests : IDisposable
         app.Withdraw(_clock);
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "Admin", "reason", null);
+        var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotSubmitted");
