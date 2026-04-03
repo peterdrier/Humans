@@ -1,0 +1,230 @@
+@model Humans.Web.Models.SyncTabContentViewModel
+@{
+    var result = Model.Result;
+    var resourceType = Model.ResourceType;
+}
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="card-title mb-0">@result.TotalResources</h2>
+                <p class="card-text text-muted">Total</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="card-title mb-0 text-success">@result.InSyncCount</h2>
+                <p class="card-text text-muted">In Sync</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center @(result.DriftCount > 0 ? "border-warning" : "")">
+            <div class="card-body">
+                <h2 class="card-title mb-0 text-warning">@result.DriftCount</h2>
+                <p class="card-text text-muted">Drifted</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center @(result.ErrorCount > 0 ? "border-danger" : "")">
+            <div class="card-body">
+                <h2 class="card-title mb-0 text-danger">@result.ErrorCount</h2>
+                <p class="card-text text-muted">Errors</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (result.Diffs.Count == 0)
+{
+    <div class="alert alert-info">No resources found for this type.</div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="form-check form-switch">
+            <input class="form-check-input sync-changes-toggle" type="checkbox" id="changesOnly-@resourceType" checked>
+            <label class="form-check-label" for="changesOnly-@resourceType">Show changes only</label>
+        </div>
+        @if (Model.CanExecuteActions && result.DriftCount > 0)
+        {
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-success"
+                        data-action="executeAll" data-sync-action="1" data-resource-type="@resourceType">
+                    Add All Missing
+                </button>
+                <button class="btn btn-sm btn-outline-primary"
+                        data-action="executeAll" data-sync-action="2" data-resource-type="@resourceType">
+                    Sync All
+                </button>
+            </div>
+        }
+    </div>
+
+    @for (var i = 0; i < result.Diffs.Count; i++)
+    {
+        var diff = result.Diffs[i];
+        var hasError = diff.ErrorMessage is not null;
+        var collapseId = $"collapse-{resourceType}-{i}";
+        var showPermission = diff.PermissionLevel is not null;
+
+        <div class="card mb-2@(diff.IsInSync ? " resource-in-sync" : "")">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-link p-0 text-decoration-none"
+                            data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false">
+                        <i class="fa-solid fa-chevron-right collapse-icon"></i>
+                    </button>
+                    <span>
+                        @if (diff.Url is not null)
+                        {
+                            <a href="@diff.Url" target="_blank" rel="noopener noreferrer">@diff.ResourceName</a>
+                        }
+                        else
+                        {
+                            @diff.ResourceName
+                        }
+                    </span>
+                    @if (hasError)
+                    {
+                        <span class="badge bg-danger">Error</span>
+                    }
+                    else if (diff.IsInSync)
+                    {
+                        <span class="badge bg-success">In Sync</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning text-dark">Drifted</span>
+                    }
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <small class="text-muted">
+                        @if (diff.LinkedTeams.Count > 0)
+                        {
+                            @foreach (var team in diff.LinkedTeams)
+                            {
+                                <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none">
+                                    @team.Name
+                                    @if (team.PermissionLevel is not null)
+                                    {
+                                        <span class="text-muted fw-normal">&middot; @team.PermissionLevel</span>
+                                    }
+                                </a>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">None</span>
+                        }
+                    </small>
+                    @if (Model.CanViewAudit)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary"
+                           href="@Url.Action("GoogleSyncResourceAudit", "Google", new { id = diff.ResourceId })">Audit</a>
+                    }
+                    @if (Model.CanExecuteActions && !diff.IsInSync && !hasError)
+                    {
+                        <button class="btn btn-sm btn-outline-success"
+                                data-action="executeSingle" data-resource-id="@diff.ResourceId"
+                                data-sync-action="1" data-resource-name="@diff.ResourceName">
+                            Add Missing
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary"
+                                data-action="executeSingle" data-resource-id="@diff.ResourceId"
+                                data-sync-action="2" data-resource-name="@diff.ResourceName">
+                            Sync All
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="collapse" id="@collapseId">
+                <div class="card-body p-0">
+                    @if (hasError)
+                    {
+                        <div class="alert alert-danger m-3 mb-0">@diff.ErrorMessage</div>
+                    }
+                    else if (diff.Members.Count > 0)
+                    {
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    @if (showPermission)
+                                    {
+                                        <th>Role (current / expected)</th>
+                                    }
+                                    <th>Teams</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var m in diff.Members)
+                                {
+                                    var (stateLabel, badgeClass) = m.State switch
+                                    {
+                                        Humans.Application.DTOs.MemberSyncState.Correct => ("Correct", "bg-success"),
+                                        Humans.Application.DTOs.MemberSyncState.Missing => ("Missing", "bg-warning text-dark"),
+                                        Humans.Application.DTOs.MemberSyncState.Inherited => ("Inherited", "bg-secondary"),
+                                        Humans.Application.DTOs.MemberSyncState.WrongRole => ("Wrong Role", "bg-info text-dark"),
+                                        _ => ("Extra", "bg-danger")
+                                    };
+
+                                    <tr class="member-row" data-member-state="@((int)m.State)">
+                                        <td>@m.Email</td>
+                                        <td>
+                                            @{
+                                                var nameDisplay = !string.IsNullOrEmpty(m.DisplayName) && !string.Equals(m.DisplayName, m.Email, StringComparison.Ordinal)
+                                                    ? m.DisplayName : null;
+                                            }
+                                            @if (nameDisplay is not null && m.UserId.HasValue)
+                                            {
+                                                <a href="/Profile/@m.UserId/Admin"
+                                                   class="d-inline-flex align-items-center text-decoration-none text-reset"
+                                                   data-human-popover="true" data-user-id="@m.UserId">
+                                                    @await Component.InvokeAsync("UserAvatar", new
+                                                    {
+                                                        profilePictureUrl = m.ProfilePictureUrl,
+                                                        displayName = nameDisplay,
+                                                        size = 24,
+                                                        cssClass = "me-2"
+                                                    })
+                                                    <span>@nameDisplay</span>
+                                                </a>
+                                            }
+                                            else if (nameDisplay is not null)
+                                            {
+                                                @nameDisplay
+                                            }
+                                        </td>
+                                        <td><span class="badge @badgeClass">@stateLabel</span></td>
+                                        @if (showPermission)
+                                        {
+                                            <td>@(m.CurrentRole ?? "\u2014") / @(m.ExpectedRole ?? "\u2014")</td>
+                                        }
+                                        <td>
+                                            @foreach (var team in m.TeamLinks)
+                                            {
+                                                <a href="/Teams/@team.Slug" class="badge bg-light text-dark border me-1 text-decoration-none">@team.Name</a>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-muted">No members</div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
