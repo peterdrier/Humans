@@ -26,6 +26,7 @@ public class TeamService : ITeamService
     private readonly INotificationService _notificationService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftManagementService _shiftManagementService;
+    private readonly ISystemTeamSync _systemTeamSync;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TeamService> _logger;
@@ -37,6 +38,7 @@ public class TeamService : ITeamService
         INotificationService notificationService,
         IRoleAssignmentService roleAssignmentService,
         IShiftManagementService shiftManagementService,
+        ISystemTeamSync systemTeamSync,
         IClock clock,
         IMemoryCache cache,
         ILogger<TeamService> logger)
@@ -47,6 +49,7 @@ public class TeamService : ITeamService
         _notificationService = notificationService;
         _roleAssignmentService = roleAssignmentService;
         _shiftManagementService = shiftManagementService;
+        _systemTeamSync = systemTeamSync;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -479,6 +482,7 @@ public class TeamService : ITeamService
         }
 
         // If team is changing parent, invalidate shift auth for management role holders
+        var becomingChild = parentTeamId.HasValue && !team.ParentTeamId.HasValue;
         var parentChanging = parentTeamId != team.ParentTeamId;
         var usersNeedingShiftAuthorizationInvalidation = parentChanging
             ? await _dbContext.Set<TeamRoleAssignment>()
@@ -525,6 +529,16 @@ public class TeamService : ITeamService
 
         _cache.InvalidateActiveTeams();
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
+
+        // When a department becomes a sub-team, its coordinators must be removed from
+        // the Coordinators system team immediately (not waiting for the hourly sync)
+        if (becomingChild && usersNeedingShiftAuthorizationInvalidation.Count > 0)
+        {
+            foreach (var userId in usersNeedingShiftAuthorizationInvalidation)
+            {
+                await _systemTeamSync.SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken);
+            }
+        }
 
         _logger.LogInformation("Updated team {TeamId} ({TeamName})", teamId, name);
 
@@ -1399,7 +1413,6 @@ public class TeamService : ITeamService
         definition.SortOrder = sortOrder;
         var invalidatedActiveTeams = false;
         var usersNeedingShiftAuthorizationInvalidation =
-            definition.Team.ParentTeamId is null &&
             definition.Team.SystemTeamType == SystemTeamType.None &&
             definition.IsManagement != isManagement &&
             definition.Assignments.Count > 0
@@ -2291,7 +2304,6 @@ public class TeamService : ITeamService
 
     private static bool IsShiftAuthorizationDefinition(TeamRoleDefinition definition) =>
         definition.IsManagement &&
-        definition.Team.ParentTeamId is null &&
         definition.Team.SystemTeamType == SystemTeamType.None;
 
     public void RemoveMemberFromAllTeamsCache(Guid userId)

@@ -31,9 +31,9 @@ public interface IShiftManagementService
     Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId);
 
     /// <summary>
-    /// Gets all department team IDs where the user is a coordinator.
+    /// Gets all team IDs (departments and sub-teams) where the user is a coordinator or manager.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorDepartmentIdsAsync(Guid userId);
+    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId);
 
     // === EventSettings ===
 

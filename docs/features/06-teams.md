@@ -233,11 +233,13 @@ Teams are either **departments** (top-level, no parent) or **sub-teams** (have a
 - Only user-created teams can participate in hierarchy (system teams cannot be parents or children)
 - Only single-level nesting (a sub-team cannot also be a parent)
 - `ParentTeamId` is set during team creation or editing
-- When a team becomes a sub-team, all `IsManagement` flags on its roles are cleared and any Coordinator members are demoted to Member
+- When a department becomes a sub-team, its coordinators are immediately synced out of the Coordinators system team. Management roles and assignments are preserved (coordinators become sub-team managers).
 
-### Coordinator (IsManagement) Rules
-- Only departments can have an `IsManagement` role. Sub-teams cannot.
-- At most one role per department can have `IsManagement = true`
+### Coordinator / Manager (IsManagement) Rules
+- Both departments and sub-teams can have an `IsManagement` role
+- At most one role per team can have `IsManagement = true`
+- Department `IsManagement` role holders are **coordinators** (added to Coordinators system team, full department access)
+- Sub-team `IsManagement` role holders are **managers** (scoped to their sub-team only, not added to Coordinators system team, no Google resource access, no budget access)
 - Assigning a member to an `IsManagement` role sets their `TeamMember.Role = Coordinator`
 - Unassigning from an `IsManagement` role demotes to Member (if no other management assignments remain)
 - `IsManagement` cannot be toggled while members are assigned to the role
@@ -509,7 +511,7 @@ Teams can define named role slots that members fill. Each role has a configurabl
 
 - **Role Definition**: A named role on a team (e.g., "Social Media", "Designer") with a slot count and priority per slot
 - **Role Assignment**: Links a team member to a specific slot in a role definition
-- **IsManagement flag**: One role per department can be marked `IsManagement = true`. Assigning a member to this role sets their `TeamMember.Role = Coordinator`. Sub-teams cannot have IsManagement roles.
+- **IsManagement flag**: One role per team can be marked `IsManagement = true`. Assigning a member to this role sets their `TeamMember.Role = Coordinator`. On departments this grants coordinator access; on sub-teams this grants scoped manager access.
 - **Auto-add**: Assigning a non-member to a role automatically adds them to the team
 - **Roster Summary**: Cross-team view showing all slots with priority/status filtering
 

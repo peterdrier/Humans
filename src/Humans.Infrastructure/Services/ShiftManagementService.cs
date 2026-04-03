@@ -52,8 +52,8 @@ public class ShiftManagementService : IShiftManagementService
 
     public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)
     {
-        var deptIds = await GetCoordinatorDepartmentIdsAsync(userId);
-        if (deptIds.Contains(departmentTeamId))
+        var teamIds = await GetCoordinatorTeamIdsAsync(userId);
+        if (teamIds.Contains(departmentTeamId))
             return true;
 
         // Parent department coordinators can manage child teams
@@ -62,7 +62,7 @@ public class ShiftManagementService : IShiftManagementService
             .Select(t => t.ParentTeamId)
             .FirstOrDefaultAsync();
 
-        return parentTeamId is not null && deptIds.Contains(parentTeamId.Value);
+        return parentTeamId is not null && teamIds.Contains(parentTeamId.Value);
     }
 
     public async Task<bool> CanManageShiftsAsync(Guid userId, Guid departmentTeamId)
@@ -86,17 +86,17 @@ public class ShiftManagementService : IShiftManagementService
         return await IsDeptCoordinatorAsync(userId, departmentTeamId);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetCoordinatorDepartmentIdsAsync(Guid userId)
+    public async Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId)
     {
         var result = await _cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = AuthCacheDuration;
-            return await QueryCoordinatorDepartmentIdsAsync(userId);
+            return await QueryCoordinatorTeamIdsAsync(userId);
         });
         return result ?? [];
     }
 
-    private async Task<IReadOnlyList<Guid>> QueryCoordinatorDepartmentIdsAsync(Guid userId)
+    private async Task<IReadOnlyList<Guid>> QueryCoordinatorTeamIdsAsync(Guid userId)
     {
         // Check via IsManagement role assignment (departments and sub-teams)
         var byRoleAssignment = await _dbContext.TeamRoleAssignments
@@ -214,8 +214,6 @@ public class ShiftManagementService : IShiftManagementService
 
         if (team is null)
             throw new InvalidOperationException("Team not found.");
-        if (team.ParentTeamId is not null)
-            throw new InvalidOperationException("Rotas can only be created on parent teams (departments).");
         if (team.SystemTeamType != SystemTeamType.None)
             throw new InvalidOperationException("Rotas cannot be created on system teams.");
 

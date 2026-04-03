@@ -128,7 +128,7 @@ public class VolController : HumansControllerBase
             if (es is null) return View("NoActiveEvent");
 
             var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
-                               (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(user.Id)).Count > 0;
+                               (await _shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
 
             var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
             var hasSignups = userSignups.Count > 0;

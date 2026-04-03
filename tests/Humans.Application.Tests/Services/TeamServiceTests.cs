@@ -51,6 +51,7 @@ public class TeamServiceTests : IDisposable
             Substitute.For<INotificationService>(),
             _roleAssignmentService,
             shiftManagementService,
+            Substitute.For<ISystemTeamSync>(),
             _clock,
             _cache,
             NullLogger<TeamService>.Instance);
