@@ -81,34 +81,4 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">Audit Log</div>
-    <div class="card-body p-0">
-        @if (Model.AuditLog.Count == 0)
-        {
-            <p class="text-muted text-center py-4 mb-0">No audit entries.</p>
-        }
-        else
-        {
-            <table class="table table-sm mb-0">
-                <thead>
-                    <tr>
-                        <th>When</th>
-                        <th>Action</th>
-                        <th>Description</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var entry in Model.AuditLog)
-                    {
-                        <tr>
-                            <td>@entry.OccurredAt.ToDisplayDate()</td>
-                            <td><code>@entry.Action</code></td>
-                            <td>@entry.Description</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-    </div>
-</div>
+<vc:audit-log user-id="@Model.UserId" title="Audit Log" limit="50" />

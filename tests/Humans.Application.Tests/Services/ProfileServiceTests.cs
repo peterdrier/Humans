@@ -917,7 +917,6 @@ public class ProfileServiceTests : IDisposable
         result.Profile.Should().NotBeNull();
         result.Applications.Should().HaveCount(1);
         result.RoleAssignments.Should().HaveCount(1);
-        result.AuditEntries.Should().HaveCount(1);
     }
 
     [Fact]

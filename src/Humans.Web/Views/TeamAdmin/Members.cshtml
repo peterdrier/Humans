@@ -292,6 +292,12 @@ else
     </nav>
 }
 
+<div class="mt-4">
+    <vc:audit-log entity-type="Team" entity-id="@Model.TeamId"
+                  actions="TeamMemberAdded,TeamMemberRemoved,TeamMemberRoleChanged"
+                  title="Membership History" limit="20" />
+</div>
+
 <div class="mt-3">
     <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-secondary">@Localizer["TeamAdmin_BackToTeam"]</a>
     <a asp-action="Resources" asp-route-slug="@Model.TeamSlug" class="btn btn-outline-info">@Localizer["TeamAdmin_ManageResources"]</a>
