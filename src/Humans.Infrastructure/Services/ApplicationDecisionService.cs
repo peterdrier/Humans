@@ -145,6 +145,26 @@ public class ApplicationDecisionService : IApplicationDecisionService
             _logger.LogError(ex, "Failed to send approval email for {ApplicationId}", application.Id);
         }
 
+        // In-app notification to applicant (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.ApplicationApproved,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"Your {application.MembershipTier} application has been approved",
+                [application.UserId],
+                body: $"Congratulations! Your {application.MembershipTier} application has been approved.",
+                actionUrl: "/Governance/MyApplications",
+                actionLabel: "View application",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ApplicationApproved notification for {ApplicationId}",
+                application.Id);
+        }
+
         return new ApplicationDecisionResult(true);
     }
 
@@ -223,6 +243,26 @@ public class ApplicationDecisionService : IApplicationDecisionService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send rejection email for {ApplicationId}", application.Id);
+        }
+
+        // In-app notification to applicant (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.ApplicationRejected,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"Your {application.MembershipTier} application was not approved",
+                [application.UserId],
+                body: $"Your {application.MembershipTier} application was not approved.",
+                actionUrl: "/Governance/MyApplications",
+                actionLabel: "View application",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ApplicationRejected notification for {ApplicationId}",
+                application.Id);
         }
 
         return new ApplicationDecisionResult(true);

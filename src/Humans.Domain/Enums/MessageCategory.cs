@@ -24,7 +24,12 @@ public enum MessageCategory
     /// <summary>
     /// Campaign emails, promotions. Default: off.
     /// </summary>
-    Marketing = 3
+    Marketing = 3,
+
+    /// <summary>
+    /// Board voting, tier applications, role assignments, and onboarding reviews. Default: on.
+    /// </summary>
+    Governance = 4
 }
 
 public static class MessageCategoryExtensions
@@ -35,6 +40,7 @@ public static class MessageCategoryExtensions
         MessageCategory.EventOperations => "Event Operations",
         MessageCategory.CommunityUpdates => "Community Updates",
         MessageCategory.Marketing => "Marketing",
+        MessageCategory.Governance => "Governance",
         _ => category.ToString(),
     };
 
@@ -44,6 +50,7 @@ public static class MessageCategoryExtensions
         MessageCategory.EventOperations => "Shift changes, schedule updates, and team notifications.",
         MessageCategory.CommunityUpdates => "General community news and facilitated messages.",
         MessageCategory.Marketing => "Campaign emails and promotions.",
+        MessageCategory.Governance => "Board voting, tier applications, role assignments, and onboarding reviews.",
         _ => string.Empty,
     };
 }

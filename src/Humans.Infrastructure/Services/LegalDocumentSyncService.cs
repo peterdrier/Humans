@@ -6,6 +6,7 @@ using NodaTime;
 using Octokit;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
 
@@ -18,6 +19,7 @@ namespace Humans.Infrastructure.Services;
 public class LegalDocumentSyncService : ILegalDocumentSyncService
 {
     private readonly HumansDbContext _dbContext;
+    private readonly INotificationService _notificationService;
     private readonly GitHubClient _gitHubClient;
     private readonly GitHubSettings _settings;
     private readonly IClock _clock;
@@ -31,11 +33,13 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
 
     public LegalDocumentSyncService(
         HumansDbContext dbContext,
+        INotificationService notificationService,
         IOptions<GitHubSettings> settings,
         IClock clock,
         ILogger<LegalDocumentSyncService> logger)
     {
         _dbContext = dbContext;
+        _notificationService = notificationService;
         _settings = settings.Value;
         _clock = clock;
         _logger = logger;
@@ -301,6 +305,36 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
         _logger.LogInformation(
             "Synced document {Name} version {Version} (SHA: {Sha}, languages: {Languages})",
             document.Name, versionNumber, commitSha, languages);
+
+        // If this version requires re-consent, notify all approved members
+        if (newVersion.RequiresReConsent && document.IsRequired)
+        {
+            try
+            {
+                var approvedUserIds = await _dbContext.Set<Profile>()
+                    .Where(p => p.IsApproved && !p.IsSuspended)
+                    .Select(p => p.UserId)
+                    .ToListAsync(cancellationToken);
+
+                if (approvedUserIds.Count > 0)
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.ReConsentRequired,
+                        NotificationClass.Actionable,
+                        NotificationPriority.High,
+                        $"{document.Name} has been updated — re-consent required",
+                        approvedUserIds,
+                        body: "A required legal document has been updated. Please review and sign the new version.",
+                        actionUrl: "/Legal/Consent",
+                        actionLabel: "Review document",
+                        cancellationToken: cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch ReConsentRequired notifications for document {DocumentId}", document.Id);
+            }
+        }
 
         return $"Synced {versionNumber} with {content.Count} language(s): {languages}";
     }

@@ -23,6 +23,7 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IProfileService _profileService;
     private readonly IEmailProvisioningService _emailProvisioningService;
+    private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TeamAdminController> _logger;
@@ -34,6 +35,7 @@ public class TeamAdminController : HumansTeamControllerBase
         IGoogleSyncService googleSyncService,
         IProfileService profileService,
         IEmailProvisioningService emailProvisioningService,
+        INotificationService notificationService,
         UserManager<User> userManager,
         ISystemTeamSync systemTeamSyncJob,
         IMemoryCache cache,
@@ -46,6 +48,7 @@ public class TeamAdminController : HumansTeamControllerBase
         _googleSyncService = googleSyncService;
         _profileService = profileService;
         _emailProvisioningService = emailProvisioningService;
+        _notificationService = notificationService;
         _systemTeamSyncJob = systemTeamSyncJob;
         _cache = cache;
         _logger = logger;
@@ -64,8 +67,26 @@ public class TeamAdminController : HumansTeamControllerBase
 
         try
         {
-            await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
+            var newMember = await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(_localizer["TeamAdmin_RequestApproved"].Value);
+
+            // Notify requester (best-effort)
+            try
+            {
+                await _notificationService.SendAsync(
+                    NotificationSource.TeamJoinRequestDecided,
+                    NotificationClass.Informational,
+                    NotificationPriority.Normal,
+                    $"Your request to join {team.Name} has been approved",
+                    [newMember.UserId],
+                    body: $"Welcome to {team.Name}!",
+                    actionUrl: $"/Teams/{slug}",
+                    actionLabel: "View team");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch TeamJoinRequestDecided notification for request {RequestId}", requestId);
+            }
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
@@ -92,10 +113,36 @@ public class TeamAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Members), new { slug });
         }
 
+        // Look up requester before rejection (service consumes the request)
+        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+        var request = pendingRequests.FirstOrDefault(r => r.Id == requestId);
+        var requesterUserId = request?.UserId;
+
         try
         {
             await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(_localizer["TeamAdmin_RequestRejected"].Value);
+
+            // Notify requester (best-effort)
+            if (requesterUserId.HasValue)
+            {
+                try
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.TeamJoinRequestDecided,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"Your request to join {team.Name} was not approved",
+                        [requesterUserId.Value],
+                        body: $"Your request to join {team.Name} was not approved.",
+                        actionUrl: "/Teams",
+                        actionLabel: "Browse teams");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to dispatch TeamJoinRequestDecided notification for request {RequestId}", requestId);
+                }
+            }
         }
         catch (InvalidOperationException ex)
         {

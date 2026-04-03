@@ -347,6 +347,27 @@ public class OnboardingService : IOnboardingService
             _logger.LogError(ex, "Failed to send signup rejection email to {UserId}", userId);
         }
 
+        // In-app notification to the user (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.ProfileRejected,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                "Your signup has been reviewed",
+                [userId],
+                body: string.IsNullOrWhiteSpace(reason)
+                    ? "Your signup could not be approved at this time."
+                    : $"Your signup could not be approved: {reason}",
+                actionUrl: "/Profile",
+                actionLabel: "View profile",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ProfileRejected notification for user {UserId}", userId);
+        }
+
         _logger.LogInformation("Signup rejected for user {UserId} by {ReviewerId}", userId, reviewerId);
 
         return new OnboardingResult(true);
@@ -388,6 +409,25 @@ public class OnboardingService : IOnboardingService
         _metrics.RecordVolunteerApproved();
         _logger.LogInformation("Admin {AdminId} approved human {HumanId}", adminId, userId);
 
+        // In-app notification to the new volunteer (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.VolunteerApproved,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                "Welcome! You have been approved",
+                [userId],
+                body: "Your profile has been approved. Welcome to the community!",
+                actionUrl: "/Profile",
+                actionLabel: "View profile",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch VolunteerApproved notification for user {UserId}", userId);
+        }
+
         return new OnboardingResult(true);
     }
 
@@ -414,6 +454,27 @@ public class OnboardingService : IOnboardingService
 
         // Remove from profile cache (suspended)
         _cache.UpdateApprovedProfile(userId, null);
+
+        // In-app notification to the suspended user (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.AccessSuspended,
+                NotificationClass.Actionable,
+                NotificationPriority.Critical,
+                "Your access has been suspended",
+                [userId],
+                body: string.IsNullOrWhiteSpace(notes)
+                    ? "Your access has been suspended by an administrator."
+                    : $"Your access has been suspended: {notes}",
+                actionUrl: "/Profile",
+                actionLabel: "View profile",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", userId);
+        }
 
         _metrics.RecordMemberSuspended("admin");
         _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", adminId, userId);
