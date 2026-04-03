@@ -112,7 +112,7 @@ public class NotificationMeterProvider : INotificationMeterProvider
             {
                 Title = "Team join requests pending",
                 Count = counts.TeamJoinRequestsPending,
-                ActionUrl = "/Admin",
+                ActionUrl = "/Teams/Summary",
                 Priority = 5,
             });
         }
