@@ -105,7 +105,7 @@ public class OnboardingReviewController : HumansControllerBase
                 SetError(result.ErrorKey switch
                 {
                     "AlreadyRejected" => _localizer["OnboardingReview_AlreadyRejected"].Value,
-                    _ => _localizer["OnboardingReview_Error"].Value
+                    _ => _localizer["Common_Error"].Value
                 });
                 return RedirectToAction(nameof(Index));
             }
@@ -115,7 +115,7 @@ public class OnboardingReviewController : HumansControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to clear consent check for user {UserId}", userId);
-            SetError(_localizer["OnboardingReview_Error"].Value);
+            SetError(_localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
@@ -136,7 +136,7 @@ public class OnboardingReviewController : HumansControllerBase
 
             if (!result.Success)
             {
-                SetError(_localizer["OnboardingReview_Error"].Value);
+                SetError(_localizer["Common_Error"].Value);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -145,7 +145,7 @@ public class OnboardingReviewController : HumansControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to flag consent check for user {UserId}", userId);
-            SetError(_localizer["OnboardingReview_Error"].Value);
+            SetError(_localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
@@ -166,8 +166,9 @@ public class OnboardingReviewController : HumansControllerBase
 
             if (!result.Success)
             {
-                if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
-                    SetError(_localizer["OnboardingReview_AlreadyRejected"].Value);
+                SetError(string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal)
+                    ? _localizer["OnboardingReview_AlreadyRejected"].Value
+                    : _localizer["Common_Error"].Value);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -176,7 +177,7 @@ public class OnboardingReviewController : HumansControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to reject signup for user {UserId}", userId);
-            SetError(_localizer["OnboardingReview_Error"].Value);
+            SetError(_localizer["Common_Error"].Value);
         }
         return RedirectToAction(nameof(Index));
     }
