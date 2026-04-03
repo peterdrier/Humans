@@ -440,6 +440,16 @@ public class TicketSyncService : ITicketSyncService
     private static bool IsRevenueAttendee(TicketAttendee attendee) =>
         attendee.Status == TicketAttendeeStatus.Valid || attendee.Status == TicketAttendeeStatus.CheckedIn;
 
+    public async Task ResetSyncStateForFullResyncAsync()
+    {
+        var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
+        if (syncState is not null)
+        {
+            syncState.LastSyncAt = null;
+            await _dbContext.SaveChangesAsync();
+        }
+    }
+
     private static Guid? LookupUserId(Dictionary<string, Guid> lookup, string? email) =>
         email is not null && lookup.TryGetValue(EmailNormalization.NormalizeForComparison(email), out var userId)
             ? userId
