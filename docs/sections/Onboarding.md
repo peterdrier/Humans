@@ -2,9 +2,9 @@
 
 ## Concepts
 
-- **Onboarding** is the process a new human goes through to become an active Volunteer: sign up via Google OAuth, complete their profile, consent to all required legal documents, and pass a safety review by a Consent Coordinator.
+- **Onboarding** is the process a new human goes through to become an active Volunteer: sign up via Google OAuth, complete their profile, consent to all required legal documents, and pass a profile review by a Consent Coordinator. The last two steps can happen in any order.
 - The **Membership Gate** restricts most of the application to active Volunteers. Humans still onboarding are limited to their profile, consent, feedback, legal documents, camps (public), and the home dashboard. All admin and coordinator roles bypass this gate entirely.
-- The **Consent Check** is the final gate before activation. A Consent Coordinator reviews and either clears (auto-approves the human as a Volunteer) or flags the check (blocks activation until Board or Admin review).
+- The **Profile Review** (consent check) and **Legal Document Signing** are independent, parallel tracks. A Consent Coordinator can clear the profile review before or after legal documents are signed. Admission to the Volunteers team only happens when both are complete.
 
 ## Actors & Roles
 
@@ -18,7 +18,7 @@
 
 ## Invariants
 
-- Onboarding steps: (1) complete profile, (2) consent to all required global legal documents, (3) consent check review by a Consent Coordinator, (4) auto-approval as Volunteer.
+- Onboarding steps: (1) complete profile, (2a) consent to all required global legal documents, (2b) profile review by a Consent Coordinator — these two can happen in any order, (3) auto-approval as Volunteer when both 2a and 2b are complete.
 - Volunteer onboarding is never blocked by tier applications — they are separate, parallel paths.
 - The ActiveMember status is derived from membership in the Volunteers system team.
 - All admin and coordinator roles bypass the membership gate entirely — they can access the full application regardless of membership status.
@@ -33,7 +33,8 @@
 ## Triggers
 
 - When a human completes their profile and signs all required documents: their consent check status becomes Pending.
-- When a consent check is cleared: the human becomes an active Volunteer, is added to the Volunteers system team, and gains access to the full application. A welcome email is sent.
+- When a profile review is cleared: the profile is approved. If all legal documents are also signed, the human is added to the Volunteers system team and a welcome email is sent. If documents are still pending, admission happens automatically when the last document is signed.
+- When a legal document is signed: the system checks if the profile is also approved. If both conditions are met, the human is added to the Volunteers team.
 - When a consent check is flagged: onboarding is blocked. Board or Admin must review.
 - When a signup is rejected: the rejection reason and timestamp are recorded on the profile. The human is notified.
 

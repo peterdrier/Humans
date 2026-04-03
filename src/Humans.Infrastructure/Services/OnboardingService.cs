@@ -51,7 +51,8 @@ public class OnboardingService : IOnboardingService
         _logger = logger;
     }
 
-    public async Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds)>
+    public async Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds,
+        Dictionary<Guid, (int Signed, int Required)> ConsentProgress)>
         GetReviewQueueAsync(CancellationToken ct = default)
     {
         var reviewableProfiles = await _dbContext.Profiles
@@ -67,12 +68,19 @@ public class OnboardingService : IOnboardingService
             .Select(a => a.UserId)
             .ToHashSetAsync(ct);
 
+        var consentProgress = new Dictionary<Guid, (int Signed, int Required)>();
+        foreach (var userId in allUserIds)
+        {
+            var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+            consentProgress[userId] = (snapshot.RequiredConsentCount - snapshot.PendingConsentCount, snapshot.RequiredConsentCount);
+        }
+
         var flagged = reviewableProfiles
             .Where(p => p.ConsentCheckStatus == ConsentCheckStatus.Flagged)
             .ToList();
         var pending = reviewableProfiles.Except(flagged).ToList();
 
-        return (pending, flagged, pendingAppUserIds);
+        return (pending, flagged, pendingAppUserIds, consentProgress);
     }
 
     public async Task<(Profile? Profile, int ConsentCount, int RequiredConsentCount,
@@ -159,10 +167,6 @@ public class OnboardingService : IOnboardingService
         if (profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
 
-        var hasAllRequiredConsents = await _membershipCalculator.HasAllRequiredConsentsAsync(userId, ct);
-        if (!hasAllRequiredConsents)
-            return new OnboardingResult(false, "ConsentsRequired");
-
         var now = _clock.GetCurrentInstant();
 
         profile.ConsentCheckStatus = ConsentCheckStatus.Cleared;
@@ -185,7 +189,7 @@ public class OnboardingService : IOnboardingService
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
         _cache.UpdateApprovedProfile(userId, CachedProfile.Create(profile, profile.User));
 
-        // Sync Volunteers team membership (adds to team + sends welcome email)
+        // Sync Volunteers team membership (adds to team if consents are also complete)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
 
         // If user already has approved tier applications, sync those teams too.

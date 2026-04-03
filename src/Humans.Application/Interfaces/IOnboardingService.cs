@@ -9,7 +9,8 @@ public record OnboardingResult(bool Success, string? ErrorKey = null);
 public interface IOnboardingService
 {
     // --- Queries ---
-    Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds)>
+    Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds,
+          Dictionary<Guid, (int Signed, int Required)> ConsentProgress)>
         GetReviewQueueAsync(CancellationToken ct = default);
     Task<(Profile? Profile, int ConsentCount, int RequiredConsentCount,
           MemberApplication? PendingApplication)>

@@ -56,6 +56,37 @@
     </div>
 
     <div class="col-md-4">
+        @if (Model.RequiredConsentCount > 0)
+        {
+            var allSigned = Model.ConsentCount >= Model.RequiredConsentCount;
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-file-signature me-1"></i> @Localizer["OnboardingReview_LegalDocuments"]
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span>@Model.ConsentCount / @Model.RequiredConsentCount @Localizer["OnboardingReview_Signed"]</span>
+                        <span class="badge @(allSigned ? "bg-success" : "bg-warning")">
+                            @(allSigned ? Localizer["OnboardingReview_DocsComplete"] : Localizer["OnboardingReview_DocsPending"])
+                        </span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar @(allSigned ? "bg-success" : "bg-warning")"
+                             role="progressbar"
+                             style="width: @(Model.RequiredConsentCount > 0 ? (int)(100.0 * Model.ConsentCount / Model.RequiredConsentCount) : 0)%"
+                             aria-valuenow="@Model.ConsentCount"
+                             aria-valuemin="0"
+                             aria-valuemax="@Model.RequiredConsentCount">
+                        </div>
+                    </div>
+                    @if (!allSigned)
+                    {
+                        <div class="form-text mt-2">@Localizer["OnboardingReview_DocsNote"]</div>
+                    }
+                </div>
+            </div>
+        }
+
         <div class="card mb-4">
             <div class="card-header">@Localizer["OnboardingReview_Actions"]</div>
             <div class="card-body">

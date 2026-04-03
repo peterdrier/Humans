@@ -45,13 +45,12 @@
                         {
                             <span class="badge bg-info me-1">@item.MembershipTier</span>
                         }
-                        @if (item.ConsentCheckStatus == ConsentCheckStatus.Pending)
+                        @if (item.RequiredConsentCount > 0)
                         {
-                            <span class="badge bg-warning">@Localizer["OnboardingReview_Pending"]</span>
-                        }
-                        else
-                        {
-                            <span class="badge bg-secondary">@Localizer["OnboardingReview_ConsentsNotStarted"]</span>
+                            var allSigned = item.ConsentCount >= item.RequiredConsentCount;
+                            <span class="badge @(allSigned ? "bg-success" : "bg-secondary")">
+                                <i class="fa-solid fa-file-signature me-1"></i>@item.ConsentCount/@item.RequiredConsentCount
+                            </span>
                         }
                         <br />
                                     <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
@@ -91,6 +90,13 @@
                             <span class="badge bg-info me-1">@item.MembershipTier</span>
                         }
                         <span class="badge bg-danger">@Localizer["OnboardingReview_FlaggedBadge"]</span>
+                        @if (item.RequiredConsentCount > 0)
+                        {
+                            var allSigned = item.ConsentCount >= item.RequiredConsentCount;
+                            <span class="badge @(allSigned ? "bg-success" : "bg-secondary")">
+                                <i class="fa-solid fa-file-signature me-1"></i>@item.ConsentCount/@item.RequiredConsentCount
+                            </span>
+                        }
                         <br />
                                     <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
                     </div>
