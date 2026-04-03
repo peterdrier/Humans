@@ -29,7 +29,7 @@ jobs:
               echo "Deploy confirmed after ~$((i * 5))s"
               exit 0
             fi
-            echo "Attempt $i: deployed=$DEPLOYED, expected=$EXPECTED_COMMIT"
+            echo "Attempt $i: deployed=$DEPLOYED, expected=$SHORT_SHA"
             sleep 5
           done
 
