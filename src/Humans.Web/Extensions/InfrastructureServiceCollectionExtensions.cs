@@ -88,6 +88,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITeamService, TeamService>();
         services.AddScoped<ITeamPageService, TeamPageService>();
         services.AddScoped<ICampService, CampService>();
+        services.AddScoped<ICampContactService, CampContactService>();
         services.AddScoped<ICommunicationPreferenceService, CommunicationPreferenceService>();
         services.AddScoped<ICampaignService, CampaignService>();
         services.AddScoped<IContactFieldService, ContactFieldService>();

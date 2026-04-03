@@ -12,6 +12,12 @@ public interface ITicketSyncService
     /// update campaign grant redemption status.
     /// </summary>
     Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Reset the sync state to force a full re-sync on the next sync cycle.
+    /// Clears LastSyncAt so all orders are re-fetched.
+    /// </summary>
+    Task ResetSyncStateForFullResyncAsync();
 }
 
 /// <summary>Summary of a sync operation.</summary>

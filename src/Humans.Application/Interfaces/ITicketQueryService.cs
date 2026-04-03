@@ -54,4 +54,38 @@ public interface ITicketQueryService
     /// with redemption status. Optionally filters codes by search term.
     /// </summary>
     Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search);
+
+    /// <summary>
+    /// Get a paged list of orders with filtering and sorting.
+    /// </summary>
+    Task<OrdersPageResult> GetOrdersPageAsync(
+        string? search, string sortBy, bool sortDesc,
+        int page, int pageSize,
+        string? filterPaymentStatus, string? filterTicketType, bool? filterMatched);
+
+    /// <summary>
+    /// Get a paged list of attendees with filtering and sorting.
+    /// </summary>
+    Task<AttendeesPageResult> GetAttendeesPageAsync(
+        string? search, string sortBy, bool sortDesc,
+        int page, int pageSize,
+        string? filterTicketType, string? filterStatus, bool? filterMatched, string? filterOrderId);
+
+    /// <summary>
+    /// Get data for the "who hasn't bought" page: all active humans with ticket match status,
+    /// filtered and paged.
+    /// </summary>
+    Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
+        string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
+        int page, int pageSize);
+
+    /// <summary>
+    /// Get all attendees for CSV export, ordered by name.
+    /// </summary>
+    Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync();
+
+    /// <summary>
+    /// Get all orders for CSV export, ordered by purchase date descending.
+    /// </summary>
+    Task<List<OrderExportRow>> GetOrderExportDataAsync();
 }
