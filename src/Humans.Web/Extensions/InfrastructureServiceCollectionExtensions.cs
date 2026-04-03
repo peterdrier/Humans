@@ -174,6 +174,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<TermRenewalReminderJob>();
         services.AddScoped<CleanupNotificationsJob>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IGoogleAdminService, GoogleAdminService>();
 
         // Shift management services
         services.AddScoped<IShiftManagementService, ShiftManagementService>();

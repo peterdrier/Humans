@@ -1,16 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
-using Humans.Web.Extensions;
-using Humans.Web.Helpers;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -22,33 +18,25 @@ public class GoogleController : HumansControllerBase
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly ITeamResourceService _teamResourceService;
-    private readonly IGoogleWorkspaceUserService _workspaceUserService;
-    private readonly IUserEmailService _userEmailService;
     private readonly IEmailProvisioningService _emailProvisioningService;
-    private readonly HumansDbContext _dbContext;
+    private readonly IGoogleAdminService _googleAdminService;
     private readonly ILogger<GoogleController> _logger;
-
-    private const string NobodiesTeamDomain = "nobodies.team";
 
     public GoogleController(
         UserManager<User> userManager,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
         ITeamResourceService teamResourceService,
-        IGoogleWorkspaceUserService workspaceUserService,
-        IUserEmailService userEmailService,
         IEmailProvisioningService emailProvisioningService,
-        HumansDbContext dbContext,
+        IGoogleAdminService googleAdminService,
         ILogger<GoogleController> logger)
         : base(userManager)
     {
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
         _teamResourceService = teamResourceService;
-        _workspaceUserService = workspaceUserService;
-        _userEmailService = userEmailService;
         _emailProvisioningService = emailProvisioningService;
-        _dbContext = dbContext;
+        _googleAdminService = googleAdminService;
         _logger = logger;
     }
 
@@ -247,7 +235,8 @@ public class GoogleController : HumansControllerBase
         try
         {
             var result = await _googleSyncService.GetAllDomainGroupsAsync();
-            ViewBag.Teams = await _dbContext.Teams.Where(t => t.IsActive).OrderBy(t => t.Name).ToListAsync();
+            var teams = await _googleAdminService.GetActiveTeamsAsync();
+            ViewBag.Teams = teams;
             return View(result);
         }
         catch (Exception ex)
@@ -269,37 +258,14 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(AllGroups));
         }
 
-        try
-        {
-            var team = await _dbContext.Teams.FindAsync(teamId);
-            if (team is null) return NotFound();
+        var result = await _googleAdminService.LinkGroupToTeamAsync(teamId, groupPrefix);
 
-            var normalizedPrefix = groupPrefix.Trim().ToLowerInvariant();
-            var previousPrefix = team.GoogleGroupPrefix;
-            team.GoogleGroupPrefix = normalizedPrefix;
-
-            var linkResult = await _googleSyncService.EnsureTeamGroupAsync(teamId);
-            if (linkResult.RequiresConfirmation)
-            {
-                await _dbContext.SaveChangesAsync();
-                SetInfo($"Linked group for team \"{team.Name}\". Note: {linkResult.WarningMessage}");
-            }
-            else if (linkResult.ErrorMessage is not null)
-            {
-                team.GoogleGroupPrefix = previousPrefix;
-                SetError($"Could not link group: {linkResult.ErrorMessage}");
-            }
-            else
-            {
-                await _dbContext.SaveChangesAsync();
-                SetSuccess($"Successfully linked {normalizedPrefix}@nobodies.team to team \"{team.Name}\".");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to link group {GroupPrefix} to team {TeamId}", groupPrefix, teamId);
-            SetError($"Failed to link group: {ex.Message}");
-        }
+        if (result.ErrorMessage is not null)
+            SetError(result.ErrorMessage);
+        else if (result.InfoMessage is not null)
+            SetInfo(result.InfoMessage);
+        else if (result.Message is not null)
+            SetSuccess(result.Message);
 
         return RedirectToAction(nameof(AllGroups));
     }
@@ -358,60 +324,13 @@ public class GoogleController : HumansControllerBase
         var currentUser = await GetCurrentUserAsync();
         if (currentUser is null) return Unauthorized();
 
-        var updated = 0;
-        var errors = new List<string>();
+        var result = await _googleAdminService.ApplyEmailBackfillAsync(
+            selectedUserIds, corrections, currentUser.Id);
 
-        foreach (var userId in selectedUserIds)
-        {
-            if (!corrections.TryGetValue(userId.ToString(), out var googleEmail) || string.IsNullOrEmpty(googleEmail))
-                continue;
-
-            try
-            {
-                var user = await _dbContext.Users
-                    .Include(u => u.UserEmails)
-                    .FirstOrDefaultAsync(u => u.Id == userId);
-
-                if (user is null)
-                {
-                    errors.Add($"User {userId} not found.");
-                    continue;
-                }
-
-                var oldEmail = user.Email;
-
-                user.Email = googleEmail;
-                user.UserName = googleEmail;
-                user.NormalizedEmail = googleEmail.ToUpperInvariant();
-                user.NormalizedUserName = googleEmail.ToUpperInvariant();
-
-                // Update OAuth UserEmail record if it exists
-                var oauthEmail = user.UserEmails.FirstOrDefault(e => e.IsOAuth);
-                if (oauthEmail is not null)
-                {
-                    oauthEmail.Email = googleEmail;
-                }
-
-                _logger.LogInformation(
-                    "Admin {AdminId} applying email backfill for user {UserId}: '{OldEmail}' -> '{NewEmail}'",
-                    currentUser.Id, userId, oldEmail, googleEmail);
-
-                updated++;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to update email for user {UserId}", userId);
-                errors.Add($"Error updating user {userId}: {ex.Message}");
-            }
-        }
-
-        if (updated > 0)
-            await _dbContext.SaveChangesAsync();
-
-        if (errors.Count > 0)
-            SetError($"Applied {updated} correction(s) with {errors.Count} error(s): {string.Join("; ", errors)}");
+        if (result.Errors.Count > 0)
+            SetError($"Applied {result.UpdatedCount} correction(s) with {result.Errors.Count} error(s): {string.Join("; ", result.Errors)}");
         else
-            SetSuccess($"Applied {updated} email correction(s) successfully.");
+            SetSuccess($"Applied {result.UpdatedCount} email correction(s) successfully.");
 
         return RedirectToAction(nameof(Index));
     }
@@ -563,69 +482,36 @@ public class GoogleController : HumansControllerBase
     [HttpGet("Accounts")]
     public async Task<IActionResult> Accounts()
     {
-        try
+        var result = await _googleAdminService.GetWorkspaceAccountListAsync();
+
+        if (result.ErrorMessage is not null)
         {
-            var accounts = await _workspaceUserService.ListAccountsAsync();
-
-            // Load all user emails to match accounts to humans
-            var allUserEmails = await _dbContext.UserEmails
-                .AsNoTracking()
-                .Include(ue => ue.User)
-                .ToListAsync();
-
-            var accountViewModels = new List<WorkspaceEmailAccountViewModel>();
-            var notPrimaryCount = 0;
-
-            foreach (var account in accounts)
-            {
-                var matchedEmail = allUserEmails.FirstOrDefault(ue =>
-                    string.Equals(ue.Email, account.PrimaryEmail, StringComparison.OrdinalIgnoreCase));
-
-                var isUsedAsPrimary = matchedEmail is { IsNotificationTarget: true };
-
-                // Count accounts that exist in the system but are not used as primary
-                if (matchedEmail is not null && !isUsedAsPrimary)
-                {
-                    notPrimaryCount++;
-                }
-
-                accountViewModels.Add(new WorkspaceEmailAccountViewModel
-                {
-                    PrimaryEmail = account.PrimaryEmail,
-                    FirstName = account.FirstName,
-                    LastName = account.LastName,
-                    IsSuspended = account.IsSuspended,
-                    CreationTime = account.CreationTime,
-                    LastLoginTime = account.LastLoginTime,
-                    MatchedUserId = matchedEmail?.UserId,
-                    MatchedDisplayName = matchedEmail?.User?.DisplayName,
-                    IsUsedAsPrimary = isUsedAsPrimary
-                });
-            }
-
-            var linkedCount = accountViewModels.Count(a => a.MatchedUserId.HasValue);
-
-            var model = new WorkspaceEmailListViewModel
-            {
-                Accounts = accountViewModels
-                    .OrderBy(a => a.PrimaryEmail, StringComparer.OrdinalIgnoreCase)
-                    .ToList(),
-                TotalAccounts = accountViewModels.Count,
-                ActiveAccounts = accountViewModels.Count(a => !a.IsSuspended),
-                SuspendedAccounts = accountViewModels.Count(a => a.IsSuspended),
-                LinkedAccounts = linkedCount,
-                UnlinkedAccounts = accountViewModels.Count - linkedCount,
-                NotPrimaryCount = notPrimaryCount
-            };
-
-            return View(model);
+            SetError(result.ErrorMessage);
         }
-        catch (Exception ex)
+
+        var model = new WorkspaceEmailListViewModel
         {
-            _logger.LogError(ex, "Failed to load @nobodies.team accounts");
-            SetError("Failed to load @nobodies.team accounts. Check the logs for details.");
-            return View(new WorkspaceEmailListViewModel());
-        }
+            Accounts = result.Accounts.Select(a => new WorkspaceEmailAccountViewModel
+            {
+                PrimaryEmail = a.PrimaryEmail,
+                FirstName = a.FirstName,
+                LastName = a.LastName,
+                IsSuspended = a.IsSuspended,
+                CreationTime = a.CreationTime,
+                LastLoginTime = a.LastLoginTime,
+                MatchedUserId = a.MatchedUserId,
+                MatchedDisplayName = a.MatchedDisplayName,
+                IsUsedAsPrimary = a.IsUsedAsPrimary
+            }).ToList(),
+            TotalAccounts = result.TotalAccounts,
+            ActiveAccounts = result.ActiveAccounts,
+            SuspendedAccounts = result.SuspendedAccounts,
+            LinkedAccounts = result.LinkedAccounts,
+            UnlinkedAccounts = result.UnlinkedAccounts,
+            NotPrimaryCount = result.NotPrimaryCount
+        };
+
+        return View(model);
     }
 
     [HttpPost("Accounts/Provision")]
@@ -640,45 +526,19 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(Accounts));
         }
 
-        var emailPrefix = model.EmailPrefix.Trim().ToLowerInvariant();
-        var fullEmail = $"{emailPrefix}@{NobodiesTeamDomain}";
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
 
-        // Check if account already exists
-        var existing = await _workspaceUserService.GetAccountAsync(fullEmail);
-        if (existing is not null)
-        {
-            SetError($"Account {fullEmail} already exists.");
-            return RedirectToAction(nameof(Accounts));
-        }
+        var result = await _googleAdminService.ProvisionStandaloneAccountAsync(
+            model.EmailPrefix, model.FirstName, model.LastName,
+            currentUser.Id, currentUser.DisplayName);
 
-        try
-        {
-            // Generate a temporary password
-            var tempPassword = PasswordGenerator.GenerateTemporary();
+        if (result.Success)
+            SetSuccess(result.Message!);
+        else
+            SetError(result.ErrorMessage!);
 
-            await _workspaceUserService.ProvisionAccountAsync(
-                fullEmail, model.FirstName.Trim(), model.LastName.Trim(), tempPassword);
-
-            var currentUser = await GetCurrentUserAsync();
-            if (currentUser is not null)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.WorkspaceAccountProvisioned,
-                    "WorkspaceAccount", Guid.Empty,
-                    $"Provisioned @{NobodiesTeamDomain} account: {fullEmail}",
-                    currentUser.Id, currentUser.DisplayName);
-                await _dbContext.SaveChangesAsync();
-            }
-
-            SetSuccess($"Account {fullEmail} provisioned. Temporary password: {tempPassword}");
-            return RedirectToAction(nameof(Accounts));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to provision @nobodies.team account: {Email}", fullEmail);
-            SetError($"Failed to provision {fullEmail}. Check logs for details.");
-            return RedirectToAction(nameof(Accounts));
-        }
+        return RedirectToAction(nameof(Accounts));
     }
 
     [HttpPost("Accounts/Suspend")]
@@ -690,28 +550,16 @@ public class GoogleController : HumansControllerBase
             return BadRequest();
         }
 
-        try
-        {
-            await _workspaceUserService.SuspendAccountAsync(email);
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
 
-            var currentUser = await GetCurrentUserAsync();
-            if (currentUser is not null)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.WorkspaceAccountSuspended,
-                    "WorkspaceAccount", Guid.Empty,
-                    $"Suspended @{NobodiesTeamDomain} account: {email}",
-                    currentUser.Id, currentUser.DisplayName);
-                await _dbContext.SaveChangesAsync();
-            }
+        var result = await _googleAdminService.SuspendAccountAsync(
+            email, currentUser.Id, currentUser.DisplayName);
 
-            SetSuccess($"Account {email} suspended.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to suspend account: {Email}", email);
-            SetError($"Failed to suspend {email}.");
-        }
+        if (result.Success)
+            SetSuccess(result.Message!);
+        else
+            SetError(result.ErrorMessage!);
 
         return RedirectToAction(nameof(Accounts));
     }
@@ -725,28 +573,16 @@ public class GoogleController : HumansControllerBase
             return BadRequest();
         }
 
-        try
-        {
-            await _workspaceUserService.ReactivateAccountAsync(email);
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
 
-            var currentUser = await GetCurrentUserAsync();
-            if (currentUser is not null)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.WorkspaceAccountReactivated,
-                    "WorkspaceAccount", Guid.Empty,
-                    $"Reactivated @{NobodiesTeamDomain} account: {email}",
-                    currentUser.Id, currentUser.DisplayName);
-                await _dbContext.SaveChangesAsync();
-            }
+        var result = await _googleAdminService.ReactivateAccountAsync(
+            email, currentUser.Id, currentUser.DisplayName);
 
-            SetSuccess($"Account {email} reactivated.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to reactivate account: {Email}", email);
-            SetError($"Failed to reactivate {email}.");
-        }
+        if (result.Success)
+            SetSuccess(result.Message!);
+        else
+            SetError(result.ErrorMessage!);
 
         return RedirectToAction(nameof(Accounts));
     }
@@ -760,29 +596,16 @@ public class GoogleController : HumansControllerBase
             return BadRequest();
         }
 
-        try
-        {
-            var newPassword = PasswordGenerator.GenerateTemporary();
-            await _workspaceUserService.ResetPasswordAsync(email, newPassword);
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
 
-            var currentUser = await GetCurrentUserAsync();
-            if (currentUser is not null)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.WorkspaceAccountPasswordReset,
-                    "WorkspaceAccount", Guid.Empty,
-                    $"Reset password for @{NobodiesTeamDomain} account: {email}",
-                    currentUser.Id, currentUser.DisplayName);
-                await _dbContext.SaveChangesAsync();
-            }
+        var result = await _googleAdminService.ResetPasswordAsync(
+            email, currentUser.Id, currentUser.DisplayName);
 
-            SetSuccess($"Password reset for {email}. New temporary password: {newPassword}");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to reset password for: {Email}", email);
-            SetError($"Failed to reset password for {email}.");
-        }
+        if (result.Success)
+            SetSuccess(result.Message!);
+        else
+            SetError(result.ErrorMessage!);
 
         return RedirectToAction(nameof(Accounts));
     }
@@ -797,50 +620,16 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(Accounts));
         }
 
-        try
-        {
-            var user = await _dbContext.Users.FindAsync(userId);
-            if (user is null)
-            {
-                SetError("Human not found.");
-                return RedirectToAction(nameof(Accounts));
-            }
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
 
-            // Check not already linked
-            var alreadyLinked = await _dbContext.UserEmails
-                .AnyAsync(ue => EF.Functions.ILike(ue.Email, email));
-            if (alreadyLinked)
-            {
-                SetError($"{email} is already linked to a human.");
-                return RedirectToAction(nameof(Accounts));
-            }
+        var result = await _googleAdminService.LinkAccountAsync(
+            email, userId, currentUser.Id, currentUser.DisplayName);
 
-            // Add as verified email (also sets notification target for @nobodies.team)
-            await _userEmailService.AddVerifiedEmailAsync(userId, email);
-
-            // Auto-set as Google service email
-            user.GoogleEmail = email;
-            await _dbContext.SaveChangesAsync();
-
-            // Audit
-            var currentUser = await GetCurrentUserAsync();
-            if (currentUser is not null)
-            {
-                await _auditLogService.LogAsync(
-                    AuditAction.WorkspaceAccountLinked,
-                    "WorkspaceAccount", userId,
-                    $"Linked @{NobodiesTeamDomain} account {email} to {user.DisplayName}",
-                    currentUser.Id, currentUser.DisplayName);
-                await _dbContext.SaveChangesAsync();
-            }
-
-            SetSuccess($"Linked {email} to {user.DisplayName}.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to link {Email} to user {UserId}", email, userId);
-            SetError($"Failed to link {email}.");
-        }
+        if (result.Success)
+            SetSuccess(result.Message!);
+        else
+            SetError(result.ErrorMessage!);
 
         return RedirectToAction(nameof(Accounts));
     }
