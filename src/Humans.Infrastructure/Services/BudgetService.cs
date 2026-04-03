@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -948,5 +949,126 @@ public class BudgetService : IBudgetService
         };
 
         _dbContext.BudgetAuditLogs.Add(entry);
+    }
+
+    public BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups)
+    {
+        var budgetLineItems = groups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .Where(li => !li.IsCashflowOnly)
+            .ToList();
+
+        // Compute VAT projections
+        var vatProjections = budgetLineItems
+            .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
+            .Select(li => new
+            {
+                VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
+                IsExpense = li.Amount > 0 // Income generates VAT liability (expense)
+            })
+            .ToList();
+
+        var income = budgetLineItems.Where(li => li.Amount > 0).Sum(li => li.Amount);
+        var expenses = budgetLineItems.Where(li => li.Amount < 0).Sum(li => li.Amount);
+        var vatExpenses = vatProjections.Where(v => v.IsExpense).Sum(v => v.VatAmount);
+        var vatCredits = vatProjections.Where(v => !v.IsExpense).Sum(v => v.VatAmount);
+
+        var totalIncome = income + vatCredits;
+        var totalExpenses = expenses - vatExpenses;
+        var netBalance = totalIncome + totalExpenses;
+
+        // Build income slices
+        var incomeCategories = groups
+            .SelectMany(g => g.Categories)
+            .Select(c => new { c.Name, Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount) })
+            .Where(c => c.Total > 0)
+            .OrderByDescending(c => c.Total)
+            .ToList();
+
+        if (vatCredits > 0)
+            incomeCategories.Add(new { Name = "VAT Credits", Total = vatCredits });
+
+        var totalIncomeForSlices = incomeCategories.Sum(c => c.Total);
+        var incomeSlices = incomeCategories
+            .Select(c => new BudgetSliceResult
+            {
+                Name = c.Name,
+                Amount = c.Total,
+                Percentage = totalIncomeForSlices > 0 ? c.Total / totalIncomeForSlices * 100 : 0
+            })
+            .ToList();
+
+        // Build expense slices
+        var expenseCategories = groups
+            .SelectMany(g => g.Categories)
+            .Select(c => new { c.Name, Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)) })
+            .Where(c => c.Total > 0)
+            .OrderByDescending(c => c.Total)
+            .ToList();
+
+        if (vatExpenses > 0)
+            expenseCategories.Add(new { Name = "VAT Liability", Total = vatExpenses });
+
+        var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
+        if (profit > 0)
+        {
+            expenseCategories.Add(new { Name = "Cash Reserves (90%)", Total = profit * 0.9m });
+            expenseCategories.Add(new { Name = "Spanish Taxes (10%)", Total = profit * 0.1m });
+        }
+
+        var totalExpenseForSlices = expenseCategories.Sum(c => c.Total);
+        var expenseSlices = expenseCategories
+            .Select(c => new BudgetSliceResult
+            {
+                Name = c.Name,
+                Amount = c.Total,
+                Percentage = totalExpenseForSlices > 0 ? c.Total / totalExpenseForSlices * 100 : 0
+            })
+            .ToList();
+
+        return new BudgetSummaryResult
+        {
+            TotalIncome = totalIncome,
+            TotalExpenses = totalExpenses,
+            NetBalance = netBalance,
+            IncomeSlices = incomeSlices,
+            ExpenseSlices = expenseSlices
+        };
+    }
+
+    public IReadOnlyList<VatCashFlowEntry> ComputeVatCashFlowEntries(IEnumerable<BudgetGroup> groups)
+    {
+        return groups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
+            .Select(li =>
+            {
+                var vatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate);
+                // Income → VAT liability (expense); expense → VAT credit (income)
+                var cashFlowAmount = li.Amount > 0 ? -vatAmount : vatAmount;
+                var categoryName = li.Amount > 0 ? "VAT Liability" : "VAT Credits";
+                return new VatCashFlowEntry
+                {
+                    CategoryName = categoryName,
+                    Amount = cashFlowAmount,
+                    SettlementDate = ComputeVatSettlementDate(li.ExpectedDate!.Value)
+                };
+            })
+            .ToList();
+    }
+
+    public LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
+    {
+        var quarterEnd = expectedDate.Month switch
+        {
+            >= 1 and <= 3 => new LocalDate(expectedDate.Year, 3, 31),
+            >= 4 and <= 6 => new LocalDate(expectedDate.Year, 6, 30),
+            >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
+            _ => new LocalDate(expectedDate.Year, 12, 31)
+        };
+
+        return quarterEnd.PlusDays(45);
     }
 }

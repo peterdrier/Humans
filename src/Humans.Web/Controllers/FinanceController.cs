@@ -3,6 +3,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -46,8 +47,9 @@ public class FinanceController : HumansControllerBase
                 return View("NoActiveYear");
             }
 
-            ViewBag.AllYears = await _budgetService.GetAllYearsAsync();
-            return View("YearDetail", activeYear);
+            var allYears = await _budgetService.GetAllYearsAsync();
+            var model = BuildFinanceOverview(activeYear, allYears);
+            return View("YearDetail", model);
         }
         catch (Exception ex)
         {
@@ -65,8 +67,9 @@ public class FinanceController : HumansControllerBase
             var year = await _budgetService.GetYearByIdAsync(id);
             if (year is null) return NotFound();
 
-            ViewBag.AllYears = await _budgetService.GetAllYearsAsync();
-            return View(year);
+            var allYears = await _budgetService.GetAllYearsAsync();
+            var model = BuildFinanceOverview(year, allYears);
+            return View(model);
         }
         catch (Exception ex)
         {
@@ -120,6 +123,29 @@ public class FinanceController : HumansControllerBase
         {
             _logger.LogError(ex, "Error loading budget audit log");
             SetError("Failed to load audit log.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpGet("CashFlow")]
+    public async Task<IActionResult> CashFlow(string period = "monthly")
+    {
+        try
+        {
+            var activeYear = await _budgetService.GetActiveYearAsync();
+            if (activeYear is null)
+            {
+                SetInfo("No active budget year.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var model = BuildCashFlowModel(activeYear, period);
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading cash flow view");
+            SetError("Failed to load cash flow data.");
             return RedirectToAction(nameof(Index));
         }
     }
@@ -528,4 +554,178 @@ public class FinanceController : HumansControllerBase
 
         return RedirectToAction(nameof(YearDetail), new { id = yearId });
     }
+
+    /// <summary>
+    /// Builds the FinanceOverviewViewModel using the shared summary computation
+    /// so FinanceAdmin sees everything on one page without navigating to /Budget/Summary.
+    /// </summary>
+    private FinanceOverviewViewModel BuildFinanceOverview(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
+    {
+        // All groups (including restricted) for FinanceAdmin summary
+        var summary = _budgetService.ComputeBudgetSummary(year.Groups);
+
+        return new FinanceOverviewViewModel
+        {
+            Year = year,
+            AllYears = allYears,
+            TotalIncome = summary.TotalIncome,
+            TotalExpenses = summary.TotalExpenses,
+            NetBalance = summary.NetBalance,
+            IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+            ExpenseSlices = summary.ExpenseSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList()
+        };
+    }
+
+    /// <summary>
+    /// Builds the CashFlowViewModel by aggregating line items by time period.
+    /// Includes IsCashflowOnly items (relevant to actual cash movement).
+    /// Generates synthetic VAT settlement entries at their settlement dates.
+    /// Restricted groups are included (FinanceAdmin-only page).
+    /// </summary>
+    private CashFlowViewModel BuildCashFlowModel(BudgetYear year, string period)
+    {
+        // Normalize period parameter
+        if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(period, "monthly", StringComparison.OrdinalIgnoreCase))
+        {
+            period = "monthly";
+        }
+
+        // Collect real line items as cash flow entries
+        var allEntries = year.Groups
+            .SelectMany(g => g.Categories.Select(c => new { GroupName = g.Name, CategoryName = c.Name, Category = c }))
+            .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowEntry(
+                ctx.GroupName, ctx.CategoryName, li.Amount, li.ExpectedDate)))
+            .ToList();
+
+        // Add synthetic VAT settlement entries from the service
+        var vatEntries = _budgetService.ComputeVatCashFlowEntries(year.Groups);
+        allEntries.AddRange(vatEntries.Select(v => new CashFlowEntry("VAT", v.CategoryName, v.Amount, v.SettlementDate)));
+
+        // Split into scheduled (has date) and unscheduled
+        var scheduled = allEntries.Where(x => x.Date.HasValue).ToList();
+        var unscheduled = allEntries.Where(x => !x.Date.HasValue).ToList();
+
+        // Group scheduled items into time periods
+        var periodRows = new List<CashFlowPeriodRow>();
+
+        if (scheduled.Count > 0)
+        {
+            var isWeekly = string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase);
+            var grouped = isWeekly ? GroupByWeek(scheduled) : GroupByMonth(scheduled);
+
+            decimal runningNet = 0;
+            foreach (var pg in grouped.OrderBy(g => g.PeriodStart))
+            {
+                var periodIncome = pg.Items.Where(x => x.Amount > 0).Sum(x => x.Amount);
+                var periodExpense = pg.Items.Where(x => x.Amount < 0).Sum(x => x.Amount);
+                var periodNet = periodIncome + periodExpense;
+                runningNet += periodNet;
+
+                var categories = BuildCategoryRows(pg.Items);
+
+                periodRows.Add(new CashFlowPeriodRow
+                {
+                    Label = pg.Label,
+                    PeriodStart = pg.PeriodStart,
+                    PeriodEnd = pg.PeriodEnd,
+                    IncomeTotal = periodIncome,
+                    ExpenseTotal = periodExpense,
+                    Net = periodNet,
+                    RunningNet = runningNet,
+                    Categories = categories
+                });
+            }
+        }
+
+        // Unscheduled summary
+        var unscheduledIncome = unscheduled.Where(x => x.Amount > 0).Sum(x => x.Amount);
+        var unscheduledExpense = unscheduled.Where(x => x.Amount < 0).Sum(x => x.Amount);
+        var unscheduledCategories = BuildCategoryRows(unscheduled);
+
+        return new CashFlowViewModel
+        {
+            YearName = year.Name,
+            Period = period.ToLowerInvariant(),
+            Periods = periodRows,
+            Unscheduled = new CashFlowUnscheduledSummary
+            {
+                IncomeTotal = unscheduledIncome,
+                ExpenseTotal = unscheduledExpense,
+                Net = unscheduledIncome + unscheduledExpense,
+                Categories = unscheduledCategories
+            }
+        };
+    }
+
+    private static List<CashFlowCategoryRow> BuildCategoryRows(List<CashFlowEntry> items)
+    {
+        return items
+            .GroupBy(x => new { x.CategoryName, x.GroupName })
+            .Select(cg => new CashFlowCategoryRow
+            {
+                CategoryName = cg.Key.CategoryName,
+                GroupName = cg.Key.GroupName,
+                Amount = cg.Sum(x => x.Amount)
+            })
+            .OrderBy(c => c.GroupName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(c => c.CategoryName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static List<CashFlowPeriodGroup> GroupByWeek(List<CashFlowEntry> items)
+    {
+        return items
+            .GroupBy(x =>
+            {
+                var date = x.Date!.Value;
+                // ISO week: Monday-based. Find the Monday of the week.
+                var dayOfWeek = date.DayOfWeek;
+                var monday = date.PlusDays(-(((int)dayOfWeek + 6) % 7));
+                return monday;
+            })
+            .Select(g =>
+            {
+                var monday = g.Key;
+                var sunday = monday.PlusDays(6);
+                return new CashFlowPeriodGroup(
+                    $"{monday.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture)} - {sunday.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)}",
+                    monday,
+                    sunday,
+                    g.ToList());
+            })
+            .ToList();
+    }
+
+    private static List<CashFlowPeriodGroup> GroupByMonth(List<CashFlowEntry> items)
+    {
+        return items
+            .GroupBy(x =>
+            {
+                var date = x.Date!.Value;
+                return new { date.Year, date.Month };
+            })
+            .Select(g =>
+            {
+                var firstDay = new LocalDate(g.Key.Year, g.Key.Month, 1);
+                var lastDay = firstDay.PlusDays(firstDay.Calendar.GetDaysInMonth(g.Key.Year, g.Key.Month) - 1);
+                return new CashFlowPeriodGroup(
+                    firstDay.ToString("MMM yyyy", System.Globalization.CultureInfo.InvariantCulture),
+                    firstDay,
+                    lastDay,
+                    g.ToList());
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// A cash flow entry — either a real line item or a synthetic VAT settlement.
+    /// </summary>
+    private sealed record CashFlowEntry(string GroupName, string CategoryName, decimal Amount, LocalDate? Date);
+
+    private sealed record CashFlowPeriodGroup(
+        string Label,
+        LocalDate PeriodStart,
+        LocalDate PeriodEnd,
+        List<CashFlowEntry> Items);
 }
