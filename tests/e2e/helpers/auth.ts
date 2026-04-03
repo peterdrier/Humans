@@ -1,4 +1,4 @@
-import { type Page, expect } from '@playwright/test';
+import { type Page, type APIResponse, expect } from '@playwright/test';
 
 const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-dropdown-menu)';
 
@@ -23,6 +23,36 @@ export const loginAsVolunteerCoordinator = (page: Page) => loginAs(page, 'volunt
  * (slug: dev-test-subteam). NOT a coordinator of any other department.
  */
 export const loginAsCoordinator = (page: Page) => loginAs(page, 'coordinator');
+
+/**
+ * Extract an antiforgery token from the current page.
+ * Requires the page to already be on an authenticated page (the layout includes
+ * _LanguageChooser and FeedbackWidget which both render @Html.AntiForgeryToken()).
+ */
+export async function getAntiForgeryToken(page: Page): Promise<string> {
+  const token = await page
+    .locator('input[name="__RequestVerificationToken"]')
+    .first()
+    .inputValue()
+    .catch(() => '');
+  return token;
+}
+
+/**
+ * POST a form with a valid antiforgery token. Returns the raw response.
+ * The caller must already be on a page (to extract the CSRF token).
+ */
+export async function postWithCsrf(
+  page: Page,
+  url: string,
+  formData: string,
+): Promise<APIResponse> {
+  const token = await getAntiForgeryToken(page);
+  return page.request.post(url, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    data: `__RequestVerificationToken=${encodeURIComponent(token)}&${formData}`,
+  });
+}
 
 /**
  * Assert that a URL is blocked for the current user.
