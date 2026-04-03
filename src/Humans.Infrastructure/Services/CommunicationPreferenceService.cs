@@ -24,6 +24,7 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         [MessageCategory.EventOperations] = false,
         [MessageCategory.CommunityUpdates] = true,
         [MessageCategory.Marketing] = true,
+        [MessageCategory.Governance] = false,
     };
 
     private readonly HumansDbContext _db;
