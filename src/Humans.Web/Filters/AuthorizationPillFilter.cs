@@ -75,7 +75,18 @@ public class AuthorizationPillFilter : IActionFilter
         if (roles.Count == 0)
             return;
 
-        // Convert to display names
+        // Admin has full access — only show "Admin only" when Admin is the sole role
+        var hasAdmin = roles.Remove(RoleNames.Admin);
+        if (roles.Count == 0)
+        {
+            if (hasAdmin && context.Controller is Controller adminController)
+            {
+                adminController.ViewData["AuthPillRoles"] = "Admin only";
+            }
+            return;
+        }
+
+        // Convert non-Admin roles to display names
         var displayNames = roles
             .Select(r => RoleDisplayNames.TryGetValue(r, out var display) ? display : r)
             .OrderBy(d => d, StringComparer.Ordinal)

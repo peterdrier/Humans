@@ -503,10 +503,8 @@ h5, .h5 { font-size: 1.1rem; }
     opacity: 0.7;
 }
 
-.nav-link .auth-lock-icon {
-    font-size: 0.6em;
-    margin-left: 0.25em;
-    opacity: 0.55;
+.navbar .nav-link.nav-restricted {
+    color: var(--h-amber) !important;
 }
 
 /* --- Badges --- */
