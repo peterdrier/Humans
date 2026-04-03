@@ -121,6 +121,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         }
 
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _metrics.RecordApplicationProcessed("approved");
         _logger.LogInformation("Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
@@ -206,6 +207,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         }
 
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _metrics.RecordApplicationProcessed("rejected");
         _logger.LogInformation("Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
@@ -278,6 +280,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         _dbContext.Applications.Add(application);
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         _logger.LogInformation("User {UserId} submitted application {ApplicationId}", userId, application.Id);
 
@@ -320,6 +323,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         application.Withdraw(_clock);
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _metrics.RecordApplicationProcessed("withdrawn");
 
         _logger.LogInformation("User {UserId} withdrew application {ApplicationId}", userId, applicationId);

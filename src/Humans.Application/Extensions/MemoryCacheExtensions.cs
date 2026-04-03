@@ -56,6 +56,9 @@ public static class MemoryCacheExtensions
     public static void InvalidateNavBadgeCounts(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NavBadgeCounts);
 
+    public static void InvalidateNotificationMeters(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.NotificationMeters);
+
     public static void InvalidateApprovedProfiles(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.ApprovedProfiles);
 
