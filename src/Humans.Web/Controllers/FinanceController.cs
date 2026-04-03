@@ -673,8 +673,8 @@ public class FinanceController : HumansControllerBase
 
         // Collect all line items with their category/group context
         var allItems = year.Groups
-            .SelectMany(g => g.Categories.Select(c => new CashFlowLineItemContext(g.Name, c.Name, c)))
-            .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowLineItemContext(ctx.GroupName, ctx.CategoryName, ctx.Category) { LineItem = li }))
+            .SelectMany(g => g.Categories.Select(c => new { GroupName = g.Name, CategoryName = c.Name, Category = c }))
+            .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowLineItemContext(ctx.GroupName, ctx.CategoryName) { LineItem = li }))
             .ToList();
 
         // Split into scheduled (has ExpectedDate) and unscheduled
@@ -721,7 +721,6 @@ public class FinanceController : HumansControllerBase
         return new CashFlowViewModel
         {
             YearName = year.Name,
-            YearId = year.Id,
             Period = period.ToLowerInvariant(),
             Periods = periodRows,
             Unscheduled = new CashFlowUnscheduledSummary
@@ -797,11 +796,10 @@ public class FinanceController : HumansControllerBase
     /// <summary>
     /// Internal record to carry group/category context alongside a line item for cash flow grouping.
     /// </summary>
-    private sealed class CashFlowLineItemContext(string groupName, string categoryName, BudgetCategory category)
+    private sealed class CashFlowLineItemContext(string groupName, string categoryName)
     {
         public string GroupName { get; } = groupName;
         public string CategoryName { get; } = categoryName;
-        public BudgetCategory Category { get; } = category;
         public BudgetLineItem? LineItem { get; init; }
     }
 

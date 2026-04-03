@@ -73,7 +73,6 @@ public class VatProjection
 public class CashFlowViewModel
 {
     public required string YearName { get; init; }
-    public required Guid YearId { get; init; }
     public required string Period { get; init; } // "weekly" or "monthly"
     public required IReadOnlyList<CashFlowPeriodRow> Periods { get; init; }
     public required CashFlowUnscheduledSummary Unscheduled { get; init; }

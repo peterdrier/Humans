@@ -264,9 +264,6 @@
                         var catActual = catLineItems.Sum(li => li.Amount);
                         var catBudget = cat.AllocatedAmount;
 
-                        // Compute remaining: for expense budgets (negative allocated), show how much is left to spend
-                        var remaining = catBudget - catActual;
-
                         // Display logic for budget vs actual
                         var isExpenseBudget = catBudget < 0;
                         var displayBudget = Math.Abs(catBudget);
@@ -485,14 +482,3 @@
     </script>
 }
 
-<script nonce="">
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[data-confirm]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            if (!confirm(this.getAttribute('data-confirm'))) {
-                e.preventDefault();
-            }
-        });
-    });
-});
-</script>
