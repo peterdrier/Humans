@@ -5,7 +5,7 @@
     ViewData["Title"] = $"Finance - {Model.Year.Name}";
     var year = Model.Year;
     var allYears = Model.AllYears;
-    var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions();
     var incomeLabels = Model.IncomeSlices.Select(s => s.Name).ToList();
     var incomeData = Model.IncomeSlices.Select(s => s.Amount).ToList();
     var expenseLabels = Model.ExpenseSlices.Select(s => s.Name).ToList();
@@ -102,7 +102,7 @@
     <div class="card mb-4">
         <div class="card-header" role="button" data-bs-toggle="collapse" data-bs-target="#summaryCharts">
             <i class="fa-solid fa-chart-pie me-1"></i>Budget Summary Charts
-            <small class="text-muted ms-2">(same as public view, including restricted groups)</small>
+            <small class="text-muted ms-2">(includes restricted groups)</small>
         </div>
         <div id="summaryCharts" class="collapse">
             <div class="card-body">
@@ -338,7 +338,7 @@
                                                                     <span class="text-muted">0%</span>
                                                                 }
                                                             </td>
-                                                            <td>@item.ExpectedDate?.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
+                                                            <td>@item.ExpectedDate?.ToDisplayDate()</td>
                                                             <td class="text-muted small">@(item.Notes ?? "")</td>
                                                         </tr>
                                                     }
