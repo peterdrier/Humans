@@ -18,6 +18,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly HumansDbContext _dbContext;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
@@ -30,6 +31,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         HumansDbContext dbContext,
         IMembershipCalculator membershipCalculator,
         IEmailService emailService,
+        INotificationService notificationService,
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
         IProfileService profileService,
@@ -41,6 +43,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         _dbContext = dbContext;
         _membershipCalculator = membershipCalculator;
         _emailService = emailService;
+        _notificationService = notificationService;
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
         _profileService = profileService;
@@ -94,7 +97,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 user.Profile.IsSuspended = true;
                 user.Profile.UpdatedAt = now;
 
-                // 2. Send notification
+                // 2. Send email notification
                 var effectiveEmail = user.GetEffectiveEmail();
                 if (effectiveEmail is not null)
                 {
@@ -104,6 +107,25 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                         "Missing required document consent (grace period expired)",
                         user.PreferredLanguage,
                         cancellationToken);
+                }
+
+                // 2b. Send in-app notification (best-effort)
+                try
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.AccessSuspended,
+                        NotificationClass.Actionable,
+                        NotificationPriority.Critical,
+                        "Your access has been suspended",
+                        [user.Id],
+                        body: "Your access has been suspended because required document consent is missing. Please review and sign the required documents to restore access.",
+                        actionUrl: "/Legal/Consent",
+                        actionLabel: "Review documents",
+                        cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", user.Id);
                 }
 
                 // 3. Remove from all team resources (Google Drive/Groups)

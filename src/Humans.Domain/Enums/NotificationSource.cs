@@ -25,5 +25,35 @@ public enum NotificationSource
     SyncError = 5,
 
     /// <summary>Term renewal reminder for Colaborador/Asociado.</summary>
-    TermRenewalReminder = 6
+    TermRenewalReminder = 6,
+
+    /// <summary>Tier application approved by the Board.</summary>
+    ApplicationApproved = 7,
+
+    /// <summary>Tier application rejected by the Board.</summary>
+    ApplicationRejected = 8,
+
+    /// <summary>Volunteer approved (profile cleared for membership).</summary>
+    VolunteerApproved = 9,
+
+    /// <summary>Profile/signup rejected during onboarding review.</summary>
+    ProfileRejected = 10,
+
+    /// <summary>Member access suspended for non-compliance.</summary>
+    AccessSuspended = 11,
+
+    /// <summary>New document version requires re-consent.</summary>
+    ReConsentRequired = 12,
+
+    /// <summary>Team join request submitted (notifies coordinators).</summary>
+    TeamJoinRequestSubmitted = 13,
+
+    /// <summary>Team join request approved or rejected (notifies requester).</summary>
+    TeamJoinRequestDecided = 14,
+
+    /// <summary>Admin responded to a feedback report.</summary>
+    FeedbackResponse = 15,
+
+    /// <summary>Workspace (@nobodies.team) credentials are ready.</summary>
+    WorkspaceCredentialsReady = 16
 }

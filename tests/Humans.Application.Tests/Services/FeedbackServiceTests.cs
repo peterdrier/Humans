@@ -37,8 +37,10 @@ public class FeedbackServiceTests : IDisposable
         var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(
             new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
 
+        var notificationService = Substitute.For<INotificationService>();
+
         _service = new FeedbackService(
-            _dbContext, _emailService, _auditLog, _clock, cache, env,
+            _dbContext, _emailService, notificationService, _auditLog, _clock, cache, env,
             NullLogger<FeedbackService>.Instance);
     }
 

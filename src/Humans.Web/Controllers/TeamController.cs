@@ -24,6 +24,7 @@ public class TeamController : HumansControllerBase
     private readonly ITeamService _teamService;
     private readonly ITeamPageService _teamPageService;
     private readonly IProfileService _profileService;
+    private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly ISystemTeamSync _systemTeamSync;
@@ -38,6 +39,7 @@ public class TeamController : HumansControllerBase
         ITeamPageService teamPageService,
         UserManager<User> userManager,
         IProfileService profileService,
+        INotificationService notificationService,
         IGoogleSyncService googleSyncService,
         ITeamResourceService teamResourceService,
         ISystemTeamSync systemTeamSync,
@@ -51,6 +53,7 @@ public class TeamController : HumansControllerBase
         _teamService = teamService;
         _teamPageService = teamPageService;
         _profileService = profileService;
+        _notificationService = notificationService;
         _googleSyncService = googleSyncService;
         _teamResourceService = teamResourceService;
         _systemTeamSync = systemTeamSync;
@@ -483,6 +486,32 @@ public class TeamController : HumansControllerBase
             {
                 await _teamService.RequestToJoinTeamAsync(team.Id, user.Id, model.Message);
                 SetSuccess(_localizer["Team_JoinRequestSubmitted"].Value);
+
+                // Notify team coordinators (best-effort)
+                try
+                {
+                    var coordinatorUserIds = team.Members
+                        .Where(m => m.Role == TeamMemberRole.Coordinator)
+                        .Select(m => m.UserId)
+                        .ToList();
+
+                    if (coordinatorUserIds.Count > 0)
+                    {
+                        await _notificationService.SendAsync(
+                            NotificationSource.TeamJoinRequestSubmitted,
+                            NotificationClass.Actionable,
+                            NotificationPriority.Normal,
+                            $"New join request for {team.Name}",
+                            coordinatorUserIds,
+                            body: $"{user.DisplayName} has requested to join {team.Name}.",
+                            actionUrl: $"/Teams/{slug}/Members",
+                            actionLabel: "Review request");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to dispatch TeamJoinRequestSubmitted notification for team {TeamId}", team.Id);
+                }
             }
             else
             {
