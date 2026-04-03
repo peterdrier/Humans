@@ -480,6 +480,35 @@ h5, .h5 { font-size: 1.1rem; }
     border-radius: var(--h-radius);
 }
 
+/* --- Authorization Visual Indicators --- */
+.auth-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-family: var(--h-font-body);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--h-sepia);
+    background-color: var(--h-parchment-dark);
+    border: 1px solid var(--h-border);
+    border-radius: 999px;
+    padding: 0.25em 0.75em;
+}
+
+.auth-lock-icon {
+    color: var(--h-sepia-light);
+    font-size: 0.7em;
+    margin-left: 0.3em;
+    opacity: 0.7;
+}
+
+.nav-link .auth-lock-icon {
+    font-size: 0.6em;
+    margin-left: 0.25em;
+    opacity: 0.55;
+}
+
 /* --- Badges --- */
 .badge {
     font-family: var(--h-font-body);

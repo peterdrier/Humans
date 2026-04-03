@@ -17,12 +17,12 @@
             <a asp-action="Map" class="btn btn-outline-secondary">@Localizer["Map_Title"]</a>
             @if (canViewSync)
             {
-                <a asp-action="Summary" class="btn btn-outline-secondary">Summary</a>
-                <a asp-controller="Google" asp-action="Sync" class="btn btn-outline-info">Sync Status</a>
+                <a asp-action="Summary" class="btn btn-outline-secondary">Summary <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                <a asp-controller="Google" asp-action="Sync" class="btn btn-outline-info">Sync Status <i class="fa-solid fa-lock auth-lock-icon"></i></a>
             }
             @if (Model.CanCreateTeam)
             {
-                <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"]</a>
+                <a asp-action="CreateTeam" class="btn btn-primary">@Localizer["Teams_CreateTeam"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
             }
         </div>
     </div>

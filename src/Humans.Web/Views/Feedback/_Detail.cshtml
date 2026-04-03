@@ -22,6 +22,7 @@
         @if (Model.IsAdmin)
         {
             <div class="d-flex gap-2 align-items-center">
+                <i class="fa-solid fa-lock auth-lock-icon" title="Admin only"></i>
                 <form asp-action="UpdateStatus" asp-route-id="@Model.Id" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
                     <select name="Status" class="form-select form-select-sm detail-auto-submit" style="width: auto;">
