@@ -18,6 +18,13 @@ export const loginAsNoInfoAdmin = (page: Page) => loginAs(page, 'no-info-admin')
 export const loginAsVolunteerCoordinator = (page: Page) => loginAs(page, 'volunteer-coordinator');
 
 /**
+ * Login as a team coordinator. This persona is coordinator of "Dev Test Department"
+ * (slug: dev-test-department) and member of its sub-team "Dev Test SubTeam"
+ * (slug: dev-test-subteam). NOT a coordinator of any other department.
+ */
+export const loginAsCoordinator = (page: Page) => loginAs(page, 'coordinator');
+
+/**
  * Assert that a URL is blocked for the current user.
  * Handles four blocking mechanisms: redirect, 404, 403/Access Denied, or Forbid page.
  */
