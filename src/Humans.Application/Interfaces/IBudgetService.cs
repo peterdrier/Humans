@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -48,4 +49,7 @@ public interface IBudgetService
 
     // Audit Log
     Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogAsync(Guid? budgetYearId);
+
+    // Summary Computation
+    BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups);
 }

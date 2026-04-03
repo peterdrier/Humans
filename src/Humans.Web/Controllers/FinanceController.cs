@@ -556,104 +556,23 @@ public class FinanceController : HumansControllerBase
     }
 
     /// <summary>
-    /// Builds the FinanceOverviewViewModel with inline summary data so FinanceAdmin
-    /// sees everything on one page without navigating to /Budget/Summary.
+    /// Builds the FinanceOverviewViewModel using the shared summary computation
+    /// so FinanceAdmin sees everything on one page without navigating to /Budget/Summary.
     /// </summary>
-    private static FinanceOverviewViewModel BuildFinanceOverview(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
+    private FinanceOverviewViewModel BuildFinanceOverview(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
     {
         // All groups (including restricted) for FinanceAdmin summary
-        var allLineItems = year.Groups
-            .SelectMany(g => g.Categories)
-            .SelectMany(c => c.LineItems)
-            .ToList();
-
-        var budgetLineItems = allLineItems.Where(li => !li.IsCashflowOnly).ToList();
-
-        // Compute VAT projections
-        var vatProjections = budgetLineItems
-            .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
-            .Select(li => new
-            {
-                VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
-                IsExpense = li.Amount > 0 // Income generates VAT liability (expense)
-            })
-            .ToList();
-
-        var income = budgetLineItems.Where(li => li.Amount > 0).Sum(li => li.Amount);
-        var expenses = budgetLineItems.Where(li => li.Amount < 0).Sum(li => li.Amount);
-        var vatExpenses = vatProjections.Where(v => v.IsExpense).Sum(v => v.VatAmount);
-        var vatCredits = vatProjections.Where(v => !v.IsExpense).Sum(v => v.VatAmount);
-
-        var totalIncome = income + vatCredits;
-        var totalExpenses = expenses - vatExpenses;
-        var netBalance = totalIncome + totalExpenses;
-
-        // Build income slices
-        var incomeCategories = year.Groups
-            .SelectMany(g => g.Categories)
-            .Select(c => new
-            {
-                c.Name,
-                Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount)
-            })
-            .Where(c => c.Total > 0)
-            .OrderByDescending(c => c.Total)
-            .ToList();
-
-        if (vatCredits > 0)
-            incomeCategories.Add(new { Name = "VAT Credits", Total = vatCredits });
-
-        var totalIncomeForSlices = incomeCategories.Sum(c => c.Total);
-        var incomeSlices = incomeCategories
-            .Select(c => new BudgetSlice
-            {
-                Name = c.Name,
-                Amount = c.Total,
-                Percentage = totalIncomeForSlices > 0 ? c.Total / totalIncomeForSlices * 100 : 0
-            })
-            .ToList();
-
-        // Build expense slices
-        var expenseCategories = year.Groups
-            .SelectMany(g => g.Categories)
-            .Select(c => new
-            {
-                c.Name,
-                Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount))
-            })
-            .Where(c => c.Total > 0)
-            .OrderByDescending(c => c.Total)
-            .ToList();
-
-        if (vatExpenses > 0)
-            expenseCategories.Add(new { Name = "VAT Liability", Total = vatExpenses });
-
-        var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
-        if (profit > 0)
-        {
-            expenseCategories.Add(new { Name = "Cash Reserves (90%)", Total = profit * 0.9m });
-            expenseCategories.Add(new { Name = "Spanish Taxes (10%)", Total = profit * 0.1m });
-        }
-
-        var totalExpenseForSlices = expenseCategories.Sum(c => c.Total);
-        var expenseSlices = expenseCategories
-            .Select(c => new BudgetSlice
-            {
-                Name = c.Name,
-                Amount = c.Total,
-                Percentage = totalExpenseForSlices > 0 ? c.Total / totalExpenseForSlices * 100 : 0
-            })
-            .ToList();
+        var summary = _budgetService.ComputeBudgetSummary(year.Groups);
 
         return new FinanceOverviewViewModel
         {
             Year = year,
             AllYears = allYears,
-            TotalIncome = totalIncome,
-            TotalExpenses = totalExpenses,
-            NetBalance = netBalance,
-            IncomeSlices = incomeSlices,
-            ExpenseSlices = expenseSlices
+            TotalIncome = summary.TotalIncome,
+            TotalExpenses = summary.TotalExpenses,
+            NetBalance = summary.NetBalance,
+            IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+            ExpenseSlices = summary.ExpenseSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList()
         };
     }
 
@@ -678,8 +597,8 @@ public class FinanceController : HumansControllerBase
             .ToList();
 
         // Split into scheduled (has ExpectedDate) and unscheduled
-        var scheduled = allItems.Where(x => x.LineItem!.ExpectedDate.HasValue).ToList();
-        var unscheduled = allItems.Where(x => !x.LineItem!.ExpectedDate.HasValue).ToList();
+        var scheduled = allItems.Where(x => x.LineItem.ExpectedDate.HasValue).ToList();
+        var unscheduled = allItems.Where(x => !x.LineItem.ExpectedDate.HasValue).ToList();
 
         // Group scheduled items into time periods
         var periodRows = new List<CashFlowPeriodRow>();
@@ -692,8 +611,8 @@ public class FinanceController : HumansControllerBase
             decimal runningNet = 0;
             foreach (var pg in grouped.OrderBy(g => g.PeriodStart))
             {
-                var periodIncome = pg.Items.Where(x => x.LineItem!.Amount > 0).Sum(x => x.LineItem!.Amount);
-                var periodExpense = pg.Items.Where(x => x.LineItem!.Amount < 0).Sum(x => x.LineItem!.Amount);
+                var periodIncome = pg.Items.Where(x => x.LineItem.Amount > 0).Sum(x => x.LineItem.Amount);
+                var periodExpense = pg.Items.Where(x => x.LineItem.Amount < 0).Sum(x => x.LineItem.Amount);
                 var periodNet = periodIncome + periodExpense;
                 runningNet += periodNet;
 
@@ -714,8 +633,8 @@ public class FinanceController : HumansControllerBase
         }
 
         // Unscheduled summary
-        var unscheduledIncome = unscheduled.Where(x => x.LineItem!.Amount > 0).Sum(x => x.LineItem!.Amount);
-        var unscheduledExpense = unscheduled.Where(x => x.LineItem!.Amount < 0).Sum(x => x.LineItem!.Amount);
+        var unscheduledIncome = unscheduled.Where(x => x.LineItem.Amount > 0).Sum(x => x.LineItem.Amount);
+        var unscheduledExpense = unscheduled.Where(x => x.LineItem.Amount < 0).Sum(x => x.LineItem.Amount);
         var unscheduledCategories = BuildCategoryRows(unscheduled);
 
         return new CashFlowViewModel
@@ -741,7 +660,7 @@ public class FinanceController : HumansControllerBase
             {
                 CategoryName = cg.Key.CategoryName,
                 GroupName = cg.Key.GroupName,
-                Amount = cg.Sum(x => x.LineItem!.Amount)
+                Amount = cg.Sum(x => x.LineItem.Amount)
             })
             .OrderBy(c => c.GroupName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(c => c.CategoryName, StringComparer.OrdinalIgnoreCase)
@@ -753,7 +672,7 @@ public class FinanceController : HumansControllerBase
         return items
             .GroupBy(x =>
             {
-                var date = x.LineItem!.ExpectedDate!.Value;
+                var date = x.LineItem.ExpectedDate!.Value;
                 // ISO week: Monday-based. Find the Monday of the week.
                 var dayOfWeek = date.DayOfWeek;
                 var monday = date.PlusDays(-(((int)dayOfWeek + 6) % 7));
@@ -777,7 +696,7 @@ public class FinanceController : HumansControllerBase
         return items
             .GroupBy(x =>
             {
-                var date = x.LineItem!.ExpectedDate!.Value;
+                var date = x.LineItem.ExpectedDate!.Value;
                 return new { date.Year, date.Month };
             })
             .Select(g =>
@@ -800,7 +719,7 @@ public class FinanceController : HumansControllerBase
     {
         public string GroupName { get; } = groupName;
         public string CategoryName { get; } = categoryName;
-        public BudgetLineItem? LineItem { get; init; }
+        public required BudgetLineItem LineItem { get; init; }
     }
 
     private sealed record CashFlowPeriodGroup(

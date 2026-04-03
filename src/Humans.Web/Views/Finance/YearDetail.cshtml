@@ -5,7 +5,6 @@
     ViewData["Title"] = $"Finance - {Model.Year.Name}";
     var year = Model.Year;
     var allYears = Model.AllYears;
-    var jsonOpts = new System.Text.Json.JsonSerializerOptions();
     var incomeLabels = Model.IncomeSlices.Select(s => s.Name).ToList();
     var incomeData = Model.IncomeSlices.Select(s => s.Amount).ToList();
     var expenseLabels = Model.ExpenseSlices.Select(s => s.Name).ToList();
@@ -432,10 +431,10 @@
             labels: { padding: 12, usePointStyle: true, font: { size: 11 } }
         };
 
-        var incomeLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incomeLabels, jsonOpts));
-        var incomeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incomeData, jsonOpts));
-        var expenseLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(expenseLabels, jsonOpts));
-        var expenseData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(expenseData, jsonOpts));
+        var incomeLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incomeLabels));
+        var incomeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incomeData));
+        var expenseLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(expenseLabels));
+        var expenseData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(expenseData));
 
         var incomeEl = document.getElementById('financeIncomeChart');
         if (incomeEl && incomeData.length > 0) {
