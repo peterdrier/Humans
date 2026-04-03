@@ -11,6 +11,7 @@
 
 <div class="d-flex align-items-baseline gap-1 small">
     <span class="text-muted text-nowrap">@Model.OccurredAt.ToAuditTimestamp()</span>
+    <span class="text-muted">—</span>
     @if (verb != null)
     {
         @if (Model.ActorUserId.HasValue)
