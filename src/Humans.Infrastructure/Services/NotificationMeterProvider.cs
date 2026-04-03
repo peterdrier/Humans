@@ -42,6 +42,7 @@ public class NotificationMeterProvider : INotificationMeterProvider
 
         var isAdmin = user.IsInRole(RoleNames.Admin);
         var isBoard = user.IsInRole(RoleNames.Board);
+        var isVolunteerCoordinator = user.IsInRole(RoleNames.VolunteerCoordinator);
         var isConsentCoordinator = user.IsInRole(RoleNames.ConsentCoordinator);
 
         // Consent reviews pending — Consent Coordinator
@@ -92,8 +93,8 @@ public class NotificationMeterProvider : INotificationMeterProvider
             });
         }
 
-        // Onboarding profiles pending — Board
-        if (isBoard && counts.OnboardingPending > 0)
+        // Onboarding profiles pending — Board / Volunteer Coordinator
+        if ((isBoard || isVolunteerCoordinator) && counts.OnboardingPending > 0)
         {
             meters.Add(new NotificationMeter
             {
@@ -173,9 +174,13 @@ public class NotificationMeterProvider : INotificationMeterProvider
         var failedSyncEvents = await _dbContext.GoogleSyncOutboxEvents
             .CountAsync(e => e.ProcessedAt == null && e.LastError != null, cancellationToken);
 
-        // Onboarding profiles pending (not approved, not rejected — matches OnboardingService.GetReviewQueueAsync)
-        var onboardingPending = await _dbContext.Profiles
-            .CountAsync(p => !p.IsApproved && p.RejectedAt == null, cancellationToken);
+        // Onboarding profiles pending excludes consent-review items, matching the
+        // existing board digest "still onboarding" queue semantics.
+        var totalNotApproved = await _dbContext.Profiles
+            .CountAsync(p => !p.IsApproved && !p.IsSuspended, cancellationToken);
+        var onboardingPending = totalNotApproved - consentReviewsPending;
+        if (onboardingPending < 0)
+            onboardingPending = 0;
 
         // Team join requests pending
         var teamJoinRequestsPending = await _dbContext.TeamJoinRequests

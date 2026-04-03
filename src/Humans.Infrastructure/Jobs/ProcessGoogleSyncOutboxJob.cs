@@ -112,7 +112,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                             "Google sync event failed after all retries",
                             RoleNames.Admin,
                             body: $"Event {outboxEvent.EventType} for team {outboxEvent.TeamId} failed: {outboxEvent.LastError?[..Math.Min(200, outboxEvent.LastError.Length)]}",
-                            actionUrl: "/Admin/SyncDashboard",
+                            actionUrl: "/Google/Sync",
                             actionLabel: "View \u2192",
                             cancellationToken: cancellationToken);
                     }
