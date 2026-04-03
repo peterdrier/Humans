@@ -43,12 +43,12 @@ public class OnboardingReviewController : HumansControllerBase
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        var (pending, flagged, pendingAppUserIds) = await _onboardingService.GetReviewQueueAsync();
+        var (pending, flagged, pendingAppUserIds, consentProgress) = await _onboardingService.GetReviewQueueAsync();
 
         var viewModel = new OnboardingReviewIndexViewModel
         {
-            PendingReviews = pending.Select(p => MapToItem(p, pendingAppUserIds)).ToList(),
-            FlaggedReviews = flagged.Select(p => MapToItem(p, pendingAppUserIds)).ToList()
+            PendingReviews = pending.Select(p => MapToItem(p, pendingAppUserIds, consentProgress)).ToList(),
+            FlaggedReviews = flagged.Select(p => MapToItem(p, pendingAppUserIds, consentProgress)).ToList()
         };
 
         return View(viewModel);
@@ -105,7 +105,6 @@ public class OnboardingReviewController : HumansControllerBase
                 SetError(result.ErrorKey switch
                 {
                     "AlreadyRejected" => _localizer["OnboardingReview_AlreadyRejected"].Value,
-                    "ConsentsRequired" => _localizer["OnboardingReview_ConsentsRequired"].Value,
                     _ => _localizer["OnboardingReview_Error"].Value
                 });
                 return RedirectToAction(nameof(Index));
@@ -386,8 +385,11 @@ public class OnboardingReviewController : HumansControllerBase
         return RedirectToAction(nameof(BoardVoting));
     }
 
-    private static OnboardingReviewItemViewModel MapToItem(Profile profile, HashSet<Guid> pendingAppUserIds)
+    private static OnboardingReviewItemViewModel MapToItem(
+        Profile profile, HashSet<Guid> pendingAppUserIds,
+        Dictionary<Guid, (int Signed, int Required)> consentProgress)
     {
+        var (signed, required) = consentProgress.GetValueOrDefault(profile.UserId);
         return new OnboardingReviewItemViewModel
         {
             UserId = profile.UserId,
@@ -397,7 +399,9 @@ public class OnboardingReviewController : HumansControllerBase
             ConsentCheckStatus = profile.ConsentCheckStatus,
             MembershipTier = profile.MembershipTier,
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
-            HasPendingApplication = pendingAppUserIds.Contains(profile.UserId)
+            HasPendingApplication = pendingAppUserIds.Contains(profile.UserId),
+            ConsentCount = signed,
+            RequiredConsentCount = required
         };
     }
 }

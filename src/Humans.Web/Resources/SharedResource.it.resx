@@ -919,13 +919,13 @@
   <data name="OnboardingReview_Actions" xml:space="preserve"><value>Azioni</value></data>
   <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve"><value>Note facoltative...</value></data>
   <data name="OnboardingReview_ClearButton" xml:space="preserve"><value>Approva &amp; Conferma</value></data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>L'approvazione confermer&#xE0; automaticamente questo human come volontario.</value></data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>Questo human verr&#xE0; approvato come volontario. Continuare?</value></data>
+  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Approva la revisione del profilo. Lo human entrer&#xE0; nei Volontari quando anche i documenti legali saranno firmati.</value></data>
+  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>La revisione del profilo di questo human verr&#xE0; approvata. Continuare?</value></data>
   <data name="OnboardingReview_FlagButton" xml:space="preserve"><value>Segnala per revisione</value></data>
   <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve"><value>Motivo della segnalazione...</value></data>
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Questo human verr&#xE0; segnalato per ulteriore revisione. Continuare?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Questo human &#xE8; gi&#xE0; stato approvato.</value></data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Verifica del consenso completata. Human approvato come volontario.</value></data>
+  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Revisione del profilo approvata.</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human segnalato per ulteriore revisione.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Rifiuta registrazione</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motivo del rifiuto...</value></data>
@@ -934,6 +934,10 @@
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>La registrazione &#xE8; stata rifiutata.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>Questo human &#xE8; gi&#xE0; stato rifiutato.</value></data>
   <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>L'onboarding non pu&#xF2; essere approvato finch&#xE9; non vengono firmati tutti gli accordi richiesti.</value></data>
+  <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Documenti legali</value></data>
+  <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Completo</value></data>
+  <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>In attesa</value></data>
+  <data name="OnboardingReview_DocsNote" xml:space="preserve"><value>La revisione del profilo pu&#xF2; procedere in modo indipendente. Lo human entrer&#xE0; nei Volontari quando tutti i documenti saranno firmati.</value></data>
 
   <!-- Board Voting -->
   <data name="Nav_BoardVoting" xml:space="preserve"><value>Voto del Consiglio</value></data>

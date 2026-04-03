@@ -943,13 +943,13 @@
   <data name="OnboardingReview_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve"><value>Optional notes...</value></data>
   <data name="OnboardingReview_ClearButton" xml:space="preserve"><value>Clear &amp; Approve</value></data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Clearing will auto-approve this human as a Volunteer.</value></data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>This will approve this human as a Volunteer. Continue?</value></data>
+  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Approves the profile review. Human joins Volunteers once legal documents are also signed.</value></data>
+  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>This will clear the profile review for this human. Continue?</value></data>
   <data name="OnboardingReview_FlagButton" xml:space="preserve"><value>Flag for Review</value></data>
   <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve"><value>Reason for flagging...</value></data>
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>This will flag this human for further review. Continue?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>This human has already been cleared.</value></data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Consent check cleared. Human approved as Volunteer.</value></data>
+  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Profile review cleared.</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human flagged for further review.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Reject Signup</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Reason for rejection...</value></data>
@@ -958,6 +958,10 @@
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>Signup has been rejected.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>This human has already been rejected.</value></data>
   <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>Cannot clear onboarding until all required agreements are signed.</value></data>
+  <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Legal Documents</value></data>
+  <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Complete</value></data>
+  <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>Pending</value></data>
+  <data name="OnboardingReview_DocsNote" xml:space="preserve"><value>Profile review can proceed independently. Human will join Volunteers once all documents are signed.</value></data>
 
   <!-- Board Voting -->
   <data name="Nav_BoardVoting" xml:space="preserve"><value>Board Voting</value></data>

@@ -924,13 +924,13 @@
   <data name="OnboardingReview_Actions" xml:space="preserve"><value>Acciones</value></data>
   <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve"><value>Notas opcionales...</value></data>
   <data name="OnboardingReview_ClearButton" xml:space="preserve"><value>Aprobar y activar</value></data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Aprobar activar&#xE1; autom&#xE1;ticamente a este humano como Voluntario.</value></data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>Esto aprobar&#xE1; a este humano como Voluntario. &#xBF;Continuar?</value></data>
+  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Aprueba la revisi&#xF3;n del perfil. El humano se unir&#xE1; a Voluntarios cuando los documentos legales tambi&#xE9;n est&#xE9;n firmados.</value></data>
+  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>Esto aprobar&#xE1; la revisi&#xF3;n del perfil de este humano. &#xBF;Continuar?</value></data>
   <data name="OnboardingReview_FlagButton" xml:space="preserve"><value>Marcar para revisi&#xF3;n</value></data>
   <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve"><value>Motivo del marcado...</value></data>
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Esto marcar&#xE1; a este humano para revisi&#xF3;n adicional. &#xBF;Continuar?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Este humano ya ha sido aprobado.</value></data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Verificaci&#xF3;n aprobada. Humano activado como Voluntario.</value></data>
+  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Revisi&#xF3;n de perfil aprobada.</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Humano marcado para revisi&#xF3;n adicional.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Rechazar registro</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motivo del rechazo...</value></data>
@@ -939,6 +939,10 @@
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>El registro ha sido rechazado.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>Este human ya ha sido rechazado.</value></data>
   <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>No se puede aprobar la incorporaci&#xF3;n hasta que se firmen todos los acuerdos requeridos.</value></data>
+  <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Documentos legales</value></data>
+  <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Completo</value></data>
+  <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>Pendiente</value></data>
+  <data name="OnboardingReview_DocsNote" xml:space="preserve"><value>La revisi&#xF3;n del perfil puede realizarse de forma independiente. El humano se unir&#xE1; a Voluntarios cuando todos los documentos est&#xE9;n firmados.</value></data>
 
   <!-- Board Voting -->
   <data name="Nav_BoardVoting" xml:space="preserve"><value>Votaci&#xF3;n de la Junta</value></data>

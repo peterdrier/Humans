@@ -919,13 +919,13 @@
   <data name="OnboardingReview_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve"><value>Notes facultatives...</value></data>
   <data name="OnboardingReview_ClearButton" xml:space="preserve"><value>Valider &amp; Approuver</value></data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>La validation approuvera automatiquement ce human en tant que b&#xE9;n&#xE9;vole.</value></data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>Ce human sera approuv&#xE9; en tant que b&#xE9;n&#xE9;vole. Continuer ?</value></data>
+  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Approuve la r&#xE9;vision du profil. Le human rejoindra les B&#xE9;n&#xE9;voles lorsque les documents l&#xE9;gaux seront &#xE9;galement sign&#xE9;s.</value></data>
+  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>La r&#xE9;vision du profil de ce human sera valid&#xE9;e. Continuer ?</value></data>
   <data name="OnboardingReview_FlagButton" xml:space="preserve"><value>Signaler pour examen</value></data>
   <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve"><value>Motif du signalement...</value></data>
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Ce human sera signal&#xE9; pour examen compl&#xE9;mentaire. Continuer ?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Ce human a d&#xE9;j&#xE0; &#xE9;t&#xE9; valid&#xE9;.</value></data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>V&#xE9;rification du consentement valid&#xE9;e. Human approuv&#xE9; en tant que b&#xE9;n&#xE9;vole.</value></data>
+  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>R&#xE9;vision du profil valid&#xE9;e.</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human signal&#xE9; pour examen compl&#xE9;mentaire.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Refuser l'inscription</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motif du refus...</value></data>
@@ -934,6 +934,10 @@
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>L'inscription a &#xE9;t&#xE9; refus&#xE9;e.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>Ce human a d&#xE9;j&#xE0; &#xE9;t&#xE9; refus&#xE9;.</value></data>
   <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>L'int&#xE9;gration ne peut pas &#xEA;tre valid&#xE9;e tant que tous les accords requis ne sont pas sign&#xE9;s.</value></data>
+  <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Documents l&#xE9;gaux</value></data>
+  <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Complet</value></data>
+  <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>En attente</value></data>
+  <data name="OnboardingReview_DocsNote" xml:space="preserve"><value>La r&#xE9;vision du profil peut se faire ind&#xE9;pendamment. Le human rejoindra les B&#xE9;n&#xE9;voles lorsque tous les documents seront sign&#xE9;s.</value></data>
 
   <!-- Board Voting -->
   <data name="Nav_BoardVoting" xml:space="preserve"><value>Vote du Conseil</value></data>
