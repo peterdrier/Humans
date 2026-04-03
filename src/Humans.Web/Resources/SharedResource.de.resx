@@ -905,8 +905,6 @@
   <data name="OnboardingReview_NoPending" xml:space="preserve"><value>Keine Humans warten auf eine Pr&#xFC;fung.</value></data>
   <data name="OnboardingReview_PendingSection" xml:space="preserve"><value>Ausstehende Pr&#xFC;fung</value></data>
   <data name="OnboardingReview_FlaggedSection" xml:space="preserve"><value>Zur Nachverfolgung markiert</value></data>
-  <data name="OnboardingReview_Pending" xml:space="preserve"><value>Einwilligungen bereit</value></data>
-  <data name="OnboardingReview_ConsentsNotStarted" xml:space="preserve"><value>Einwilligungen nicht begonnen</value></data>
   <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Markiert</value></data>
   <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>Profil&#xFC;bersicht</value></data>
   <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>Neuer Human &#x2013; Zusammenfassung</value></data>
@@ -919,13 +917,13 @@
   <data name="OnboardingReview_Actions" xml:space="preserve"><value>Aktionen</value></data>
   <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve"><value>Optionale Notizen...</value></data>
   <data name="OnboardingReview_ClearButton" xml:space="preserve"><value>Freigeben &amp; Genehmigen</value></data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Die Freigabe genehmigt diesen Human automatisch als Freiwilligen.</value></data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>Dieser Human wird als Freiwilliger genehmigt. Fortfahren?</value></data>
+  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Genehmigt die Profil&#xFC;berpr&#xFC;fung. Der Human tritt Freiwilligen bei, wenn auch die rechtlichen Dokumente unterzeichnet sind.</value></data>
+  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>Die Profil&#xFC;berpr&#xFC;fung dieses Humans wird freigegeben. Fortfahren?</value></data>
   <data name="OnboardingReview_FlagButton" xml:space="preserve"><value>Zur Pr&#xFC;fung markieren</value></data>
   <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve"><value>Grund der Markierung...</value></data>
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Dieser Human wird zur weiteren Pr&#xFC;fung markiert. Fortfahren?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Dieser Human wurde bereits freigegeben.</value></data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Einwilligungspr&#xFC;fung freigegeben. Human als Freiwilliger genehmigt.</value></data>
+  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>Profil&#xFC;berpr&#xFC;fung freigegeben.</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human zur weiteren Pr&#xFC;fung markiert.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Anmeldung ablehnen</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Ablehnungsgrund...</value></data>
@@ -933,7 +931,10 @@
   <data name="OnboardingReview_RejectHelp" xml:space="preserve"><value>Die Ablehnung verweigert die Anmeldung dieses Humans dauerhaft und sendet eine Benachrichtigungs-E-Mail.</value></data>
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>Die Anmeldung wurde abgelehnt.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>Dieser Human wurde bereits abgelehnt.</value></data>
-  <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>Die Einarbeitung kann erst freigegeben werden, wenn alle erforderlichen Vereinbarungen unterzeichnet sind.</value></data>
+  <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Rechtliche Dokumente</value></data>
+  <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Vollst&#xE4;ndig</value></data>
+  <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>Ausstehend</value></data>
+  <data name="OnboardingReview_DocsNote" xml:space="preserve"><value>Die Profil&#xFC;berpr&#xFC;fung kann unabh&#xE4;ngig erfolgen. Der Human tritt Freiwilligen bei, wenn alle Dokumente unterzeichnet sind.</value></data>
 
   <!-- Board Voting -->
   <data name="Nav_BoardVoting" xml:space="preserve"><value>Vorstandsabstimmung</value></data>

@@ -18,6 +18,8 @@ public class OnboardingReviewItemViewModel
     public MembershipTier MembershipTier { get; set; }
     public DateTime ProfileCreatedAt { get; set; }
     public bool HasPendingApplication { get; set; }
+    public int ConsentCount { get; set; }
+    public int RequiredConsentCount { get; set; }
 }
 
 public class OnboardingReviewDetailViewModel
