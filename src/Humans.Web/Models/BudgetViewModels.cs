@@ -3,6 +3,19 @@ using NodaTime;
 
 namespace Humans.Web.Models;
 
+public class FinanceOverviewViewModel
+{
+    public required BudgetYear Year { get; init; }
+    public required IReadOnlyList<BudgetYear> AllYears { get; init; }
+
+    // Summary data (same logic as public summary, but includes restricted groups)
+    public decimal TotalIncome { get; init; }
+    public decimal TotalExpenses { get; init; }
+    public decimal NetBalance { get; init; }
+    public required IReadOnlyList<BudgetSlice> IncomeSlices { get; init; }
+    public required IReadOnlyList<BudgetSlice> ExpenseSlices { get; init; }
+}
+
 public class CoordinatorBudgetViewModel
 {
     public required BudgetYear Year { get; init; }

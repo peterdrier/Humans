@@ -3,6 +3,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -46,8 +47,9 @@ public class FinanceController : HumansControllerBase
                 return View("NoActiveYear");
             }
 
-            ViewBag.AllYears = await _budgetService.GetAllYearsAsync();
-            return View("YearDetail", activeYear);
+            var allYears = await _budgetService.GetAllYearsAsync();
+            var model = BuildFinanceOverview(activeYear, allYears);
+            return View("YearDetail", model);
         }
         catch (Exception ex)
         {
@@ -65,8 +67,9 @@ public class FinanceController : HumansControllerBase
             var year = await _budgetService.GetYearByIdAsync(id);
             if (year is null) return NotFound();
 
-            ViewBag.AllYears = await _budgetService.GetAllYearsAsync();
-            return View(year);
+            var allYears = await _budgetService.GetAllYearsAsync();
+            var model = BuildFinanceOverview(year, allYears);
+            return View(model);
         }
         catch (Exception ex)
         {
@@ -527,5 +530,107 @@ public class FinanceController : HumansControllerBase
         }
 
         return RedirectToAction(nameof(YearDetail), new { id = yearId });
+    }
+
+    /// <summary>
+    /// Builds the FinanceOverviewViewModel with inline summary data so FinanceAdmin
+    /// sees everything on one page without navigating to /Budget/Summary.
+    /// </summary>
+    private static FinanceOverviewViewModel BuildFinanceOverview(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
+    {
+        // All groups (including restricted) for FinanceAdmin summary
+        var allLineItems = year.Groups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .ToList();
+
+        var budgetLineItems = allLineItems.Where(li => !li.IsCashflowOnly).ToList();
+
+        // Compute VAT projections
+        var vatProjections = budgetLineItems
+            .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
+            .Select(li => new
+            {
+                VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
+                IsExpense = li.Amount > 0 // Income generates VAT liability (expense)
+            })
+            .ToList();
+
+        var income = budgetLineItems.Where(li => li.Amount > 0).Sum(li => li.Amount);
+        var expenses = budgetLineItems.Where(li => li.Amount < 0).Sum(li => li.Amount);
+        var vatExpenses = vatProjections.Where(v => v.IsExpense).Sum(v => v.VatAmount);
+        var vatCredits = vatProjections.Where(v => !v.IsExpense).Sum(v => v.VatAmount);
+
+        var totalIncome = income + vatCredits;
+        var totalExpenses = expenses - vatExpenses;
+        var netBalance = totalIncome + totalExpenses;
+
+        // Build income slices
+        var incomeCategories = year.Groups
+            .SelectMany(g => g.Categories)
+            .Select(c => new
+            {
+                c.Name,
+                Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount)
+            })
+            .Where(c => c.Total > 0)
+            .OrderByDescending(c => c.Total)
+            .ToList();
+
+        if (vatCredits > 0)
+            incomeCategories.Add(new { Name = "VAT Credits", Total = vatCredits });
+
+        var totalIncomeForSlices = incomeCategories.Sum(c => c.Total);
+        var incomeSlices = incomeCategories
+            .Select(c => new BudgetSlice
+            {
+                Name = c.Name,
+                Amount = c.Total,
+                Percentage = totalIncomeForSlices > 0 ? c.Total / totalIncomeForSlices * 100 : 0
+            })
+            .ToList();
+
+        // Build expense slices
+        var expenseCategories = year.Groups
+            .SelectMany(g => g.Categories)
+            .Select(c => new
+            {
+                c.Name,
+                Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount))
+            })
+            .Where(c => c.Total > 0)
+            .OrderByDescending(c => c.Total)
+            .ToList();
+
+        if (vatExpenses > 0)
+            expenseCategories.Add(new { Name = "VAT Liability", Total = vatExpenses });
+
+        var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
+        if (profit > 0)
+        {
+            expenseCategories.Add(new { Name = "Cash Reserves (90%)", Total = profit * 0.9m });
+            expenseCategories.Add(new { Name = "Spanish Taxes (10%)", Total = profit * 0.1m });
+        }
+
+        var totalExpenseForSlices = expenseCategories.Sum(c => c.Total);
+        var expenseSlices = expenseCategories
+            .Select(c => new BudgetSlice
+            {
+                Name = c.Name,
+                Amount = c.Total,
+                Percentage = totalExpenseForSlices > 0 ? c.Total / totalExpenseForSlices * 100 : 0
+            })
+            .ToList();
+
+        return new FinanceOverviewViewModel
+        {
+            Year = year,
+            AllYears = allYears,
+            TotalIncome = totalIncome,
+            TotalExpenses = totalExpenses,
+            NetBalance = netBalance,
+            IncomeSlices = incomeSlices,
+            ExpenseSlices = expenseSlices
+        };
     }
 }
