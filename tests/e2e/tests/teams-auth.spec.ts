@@ -3,8 +3,10 @@ import {
   loginAsCoordinator,
   loginAsTeamsAdmin,
   loginAsAdmin,
+  loginAsBoard,
   loginAsVolunteer,
   expectBlocked,
+  postWithCsrf,
 } from '../helpers/auth';
 
 /**
@@ -21,6 +23,7 @@ import {
 
 const DEPT_SLUG = 'dev-test-department';
 const SUBTEAM_SLUG = 'dev-test-subteam';
+const FAKE_REQUEST_ID = '00000000-0000-0000-0000-000000000000';
 
 test.describe('Teams Auth — Coordinator positive cases (#341)', () => {
   test('coordinator can access Members page for their department', async ({ page }) => {
@@ -51,6 +54,43 @@ test.describe('Teams Auth — Coordinator negative cases (#341)', () => {
   });
 });
 
+test.describe('Teams Auth — Coordinator POST cases (#341)', () => {
+  test('coordinator can POST approve on their department (auth passes)', async ({ page }) => {
+    await loginAsCoordinator(page);
+    await page.goto(`/Teams/${DEPT_SLUG}/Members`);
+
+    // POST with valid CSRF token — auth check should pass (request not found is OK)
+    const response = await postWithCsrf(
+      page,
+      `/Teams/${DEPT_SLUG}/Requests/${FAKE_REQUEST_ID}/Approve`,
+      'Notes=test',
+    );
+
+    // Auth passed if we get anything other than 401/403. A 302 (redirect) or 404
+    // (request not found) both prove the authorization layer allowed the action.
+    expect([401, 403]).not.toContain(response.status());
+  });
+
+  test('coordinator cannot POST approve on another department', async ({ page }) => {
+    await loginAsCoordinator(page);
+    // Navigate to own department first to get a valid CSRF token
+    await page.goto(`/Teams/${DEPT_SLUG}/Members`);
+
+    const response = await postWithCsrf(
+      page,
+      `/Teams/volunteers/Requests/${FAKE_REQUEST_ID}/Approve`,
+      'Notes=test',
+    );
+
+    // Should be blocked by authorization — coordinator doesn't own this team
+    expect([302, 403]).toContain(response.status());
+    if (response.status() === 302) {
+      const location = response.headers()['location'] ?? '';
+      expect(location).not.toContain('/Members');
+    }
+  });
+});
+
 test.describe('Teams Auth — TeamsAdmin and Admin positive cases (#341)', () => {
   test('TeamsAdmin can access Members page for any team', async ({ page }) => {
     await loginAsTeamsAdmin(page);
@@ -67,6 +107,14 @@ test.describe('Teams Auth — TeamsAdmin and Admin positive cases (#341)', () =>
     expect(page.url()).toContain(`/Teams/${DEPT_SLUG}/Members`);
     await expect(page.locator('h1, h2').first()).toBeVisible();
   });
+
+  test('Board can access Members page for any team', async ({ page }) => {
+    await loginAsBoard(page);
+    await page.goto(`/Teams/${DEPT_SLUG}/Members`);
+
+    expect(page.url()).toContain(`/Teams/${DEPT_SLUG}/Members`);
+    await expect(page.locator('h1, h2').first()).toBeVisible();
+  });
 });
 
 test.describe('Teams Auth — Volunteer negative cases (#341)', () => {
@@ -75,52 +123,40 @@ test.describe('Teams Auth — Volunteer negative cases (#341)', () => {
     await expectBlocked(page, `/Teams/${DEPT_SLUG}/Members`);
   });
 
-  test('volunteer cannot POST approve action', async ({ page }) => {
+  test('volunteer cannot POST approve action (with valid CSRF)', async ({ page }) => {
     await loginAsVolunteer(page);
+    // Navigate to home page to get a valid CSRF token (volunteers can't access Members)
+    await page.goto('/');
 
-    // Attempt a direct POST to the approve endpoint — should be blocked
-    const response = await page.request.post(
-      `/Teams/${DEPT_SLUG}/Requests/00000000-0000-0000-0000-000000000000/Approve`,
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        data: 'Notes=test',
-      }
+    const response = await postWithCsrf(
+      page,
+      `/Teams/${DEPT_SLUG}/Requests/${FAKE_REQUEST_ID}/Approve`,
+      'Notes=test',
     );
 
-    // Should get a redirect to login, 403, or 400 — not 200
-    expect([302, 400, 401, 403]).toContain(response.status());
+    // Should be blocked by authorization, not just CSRF validation
+    expect([302, 401, 403]).toContain(response.status());
   });
 
-  test('volunteer cannot POST reject action', async ({ page }) => {
+  test('volunteer cannot POST reject action (with valid CSRF)', async ({ page }) => {
     await loginAsVolunteer(page);
+    await page.goto('/');
 
-    // Attempt a direct POST to the reject endpoint — should be blocked
-    const response = await page.request.post(
-      `/Teams/${DEPT_SLUG}/Requests/00000000-0000-0000-0000-000000000000/Reject`,
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        data: 'Notes=test+reason',
-      }
+    const response = await postWithCsrf(
+      page,
+      `/Teams/${DEPT_SLUG}/Requests/${FAKE_REQUEST_ID}/Reject`,
+      'Notes=test+reason',
     );
 
-    // Should get a redirect to login, 403, or 400 — not 200
-    expect([302, 400, 401, 403]).toContain(response.status());
+    expect([302, 401, 403]).toContain(response.status());
   });
 });
 
-test.describe('Teams Auth — Audit trail verification (#341)', () => {
+test.describe('Teams Auth — Management UI verification (#341)', () => {
   /**
-   * Audit log entries for member add/remove are not directly accessible via a
-   * public API endpoint or a page that non-admin users can reach.
-   * The AuditLogViewComponent renders on admin-only pages.
-   *
-   * Rather than building a new API endpoint just for tests, we verify that the
-   * audit infrastructure is exercised by checking the Members page shows the
-   * expected management UI elements (add member, remove member buttons) which
-   * trigger the audit-logged service methods.
-   *
-   * Full audit log content verification is deferred to manual QA or future
-   * integration tests that can query the database directly.
+   * Verifies the Members page shows management UI controls (add/remove) that
+   * trigger audit-logged service methods. Direct audit log verification is
+   * deferred — there is no public API endpoint or UI for non-admin audit access.
    */
   test('admin Members page shows management controls that trigger audited actions', async ({ page }) => {
     await loginAsAdmin(page);

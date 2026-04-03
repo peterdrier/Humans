@@ -326,10 +326,10 @@ public class DevLoginController : Controller
         var deptExists = await _db.Teams.AnyAsync(t => t.Id == deptId);
         if (deptExists)
         {
-            // Ensure the coordinator membership exists even if team was already seeded
-            var hasMembership = await _db.TeamMembers
+            // Ensure the coordinator membership on department exists
+            var hasDeptMembership = await _db.TeamMembers
                 .AnyAsync(tm => tm.TeamId == deptId && tm.UserId == coordinatorUserId);
-            if (!hasMembership)
+            if (!hasDeptMembership)
             {
                 _db.TeamMembers.Add(new TeamMember
                 {
@@ -340,6 +340,41 @@ public class DevLoginController : Controller
                     JoinedAt = now
                 });
             }
+
+            // Ensure sub-team exists (may have been deleted manually in preview env)
+            var subTeamExists = await _db.Teams.AnyAsync(t => t.Id == subTeamId);
+            if (!subTeamExists)
+            {
+                _db.Teams.Add(new Team
+                {
+                    Id = subTeamId,
+                    Name = "Dev Test SubTeam",
+                    Description = "Test sub-team for coordinator e2e tests",
+                    Slug = "dev-test-subteam",
+                    IsActive = true,
+                    RequiresApproval = true,
+                    SystemTeamType = SystemTeamType.None,
+                    ParentTeamId = deptId,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+
+            // Ensure coordinator membership on sub-team exists
+            var hasSubTeamMembership = await _db.TeamMembers
+                .AnyAsync(tm => tm.TeamId == subTeamId && tm.UserId == coordinatorUserId);
+            if (!hasSubTeamMembership)
+            {
+                _db.TeamMembers.Add(new TeamMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = coordinatorUserId,
+                    TeamId = subTeamId,
+                    Role = TeamMemberRole.Member,
+                    JoinedAt = now
+                });
+            }
+
             return;
         }
 
