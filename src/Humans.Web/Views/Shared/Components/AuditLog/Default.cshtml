@@ -6,40 +6,17 @@
         <div class="card-header">@Model.Title</div>
         @if (Model.Entries.Count > 0)
         {
-            <div class="list-group list-group-flush">
+            <ul class="list-group list-group-flush">
                 @foreach (var entry in Model.Entries)
                 {
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <strong>@entry.Description</strong>
-                                <br />
-                                <small class="text-muted">
-                                    @if (entry.ActorUserId is null)
-                                    {
-                                        <span class="badge bg-info">System</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-secondary">Admin</span>
-                                    }
-                                    @if (entry.ActorUserId.HasValue)
-                                    {
-                                        <human-link user-id="@entry.ActorUserId.Value" display-name="@entry.ActorName" mode="Text" />
-                                    }
-                                    else
-                                    {
-                                        @entry.ActorName
-                                    }
-                                </small>
-                            </div>
-                            <small class="text-muted text-nowrap ms-2">
-                                @entry.OccurredAt.ToAuditTimestamp()
-                            </small>
-                        </div>
-                    </div>
+                    <li class="list-group-item py-2">
+                        @await Html.PartialAsync("Components/AuditLog/_Entry", entry, new ViewDataDictionary(ViewData)
+                        {
+                            ["UserDisplayNames"] = Model.UserDisplayNames
+                        })
+                    </li>
                 }
-            </div>
+            </ul>
         }
         else
         {
@@ -53,40 +30,17 @@ else
 {
     @if (Model.Entries.Count > 0)
     {
-        <div class="list-group list-group-flush">
+        <ul class="list-group list-group-flush">
             @foreach (var entry in Model.Entries)
             {
-                <div class="list-group-item">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <strong>@entry.Description</strong>
-                            <br />
-                            <small class="text-muted">
-                                @if (entry.ActorUserId is null)
-                                {
-                                    <span class="badge bg-info">System</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">Admin</span>
-                                }
-                                @if (entry.ActorUserId.HasValue)
-                                {
-                                    <human-link user-id="@entry.ActorUserId.Value" display-name="@entry.ActorName" mode="Text" />
-                                }
-                                else
-                                {
-                                    @entry.ActorName
-                                }
-                            </small>
-                        </div>
-                        <small class="text-muted text-nowrap ms-2">
-                            @entry.OccurredAt.ToAuditTimestamp()
-                        </small>
-                    </div>
-                </div>
+                <li class="list-group-item py-2">
+                    @await Html.PartialAsync("Components/AuditLog/_Entry", entry, new ViewDataDictionary(ViewData)
+                    {
+                        ["UserDisplayNames"] = Model.UserDisplayNames
+                    })
+                </li>
             }
-        </div>
+        </ul>
     }
     else
     {
