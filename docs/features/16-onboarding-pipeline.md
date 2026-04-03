@@ -2,7 +2,7 @@
 
 ## Business Context
 
-The onboarding pipeline defines the end-to-end journey from signup to active membership. All humans follow the same initial path: sign up, complete profile, sign consents. After that, a Consent Coordinator performs a safety check. Once cleared, the human is **automatically approved as a Volunteer** and gains full app access.
+The onboarding pipeline defines the end-to-end journey from signup to active membership. All humans follow the same initial path: sign up, complete profile, then two parallel tracks: sign legal documents and pass a Consent Coordinator profile review. Both must be complete before the human is added to the Volunteers team and gains full app access. The two tracks can happen in any order.
 
 During initial signup only, humans who want Colaborador or Asociado membership see the application form inline alongside their profile setup. This is a streamlined one-shot experience — the system creates both a Profile and an Application behind the scenes, but the user fills one unified form. The tier application proceeds through Board voting in parallel — it never blocks Volunteer access.
 
@@ -23,15 +23,11 @@ Profile Setup (one-shot onboarding experience)
     ├── [Optional] Tier selection → Colaborador/Asociado application form inline
     │
     ▼
-Sign Required Consents (Volunteers team docs)
+Two parallel tracks (either order):
+    ├── Sign Required Consents (Volunteers team docs)
+    └── Consent Coordinator profile review → Cleared or Flagged
     │
-    ▼
-[Auto] ConsentCheckStatus → Pending
-    │
-    ▼
-Consent Coordinator reviews → Cleared or Flagged
-    │
-    ▼ [Cleared]
+    ▼ [Both complete: Cleared + All docs signed]
     │
     ├── ALL humans → IsApproved = true → Volunteers team → ActiveMember ✓
     │
@@ -52,9 +48,9 @@ Consent Coordinator reviews → Cleared or Flagged
 **Acceptance Criteria:**
 - Sign up via Google OAuth
 - Fill basic profile
-- Sign required legal documents
-- System sets ConsentCheckStatus to Pending
-- Consent Coordinator clears → IsApproved = true → Volunteers team
+- Sign required legal documents (can happen before or after profile review)
+- Consent Coordinator clears profile review → IsApproved = true
+- Volunteers team membership granted when BOTH profile review cleared AND all legal docs signed
 - Dashboard shows "Active" status (no tier badge for Volunteer)
 
 ### US-16.2: New Human Onboarding (Colaborador/Asociado)
@@ -67,21 +63,21 @@ Consent Coordinator reviews → Cleared or Flagged
 - During profile setup, tier selector shows Colaborador/Asociado options
 - Selecting a tier reveals the application form inline (motivation, etc.)
 - Submitting creates both Profile and Application entities
-- After consent check clearance → Volunteer access immediately
+- After both profile review cleared AND legal docs signed → Volunteer access
 - Application enters Board voting queue in parallel
 - **This inline experience is one-shot** — after onboarding, profile edit has no application sections
 
 ### US-16.3: Consent Check Auto-Approve
 
 **As the** system
-**I want to** automatically approve humans as Volunteers after consent check clearance
+**I want to** automatically add humans to the Volunteers team when both profile review and legal documents are complete
 **So that** there is no manual Board step for basic Volunteer access
 
 **Acceptance Criteria:**
-- ConsentCheckStatus = Cleared triggers:
-  - `IsApproved = true`
-  - `SyncVolunteersMembershipForUserAsync` → Volunteers team
-  - ActiveMember claim on next request
+- Profile review clearance sets `IsApproved = true` (regardless of legal doc status)
+- `SyncVolunteersMembershipForUserAsync` checks BOTH `IsApproved` AND `HasAllRequiredConsents` independently
+- Volunteers team membership (and ActiveMember claim) granted only when both conditions are met
+- `IsApproved = true` is intentionally set before legal docs may be complete — it marks profile review approval, not full activation. The Volunteers team membership is the true activation gate.
 - Consent check is purely a Volunteer gate — independent of any tier application
 - Board approval is only for Colaborador/Asociado (via Board voting)
 
@@ -133,14 +129,19 @@ Consent Coordinator reviews → Cleared or Flagged
   - ConsentCheckStatus auto-set to Pending (if currently null)
   - Consent Coordinator notified
 
-### Stage 4: Consent Check (Volunteer Gate)
+### Stage 4: Profile Review (Volunteer Gate — parallel with Stage 3)
 
-**Trigger:** ConsentCheckStatus = Pending
+**Trigger:** Profile exists, not yet rejected (coordinators can review at any time)
 **Actor:** Consent Coordinator
 **Actions:**
-- Coordinator reviews profile and consent status
-- **Clear**: ConsentCheckStatus = Cleared → IsApproved = true → Volunteers team → ActiveMember
+- Coordinator reviews profile (can proceed regardless of legal document status)
+- Review queue shows legal document progress (X/Y signed) for context
+- **Clear**: ConsentCheckStatus = Cleared, IsApproved = true
+  - If all legal docs also signed → Volunteers team → ActiveMember
+  - If legal docs still pending → admission deferred until docs are signed
 - **Flag**: ConsentCheckStatus = Flagged with notes → access blocked, can be resolved later
+
+`IsApproved = true` is set on clearance even if legal docs are incomplete — it marks profile review approval, not full activation. The Volunteers team membership is the true activation gate, and `SyncVolunteersMembershipForUserAsync` independently checks both `IsApproved` AND `HasAllRequiredConsents`.
 
 This gate is about Volunteer access only. It does not evaluate tier applications.
 
@@ -201,7 +202,8 @@ Term expires: Dec 31, 2027
 4. **Volunteer access is never blocked by tier applications** — parallel tracks
 5. **Grandfather existing users** — consent check only for new signups after deployment
 6. **Auto-Pending** — system sets ConsentCheckStatus to Pending when all consents are signed
-7. **Immediate sync** — consent check clearance triggers immediate Volunteers team sync
+7. **Immediate sync** — both profile review clearance and legal document signing trigger `SyncVolunteersMembershipForUserAsync`, which independently checks both conditions
+8. **IsApproved ≠ activated** — `IsApproved = true` marks profile review approval; Volunteers team membership is the true activation gate
 8. **No Volunteer badge** — only Colaborador/Asociado badges on dashboard
 
 ## Related Features

@@ -905,8 +905,6 @@
   <data name="OnboardingReview_NoPending" xml:space="preserve"><value>Nessun human in attesa di revisione.</value></data>
   <data name="OnboardingReview_PendingSection" xml:space="preserve"><value>In attesa di revisione</value></data>
   <data name="OnboardingReview_FlaggedSection" xml:space="preserve"><value>Segnalato per approfondimento</value></data>
-  <data name="OnboardingReview_Pending" xml:space="preserve"><value>Consensi pronti</value></data>
-  <data name="OnboardingReview_ConsentsNotStarted" xml:space="preserve"><value>Consensi non iniziati</value></data>
   <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Segnalato</value></data>
   <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>Riepilogo del profilo</value></data>
   <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>Riepilogo del nuovo human</value></data>
@@ -933,7 +931,6 @@
   <data name="OnboardingReview_RejectHelp" xml:space="preserve"><value>Il rifiuto negher&#xE0; permanentemente la registrazione di questo human e invierà un'email di notifica.</value></data>
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>La registrazione &#xE8; stata rifiutata.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>Questo human &#xE8; gi&#xE0; stato rifiutato.</value></data>
-  <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>L'onboarding non pu&#xF2; essere approvato finch&#xE9; non vengono firmati tutti gli accordi richiesti.</value></data>
   <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Documenti legali</value></data>
   <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Completo</value></data>
   <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>In attesa</value></data>

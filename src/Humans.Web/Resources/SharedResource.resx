@@ -929,8 +929,6 @@
   <data name="OnboardingReview_NoPending" xml:space="preserve"><value>No humans are waiting for review.</value></data>
   <data name="OnboardingReview_PendingSection" xml:space="preserve"><value>Pending Review</value></data>
   <data name="OnboardingReview_FlaggedSection" xml:space="preserve"><value>Flagged for Follow-up</value></data>
-  <data name="OnboardingReview_Pending" xml:space="preserve"><value>Consents Ready</value></data>
-  <data name="OnboardingReview_ConsentsNotStarted" xml:space="preserve"><value>Consents Not Started</value></data>
   <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Flagged</value></data>
   <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>Profile Summary</value></data>
   <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>New Human Summary</value></data>
@@ -957,7 +955,6 @@
   <data name="OnboardingReview_RejectHelp" xml:space="preserve"><value>Rejecting will permanently deny this human's signup and send a notification email.</value></data>
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>Signup has been rejected.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>This human has already been rejected.</value></data>
-  <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>Cannot clear onboarding until all required agreements are signed.</value></data>
   <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Legal Documents</value></data>
   <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Complete</value></data>
   <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>Pending</value></data>

@@ -185,7 +185,7 @@ public class OnboardingService : IOnboardingService
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
         _cache.UpdateApprovedProfile(userId, CachedProfile.Create(profile, profile.User));
 
-        // Sync Volunteers team membership (adds to team + sends welcome email)
+        // Sync Volunteers team membership (adds to team if consents are also complete)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
 
         // If user already has approved tier applications, sync those teams too.

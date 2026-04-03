@@ -905,8 +905,6 @@
   <data name="OnboardingReview_NoPending" xml:space="preserve"><value>Keine Humans warten auf eine Pr&#xFC;fung.</value></data>
   <data name="OnboardingReview_PendingSection" xml:space="preserve"><value>Ausstehende Pr&#xFC;fung</value></data>
   <data name="OnboardingReview_FlaggedSection" xml:space="preserve"><value>Zur Nachverfolgung markiert</value></data>
-  <data name="OnboardingReview_Pending" xml:space="preserve"><value>Einwilligungen bereit</value></data>
-  <data name="OnboardingReview_ConsentsNotStarted" xml:space="preserve"><value>Einwilligungen nicht begonnen</value></data>
   <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Markiert</value></data>
   <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>Profil&#xFC;bersicht</value></data>
   <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>Neuer Human &#x2013; Zusammenfassung</value></data>
@@ -933,7 +931,6 @@
   <data name="OnboardingReview_RejectHelp" xml:space="preserve"><value>Die Ablehnung verweigert die Anmeldung dieses Humans dauerhaft und sendet eine Benachrichtigungs-E-Mail.</value></data>
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>Die Anmeldung wurde abgelehnt.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>Dieser Human wurde bereits abgelehnt.</value></data>
-  <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>Die Einarbeitung kann erst freigegeben werden, wenn alle erforderlichen Vereinbarungen unterzeichnet sind.</value></data>
   <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Rechtliche Dokumente</value></data>
   <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Vollst&#xE4;ndig</value></data>
   <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>Ausstehend</value></data>
