@@ -1,8 +1,8 @@
 @model Humans.Application.DTOs.AllGroupsResult
-@using Humans.Domain.Entities
+@using Humans.Application.Interfaces
 @{
     ViewData["Title"] = "All Domain Groups";
-    var teams = ViewBag.Teams as List<Team> ?? [];
+    var teams = ViewBag.Teams as IReadOnlyList<TeamSummary> ?? [];
     var driftedGroups = Model.Groups.Where(g => g.HasDrift).ToList();
 
     // Standard = settings we enforce (from ExpectedSettings)
