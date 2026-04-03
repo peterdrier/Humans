@@ -374,7 +374,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -432,7 +432,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -478,7 +478,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -524,7 +524,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -557,7 +557,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -593,7 +593,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -620,7 +620,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -999,10 +999,14 @@ public class TeamAdminController : HumansTeamControllerBase
         return Json(combined);
     }
 
-    private async Task<bool> CanManageResourcesAsync(Guid teamId, Guid userId)
+    private async Task<bool> CanManageResourcesAsync(Team team, Guid userId)
     {
         // Claims-first for global roles; DB only for team-specific coordinator check
-        return RoleChecks.IsTeamsAdminBoardOrAdmin(User) ||
-               await _teamResourceService.CanManageTeamResourcesAsync(teamId, userId);
+        if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+            return true;
+
+        // Sub-team managers cannot manage Google resources — check at department level
+        var checkTeamId = team.ParentTeamId ?? team.Id;
+        return await _teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
     }
 }

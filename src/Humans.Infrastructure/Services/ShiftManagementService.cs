@@ -98,14 +98,13 @@ public class ShiftManagementService : IShiftManagementService
 
     private async Task<IReadOnlyList<Guid>> QueryCoordinatorDepartmentIdsAsync(Guid userId)
     {
-        // Check via IsManagement role assignment
+        // Check via IsManagement role assignment (departments and sub-teams)
         var byRoleAssignment = await _dbContext.TeamRoleAssignments
             .AsNoTracking()
             .Where(tra =>
                 tra.TeamMember.UserId == userId &&
                 tra.TeamMember.LeftAt == null &&
                 tra.TeamRoleDefinition.IsManagement &&
-                tra.TeamRoleDefinition.Team.ParentTeamId == null &&
                 tra.TeamRoleDefinition.Team.SystemTeamType == SystemTeamType.None)
             .Select(tra => tra.TeamRoleDefinition.TeamId)
             .ToListAsync();
@@ -117,7 +116,6 @@ public class ShiftManagementService : IShiftManagementService
                 tm.UserId == userId &&
                 tm.LeftAt == null &&
                 tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.ParentTeamId == null &&
                 tm.Team.SystemTeamType == SystemTeamType.None)
             .Select(tm => tm.TeamId)
             .ToListAsync();

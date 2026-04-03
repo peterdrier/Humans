@@ -207,13 +207,14 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        // Get all current coordinators (excluding the Coordinators system team itself)
+        // Get all current department coordinators (sub-team managers are excluded)
         var leadUserIds = await _dbContext.TeamMembers
             .AsNoTracking()
             .Where(tm =>
                 tm.LeftAt == null &&
                 tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.SystemTeamType == SystemTeamType.None) // Only from user-created teams
+                tm.Team.SystemTeamType == SystemTeamType.None &&
+                tm.Team.ParentTeamId == null) // Only department coordinators, not sub-team managers
             .Select(tm => tm.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -396,14 +397,15 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        // Check if user is currently Coordinator of any user-created team
+        // Check if user is currently Coordinator of any department (sub-team managers excluded)
         var isCoordinatorAnywhere = await _dbContext.TeamMembers
             .AsNoTracking()
             .AnyAsync(tm =>
                 tm.UserId == userId &&
                 tm.LeftAt == null &&
                 tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.SystemTeamType == SystemTeamType.None,
+                tm.Team.SystemTeamType == SystemTeamType.None &&
+                tm.Team.ParentTeamId == null, // Only department coordinators
                 cancellationToken);
 
         var isEligible = isCoordinatorAnywhere

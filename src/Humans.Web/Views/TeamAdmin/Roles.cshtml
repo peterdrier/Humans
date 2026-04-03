@@ -105,31 +105,36 @@
                             }
                         </div>
                     </div>
-                    @if (!Model.IsChildTeam || role.IsManagement)
-                    {
+                    @{
                         var hasAssignments = role.Slots.Any(s => s.IsFilled);
-                        <div class="mb-3 form-check">
-                            @if (role.IsManagement && hasAssignments)
-                            {
-                                <input type="hidden" name="IsManagement" value="true" />
-                                <input type="checkbox" class="form-check-input" id="isManagement-@role.Id" checked disabled />
-                            }
-                            else
-                            {
-                                <input type="checkbox" class="form-check-input" id="isManagement-@role.Id"
-                                       name="IsManagement" value="true" @(role.IsManagement ? "checked" : null) />
-                            }
-                            <label class="form-check-label" for="isManagement-@role.Id">Coordinator role</label>
-                            @if (role.IsManagement && hasAssignments)
-                            {
-                                <div class="form-text text-warning">Unassign all humans before unchecking.</div>
-                            }
-                            else
-                            {
-                                <div class="form-text">Humans assigned to this role automatically become Coordinators.</div>
-                            }
-                        </div>
                     }
+                    <div class="mb-3 form-check">
+                        @if (role.IsManagement && hasAssignments)
+                        {
+                            <input type="hidden" name="IsManagement" value="true" />
+                            <input type="checkbox" class="form-check-input" id="isManagement-@role.Id" checked disabled />
+                        }
+                        else
+                        {
+                            <input type="checkbox" class="form-check-input" id="isManagement-@role.Id"
+                                   name="IsManagement" value="true" @(role.IsManagement ? "checked" : null) />
+                        }
+                        <label class="form-check-label" for="isManagement-@role.Id">
+                            @(Model.IsChildTeam ? "Manager role" : "Coordinator role")
+                        </label>
+                        @if (role.IsManagement && hasAssignments)
+                        {
+                            <div class="form-text text-warning">Unassign all humans before unchecking.</div>
+                        }
+                        else if (Model.IsChildTeam)
+                        {
+                            <div class="form-text">Humans assigned to this role can manage this sub-team's members, roles, and shifts.</div>
+                        }
+                        else
+                        {
+                            <div class="form-text">Humans assigned to this role automatically become Coordinators.</div>
+                        }
+                    </div>
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="isPublic-@role.Id"
                                name="IsPublic" value="true" @(role.IsPublic ? "checked" : null) />

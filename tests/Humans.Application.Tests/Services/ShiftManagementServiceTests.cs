@@ -351,4 +351,157 @@ public class ShiftManagementServiceTests : IDisposable
 
         return (es, rota);
     }
+
+    // ============================================================
+    // IsDeptCoordinatorAsync — sub-team manager support
+    // ============================================================
+
+    [Fact]
+    public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()
+    {
+        var (department, subTeam, user) = await SeedSubTeamManagerScenario();
+
+        var result = await _service.IsDeptCoordinatorAsync(user.Id, subTeam.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsFalse_ForSiblingSubTeam()
+    {
+        var (department, subTeamA, user) = await SeedSubTeamManagerScenario();
+        var subTeamB = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "SubTeamB",
+            Slug = "subteam-b",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = department.Id,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.Teams.Add(subTeamB);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsDeptCoordinatorAsync(user.Id, subTeamB.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsDeptCoordinatorAsync_SubTeamManager_ReturnsFalse_ForParentDepartment()
+    {
+        var (department, _, user) = await SeedSubTeamManagerScenario();
+
+        var result = await _service.IsDeptCoordinatorAsync(user.Id, department.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsDeptCoordinatorAsync_DepartmentCoordinator_ReturnsTrue_ForChildSubTeam()
+    {
+        var department = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Dept",
+            Slug = "dept",
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        var subTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "SubTeam",
+            Slug = "subteam",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = department.Id,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        await _dbContext.Teams.AddRangeAsync(department, subTeam);
+
+        var user = SeedUser("DeptCoord");
+        var member = new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            TeamId = department.Id,
+            Team = department,
+            UserId = user.Id,
+            User = user,
+            Role = TeamMemberRole.Coordinator,
+            JoinedAt = TestNow
+        };
+        _dbContext.TeamMembers.Add(member);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsDeptCoordinatorAsync(user.Id, subTeam.Id);
+
+        result.Should().BeTrue();
+    }
+
+    private async Task<(Team department, Team subTeam, User user)> SeedSubTeamManagerScenario()
+    {
+        var department = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "Department",
+            Slug = "department",
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        var subTeam = new Team
+        {
+            Id = Guid.NewGuid(),
+            Name = "SubTeam",
+            Slug = "subteam",
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = department.Id,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        await _dbContext.Teams.AddRangeAsync(department, subTeam);
+
+        var user = SeedUser("SubTeamMgr");
+        var member = new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            TeamId = subTeam.Id,
+            Team = subTeam,
+            UserId = user.Id,
+            User = user,
+            Role = TeamMemberRole.Coordinator,
+            JoinedAt = TestNow
+        };
+        _dbContext.TeamMembers.Add(member);
+
+        var roleDef = new TeamRoleDefinition
+        {
+            Id = Guid.NewGuid(),
+            TeamId = subTeam.Id,
+            Name = "Manager",
+            IsManagement = true,
+            SlotCount = 1,
+            SortOrder = 0,
+            CreatedAt = TestNow,
+            UpdatedAt = TestNow
+        };
+        _dbContext.TeamRoleDefinitions.Add(roleDef);
+
+        var assignment = new TeamRoleAssignment
+        {
+            Id = Guid.NewGuid(),
+            TeamRoleDefinitionId = roleDef.Id,
+            TeamMemberId = member.Id,
+            SlotIndex = 0,
+            AssignedAt = TestNow,
+            AssignedByUserId = Guid.NewGuid()
+        };
+        _dbContext.TeamRoleAssignments.Add(assignment);
+
+        await _dbContext.SaveChangesAsync();
+        return (department, subTeam, user);
+    }
 }

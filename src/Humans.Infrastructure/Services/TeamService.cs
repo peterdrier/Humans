@@ -478,9 +478,9 @@ public class TeamService : ITeamService
             customSlug = null;
         }
 
-        // If team is becoming a sub-team, clear IsManagement and demote coordinators
-        var becomingChild = parentTeamId.HasValue && !team.ParentTeamId.HasValue;
-        var usersNeedingShiftAuthorizationInvalidation = becomingChild
+        // If team is changing parent, invalidate shift auth for management role holders
+        var parentChanging = parentTeamId != team.ParentTeamId;
+        var usersNeedingShiftAuthorizationInvalidation = parentChanging
             ? await _dbContext.Set<TeamRoleAssignment>()
                 .Where(a => a.TeamRoleDefinition.TeamId == teamId && a.TeamRoleDefinition.IsManagement)
                 .Select(a => a.TeamMember.UserId)
@@ -520,32 +520,6 @@ public class TeamService : ITeamService
             team.ShowCoordinatorsOnPublicPage = false;
         }
         team.UpdatedAt = _clock.GetCurrentInstant();
-
-        if (becomingChild)
-        {
-            var managementRoles = await _dbContext.Set<TeamRoleDefinition>()
-                .Where(d => d.TeamId == teamId && d.IsManagement)
-                .ToListAsync(cancellationToken);
-            foreach (var role in managementRoles)
-            {
-                role.IsManagement = false;
-                role.UpdatedAt = team.UpdatedAt;
-            }
-
-            var coordinators = await _dbContext.TeamMembers
-                .Where(m => m.TeamId == teamId && m.LeftAt == null && m.Role == TeamMemberRole.Coordinator)
-                .ToListAsync(cancellationToken);
-            foreach (var member in coordinators)
-            {
-                member.Role = TeamMemberRole.Member;
-            }
-
-            if (managementRoles.Count > 0 || coordinators.Count > 0)
-            {
-                _logger.LogInformation("Team {TeamId} became a sub-team: cleared {RoleCount} management roles, demoted {MemberCount} coordinators",
-                    teamId, managementRoles.Count, coordinators.Count);
-            }
-        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
