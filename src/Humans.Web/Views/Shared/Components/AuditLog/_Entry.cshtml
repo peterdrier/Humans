@@ -3,10 +3,27 @@
 
 @{
     var userNames = (Dictionary<Guid, string>?)ViewData["UserDisplayNames"] ?? new();
+    var teamNames = (Dictionary<Guid, (string Name, string Slug)>?)ViewData["TeamNames"] ?? new();
     string GetName(Guid id) => userNames.TryGetValue(id, out var n) ? n : "Unknown";
 
     var verb = AuditLogViewComponent.GetActionVerb(Model.Action);
-    var hasSubject = Model.RelatedEntityId.HasValue && Model.RelatedEntityType == "User";
+
+    // Subject: the user being acted upon
+    Guid? subjectId = Model.EntityType is "User" or "Profile" or "WorkspaceAccount"
+        ? Model.EntityId
+        : string.Equals(Model.RelatedEntityType, "User", StringComparison.Ordinal)
+            ? Model.RelatedEntityId
+            : null;
+
+    // Target team
+    Guid? targetTeamId = string.Equals(Model.EntityType, "Team", StringComparison.Ordinal)
+        ? Model.EntityId
+        : string.Equals(Model.RelatedEntityType, "Team", StringComparison.Ordinal)
+            ? Model.RelatedEntityId
+            : null;
+
+    // When actor == subject, don't repeat (e.g. "Peter left Geeks" not "Peter left Peter in Geeks")
+    var actorIsSubject = Model.ActorUserId.HasValue && subjectId.HasValue && Model.ActorUserId.Value == subjectId.Value;
 }
 
 <div class="d-flex align-items-baseline gap-1 small">
@@ -14,6 +31,7 @@
     <span class="text-muted">—</span>
     @if (verb != null)
     {
+        @* Actor *@
         @if (Model.ActorUserId.HasValue)
         {
             <human-link user-id="@Model.ActorUserId.Value" display-name="@GetName(Model.ActorUserId.Value)" mode="Text" />
@@ -22,10 +40,20 @@
         {
             <span class="text-muted">System</span>
         }
+
         <span>@verb</span>
-        @if (hasSubject)
+
+        @* Subject (skip if same as actor) *@
+        @if (subjectId.HasValue && !actorIsSubject)
         {
-            <human-link user-id="@Model.RelatedEntityId!.Value" display-name="@GetName(Model.RelatedEntityId.Value)" mode="Text" />
+            <human-link user-id="@subjectId.Value" display-name="@GetName(subjectId.Value)" mode="Text" />
+        }
+
+        @* Target team *@
+        @if (targetTeamId.HasValue && teamNames.TryGetValue(targetTeamId.Value, out var team))
+        {
+            <span class="text-muted">in</span>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.Slug" class="text-decoration-none">@team.Name</a>
         }
     }
     else

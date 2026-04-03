@@ -6,7 +6,8 @@
         <li class="list-group-item py-2">
             @await Html.PartialAsync("Components/AuditLog/_Entry", entry, new ViewDataDictionary(ViewData)
             {
-                ["UserDisplayNames"] = Model.UserDisplayNames
+                ["UserDisplayNames"] = Model.UserDisplayNames,
+                ["TeamNames"] = Model.TeamNames
             })
         </li>
     }

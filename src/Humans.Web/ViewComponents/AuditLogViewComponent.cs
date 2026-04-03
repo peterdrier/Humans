@@ -54,8 +54,14 @@ public class AuditLogViewComponent : ViewComponent
                 entityType, entityId, userId, actionList, limit);
 
             // Batch-load display names for all referenced user IDs
+            // (actors, subjects via EntityId for User/Profile types, and RelatedEntityId for User types)
             var userIds = model.Entries
-                .SelectMany(e => new[] { e.ActorUserId, e.RelatedEntityId })
+                .SelectMany(e => new[]
+                {
+                    e.ActorUserId,
+                    e.EntityType is "User" or "Profile" or "WorkspaceAccount" ? (Guid?)e.EntityId : null,
+                    string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal) ? e.RelatedEntityId : null
+                })
                 .Where(id => id.HasValue)
                 .Select(id => id!.Value)
                 .Distinct()
@@ -67,6 +73,26 @@ public class AuditLogViewComponent : ViewComponent
                     .AsNoTracking()
                     .Where(u => userIds.Contains(u.Id))
                     .ToDictionaryAsync(u => u.Id, u => u.DisplayName);
+            }
+
+            // Batch-load team names for entries that reference teams
+            var teamIds = model.Entries
+                .SelectMany(e => new[]
+                {
+                    string.Equals(e.EntityType, "Team", StringComparison.Ordinal) ? (Guid?)e.EntityId : null,
+                    string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) ? e.RelatedEntityId : null
+                })
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .Distinct()
+                .ToList();
+
+            if (teamIds.Count > 0)
+            {
+                model.TeamNames = await _dbContext.Teams
+                    .AsNoTracking()
+                    .Where(t => teamIds.Contains(t.Id))
+                    .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug));
             }
         }
         catch (Exception ex)
@@ -111,4 +137,5 @@ public class AuditLogComponentViewModel
     public bool ShowCard { get; set; } = true;
     public IReadOnlyList<Domain.Entities.AuditLogEntry> Entries { get; set; } = [];
     public Dictionary<Guid, string> UserDisplayNames { get; set; } = new();
+    public Dictionary<Guid, (string Name, string Slug)> TeamNames { get; set; } = new();
 }
