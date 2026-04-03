@@ -1,0 +1,55 @@
+name: E2E Tests (QA)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  e2e:
+    if: github.repository == 'peterdrier/Humans'
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: tests/e2e
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for QA deploy
+        working-directory: .
+        run: |
+          EXPECTED_COMMIT="${{ github.sha }}"
+          URL="https://humans.n.burn.camp/api/version"
+          echo "Waiting for commit ${EXPECTED_COMMIT} to deploy..."
+
+          for i in $(seq 1 60); do
+            DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
+            if [ "$DEPLOYED" = "$EXPECTED_COMMIT" ]; then
+              echo "Deploy confirmed after ~$((i * 5))s"
+              exit 0
+            fi
+            echo "Attempt $i: deployed=$DEPLOYED, expected=$EXPECTED_COMMIT"
+            sleep 5
+          done
+
+          echo "Timed out waiting for deploy after 5 minutes"
+          exit 1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: npx playwright test
+        env:
+          BASE_URL: https://humans.n.burn.camp
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report/
+          retention-days: 14
