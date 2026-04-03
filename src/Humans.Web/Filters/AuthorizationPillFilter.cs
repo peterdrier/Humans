@@ -40,6 +40,10 @@ public class AuthorizationPillFilter : IActionFilter
         if (context.ActionDescriptor is not ControllerActionDescriptor descriptor)
             return;
 
+        // Skip if action has [AllowAnonymous] — endpoint is open despite controller-level [Authorize]
+        if (descriptor.MethodInfo.GetCustomAttributes<AllowAnonymousAttribute>(inherit: true).Any())
+            return;
+
         // Collect all [Authorize(Roles = "...")] from action then controller
         var roles = new HashSet<string>(StringComparer.Ordinal);
 

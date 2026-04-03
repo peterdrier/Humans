@@ -48,11 +48,11 @@ Generated 2026-04-03. Covers every `[Authorize(Roles)]`, `RoleChecks.*`, `ShiftR
 | `CampaignController` | Class | `[Authorize]` (authenticated) | — |
 | `CampaignController.Create` (GET/POST) | Action | `Admin` | `RoleNames.Admin` |
 | `CampaignController.Edit` (GET/POST) | Action | `Admin` | `RoleNames.Admin` |
-| `CampaignController.Detail` | Action | `Admin` | `RoleNames.Admin` |
+| `CampaignController.Detail` | Action | `TicketAdmin, Admin` | `RoleGroups.TicketAdminOrAdmin` |
 | `CampaignController.ImportCodes` | Action | `Admin` | `RoleNames.Admin` |
 | `CampaignController.GenerateCodes` | Action | `TicketAdmin, Admin` | `RoleGroups.TicketAdminOrAdmin` |
 | `CampaignController.DeleteCode` | Action | `Admin` | `RoleNames.Admin` |
-| `CampaignController.SendWave` | Action | `TicketAdmin, Admin` | `RoleGroups.TicketAdminOrAdmin` |
+| `CampaignController.SendWave` | Action | `Admin` | `RoleNames.Admin` |
 | `CampaignController.Activate/Complete/Reactivate` | Action | `Admin` | `RoleNames.Admin` |
 | `CampaignController.AssignManual` | Action | `Admin` | `RoleNames.Admin` |
 | `CampaignController.UnassignCode` | Action | `Admin` | `RoleNames.Admin` |
@@ -94,7 +94,7 @@ Generated 2026-04-03. Covers every `[Authorize(Roles)]`, `RoleChecks.*`, `ShiftR
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `GovernanceController` | Class | `[Authorize]` (authenticated) | — |
-| `GovernanceController.Apply` | Action | `Board, Admin` | `RoleGroups.BoardOrAdmin` |
+| `GovernanceController.Roles` | Action | `Board, Admin` | `RoleGroups.BoardOrAdmin` |
 | `ApplicationController` | Class | `[Authorize]` (authenticated) | — |
 | `ApplicationController.Approve/Reject` | Action | `Board, Admin` | `RoleGroups.BoardOrAdmin` |
 
@@ -354,7 +354,7 @@ These entries express the same authorization rule using different syntax across 
 
 | Endpoint | Roles | Note |
 |---|---|---|
-| `GoogleController` most actions | `Admin` (class-level) | Nav link shows only for Admin, but sub-actions like `ResyncTeam` (TeamsAdmin/Board/Admin) are broader than the nav — TeamsAdmin/Board users must know the URL. |
+| `GoogleController` most actions | `Admin` (class-level) | Class-level `[Authorize(Roles = Admin)]` is enforced as AND with action-level attributes — only Admin can access any action. The broader action-level roles (e.g., `TeamsAdminBoardOrAdmin` on `ResyncTeam`) are effectively dead code since Admin is always required. Whether this is intentional or a bug to investigate in Phase 1 should be confirmed. |
 | `ProfileController.ExportCsv` | `HumanAdminBoardOrAdmin` | No visible button in AdminList view (accessed via URL pattern). |
 
 ### Runtime-Only Guards (no attribute, enforced in method body)
