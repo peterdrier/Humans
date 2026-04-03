@@ -55,28 +55,28 @@
                             <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
                         </li>
                         <li class="nav-item" authorize-policy="CanAccessVolunteers">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Vol" asp-action="Index">V <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Vol" asp-action="Index">V</a>
                         </li>
                         <li class="nav-item" authorize-policy="CanAccessReviewQueue">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" }) <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
                         </li>
                         <li class="nav-item" authorize-policy="AdminOrBoard">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" }) <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
                         </li>
                         <li class="nav-item" authorize-policy="AdminOrBoard">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
                         </li>
                         <li class="nav-item" authorize-policy="HumanAdminOnly">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Profile" asp-action="AdminList">Humans <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Profile" asp-action="AdminList">Humans</a>
                         </li>
                         <li class="nav-item" authorize-policy="Admin">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                         </li>
                         <li class="nav-item" authorize-policy="Admin">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Google" asp-action="Index">Google <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Google" asp-action="Index">Google</a>
                         </li>
                         <li class="nav-item" authorize-policy="CanAccessTickets">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
@@ -85,7 +85,7 @@
                             </li>
                         }
                         <li class="nav-item" authorize-policy="CanAccessFinance">
-                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Finance" asp-action="Index">Finance <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Finance" asp-action="Index">Finance</a>
                         </li>
                     </ul>
                     <div class="d-flex align-items-center gap-2">
