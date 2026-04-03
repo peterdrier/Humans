@@ -80,7 +80,12 @@ public class NotificationInboxService : INotificationInboxService
         {
             query = query.Where(nr =>
                 nr.Notification.Source == NotificationSource.ConsentReviewNeeded ||
-                nr.Notification.Source == NotificationSource.ApplicationSubmitted);
+                nr.Notification.Source == NotificationSource.ApplicationSubmitted ||
+                nr.Notification.Source == NotificationSource.ApplicationApproved ||
+                nr.Notification.Source == NotificationSource.ApplicationRejected ||
+                nr.Notification.Source == NotificationSource.VolunteerApproved ||
+                nr.Notification.Source == NotificationSource.TeamJoinRequestSubmitted ||
+                nr.Notification.Source == NotificationSource.TeamJoinRequestDecided);
         }
         else if (string.Equals(filter, "resolved", StringComparison.OrdinalIgnoreCase))
         {

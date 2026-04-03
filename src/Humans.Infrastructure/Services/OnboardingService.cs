@@ -455,6 +455,27 @@ public class OnboardingService : IOnboardingService
         // Remove from profile cache (suspended)
         _cache.UpdateApprovedProfile(userId, null);
 
+        // In-app notification to the suspended user (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.AccessSuspended,
+                NotificationClass.Actionable,
+                NotificationPriority.Critical,
+                "Your access has been suspended",
+                [userId],
+                body: string.IsNullOrWhiteSpace(notes)
+                    ? "Your access has been suspended by an administrator."
+                    : $"Your access has been suspended: {notes}",
+                actionUrl: "/Profile",
+                actionLabel: "View profile",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", userId);
+        }
+
         _metrics.RecordMemberSuspended("admin");
         _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", adminId, userId);
 
