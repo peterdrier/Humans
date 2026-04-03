@@ -296,13 +296,13 @@
                     <span class="badge bg-danger ms-2">Error</span>
                 }
             </span>
-            <form asp-action="Sync" method="post" class="d-inline" authorize-policy="CanManageTickets">
+            <form asp-action="Sync" method="post" class="d-inline" authorize-policy="TicketAdminOrAdmin">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-primary">
                     <i class="fa-solid fa-sync"></i> Sync Now <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </button>
             </form>
-            <form asp-action="FullResync" method="post" class="d-inline ms-2" authorize-policy="Admin"
+            <form asp-action="FullResync" method="post" class="d-inline ms-2" authorize-policy="AdminOnly"
                   onsubmit="return confirm('This will re-fetch ALL orders from the vendor. Continue?');">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-danger">

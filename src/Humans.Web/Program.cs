@@ -164,8 +164,8 @@ builder.Services.AddAuthentication()
         };
     });
 
-// Configure Authorization
-builder.Services.AddAuthorization();
+// Configure Authorization — registers all canonical policies (see docs/authorization-inventory.md)
+builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 

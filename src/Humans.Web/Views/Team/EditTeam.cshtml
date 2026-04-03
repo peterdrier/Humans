@@ -69,7 +69,7 @@
                         </div>
                     }
 
-                    <div class="mb-3 form-check" authorize-policy="Admin">
+                    <div class="mb-3 form-check" authorize-policy="AdminOnly">
                         <input asp-for="IsSensitive" type="checkbox" class="form-check-input" />
                         <label asp-for="IsSensitive" class="form-check-label">Sensitive team <i class="fa-solid fa-lock auth-lock-icon"></i></label>
                         <div class="form-text">When enabled, adding or approving humans triggers a confirmation modal showing the audit record that will be created. This flag is not visible to non-admin users.</div>

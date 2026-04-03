@@ -16,8 +16,8 @@
         CampaignStatus.Completed => "bg-info",
         _ => "bg-secondary"
     };
-    var isAdmin = Humans.Web.TagHelpers.ViewPolicies.Evaluate(Humans.Web.TagHelpers.ViewPolicies.Admin, User);
-    var canGenerateCodes = Humans.Web.TagHelpers.ViewPolicies.Evaluate(Humans.Web.TagHelpers.ViewPolicies.CanManageTickets, User);
+    var isAdmin = Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.Admin, User);
+    var canGenerateCodes = Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.CanManageTickets, User);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">

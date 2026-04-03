@@ -57,7 +57,7 @@
         @{
             var cardViewMode = Model.IsOwnProfile
                 ? ProfileCardViewMode.Self
-                : Humans.Web.TagHelpers.ViewPolicies.Evaluate(Humans.Web.TagHelpers.ViewPolicies.TeamsAdminBoardOrAdmin, User)
+                : Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.TeamsAdminBoardOrAdmin, User)
                     ? ProfileCardViewMode.Admin
                     : ProfileCardViewMode.Public;
         }

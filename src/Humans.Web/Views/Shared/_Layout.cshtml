@@ -54,28 +54,28 @@
                         <li class="nav-item" authorize-policy="ActiveMemberOrShiftAccess">
                             <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
                         </li>
-                        <li class="nav-item" authorize-policy="CanAccessVolunteers">
+                        <li class="nav-item" authorize-policy="VolunteerSectionAccess">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Vol" asp-action="Index">V</a>
                         </li>
-                        <li class="nav-item" authorize-policy="CanAccessReviewQueue">
+                        <li class="nav-item" authorize-policy="ReviewQueueAccess">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
                         </li>
-                        <li class="nav-item" authorize-policy="AdminOrBoard">
+                        <li class="nav-item" authorize-policy="BoardOrAdmin">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
                         </li>
-                        <li class="nav-item" authorize-policy="AdminOrBoard">
+                        <li class="nav-item" authorize-policy="BoardOrAdmin">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
                         </li>
                         <li class="nav-item" authorize-policy="HumanAdminOnly">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Profile" asp-action="AdminList">Humans</a>
                         </li>
-                        <li class="nav-item" authorize-policy="Admin">
+                        <li class="nav-item" authorize-policy="AdminOnly">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
                         </li>
-                        <li class="nav-item" authorize-policy="Admin">
+                        <li class="nav-item" authorize-policy="AdminOnly">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Google" asp-action="Index">Google</a>
                         </li>
-                        <li class="nav-item" authorize-policy="CanAccessTickets">
+                        <li class="nav-item" authorize-policy="TicketAdminBoardOrAdmin">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
                         </li>
                         @if (User.Identity?.IsAuthenticated == true)
@@ -84,7 +84,7 @@
                                 <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
                             </li>
                         }
-                        <li class="nav-item" authorize-policy="CanAccessFinance">
+                        <li class="nav-item" authorize-policy="FinanceAdminOrAdmin">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Finance" asp-action="Index">Finance</a>
                         </li>
                     </ul>

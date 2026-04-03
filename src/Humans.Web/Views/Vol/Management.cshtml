@@ -34,7 +34,7 @@
                 <p class="text-muted mb-2">
                     Humans can @(Model.SystemOpen ? "" : "not ")browse and sign up for shifts.
                 </p>
-                <a asp-action="Settings" class="btn btn-sm btn-outline-secondary" authorize-policy="Admin">
+                <a asp-action="Settings" class="btn btn-sm btn-outline-secondary" authorize-policy="AdminOnly">
                     <i class="fa-solid fa-gear me-1"></i>Change in Settings <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </a>
             </div>
@@ -100,7 +100,7 @@
                     <i class="fa-solid fa-chart-pie me-1"></i>Staffing Report
                 </button>
             </div>
-            <div class="col-md-3" authorize-policy="Admin">
+            <div class="col-md-3" authorize-policy="AdminOnly">
                 <a asp-action="Settings" class="btn btn-outline-primary w-100">
                     <i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i>
                 </a>
