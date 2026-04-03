@@ -412,6 +412,55 @@ Stop and reconsider when a change introduces any of these:
 - a cache is added without a clear invalidation owner
 - a job re-implements a workflow that should be in a service
 
+## Rendering Rules
+
+Server-rendered Razor is the default rendering approach for all pages.
+
+Default rule:
+
+- page content is rendered server-side using Razor views, tag helpers, and view components
+- slow data loads use the partial-via-AJAX pattern: render the page frame server-side, load the slow section by fetching a Razor partial from an AJAX call
+
+Razor provides:
+
+- compile-time type safety
+- tag helpers and `asp-*` route generation
+- automatic HTML encoding (no manual `escapeHtml`)
+- localization via `IStringLocalizer`
+- view components for reusable data-fetching UI
+- authorization tag helpers for role-based visibility
+
+Do not use client-side `fetch()` + JavaScript DOM construction to build page content when Razor can render the same output. That pattern requires manual HTML escaping, duplicated rendering logic, projection DTOs solely for JSON serialization, and string-based URL construction that breaks on route constraint changes.
+
+### Valid exceptions
+
+Client-side JavaScript with `fetch()` is appropriate for:
+
+- **Autocomplete/search inputs** that need instant feedback on keystrokes (profile search, member search, volunteer search, shift volunteer search)
+- **Dynamic form field population** that responds to parent field changes (team Google resource dropdown)
+- **Progressive enhancement** for inline actions that avoid full page reloads (notification dismiss/mark-read, feedback detail panel loading)
+- **Utility behaviors** that are not page content (timezone detection, notification popup, profile popover on hover)
+
+These patterns use `fetch()` to enhance an already server-rendered page, not to replace server rendering entirely.
+
+### Current exceptions list
+
+All pages are server-rendered with Razor. The following use `fetch()` for the specific justified purposes listed above:
+
+| File | Purpose | Exception type |
+|------|---------|----------------|
+| `_HumanSearchInput.cshtml` | Profile autocomplete | Search input |
+| `_MemberSearchScript.cshtml` | Member search autocomplete | Search input |
+| `_VolunteerSearchScript.cshtml` | Volunteer search autocomplete | Search input |
+| `_TeamGoogleAndParentFields.cshtml` | Google resource dropdown on team change | Dynamic form field |
+| `ShiftAdmin/Index.cshtml` | Shift volunteer search + tag creation | Search input + inline action |
+| `Notification/Index.cshtml` | Dismiss/mark-read without reload | Progressive enhancement |
+| `Feedback/Index.cshtml` | Master-detail panel loading | Progressive enhancement |
+| `Google/Sync.cshtml` | Tab content loaded via Razor partial (slow Google API) | Partial-via-AJAX |
+| `site.js` | Timezone, notification popup, profile popover | Utility |
+
+When adding a new page that needs client-side data loading, add it to this list with justification. If a page has no entry here, it must be server-rendered.
+
 ## Direction of Travel
 
 We do not need a rewrite.

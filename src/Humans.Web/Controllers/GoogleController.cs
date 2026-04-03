@@ -353,7 +353,32 @@ public class GoogleController : HumansControllerBase
     public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
     {
         var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview);
-        return Json(result);
+
+        // Sort resources alphabetically
+        result.Diffs.Sort((a, b) =>
+            string.Compare(a.ResourceName, b.ResourceName, StringComparison.Ordinal));
+
+        // Sort members within each resource: by state then by displayName
+        foreach (var diff in result.Diffs)
+        {
+            diff.Members.Sort((a, b) =>
+            {
+                var stateCompare = a.State.CompareTo(b.State);
+                return stateCompare != 0
+                    ? stateCompare
+                    : string.Compare(a.DisplayName, b.DisplayName, StringComparison.Ordinal);
+            });
+        }
+
+        var viewModel = new SyncTabContentViewModel
+        {
+            Result = result,
+            ResourceType = resourceType.ToString(),
+            CanExecuteActions = RoleChecks.IsAdmin(User),
+            CanViewAudit = RoleChecks.IsAdminOrBoard(User)
+        };
+
+        return PartialView("_SyncTabContent", viewModel);
     }
 
     [HttpPost("Sync/Execute/{resourceId}")]

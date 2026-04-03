@@ -65,6 +65,10 @@ public class HumanLinkTagHelper : TagHelper
 
     public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
+        // Respect suppression from earlier tag helpers (e.g., AuthorizeViewTagHelper)
+        if (output.TagName is null)
+            return;
+
         var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
         var href = Admin
             ? urlHelper.Action("AdminDetail", "Profile", new { id = UserId })

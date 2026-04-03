@@ -38,15 +38,13 @@
 (function () {
     'use strict';
 
-    const canExecuteActions = @Json.Serialize(Model.CanExecuteActions);
     @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
 
-    const antiForgeryToken = getRequestVerificationToken('#antiForgeryForm input[name="__RequestVerificationToken"]');
-    const loadedTabs = {};
+    var antiForgeryToken = getRequestVerificationToken('#antiForgeryForm input[name="__RequestVerificationToken"]');
 
     // Resource type mapping: tab data-resource-type values to API enum values
     // DriveFolder = 0, Group = 2
-    const resourceTypeMap = { 'DriveFolder': 0, 'Group': 2 };
+    var resourceTypeMap = { 'DriveFolder': 0, 'Group': 2 };
 
     function getResourceTypeValue(name) {
         return resourceTypeMap[name] ?? name;
@@ -55,88 +53,39 @@
     // Load tab data on activation
     document.querySelectorAll('#syncTabs button[data-resource-type]').forEach(function (btn) {
         btn.addEventListener('shown.bs.tab', function () {
-            const resourceType = this.getAttribute('data-resource-type');
+            var resourceType = this.getAttribute('data-resource-type');
             loadTab(resourceType);
         });
     });
 
     // Load the initially active tab
-    const activeBtn = document.querySelector('#syncTabs button.active[data-resource-type]');
+    var activeBtn = document.querySelector('#syncTabs button.active[data-resource-type]');
     if (activeBtn) {
         loadTab(activeBtn.getAttribute('data-resource-type'));
     }
 
     function loadTab(resourceType) {
-        const paneId = resourceType === 'DriveFolder' ? 'drives-tab' : 'groups-tab';
-        const pane = document.getElementById(paneId);
+        var paneId = resourceType === 'DriveFolder' ? 'drives-tab' : 'groups-tab';
+        var pane = document.getElementById(paneId);
         pane.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
         fetch('/Google/Sync/Preview/' + getResourceTypeValue(resourceType))
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                // Sort resources alphabetically
-                if (data.diffs) {
-                    data.diffs.sort(function (a, b) {
-                        return (a.resourceName || '').localeCompare(b.resourceName || '');
-                    });
-                    // Sort members within each resource: by state then by displayName
-                    data.diffs.forEach(function (diff) {
-                        if (diff.members) {
-                            diff.members.sort(function (a, b) {
-                                if (a.state !== b.state) return a.state - b.state;
-                                return (a.displayName || '').localeCompare(b.displayName || '');
-                            });
-                        }
-                    });
-                }
-                loadedTabs[resourceType] = data;
-                renderTab(pane, data, resourceType);
+            .then(function (r) {
+                if (!r.ok) throw new Error('Request failed: ' + r.status);
+                return r.text();
+            })
+            .then(function (html) {
+                pane.innerHTML = html;
+                bindTabActions(pane, resourceType);
             })
             .catch(function (err) {
-                pane.innerHTML = '<div class="alert alert-danger">Failed to load sync data: ' + escapeHtml(err.message) + '</div>';
+                pane.innerHTML = '<div class="alert alert-danger">Failed to load sync data: ' + err.message + '</div>';
             });
     }
 
-    function renderTab(pane, data, resourceType) {
-        let html = '';
-
-        // Summary cards
-        html += '<div class="row mb-4">';
-        html += summaryCard('Total', data.totalResources, '');
-        html += summaryCard('In Sync', data.inSyncCount, 'text-success');
-        html += summaryCard('Drifted', data.driftCount, 'text-warning', data.driftCount > 0 ? 'border-warning' : '');
-        html += summaryCard('Errors', data.errorCount, 'text-danger', data.errorCount > 0 ? 'border-danger' : '');
-        html += '</div>';
-
-        if (!data.diffs || data.diffs.length === 0) {
-            html += '<div class="alert alert-info">No resources found for this type.</div>';
-            pane.innerHTML = html;
-            return;
-        }
-
-        // Controls row
-        html += '<div class="d-flex justify-content-between align-items-center mb-3">';
-        html += '<div class="form-check form-switch">';
-        html += '<input class="form-check-input" type="checkbox" id="changesOnly-' + resourceType + '" checked>';
-        html += '<label class="form-check-label" for="changesOnly-' + resourceType + '">Show changes only</label>';
-        html += '</div>';
-        if (canExecuteActions && data.driftCount > 0) {
-            html += '<div class="d-flex gap-2">';
-            html += '<button class="btn btn-sm btn-outline-success" data-action="executeAll" data-sync-action="1" data-resource-type="' + resourceType + '">Add All Missing</button>';
-            html += '<button class="btn btn-sm btn-outline-primary" data-action="executeAll" data-sync-action="2" data-resource-type="' + resourceType + '">Sync All</button>';
-            html += '</div>';
-        }
-        html += '</div>';
-
-        // Resource cards
-        for (let i = 0; i < data.diffs.length; i++) {
-            html += renderResourceCard(data.diffs[i], resourceType, i);
-        }
-
-        pane.innerHTML = html;
-
-        // Bind toggle
-        const toggle = document.getElementById('changesOnly-' + resourceType);
+    function bindTabActions(pane, resourceType) {
+        // Bind changes-only toggle
+        var toggle = pane.querySelector('.sync-changes-toggle');
         if (toggle) {
             toggle.addEventListener('change', function () {
                 applyFilter(pane, this.checked);
@@ -144,159 +93,30 @@
             applyFilter(pane, toggle.checked);
         }
 
-        // Bind action buttons
+        // Bind execute-all buttons
         pane.querySelectorAll('[data-action="executeAll"]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                const syncAction = parseInt(this.getAttribute('data-sync-action'));
-                const rt = this.getAttribute('data-resource-type');
-                const actionName = syncAction === 1 ? 'add all missing humans' : 'sync all humans (add + remove)';
+                var syncAction = parseInt(this.getAttribute('data-sync-action'));
+                var rt = this.getAttribute('data-resource-type');
+                var actionName = syncAction === 1 ? 'add all missing humans' : 'sync all humans (add + remove)';
                 if (confirm('Are you sure you want to ' + actionName + ' for all ' + rt + ' resources?')) {
                     executeAll(rt, syncAction);
                 }
             });
         });
 
+        // Bind execute-single buttons
         pane.querySelectorAll('[data-action="executeSingle"]').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                const resourceId = this.getAttribute('data-resource-id');
-                const syncAction = parseInt(this.getAttribute('data-sync-action'));
-                const resourceName = this.getAttribute('data-resource-name');
-                const actionName = syncAction === 1 ? 'add missing humans to' : 'sync all humans for';
+                var resourceId = this.getAttribute('data-resource-id');
+                var syncAction = parseInt(this.getAttribute('data-sync-action'));
+                var resourceName = this.getAttribute('data-resource-name');
+                var actionName = syncAction === 1 ? 'add missing humans to' : 'sync all humans for';
                 if (confirm('Are you sure you want to ' + actionName + ' "' + resourceName + '"?')) {
                     executeSingle(resourceId, syncAction, resourceType);
                 }
             });
         });
-    }
-
-    function summaryCard(label, value, textClass, borderClass) {
-        return '<div class="col-md-3"><div class="card text-center ' + (borderClass || '') + '">' +
-            '<div class="card-body"><h2 class="card-title mb-0 ' + textClass + '">' + value + '</h2>' +
-            '<p class="card-text text-muted">' + label + '</p></div></div></div>';
-    }
-
-    function renderResourceCard(diff, resourceType, index) {
-        const isInSync = diff.isInSync;
-        const hasError = diff.errorMessage != null;
-
-        let statusBadge;
-        if (hasError) {
-            statusBadge = '<span class="badge bg-danger">Error</span>';
-        } else if (isInSync) {
-            statusBadge = '<span class="badge bg-success">In Sync</span>';
-        } else {
-            statusBadge = '<span class="badge bg-warning text-dark">Drifted</span>';
-        }
-
-        const collapseId = 'collapse-' + resourceType + '-' + index;
-        const nameHtml = diff.url
-            ? '<a href="' + escapeHtml(diff.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(diff.resourceName) + '</a>'
-            : escapeHtml(diff.resourceName);
-
-        const teamsHtml = diff.linkedTeams && diff.linkedTeams.length > 0
-            ? diff.linkedTeams.map(function (t) {
-                var label = escapeHtml(t.name);
-                if (t.permissionLevel) label += ' <span class="text-muted fw-normal">\u00b7 ' + escapeHtml(t.permissionLevel) + '</span>';
-                return '<a href="/Teams/' + encodeURIComponent(t.slug) + '" class="badge bg-light text-dark border me-1 text-decoration-none">' + label + '</a>';
-            }).join('')
-            : '<span class="text-muted">None</span>';
-        const auditUrl = '@Url.Action("GoogleSyncResourceAudit", "Google", new { id = Guid.Empty })'.replace('00000000-0000-0000-0000-000000000000', diff.resourceId);
-        const canViewAudit = @Json.Serialize(Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User));
-        const auditLinkHtml = canViewAudit
-            ? '<a class="btn btn-sm btn-outline-secondary" href="' + auditUrl.replace('__RESOURCE_ID__', diff.resourceId) + '">Audit</a>'
-            : '';
-
-        let html = '<div class="card mb-2' + (isInSync ? ' resource-in-sync' : '') + '">';
-        html += '<div class="card-header d-flex justify-content-between align-items-center py-2">';
-        html += '<div class="d-flex align-items-center gap-2">';
-        html += '<button class="btn btn-sm btn-link p-0 text-decoration-none" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="false">';
-        html += '<i class="fa-solid fa-chevron-right collapse-icon"></i>';
-        html += '</button>';
-        html += '<span>' + nameHtml + '</span> ' + statusBadge;
-        html += '</div>';
-        html += '<div class="d-flex align-items-center gap-2">';
-        html += '<small class="text-muted">' + teamsHtml + '</small>';
-        if (auditLinkHtml) {
-            html += auditLinkHtml;
-        }
-        if (canExecuteActions && !isInSync && !hasError) {
-            html += '<button class="btn btn-sm btn-outline-success" data-action="executeSingle" data-resource-id="' + diff.resourceId + '" data-sync-action="1" data-resource-name="' + escapeHtml(diff.resourceName) + '">Add Missing</button>';
-            html += '<button class="btn btn-sm btn-outline-primary" data-action="executeSingle" data-resource-id="' + diff.resourceId + '" data-sync-action="2" data-resource-name="' + escapeHtml(diff.resourceName) + '">Sync All</button>';
-        }
-        html += '</div>';
-        html += '</div>';
-
-        // Collapsible member detail
-        html += '<div class="collapse" id="' + collapseId + '">';
-        html += '<div class="card-body p-0">';
-
-        if (hasError) {
-            html += '<div class="alert alert-danger m-3 mb-0">' + escapeHtml(diff.errorMessage) + '</div>';
-        } else if (diff.members && diff.members.length > 0) {
-            html += '<table class="table table-sm mb-0">';
-            var showPermission = diff.permissionLevel != null;
-            html += '<thead><tr><th>Email</th><th>Name</th><th>Status</th>' + (showPermission ? '<th>Role (current / expected)</th>' : '') + '<th>Teams</th></tr></thead>';
-            html += '<tbody>';
-            for (let j = 0; j < diff.members.length; j++) {
-                const m = diff.members[j];
-                let stateClass, stateLabel, badgeClass;
-                if (m.state === 0) { // Correct
-                    stateLabel = 'Correct';
-                    badgeClass = 'bg-success';
-                } else if (m.state === 1) { // Missing
-                    stateLabel = 'Missing';
-                    badgeClass = 'bg-warning text-dark';
-                } else if (m.state === 3) { // Inherited
-                    stateLabel = 'Inherited';
-                    badgeClass = 'bg-secondary';
-                } else if (m.state === 4) { // WrongRole
-                    stateLabel = 'Wrong Role';
-                    badgeClass = 'bg-info text-dark';
-                } else { // Extra
-                    stateLabel = 'Extra';
-                    badgeClass = 'bg-danger';
-                }
-                const memberTeams = m.teamLinks && m.teamLinks.length > 0
-                    ? m.teamLinks.map(function (t) { return '<a href="/Teams/' + encodeURIComponent(t.slug) + '" class="badge bg-light text-dark border me-1 text-decoration-none">' + escapeHtml(t.name) + '</a>'; }).join('')
-                    : '';
-                html += '<tr class="member-row" data-member-state="' + m.state + '">';
-                html += '<td>' + escapeHtml(m.email) + '</td>';
-                html += '<td>' + renderHumanLink(m) + '</td>';
-                html += '<td><span class="badge ' + badgeClass + '">' + stateLabel + '</span></td>';
-                if (showPermission) {
-                    var role = m.currentRole || '—';
-                    var expected = m.expectedRole || '—';
-                    html += '<td>' + escapeHtml(role) + ' / ' + escapeHtml(expected) + '</td>';
-                }
-                html += '<td>' + memberTeams + '</td>';
-                html += '</tr>';
-            }
-            html += '</tbody></table>';
-        } else {
-            html += '<div class="p-3 text-muted">No members</div>';
-        }
-
-        html += '</div></div>';
-        html += '</div>';
-
-        return html;
-    }
-
-    function renderHumanLink(m) {
-        var nameDisplay = m.displayName && m.displayName !== m.email ? m.displayName : '';
-        if (!nameDisplay) return '';
-        if (!m.userId) return escapeHtml(nameDisplay);
-
-        var initial = nameDisplay.charAt(0);
-        var avatarHtml;
-        if (m.profilePictureUrl) {
-            avatarHtml = '<img src="' + escapeHtml(m.profilePictureUrl) + '" alt="' + escapeHtml(nameDisplay) + '" class="rounded-circle me-2" style="width: 24px; height: 24px; object-fit: cover;" />';
-        } else {
-            avatarHtml = '<div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white me-2" style="width: 24px; height: 24px; font-size: 0.7rem; display: inline-flex !important;">' + escapeHtml(initial) + '</div>';
-        }
-
-        return '<a href="/Profile/' + encodeURIComponent(m.userId) + '/Admin" class="d-inline-flex align-items-center text-decoration-none text-reset" data-human-popover="true" data-user-id="' + escapeHtml(m.userId) + '">' +
-            avatarHtml + '<span>' + escapeHtml(nameDisplay) + '</span></a>';
     }
 
     function applyFilter(pane, changesOnly) {
@@ -334,7 +154,7 @@
     }
 
     function executeAll(resourceType, syncAction) {
-        const typeValue = getResourceTypeValue(resourceType);
+        var typeValue = getResourceTypeValue(resourceType);
         fetch('/Google/Sync/ExecuteAll/' + typeValue + '?action=' + syncAction, {
             method: 'POST',
             headers: {
@@ -354,15 +174,13 @@
         });
     }
 
-    @await Html.PartialAsync("~/Views/Shared/_EscapeHtmlScript.cshtml")
-
     // Rotate chevron on collapse toggle
     document.addEventListener('show.bs.collapse', function (e) {
-        const btn = e.target.previousElementSibling?.querySelector('.collapse-icon');
+        var btn = e.target.previousElementSibling?.querySelector('.collapse-icon');
         if (btn) btn.style.transform = 'rotate(90deg)';
     });
     document.addEventListener('hide.bs.collapse', function (e) {
-        const btn = e.target.previousElementSibling?.querySelector('.collapse-icon');
+        var btn = e.target.previousElementSibling?.querySelector('.collapse-icon');
         if (btn) btn.style.transform = '';
     });
 })();
