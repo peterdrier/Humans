@@ -99,6 +99,10 @@
                         {
                             <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
                         }
+                        @if (email.VisibilityBadgeText is not null)
+                        {
+                            <span class="badge bg-light text-muted border ms-1">@email.VisibilityBadgeText</span>
+                        }
                     </dd>
                 }
                 @foreach (var field in Model.ContactFields)
@@ -116,11 +120,9 @@
                         {
                             @field.Value
                         }
-                        @if (Model.IsOwnProfile)
+                        @if (field.VisibilityBadgeText is not null)
                         {
-                            <i class="@field.VisibilityIconClass text-muted ms-2"
-                               title="@field.VisibilityTooltip"
-                               data-bs-toggle="tooltip"></i>
+                            <span class="badge bg-light text-muted border ms-1">@field.VisibilityBadgeText</span>
                         }
                     </dd>
                 }
@@ -250,6 +252,10 @@
                         @if (email.IsNotificationTarget)
                         {
                             <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
+                        }
+                        @if (email.VisibilityBadgeText is not null)
+                        {
+                            <span class="badge bg-light text-muted border ms-1">@email.VisibilityBadgeText</span>
                         }
                     </dd>
                 }

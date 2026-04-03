@@ -389,6 +389,17 @@ public class ContactFieldViewModel
         ContactFieldVisibility.AllActiveProfiles => "Visible to all active members",
         _ => "Visibility unknown"
     };
+
+    /// <summary>
+    /// Short label for visibility badge pill. Null for public fields (no badge needed).
+    /// </summary>
+    public string? VisibilityBadgeText => Visibility switch
+    {
+        ContactFieldVisibility.BoardOnly => "Board only",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Coordinators + Board",
+        ContactFieldVisibility.MyTeams => "My teams",
+        _ => null
+    };
 }
 
 /// <summary>
@@ -497,6 +508,17 @@ public class UserEmailDisplayViewModel
     public string Email { get; set; } = string.Empty;
     public bool IsNotificationTarget { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
+
+    /// <summary>
+    /// Short label for visibility badge pill. Null for public fields (no badge needed).
+    /// </summary>
+    public string? VisibilityBadgeText => Visibility switch
+    {
+        ContactFieldVisibility.BoardOnly => "Board only",
+        ContactFieldVisibility.CoordinatorsAndBoard => "Coordinators + Board",
+        ContactFieldVisibility.MyTeams => "My teams",
+        _ => null
+    };
 }
 
 /// <summary>
