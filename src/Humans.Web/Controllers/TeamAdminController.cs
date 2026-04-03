@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
 using Humans.Web.Authorization;
@@ -21,9 +22,9 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IProfileService _profileService;
-    private readonly IUserEmailService _userEmailService;
     private readonly IEmailProvisioningService _emailProvisioningService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TeamAdminController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -32,10 +33,10 @@ public class TeamAdminController : HumansTeamControllerBase
         ITeamResourceService teamResourceService,
         IGoogleSyncService googleSyncService,
         IProfileService profileService,
-        IUserEmailService userEmailService,
         IEmailProvisioningService emailProvisioningService,
         UserManager<User> userManager,
         ISystemTeamSync systemTeamSyncJob,
+        IMemoryCache cache,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager, teamService)
@@ -44,9 +45,9 @@ public class TeamAdminController : HumansTeamControllerBase
         _teamResourceService = teamResourceService;
         _googleSyncService = googleSyncService;
         _profileService = profileService;
-        _userEmailService = userEmailService;
         _emailProvisioningService = emailProvisioningService;
         _systemTeamSyncJob = systemTeamSyncJob;
+        _cache = cache;
         _logger = logger;
         _localizer = localizer;
     }
@@ -129,9 +130,7 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
-        // Batch-load @nobodies.team email status for all displayed members
-        var nobodiesEmails = await _userEmailService.GetNobodiesTeamEmailsByUserIdsAsync(memberUserIds);
-
+        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
@@ -143,8 +142,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 CustomProfilePictureUrl = customPictureByUserId.GetValueOrDefault(m.UserId),
                 Role = m.Role,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
-                IsCoordinator = m.Role == TeamMemberRole.Coordinator,
-                NobodiesTeamEmail = nobodiesEmails.GetValueOrDefault(m.UserId)
+                IsCoordinator = m.Role == TeamMemberRole.Coordinator
             }).ToList();
 
         var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
@@ -312,13 +310,19 @@ public class TeamAdminController : HumansTeamControllerBase
         {
             SetError(result.ErrorMessage ?? "Provisioning failed.");
         }
-        else if (result.RecoveryEmail is not null)
-        {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
-        }
         else
         {
-            SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+
+            if (result.RecoveryEmail is not null)
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
+            }
+            else
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            }
         }
 
         return RedirectToAction(nameof(Members), new { slug });

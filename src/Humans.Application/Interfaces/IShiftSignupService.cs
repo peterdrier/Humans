@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 
 namespace Humans.Application.Interfaces;
 
@@ -95,6 +96,39 @@ public interface IShiftSignupService
     /// Gets all no-show signups for a user, with shift/team context and reviewer info.
     /// </summary>
     Task<IReadOnlyList<ShiftSignup>> GetNoShowHistoryAsync(Guid userId);
+
+    /// <summary>
+    /// Gets active signup statuses (Confirmed or Pending) for a user in a specific event.
+    /// Returns a tuple of (shiftIds the user is signed up for, shiftId → status dictionary).
+    /// This is the single source of truth for "which shifts has this user actively signed up for?"
+    /// </summary>
+    Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
+        Guid userId, Guid eventSettingsId);
+}
+
+/// <summary>
+/// Helper for resolving active signup statuses from an already-loaded list of signups.
+/// Use this when the caller already has signups from GetByUserAsync and needs the filtered result
+/// without an additional DB round-trip.
+/// </summary>
+public static class ShiftSignupHelper
+{
+    /// <summary>
+    /// Filters signups to active statuses (Confirmed or Pending) and returns shift IDs and status dictionary.
+    /// Single source of truth for "active signup statuses" filtering logic.
+    /// </summary>
+    public static (HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses) ResolveActiveStatuses(
+        IReadOnlyList<ShiftSignup> signups)
+    {
+        var active = signups
+            .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
+            .ToList();
+
+        var shiftIds = active.Select(s => s.ShiftId).ToHashSet();
+        var statuses = active.ToDictionary(s => s.ShiftId, s => s.Status);
+
+        return (shiftIds, statuses);
+    }
 }
 
 /// <summary>

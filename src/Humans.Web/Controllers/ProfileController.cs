@@ -21,6 +21,7 @@ using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
 namespace Humans.Web.Controllers;
@@ -46,6 +47,7 @@ public class ProfileController : HumansControllerBase
     private readonly ILogger<ProfileController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
+    private readonly IMemoryCache _cache;
     private readonly IClock _clock;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
@@ -89,6 +91,7 @@ public class ProfileController : HumansControllerBase
         ILogger<ProfileController> logger,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext,
+        IMemoryCache cache,
         IClock clock)
         : base(userManager)
     {
@@ -109,6 +112,7 @@ public class ProfileController : HumansControllerBase
         _logger = logger;
         _localizer = localizer;
         _dbContext = dbContext;
+        _cache = cache;
         _clock = clock;
     }
 
@@ -536,6 +540,7 @@ public class ProfileController : HumansControllerBase
         {
             var decodedToken = HttpUtility.UrlDecode(token);
             var result = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
 
             if (result.MergeRequestCreated)
             {
@@ -586,6 +591,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetNotificationTargetAsync(user.Id, emailId);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -636,6 +642,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.DeleteEmailAsync(user.Id, emailId);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
             SetSuccess(_localizer["Profile_EmailDeleted"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -1151,10 +1158,8 @@ public class ProfileController : HumansControllerBase
         var allRows = await _profileService.GetFilteredHumansAsync(search, filter);
         var totalCount = allRows.Count;
 
-        // Load @nobodies.team email status for all users (fine at ~500 users)
-        var nobodiesTeamByUser = await _userEmailService.GetNobodiesTeamEmailStatusByUserAsync();
-
         // Materialize for flexible sorting (fine at ~500 users)
+        // nobodies.team email status is now resolved by NobodiesEmailBadgeViewComponent in the view
         var allMatching = allRows.Select(r => new AdminHumanViewModel
         {
             Id = r.UserId,
@@ -1165,9 +1170,7 @@ public class ProfileController : HumansControllerBase
             LastLoginAt = r.LastLoginAt,
             HasProfile = r.HasProfile,
             IsApproved = r.IsApproved,
-            MembershipStatus = r.MembershipStatus,
-            HasNobodiesTeamEmail = nobodiesTeamByUser.ContainsKey(r.UserId),
-            NobodiesTeamEmailIsPrimary = nobodiesTeamByUser.TryGetValue(r.UserId, out var isPrimary) && isPrimary
+            MembershipStatus = r.MembershipStatus
         }).ToList();
 
         var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
@@ -1273,8 +1276,7 @@ public class ProfileController : HumansControllerBase
             }).ToList(),
         };
 
-        // Check for @nobodies.team email
-        viewModel.NobodiesTeamEmail = await _userEmailService.GetNobodiesTeamEmailAsync(id);
+        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
 
         return View("AdminDetail", viewModel);
     }

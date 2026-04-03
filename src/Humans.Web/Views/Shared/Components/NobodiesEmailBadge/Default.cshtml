@@ -1,0 +1,89 @@
+@{
+    Guid userId = ViewBag.UserId;
+    bool hasEmail = ViewBag.HasEmail;
+    string? email = ViewBag.Email;
+    bool isPrimary = ViewBag.IsPrimary;
+    string mode = ViewBag.Mode;
+    string? teamSlug = ViewBag.TeamSlug;
+    string? displayName = ViewBag.DisplayName;
+}
+
+@if (string.Equals(mode, "badge", StringComparison.Ordinal))
+{
+    @* Simple badge — shows icon when user has a nobodies.team email *@
+    if (hasEmail)
+    {
+        <span class="badge bg-light text-dark border ms-1" title="Has a @@nobodies.team email account" data-bs-toggle="tooltip">
+            <i class="fa-solid fa-at me-1"></i>nobodies.team
+        </span>
+    }
+}
+else if (string.Equals(mode, "status", StringComparison.Ordinal))
+{
+    @* Status mode — shows warning badge when email exists but isn't primary *@
+    if (hasEmail && !isPrimary)
+    {
+        <span class="badge bg-warning text-dark ms-1"
+              title="Has @@nobodies.team email but not using it as primary"
+              data-bs-toggle="tooltip">
+            <i class="fa-solid fa-at"></i>
+        </span>
+    }
+}
+else if (string.Equals(mode, "email", StringComparison.Ordinal))
+{
+    @* Email mode — shows the actual email address *@
+    if (email is not null)
+    {
+        <code class="small">@email</code>
+    }
+}
+else if (string.Equals(mode, "provision", StringComparison.Ordinal))
+{
+    @* Provision mode — shows email or provisioning form (TeamAdmin/Members) *@
+    if (email is not null)
+    {
+        <code class="small">@email</code>
+    }
+    else
+    {
+        <form asp-controller="TeamAdmin" asp-action="ProvisionEmail" asp-route-slug="@teamSlug" asp-route-userId="@userId" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <div class="input-group input-group-sm" style="min-width: 220px;">
+                <input type="text" name="emailPrefix" class="form-control form-control-sm"
+                       placeholder="username" required style="max-width: 120px;" />
+                <span class="input-group-text">@@nobodies.team</span>
+                <button type="submit" class="btn btn-sm btn-outline-primary"
+                        data-confirm="Provision a new @@nobodies.team account for @displayName?">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+        </form>
+    }
+}
+else if (string.Equals(mode, "detail", StringComparison.Ordinal))
+{
+    @* Detail mode — shows email + linked badge, or provisioning form (AdminDetail) *@
+    if (email is not null)
+    {
+        <p class="mb-0">
+            <code>@email</code>
+            <span class="badge bg-success ms-1">Linked</span>
+        </p>
+    }
+    else
+    {
+        <form asp-controller="Google" asp-action="ProvisionEmail" asp-route-id="@userId" method="post">
+            @Html.AntiForgeryToken()
+            <div class="input-group mb-2">
+                <input type="text" name="emailPrefix" class="form-control form-control-sm"
+                       placeholder="username" required />
+                <span class="input-group-text">@@nobodies.team</span>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm w-100"
+                    data-confirm="Provision a new @@nobodies.team account for this human?">
+                <i class="fa-solid fa-plus me-1"></i>Provision Email
+            </button>
+        </form>
+    }
+}

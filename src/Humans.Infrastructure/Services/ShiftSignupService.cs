@@ -774,6 +774,13 @@ public class ShiftSignupService : IShiftSignupService
             .ToListAsync();
     }
 
+    public async Task<(HashSet<Guid> ShiftIds, Dictionary<Guid, SignupStatus> Statuses)> GetActiveSignupStatusesAsync(
+        Guid userId, Guid eventSettingsId)
+    {
+        var signups = await GetByUserAsync(userId, eventSettingsId);
+        return ShiftSignupHelper.ResolveActiveStatuses(signups);
+    }
+
     private async Task<ShiftSignup?> GetSignupWithShiftAsync(Guid signupId)
     {
         return await _dbContext.ShiftSignups

@@ -139,14 +139,7 @@
                                 {
                                     <span class="badge bg-secondary">@Localizer["Admin_NoProfile"]</span>
                                 }
-                                @if (member.HasNobodiesTeamEmail && !member.NobodiesTeamEmailIsPrimary)
-                                {
-                                    <span class="badge bg-warning text-dark ms-1"
-                                          title="Has @@nobodies.team email but not using it as primary"
-                                          data-bs-toggle="tooltip">
-                                        <i class="fa-solid fa-at"></i>
-                                    </span>
-                                }
+                                @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.Id, mode = "status" })
                             </td>
                             <td class="text-end">
                                 <a asp-action="AdminDetail" asp-route-id="@member.Id" class="btn btn-sm btn-outline-primary">

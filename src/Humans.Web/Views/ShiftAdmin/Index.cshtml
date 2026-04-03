@@ -396,7 +396,7 @@
                                                                        profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Profile/Picture?id={ss.UserId}" : null)" show-popover="true"
                                                                        title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
                                                                        class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
-                                                                       style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
+                                                                       style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
                                                         }
                                                     </div>
                                                 }

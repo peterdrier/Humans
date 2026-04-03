@@ -238,25 +238,7 @@
                             @if (Model.CanProvisionEmails)
                             {
                                 <td>
-                                    @if (member.NobodiesTeamEmail is not null)
-                                    {
-                                        <code class="small">@member.NobodiesTeamEmail</code>
-                                    }
-                                    else
-                                    {
-                                        <form asp-action="ProvisionEmail" asp-route-slug="@Model.TeamSlug" asp-route-userId="@member.UserId" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <div class="input-group input-group-sm" style="min-width: 220px;">
-                                                <input type="text" name="emailPrefix" class="form-control form-control-sm"
-                                                       placeholder="username" required style="max-width: 120px;" />
-                                                <span class="input-group-text">@@nobodies.team</span>
-                                                <button type="submit" class="btn btn-sm btn-outline-primary"
-                                                        data-confirm="Provision a new @@nobodies.team account for @member.DisplayName?">
-                                                    <i class="fa-solid fa-plus"></i>
-                                                </button>
-                                            </div>
-                                        </form>
-                                    }
+                                    @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.UserId, mode = "provision", teamSlug = Model.TeamSlug, displayName = member.DisplayName })
                                 </td>
                             }
                             <td>@member.JoinedAt.ToDisplayCompactDate()</td>
