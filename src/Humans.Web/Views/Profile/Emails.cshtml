@@ -138,6 +138,21 @@
                         <text>Your @@nobodies.team email is automatically used.</text>
                     }
                 </p>
+                @if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Rejected)
+                {
+                    <div class="alert alert-danger mb-3">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        <strong>Google sync failed.</strong> The current email was rejected by Google.
+                        Select a different email below to retry sync.
+                    </div>
+                }
+                else if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Valid)
+                {
+                    <div class="alert alert-success mb-3 py-2">
+                        <i class="fa-solid fa-circle-check me-1"></i>
+                        Google sync is working with the current email.
+                    </div>
+                }
                 @foreach (var email in Model.Emails.Where(e => e.IsVerified))
                 {
                     <div class="d-flex align-items-center mb-2">
@@ -150,6 +165,10 @@
                             @if (email.IsNobodiesTeamDomain)
                             {
                                 <span class="badge bg-info text-dark ms-2">Auto-selected</span>
+                            }
+                            @if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Rejected && !Model.HasNobodiesTeamEmail)
+                            {
+                                <span class="badge bg-danger ms-2">Rejected</span>
                             }
                         }
                         else if (!Model.HasNobodiesTeamEmail)

@@ -131,6 +131,12 @@ public class User : IdentityUser<Guid>
     public string? GoogleEmail { get; set; }
 
     /// <summary>
+    /// Status of the user's Google email for sync operations.
+    /// Set to Rejected when a permanent Google API error occurs; reset to Unknown on email change.
+    /// </summary>
+    public GoogleEmailStatus GoogleEmailStatus { get; set; } = GoogleEmailStatus.Unknown;
+
+    /// <summary>
     /// Gets the email address used for Google services (Groups, Drive permissions).
     /// Returns GoogleEmail if set, otherwise falls back to the OAuth email.
     /// Does NOT require UserEmails to be loaded.

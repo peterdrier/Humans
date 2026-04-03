@@ -11,5 +11,7 @@ public record AdminDigestCounts(
     int StillOnboarding,
     int BoardVotingTotal,
     int FailedSyncOutboxEvents,
+    int PermanentSyncFailures,
+    int TransientSyncRetries,
     bool TicketSyncError,
     string? TicketSyncErrorMessage);

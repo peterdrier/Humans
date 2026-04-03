@@ -88,9 +88,17 @@ public class SendAdminDailyDigestJob : IRecurringJob
             var boardVotingTotal = await _dbContext.Applications
                 .CountAsync(a => a.Status == ApplicationStatus.Submitted, cancellationToken);
 
-            // Stale Google sync outbox events (unprocessed with errors)
+            // Stale Google sync outbox events (unprocessed with errors, excluding permanent failures)
             var failedSyncEvents = await _dbContext.GoogleSyncOutboxEvents
-                .CountAsync(e => e.ProcessedAt == null && e.LastError != null, cancellationToken);
+                .CountAsync(e => e.ProcessedAt == null && e.LastError != null && !e.FailedPermanently, cancellationToken);
+
+            // Permanent Google sync failures — count distinct users with rejected email status
+            var permanentSyncFailures = await _dbContext.Users
+                .CountAsync(u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected, cancellationToken);
+
+            // Transient retries (still being retried, have errors but not permanent)
+            var transientSyncRetries = await _dbContext.GoogleSyncOutboxEvents
+                .CountAsync(e => e.ProcessedAt == null && !e.FailedPermanently && e.RetryCount > 0, cancellationToken);
 
             // Ticket sync status
             var ticketSyncState = await _dbContext.TicketSyncStates.FindAsync([1], cancellationToken);
@@ -105,6 +113,8 @@ public class SendAdminDailyDigestJob : IRecurringJob
                 stillOnboardingCount,
                 boardVotingTotal,
                 failedSyncEvents,
+                permanentSyncFailures,
+                transientSyncRetries,
                 ticketSyncError,
                 ticketSyncErrorMessage);
 
@@ -112,7 +122,8 @@ public class SendAdminDailyDigestJob : IRecurringJob
             var hasItems = pendingDeletionsCount > 0 || pendingConsentsCount > 0
                 || teamJoinRequestCount > 0 || onboardingReviewCount > 0
                 || stillOnboardingCount > 0 || boardVotingTotal > 0
-                || failedSyncEvents > 0 || ticketSyncError;
+                || failedSyncEvents > 0 || permanentSyncFailures > 0
+                || transientSyncRetries > 0 || ticketSyncError;
 
             if (!hasItems)
             {

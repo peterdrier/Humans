@@ -16,4 +16,10 @@ public class GoogleSyncOutboxEvent
     public int RetryCount { get; set; }
     public string DeduplicationKey { get; set; } = string.Empty;
     public string? LastError { get; set; }
+
+    /// <summary>
+    /// Whether this event failed with a permanent error (HTTP 400/404).
+    /// When true, ProcessedAt is set and the event is not retried.
+    /// </summary>
+    public bool FailedPermanently { get; set; }
 }
