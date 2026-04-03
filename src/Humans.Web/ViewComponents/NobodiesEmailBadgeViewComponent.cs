@@ -20,7 +20,7 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
     private readonly IUserEmailService _userEmailService;
     private readonly IMemoryCache _cache;
 
-    private const string CacheKey = "NobodiesTeamEmails_All";
+    public const string CacheKey = "NobodiesTeamEmails_All";
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(2);
 
     public NobodiesEmailBadgeViewComponent(

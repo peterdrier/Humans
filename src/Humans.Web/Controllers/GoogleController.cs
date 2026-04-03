@@ -497,7 +497,7 @@ public class GoogleController : HumansControllerBase
         else
         {
             // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
-            _cache.Remove("NobodiesTeamEmails_All");
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
 
             if (result.RecoveryEmail is not null)
             {
