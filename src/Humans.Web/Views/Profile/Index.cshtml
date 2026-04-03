@@ -9,12 +9,9 @@
             <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
-                @if (Humans.Web.Authorization.RoleChecks.IsHumanAdminBoardOrAdmin(User))
-                {
-                    <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary">
-                        <i class="fa-solid fa-user-shield"></i> Admin
-                    </human-link>
-                }
+                <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
+                    <i class="fa-solid fa-user-shield"></i> Admin
+                </human-link>
             </div>
         </div>
 
@@ -60,7 +57,7 @@
         @{
             var cardViewMode = Model.IsOwnProfile
                 ? ProfileCardViewMode.Self
-                : Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User)
+                : Humans.Web.TagHelpers.ViewPolicies.Evaluate(Humans.Web.TagHelpers.ViewPolicies.TeamsAdminBoardOrAdmin, User)
                     ? ProfileCardViewMode.Admin
                     : ProfileCardViewMode.Public;
         }

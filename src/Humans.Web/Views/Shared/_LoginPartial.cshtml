@@ -7,11 +7,6 @@
     var currentUser = await UserManager.GetUserAsync(User);
     var displayName = currentUser?.DisplayName ?? User.Identity?.Name;
     var email = currentUser?.Email;
-    var isActiveMember = User.HasClaim(
-        Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-        Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue)
-        || Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User);
-
     <div class="dropdown" data-testid="user-nav">
         <button class="btn btn-link dropdown-toggle d-flex align-items-center gap-2 text-decoration-none p-0"
                 type="button"
@@ -48,14 +43,11 @@
                     <i class="fa-solid fa-file-contract fa-fw"></i> @Localizer["Nav_Consents"]
                 </a>
             </li>
-            @if (isActiveMember)
-            {
-                <li>
-                    <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Governance" asp-action="Index">
-                        <i class="fa-solid fa-landmark fa-fw"></i> @Localizer["Nav_Governance"]
-                    </a>
-                </li>
-            }
+            <li authorize-policy="IsActiveMember">
+                <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Governance" asp-action="Index">
+                    <i class="fa-solid fa-landmark fa-fw"></i> @Localizer["Nav_Governance"]
+                </a>
+            </li>
             <li>
                 <a class="dropdown-item d-flex align-items-center gap-2" asp-controller="Legal" asp-action="Index">
                     <i class="fa-solid fa-scale-balanced fa-fw"></i> Legal

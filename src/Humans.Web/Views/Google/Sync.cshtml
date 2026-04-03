@@ -201,7 +201,7 @@
             }).join('')
             : '<span class="text-muted">None</span>';
         const auditUrl = '@Url.Action("GoogleSyncResourceAudit", "Google", new { id = Guid.Empty })'.replace('00000000-0000-0000-0000-000000000000', diff.resourceId);
-        const canViewAudit = @Json.Serialize(Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User));
+        const canViewAudit = @Json.Serialize(Humans.Web.TagHelpers.ViewPolicies.Evaluate(Humans.Web.TagHelpers.ViewPolicies.AdminOrBoard, User));
         const auditLinkHtml = canViewAudit
             ? '<a class="btn btn-sm btn-outline-secondary" href="' + auditUrl.replace('__RESOURCE_ID__', diff.resourceId) + '">Audit</a>'
             : '';
