@@ -187,4 +187,36 @@ public class AuditLogService : IAuditLogService
             .Take(count)
             .ToListAsync(ct);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+        string? entityType = null,
+        Guid? entityId = null,
+        Guid? userId = null,
+        IReadOnlyList<AuditAction>? actions = null,
+        int limit = 20,
+        CancellationToken ct = default)
+    {
+        var query = _dbContext.AuditLogEntries.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrEmpty(entityType))
+            query = query.Where(e => e.EntityType == entityType);
+
+        if (entityId.HasValue)
+            query = query.Where(e => e.EntityId == entityId.Value);
+
+        if (userId.HasValue)
+            query = query.Where(e =>
+                e.ActorUserId == userId.Value ||
+                e.RelatedEntityId == userId.Value ||
+                (e.EntityType == "User" && e.EntityId == userId.Value));
+
+        if (actions is { Count: > 0 })
+            query = query.Where(e => actions.Contains(e.Action));
+
+        return await query
+            .OrderByDescending(e => e.OccurredAt)
+            .Take(limit)
+            .ToListAsync(ct);
+    }
 }

@@ -200,45 +200,7 @@
 
         <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" display-name="@Model.DisplayName" />
 
-        <div class="card mb-4">
-            <div class="card-header">@Localizer["AdminHuman_AuditHistory"]</div>
-            @if (Model.AuditLog.Count > 0)
-            {
-                <div class="list-group list-group-flush">
-                    @foreach (var entry in Model.AuditLog)
-                    {
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <strong>@entry.Description</strong>
-                                    <br />
-                                    <small class="text-muted">
-                                        @if (entry.IsSystemAction)
-                                        {
-                                            <span class="badge bg-info">System</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-secondary">Admin</span>
-                                        }
-                                        @entry.ActorName
-                                    </small>
-                                </div>
-                                <small class="text-muted text-nowrap ms-2">
-                                    @entry.OccurredAt.ToDisplayDateTime()
-                                </small>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="card-body text-muted">
-                    @Localizer["AdminHuman_NoAuditHistory"]
-                </div>
-            }
-        </div>
+        <vc:audit-log user-id="@Model.UserId" limit="50" title="@Localizer["AdminHuman_AuditHistory"].Value" />
 
         @if (campaignGrants != null && campaignGrants.Any())
         {

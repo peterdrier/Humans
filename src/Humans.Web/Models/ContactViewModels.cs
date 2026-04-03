@@ -32,7 +32,6 @@ public class AdminContactDetailViewModel
     public string? ExternalSourceId { get; set; }
     public Instant CreatedAt { get; set; }
     public IReadOnlyList<CommunicationPreference> CommunicationPreferences { get; set; } = [];
-    public IReadOnlyList<AuditLogEntry> AuditLog { get; set; } = [];
 }
 
 public class CreateContactViewModel

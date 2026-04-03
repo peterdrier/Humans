@@ -116,7 +116,6 @@ public class AdminHumanDetailViewModel
     public int ConsentCount { get; set; }
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
-    public List<AuditLogEntryViewModel> AuditLog { get; set; } = [];
 }
 
 public class AdminHumanApplicationViewModel

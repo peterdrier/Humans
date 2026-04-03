@@ -2,11 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Microsoft.EntityFrameworkCore;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -19,20 +17,17 @@ public class ContactsController : HumansControllerBase
 {
     private readonly IContactService _contactService;
     private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly HumansDbContext _dbContext;
     private readonly ILogger<ContactsController> _logger;
 
     public ContactsController(
         UserManager<User> userManager,
         IContactService contactService,
         IStringLocalizer<SharedResource> localizer,
-        HumansDbContext dbContext,
         ILogger<ContactsController> logger)
         : base(userManager)
     {
         _contactService = contactService;
         _localizer = localizer;
-        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -78,12 +73,6 @@ public class ContactsController : HumansControllerBase
             if (contact is null)
                 return NotFound();
 
-            var auditLog = await _dbContext.AuditLogEntries
-                .AsNoTracking()
-                .Where(a => a.EntityId == id)
-                .OrderByDescending(a => a.OccurredAt)
-                .ToListAsync();
-
             var viewModel = new AdminContactDetailViewModel
             {
                 UserId = contact.Id,
@@ -92,8 +81,7 @@ public class ContactsController : HumansControllerBase
                 ContactSource = contact.ContactSource,
                 ExternalSourceId = contact.ExternalSourceId,
                 CreatedAt = contact.CreatedAt,
-                CommunicationPreferences = contact.CommunicationPreferences.ToList(),
-                AuditLog = auditLog
+                CommunicationPreferences = contact.CommunicationPreferences.ToList()
             };
 
             return View(viewModel);

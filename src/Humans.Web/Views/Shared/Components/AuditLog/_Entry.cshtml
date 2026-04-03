@@ -1,0 +1,35 @@
+@model Humans.Domain.Entities.AuditLogEntry
+@using Humans.Web.ViewComponents
+
+@{
+    var userNames = (Dictionary<Guid, string>?)ViewData["UserDisplayNames"] ?? new();
+    string GetName(Guid id) => userNames.TryGetValue(id, out var n) ? n : "Unknown";
+
+    var verb = AuditLogViewComponent.GetActionVerb(Model.Action);
+    var hasSubject = Model.RelatedEntityId.HasValue && Model.RelatedEntityType == "User";
+}
+
+<div class="d-flex align-items-baseline gap-1 small">
+    <span class="text-muted text-nowrap">@Model.OccurredAt.ToAuditTimestamp()</span>
+    <span class="text-muted">—</span>
+    @if (verb != null)
+    {
+        @if (Model.ActorUserId.HasValue)
+        {
+            <human-link user-id="@Model.ActorUserId.Value" display-name="@GetName(Model.ActorUserId.Value)" mode="Text" />
+        }
+        else
+        {
+            <span class="text-muted">System</span>
+        }
+        <span>@verb</span>
+        @if (hasSubject)
+        {
+            <human-link user-id="@Model.RelatedEntityId!.Value" display-name="@GetName(Model.RelatedEntityId.Value)" mode="Text" />
+        }
+    }
+    else
+    {
+        <span>@Model.Description</span>
+    }
+</div>

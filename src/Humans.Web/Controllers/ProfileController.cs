@@ -1262,14 +1262,6 @@ public class ProfileController : HumansControllerBase
                 CreatedByName = ra.CreatedByUser?.DisplayName,
                 CreatedAt = ra.CreatedAt.ToDateTimeUtc()
             }).ToList(),
-            AuditLog = data.AuditEntries.Select(e => new AuditLogEntryViewModel
-            {
-                Action = Enum.TryParse<AuditAction>(e.Action, out var parsedAction) ? parsedAction : default,
-                Description = e.Description,
-                OccurredAt = e.OccurredAt,
-                ActorName = e.ActorName ?? string.Empty,
-                IsSystemAction = e.IsSystemAction
-            }).ToList()
         };
 
         // Check for @nobodies.team email

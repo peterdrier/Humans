@@ -51,9 +51,9 @@ public class HumanLinkTagHelper : TagHelper
     [HtmlAttributeName("admin")]
     public bool Admin { get; set; }
 
-    /// <summary>Enable hover popover with profile summary.</summary>
+    /// <summary>Enable hover popover with profile summary. Default: true.</summary>
     [HtmlAttributeName("show-popover")]
-    public bool ShowPopover { get; set; }
+    public bool ShowPopover { get; set; } = true;
 
     /// <summary>Additional CSS class(es) for the avatar element.</summary>
     [HtmlAttributeName("avatar-css-class")]

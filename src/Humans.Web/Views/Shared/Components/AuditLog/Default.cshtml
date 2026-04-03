@@ -1,0 +1,49 @@
+@model Humans.Web.ViewComponents.AuditLogComponentViewModel
+
+@if (Model.ShowCard)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Model.Title</div>
+        @if (Model.Entries.Count > 0)
+        {
+            <ul class="list-group list-group-flush">
+                @foreach (var entry in Model.Entries)
+                {
+                    <li class="list-group-item py-2">
+                        @await Html.PartialAsync("Components/AuditLog/_Entry", entry, new ViewDataDictionary(ViewData)
+                        {
+                            ["UserDisplayNames"] = Model.UserDisplayNames
+                        })
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <div class="card-body text-muted">
+                No audit history.
+            </div>
+        }
+    </div>
+}
+else
+{
+    @if (Model.Entries.Count > 0)
+    {
+        <ul class="list-group list-group-flush">
+            @foreach (var entry in Model.Entries)
+            {
+                <li class="list-group-item py-2">
+                    @await Html.PartialAsync("Components/AuditLog/_Entry", entry, new ViewDataDictionary(ViewData)
+                    {
+                        ["UserDisplayNames"] = Model.UserDisplayNames
+                    })
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p class="text-muted mb-0">No audit history.</p>
+    }
+}
