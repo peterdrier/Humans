@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
@@ -30,6 +31,7 @@ public class NotificationPopupViewModel
 {
     public List<NotificationRowViewModel> Actionable { get; init; } = [];
     public List<NotificationRowViewModel> Informational { get; init; } = [];
+    public IReadOnlyList<NotificationMeter> Meters { get; init; } = [];
     public int ActionableCount { get; init; }
 }
 
@@ -38,6 +40,7 @@ public class NotificationInboxViewModel
     public List<NotificationRowViewModel> NeedsAttention { get; init; } = [];
     public List<NotificationRowViewModel> Informational { get; init; } = [];
     public List<NotificationRowViewModel> Resolved { get; init; } = [];
+    public IReadOnlyList<NotificationMeter> Meters { get; init; } = [];
     public int UnreadCount { get; init; }
     public string? SearchTerm { get; init; }
     public string ActiveFilter { get; init; } = "all";

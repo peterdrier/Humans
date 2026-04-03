@@ -176,6 +176,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<CleanupNotificationsJob>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationInboxService, NotificationInboxService>();
+        services.AddScoped<INotificationMeterProvider, NotificationMeterProvider>();
         services.AddScoped<IGoogleAdminService, GoogleAdminService>();
 
         // Shift management services

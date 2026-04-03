@@ -14,15 +14,18 @@ namespace Humans.Web.Controllers;
 public class NotificationController : HumansControllerBase
 {
     private readonly INotificationInboxService _inboxService;
+    private readonly INotificationMeterProvider _meterProvider;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
     public NotificationController(
         INotificationInboxService inboxService,
         UserManager<User> userManager,
+        INotificationMeterProvider meterProvider,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
     {
         _inboxService = inboxService;
+        _meterProvider = meterProvider;
         _localizer = localizer;
     }
 
@@ -41,11 +44,14 @@ public class NotificationController : HumansControllerBase
 
         var defaultActionLabel = _localizer["Notification_DefaultActionLabel"].Value;
 
+        var meters = await _meterProvider.GetMetersForUserAsync(User);
+
         return View(new NotificationInboxViewModel
         {
             NeedsAttention = result.NeedsAttention.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
             Informational = result.Informational.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
             Resolved = result.Resolved.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Meters = meters,
             UnreadCount = result.UnreadCount,
             SearchTerm = search,
             ActiveFilter = filter,
@@ -63,10 +69,13 @@ public class NotificationController : HumansControllerBase
 
         var defaultActionLabel = _localizer["Notification_DefaultActionLabel"].Value;
 
+        var meters = await _meterProvider.GetMetersForUserAsync(User);
+
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {
             Actionable = result.Actionable.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
             Informational = result.Informational.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Meters = meters,
             ActionableCount = result.ActionableCount,
         });
     }

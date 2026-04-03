@@ -847,6 +847,7 @@ public class TeamService : ITeamService
         request.Withdraw(_clock);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _cache.InvalidateNotificationMeters();
 
         _logger.LogInformation("User {UserId} withdrew join request {RequestId}", userId, requestId);
     }
@@ -916,6 +917,7 @@ public class TeamService : ITeamService
             approverUserId, requestId, request.UserId, request.TeamId);
 
         // Update cache
+        _cache.InvalidateNotificationMeters();
         var joinedUser = await _dbContext.Users.FindAsync([request.UserId], cancellationToken);
         if (joinedUser is not null)
         {
@@ -956,6 +958,7 @@ public class TeamService : ITeamService
             relatedEntityId: request.UserId, relatedEntityType: nameof(User));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        _cache.InvalidateNotificationMeters();
 
         _logger.LogInformation("Approver {ApproverId} rejected join request {RequestId}", approverUserId, requestId);
     }

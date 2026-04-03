@@ -19,6 +19,7 @@ public class OnboardingService : IOnboardingService
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHumansMetrics _metrics;
@@ -30,6 +31,7 @@ public class OnboardingService : IOnboardingService
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
         IEmailService emailService,
+        INotificationService notificationService,
         ISystemTeamSync syncJob,
         IMembershipCalculator membershipCalculator,
         IHumansMetrics metrics,
@@ -40,6 +42,7 @@ public class OnboardingService : IOnboardingService
         _dbContext = dbContext;
         _auditLogService = auditLogService;
         _emailService = emailService;
+        _notificationService = notificationService;
         _syncJob = syncJob;
         _membershipCalculator = membershipCalculator;
         _metrics = metrics;
@@ -176,6 +179,7 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         // Add to profile cache (profile is now approved and not suspended)
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
@@ -229,6 +233,7 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         // Remove from profile cache (no longer approved)
         _cache.UpdateApprovedProfile(userId, null);
@@ -317,6 +322,7 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         // Remove from profile cache (no longer approved)
         _cache.UpdateApprovedProfile(userId, null);
@@ -366,6 +372,7 @@ public class OnboardingService : IOnboardingService
 
         // FIX: cache eviction was missing in AdminController
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         // Add to profile cache (profile is now approved)
         await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
@@ -457,7 +464,27 @@ public class OnboardingService : IOnboardingService
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _logger.LogInformation("User {UserId} has all consents signed, consent check set to Pending", userId);
+
+        // Dispatch in-app notification to Consent Coordinators
+        try
+        {
+            await _notificationService.SendToRoleAsync(
+                NotificationSource.ConsentReviewNeeded,
+                NotificationClass.Actionable,
+                NotificationPriority.High,
+                "New consent review needed",
+                RoleNames.ConsentCoordinator,
+                body: "A human has completed all required consents and needs review.",
+                actionUrl: "/OnboardingReview",
+                actionLabel: "Review \u2192",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ConsentReviewNeeded notification for user {UserId}", userId);
+        }
 
         return true;
     }

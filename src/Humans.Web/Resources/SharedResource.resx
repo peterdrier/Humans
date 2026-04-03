@@ -1299,6 +1299,7 @@
   <data name="Notification_Section_Recent" xml:space="preserve"><value>Recent</value></data>
   <data name="Notification_Section_Informational" xml:space="preserve"><value>Informational</value></data>
   <data name="Notification_Section_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Notification_Section_WorkQueues" xml:space="preserve"><value>Work queues</value></data>
   <data name="Notification_MarkAllRead" xml:space="preserve"><value>Mark all as read</value></data>
   <data name="Notification_SeeAll" xml:space="preserve"><value>See all notifications</value></data>
   <data name="Notification_PageTitle" xml:space="preserve"><value>All notifications</value></data>
