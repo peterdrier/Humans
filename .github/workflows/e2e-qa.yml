@@ -18,13 +18,14 @@ jobs:
       - name: Wait for QA deploy
         working-directory: .
         run: |
-          EXPECTED_COMMIT="${{ github.sha }}"
+          FULL_SHA="${{ github.sha }}"
+          SHORT_SHA="${FULL_SHA:0:8}"
           URL="https://humans.n.burn.camp/api/version"
-          echo "Waiting for commit ${EXPECTED_COMMIT} to deploy..."
+          echo "Waiting for commit ${SHORT_SHA} (${FULL_SHA}) to deploy..."
 
           for i in $(seq 1 60); do
             DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
-            if [ "$DEPLOYED" = "$EXPECTED_COMMIT" ]; then
+            if [ "$DEPLOYED" = "$SHORT_SHA" ] || [ "$DEPLOYED" = "$FULL_SHA" ]; then
               echo "Deploy confirmed after ~$((i * 5))s"
               exit 0
             fi
