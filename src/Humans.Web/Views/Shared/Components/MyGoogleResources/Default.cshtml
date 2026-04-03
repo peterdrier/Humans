@@ -10,27 +10,21 @@
             var icon = item.Resource.ResourceType == Humans.Domain.Enums.GoogleResourceType.Group
                 ? "fa-solid fa-users"
                 : "fa-solid fa-folder";
-            var typeLabel = item.Resource.ResourceType == Humans.Domain.Enums.GoogleResourceType.Group
-                ? "Group"
-                : "Drive";
 
-            <div class="list-group-item d-flex justify-content-between align-items-start">
+            <div class="list-group-item d-flex justify-content-between align-items-center py-2">
                 <div>
-                    <i class="@icon me-1 text-muted"></i>
+                    <i class="@icon me-2 text-muted"></i>
                     @if (item.Resource.Url is not null)
                     {
-                        <a href="@item.Resource.Url" target="_blank" rel="noopener noreferrer">@item.Resource.Name <i class="fa-solid fa-external-link-alt small"></i></a>
+                        <a href="@item.Resource.Url" target="_blank" rel="noopener noreferrer">@item.Resource.Name</a>
                     }
                     else
                     {
                         @item.Resource.Name
                     }
-                    <br />
-                    <small class="text-muted">
-                        <span class="badge bg-light text-dark border">@typeLabel</span>
-                        via <a asp-controller="Team" asp-action="Detail" asp-route-slug="@item.TeamSlug" class="text-decoration-none">@item.TeamName</a>
-                    </small>
                 </div>
+                <a asp-controller="Team" asp-action="Details" asp-route-slug="@item.TeamSlug"
+                   class="badge bg-light text-dark border text-decoration-none">@item.TeamName</a>
             </div>
         }
     </div>
