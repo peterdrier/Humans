@@ -17,7 +17,7 @@ public enum GoogleEmailStatus
     Valid = 1,
 
     /// <summary>
-    /// Email was permanently rejected by Google APIs (HTTP 400/403/404).
+    /// Email was permanently rejected by Google APIs (HTTP 400/404).
     /// User must update their Google email before sync events are enqueued.
     /// </summary>
     Rejected = 2

@@ -519,9 +519,19 @@ When system teams are synced, Google permissions are also updated:
 
 ## Error Handling
 
-### Retry Strategy
+### Outbox Sync Error Classification
+
+The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categories:
+
+**Permanent failures (HTTP 400, 404):** User-level errors — invalid email format or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user. The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships.
+
+**Transient failures (all other errors including 403, 429, 5xx):** Retried up to 10 times. HTTP 403 is treated as transient because it typically indicates a resource-level permission issue (service account lacks access to a Group or Drive), not a user email problem.
+
+`GoogleEmailStatus` is set to `Valid` only after a successful `AddUserToTeamResources` event where the team has linked Google resources — ensuring the email was actually accepted by a Google API call.
+
+### Resource-Level Retry Strategy
 ```
-On Google API error:
+On Google API error (resource provisioning):
   1. Log error with details
   2. Store error in GoogleResource.ErrorMessage
   3. Set IsActive = false if persistent
@@ -531,11 +541,19 @@ On Google API error:
 ### Error Scenarios
 | Error | Handling |
 |-------|----------|
-| Rate limit exceeded | Exponential backoff |
-| User not in domain | Skip, log warning |
+| Rate limit exceeded (429) | Transient — retry with backoff |
+| User not found (404) | Permanent — mark user email rejected |
+| Invalid email (400) | Permanent — mark user email rejected |
+| Permission denied (403) | Transient — resource-level issue, retry |
 | Folder not found | Re-provision |
-| Permission denied | Alert admin |
 | Inherited permission delete | Skip (cannot remove inherited Shared Drive permissions) |
+
+### Admin Digest Reporting
+
+The daily admin digest reports sync health:
+- **Failed sync events (transient):** Unprocessed events with errors, still being retried
+- **Humans with rejected email:** Distinct users with `GoogleEmailStatus = Rejected`
+- **Transient retries:** Events being retried (have errors but not permanently failed)
 
 ## Security Considerations
 

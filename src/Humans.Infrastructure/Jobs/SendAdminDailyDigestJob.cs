@@ -92,9 +92,9 @@ public class SendAdminDailyDigestJob : IRecurringJob
             var failedSyncEvents = await _dbContext.GoogleSyncOutboxEvents
                 .CountAsync(e => e.ProcessedAt == null && e.LastError != null && !e.FailedPermanently, cancellationToken);
 
-            // Permanent Google sync failures (user email rejected by Google)
-            var permanentSyncFailures = await _dbContext.GoogleSyncOutboxEvents
-                .CountAsync(e => e.FailedPermanently, cancellationToken);
+            // Permanent Google sync failures — count distinct users with rejected email status
+            var permanentSyncFailures = await _dbContext.Users
+                .CountAsync(u => u.GoogleEmailStatus == GoogleEmailStatus.Rejected, cancellationToken);
 
             // Transient retries (still being retried, have errors but not permanent)
             var transientSyncRetries = await _dbContext.GoogleSyncOutboxEvents

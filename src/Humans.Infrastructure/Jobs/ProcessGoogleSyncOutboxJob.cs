@@ -19,10 +19,12 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
     private const int MaxRetryCount = 10;
 
     /// <summary>
-    /// HTTP status codes that indicate a permanent failure (do not retry).
-    /// 400 = bad request (invalid email format), 403 = forbidden (no access), 404 = not found.
+    /// HTTP status codes that indicate a permanent user-level failure (do not retry).
+    /// 400 = bad request (invalid email format), 404 = user not found.
+    /// Note: 403 is excluded because it typically indicates a resource-level permission issue
+    /// (service account lacks access), not a user email problem.
     /// </summary>
-    private static readonly HashSet<int> PermanentErrorCodes = [400, 403, 404];
+    private static readonly HashSet<int> PermanentErrorCodes = [400, 404];
 
     private readonly HumansDbContext _dbContext;
     private readonly IGoogleSyncService _googleSyncService;
@@ -88,8 +90,18 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                 outboxEvent.LastError = null;
                 _metrics.RecordSyncOperation("success");
 
-                // Mark user as Valid on successful sync
-                await MarkUserGoogleEmailStatusAsync(outboxEvent.UserId, GoogleEmailStatus.Valid, cancellationToken);
+                // Only mark user as Valid when the event actually touched Google APIs
+                // (AddUserToTeamResources with linked resources). RemoveUserFromTeamResources
+                // is a no-op, and Add with zero resources doesn't validate the email.
+                if (string.Equals(outboxEvent.EventType, GoogleSyncOutboxEventTypes.AddUserToTeamResources, StringComparison.Ordinal))
+                {
+                    var hasResources = await _dbContext.GoogleResources
+                        .AnyAsync(r => r.TeamId == outboxEvent.TeamId && r.IsActive, cancellationToken);
+                    if (hasResources)
+                    {
+                        await MarkUserGoogleEmailStatusAsync(outboxEvent.UserId, GoogleEmailStatus.Valid, cancellationToken);
+                    }
+                }
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
             }

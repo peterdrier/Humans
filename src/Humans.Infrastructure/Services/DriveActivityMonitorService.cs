@@ -384,7 +384,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
                 .AsNoTracking()
                 .FirstOrDefaultAsync(l =>
                     l.ProviderKey == googleUserId &&
-                    string.Equals(l.LoginProvider, "Google", StringComparison.OrdinalIgnoreCase),
+                    l.LoginProvider == "Google",
                     cancellationToken);
 
             if (login is not null)
