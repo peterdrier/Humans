@@ -126,20 +126,24 @@ test.describe('Teams Auth — Audit trail verification (#341)', () => {
     await loginAsAdmin(page);
     await page.goto(`/Teams/${DEPT_SLUG}/Members`);
 
-    // The Members page should show the add-member form/search
-    // and remove buttons for existing members — these actions are audit-logged
+    // The Members page should load successfully with management capabilities
     await expect(page.locator('h1, h2').first()).toBeVisible();
-
-    // Look for the add member search input or form
-    const addMemberSection = page.locator('[data-testid="add-member"], input[name="q"], .add-member-search, #member-search');
-    const hasAddMember = await addMemberSection.first().isVisible({ timeout: 3000 }).catch(() => false);
-
-    // Look for remove member buttons/forms
-    const removeButtons = page.locator('button:has-text("Remove"), a:has-text("Remove"), form[action*="Remove"]');
-    const hasRemoveButtons = await removeButtons.first().isVisible({ timeout: 3000 }).catch(() => false);
-
-    // At minimum the page loaded successfully with management capabilities
-    // (the coordinator persona is a member, so at least one member row exists)
     expect(page.url()).toContain('/Members');
+
+    // Verify at least one management control is present (add or remove)
+    // These actions trigger audit-logged service methods
+    const hasAddMember = await page
+      .locator('[data-testid="add-member"], input[name="q"], .add-member-search, #member-search')
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
+
+    const hasRemoveButton = await page
+      .locator('button:has-text("Remove"), a:has-text("Remove"), form[action*="Remove"]')
+      .first()
+      .isVisible({ timeout: 3000 })
+      .catch(() => false);
+
+    expect(hasAddMember || hasRemoveButton).toBeTruthy();
   });
 });
