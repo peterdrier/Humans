@@ -44,8 +44,7 @@ public class EmailProvisioningService : IEmailProvisioningService
     public async Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,
-        Guid provisionedByUserId,
-        string provisionedByDisplayName)
+        Guid provisionedByUserId)
     {
         var user = await _dbContext.Users
             .Include(u => u.UserEmails)

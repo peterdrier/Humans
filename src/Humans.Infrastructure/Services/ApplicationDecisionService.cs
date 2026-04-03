@@ -83,7 +83,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         // Audit
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationApproved, nameof(Humans.Domain.Entities.Application), application.Id,
-            $"{application.MembershipTier} application approved for {application.User.DisplayName}",
+            $"{application.MembershipTier} application approved",
             reviewerUserId);
 
         // GDPR: delete individual board votes
@@ -170,7 +170,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         // Audit
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationRejected, nameof(Humans.Domain.Entities.Application), application.Id,
-            $"{application.MembershipTier} application rejected for {application.User.DisplayName}",
+            $"{application.MembershipTier} application rejected",
             reviewerUserId);
 
         // GDPR: delete individual board votes

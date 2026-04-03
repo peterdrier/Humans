@@ -143,7 +143,7 @@ public class AccountMergeService : IAccountMergeService
         await _auditLogService.LogAsync(
             AuditAction.AccountMergeAccepted,
             nameof(AccountMergeRequest), request.Id,
-            $"Merged account {sourceDisplayName} (source: {sourceUser.Id}) into {targetUser.DisplayName} (target: {targetUser.Id}) — email: {request.Email}",
+            $"Merged account (source: {sourceUser.Id}) into (target: {targetUser.Id}) — email: {request.Email}",
             adminUserId,
             relatedEntityId: targetUser.Id, relatedEntityType: nameof(User));
 

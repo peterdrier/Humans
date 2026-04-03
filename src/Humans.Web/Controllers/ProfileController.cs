@@ -1292,7 +1292,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.SuspendAsync(id, currentUser.Id, currentUser.DisplayName, notes);
+        var result = await _onboardingService.SuspendAsync(id, currentUser.Id, notes);
         if (!result.Success)
             return NotFound();
 
@@ -1309,7 +1309,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id, currentUser.DisplayName);
+        var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id);
         if (!result.Success)
             return NotFound();
 
@@ -1326,7 +1326,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var result = await _onboardingService.ApproveVolunteerAsync(id, currentUser.Id, currentUser.DisplayName);
+        var result = await _onboardingService.ApproveVolunteerAsync(id, currentUser.Id);
         if (!result.Success)
             return NotFound();
 
@@ -1343,7 +1343,7 @@ public class ProfileController : HumansControllerBase
         if (currentUser is null)
             return Unauthorized();
 
-        var result = await _onboardingService.RejectSignupAsync(id, currentUser.Id, currentUser.DisplayName, reason);
+        var result = await _onboardingService.RejectSignupAsync(id, currentUser.Id, reason);
         if (!result.Success)
         {
             if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
@@ -1410,7 +1410,7 @@ public class ProfileController : HumansControllerBase
         }
 
         var result = await _roleAssignmentService.AssignRoleAsync(
-            id, model.RoleName, currentUser.Id, currentUser.DisplayName, model.Notes);
+            id, model.RoleName, currentUser.Id, model.Notes);
 
         if (!result.Success)
         {
@@ -1447,7 +1447,7 @@ public class ProfileController : HumansControllerBase
         }
 
         var result = await _roleAssignmentService.EndRoleAsync(
-            roleId, currentUser.Id, currentUser.DisplayName, notes);
+            roleId, currentUser.Id, notes);
 
         if (!result.Success)
         {

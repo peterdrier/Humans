@@ -16,13 +16,11 @@ public interface IEmailProvisioningService
     /// <param name="userId">The user to provision the account for.</param>
     /// <param name="emailPrefix">The prefix part of the email (before @nobodies.team).</param>
     /// <param name="provisionedByUserId">The user performing the provisioning (for audit).</param>
-    /// <param name="provisionedByDisplayName">Display name of the provisioning user (for audit).</param>
     /// <returns>Result indicating success or failure with details.</returns>
     Task<EmailProvisioningResult> ProvisionNobodiesEmailAsync(
         Guid userId,
         string emailPrefix,
-        Guid provisionedByUserId,
-        string provisionedByDisplayName);
+        Guid provisionedByUserId);
 }
 
 /// <summary>

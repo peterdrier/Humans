@@ -125,7 +125,7 @@ public class RoleAssignmentServiceTests : IDisposable
         await SeedUserAsync(assignerId, "Admin User");
         _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
 
-        var result = await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, "Admin User", null);
+        var result = await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, null);
 
         result.Success.Should().BeTrue();
         _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
@@ -145,7 +145,7 @@ public class RoleAssignmentServiceTests : IDisposable
             null);
         _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
 
-        var result = await _service.EndRoleAsync(assignment.Id, enderId, "Admin User", null);
+        var result = await _service.EndRoleAsync(assignment.Id, enderId, null);
 
         result.Success.Should().BeTrue();
         _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();

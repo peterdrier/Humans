@@ -100,7 +100,7 @@ public class AdminDuplicateAccountsController : HumansControllerBase
 
         try
         {
-            await _duplicateService.ResolveAsync(sourceUserId, targetUserId, user.Id, user.DisplayName, notes);
+            await _duplicateService.ResolveAsync(sourceUserId, targetUserId, user.Id, notes);
             SetSuccess("Duplicate account resolved. The empty account has been archived and logins re-linked.");
         }
         catch (InvalidOperationException ex)

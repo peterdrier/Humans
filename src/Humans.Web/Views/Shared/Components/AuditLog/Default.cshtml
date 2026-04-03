@@ -1,22 +1,17 @@
 @model Humans.Web.ViewComponents.AuditLogComponentViewModel
 
+@{
+    var entries = Model.Entries;
+    var hasEntries = entries.Count > 0;
+}
+
 @if (Model.ShowCard)
 {
     <div class="card mb-4">
         <div class="card-header">@Model.Title</div>
-        @if (Model.Entries.Count > 0)
+        @if (hasEntries)
         {
-            <ul class="list-group list-group-flush">
-                @foreach (var entry in Model.Entries)
-                {
-                    <li class="list-group-item py-2">
-                        @await Html.PartialAsync("Components/AuditLog/_Entry", entry, new ViewDataDictionary(ViewData)
-                        {
-                            ["UserDisplayNames"] = Model.UserDisplayNames
-                        })
-                    </li>
-                }
-            </ul>
+            @await Html.PartialAsync("Components/AuditLog/_EntryList", Model)
         }
         else
         {
@@ -28,19 +23,9 @@
 }
 else
 {
-    @if (Model.Entries.Count > 0)
+    @if (hasEntries)
     {
-        <ul class="list-group list-group-flush">
-            @foreach (var entry in Model.Entries)
-            {
-                <li class="list-group-item py-2">
-                    @await Html.PartialAsync("Components/AuditLog/_Entry", entry, new ViewDataDictionary(ViewData)
-                    {
-                        ["UserDisplayNames"] = Model.UserDisplayNames
-                    })
-                </li>
-            }
-        </ul>
+        @await Html.PartialAsync("Components/AuditLog/_EntryList", Model)
     }
     else
     {

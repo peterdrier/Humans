@@ -264,7 +264,7 @@ public class GoogleAdminService : IGoogleAdminService
             await _auditLogService.LogAsync(
                 AuditAction.WorkspaceAccountLinked,
                 "WorkspaceAccount", userId,
-                $"Linked @{NobodiesTeamDomain} account {email} to {user.DisplayName}",
+                $"Linked @{NobodiesTeamDomain} account {email}",
                 actorUserId);
             await _dbContext.SaveChangesAsync(ct);
 

@@ -119,7 +119,7 @@ public class RoleAssignmentService : IRoleAssignmentService
     }
 
     public async Task<OnboardingResult> AssignRoleAsync(
-        Guid userId, string roleName, Guid assignerId, string assignerDisplayName,
+        Guid userId, string roleName, Guid assignerId,
         string? notes, CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
@@ -147,7 +147,7 @@ public class RoleAssignmentService : IRoleAssignmentService
 
         await _auditLogService.LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,
-            $"Role '{roleName}' assigned to {user?.DisplayName ?? userId.ToString()}",
+            $"Role '{roleName}' assigned",
             assignerId);
 
         await _dbContext.SaveChangesAsync(ct);
@@ -167,7 +167,7 @@ public class RoleAssignmentService : IRoleAssignmentService
     }
 
     public async Task<OnboardingResult> EndRoleAsync(
-        Guid assignmentId, Guid enderId, string enderDisplayName,
+        Guid assignmentId, Guid enderId,
         string? notes, CancellationToken ct = default)
     {
         var roleAssignment = await _dbContext.RoleAssignments
@@ -196,7 +196,7 @@ public class RoleAssignmentService : IRoleAssignmentService
 
         await _auditLogService.LogAsync(
             AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
-            $"Role '{roleAssignment.RoleName}' ended for {roleAssignment.User.DisplayName}",
+            $"Role '{roleAssignment.RoleName}' ended",
             enderId);
 
         await _dbContext.SaveChangesAsync(ct);

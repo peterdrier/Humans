@@ -459,7 +459,7 @@ public class GoogleController : HumansControllerBase
             return NotFound();
 
         var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
-            id, emailPrefix, currentUser.Id, currentUser.DisplayName);
+            id, emailPrefix, currentUser.Id);
 
         if (!result.Success)
         {
