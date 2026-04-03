@@ -1,16 +1,11 @@
 using Humans.Application;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
-using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -18,24 +13,18 @@ namespace Humans.Web.Controllers;
 [Route("Notifications")]
 public class NotificationController : HumansControllerBase
 {
-    private readonly HumansDbContext _dbContext;
-    private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
+    private readonly INotificationInboxService _inboxService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<NotificationController> _logger;
 
     public NotificationController(
-        HumansDbContext dbContext,
+        INotificationInboxService inboxService,
         UserManager<User> userManager,
-        IClock clock,
-        IMemoryCache cache,
         IStringLocalizer<SharedResource> localizer,
         ILogger<NotificationController> logger)
         : base(userManager)
     {
-        _dbContext = dbContext;
-        _clock = clock;
-        _cache = cache;
+        _inboxService = inboxService;
         _localizer = localizer;
         _logger = logger;
     }
@@ -47,94 +36,20 @@ public class NotificationController : HumansControllerBase
         var (err, user) = await RequireCurrentUserAsync();
         if (err is not null) return err;
 
-        // Resolved filter is incompatible with unread tab — resolved items are never unread
+        // Resolved filter is incompatible with unread tab
         if (string.Equals(filter, "resolved", StringComparison.OrdinalIgnoreCase))
             tab = "all";
 
-        var now = _clock.GetCurrentInstant();
-        var cutoff = now - Duration.FromDays(7);
+        var result = await _inboxService.GetInboxAsync(user.Id, search, filter, tab);
 
-        var query = _dbContext.NotificationRecipients
-            .Where(nr => nr.UserId == user.Id)
-            .Include(nr => nr.Notification)
-                .ThenInclude(n => n.ResolvedByUser)
-            .Include(nr => nr.Notification)
-                .ThenInclude(n => n.Recipients)
-                    .ThenInclude(r => r.User)
-            .AsNoTrackingWithIdentityResolution();
-
-        // Tab filter
-        if (string.Equals(tab, "unread", StringComparison.OrdinalIgnoreCase))
-        {
-            query = query.Where(nr => nr.Notification.ResolvedAt == null && nr.ReadAt == null);
-        }
-        else
-        {
-            // All: unresolved + resolved within last 7 days
-            query = query.Where(nr =>
-                nr.Notification.ResolvedAt == null ||
-                nr.Notification.ResolvedAt > cutoff);
-        }
-
-        // Filter pills
-        if (string.Equals(filter, "action", StringComparison.OrdinalIgnoreCase))
-        {
-            query = query.Where(nr => nr.Notification.Class == NotificationClass.Actionable);
-        }
-        else if (string.Equals(filter, "shifts", StringComparison.OrdinalIgnoreCase))
-        {
-            query = query.Where(nr =>
-                nr.Notification.Source == NotificationSource.ShiftCoverageGap ||
-                nr.Notification.Source == NotificationSource.ShiftSignupChange);
-        }
-        else if (string.Equals(filter, "approvals", StringComparison.OrdinalIgnoreCase))
-        {
-            query = query.Where(nr =>
-                nr.Notification.Source == NotificationSource.ConsentReviewNeeded ||
-                nr.Notification.Source == NotificationSource.ApplicationSubmitted);
-        }
-        else if (string.Equals(filter, "resolved", StringComparison.OrdinalIgnoreCase))
-        {
-            query = query.Where(nr => nr.Notification.ResolvedAt != null);
-        }
-
-        // Search
-        if (!string.IsNullOrWhiteSpace(search) && search.Trim().Length >= 2)
-        {
-            var term = $"%{search.Trim()}%";
-            query = query.Where(nr =>
-                EF.Functions.ILike(nr.Notification.Title, term) ||
-                (nr.Notification.Body != null && EF.Functions.ILike(nr.Notification.Body, term)));
-        }
-
-        var recipients = await query
-            .OrderByDescending(nr => nr.Notification.CreatedAt)
-            .ToListAsync();
-
-        var needsAttention = new List<NotificationRowViewModel>();
-        var informational = new List<NotificationRowViewModel>();
-        var resolved = new List<NotificationRowViewModel>();
-
-        foreach (var nr in recipients)
-        {
-            var vm = MapToRow(nr);
-            if (vm.IsResolved)
-                resolved.Add(vm);
-            else if (nr.Notification.Class == NotificationClass.Actionable)
-                needsAttention.Add(vm);
-            else
-                informational.Add(vm);
-        }
-
-        var unreadCount = recipients.Count(nr =>
-            nr.Notification.ResolvedAt == null && nr.ReadAt == null);
+        var defaultActionLabel = _localizer["Notification_DefaultActionLabel"].Value;
 
         return View(new NotificationInboxViewModel
         {
-            NeedsAttention = needsAttention,
-            Informational = informational,
-            Resolved = resolved,
-            UnreadCount = unreadCount,
+            NeedsAttention = result.NeedsAttention.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Informational = result.Informational.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Resolved = result.Resolved.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            UnreadCount = result.UnreadCount,
             SearchTerm = search,
             ActiveFilter = filter,
             ActiveTab = tab,
@@ -147,32 +62,15 @@ public class NotificationController : HumansControllerBase
         var (err, user) = await RequireCurrentUserAsync();
         if (err is not null) return err;
 
-        var recipients = await _dbContext.NotificationRecipients
-            .Where(nr => nr.UserId == user.Id && nr.Notification.ResolvedAt == null)
-            .Include(nr => nr.Notification)
-                .ThenInclude(n => n.Recipients)
-                    .ThenInclude(r => r.User)
-            .AsNoTrackingWithIdentityResolution()
-            .OrderByDescending(nr => nr.Notification.CreatedAt)
-            .ToListAsync();
+        var result = await _inboxService.GetPopupAsync(user.Id);
 
-        var actionable = new List<NotificationRowViewModel>();
-        var informational = new List<NotificationRowViewModel>();
-
-        foreach (var nr in recipients)
-        {
-            var vm = MapToRow(nr);
-            if (nr.Notification.Class == NotificationClass.Actionable)
-                actionable.Add(vm);
-            else
-                informational.Add(vm);
-        }
+        var defaultActionLabel = _localizer["Notification_DefaultActionLabel"].Value;
 
         return PartialView("_NotificationPopup", new NotificationPopupViewModel
         {
-            Actionable = actionable,
-            Informational = informational,
-            ActionableCount = actionable.Count,
+            Actionable = result.Actionable.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            Informational = result.Informational.Select(r => MapToViewModel(r, defaultActionLabel)).ToList(),
+            ActionableCount = result.ActionableCount,
         });
     }
 
@@ -183,24 +81,10 @@ public class NotificationController : HumansControllerBase
         var (err, user) = await RequireCurrentUserAsync();
         if (err is not null) return err;
 
-        var notification = await _dbContext.Notifications
-            .Include(n => n.Recipients)
-            .FirstOrDefaultAsync(n => n.Id == id);
+        var result = await _inboxService.ResolveAsync(id, user.Id);
 
-        if (notification is null)
-            return NotFound();
-
-        // Verify the user is a recipient
-        if (!notification.Recipients.Any(r => r.UserId == user.Id))
-            return Forbid();
-
-        if (notification.ResolvedAt is null)
-        {
-            notification.ResolvedAt = _clock.GetCurrentInstant();
-            notification.ResolvedByUserId = user.Id;
-            await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId));
-        }
+        if (result.NotFound) return NotFound();
+        if (result.Forbidden) return Forbid();
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -215,28 +99,10 @@ public class NotificationController : HumansControllerBase
         var (err, user) = await RequireCurrentUserAsync();
         if (err is not null) return err;
 
-        var notification = await _dbContext.Notifications
-            .Include(n => n.Recipients)
-            .FirstOrDefaultAsync(n => n.Id == id);
+        var result = await _inboxService.DismissAsync(id, user.Id);
 
-        if (notification is null)
-            return NotFound();
-
-        // Verify the user is a recipient
-        if (!notification.Recipients.Any(r => r.UserId == user.Id))
-            return Forbid();
-
-        // Actionable notifications cannot be dismissed
-        if (notification.Class == NotificationClass.Actionable)
-            return StatusCode(403);
-
-        if (notification.ResolvedAt is null)
-        {
-            notification.ResolvedAt = _clock.GetCurrentInstant();
-            notification.ResolvedByUserId = user.Id;
-            await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches(notification.Recipients.Select(r => r.UserId));
-        }
+        if (result.NotFound) return NotFound();
+        if (result.Forbidden) return StatusCode(403);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -251,18 +117,9 @@ public class NotificationController : HumansControllerBase
         var (err, user) = await RequireCurrentUserAsync();
         if (err is not null) return err;
 
-        var recipient = await _dbContext.NotificationRecipients
-            .FirstOrDefaultAsync(nr => nr.NotificationId == id && nr.UserId == user.Id);
+        var result = await _inboxService.MarkReadAsync(id, user.Id);
 
-        if (recipient is null)
-            return NotFound();
-
-        if (recipient.ReadAt is null)
-        {
-            recipient.ReadAt = _clock.GetCurrentInstant();
-            await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches([user.Id]);
-        }
+        if (result.NotFound) return NotFound();
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -277,22 +134,7 @@ public class NotificationController : HumansControllerBase
         var (err, user) = await RequireCurrentUserAsync();
         if (err is not null) return err;
 
-        var now = _clock.GetCurrentInstant();
-
-        var unread = await _dbContext.NotificationRecipients
-            .Where(nr => nr.UserId == user.Id && nr.ReadAt == null)
-            .ToListAsync();
-
-        foreach (var nr in unread)
-        {
-            nr.ReadAt = now;
-        }
-
-        if (unread.Count > 0)
-        {
-            await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches([user.Id]);
-        }
+        await _inboxService.MarkAllReadAsync(user.Id);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -310,30 +152,7 @@ public class NotificationController : HumansControllerBase
         if (selectedIds.Count == 0)
             return RedirectToAction(nameof(Index));
 
-        var now = _clock.GetCurrentInstant();
-
-        var notifications = await _dbContext.Notifications
-            .Include(n => n.Recipients)
-            .Where(n => selectedIds.Contains(n.Id) &&
-                        n.Class == NotificationClass.Actionable &&
-                        n.ResolvedAt == null)
-            .ToListAsync();
-
-        foreach (var notification in notifications)
-        {
-            if (notification.Recipients.Any(r => r.UserId == user.Id))
-            {
-                notification.ResolvedAt = now;
-                notification.ResolvedByUserId = user.Id;
-            }
-        }
-
-        if (notifications.Count > 0)
-        {
-            await _dbContext.SaveChangesAsync();
-            var affectedUserIds = notifications.SelectMany(n => n.Recipients.Select(r => r.UserId)).Distinct();
-            InvalidateBadgeCaches(affectedUserIds);
-        }
+        await _inboxService.BulkResolveAsync(selectedIds, user.Id);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -351,30 +170,7 @@ public class NotificationController : HumansControllerBase
         if (selectedIds.Count == 0)
             return RedirectToAction(nameof(Index));
 
-        var now = _clock.GetCurrentInstant();
-
-        var notifications = await _dbContext.Notifications
-            .Include(n => n.Recipients)
-            .Where(n => selectedIds.Contains(n.Id) &&
-                        n.Class == NotificationClass.Informational &&
-                        n.ResolvedAt == null)
-            .ToListAsync();
-
-        foreach (var notification in notifications)
-        {
-            if (notification.Recipients.Any(r => r.UserId == user.Id))
-            {
-                notification.ResolvedAt = now;
-                notification.ResolvedByUserId = user.Id;
-            }
-        }
-
-        if (notifications.Count > 0)
-        {
-            await _dbContext.SaveChangesAsync();
-            var affectedUserIds = notifications.SelectMany(n => n.Recipients.Select(r => r.UserId)).Distinct();
-            InvalidateBadgeCaches(affectedUserIds);
-        }
+        await _inboxService.BulkDismissAsync(selectedIds, user.Id);
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
             return Ok();
@@ -388,72 +184,34 @@ public class NotificationController : HumansControllerBase
         var (err, user) = await RequireCurrentUserAsync();
         if (err is not null) return err;
 
-        var recipient = await _dbContext.NotificationRecipients
-            .Include(nr => nr.Notification)
-            .FirstOrDefaultAsync(nr => nr.NotificationId == id && nr.UserId == user.Id);
+        var url = await _inboxService.ClickThroughAsync(id, user.Id);
 
-        if (recipient is null)
-            return RedirectToAction(nameof(Index));
-
-        // Mark as read on click-through
-        if (recipient.ReadAt is null)
-        {
-            recipient.ReadAt = _clock.GetCurrentInstant();
-            await _dbContext.SaveChangesAsync();
-            InvalidateBadgeCaches([user.Id]);
-        }
-
-        var url = recipient.Notification.ActionUrl;
         if (!string.IsNullOrEmpty(url) && Url.IsLocalUrl(url))
             return LocalRedirect(url);
 
         return RedirectToAction(nameof(Index));
     }
 
-    private NotificationRowViewModel MapToRow(NotificationRecipient nr)
+    private static NotificationRowViewModel MapToViewModel(NotificationRowDto dto, string defaultActionLabel)
     {
-        var n = nr.Notification;
-        var allRecipients = n.Recipients?.ToList() ?? [];
-
         return new NotificationRowViewModel
         {
-            Id = n.Id,
-            Title = n.Title,
-            Body = n.Body,
-            ActionUrl = n.ActionUrl,
-            ActionLabel = n.ActionLabel ?? _localizer["Notification_DefaultActionLabel"].Value,
-            Priority = n.Priority,
-            Source = n.Source,
-            Class = n.Class,
-            TargetGroupName = n.TargetGroupName,
-            CreatedAt = n.CreatedAt.ToDateTimeUtc(),
-            IsRead = nr.ReadAt is not null,
-            IsResolved = n.ResolvedAt is not null,
-            ResolvedAt = n.ResolvedAt?.ToDateTimeUtc(),
-            ResolvedByName = n.ResolvedByUser?.DisplayName,
-            RecipientInitials = allRecipients
-                .Take(3)
-                .Select(r => GetInitials(r.User?.DisplayName))
-                .ToList(),
-            TotalRecipientCount = allRecipients.Count,
+            Id = dto.Id,
+            Title = dto.Title,
+            Body = dto.Body,
+            ActionUrl = dto.ActionUrl,
+            ActionLabel = dto.ActionLabel ?? defaultActionLabel,
+            Priority = dto.Priority,
+            Source = dto.Source,
+            Class = dto.Class,
+            TargetGroupName = dto.TargetGroupName,
+            CreatedAt = dto.CreatedAt,
+            IsRead = dto.IsRead,
+            IsResolved = dto.IsResolved,
+            ResolvedAt = dto.ResolvedAt,
+            ResolvedByName = dto.ResolvedByName,
+            RecipientInitials = dto.RecipientInitials,
+            TotalRecipientCount = dto.TotalRecipientCount,
         };
-    }
-
-    private static string GetInitials(string? displayName)
-    {
-        if (string.IsNullOrWhiteSpace(displayName))
-            return "?";
-        var parts = displayName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length >= 2
-            ? $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
-            : parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
-    }
-
-    private void InvalidateBadgeCaches(IEnumerable<Guid> userIds)
-    {
-        foreach (var userId in userIds)
-        {
-            _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
-        }
     }
 }
