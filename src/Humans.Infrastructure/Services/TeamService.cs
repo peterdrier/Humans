@@ -1962,8 +1962,8 @@ public class TeamService : ITeamService
         string eventType)
     {
         // Skip enqueuing for users whose Google email was permanently rejected
-        var trackedUser = _dbContext.Users.Local.FirstOrDefault(u => u.Id == userId);
-        if (trackedUser?.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+        var user = _dbContext.Users.Find(userId);
+        if (user?.GoogleEmailStatus == GoogleEmailStatus.Rejected)
         {
             _logger.LogDebug(
                 "Skipping Google sync outbox event {EventType} for user {UserId} — GoogleEmailStatus is Rejected",
