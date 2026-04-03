@@ -113,7 +113,7 @@
 
     <div class="col-md-4">
         <div class="card mb-4" authorize-policy="Board">
-            <div class="card-header">@Localizer["BoardVoting_CastVote"]</div>
+            <div class="card-header">@Localizer["BoardVoting_CastVote"] <i class="fa-solid fa-lock auth-lock-icon"></i></div>
             <div class="card-body">
                 <form asp-action="Vote" method="post">
                     @Html.AntiForgeryToken()
@@ -153,7 +153,7 @@
         @if (Model.CanFinalize)
         {
             <div class="card border-danger mb-4">
-                <div class="card-header text-bg-danger">@Localizer["BoardVoting_FinalizeDecision"]</div>
+                <div class="card-header text-bg-danger">@Localizer["BoardVoting_FinalizeDecision"] <i class="fa-solid fa-lock auth-lock-icon"></i></div>
                 <div class="card-body">
                     <form asp-action="Finalize" method="post">
                         @Html.AntiForgeryToken()

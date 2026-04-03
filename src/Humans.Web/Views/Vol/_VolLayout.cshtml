@@ -25,17 +25,17 @@
         </li>
         <li class="nav-item" authorize-policy="CanAccessDashboard">
             <a class="nav-link @(activeTab == "Urgent" ? "active" : "")" asp-controller="Vol" asp-action="Urgent">
-                <i class="fa-solid fa-bolt me-1"></i>Urgent
+                <i class="fa-solid fa-bolt me-1"></i>Urgent <i class="fa-solid fa-lock auth-lock-icon"></i>
             </a>
         </li>
         <li class="nav-item" authorize-policy="CanAccessDashboard">
             <a class="nav-link @(activeTab == "Management" ? "active" : "")" asp-controller="Vol" asp-action="Management">
-                <i class="fa-solid fa-chart-bar me-1"></i>Management
+                <i class="fa-solid fa-chart-bar me-1"></i>Management <i class="fa-solid fa-lock auth-lock-icon"></i>
             </a>
         </li>
         <li class="nav-item" authorize-policy="Admin">
             <a class="nav-link @(activeTab == "Settings" ? "active" : "")" asp-controller="Vol" asp-action="Settings">
-                <i class="fa-solid fa-gear me-1"></i>Settings
+                <i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i>
             </a>
         </li>
     </ul>
