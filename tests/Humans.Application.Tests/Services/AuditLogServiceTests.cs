@@ -394,7 +394,6 @@ public class AuditLogServiceTests : IDisposable
             EntityId = entityId,
             Description = $"Test {action}",
             OccurredAt = occurredAt,
-            ActorName = "TestActor",
             ResourceId = resourceId,
             RelatedEntityId = relatedEntityId
         };

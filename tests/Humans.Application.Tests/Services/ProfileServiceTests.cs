@@ -906,7 +906,6 @@ public class ProfileServiceTests : IDisposable
             EntityId = userId,
             Description = "Test entry",
             OccurredAt = _clock.GetCurrentInstant(),
-            ActorName = "System"
         });
         await _dbContext.SaveChangesAsync();
 
