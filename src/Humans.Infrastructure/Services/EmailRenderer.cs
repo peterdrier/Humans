@@ -167,19 +167,19 @@ public class EmailRenderer : IEmailRenderer
             items.Add($"<li>{Lf("Email_BoardDigest_OnboardingReview", counts.OnboardingReview)} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.StillOnboarding > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_StillOnboarding", counts.StillOnboarding)}</li>");
+            items.Add($"<li>{Lf("Email_BoardDigest_StillOnboarding", counts.StillOnboarding)} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.BoardVotingTotal > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_BoardVoting", counts.BoardVotingTotal, counts.BoardVotingYours)} <a href=\"{_settings.BaseUrl}/Applications\">&rarr;</a></li>");
+            items.Add($"<li>{Lf("Email_BoardDigest_BoardVoting", counts.BoardVotingTotal, counts.BoardVotingYours)} <a href=\"{_settings.BaseUrl}/OnboardingReview/BoardVoting\">&rarr;</a></li>");
 
         if (counts.TeamJoinRequests > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_TeamJoinRequests", counts.TeamJoinRequests)} <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
+            items.Add($"<li>{Lf("Email_BoardDigest_TeamJoinRequests", counts.TeamJoinRequests)} <a href=\"{_settings.BaseUrl}/Teams/Summary\">&rarr;</a></li>");
 
         if (counts.PendingConsents > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_PendingConsents", counts.PendingConsents)}</li>");
+            items.Add($"<li>{Lf("Email_BoardDigest_PendingConsents", counts.PendingConsents)} <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.PendingDeletions > 0)
-            items.Add($"<li>{Lf("Email_BoardDigest_PendingDeletions", counts.PendingDeletions)}</li>");
+            items.Add($"<li>{Lf("Email_BoardDigest_PendingDeletions", counts.PendingDeletions)} <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
 
         var header = L("Email_BoardDigest_OutstandingHeader");
         return $"<h3>{HtmlEncode(header)}</h3>\n<ul>\n{string.Join("\n", items)}\n</ul>\n<hr/>";
@@ -196,25 +196,25 @@ public class EmailRenderer : IEmailRenderer
             items.Add($"<li><strong>{counts.PendingDeletions}</strong> account deletions pending <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
 
         if (counts.PendingConsents > 0)
-            items.Add($"<li><strong>{counts.PendingConsents}</strong> with outstanding consent requirements</li>");
+            items.Add($"<li><strong>{counts.PendingConsents}</strong> with outstanding consent requirements <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.TeamJoinRequests > 0)
-            items.Add($"<li><strong>{counts.TeamJoinRequests}</strong> team join requests pending <a href=\"{_settings.BaseUrl}/Admin\">&rarr;</a></li>");
+            items.Add($"<li><strong>{counts.TeamJoinRequests}</strong> team join requests pending <a href=\"{_settings.BaseUrl}/Teams/Summary\">&rarr;</a></li>");
 
         if (counts.OnboardingReview > 0)
             items.Add($"<li><strong>{counts.OnboardingReview}</strong> awaiting onboarding review <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.StillOnboarding > 0)
-            items.Add($"<li><strong>{counts.StillOnboarding}</strong> still completing onboarding</li>");
+            items.Add($"<li><strong>{counts.StillOnboarding}</strong> still completing onboarding <a href=\"{_settings.BaseUrl}/OnboardingReview\">&rarr;</a></li>");
 
         if (counts.BoardVotingTotal > 0)
-            items.Add($"<li><strong>{counts.BoardVotingTotal}</strong> tier applications awaiting vote</li>");
+            items.Add($"<li><strong>{counts.BoardVotingTotal}</strong> tier applications awaiting vote <a href=\"{_settings.BaseUrl}/OnboardingReview/BoardVoting\">&rarr;</a></li>");
 
         if (counts.FailedSyncOutboxEvents > 0)
-            items.Add($"<li><strong>{counts.FailedSyncOutboxEvents}</strong> failed Google sync outbox events</li>");
+            items.Add($"<li><strong>{counts.FailedSyncOutboxEvents}</strong> failed Google sync outbox events <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");
 
         if (counts.TicketSyncError)
-            items.Add($"<li>Ticket sync error: {HtmlEncode(counts.TicketSyncErrorMessage ?? "Unknown")}</li>");
+            items.Add($"<li>Ticket sync error: {HtmlEncode(counts.TicketSyncErrorMessage ?? "Unknown")} <a href=\"{_settings.BaseUrl}/Tickets\">&rarr;</a></li>");
 
         var itemsHtml = items.Count > 0
             ? $"<ul>\n{string.Join("\n", items)}\n</ul>"

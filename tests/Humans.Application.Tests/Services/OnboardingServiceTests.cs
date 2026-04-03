@@ -24,6 +24,7 @@ public class OnboardingServiceTests : IDisposable
     private readonly OnboardingService _service;
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
@@ -38,7 +39,7 @@ public class OnboardingServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _service = new OnboardingService(
-            _dbContext, _auditLogService, _emailService, _syncJob,
+            _dbContext, _auditLogService, _emailService, _notificationService, _syncJob,
             _membershipCalculator, _metrics, _clock, _cache,
             NullLogger<OnboardingService>.Instance);
     }

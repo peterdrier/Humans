@@ -72,7 +72,7 @@
     </div>
 
     <div class="notification-inbox-body" id="notificationInboxBody">
-        @if (Model.NeedsAttention.Count == 0 && Model.Informational.Count == 0 && Model.Resolved.Count == 0)
+        @if (Model.Meters.Count == 0 && Model.NeedsAttention.Count == 0 && Model.Informational.Count == 0 && Model.Resolved.Count == 0)
         {
             <div class="notification-empty-state">
                 <i class="fa-solid fa-bell notification-empty-icon"></i>
@@ -81,6 +81,22 @@
         }
         else
         {
+            @if (Model.Meters.Count > 0)
+            {
+                <div class="notification-section-label">@Localizer["Notification_Section_WorkQueues"]</div>
+                @foreach (var meter in Model.Meters)
+                {
+                    <div class="notification-meter-row">
+                        <div class="notification-meter-info">
+                            <span class="notification-meter-title">@meter.Title</span>
+                            <span class="badge rounded-pill bg-warning text-dark notification-meter-badge">@meter.Count</span>
+                        </div>
+                        <a href="@meter.ActionUrl" class="btn btn-sm btn-outline-primary notification-meter-action">
+                            @Localizer["Notification_DefaultActionLabel"]
+                        </a>
+                    </div>
+                }
+            }
             @if (Model.NeedsAttention.Count > 0)
             {
                 <div class="notification-section-label">@Localizer["Notification_Section_NeedsAttention"]</div>

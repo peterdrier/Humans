@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 
@@ -19,6 +20,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
 
     private readonly HumansDbContext _dbContext;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly INotificationService _notificationService;
     private readonly HumansMetricsService _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ProcessGoogleSyncOutboxJob> _logger;
@@ -26,12 +28,14 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
     public ProcessGoogleSyncOutboxJob(
         HumansDbContext dbContext,
         IGoogleSyncService googleSyncService,
+        INotificationService notificationService,
         HumansMetricsService metrics,
         IClock clock,
         ILogger<ProcessGoogleSyncOutboxJob> logger)
     {
         _dbContext = dbContext;
         _googleSyncService = googleSyncService;
+        _notificationService = notificationService;
         _metrics = metrics;
         _clock = clock;
         _logger = logger;
@@ -95,6 +99,30 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                     outboxEvent.RetryCount);
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
+
+                // Notify admins on final failure (exhausted retries)
+                if (outboxEvent.RetryCount >= MaxRetryCount)
+                {
+                    try
+                    {
+                        await _notificationService.SendToRoleAsync(
+                            NotificationSource.SyncError,
+                            NotificationClass.Actionable,
+                            NotificationPriority.High,
+                            "Google sync event failed after all retries",
+                            RoleNames.Admin,
+                            body: $"Event {outboxEvent.EventType} for team {outboxEvent.TeamId} failed: {outboxEvent.LastError?[..Math.Min(200, outboxEvent.LastError.Length)]}",
+                            actionUrl: "/Google/Sync",
+                            actionLabel: "View \u2192",
+                            cancellationToken: cancellationToken);
+                    }
+                    catch (Exception notifEx)
+                    {
+                        _logger.LogError(notifEx,
+                            "Failed to dispatch SyncError notification for outbox event {OutboxId}",
+                            outboxEvent.Id);
+                    }
+                }
             }
         }
         _metrics.RecordJobRun("process_google_sync_outbox", "success");

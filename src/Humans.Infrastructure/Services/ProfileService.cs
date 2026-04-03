@@ -254,6 +254,7 @@ public class ProfileService : IProfileService
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _cache.InvalidateActiveTeams();
 
         // Update profile cache if profile is approved
