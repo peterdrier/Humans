@@ -14,7 +14,7 @@
 |-------|-------------|
 | Any active human | View a read-only summary of the active budget year |
 | Department coordinator | View the full budget for the active year. Create, edit, and delete line items within categories linked to a department they coordinate |
-| FinanceAdmin, Admin | Full management of all budget years, groups, categories, and line items. View audit log. Sync departments (auto-create categories for departments that lack one). Manage restricted groups |
+| FinanceAdmin, Admin | Full management of all budget years, groups, categories, and line items. View audit log. View cash flow projections. Sync departments (auto-create categories for departments that lack one). Manage restricted groups |
 
 ## Invariants
 
@@ -24,6 +24,9 @@
 - Ticketing groups and their category details are only accessible to FinanceAdmin and Admin. Ticketing income/expenses still appear in the public budget summary aggregates, but coordinators cannot view individual ticketing categories or line items.
 - Every create, update, or delete on a group, category, or line item generates an audit log entry recording old value, new value, actor, and timestamp.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
+
+- The `/Finance` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline.
+- The `/Finance/CashFlow` view aggregates line items by time period (weekly/monthly) and shows running net.
 
 ## Negative Access Rules
 

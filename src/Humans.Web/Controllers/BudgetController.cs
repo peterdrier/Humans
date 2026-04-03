@@ -85,114 +85,25 @@ public class BudgetController : HumansControllerBase
 
             // Only show non-restricted groups in public summary
             var visibleGroups = activeYear.Groups.Where(g => !g.IsRestricted).ToList();
-            var allLineItems = visibleGroups
+            var summary = _budgetService.ComputeBudgetSummary(visibleGroups);
+
+            var totalLineItems = visibleGroups
                 .SelectMany(g => g.Categories)
                 .SelectMany(c => c.LineItems)
-                .ToList();
-
-            // Budget line items exclude cashflow-only items (e.g. ticketing donations)
-            var budgetLineItems = allLineItems.Where(li => !li.IsCashflowOnly).ToList();
-            var totalLineItems = budgetLineItems.Sum(li => li.Amount);
-
-            // Compute VAT projections for all budget line items (not cashflow-only)
-            var vatProjections = budgetLineItems
-                .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
-                .Select(li => new VatProjection
-                {
-                    SourceDescription = li.Description,
-                    VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
-                    SettlementDate = ComputeVatSettlementDate(li.ExpectedDate!.Value),
-                    VatRate = li.VatRate,
-                    // Income line item -> VAT is an expense; Expense line item -> VAT is income
-                    IsExpense = li.Amount > 0
-                })
-                .ToList();
-
-            // Income = positive budget line items + VAT credits from expenses
-            var income = budgetLineItems.Where(li => li.Amount > 0).Sum(li => li.Amount);
-            var expenses = budgetLineItems.Where(li => li.Amount < 0).Sum(li => li.Amount); // negative
-            var vatExpenses = vatProjections.Where(v => v.IsExpense).Sum(v => v.VatAmount);
-            var vatCredits = vatProjections.Where(v => !v.IsExpense).Sum(v => v.VatAmount);
-
-            var totalIncome = income + vatCredits;
-            var totalExpenses = expenses - vatExpenses; // expenses is negative, subtract positive VAT expenses
-            var netBalance = totalIncome + totalExpenses;
-
-            // Build income slices (categories with positive totals, excluding cashflow-only)
-            var incomeCategories = visibleGroups
-                .SelectMany(g => g.Categories)
-                .Select(c => new
-                {
-                    c.Name,
-                    Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount)
-                })
-                .Where(c => c.Total > 0)
-                .OrderByDescending(c => c.Total)
-                .ToList();
-
-            // Add VAT credits as income slice if any
-            if (vatCredits > 0)
-            {
-                incomeCategories.Add(new { Name = "VAT Credits", Total = vatCredits });
-            }
-
-            var totalIncomeForSlices = incomeCategories.Sum(c => c.Total);
-            var incomeSlices = incomeCategories
-                .Select(c => new BudgetSlice
-                {
-                    Name = c.Name,
-                    Amount = c.Total,
-                    Percentage = totalIncomeForSlices > 0 ? c.Total / totalIncomeForSlices * 100 : 0
-                })
-                .ToList();
-
-            // Build expense slices (categories with negative totals, excluding cashflow-only)
-            var expenseCategories = visibleGroups
-                .SelectMany(g => g.Categories)
-                .Select(c => new
-                {
-                    c.Name,
-                    Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount))
-                })
-                .Where(c => c.Total > 0)
-                .OrderByDescending(c => c.Total)
-                .ToList();
-
-            // Add VAT expenses slice if any
-            if (vatExpenses > 0)
-            {
-                expenseCategories.Add(new { Name = "VAT Liability", Total = vatExpenses });
-            }
-
-            // Add profit distribution if profitable (income > |expenses|)
-            var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
-            if (profit > 0)
-            {
-                expenseCategories.Add(new { Name = "Cash Reserves (90%)", Total = profit * 0.9m });
-                expenseCategories.Add(new { Name = "Spanish Taxes (10%)", Total = profit * 0.1m });
-            }
-
-            var totalExpenseForSlices = expenseCategories.Sum(c => c.Total);
-            var expenseSlices = expenseCategories
-                .Select(c => new BudgetSlice
-                {
-                    Name = c.Name,
-                    Amount = c.Total,
-                    Percentage = totalExpenseForSlices > 0 ? c.Total / totalExpenseForSlices * 100 : 0
-                })
-                .ToList();
+                .Where(li => !li.IsCashflowOnly)
+                .Sum(li => li.Amount);
 
             var coordinatorTeamIds = await _budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
             var model = new BudgetSummaryViewModel
             {
                 YearName = activeYear.Name,
-                TotalIncome = totalIncome,
-                TotalExpenses = totalExpenses,
-                NetBalance = netBalance,
+                TotalIncome = summary.TotalIncome,
+                TotalExpenses = summary.TotalExpenses,
+                NetBalance = summary.NetBalance,
                 TotalLineItems = totalLineItems,
-                IncomeSlices = incomeSlices,
-                ExpenseSlices = expenseSlices,
+                IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+                ExpenseSlices = summary.ExpenseSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
                 IsCoordinator = coordinatorTeamIds.Count > 0 || RoleChecks.IsFinanceAdmin(User)
             };
             return View(model);
@@ -203,23 +114,6 @@ public class BudgetController : HumansControllerBase
             SetError("Failed to load budget summary.");
             return View("NoActiveBudget");
         }
-    }
-
-    /// <summary>
-    /// Computes the VAT settlement date: ~6 weeks after the end of the quarter containing the expected date.
-    /// </summary>
-    private static LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
-    {
-        var quarterEnd = expectedDate.Month switch
-        {
-            >= 1 and <= 3 => new LocalDate(expectedDate.Year, 3, 31),
-            >= 4 and <= 6 => new LocalDate(expectedDate.Year, 6, 30),
-            >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
-            _ => new LocalDate(expectedDate.Year, 12, 31)
-        };
-
-        // ~6 weeks = 42 days after quarter end, roughly the 14th of the month after next
-        return quarterEnd.PlusDays(45);
     }
 
     [HttpGet("Category/{id:guid}")]

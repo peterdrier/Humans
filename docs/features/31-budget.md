@@ -262,6 +262,28 @@ Outbound invoices to members/barrios:
 - **EF migration:** `AddTicketingProjectionAndBudgetFlags`
 - **Exit:** Ticket sales actuals flow into budget as weekly line items; projections available for planning
 
+### V1e: Finance Consolidation — IMPLEMENTED (#325)
+- **Consolidated `/Finance` index** (YearDetail view):
+  - Tree-style accordion: year selector, groups as expandable sections, categories within each group, line items within each category
+  - Each category shows `AllocatedAmount` as budget target alongside actual line item totals with remaining amount
+  - Negative `AllocatedAmount` displayed as "Planned spend" with absolute values; positive as "Income target"
+  - Inline summary cards (Total Income, Total Expenses, Net Balance) and collapsible summary charts
+  - FinanceAdmin sees all data on one page without navigating to `/Budget/Summary`
+  - Category detail pages linked from "Manage Line Items" within accordion
+- **No changes** to `/Budget` coordinator view or `/Budget/Summary` public view
+- **Exit:** FinanceAdmin has a unified single-page overview of the entire budget
+
+### V1f: Cash Flow Projection — IMPLEMENTED (#347)
+- **Cash flow view** at `/Finance/CashFlow`:
+  - Aggregates line items by time period (weekly or monthly, toggle-able)
+  - Each period row shows income total, expense total, net, and running cumulative net
+  - Category-level breakdown within each period (expandable)
+  - Items without `ExpectedDate` shown in separate "Unscheduled" section
+  - Includes `IsCashflowOnly` items (relevant to actual cash movement)
+  - Restricted groups visible (FinanceAdmin/Admin only page)
+  - Accessible from Finance section toolbar
+- **Exit:** FinanceAdmin can see when money comes in and goes out across the budget year
+
 ### V2b: Stripe Integration (2-3 sessions)
 - Stripe sync job
 - Transaction storage and manual category mapping
@@ -274,10 +296,9 @@ Outbound invoices to members/barrios:
 - Expense transaction mapping
 - **Exit:** Expenses flow in and can be mapped to budget lines
 
-### V2d: Cashflow & Invoicing (2-3 sessions)
-- Cashflow view (income vs expenses over time)
+### V2d: Invoicing (1-2 sessions)
 - Invoice creation for tickets and barrio services
-- **Exit:** Treasurer can see cash position and generate invoices
+- **Exit:** Treasurer can generate invoices
 
 ### V3: Year-over-Year (Fall 2026)
 - Budget rollover (clone structure from previous year)
