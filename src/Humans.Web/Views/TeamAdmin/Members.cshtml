@@ -26,16 +26,25 @@
 
 @if (Model.TeamResources.Any() || Model.ParentDepartmentResources.Any())
 {
-    <div class="card mb-4 border-danger">
-        <div class="card-header bg-danger d-flex align-items-center" style="color: var(--h-parchment);">
-            <i class="fa-solid fa-shield-halved me-2"></i>
-            <strong>Resource Access — Sensitive Team!</strong>
+    <div class="card mb-4 @(Model.IsSensitive ? "border-danger" : "")">
+        <div class="card-header @(Model.IsSensitive ? "bg-danger" : "bg-light") d-flex align-items-center" @(Model.IsSensitive ? "style=\"color: var(--h-parchment);\"" : "")>
+            <i class="fa-solid @(Model.IsSensitive ? "fa-shield-halved" : "fa-cloud") me-2"></i>
+            <strong>@(Model.IsSensitive ? "Resource Access — Sensitive Team!" : "Resource Access")</strong>
         </div>
         <div class="card-body">
-            <p class="mb-3">
-                <i class="fa-solid fa-hand me-1" style="font-size: 2.5rem; vertical-align: middle; color: var(--h-rust);"></i>
-                Adding or approving humans for this team grants access to the resources listed below.
-            </p>
+            @if (Model.IsSensitive)
+            {
+                <p class="mb-3">
+                    <i class="fa-solid fa-hand me-1" style="font-size: 2.5rem; vertical-align: middle; color: var(--h-rust);"></i>
+                    Adding or approving humans for this team grants access to the resources listed below.
+                </p>
+            }
+            else
+            {
+                <p class="mb-3 text-muted">
+                    Adding or approving humans for this team grants access to the resources listed below.
+                </p>
+            }
             @if (Model.TeamResources.Any())
             {
                 <h6 class="mb-2">@Model.TeamName</h6>
@@ -52,7 +61,6 @@
                             {
                                 @resource.Name
                             }
-                            <span class="badge bg-secondary ms-1">@resource.ResourceType</span>
                             @if (resource.PermissionLevel is not null)
                             {
                                 <span class="badge bg-info ms-1">@resource.PermissionLevel</span>
@@ -77,7 +85,6 @@
                             {
                                 @resource.Name
                             }
-                            <span class="badge bg-secondary ms-1">@resource.ResourceType</span>
                             @if (resource.PermissionLevel is not null)
                             {
                                 <span class="badge bg-info ms-1">@resource.PermissionLevel</span>
