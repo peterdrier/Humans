@@ -67,3 +67,41 @@ public class VatProjection
     public int VatRate { get; init; }
     public bool IsExpense { get; init; }
 }
+
+// --- Cash Flow Projection View Models ---
+
+public class CashFlowViewModel
+{
+    public required string YearName { get; init; }
+    public required Guid YearId { get; init; }
+    public required string Period { get; init; } // "weekly" or "monthly"
+    public required IReadOnlyList<CashFlowPeriodRow> Periods { get; init; }
+    public required CashFlowUnscheduledSummary Unscheduled { get; init; }
+}
+
+public class CashFlowPeriodRow
+{
+    public required string Label { get; init; }
+    public required LocalDate PeriodStart { get; init; }
+    public required LocalDate PeriodEnd { get; init; }
+    public decimal IncomeTotal { get; init; }
+    public decimal ExpenseTotal { get; init; }
+    public decimal Net { get; init; }
+    public decimal RunningNet { get; init; }
+    public required IReadOnlyList<CashFlowCategoryRow> Categories { get; init; }
+}
+
+public class CashFlowCategoryRow
+{
+    public required string CategoryName { get; init; }
+    public required string GroupName { get; init; }
+    public decimal Amount { get; init; }
+}
+
+public class CashFlowUnscheduledSummary
+{
+    public decimal IncomeTotal { get; init; }
+    public decimal ExpenseTotal { get; init; }
+    public decimal Net { get; init; }
+    public required IReadOnlyList<CashFlowCategoryRow> Categories { get; init; }
+}
