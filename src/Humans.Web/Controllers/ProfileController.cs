@@ -960,7 +960,7 @@ public class ProfileController : HumansControllerBase
         List<NoShowHistoryItem>? noShowHistory = null;
         if (!isOwnProfile)
         {
-            var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(viewer.Id)).Count > 0;
+            var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id)).Count > 0;
             var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
 
             if (viewerCanViewShiftHistory)

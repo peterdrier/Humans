@@ -51,6 +51,7 @@ public class TeamServiceTests : IDisposable
             Substitute.For<INotificationService>(),
             _roleAssignmentService,
             shiftManagementService,
+            Substitute.For<ISystemTeamSync>(),
             _clock,
             _cache,
             NullLogger<TeamService>.Instance);
@@ -270,6 +271,59 @@ public class TeamServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        var member = SeedTeamMember(child.Id, user.Id, TeamMemberRole.Coordinator);
+        var roleDef = SeedTeamRoleDefinition(child.Id, isManagement: true);
+        SeedTeamRoleAssignment(roleDef.Id, member.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsFalse_ForSiblingSubTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var childA = SeedTeam("SubTeamA");
+        childA.ParentTeamId = parent.Id;
+        var childB = SeedTeam("SubTeamB");
+        childB.ParentTeamId = parent.Id;
+        var member = SeedTeamMember(childA.Id, user.Id, TeamMemberRole.Coordinator);
+        var roleDef = SeedTeamRoleDefinition(childA.Id, isManagement: true);
+        SeedTeamRoleAssignment(roleDef.Id, member.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(childB.Id, user.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsFalse_ForParentDepartment()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        var member = SeedTeamMember(child.Id, user.Id, TeamMemberRole.Coordinator);
+        var roleDef = SeedTeamRoleDefinition(child.Id, isManagement: true);
+        SeedTeamRoleAssignment(roleDef.Id, member.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(parent.Id, user.Id);
 
         result.Should().BeFalse();
     }

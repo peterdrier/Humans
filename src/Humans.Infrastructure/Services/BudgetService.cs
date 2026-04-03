@@ -887,20 +887,22 @@ public class BudgetService : IBudgetService
 
     public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId)
     {
-        // Teams where user is direct coordinator
+        // Teams where user is direct coordinator (departments only — sub-team managers don't get budget access)
         var directTeamIds = await _dbContext.TeamMembers
             .AsNoTracking()
-            .Where(tm => tm.UserId == userId && tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator)
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator
+                         && tm.Team.ParentTeamId == null)
             .Select(tm => tm.TeamId)
             .ToListAsync();
 
-        // Teams where user has management role assignment
+        // Teams where user has management role assignment (departments only)
         var mgmtTeamIds = await _dbContext.Set<TeamRoleAssignment>()
             .AsNoTracking()
             .Where(tra =>
                 tra.TeamMember.UserId == userId &&
                 tra.TeamMember.LeftAt == null &&
-                tra.TeamRoleDefinition.IsManagement)
+                tra.TeamRoleDefinition.IsManagement &&
+                tra.TeamRoleDefinition.Team.ParentTeamId == null)
             .Select(tra => tra.TeamMember.TeamId)
             .ToListAsync();
 
