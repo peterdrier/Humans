@@ -15,18 +15,15 @@ public class NotificationController : HumansControllerBase
 {
     private readonly INotificationInboxService _inboxService;
     private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly ILogger<NotificationController> _logger;
 
     public NotificationController(
         INotificationInboxService inboxService,
         UserManager<User> userManager,
-        IStringLocalizer<SharedResource> localizer,
-        ILogger<NotificationController> logger)
+        IStringLocalizer<SharedResource> localizer)
         : base(userManager)
     {
         _inboxService = inboxService;
         _localizer = localizer;
-        _logger = logger;
     }
 
     [HttpGet("")]
