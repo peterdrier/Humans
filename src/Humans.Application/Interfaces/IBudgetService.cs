@@ -52,4 +52,6 @@ public interface IBudgetService
 
     // Summary Computation
     BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups);
+    IReadOnlyList<VatCashFlowEntry> ComputeVatCashFlowEntries(IEnumerable<BudgetGroup> groups);
+    LocalDate ComputeVatSettlementDate(LocalDate expectedDate);
 }

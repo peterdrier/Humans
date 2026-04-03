@@ -579,9 +579,10 @@ public class FinanceController : HumansControllerBase
     /// <summary>
     /// Builds the CashFlowViewModel by aggregating line items by time period.
     /// Includes IsCashflowOnly items (relevant to actual cash movement).
+    /// Generates synthetic VAT settlement entries at their settlement dates.
     /// Restricted groups are included (FinanceAdmin-only page).
     /// </summary>
-    private static CashFlowViewModel BuildCashFlowModel(BudgetYear year, string period)
+    private CashFlowViewModel BuildCashFlowModel(BudgetYear year, string period)
     {
         // Normalize period parameter
         if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
@@ -590,15 +591,20 @@ public class FinanceController : HumansControllerBase
             period = "monthly";
         }
 
-        // Collect all line items with their category/group context
-        var allItems = year.Groups
+        // Collect real line items as cash flow entries
+        var allEntries = year.Groups
             .SelectMany(g => g.Categories.Select(c => new { GroupName = g.Name, CategoryName = c.Name, Category = c }))
-            .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowLineItemContext(ctx.GroupName, ctx.CategoryName) { LineItem = li }))
+            .SelectMany(ctx => ctx.Category.LineItems.Select(li => new CashFlowEntry(
+                ctx.GroupName, ctx.CategoryName, li.Amount, li.ExpectedDate)))
             .ToList();
 
-        // Split into scheduled (has ExpectedDate) and unscheduled
-        var scheduled = allItems.Where(x => x.LineItem.ExpectedDate.HasValue).ToList();
-        var unscheduled = allItems.Where(x => !x.LineItem.ExpectedDate.HasValue).ToList();
+        // Add synthetic VAT settlement entries from the service
+        var vatEntries = _budgetService.ComputeVatCashFlowEntries(year.Groups);
+        allEntries.AddRange(vatEntries.Select(v => new CashFlowEntry("VAT", v.CategoryName, v.Amount, v.SettlementDate)));
+
+        // Split into scheduled (has date) and unscheduled
+        var scheduled = allEntries.Where(x => x.Date.HasValue).ToList();
+        var unscheduled = allEntries.Where(x => !x.Date.HasValue).ToList();
 
         // Group scheduled items into time periods
         var periodRows = new List<CashFlowPeriodRow>();
@@ -611,8 +617,8 @@ public class FinanceController : HumansControllerBase
             decimal runningNet = 0;
             foreach (var pg in grouped.OrderBy(g => g.PeriodStart))
             {
-                var periodIncome = pg.Items.Where(x => x.LineItem.Amount > 0).Sum(x => x.LineItem.Amount);
-                var periodExpense = pg.Items.Where(x => x.LineItem.Amount < 0).Sum(x => x.LineItem.Amount);
+                var periodIncome = pg.Items.Where(x => x.Amount > 0).Sum(x => x.Amount);
+                var periodExpense = pg.Items.Where(x => x.Amount < 0).Sum(x => x.Amount);
                 var periodNet = periodIncome + periodExpense;
                 runningNet += periodNet;
 
@@ -633,8 +639,8 @@ public class FinanceController : HumansControllerBase
         }
 
         // Unscheduled summary
-        var unscheduledIncome = unscheduled.Where(x => x.LineItem.Amount > 0).Sum(x => x.LineItem.Amount);
-        var unscheduledExpense = unscheduled.Where(x => x.LineItem.Amount < 0).Sum(x => x.LineItem.Amount);
+        var unscheduledIncome = unscheduled.Where(x => x.Amount > 0).Sum(x => x.Amount);
+        var unscheduledExpense = unscheduled.Where(x => x.Amount < 0).Sum(x => x.Amount);
         var unscheduledCategories = BuildCategoryRows(unscheduled);
 
         return new CashFlowViewModel
@@ -652,7 +658,7 @@ public class FinanceController : HumansControllerBase
         };
     }
 
-    private static List<CashFlowCategoryRow> BuildCategoryRows(List<CashFlowLineItemContext> items)
+    private static List<CashFlowCategoryRow> BuildCategoryRows(List<CashFlowEntry> items)
     {
         return items
             .GroupBy(x => new { x.CategoryName, x.GroupName })
@@ -660,19 +666,19 @@ public class FinanceController : HumansControllerBase
             {
                 CategoryName = cg.Key.CategoryName,
                 GroupName = cg.Key.GroupName,
-                Amount = cg.Sum(x => x.LineItem.Amount)
+                Amount = cg.Sum(x => x.Amount)
             })
             .OrderBy(c => c.GroupName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(c => c.CategoryName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
-    private static List<CashFlowPeriodGroup> GroupByWeek(List<CashFlowLineItemContext> items)
+    private static List<CashFlowPeriodGroup> GroupByWeek(List<CashFlowEntry> items)
     {
         return items
             .GroupBy(x =>
             {
-                var date = x.LineItem.ExpectedDate!.Value;
+                var date = x.Date!.Value;
                 // ISO week: Monday-based. Find the Monday of the week.
                 var dayOfWeek = date.DayOfWeek;
                 var monday = date.PlusDays(-(((int)dayOfWeek + 6) % 7));
@@ -691,12 +697,12 @@ public class FinanceController : HumansControllerBase
             .ToList();
     }
 
-    private static List<CashFlowPeriodGroup> GroupByMonth(List<CashFlowLineItemContext> items)
+    private static List<CashFlowPeriodGroup> GroupByMonth(List<CashFlowEntry> items)
     {
         return items
             .GroupBy(x =>
             {
-                var date = x.LineItem.ExpectedDate!.Value;
+                var date = x.Date!.Value;
                 return new { date.Year, date.Month };
             })
             .Select(g =>
@@ -713,18 +719,13 @@ public class FinanceController : HumansControllerBase
     }
 
     /// <summary>
-    /// Internal record to carry group/category context alongside a line item for cash flow grouping.
+    /// A cash flow entry — either a real line item or a synthetic VAT settlement.
     /// </summary>
-    private sealed class CashFlowLineItemContext(string groupName, string categoryName)
-    {
-        public string GroupName { get; } = groupName;
-        public string CategoryName { get; } = categoryName;
-        public required BudgetLineItem LineItem { get; init; }
-    }
+    private sealed record CashFlowEntry(string GroupName, string CategoryName, decimal Amount, LocalDate? Date);
 
     private sealed record CashFlowPeriodGroup(
         string Label,
         LocalDate PeriodStart,
         LocalDate PeriodEnd,
-        List<CashFlowLineItemContext> Items);
+        List<CashFlowEntry> Items);
 }

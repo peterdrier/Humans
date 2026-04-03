@@ -1034,4 +1034,39 @@ public class BudgetService : IBudgetService
             ExpenseSlices = expenseSlices
         };
     }
+
+    public IReadOnlyList<VatCashFlowEntry> ComputeVatCashFlowEntries(IEnumerable<BudgetGroup> groups)
+    {
+        return groups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
+            .Select(li =>
+            {
+                var vatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate);
+                // Income → VAT liability (expense); expense → VAT credit (income)
+                var cashFlowAmount = li.Amount > 0 ? -vatAmount : vatAmount;
+                var categoryName = li.Amount > 0 ? "VAT Liability" : "VAT Credits";
+                return new VatCashFlowEntry
+                {
+                    CategoryName = categoryName,
+                    Amount = cashFlowAmount,
+                    SettlementDate = ComputeVatSettlementDate(li.ExpectedDate!.Value)
+                };
+            })
+            .ToList();
+    }
+
+    public LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
+    {
+        var quarterEnd = expectedDate.Month switch
+        {
+            >= 1 and <= 3 => new LocalDate(expectedDate.Year, 3, 31),
+            >= 4 and <= 6 => new LocalDate(expectedDate.Year, 6, 30),
+            >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
+            _ => new LocalDate(expectedDate.Year, 12, 31)
+        };
+
+        return quarterEnd.PlusDays(45);
+    }
 }
