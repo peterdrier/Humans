@@ -662,9 +662,14 @@ public class GoogleController : HumansControllerBase
             email, userId, currentUser.Id, currentUser.DisplayName);
 
         if (result.Success)
+        {
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
             SetSuccess(result.Message!);
+        }
         else
+        {
             SetError(result.ErrorMessage!);
+        }
 
         return RedirectToAction(nameof(Accounts));
     }
