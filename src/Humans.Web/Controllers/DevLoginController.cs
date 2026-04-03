@@ -184,7 +184,8 @@ public class DevLoginController : Controller
         var lastName = nameParts.Length > 1 ? nameParts[1] : info.DisplayName;
 
         // Determine role and team assignments
-        var roleName = RoleNameFromSlug(info.Slug);
+        var isCoordinatorPersona = string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase);
+        var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(info.Slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
         var teams = roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal)
             ? new[] { SystemTeamIds.Volunteers, SystemTeamIds.Board }
@@ -293,12 +294,142 @@ public class DevLoginController : Controller
             });
         }
 
+        // Coordinator persona: create a department + sub-team and assign as coordinator
+        if (isCoordinatorPersona)
+        {
+            await SeedCoordinatorTeamsAsync(id, now);
+        }
+
         await _db.SaveChangesAsync();
         _cache.InvalidateApprovedProfiles();
         _cache.InvalidateUserAccess(id);
+        if (isCoordinatorPersona)
+        {
+            _cache.InvalidateActiveTeams();
+        }
 
         _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
             email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
+    }
+
+    /// <summary>
+    /// Seeds a test department and sub-team for the coordinator persona.
+    /// The coordinator is assigned as coordinator of the department and member of the sub-team.
+    /// Uses deterministic IDs so teams are stable across restarts.
+    /// </summary>
+    private async Task SeedCoordinatorTeamsAsync(Guid coordinatorUserId, Instant now)
+    {
+        var deptId = PersonaGuid("dev-test-department");
+        var subTeamId = PersonaGuid("dev-test-subteam");
+
+        // Only create if the department doesn't already exist
+        var deptExists = await _db.Teams.AnyAsync(t => t.Id == deptId);
+        if (deptExists)
+        {
+            // Ensure the coordinator membership on department exists
+            var hasDeptMembership = await _db.TeamMembers
+                .AnyAsync(tm => tm.TeamId == deptId && tm.UserId == coordinatorUserId);
+            if (!hasDeptMembership)
+            {
+                _db.TeamMembers.Add(new TeamMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = coordinatorUserId,
+                    TeamId = deptId,
+                    Role = TeamMemberRole.Coordinator,
+                    JoinedAt = now
+                });
+            }
+
+            // Ensure sub-team exists (may have been deleted manually in preview env)
+            var subTeamExists = await _db.Teams.AnyAsync(t => t.Id == subTeamId);
+            if (!subTeamExists)
+            {
+                _db.Teams.Add(new Team
+                {
+                    Id = subTeamId,
+                    Name = "Dev Test SubTeam",
+                    Description = "Test sub-team for coordinator e2e tests",
+                    Slug = "dev-test-subteam",
+                    IsActive = true,
+                    RequiresApproval = true,
+                    SystemTeamType = SystemTeamType.None,
+                    ParentTeamId = deptId,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+
+            // Ensure coordinator membership on sub-team exists
+            var hasSubTeamMembership = await _db.TeamMembers
+                .AnyAsync(tm => tm.TeamId == subTeamId && tm.UserId == coordinatorUserId);
+            if (!hasSubTeamMembership)
+            {
+                _db.TeamMembers.Add(new TeamMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = coordinatorUserId,
+                    TeamId = subTeamId,
+                    Role = TeamMemberRole.Member,
+                    JoinedAt = now
+                });
+            }
+
+            return;
+        }
+
+        // Create department
+        _db.Teams.Add(new Team
+        {
+            Id = deptId,
+            Name = "Dev Test Department",
+            Description = "Test department for coordinator e2e tests",
+            Slug = "dev-test-department",
+            IsActive = true,
+            RequiresApproval = true,
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        // Create sub-team under the department
+        _db.Teams.Add(new Team
+        {
+            Id = subTeamId,
+            Name = "Dev Test SubTeam",
+            Description = "Test sub-team for coordinator e2e tests",
+            Slug = "dev-test-subteam",
+            IsActive = true,
+            RequiresApproval = true,
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = deptId,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        // Add coordinator as coordinator of the department
+        _db.TeamMembers.Add(new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            UserId = coordinatorUserId,
+            TeamId = deptId,
+            Role = TeamMemberRole.Coordinator,
+            JoinedAt = now
+        });
+
+        // Add coordinator as regular member of the sub-team
+        _db.TeamMembers.Add(new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            UserId = coordinatorUserId,
+            TeamId = subTeamId,
+            Role = TeamMemberRole.Member,
+            JoinedAt = now
+        });
+
+        _logger.LogInformation(
+            "DEV: seeded coordinator teams — department {DeptId} ({DeptSlug}), sub-team {SubTeamId} ({SubTeamSlug})",
+            deptId, "dev-test-department", subTeamId, "dev-test-subteam");
     }
 
     // ============================================================
@@ -307,7 +438,11 @@ public class DevLoginController : Controller
 
     private static List<DevPersonaInfo> BuildPersonaList()
     {
-        var list = new List<DevPersonaInfo> { new("volunteer", "Volunteer") };
+        var list = new List<DevPersonaInfo>
+        {
+            new("volunteer", "Volunteer"),
+            new("coordinator", "Coordinator")
+        };
 
         var roles = typeof(RoleNames)
             .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)

@@ -27,6 +27,10 @@
 - A human can be a member of multiple teams simultaneously.
 - System team membership is managed exclusively by an automated sync job. Manual add/remove is blocked for system teams.
 - Joining a team that requires approval creates a join request (Pending). The request must be approved by a coordinator or TeamsAdmin before membership is granted. Teams that do not require approval add the human immediately.
+- Coordinators can approve/reject join requests for their own department and any sub-teams within that department. This scope is enforced by `IsUserCoordinatorOfTeamAsync`, which checks coordinator role on the target team or its parent department.
+- Coordinators **cannot** approve/reject join requests for departments or teams they do not coordinate. The Members page returns Forbid for unauthorized coordinators.
+- All member additions and removals are audit-logged with actor, target, team, and timestamp via `AuditLogEntry`.
+- Google resource access changes triggered by membership changes (Drive folder permissions, Group memberships) are logged in the audit trail.
 - Removing a member from a team also removes all their role assignments on that team.
 - Each team has a unique slug used for URL routing. A custom slug can override the auto-generated one.
 - A Google Group prefix, if set, provisions a @nobodies.team group for the team.
