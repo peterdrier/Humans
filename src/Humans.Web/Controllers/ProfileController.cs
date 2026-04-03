@@ -676,10 +676,19 @@ public class ProfileController : HumansControllerBase
             }
 
             // null = use OAuth email (default behavior)
+            var previousEmail = user.GoogleEmail;
             user.GoogleEmail = email.IsOAuth ? null : email.Email;
+            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
             await _userManager.UpdateAsync(user);
 
-            SetSuccess("Google service email updated.");
+            // If email changed, enqueue fresh sync events for all current team memberships
+            var newEmail = user.GetGoogleServiceEmail();
+            if (!string.Equals(previousEmail ?? user.Email, newEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                await EnqueueResyncForUserTeamsAsync(user.Id);
+            }
+
+            SetSuccess("Google service email updated. Sync will be retried with the new email.");
         }
         catch (Exception ex)
         {
@@ -1506,8 +1515,45 @@ public class ProfileController : HumansControllerBase
             CanAddEmail = canAdd,
             MinutesUntilResend = minutesUntilResend,
             GoogleServiceEmail = user.GoogleEmail,
-            HasNobodiesTeamEmail = hasNobodiesTeam
+            HasNobodiesTeamEmail = hasNobodiesTeam,
+            GoogleEmailStatus = user.GoogleEmailStatus
         };
+    }
+
+    /// <summary>
+    /// Enqueues fresh AddUserToTeamResources sync events for all teams the user is currently a member of.
+    /// Used when the Google service email changes to trigger re-sync with the updated email.
+    /// </summary>
+    private async Task EnqueueResyncForUserTeamsAsync(Guid userId)
+    {
+        var memberships = await _dbContext.TeamMembers
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
+            .Select(tm => new { tm.Id, tm.TeamId })
+            .ToListAsync();
+
+        var now = _clock.GetCurrentInstant();
+        foreach (var membership in memberships)
+        {
+            var dedupeKey = $"{membership.Id}:{GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{now}";
+            _dbContext.GoogleSyncOutboxEvents.Add(new GoogleSyncOutboxEvent
+            {
+                Id = Guid.NewGuid(),
+                EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+                TeamId = membership.TeamId,
+                UserId = userId,
+                OccurredAt = now,
+                DeduplicationKey = dedupeKey
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        if (memberships.Count > 0)
+        {
+            _logger.LogInformation(
+                "Enqueued {Count} re-sync events for user {UserId} after Google email change",
+                memberships.Count, userId);
+        }
     }
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)

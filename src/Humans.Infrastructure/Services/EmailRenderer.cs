@@ -211,7 +211,13 @@ public class EmailRenderer : IEmailRenderer
             items.Add($"<li><strong>{counts.BoardVotingTotal}</strong> tier applications awaiting vote <a href=\"{_settings.BaseUrl}/OnboardingReview/BoardVoting\">&rarr;</a></li>");
 
         if (counts.FailedSyncOutboxEvents > 0)
-            items.Add($"<li><strong>{counts.FailedSyncOutboxEvents}</strong> failed Google sync outbox events <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");
+            items.Add($"<li><strong>{counts.FailedSyncOutboxEvents}</strong> failed Google sync outbox events (transient, retrying) <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");
+
+        if (counts.PermanentSyncFailures > 0)
+            items.Add($"<li><strong>{counts.PermanentSyncFailures}</strong> humans with rejected Google email (sync blocked) <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");
+
+        if (counts.TransientSyncRetries > 0)
+            items.Add($"<li><strong>{counts.TransientSyncRetries}</strong> Google sync events retrying (transient errors) <a href=\"{_settings.BaseUrl}/Google/Sync\">&rarr;</a></li>");
 
         if (counts.TicketSyncError)
             items.Add($"<li>Ticket sync error: {HtmlEncode(counts.TicketSyncErrorMessage ?? "Unknown")} <a href=\"{_settings.BaseUrl}/Tickets\">&rarr;</a></li>");

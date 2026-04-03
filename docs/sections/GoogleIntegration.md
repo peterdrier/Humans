@@ -40,6 +40,8 @@ Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminCont
 - Drive folders with `RestrictInheritedAccess = true` have `inheritedPermissionsDisabled` enforced by the reconciliation job. Drift (manual re-enablement of inheritance) is detected and corrected automatically, with an audit trail entry.
 - Sync settings are per-service (Google Drive, Google Groups, Discord). Setting a service to None disables sync without redeploying.
 - A human's Google service email is their @nobodies.team email if provisioned, otherwise their OAuth login email.
+- Each human has a `GoogleEmailStatus` (`Unknown`, `Valid`, `Rejected`). When Google permanently rejects an email (HTTP 400/403/404), the status is set to `Rejected` and new outbox events are not enqueued for that human. When a human changes their Google email, the status resets to `Unknown` and fresh sync events are enqueued.
+- Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.
 - The system authenticates to Google APIs as a service account — no domain-wide delegation or user impersonation.
 - There are exactly four gateway operations that can modify Google access, and all enforce the current sync mode before executing.
 
@@ -52,7 +54,7 @@ Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminCont
 ## Triggers
 
 - When team membership changes, sync outbox events are queued for Google Group and Drive updates.
-- When a human's Google email changes, their Google resource memberships need re-sync.
+- When a human's Google email changes, `GoogleEmailStatus` resets to `Unknown` and fresh sync events are enqueued for all current team memberships.
 - When a Google resource is linked to a team, current team members are synced to that resource.
 - When a Google resource is unlinked, managed permissions are removed (if sync mode allows).
 - The system team sync job runs hourly, reconciling system team membership.

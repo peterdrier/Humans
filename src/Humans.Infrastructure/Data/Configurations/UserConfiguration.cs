@@ -23,6 +23,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.GoogleEmail)
             .HasMaxLength(256);
 
+        builder.Property(u => u.GoogleEmailStatus)
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .HasDefaultValue(GoogleEmailStatus.Unknown)
+            .HasSentinel(GoogleEmailStatus.Unknown)
+            .IsRequired();
+
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 
