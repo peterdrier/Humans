@@ -31,6 +31,14 @@ import {
  *   Google     → AdminOnly
  *   Tickets    → TicketAdminBoardOrAdmin
  *   Finance    → FinanceAdminOrAdmin
+ *
+ * Note on "Volunteer" (Shifts) visibility:
+ * ActiveMemberOrShiftAccess succeeds via ActiveMember claim (Volunteers team
+ * membership) OR via role checks (Admin/Board/TeamsAdmin/NoInfoAdmin/VolunteerCoordinator).
+ * Dev personas may not have Volunteers team membership if seeded before the current
+ * DevLoginController code, so we only assert "Volunteer" for roles that guarantee it
+ * via role checks. The volunteer/coordinator personas always have it since they're
+ * always seeded into the Volunteers team.
  */
 
 type NavItem = 'volunteer' | 'v' | 'review' | 'voting' | 'board' | 'humans' | 'admin' | 'google' | 'tickets' | 'finance';
@@ -60,8 +68,15 @@ interface RoleTest {
   visible: NavItem[];
 }
 
-// All dev personas are in the Volunteers team → all have ActiveMember claim → all see "Volunteer" (Shifts).
-// The matrix below defines which ADDITIONAL restricted nav items each role sees.
+// "Volunteer" (Shifts) visibility by role path:
+//   ActiveMember claim: volunteer, coordinator (always in Volunteers team)
+//   IsTeamsAdminBoardOrAdmin: admin, board, teamsAdmin
+//   ShiftRoleChecks.CanAccessDashboard: admin, noInfoAdmin, volunteerCoordinator
+//
+// Roles without a role-based path (humanAdmin, campAdmin, ticketAdmin,
+// consentCoordinator, feedbackAdmin, financeAdmin) only see "Volunteer" if
+// they happen to have ActiveMember claim — which is environment-dependent.
+// We omit "volunteer" from their visible list to avoid flaky assertions.
 const roles: RoleTest[] = [
   {
     name: 'volunteer',
@@ -77,7 +92,7 @@ const roles: RoleTest[] = [
     name: 'admin',
     login: loginAsAdmin,
     visible: ['volunteer', 'v', 'review', 'voting', 'board', 'admin', 'google', 'tickets', 'finance'],
-    // Note: 'humans' is NOT visible — HumanAdminOnly requires HumanAdmin AND NOT Admin
+    // 'humans' is NOT visible — HumanAdminOnly requires HumanAdmin AND NOT Admin
   },
   {
     name: 'board',
@@ -87,7 +102,7 @@ const roles: RoleTest[] = [
   {
     name: 'humanAdmin',
     login: loginAsHumanAdmin,
-    visible: ['volunteer', 'humans'],
+    visible: ['humans'],
   },
   {
     name: 'teamsAdmin',
@@ -97,22 +112,22 @@ const roles: RoleTest[] = [
   {
     name: 'ticketAdmin',
     login: loginAsTicketAdmin,
-    visible: ['volunteer', 'tickets'],
+    visible: ['tickets'],
   },
   {
     name: 'campAdmin',
     login: loginAsCampAdmin,
-    visible: ['volunteer'],
+    visible: [],
   },
   {
     name: 'consentCoordinator',
     login: loginAsConsentCoordinator,
-    visible: ['volunteer', 'review'],
+    visible: ['review'],
   },
   {
     name: 'feedbackAdmin',
     login: loginAsFeedbackAdmin,
-    visible: ['volunteer'],
+    visible: [],
   },
   {
     name: 'noInfoAdmin',
@@ -122,7 +137,7 @@ const roles: RoleTest[] = [
   {
     name: 'financeAdmin',
     login: loginAsFinanceAdmin,
-    visible: ['volunteer', 'finance'],
+    visible: ['finance'],
   },
   {
     name: 'volunteerCoordinator',
