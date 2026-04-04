@@ -1,8 +1,8 @@
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +12,7 @@ using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.FinanceAdminOrAdmin)]
+[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
 [Route("Finance")]
 public class FinanceController : HumansControllerBase
 {

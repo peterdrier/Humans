@@ -17,17 +17,20 @@ public class BudgetController : HumansControllerBase
 {
     private readonly IBudgetService _budgetService;
     private readonly HumansDbContext _dbContext;
+    private readonly IAuthorizationService _authService;
     private readonly ILogger<BudgetController> _logger;
 
     public BudgetController(
         IBudgetService budgetService,
         HumansDbContext dbContext,
+        IAuthorizationService authService,
         UserManager<User> userManager,
         ILogger<BudgetController> logger)
         : base(userManager)
     {
         _budgetService = budgetService;
         _dbContext = dbContext;
+        _authService = authService;
         _logger = logger;
     }
 
@@ -39,7 +42,7 @@ public class BudgetController : HumansControllerBase
             var (errorResult, user) = await RequireCurrentUserAsync();
             if (errorResult is not null) return errorResult;
 
-            var isFinanceAdmin = RoleChecks.IsFinanceAdmin(User);
+            var isFinanceAdmin = (await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
             var coordinatorTeamIds = await _budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
             if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
@@ -104,7 +107,7 @@ public class BudgetController : HumansControllerBase
                 TotalLineItems = totalLineItems,
                 IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
                 ExpenseSlices = summary.ExpenseSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
-                IsCoordinator = coordinatorTeamIds.Count > 0 || RoleChecks.IsFinanceAdmin(User)
+                IsCoordinator = coordinatorTeamIds.Count > 0 || (await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded
             };
             return View(model);
         }
@@ -128,7 +131,7 @@ public class BudgetController : HumansControllerBase
             if (category is null) return NotFound();
 
             // Block access to restricted/ticketing groups for non-finance users
-            var isFinanceAdmin = RoleChecks.IsFinanceAdmin(User);
+            var isFinanceAdmin = (await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded;
             if ((category.BudgetGroup?.IsRestricted == true || category.BudgetGroup?.IsTicketingGroup == true) && !isFinanceAdmin)
                 return Forbid();
 
@@ -244,7 +247,7 @@ public class BudgetController : HumansControllerBase
 
     private async Task<IActionResult?> AuthorizeCategoryEditAsync(Guid categoryId, Guid userId)
     {
-        if (RoleChecks.IsFinanceAdmin(User))
+        if ((await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded)
             return null;
 
         var category = await _budgetService.GetCategoryByIdAsync(categoryId);

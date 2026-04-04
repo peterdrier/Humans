@@ -5,9 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Data;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -33,7 +33,7 @@ public class CampaignController : HumansControllerBase
     }
 
     [HttpGet("")]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Index()
     {
         var campaigns = await _campaignService.GetAllAsync();
@@ -41,7 +41,7 @@ public class CampaignController : HumansControllerBase
     }
 
     [HttpGet("Create")]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult Create()
     {
         return View();
@@ -49,7 +49,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("Create")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Create(string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -78,7 +78,7 @@ public class CampaignController : HumansControllerBase
     }
 
     [HttpGet("Edit/{id:guid}")]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id)
     {
         var campaign = await _campaignService.GetByIdAsync(id);
@@ -88,7 +88,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("Edit/{id:guid}")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Edit(Guid id, string title, string? description, string emailSubject, string emailBodyTemplate, string? replyToAddress)
     {
         if (string.IsNullOrWhiteSpace(title))
@@ -133,7 +133,7 @@ public class CampaignController : HumansControllerBase
     }
 
     [HttpGet("{id:guid}")]
-    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> Detail(Guid id)
     {
         var page = await _campaignService.GetDetailPageAsync(id);
@@ -148,7 +148,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("{id:guid}/ImportCodes")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> ImportCodes(Guid id, IFormFile file)
     {
         if (file is null || file.Length == 0)
@@ -178,7 +178,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("{id:guid}/GenerateCodes")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> GenerateCodes(Guid id, int count, string discountType, decimal discountValue)
     {
         var campaign = await _campaignService.GetByIdAsync(id);
@@ -212,7 +212,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("{id:guid}/Activate")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Activate(Guid id)
     {
         await _campaignService.ActivateAsync(id);
@@ -222,7 +222,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("{id:guid}/Complete")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Complete(Guid id)
     {
         await _campaignService.CompleteAsync(id);
@@ -231,7 +231,7 @@ public class CampaignController : HumansControllerBase
     }
 
     [HttpGet("{id:guid}/SendWave")]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid? teamId)
     {
         var page = await _campaignService.GetSendWavePageAsync(id, teamId);
@@ -248,7 +248,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("{id:guid}/SendWave")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SendWave(Guid id, Guid teamId)
     {
         var sentCount = await _campaignService.SendWaveAsync(id, teamId);
@@ -258,7 +258,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("Grants/{grantId:guid}/Resend")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Resend(Guid grantId)
     {
         var campaignId = await _campaignService.GetCampaignIdForGrantAsync(grantId);
@@ -271,7 +271,7 @@ public class CampaignController : HumansControllerBase
 
     [HttpPost("{id:guid}/RetryAllFailed")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> RetryAllFailed(Guid id)
     {
         await _campaignService.RetryAllFailedAsync(id);

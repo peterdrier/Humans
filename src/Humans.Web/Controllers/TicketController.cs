@@ -5,6 +5,7 @@ using Humans.Domain.Entities;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Web.Extensions;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.TicketAdminBoardOrAdmin)]
+[Authorize(Policy = PolicyNames.TicketAdminBoardOrAdmin)]
 [Route("Tickets")]
 public class TicketController : HumansControllerBase
 {
@@ -327,7 +328,7 @@ public class TicketController : HumansControllerBase
 
     [HttpPost("Sync")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public IActionResult Sync()
     {
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
@@ -337,7 +338,7 @@ public class TicketController : HumansControllerBase
 
     [HttpPost("FullResync")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> FullResync()
     {
         await _ticketSyncService.ResetSyncStateForFullResyncAsync();
@@ -348,7 +349,7 @@ public class TicketController : HumansControllerBase
     }
 
     [HttpGet("Export/Attendees")]
-    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportAttendees()
     {
         var rows = await _ticketQueryService.GetAttendeeExportDataAsync();
@@ -365,7 +366,7 @@ public class TicketController : HumansControllerBase
     }
 
     [HttpGet("Export/Orders")]
-    [Authorize(Roles = RoleGroups.TicketAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.TicketAdminOrAdmin)]
     public async Task<IActionResult> ExportOrders()
     {
         var rows = await _ticketQueryService.GetOrderExportDataAsync();
