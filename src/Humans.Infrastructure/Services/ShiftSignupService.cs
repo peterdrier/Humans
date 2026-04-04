@@ -682,6 +682,7 @@ public class ShiftSignupService : IShiftSignupService
         var signups = await _dbContext.ShiftSignups
             .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
             .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.Team)
+            .Include(s => s.Shift).ThenInclude(s => s.ShiftSignups)
             .Where(s => s.SignupBlockId == signupBlockId &&
                         (s.Status == SignupStatus.Confirmed || s.Status == SignupStatus.Pending))
             .ToListAsync();

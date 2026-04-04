@@ -39,7 +39,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
 
         builder.Property(t => t.RequiresApproval)
             .IsRequired()
-            .HasDefaultValue(true);
+            .HasDefaultValue(true)
+            .HasSentinel(true);
 
         builder.Property(t => t.SystemTeamType)
             .IsRequired()
@@ -59,12 +60,12 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
             .HasMaxLength(256);
 
         builder.Property(t => t.IsPublicPage)
-            .IsRequired()
-            .HasDefaultValue(false);
+            .IsRequired();
 
         builder.Property(t => t.ShowCoordinatorsOnPublicPage)
             .IsRequired()
-            .HasDefaultValue(true);
+            .HasDefaultValue(true)
+            .HasSentinel(true);
 
         builder.Property(t => t.HasBudget)
             .IsRequired();

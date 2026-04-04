@@ -92,7 +92,7 @@
                     </form>
                     <form asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.')">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.">
                             <i class="fa-solid fa-box-archive me-1"></i>Archive
                         </button>
                     </form>
@@ -102,7 +102,7 @@
                     <form asp-action="UpdateYearStatus" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="status" value="@BudgetYearStatus.Closed" />
-                        <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('Close this budget year? It will become read-only.')">
+                        <button type="submit" class="btn btn-warning btn-sm" data-confirm="Close this budget year? It will become read-only.">
                             <i class="fa-solid fa-lock me-1"></i>Close
                         </button>
                     </form>
@@ -118,7 +118,7 @@
                     </form>
                     <form asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
-                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.')">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but audit logs will be preserved.">
                             <i class="fa-solid fa-box-archive me-1"></i>Archive
                         </button>
                     </form>
@@ -172,7 +172,7 @@
                             {
                                 <form asp-action="DeleteGroup" asp-route-id="@group.Id" method="post" class="d-inline">
                                     @Html.AntiForgeryToken()
-                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0" onclick="return confirm('Delete this group and all its categories?')">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0" data-confirm="Delete this group and all its categories?">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                 </form>
