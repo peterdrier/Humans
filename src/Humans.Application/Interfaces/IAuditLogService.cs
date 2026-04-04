@@ -18,10 +18,10 @@ public interface IAuditLogService
         Guid? relatedEntityId = null, string? relatedEntityType = null);
 
     /// <summary>
-    /// Logs an action performed by a human admin.
+    /// Logs an action performed by a human actor.
     /// </summary>
     Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, Guid actorUserId, string actorDisplayName,
+        string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null);
 
     /// <summary>
@@ -58,4 +58,16 @@ public interface IAuditLogService
     /// Gets audit entries where the user is either the primary or related entity.
     /// </summary>
     Task<IReadOnlyList<AuditLogEntry>> GetByUserAsync(Guid userId, int count, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets audit entries matching flexible filter criteria.
+    /// Used by the shared AuditLog ViewComponent for rendering audit history on any page.
+    /// </summary>
+    Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+        string? entityType = null,
+        Guid? entityId = null,
+        Guid? userId = null,
+        IReadOnlyList<AuditAction>? actions = null,
+        int limit = 20,
+        CancellationToken ct = default);
 }

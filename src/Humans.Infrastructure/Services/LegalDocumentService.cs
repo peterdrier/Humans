@@ -17,6 +17,7 @@ public partial class LegalDocumentService : ILegalDocumentService
     ];
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
+    private static readonly TimeSpan FailureCacheTtl = TimeSpan.FromSeconds(30);
 
     [GeneratedRegex(@"^(?<name>.+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$", RegexOptions.None, 1000)]
     private static partial Regex LanguageFilePattern();
@@ -40,33 +41,37 @@ public partial class LegalDocumentService : ILegalDocumentService
     public async Task<Dictionary<string, string>> GetDocumentContentAsync(string slug)
     {
         var cacheKey = CacheKeys.LegalDocument(slug);
-
-        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        if (_cache.TryGetValue<Dictionary<string, string>>(cacheKey, out var cachedContent) &&
+            cachedContent is not null)
         {
-            entry.AbsoluteExpirationRelativeToNow = CacheTtl;
+            return cachedContent;
+        }
 
-            try
+        try
+        {
+            var definition = Documents.FirstOrDefault(d =>
+                string.Equals(d.Slug, slug, StringComparison.OrdinalIgnoreCase));
+
+            if (definition is null)
             {
-                var definition = Documents.FirstOrDefault(d =>
-                    string.Equals(d.Slug, slug, StringComparison.OrdinalIgnoreCase));
-
-                if (definition is null)
-                {
-                    _logger.LogWarning("Unknown legal document slug: {Slug}", slug);
-                    return new Dictionary<string, string>(StringComparer.Ordinal);
-                }
-
-                return await FetchDocumentContentAsync(definition);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to fetch legal document {Slug} from GitHub", slug);
+                _logger.LogWarning("Unknown legal document slug: {Slug}", slug);
                 return new Dictionary<string, string>(StringComparer.Ordinal);
             }
-        }) ?? new Dictionary<string, string>(StringComparer.Ordinal);
+
+            var content = await GetDocumentContentAsync(definition);
+            _cache.Set(cacheKey, content, CacheTtl);
+            return content;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch legal document {Slug} from GitHub", slug);
+            var emptyContent = new Dictionary<string, string>(StringComparer.Ordinal);
+            _cache.Set(cacheKey, emptyContent, FailureCacheTtl);
+            return emptyContent;
+        }
     }
 
-    private async Task<Dictionary<string, string>> FetchDocumentContentAsync(LegalDocumentDefinition definition)
+    private async Task<Dictionary<string, string>> GetDocumentContentAsync(LegalDocumentDefinition definition)
     {
         var client = new GitHubClient(new ProductHeaderValue("NobodiesHumans"));
         if (!string.IsNullOrEmpty(_gitHubSettings.AccessToken))

@@ -19,9 +19,9 @@
 
 <div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="@(modalId)-label" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content" style="background-color: #faf5ef;">
+        <div class="modal-content" style="background-color: var(--h-parchment-light);">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title" id="@(modalId)-label" style="color: #5a3e2b;">
+                <h5 class="modal-title" id="@(modalId)-label" style="color: var(--h-aged-ink-light);">
                     @Model.SectionName
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -95,10 +95,10 @@
                             <table class="table table-sm mb-0">
                                 <thead>
                                     <tr>
-                                        <th class="text-uppercase small text-muted" style="color: #5a3e2b !important;">Feature</th>
+                                        <th class="text-uppercase small text-muted" style="color: var(--h-aged-ink-light) !important;">Feature</th>
                                         @foreach (var role in Model.AccessMatrix!.Roles)
                                         {
-                                            <th class="text-center text-uppercase small text-muted" style="color: #5a3e2b !important;">@role</th>
+                                            <th class="text-center text-uppercase small text-muted" style="color: var(--h-aged-ink-light) !important;">@role</th>
                                         }
                                     </tr>
                                 </thead>
@@ -106,7 +106,7 @@
                                     @foreach (var feature in Model.AccessMatrix.Features)
                                     {
                                         <tr>
-                                            <td style="color: #3a2a1a;">@feature.Name</td>
+                                            <td style="color: var(--h-aged-ink);">@feature.Name</td>
                                             @foreach (var role in Model.AccessMatrix.Roles)
                                             {
                                                 var level = feature.RoleAccess.GetValueOrDefault(role, AccessLevel.Denied);
@@ -141,20 +141,20 @@
     .section-help-content {
         font-size: 0.95rem;
         line-height: 1.7;
-        color: #3a2a1a;
+        color: var(--h-aged-ink);
     }
 
     .section-help-content h2 {
         font-size: 1.2rem;
         font-weight: 600;
-        color: #5a3e2b;
+        color: var(--h-aged-ink-light);
         margin-bottom: 0.75rem;
     }
 
     .section-help-content h3 {
         font-size: 1.05rem;
         font-weight: 600;
-        color: #5a3e2b;
+        color: var(--h-aged-ink-light);
         margin-top: 1.25rem;
         margin-bottom: 0.5rem;
     }
@@ -180,25 +180,25 @@
     .section-help-content table th,
     .section-help-content table td {
         padding: 0.5rem 0.75rem;
-        border-bottom: 1px solid #e0d5c8;
-        color: #3a2a1a;
+        border-bottom: 1px solid var(--h-border-light);
+        color: var(--h-aged-ink);
     }
 
     .section-help-content table th {
         font-weight: 600;
-        color: #5a3e2b;
+        color: var(--h-aged-ink-light);
         background-color: rgba(90, 62, 43, 0.05);
     }
 
     .section-help-pills .nav-link {
-        color: #5a3e2b;
+        color: var(--h-aged-ink-light);
         font-size: 0.875rem;
         padding: 0.375rem 0.75rem;
     }
 
     .section-help-pills .nav-link.active {
-        background-color: #5a3e2b;
-        color: #faf5ef;
+        background-color: var(--h-aged-ink-light);
+        color: var(--h-parchment-light);
     }
 
     .section-help-pills .nav-link:hover:not(.active) {

@@ -28,6 +28,8 @@ public partial class TeamResourceService : ITeamResourceService
     private readonly GoogleWorkspaceSettings _googleSettings;
     private readonly TeamResourceManagementSettings _resourceSettings;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IGoogleSyncService _googleSyncService;
     private readonly IClock _clock;
     private readonly ILogger<TeamResourceService> _logger;
 
@@ -40,6 +42,8 @@ public partial class TeamResourceService : ITeamResourceService
         IOptions<GoogleWorkspaceSettings> googleSettings,
         IOptions<TeamResourceManagementSettings> resourceSettings,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
+        IGoogleSyncService googleSyncService,
         IClock clock,
         ILogger<TeamResourceService> logger)
     {
@@ -47,6 +51,8 @@ public partial class TeamResourceService : ITeamResourceService
         _googleSettings = googleSettings.Value;
         _resourceSettings = resourceSettings.Value;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
+        _googleSyncService = googleSyncService;
         _clock = clock;
         _logger = logger;
     }
@@ -392,6 +398,7 @@ public partial class TeamResourceService : ITeamResourceService
     {
         return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
             _teamService,
+            _roleAssignmentService,
             _resourceSettings,
             teamId,
             userId,
@@ -442,6 +449,23 @@ public partial class TeamResourceService : ITeamResourceService
     private async Task<string> BuildFolderPathAsync(
         DriveService drive, Google.Apis.Drive.v3.Data.File file, CancellationToken ct)
     {
+        // When the file IS the shared drive root, Files.Get returns "Drive" as the name.
+        // Use Drives.Get to get the actual drive name.
+        if (!string.IsNullOrEmpty(file.DriveId)
+            && string.Equals(file.Id, file.DriveId, StringComparison.Ordinal))
+        {
+            try
+            {
+                var driveInfo = await drive.Drives.Get(file.DriveId).ExecuteAsync(ct);
+                return driveInfo.Name;
+            }
+            catch (Google.GoogleApiException ex)
+            {
+                _logger.LogDebug(ex, "Service account cannot access Shared Drive metadata for {DriveId}", file.DriveId);
+                return file.Name;
+            }
+        }
+
         var segments = new List<string> { file.Name };
         var currentParents = file.Parents;
         var driveId = file.DriveId;
@@ -532,7 +556,7 @@ public partial class TeamResourceService : ITeamResourceService
             return _driveService;
         }
 
-        var credential = await LoadServiceAccountCredentialAsync(ct, DriveService.Scope.DriveReadonly);
+        var credential = await GetServiceAccountCredentialAsync(ct, DriveService.Scope.DriveReadonly);
 
         _driveService = new DriveService(new BaseClientService.Initializer
         {
@@ -550,7 +574,7 @@ public partial class TeamResourceService : ITeamResourceService
             return _cloudIdentityService;
         }
 
-        var credential = await LoadServiceAccountCredentialAsync(ct,
+        var credential = await GetServiceAccountCredentialAsync(ct,
             CloudIdentityService.Scope.CloudIdentityGroupsReadonly);
 
         _cloudIdentityService = new CloudIdentityService(new BaseClientService.Initializer
@@ -566,7 +590,7 @@ public partial class TeamResourceService : ITeamResourceService
     /// Loads the service account credential WITHOUT impersonation.
     /// This authenticates as the service account itself to access pre-shared resources.
     /// </summary>
-    private async Task<GoogleCredential> LoadServiceAccountCredentialAsync(CancellationToken ct, params string[] scopes)
+    private async Task<GoogleCredential> GetServiceAccountCredentialAsync(CancellationToken ct, params string[] scopes)
     {
         GoogleCredential credential;
 
@@ -659,5 +683,46 @@ public partial class TeamResourceService : ITeamResourceService
     public async Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
         return await TeamResourcePersistence.GetResourceByIdAsync(_dbContext, resourceId, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, CancellationToken ct = default)
+    {
+        var resource = await _dbContext.GoogleResources.FindAsync([resourceId], ct);
+        if (resource is null) return;
+
+        resource.DrivePermissionLevel = level;
+        await _dbContext.SaveChangesAsync(ct);
+        _logger.LogInformation("Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
+    }
+
+    /// <inheritdoc />
+    public async Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default)
+    {
+        var resource = await _dbContext.GoogleResources.FindAsync([resourceId], ct);
+        if (resource is null) return;
+
+        if (resource.ResourceType != GoogleResourceType.DriveFolder)
+        {
+            _logger.LogWarning("Cannot set RestrictInheritedAccess on non-folder resource {ResourceId} (type: {Type})",
+                resourceId, resource.ResourceType);
+            return;
+        }
+
+        resource.RestrictInheritedAccess = restrict;
+        await _dbContext.SaveChangesAsync(ct);
+
+        try
+        {
+            await _googleSyncService.SetInheritedPermissionsDisabledAsync(resource.GoogleId, restrict, ct);
+            _logger.LogInformation("Set RestrictInheritedAccess={Restrict} for resource {ResourceId} ({GoogleId})",
+                restrict, resourceId, resource.GoogleId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set inheritedPermissionsDisabled on Google Drive for resource {ResourceId} ({GoogleId})",
+                resourceId, resource.GoogleId);
+            throw;
+        }
     }
 }

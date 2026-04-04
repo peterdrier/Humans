@@ -3,14 +3,22 @@ using Humans.Domain.Enums;
 namespace Humans.Application.DTOs;
 
 /// <summary>
+/// Lightweight team reference for sync display (name + slug for linking).
+/// </summary>
+public record TeamLink(string Name, string Slug, string? PermissionLevel = null);
+
+/// <summary>
 /// Sync status of a single member relative to a resource.
 /// </summary>
 public record MemberSyncStatus(
     string Email,
     string DisplayName,
     MemberSyncState State,
-    List<string> TeamNames,
-    string? CurrentRole = null);
+    List<TeamLink> TeamLinks,
+    string? CurrentRole = null,
+    string? ExpectedRole = null,
+    Guid? UserId = null,
+    string? ProfilePictureUrl = null);
 
 /// <summary>
 /// Whether a member is correctly synced, missing, or extra.
@@ -20,7 +28,12 @@ public enum MemberSyncState
     Correct,
     Missing,
     Extra,
-    Inherited
+    Inherited,
+    /// <summary>
+    /// Member has access but at a lower permission level than expected
+    /// (e.g., reader when they should be writer due to multi-team max resolution).
+    /// </summary>
+    WrongRole
 }
 
 /// <summary>
@@ -39,7 +52,7 @@ public class ResourceSyncDiff
     public string? PermissionLevel { get; init; }
 
     /// <summary>All teams that link to this resource.</summary>
-    public List<string> LinkedTeams { get; init; } = [];
+    public List<TeamLink> LinkedTeams { get; init; } = [];
 
     /// <summary>Per-member sync status (correct, missing, extra).</summary>
     public List<MemberSyncStatus> Members { get; init; } = [];
@@ -51,7 +64,7 @@ public class ResourceSyncDiff
     public List<string> MembersToRemove => Members
         .Where(m => m.State == MemberSyncState.Extra)
         .Select(m => m.Email).ToList();
-    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra) && ErrorMessage is null;
+    public bool IsInSync => !Members.Any(m => m.State is MemberSyncState.Missing or MemberSyncState.Extra or MemberSyncState.WrongRole) && ErrorMessage is null;
 }
 
 /// <summary>

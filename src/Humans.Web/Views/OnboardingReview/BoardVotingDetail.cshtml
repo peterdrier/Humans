@@ -112,51 +112,48 @@
     </div>
 
     <div class="col-md-4">
-        @if (Humans.Web.Authorization.RoleChecks.IsBoard(User))
-        {
-            <div class="card mb-4">
-                <div class="card-header">@Localizer["BoardVoting_CastVote"]</div>
-                <div class="card-body">
-                    <form asp-action="Vote" method="post">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="applicationId" value="@Model.ApplicationId" />
+        <div class="card mb-4" authorize-policy="BoardOnly">
+            <div class="card-header">@Localizer["BoardVoting_CastVote"] <i class="fa-solid fa-lock auth-lock-icon"></i></div>
+            <div class="card-body">
+                <form asp-action="Vote" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="applicationId" value="@Model.ApplicationId" />
 
-                        <div class="mb-3">
-                            <label class="form-label">@Localizer["BoardVoting_YourVote"]</label>
-                            <div class="d-grid gap-2">
-                                @foreach (var choice in Enum.GetValues<VoteChoice>())
+                    <div class="mb-3">
+                        <label class="form-label">@Localizer["BoardVoting_YourVote"]</label>
+                        <div class="d-grid gap-2">
+                            @foreach (var choice in Enum.GetValues<VoteChoice>())
+                            {
+                                var btnClass = choice switch
                                 {
-                                    var btnClass = choice switch
-                                    {
-                                        VoteChoice.Yay => "btn-outline-success",
-                                        VoteChoice.Maybe => "btn-outline-warning",
-                                        VoteChoice.No => "btn-outline-danger",
-                                        VoteChoice.Abstain => "btn-outline-secondary",
-                                        _ => "btn-outline-secondary"
-                                    };
-                                    var isActive = Model.CurrentUserVote == choice;
-                                    <button type="submit" name="vote" value="@choice"
-                                            class="btn @(isActive ? btnClass.Replace("outline-", "", StringComparison.Ordinal) : btnClass)">
-                                        @choice
-                                    </button>
-                                }
-                            </div>
+                                    VoteChoice.Yay => "btn-outline-success",
+                                    VoteChoice.Maybe => "btn-outline-warning",
+                                    VoteChoice.No => "btn-outline-danger",
+                                    VoteChoice.Abstain => "btn-outline-secondary",
+                                    _ => "btn-outline-secondary"
+                                };
+                                var isActive = Model.CurrentUserVote == choice;
+                                <button type="submit" name="vote" value="@choice"
+                                        class="btn @(isActive ? btnClass.Replace("outline-", "", StringComparison.Ordinal) : btnClass)">
+                                    @choice
+                                </button>
+                            }
                         </div>
+                    </div>
 
-                        <div class="mb-3">
-                            <label for="voteNote" class="form-label">@Localizer["BoardVoting_Note"]</label>
-                            <textarea id="voteNote" name="note" class="form-control" rows="2"
-                                      placeholder="@Localizer["OnboardingReview_NotesPlaceholder"].Value">@Model.CurrentUserNote</textarea>
-                        </div>
-                    </form>
-                </div>
+                    <div class="mb-3">
+                        <label for="voteNote" class="form-label">@Localizer["BoardVoting_Note"]</label>
+                        <textarea id="voteNote" name="note" class="form-control" rows="2"
+                                  placeholder="@Localizer["OnboardingReview_NotesPlaceholder"].Value">@Model.CurrentUserNote</textarea>
+                    </div>
+                </form>
             </div>
-        }
+        </div>
 
         @if (Model.CanFinalize)
         {
             <div class="card border-danger mb-4">
-                <div class="card-header text-bg-danger">@Localizer["BoardVoting_FinalizeDecision"]</div>
+                <div class="card-header text-bg-danger">@Localizer["BoardVoting_FinalizeDecision"] <i class="fa-solid fa-lock auth-lock-icon"></i></div>
                 <div class="card-body">
                     <form asp-action="Finalize" method="post">
                         @Html.AntiForgeryToken()

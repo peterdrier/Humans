@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:element name="root" msdata:IsDataSet="true">
@@ -55,15 +55,15 @@
   <data name="Nav_Home" xml:space="preserve"><value>Accueil</value></data>
   <data name="Nav_MyProfile" xml:space="preserve"><value>Mon profil</value></data>
   <data name="Nav_Teams" xml:space="preserve"><value>&#xC9;quipes</value></data>
-  <data name="Nav_Shifts" xml:space="preserve"><value>Volunteer</value></data>
-  <data name="Nav_Roster" xml:space="preserve"><value>Roster</value></data>
+  <data name="Nav_Shifts" xml:space="preserve"><value>Bénévolat</value></data>
+  <data name="Nav_Roster" xml:space="preserve"><value>Liste</value></data>
   <data name="Nav_Consents" xml:space="preserve"><value>Accords</value></data>
   <data name="Nav_Governance" xml:space="preserve"><value>Gouvernance</value></data>
   <data name="Nav_Privacy" xml:space="preserve"><value>Confidentialit&#xE9;</value></data>
   <data name="Nav_About" xml:space="preserve"><value>&#xC0; propos</value></data>
   <data name="Nav_Admin" xml:space="preserve"><value>Admin</value></data>
   <data name="Nav_OnboardingReview" xml:space="preserve"><value>File d'attente</value></data>
-  <data name="Nav_MyFeedback" xml:space="preserve"><value>My Feedback</value></data>
+  <data name="Nav_MyFeedback" xml:space="preserve"><value>Mon feedback</value></data>
 
 
   <!-- ======================== -->
@@ -87,7 +87,7 @@
   <data name="Login_Title" xml:space="preserve"><value>Connexion</value></data>
   <data name="Login_Description" xml:space="preserve"><value>Connectez-vous pour acc&#xE9;der &#xE0; Humans.</value></data>
   <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Se connecter avec Google</value></data>
-  <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. This can happen if you took too long or your browser blocked cookies. Please try again.</value></data>
+  <data name="Login_SignInFailed" xml:space="preserve"><value>Échec de la connexion. Cela peut se produire si vous avez mis trop de temps ou si votre navigateur a bloqué les cookies. Veuillez réessayer.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Acc&#xE8;s refus&#xE9;</value></data>
   <data name="AccessDenied_Description" xml:space="preserve"><value>Vous n'avez pas la permission d'acc&#xE9;der &#xE0; cette page.</value></data>
 
@@ -105,23 +105,27 @@
   <!-- Home (Landing Page)      -->
   <!-- ======================== -->
   <data name="Home_Title" xml:space="preserve"><value>Accueil</value></data>
-  <data name="Home_Tagline" xml:space="preserve"><value>Portail des membres de Nobodies Collective</value></data>
-  <data name="Home_CTA" xml:space="preserve"><value>Nouveau/nouvelle ici&#xA0;? Connectez-vous pour commencer.</value></data>
-  <data name="Home_WhyTitle" xml:space="preserve"><value>Pourquoi avons-nous besoin de cela&#xA0;?</value></data>
-  <data name="Home_WhyDescription" xml:space="preserve"><value>En tant qu'association enregistr&#xE9;e en Espagne, Nobodies Collective a des obligations l&#xE9;gales. Avant que quiconque puisse acc&#xE9;der aux ressources partag&#xE9;es, nous devons confirmer l'acceptation de nos politiques. Ce syst&#xE8;me g&#xE8;re cela simplement et maintient tout &#xE0; jour.</value></data>
-  <data name="Home_ComplianceTitle" xml:space="preserve"><value>Conformit&#xE9; l&#xE9;gale</value></data>
-  <data name="Home_ComplianceDescription" xml:space="preserve"><value>Pour acc&#xE9;der aux ressources de l'association, chacun doit accepter nos politiques : traitement des donn&#xE9;es RGPD, politique de confidentialit&#xE9;, conditions de consentement et licence Creative Commons. C'est un processus unique (sauf mise &#xE0; jour des documents).</value></data>
-  <data name="Home_ResourceAccessTitle" xml:space="preserve"><value>Acc&#xE8;s aux ressources</value></data>
-  <data name="Home_ResourceAccessDescription" xml:space="preserve"><value>Une fois votre profil et vos consentements compl&#xE9;t&#xE9;s, vous aurez acc&#xE8;s aux ressources partag&#xE9;es : dossiers Google Drive, espaces de travail d'&#xE9;quipe et outils de collaboration. Les &#xE9;quipes peuvent &#xEA;tre configur&#xE9;es pour diff&#xE9;rents groupes de travail.</value></data>
-  <data name="Home_DocumentUpdatesTitle" xml:space="preserve"><value>Mises &#xE0; jour des documents</value></data>
-  <data name="Home_DocumentUpdatesDescription" xml:space="preserve"><value>Les documents l&#xE9;gaux &#xE9;voluent. Lorsque les politiques changent de mani&#xE8;re significative, il vous sera demand&#xE9; de les revoir et de renouveler votre consentement. Cela garantit que tous travaillent sous les m&#xEA;mes accords en vigueur.</value></data>
-  <data name="Home_VotingMembershipTitle" xml:space="preserve"><value>Adh&#xE9;sion avec droit de vote</value></data>
-  <data name="Home_VotingMembershipDescription" xml:space="preserve"><value>Nos statuts exigent un registre des membres votants pour la gouvernance (assembl&#xE9;es g&#xE9;n&#xE9;rales, &#xE9;lections, etc.). Si vous souhaitez participer &#xE0; la gouvernance, vous pouvez demander &#xE0; devenir membre votant. Cela est enti&#xE8;rement facultatif.</value></data>
-  <data name="Home_GettingStartedTitle" xml:space="preserve"><value>Pour commencer</value></data>
-  <data name="Home_Step1" xml:space="preserve"><value>&lt;strong&gt;Connectez-vous&lt;/strong&gt; avec votre compte Google</value></data>
-  <data name="Home_Step2" xml:space="preserve"><value>&lt;strong&gt;Compl&#xE9;tez votre profil&lt;/strong&gt; avec les informations de base</value></data>
-  <data name="Home_Step3" xml:space="preserve"><value>&lt;strong&gt;Consultez et consentez&lt;/strong&gt; &#xE0; nos documents l&#xE9;gaux (originaux en espagnol avec traductions en anglais)</value></data>
-  <data name="Home_GettingStartedSummary" xml:space="preserve"><value>C'est tout&#xA0;! Une fois vos consentements en ordre, vous aurez acc&#xE8;s aux ressources de l'association. Si vous souhaitez participer &#xE0; la gouvernance en tant que membre votant, vous pouvez &#xE9;ventuellement soumettre une candidature depuis votre tableau de bord.</value></data>
+  <data name="Home_Tagline" xml:space="preserve"><value>L&#xE0; o&#xF9; Nobodies Collective s'organise</value></data>
+  <data name="Home_HeroDescription" xml:space="preserve"><value>La plateforme communautaire pour nos humans &#x2014; inscris-toi aux cr&#xE9;neaux, rejoins des &#xE9;quipes, enregistre ton camp et aide &#xE0; faire bouger les choses.</value></data>
+  <data name="Home_CTA" xml:space="preserve"><value>C'est parti</value></data>
+  <data name="Home_FeaturesTitle" xml:space="preserve"><value>Tout ce qu'il faut pour participer</value></data>
+  <data name="Home_ShiftsTitle" xml:space="preserve"><value>Cr&#xE9;neaux &amp; b&#xE9;n&#xE9;volat</value></data>
+  <data name="Home_ShiftsDescription" xml:space="preserve"><value>Consulte les cr&#xE9;neaux disponibles, inscris-toi &#xE0; des r&#xF4;les d'&#xE9;v&#xE9;nement et suis ton planning. Vois ce qui est urgent et o&#xF9; l'aide est la plus n&#xE9;cessaire.</value></data>
+  <data name="Home_TeamsTitle" xml:space="preserve"><value>&#xC9;quipes &amp; groupes de travail</value></data>
+  <data name="Home_TeamsDescription" xml:space="preserve"><value>Des groupes de travail auto-organis&#xE9;s avec coordinateurs, ressources partag&#xE9;es et workflows d'approbation. Trouve ton &#xE9;quipe.</value></data>
+  <data name="Home_CampsTitle" xml:space="preserve"><value>Camps &amp; barrios</value></data>
+  <data name="Home_CampsDescription" xml:space="preserve"><value>Enregistre ton camp, d&#xE9;couvre tes voisins par ambiance ou zone sonore, et confirme ta participation chaque saison.</value></data>
+  <data name="Home_TicketsTitle" xml:space="preserve"><value>Billetterie &amp; &#xE9;v&#xE9;nements</value></data>
+  <data name="Home_TicketsDescription" xml:space="preserve"><value>Int&#xE9;gration de la vente de billets, mise en relation des participants et campagnes de r&#xE9;duction &#x2014; le tout li&#xE9; &#xE0; ton profil.</value></data>
+  <data name="Home_BudgetTitle" xml:space="preserve"><value>Transparence budg&#xE9;taire</value></data>
+  <data name="Home_BudgetDescription" xml:space="preserve"><value>Vois comment les fonds sont r&#xE9;partis entre les d&#xE9;partements. Planification budg&#xE9;taire ouverte avec des r&#xE9;sum&#xE9;s publics.</value></data>
+  <data name="Home_ProfilesTitle" xml:space="preserve"><value>Profils &amp; annuaire</value></data>
+  <data name="Home_ProfilesDescription" xml:space="preserve"><value>Des profils riches avec noms de playa, localisations et contacts d'urgence. Un calendrier d'anniversaires et un annuaire pour la communaut&#xE9;.</value></data>
+  <data name="Home_GettingStartedTitle" xml:space="preserve"><value>Inscription rapide</value></data>
+  <data name="Home_Step1" xml:space="preserve"><value>&lt;strong&gt;Connecte-toi&lt;/strong&gt; avec ton compte Google</value></data>
+  <data name="Home_Step2" xml:space="preserve"><value>&lt;strong&gt;Configure ton profil&lt;/strong&gt; &#x2014; nom, localisation et comment tu pr&#xE9;f&#xE8;res &#xEA;tre contact&#xE9;(e)</value></data>
+  <data name="Home_Step3" xml:space="preserve"><value>&lt;strong&gt;Accepte les bases&lt;/strong&gt; &#x2014; on s'occupe de la paperasse pour que tu puisses te concentrer sur la participation</value></data>
+  <data name="Home_GettingStartedSummary" xml:space="preserve"><value>&#xC7;a prend quelques minutes. Apr&#xE8;s, tu es dedans &#x2014; consulte les cr&#xE9;neaux, rejoins des &#xE9;quipes et commence &#xE0; contribuer.</value></data>
 
   <!-- ======================== -->
   <!-- Dashboard                -->
@@ -142,7 +146,7 @@
   <data name="Dashboard_NoConsentsRequired" xml:space="preserve"><value>Aucun document ne n&#xE9;cessite de consentement pour le moment.</value></data>
   <data name="Dashboard_LatestApplication" xml:space="preserve"><value>Derni&#xE8;re candidature :</value></data>
   <data name="Dashboard_ViewApplicationHistory" xml:space="preserve"><value>Voir l'historique des candidatures</value></data>
-  <data name="Dashboard_GovernanceDescription" xml:space="preserve"><value>Les asociados sont des membres votants qui participent aux d&#xE9;cisions de gouvernance telles que les assembl&#xE9;es et les &#xE9;lections. Cela est destin&#xE9; aux leaders communautaires et aux b&#xE9;n&#xE9;voles engag&#xE9;s sur le long terme.</value></data>
+  <data name="Dashboard_GovernanceDescription" xml:space="preserve"><value>Les asociados sont des humans votants qui participent aux d&#xE9;cisions de gouvernance telles que les assembl&#xE9;es et les &#xE9;lections. Cela est destin&#xE9; aux leaders communautaires et aux humans engag&#xE9;s sur le long terme.</value></data>
   <data name="Dashboard_GovernanceOptional" xml:space="preserve"><value>La participation &#xE0; la gouvernance est facultative et n'affecte pas votre acc&#xE8;s aux ressources.</value></data>
   <data name="Dashboard_LearnMore" xml:space="preserve"><value>En savoir plus</value></data>
   <data name="Dashboard_OnboardingTitle" xml:space="preserve"><value>Premiers pas</value></data>
@@ -174,7 +178,6 @@
   <data name="Profile_Title" xml:space="preserve"><value>Mon profil</value></data>
   <data name="ProfileEdit_Title" xml:space="preserve"><value>Modifier le profil</value></data>
   <data name="ProfilePrivacy_Title" xml:space="preserve"><value>Mes donn&#xE9;es</value></data>
-  <data name="PreferredEmail_Title" xml:space="preserve"><value>Adresse e-mail pr&#xE9;f&#xE9;r&#xE9;e</value></data>
   <data name="VerifyEmail_Title" xml:space="preserve"><value>V&#xE9;rification de l'adresse e-mail</value></data>
   <data name="VerifyEmail_GoToSettings" xml:space="preserve"><value>Acc&#xE9;der aux param&#xE8;tres de l'e-mail pr&#xE9;f&#xE9;r&#xE9;</value></data>
   <data name="VerifyEmail_GoHome" xml:space="preserve"><value>Retour &#xE0; l'accueil</value></data>
@@ -198,7 +201,7 @@
   <data name="Profile_NoContactInfo" xml:space="preserve"><value>Aucune coordonn&#xE9;e ajout&#xE9;e pour le moment.</value></data>
   <data name="Profile_AddSome" xml:space="preserve"><value>En ajouter</value></data>
   <data name="Profile_Teams" xml:space="preserve"><value>&#xC9;quipes</value></data>
-  <data name="Profile_Coordinator" xml:space="preserve"><value>Coordinator</value></data>
+  <data name="Profile_Coordinator" xml:space="preserve"><value>Coordinateur</value></data>
   <data name="Profile_MembershipTier" xml:space="preserve"><value>Niveau d'adh&#xE9;sion</value></data>
   <data name="Profile_Motivation" xml:space="preserve"><value>Motivation</value></data>
   <data name="Profile_AdditionalInfo" xml:space="preserve"><value>Informations suppl&#xE9;mentaires (facultatif)</value></data>
@@ -238,12 +241,10 @@
   <data name="ProfileEdit_BioHelp" xml:space="preserve"><value>Parlez-nous un peu de vous.</value></data>
   <data name="Profile_Pronouns" xml:space="preserve"><value>Pronoms</value></data>
   <data name="ProfileEdit_PronounsPlaceholder" xml:space="preserve"><value>ex., iel, elle, il</value></data>
-  <data name="ProfileEdit_ContactInfoHelp" xml:space="preserve"><value>Ajoutez des moyens de contact pour que les autres membres puissent vous joindre. Contr&#xF4;lez qui peut voir chaque information.</value></data>
+  <data name="ProfileEdit_ContactInfoHelp" xml:space="preserve"><value>Ajoutez des moyens de contact pour que les autres humans puissent vous joindre. Contr&#xF4;lez qui peut voir chaque information.</value></data>
   <data name="ProfileEdit_AddContactField" xml:space="preserve"><value>Ajouter un champ de contact</value></data>
   <data name="ProfileEdit_BurnerCVHelp" xml:space="preserve"><value>Documentez votre participation aux &#xE9;v&#xE9;nements, r&#xF4;les et camps. Les entr&#xE9;es sont tri&#xE9;es par date (les plus r&#xE9;centes en premier).</value></data>
   <data name="ProfileEdit_AddEntry" xml:space="preserve"><value>Ajouter une entr&#xE9;e</value></data>
-  <data name="ProfileEdit_ManagePreferredEmail" xml:space="preserve"><value>G&#xE9;rer l'e-mail pr&#xE9;f&#xE9;r&#xE9;</value></data>
-  <data name="ProfileEdit_PreferredEmailHelp" xml:space="preserve"><value>D&#xE9;finissez une adresse e-mail diff&#xE9;rente pour recevoir les notifications du syst&#xE8;me.</value></data>
 
   <!-- Profile Privacy View -->
   <data name="ProfilePrivacy_Lead" xml:space="preserve"><value>G&#xE9;rez vos donn&#xE9;es personnelles et vos param&#xE8;tres de confidentialit&#xE9;.</value></data>
@@ -278,27 +279,6 @@
   <data name="ProfilePrivacy_CancelNoRestore" xml:space="preserve"><value>L'annulation ne restaurera pas vos anciennes appartenances aux &#xE9;quipes. Vous devrez rejoindre les &#xE9;quipes &#xE0; nouveau.</value></data>
 
   <!-- Preferred Email View -->
-  <data name="PreferredEmail_Description" xml:space="preserve"><value>Par d&#xE9;faut, les notifications du syst&#xE8;me sont envoy&#xE9;es &#xE0; votre adresse de connexion. Vous pouvez sp&#xE9;cifier une adresse e-mail diff&#xE9;rente pour recevoir ces notifications.</value></data>
-  <data name="PreferredEmail_CurrentSettings" xml:space="preserve"><value>Param&#xE8;tres actuels de l'e-mail</value></data>
-  <data name="PreferredEmail_SignInEmail" xml:space="preserve"><value>E-mail de connexion</value></data>
-  <data name="PreferredEmail_GoogleAccount" xml:space="preserve"><value>Compte Google</value></data>
-  <data name="PreferredEmail_NotSet" xml:space="preserve"><value>Non d&#xE9;fini (utilisation de l'e-mail de connexion)</value></data>
-  <data name="PreferredEmail_Verified" xml:space="preserve"><value>V&#xE9;rifi&#xE9;</value></data>
-  <data name="PreferredEmail_PendingVerification" xml:space="preserve"><value>V&#xE9;rification en attente</value></data>
-  <data name="PreferredEmail_NotificationsSentTo" xml:space="preserve"><value>Notifications envoy&#xE9;es &#xE0;</value></data>
-  <data name="PreferredEmail_Preferred" xml:space="preserve"><value>pr&#xE9;f&#xE9;r&#xE9;</value></data>
-  <data name="PreferredEmail_SignInEmailLabel" xml:space="preserve"><value>e-mail de connexion</value></data>
-  <data name="PreferredEmail_VerificationSent" xml:space="preserve"><value>Un e-mail de v&#xE9;rification a &#xE9;t&#xE9; envoy&#xE9; &#xE0; {0}. Veuillez consulter votre bo&#xEE;te de r&#xE9;ception et cliquer sur le lien de v&#xE9;rification.</value><comment>{0} = email address</comment></data>
-  <data name="PreferredEmail_ResendCooldown" xml:space="preserve"><value>Vous pourrez demander un nouvel e-mail de v&#xE9;rification dans {0} minute(s).</value><comment>{0} = minutes remaining</comment></data>
-  <data name="PreferredEmail_SetTitle" xml:space="preserve"><value>D&#xE9;finir l'e-mail pr&#xE9;f&#xE9;r&#xE9;</value></data>
-  <data name="PreferredEmail_ChangeTitle" xml:space="preserve"><value>Modifier l'e-mail pr&#xE9;f&#xE9;r&#xE9;</value></data>
-  <data name="PreferredEmail_VerificationWillBeSent" xml:space="preserve"><value>Un e-mail de v&#xE9;rification sera envoy&#xE9; &#xE0; cette adresse.</value></data>
-  <data name="PreferredEmail_SendVerification" xml:space="preserve"><value>Envoyer l'e-mail de v&#xE9;rification</value></data>
-  <data name="PreferredEmail_RemoveTitle" xml:space="preserve"><value>Supprimer l'e-mail pr&#xE9;f&#xE9;r&#xE9;</value></data>
-  <data name="PreferredEmail_RemoveDescription" xml:space="preserve"><value>Supprimez votre e-mail pr&#xE9;f&#xE9;r&#xE9; et utilisez votre e-mail de connexion pour toutes les notifications du syst&#xE8;me.</value></data>
-  <data name="PreferredEmail_RemoveConfirm" xml:space="preserve"><value>&#xCA;tes-vous s&#xFB;r de vouloir supprimer votre e-mail pr&#xE9;f&#xE9;r&#xE9; ?</value></data>
-  <data name="PreferredEmail_RemoveButton" xml:space="preserve"><value>Supprimer l'e-mail pr&#xE9;f&#xE9;r&#xE9;</value></data>
-  <data name="PreferredEmail_BackToEdit" xml:space="preserve"><value>Retour &#xE0; la modification du profil</value></data>
 
   <!-- Profile Controller TempData -->
   <data name="Profile_Updated" xml:space="preserve"><value>Profil mis &#xE0; jour avec succ&#xE8;s.</value></data>
@@ -328,7 +308,7 @@
   <!-- Governance Index View -->
   <data name="Governance_NotYetApplied" xml:space="preserve"><value>Pas encore de candidature</value></data>
   <data name="Governance_AsociadoDescription" xml:space="preserve"><value>Les asociados sont les membres votants de Nobodies Collective. En tant qu'asociado, vous pouvez assister aux assembl&#xE9;es g&#xE9;n&#xE9;rales, voter sur les d&#xE9;cisions collectives et participer aux &#xE9;lections.</value></data>
-  <data name="Governance_Optional" xml:space="preserve"><value>Cela est facultatif. La plupart des b&#xE9;n&#xE9;voles n'ont pas besoin de devenir asociados. Vous avez d&#xE9;j&#xE0; acc&#xE8;s aux ressources une fois votre profil et vos consentements compl&#xE9;t&#xE9;s.</value></data>
+  <data name="Governance_Optional" xml:space="preserve"><value>Cela est facultatif. La plupart des humans n'ont pas besoin de devenir asociados. Vous avez d&#xE9;j&#xE0; acc&#xE8;s aux ressources une fois votre profil et vos consentements compl&#xE9;t&#xE9;s.</value></data>
   <data name="Governance_ApplyButton" xml:space="preserve"><value>Postuler pour devenir asociado</value></data>
   <data name="Governance_ColaboradorCanApply" xml:space="preserve"><value>Les Colaboradores peuvent &#xE9;galement postuler pour le statut d'Asociado s'ils souhaitent participer &#xE0; la gouvernance.</value></data>
   <data name="Governance_ApplyForAsociado" xml:space="preserve"><value>Postuler pour Asociado</value></data>
@@ -349,7 +329,7 @@
   <data name="Governance_VoteOnDecisions" xml:space="preserve"><value>Voter sur les d&#xE9;cisions collectives</value></data>
   <data name="Governance_ParticipateElections" xml:space="preserve"><value>Participer aux &#xE9;lections du conseil</value></data>
   <data name="Governance_WhoShouldApply" xml:space="preserve"><value>Qui devrait postuler&#xA0;?</value></data>
-  <data name="Governance_WhoShouldApplyDescription" xml:space="preserve"><value>L'adh&#xE9;sion &#xE0; la gouvernance est destin&#xE9;e aux b&#xE9;n&#xE9;voles occupant des postes de responsabilit&#xE9; :</value></data>
+  <data name="Governance_WhoShouldApplyDescription" xml:space="preserve"><value>L'adh&#xE9;sion &#xE0; la gouvernance est destin&#xE9;e aux humans occupant des postes de responsabilit&#xE9; :</value></data>
   <data name="Governance_CampLeads" xml:space="preserve"><value>Responsables et coordinateurs de camps</value></data>
   <data name="Governance_MetaVolunteers" xml:space="preserve"><value>M&#xE9;ta-b&#xE9;n&#xE9;voles et responsables d'&#xE9;quipe</value></data>
   <data name="Governance_LongTermMembers" xml:space="preserve"><value>Membres engag&#xE9;s sur le long terme</value></data>
@@ -468,7 +448,7 @@
 
   <!-- Team Index View -->
   <data name="Teams_CreateTeam" xml:space="preserve"><value>Cr&#xE9;er une &#xE9;quipe</value></data>
-  <data name="Teams_MemberCount" xml:space="preserve"><value>{0} membre(s)</value><comment>{0} = member count</comment></data>
+  <data name="Teams_MemberCount" xml:space="preserve"><value>{0} human(s)</value><comment>{0} = member count</comment></data>
   <data name="Teams_Member" xml:space="preserve"><value>Membre</value></data>
   <data name="Teams_RequiresApproval" xml:space="preserve"><value>Approbation requise</value></data>
   <data name="Teams_ViewDetails" xml:space="preserve"><value>Voir les d&#xE9;tails</value></data>
@@ -486,8 +466,8 @@
   <data name="TeamDetail_Members" xml:space="preserve"><value>Membres ({0})</value><comment>{0} = count</comment></data>
   <data name="TeamDetail_ManageMembers" xml:space="preserve"><value>G&#xE9;rer les membres</value></data>
   <data name="TeamDetail_Joined" xml:space="preserve"><value>Inscription</value></data>
-  <data name="TeamDetail_AndMoreMembers" xml:space="preserve"><value>Et {0} autres membres...</value><comment>{0} = remaining count</comment></data>
-  <data name="TeamDetail_NoMembers" xml:space="preserve"><value>Aucun membre pour le moment.</value></data>
+  <data name="TeamDetail_AndMoreMembers" xml:space="preserve"><value>Et {0} autres humans...</value><comment>{0} = remaining count</comment></data>
+  <data name="TeamDetail_NoMembers" xml:space="preserve"><value>Aucun human pour le moment.</value></data>
   <data name="TeamDetail_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="TeamDetail_RequestToJoin" xml:space="preserve"><value>Demander &#xE0; rejoindre</value></data>
   <data name="TeamDetail_JoinTeam" xml:space="preserve"><value>Rejoindre l'&#xE9;quipe</value></data>
@@ -509,7 +489,7 @@
   <data name="MyTeams_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="MyTeams_View" xml:space="preserve"><value>Voir</value></data>
   <data name="MyTeams_Leave" xml:space="preserve"><value>Quitter</value></data>
-  <data name="MyTeams_NoTeams" xml:space="preserve"><value>Vous n'&#xEA;tes encore membre d'aucune &#xE9;quipe.</value></data>
+  <data name="MyTeams_NoTeams" xml:space="preserve"><value>Vous ne faites pas encore partie d'une &#xE9;quipe.</value></data>
   <data name="MyTeams_BrowseTeams" xml:space="preserve"><value>Parcourir les &#xE9;quipes</value></data>
   <data name="MyTeams_PendingRequests" xml:space="preserve"><value>Demandes en attente</value></data>
   <data name="MyTeams_Status" xml:space="preserve"><value>Statut</value></data>
@@ -526,7 +506,7 @@
 
   <!-- Team Controller TempData -->
   <data name="Team_CannotJoinSystem" xml:space="preserve"><value>Impossible de rejoindre directement les &#xE9;quipes syst&#xE8;me.</value></data>
-  <data name="Team_AlreadyMember" xml:space="preserve"><value>Vous &#xEA;tes d&#xE9;j&#xE0; membre de cette &#xE9;quipe.</value></data>
+  <data name="Team_AlreadyMember" xml:space="preserve"><value>Vous faites d&#xE9;j&#xE0; partie de cette &#xE9;quipe.</value></data>
   <data name="Team_AlreadyPendingRequest" xml:space="preserve"><value>Vous avez d&#xE9;j&#xE0; une demande en attente pour cette &#xE9;quipe.</value></data>
   <data name="Team_JoinRequestSubmitted" xml:space="preserve"><value>Votre demande d'adh&#xE9;sion a &#xE9;t&#xE9; envoy&#xE9;e et est en attente d'approbation.</value></data>
   <data name="Team_Joined" xml:space="preserve"><value>Vous avez rejoint l'&#xE9;quipe avec succ&#xE8;s&#xA0;!</value></data>
@@ -541,7 +521,7 @@
   <data name="TeamAdminRequests_Title" xml:space="preserve"><value>Demandes en attente - {0}</value><comment>{0} = team name</comment></data>
 
   <!-- TeamAdmin Controller TempData -->
-  <data name="TeamAdmin_RequestApproved" xml:space="preserve"><value>Demande approuv&#xE9;e. L'utilisateur est d&#xE9;sormais membre de l'&#xE9;quipe.</value></data>
+  <data name="TeamAdmin_RequestApproved" xml:space="preserve"><value>Demande approuv&#xE9;e. L'utilisateur fait d&#xE9;sormais partie de l'&#xE9;quipe.</value></data>
   <data name="TeamAdmin_ProvideRejectionReason" xml:space="preserve"><value>Veuillez fournir un motif de refus.</value></data>
   <data name="TeamAdmin_RequestRejected" xml:space="preserve"><value>Demande refus&#xE9;e.</value></data>
   <data name="TeamAdmin_RoleUpdated" xml:space="preserve"><value>R&#xF4;le du membre mis &#xE0; jour en {0}.</value><comment>{0} = role name</comment></data>
@@ -813,9 +793,9 @@
   <data name="TeamAdmin_ManageResources" xml:space="preserve"><value>G&#xE9;rer les ressources</value></data>
   <data name="TeamAdmin_SystemTeam" xml:space="preserve"><value>&#xC9;quipe syst&#xE8;me</value></data>
   <data name="TeamAdmin_SystemTeamRolesInfo" xml:space="preserve"><value>Ceci est une &#xE9;quipe g&#xE9;r&#xE9;e par le syst&#xE8;me. Les r&#xF4;les des membres ne peuvent pas &#xEA;tre modifi&#xE9;s manuellement.</value></data>
-  <data name="TeamAdmin_RemoveConfirm" xml:space="preserve"><value>Retirer ce membre de l'&#xE9;quipe&#xA0;?</value></data>
+  <data name="TeamAdmin_RemoveConfirm" xml:space="preserve"><value>Retirer ce human de l'&#xE9;quipe&#xA0;?</value></data>
   <data name="TeamAdmin_Remove" xml:space="preserve"><value>Retirer</value></data>
-  <data name="TeamAdmin_NoMembers" xml:space="preserve"><value>Aucun membre dans cette &#xE9;quipe pour le moment.</value></data>
+  <data name="TeamAdmin_NoMembers" xml:space="preserve"><value>Aucun human dans cette &#xE9;quipe pour le moment.</value></data>
   <data name="TeamAdmin_BackToTeam" xml:space="preserve"><value>Retour &#xE0; l'&#xE9;quipe</value></data>
   <data name="TeamAdmin_ViewPendingRequests" xml:space="preserve"><value>Voir les demandes en attente</value></data>
   <data name="TeamAdmin_Message" xml:space="preserve"><value>Message</value></data>
@@ -859,7 +839,7 @@
   <data name="ProfileEdit_PictureHelp" xml:space="preserve"><value>T&#xE9;l&#xE9;chargez une image JPEG, PNG, WebP ou HEIC (max. 20 Mo). Les grandes images sont redimensionn&#xE9;es automatiquement. Ceci remplace votre avatar Google.</value></data>
   <data name="ProfileEdit_RemovePicture" xml:space="preserve"><value>Supprimer la photo personnalis&#xE9;e (revenir &#xE0; l'avatar Google)</value></data>
   <data name="ProfileEdit_DateOfBirthHelp" xml:space="preserve"><value>Visible uniquement par vous et le conseil d'administration. Utilis&#xE9; pour le calendrier des anniversaires.</value></data>
-  <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinators</value></data>
+  <data name="TeamDetail_TeamCoordinators" xml:space="preserve"><value>Coordinateurs</value></data>
 
   <!-- Team Public Pages -->
   <data name="TeamDetail_AboutTeam" xml:space="preserve"><value>À propos</value></data>
@@ -912,7 +892,7 @@
   <!-- Contribution & Board     -->
   <!-- ======================== -->
   <data name="Profile_ContributionInterests" xml:space="preserve"><value>Comment j'aimerais contribuer</value></data>
-  <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve"><value>Partagez vos compétences, intérêts et comment vous aimeriez vous impliquer. Visible par tous les membres.</value></data>
+  <data name="ProfileEdit_ContributionInterestsHelp" xml:space="preserve"><value>Partagez vos compétences, intérêts et comment vous aimeriez vous impliquer. Visible par tous les humans.</value></data>
   <data name="Profile_BoardNotes" xml:space="preserve"><value>Notes pour le Conseil</value></data>
   <data name="ProfileEdit_BoardNotesHelp" xml:space="preserve"><value>Notes privées pour le Conseil.</value></data>
   <data name="Validation_PhoneE164" xml:space="preserve"><value>{0} doit commencer par + et l'indicatif du pays (ex. +34 612 345 678)</value></data>
@@ -927,8 +907,6 @@
   <data name="OnboardingReview_NoPending" xml:space="preserve"><value>Aucun human n'attend de r&#xE9;vision.</value></data>
   <data name="OnboardingReview_PendingSection" xml:space="preserve"><value>En attente d'examen</value></data>
   <data name="OnboardingReview_FlaggedSection" xml:space="preserve"><value>Signal&#xE9; pour suivi</value></data>
-  <data name="OnboardingReview_Pending" xml:space="preserve"><value>Consentements pr&#xEA;ts</value></data>
-  <data name="OnboardingReview_ConsentsNotStarted" xml:space="preserve"><value>Consentements non commenc&#xE9;s</value></data>
   <data name="OnboardingReview_FlaggedBadge" xml:space="preserve"><value>Signal&#xE9;</value></data>
   <data name="OnboardingReview_ProfileSummary" xml:space="preserve"><value>R&#xE9;sum&#xE9; du profil</value></data>
   <data name="OnboardingReview_NewHumanSummary" xml:space="preserve"><value>R&#xE9;sum&#xE9; du nouveau human</value></data>
@@ -941,13 +919,13 @@
   <data name="OnboardingReview_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="OnboardingReview_NotesPlaceholder" xml:space="preserve"><value>Notes facultatives...</value></data>
   <data name="OnboardingReview_ClearButton" xml:space="preserve"><value>Valider &amp; Approuver</value></data>
-  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>La validation approuvera automatiquement ce human en tant que b&#xE9;n&#xE9;vole.</value></data>
-  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>Ce human sera approuv&#xE9; en tant que b&#xE9;n&#xE9;vole. Continuer ?</value></data>
+  <data name="OnboardingReview_ClearHelp" xml:space="preserve"><value>Approuve la r&#xE9;vision du profil. Le human rejoindra les B&#xE9;n&#xE9;voles lorsque les documents l&#xE9;gaux seront &#xE9;galement sign&#xE9;s.</value></data>
+  <data name="OnboardingReview_ClearConfirm" xml:space="preserve"><value>La r&#xE9;vision du profil de ce human sera valid&#xE9;e. Continuer ?</value></data>
   <data name="OnboardingReview_FlagButton" xml:space="preserve"><value>Signaler pour examen</value></data>
   <data name="OnboardingReview_FlagReasonPlaceholder" xml:space="preserve"><value>Motif du signalement...</value></data>
   <data name="OnboardingReview_FlagConfirm" xml:space="preserve"><value>Ce human sera signal&#xE9; pour examen compl&#xE9;mentaire. Continuer ?</value></data>
   <data name="OnboardingReview_AlreadyCleared" xml:space="preserve"><value>Ce human a d&#xE9;j&#xE0; &#xE9;t&#xE9; valid&#xE9;.</value></data>
-  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>V&#xE9;rification du consentement valid&#xE9;e. Human approuv&#xE9; en tant que b&#xE9;n&#xE9;vole.</value></data>
+  <data name="OnboardingReview_Cleared" xml:space="preserve"><value>R&#xE9;vision du profil valid&#xE9;e.</value></data>
   <data name="OnboardingReview_Flagged" xml:space="preserve"><value>Human signal&#xE9; pour examen compl&#xE9;mentaire.</value></data>
   <data name="OnboardingReview_RejectButton" xml:space="preserve"><value>Refuser l'inscription</value></data>
   <data name="OnboardingReview_RejectReasonPlaceholder" xml:space="preserve"><value>Motif du refus...</value></data>
@@ -955,7 +933,10 @@
   <data name="OnboardingReview_RejectHelp" xml:space="preserve"><value>Le refus refusera d&#xE9;finitivement l'inscription de ce human et enverra un email de notification.</value></data>
   <data name="OnboardingReview_Rejected" xml:space="preserve"><value>L'inscription a &#xE9;t&#xE9; refus&#xE9;e.</value></data>
   <data name="OnboardingReview_AlreadyRejected" xml:space="preserve"><value>Ce human a d&#xE9;j&#xE0; &#xE9;t&#xE9; refus&#xE9;.</value></data>
-  <data name="OnboardingReview_ConsentsRequired" xml:space="preserve"><value>L'int&#xE9;gration ne peut pas &#xEA;tre valid&#xE9;e tant que tous les accords requis ne sont pas sign&#xE9;s.</value></data>
+  <data name="OnboardingReview_LegalDocuments" xml:space="preserve"><value>Documents l&#xE9;gaux</value></data>
+  <data name="OnboardingReview_DocsComplete" xml:space="preserve"><value>Complet</value></data>
+  <data name="OnboardingReview_DocsPending" xml:space="preserve"><value>En attente</value></data>
+  <data name="OnboardingReview_DocsNote" xml:space="preserve"><value>La r&#xE9;vision du profil peut se faire ind&#xE9;pendamment. Le human rejoindra les B&#xE9;n&#xE9;voles lorsque tous les documents seront sign&#xE9;s.</value></data>
 
   <!-- Board Voting -->
   <data name="Nav_BoardVoting" xml:space="preserve"><value>Vote du Conseil</value></data>
@@ -1134,8 +1115,8 @@
   <data name="Email_BoardDigest_PendingDeletions" xml:space="preserve"><value>{0} suppressions de compte en attente</value><comment>{0} = count</comment></data>
 
   <!-- Navigation restructure -->
-  <data name="Nav_Review" xml:space="preserve"><value>Review</value></data>
-  <data name="Nav_Voting" xml:space="preserve"><value>Voting</value></data>
+  <data name="Nav_Review" xml:space="preserve"><value>Examen</value></data>
+  <data name="Nav_Voting" xml:space="preserve"><value>Vote</value></data>
   <data name="Nav_Board" xml:space="preserve"><value>Board</value></data>
 
   <!-- Team admin: add member -->
@@ -1218,5 +1199,119 @@
 
   <!-- Camp Cards -->
   <data name="CampCard_NeedsPhoto" xml:space="preserve"><value>Ce barrio a besoin d'une photo !</value></data>
+
+  <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve"><value>Nom d'affichage</value></data>
+  <data name="CompleteSignup_Submit" xml:space="preserve"><value>Créer un compte</value></data>
+  <data name="CompleteSignup_Title" xml:space="preserve"><value>Finaliser votre inscription</value></data>
+  <data name="Consent_ActionRequired" xml:space="preserve"><value>Action requise</value></data>
+  <data name="Consent_LastUpdated" xml:space="preserve"><value>Dernière mise à jour</value></data>
+  <data name="Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Vérification de fusion de comptes&lt;/h2&gt;&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Vous avez demandé à ajouter &lt;strong&gt;{1}&lt;/strong&gt; à votre compte. Cette adresse e-mail est actuellement liée à un autre compte.&lt;/p&gt;&lt;p&gt;Si vous vérifiez cet e-mail, une demande de fusion sera soumise pour examen par un administrateur. Une fois approuvée, les données de l'autre compte seront fusionnées dans le vôtre et le compte en double sera archivé.&lt;/p&gt;&lt;p&gt;Veuillez cliquer sur le lien ci-dessous pour vérifier et demander la fusion :&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;Vérifier et demander la fusion&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 24 heures.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas fait cette demande, vous pouvez ignorer cet e-mail. Aucune modification ne sera effectuée.&lt;/p&gt;&lt;p&gt;L'équipe Humans&lt;/p&gt;</value></data>
+  <data name="Email_FacilitatedMessage_Body" xml:space="preserve"><value>&lt;h2&gt;Message de {1}&lt;/h2&gt;&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;{1} vous a envoyé un message via Humans :&lt;/p&gt;&lt;hr /&gt;&lt;p&gt;{2}&lt;/p&gt;&lt;hr /&gt;{3}</value></data>
+  <data name="Email_FacilitatedMessage_NoContactInfo" xml:space="preserve"><value>Cet humain a choisi de ne pas partager ses coordonnées.</value></data>
+  <data name="Email_FacilitatedMessage_Subject" xml:space="preserve"><value>Message Humans de : {0}</value></data>
+  <data name="Email_MagicLinkLogin_Body" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Cliquez sur le lien ci-dessous pour vous connecter :&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Se connecter à Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas demandé ceci, vous pouvez ignorer cet e-mail.&lt;/p&gt;</value></data>
+  <data name="Email_MagicLinkLogin_Subject" xml:space="preserve"><value>Votre lien de connexion pour Nobodies</value></data>
+  <data name="Email_MagicLinkSignup_Body" xml:space="preserve"><value>&lt;p&gt;Bienvenue chez Nobodies !&lt;/p&gt;&lt;p&gt;Cliquez sur le lien ci-dessous pour créer votre compte :&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Créer votre compte&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Ce lien expire dans 15 minutes et ne peut être utilisé qu'une seule fois.&lt;/p&gt;&lt;p&gt;Si vous n'avez pas demandé ceci, vous pouvez ignorer cet e-mail.&lt;/p&gt;</value></data>
+  <data name="Email_MagicLinkSignup_Subject" xml:space="preserve"><value>Bienvenue chez Nobodies — confirmez votre e-mail</value></data>
+  <data name="Emails_AddNew" xml:space="preserve"><value>Ajouter une adresse e-mail</value></data>
+  <data name="Emails_BackToEdit" xml:space="preserve"><value>Retour à la modification du profil</value></data>
+  <data name="Emails_Description" xml:space="preserve"><value>Gérez vos adresses e-mail. Votre adresse de connexion est toujours incluse. Ajoutez des e-mails supplémentaires, définissez laquelle reçoit les notifications et contrôlez la visibilité du profil.</value></data>
+  <data name="Emails_ManageEmails" xml:space="preserve"><value>Adresses e-mail</value></data>
+  <data name="Emails_ManageEmailsHelp" xml:space="preserve"><value>Ajouter des adresses e-mail supplémentaires, gérer les notifications et définir la visibilité du profil.</value></data>
+  <data name="Emails_ManageLater" xml:space="preserve"><value>Vous pourrez ajouter et gérer des adresses e-mail supplémentaires depuis votre profil après avoir terminé la configuration.</value></data>
+  <data name="Emails_ResendCooldown" xml:space="preserve"><value>Vous pourrez demander un nouvel e-mail de vérification dans {0} minute(s).</value></data>
+  <data name="Emails_SendVerification" xml:space="preserve"><value>Envoyer un e-mail de vérification</value></data>
+  <data name="Emails_Title" xml:space="preserve"><value>Adresses e-mail</value></data>
+  <data name="Emails_VerificationWillBeSent" xml:space="preserve"><value>Un e-mail de vérification sera envoyé à cette adresse.</value></data>
+  <data name="Emails_YourEmails" xml:space="preserve"><value>Vos adresses e-mail</value></data>
+  <data name="Login_MagicLink_Placeholder" xml:space="preserve"><value>votre@email.com</value></data>
+  <data name="Login_MagicLink_Submit" xml:space="preserve"><value>M'envoyer un lien de connexion</value></data>
+  <data name="Login_MagicLink_Title" xml:space="preserve"><value>Ou se connecter par e-mail</value></data>
+  <data name="MagicLinkConfirm_Message" xml:space="preserve"><value>Cliquez sur le bouton ci-dessous pour vous connecter à votre compte.</value></data>
+  <data name="MagicLinkConfirm_SignIn" xml:space="preserve"><value>Se connecter</value></data>
+  <data name="MagicLinkConfirm_Title" xml:space="preserve"><value>Se connecter</value></data>
+  <data name="MagicLinkError_Message" xml:space="preserve"><value>Ce lien de connexion a expiré ou a déjà été utilisé.</value></data>
+  <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Demander un nouveau lien</value></data>
+  <data name="MagicLinkError_Title" xml:space="preserve"><value>Lien expiré ou invalide</value></data>
+  <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Retour à la connexion</value></data>
+  <data name="MagicLinkSent_Title" xml:space="preserve"><value>Vérifiez vos e-mails</value></data>
+  <data name="ProfileEdit_ManageEmails" xml:space="preserve"><value>Adresses e-mail</value></data>
+  <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>Ajouter des adresses e-mail, définir les préférences de notification et contrôler la visibilité du profil.</value></data>
+  <data name="Profile_Day" xml:space="preserve"><value>Jour</value></data>
+  <data name="Profile_Month" xml:space="preserve"><value>Mois</value></data>
+  <data name="Profile_NotificationTarget" xml:space="preserve"><value>Les notifications système sont envoyées à cette adresse</value></data>
+  <data name="Profile_NotificationTargetShort" xml:space="preserve"><value>Notifications</value></data>
+  <data name="SendMessage_Breadcrumb" xml:space="preserve"><value>Envoyer un message</value></data>
+  <data name="SendMessage_Button" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
+  <data name="SendMessage_Heading" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
+  <data name="SendMessage_IncludeContactInfo" xml:space="preserve"><value>Inclure mes coordonnées</value></data>
+  <data name="SendMessage_IncludeContactInfoHelp" xml:space="preserve"><value>Votre nom et votre e-mail seront inclus pour que la personne puisse vous répondre directement.</value></data>
+  <data name="SendMessage_MessageLabel" xml:space="preserve"><value>Message</value></data>
+  <data name="SendMessage_PlainTextOnly" xml:space="preserve"><value>Texte brut uniquement. Maximum 2000 caractères.</value></data>
+  <data name="SendMessage_Send" xml:space="preserve"><value>Envoyer le message</value></data>
+  <data name="SendMessage_Success" xml:space="preserve"><value>Votre message a été envoyé à {0}.</value></data>
+  <data name="SendMessage_Title" xml:space="preserve"><value>Envoyer un message à {0}</value></data>
+  <data name="TeamDetail_ManageConsents" xml:space="preserve"><value>Documents juridiques</value></data>
+
+  <!-- ======================== -->
+  <!-- Things To Do Wizard      -->
+  <!-- ======================== -->
+  <data name="Todo_Title" xml:space="preserve"><value>T&#xE2;ches &#xE0; faire</value></data>
+  <data name="Todo_PendingBadge" xml:space="preserve"><value>{0} en attente</value></data>
+  <data name="Todo_Profile_Title" xml:space="preserve"><value>Compl&#xE9;ter votre profil</value></data>
+  <data name="Todo_Profile_Done" xml:space="preserve"><value>Votre profil est complet.</value></data>
+  <data name="Todo_Profile_Pending" xml:space="preserve"><value>Ajoutez vos informations pour que la communaut&#xE9; puisse vous conna&#xEE;tre.</value></data>
+  <data name="Todo_Profile_Action" xml:space="preserve"><value>Modifier le profil</value></data>
+  <data name="Todo_Consents_Title" xml:space="preserve"><value>Accepter les accords</value></data>
+  <data name="Todo_Consents_Done" xml:space="preserve"><value>Tous les accords sont &#xE0; jour.</value></data>
+  <data name="Todo_Consents_Pending" xml:space="preserve"><value>{0} document(s) sur {1} n&#xE9;cessitent votre consentement.</value></data>
+  <data name="Todo_Consents_Action" xml:space="preserve"><value>Examiner les accords</value></data>
+  <data name="Todo_ConsentCheck_Title" xml:space="preserve"><value>V&#xE9;rification du coordinateur</value></data>
+  <data name="Todo_ConsentCheck_Done" xml:space="preserve"><value>Un coordinateur a v&#xE9;rifi&#xE9; et approuv&#xE9; vos documents.</value></data>
+  <data name="Todo_ConsentCheck_Pending" xml:space="preserve"><value>Un coordinateur v&#xE9;rifiera vos documents une fois le profil et les accords compl&#xE9;t&#xE9;s.</value></data>
+  <data name="Todo_ShiftInfo_Title" xml:space="preserve"><value>D&#xE9;finir vos pr&#xE9;f&#xE9;rences de quart</value></data>
+  <data name="Todo_ShiftInfo_Done" xml:space="preserve"><value>Vos pr&#xE9;f&#xE9;rences de quart sont d&#xE9;finies.</value></data>
+  <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>Remplissez vos informations de quart pour que les coordinateurs connaissent vos comp&#xE9;tences et pr&#xE9;f&#xE9;rences.</value></data>
+  <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Remplir les infos de quart</value></data>
+
+  <!-- Notification Inbox -->
+  <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notification_Popup_AriaLabel" xml:space="preserve"><value>Notification popup</value></data>
+  <data name="Notification_Popup_Title" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notification_Popup_NeedAction" xml:space="preserve"><value>need action</value></data>
+  <data name="Notification_Popup_Close" xml:space="preserve"><value>Close notifications</value></data>
+  <data name="Notification_Popup_CaughtUp" xml:space="preserve"><value>You're all caught up.</value></data>
+  <data name="Notification_Popup_NoUnread" xml:space="preserve"><value>No unread notifications.</value></data>
+  <data name="Notification_Section_NeedsAttention" xml:space="preserve"><value>Needs your attention</value></data>
+  <data name="Notification_Section_Recent" xml:space="preserve"><value>Recent</value></data>
+  <data name="Notification_Section_Informational" xml:space="preserve"><value>Informational</value></data>
+  <data name="Notification_Section_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Notification_Section_WorkQueues" xml:space="preserve"><value>Work queues</value></data>
+  <data name="Notification_MarkAllRead" xml:space="preserve"><value>Mark all as read</value></data>
+  <data name="Notification_SeeAll" xml:space="preserve"><value>See all notifications</value></data>
+  <data name="Notification_PageTitle" xml:space="preserve"><value>All notifications</value></data>
+  <data name="Notification_SearchPlaceholder" xml:space="preserve"><value>Search notifications...</value></data>
+  <data name="Notification_Filter_All" xml:space="preserve"><value>All</value></data>
+  <data name="Notification_Filter_NeedsAction" xml:space="preserve"><value>Needs action</value></data>
+  <data name="Notification_Filter_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Notification_Filter_Approvals" xml:space="preserve"><value>Approvals</value></data>
+  <data name="Notification_Filter_Resolved" xml:space="preserve"><value>Resolved</value></data>
+  <data name="Notification_Tab_Unread" xml:space="preserve"><value>Unread</value></data>
+  <data name="Notification_Tab_All" xml:space="preserve"><value>All</value></data>
+  <data name="Notification_Inbox_Title" xml:space="preserve"><value>Notifications</value></data>
+  <data name="Notification_Tag_Urgent" xml:space="preserve"><value>Urgent</value></data>
+  <data name="Notification_Tag_Action" xml:space="preserve"><value>Action</value></data>
+  <data name="Notification_Tag_Info" xml:space="preserve"><value>Info</value></data>
+  <data name="Notification_Dismiss" xml:space="preserve"><value>Dismiss</value></data>
+  <data name="Notification_HandledBy" xml:space="preserve"><value>Handled by {0}, {1}</value></data>
+  <data name="Notification_Pref_InboxEnabled" xml:space="preserve"><value>In-app notifications</value></data>
+  <data name="Notification_DefaultActionLabel" xml:space="preserve"><value>View →</value></data>
+  <data name="Notification_TimeAgo_JustNow" xml:space="preserve"><value>just now</value></data>
+  <data name="Notification_TimeAgo_Minutes" xml:space="preserve"><value>{0}m ago</value></data>
+  <data name="Notification_TimeAgo_Hours" xml:space="preserve"><value>{0}h ago</value></data>
+  <data name="Notification_TimeAgo_Days" xml:space="preserve"><value>{0}d ago</value></data>
+  <data name="Notification_Bulk_Selected" xml:space="preserve"><value>{0} selected</value></data>
+  <data name="Notification_Bulk_Resolve" xml:space="preserve"><value>Resolve selected</value></data>
+  <data name="Notification_Bulk_Dismiss" xml:space="preserve"><value>Dismiss selected</value></data>
 
 </root>

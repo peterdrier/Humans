@@ -9,12 +9,9 @@
             <h1>@(Model.IsOwnProfile ? Localizer["Profile_Title"] : Model.DisplayName)</h1>
             <div class="d-flex gap-2">
                 <vc:access-matrix section="Profile" />
-                @if (Humans.Web.Authorization.RoleChecks.IsHumanAdminBoardOrAdmin(User))
-                {
-                    <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary">
-                        <i class="fa-solid fa-user-shield"></i> Admin
-                    </human-link>
-                }
+                <human-link user-id="@Model.UserId" display-name="Admin" admin="true" class="btn btn-sm btn-outline-secondary" authorize-policy="HumanAdminBoardOrAdmin">
+                    <i class="fa-solid fa-user-shield"></i> Admin <i class="fa-solid fa-lock auth-lock-icon"></i>
+                </human-link>
             </div>
         </div>
 
@@ -57,7 +54,14 @@
             </div>
         }
 
-        <vc:profile-card user-id="@Model.UserId" view-mode="@(Model.IsOwnProfile ? ProfileCardViewMode.Self : ProfileCardViewMode.Public)" />
+        @{
+            var cardViewMode = Model.IsOwnProfile
+                ? ProfileCardViewMode.Self
+                : Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.TeamsAdminBoardOrAdmin, User)
+                    ? ProfileCardViewMode.Admin
+                    : ProfileCardViewMode.Public;
+        }
+        <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
 
         @if (Model.NoShowHistory != null && Model.NoShowHistory.Count > 0)
         {
@@ -150,10 +154,10 @@
                         }
                     </a>
                     <a asp-controller="Profile" asp-action="ShiftInfo" class="list-group-item list-group-item-action">Shift Info</a>
-                    <a asp-controller="Profile" asp-action="Notifications" class="list-group-item list-group-item-action">Notifications</a>
+                    <a asp-controller="Profile" asp-action="CommunicationPreferences" class="list-group-item list-group-item-action">Communication Preferences</a>
                     <a asp-controller="Governance" asp-action="Index" class="list-group-item list-group-item-action">@Localizer["Nav_Governance"]</a>
                     <a asp-controller="Profile" asp-action="Privacy" class="list-group-item list-group-item-action">@Localizer["ProfilePrivacy_Title"]</a>
-                    <a asp-controller="Profile" asp-action="Outbox" class="list-group-item list-group-item-action">My Emails</a>
+                    <a asp-controller="Profile" asp-action="MyOutbox" class="list-group-item list-group-item-action">My Emails</a>
                 </div>
             </div>
         </div>

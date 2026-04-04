@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Infrastructure.Services;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -16,7 +19,10 @@ public class HomeController : HumansControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _shiftSignup;
     private readonly IConfiguration _configuration;
+    private readonly ConfigurationRegistry _configRegistry;
     private readonly IClock _clock;
+    private readonly TicketVendorSettings _ticketSettings;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly ILogger<HomeController> _logger;
 
     public HomeController(
@@ -27,7 +33,10 @@ public class HomeController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService shiftSignup,
         IConfiguration configuration,
+        ConfigurationRegistry configRegistry,
         IClock clock,
+        IOptions<TicketVendorSettings> ticketSettings,
+        ITicketQueryService ticketQueryService,
         ILogger<HomeController> logger)
         : base(userManager)
     {
@@ -37,7 +46,10 @@ public class HomeController : HumansControllerBase
         _shiftMgmt = shiftMgmt;
         _shiftSignup = shiftSignup;
         _configuration = configuration;
+        _configRegistry = configRegistry;
         _clock = clock;
+        _ticketSettings = ticketSettings.Value;
+        _ticketQueryService = ticketQueryService;
         _logger = logger;
     }
 
@@ -93,6 +105,7 @@ public class HomeController : HumansControllerBase
 
         var viewModel = new DashboardViewModel
         {
+            UserId = user.Id,
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
             MembershipStatus = membershipSnapshot.Status,
@@ -120,6 +133,11 @@ public class HomeController : HumansControllerBase
         try
         {
             var activeEvent = await _shiftMgmt.GetActiveAsync();
+            if (activeEvent is not null)
+            {
+                viewModel.EventName = activeEvent.EventName;
+                viewModel.IsShiftBrowsingOpen = activeEvent.IsShiftBrowsingOpen;
+            }
             if (activeEvent is not null && activeEvent.IsShiftBrowsingOpen)
             {
                 var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
@@ -202,22 +220,8 @@ public class HomeController : HumansControllerBase
                     PendingCount = pendingCount
                 };
 
-                // Check if user has signups but hasn't filled out shift info
-                if (nextShifts.Count > 0 || pendingCount > 0)
-                {
-                    try
-                    {
-                        var shiftProfile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: false);
-                        if (shiftProfile is null || IsShiftProfileEmpty(shiftProfile))
-                        {
-                            ViewData["NeedsShiftInfo"] = true;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to check shift profile for dashboard todo");
-                    }
-                }
+                // Pass shift signup state to ThingsToDo wizard
+                viewModel.HasShiftSignups = nextShifts.Count > 0 || pendingCount > 0;
             }
         }
         catch (Exception ex)
@@ -225,28 +229,30 @@ public class HomeController : HumansControllerBase
             _logger.LogError(ex, "Failed to load shift cards for dashboard");
         }
 
-        return View("Dashboard", viewModel);
-    }
+        // Per-user ticket status — always renders, shows warning when unconfigured
+        viewModel.TicketPurchaseUrl = "https://tickets.nobodies.team";
+        viewModel.TicketsConfigured = _ticketSettings.IsConfigured;
+        try
+        {
+            if (_ticketSettings.IsConfigured)
+            {
+                var ticketCount = await _ticketQueryService.GetUserTicketCountAsync(user.Id);
+                viewModel.HasTicket = ticketCount > 0;
+                viewModel.UserTicketCount = ticketCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load ticket status for user {UserId}", user.Id);
+        }
 
-    private static bool IsShiftProfileEmpty(Domain.Entities.VolunteerEventProfile profile)
-    {
-        return profile.Skills.Count == 0
-            && profile.Quirks.Count == 0
-            && profile.Languages.Count == 0
-            && profile.Allergies.Count == 0
-            && profile.Intolerances.Count == 0
-            && string.IsNullOrEmpty(profile.DietaryPreference)
-            && string.IsNullOrEmpty(profile.MedicalConditions);
+        return View("Dashboard", viewModel);
     }
 
     public IActionResult Privacy()
     {
-        ViewData["DpoEmail"] = _configuration["Email:DpoAddress"];
-        return View();
-    }
-
-    public IActionResult About()
-    {
+        ViewData["DpoEmail"] = _configuration.GetOptionalSetting(
+            _configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
         return View();
     }
 

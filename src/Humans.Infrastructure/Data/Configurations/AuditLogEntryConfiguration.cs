@@ -36,14 +36,10 @@ public class AuditLogEntryConfiguration : IEntityTypeConfiguration<AuditLogEntry
         builder.Property(e => e.OccurredAt)
             .IsRequired();
 
-        builder.Property(e => e.ActorName)
-            .HasMaxLength(200)
-            .IsRequired();
-
         builder.Property(e => e.RelatedEntityType)
             .HasMaxLength(100);
 
-        // FK to User with SetNull on delete (survives user anonymization; ActorName preserves identity)
+        // FK to User with SetNull on delete (null ActorUserId = system action or deleted user)
         builder.HasOne(e => e.ActorUser)
             .WithMany()
             .HasForeignKey(e => e.ActorUserId)

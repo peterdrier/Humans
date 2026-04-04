@@ -41,6 +41,11 @@ public class EmailsViewModel
     /// Whether the user has a verified @nobodies.team email (which auto-locks Google preference).
     /// </summary>
     public bool HasNobodiesTeamEmail { get; set; }
+
+    /// <summary>
+    /// Status of the Google email for sync operations.
+    /// </summary>
+    public GoogleEmailStatus GoogleEmailStatus { get; set; }
 }
 
 /// <summary>

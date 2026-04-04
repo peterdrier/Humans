@@ -1,0 +1,34 @@
+@model Humans.Web.ViewComponents.AuditLogComponentViewModel
+
+@{
+    var entries = Model.Entries;
+    var hasEntries = entries.Count > 0;
+}
+
+@if (Model.ShowCard)
+{
+    <div class="card mb-4">
+        <div class="card-header">@Model.Title</div>
+        @if (hasEntries)
+        {
+            @await Html.PartialAsync("Components/AuditLog/_EntryList", Model)
+        }
+        else
+        {
+            <div class="card-body text-muted">
+                No audit history.
+            </div>
+        }
+    </div>
+}
+else
+{
+    @if (hasEntries)
+    {
+        @await Html.PartialAsync("Components/AuditLog/_EntryList", Model)
+    }
+    else
+    {
+        <p class="text-muted mb-0">No audit history.</p>
+    }
+}

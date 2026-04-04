@@ -83,6 +83,14 @@ public class TicketOrderConfiguration : IEntityTypeConfiguration<TicketOrder>
         builder.Property(o => o.DiscountAmount)
             .HasPrecision(10, 2);
 
+        builder.Property(o => o.DonationAmount)
+            .IsRequired()
+            .HasPrecision(10, 2);
+
+        builder.Property(o => o.VatAmount)
+            .IsRequired()
+            .HasPrecision(10, 2);
+
         builder.HasIndex(o => o.BuyerEmail);
         builder.HasIndex(o => o.PurchasedAt);
         builder.HasIndex(o => o.MatchedUserId);

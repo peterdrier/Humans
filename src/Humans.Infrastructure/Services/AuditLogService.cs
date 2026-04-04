@@ -40,10 +40,9 @@ public class AuditLogService : IAuditLogService
             Action = action,
             EntityType = entityType,
             EntityId = entityId,
-            Description = description,
+            Description = $"{jobName}: {description}",
             OccurredAt = _clock.GetCurrentInstant(),
             ActorUserId = null,
-            ActorName = jobName,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType
         };
@@ -58,7 +57,7 @@ public class AuditLogService : IAuditLogService
 
     /// <inheritdoc />
     public Task LogAsync(AuditAction action, string entityType, Guid entityId,
-        string description, Guid actorUserId, string actorDisplayName,
+        string description, Guid actorUserId,
         Guid? relatedEntityId = null, string? relatedEntityType = null)
     {
         var entry = new AuditLogEntry
@@ -70,15 +69,14 @@ public class AuditLogService : IAuditLogService
             Description = description,
             OccurredAt = _clock.GetCurrentInstant(),
             ActorUserId = actorUserId,
-            ActorName = actorDisplayName,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType
         };
 
         _dbContext.AuditLogEntries.Add(entry);
 
-        _logger.LogDebug("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
-            action, entityType, entityId, actorDisplayName, description);
+        _logger.LogDebug("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
+            action, entityType, entityId, actorUserId, description);
 
         return Task.CompletedTask;
     }
@@ -96,10 +94,9 @@ public class AuditLogService : IAuditLogService
             Action = action,
             EntityType = "GoogleResource",
             EntityId = resourceId,
-            Description = description,
+            Description = $"{jobName}: {description}",
             OccurredAt = _clock.GetCurrentInstant(),
             ActorUserId = null,
-            ActorName = jobName,
             RelatedEntityId = relatedEntityId,
             RelatedEntityType = relatedEntityType,
             ResourceId = resourceId,
@@ -185,6 +182,38 @@ public class AuditLogService : IAuditLogService
                 (e.RelatedEntityId == userId))
             .OrderByDescending(e => e.OccurredAt)
             .Take(count)
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
+        string? entityType = null,
+        Guid? entityId = null,
+        Guid? userId = null,
+        IReadOnlyList<AuditAction>? actions = null,
+        int limit = 20,
+        CancellationToken ct = default)
+    {
+        var query = _dbContext.AuditLogEntries.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrEmpty(entityType))
+            query = query.Where(e => e.EntityType == entityType);
+
+        if (entityId.HasValue)
+            query = query.Where(e => e.EntityId == entityId.Value);
+
+        if (userId.HasValue)
+            query = query.Where(e =>
+                e.ActorUserId == userId.Value ||
+                e.RelatedEntityId == userId.Value ||
+                (e.EntityType == "User" && e.EntityId == userId.Value));
+
+        if (actions is { Count: > 0 })
+            query = query.Where(e => actions.Contains(e.Action));
+
+        return await query
+            .OrderByDescending(e => e.OccurredAt)
+            .Take(limit)
             .ToListAsync(ct);
     }
 }

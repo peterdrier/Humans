@@ -66,6 +66,11 @@ public class TeamRoleDefinitionConfiguration : IEntityTypeConfiguration<TeamRole
             .HasConversion<string>()
             .HasMaxLength(50);
 
+        builder.Property(d => d.IsPublic)
+            .IsRequired()
+            .HasDefaultValue(true)
+            .HasSentinel(true);
+
         builder.Property(d => d.IsManagement)
             .IsRequired();
 

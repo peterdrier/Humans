@@ -127,6 +127,24 @@ public static class RoleChecks
         return IsFinanceAdmin(user);
     }
 
+    /// <summary>
+    /// Admin or VolunteerCoordinator — intentionally excludes NoInfoAdmin,
+    /// who can approve shift signups but not manage rotas/departments.
+    /// </summary>
+    public static bool IsVolunteerManager(ClaimsPrincipal user)
+    {
+        return IsAdmin(user) || user.IsInRole(RoleNames.VolunteerCoordinator);
+    }
+
+    /// <summary>
+    /// Nav-level access to the volunteer management section.
+    /// Broader than IsVolunteerManager: includes Board and TeamsAdmin for visibility.
+    /// </summary>
+    public static bool CanAccessVolunteers(ClaimsPrincipal user)
+    {
+        return IsTeamsAdminBoardOrAdmin(user) || user.IsInRole(RoleNames.VolunteerCoordinator);
+    }
+
     public static bool CanManageRole(ClaimsPrincipal user, string roleName)
     {
         if (IsAdmin(user))

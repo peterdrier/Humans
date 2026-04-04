@@ -16,6 +16,10 @@ If this session is resumed later, continue from the existing branch and prior pr
 - Forms that lose user input on validation failure
 - Missing authorization on sensitive actions
 - Exception handlers that swallow errors silently
+- App state diverging from external service state (Google sync drift)
+- Boundary/range checks using the wrong field (e.g., start vs end)
+- Infrastructure config that silently breaks deployments or previews
+- Unhandled external status/enum values from webhooks or APIs
 
 **What does NOT count:**
 - Style issues, naming conventions, code smell
@@ -76,10 +80,12 @@ Also do not modify:
 ## Build Command
 
 ```
-dotnet build Humans.slnx && dotnet test Humans.slnx --filter "FullyQualifiedName~Application"
+dotnet build Humans.slnx -v q && dotnet test Humans.slnx -v q --filter "FullyQualifiedName~Application"
 ```
 
-## Phase 1: Razor Boolean Attributes *(highest frequency — 8+ historical fixes)*
+## Phase 1: Razor Rendering & HTML Structure *(highest frequency — 15+ historical fixes)*
+
+### Boolean Attributes
 
 HTML boolean attributes (`disabled`, `readonly`, `checked`, `selected`, `required`, `hidden`, `multiple`, `open`) are active when **present**, regardless of value. `disabled="False"` still disables the element.
 
@@ -92,6 +98,26 @@ HTML boolean attributes (`disabled`, `readonly`, `checked`, `selected`, `require
 - Use conditional rendering: `@if (condition) { @: disabled }` or `@(condition ? "disabled" : "")`
 - For tag helpers, use the conditional attribute syntax: `disabled="@(condition ? "disabled" : null)"`  — null removes the attribute entirely
 - Verify the fix renders correctly: attribute absent when false, present when true
+
+### Conditional Column/Row Rendering
+
+Tables and layouts that show/hide columns or rows based on state can produce mismatched headers, empty cells, or wrong colspan values.
+
+**How to find them:**
+1. Search `.cshtml` files for `@if` blocks inside `<table>`, `<thead>`, `<tbody>` — verify column counts match between header and body rows
+2. Look for conditional `<td>`/`<th>` elements — if a column is conditionally hidden, both header and body must use the same condition
+3. Check for display formatting bugs: times rendering as "0:00–0:00" instead of "All day", merged columns using wrong colspan
+
+### Icon Library Consistency
+
+This project uses **Font Awesome 6 only**. Bootstrap Icons are NOT loaded.
+
+**How to find them:**
+1. Search `.cshtml` files for `bi bi-` — any match is a bug (Bootstrap Icons not loaded)
+2. Verify all icon references use `fa-solid fa-*` or other FA6 prefixes (`fa-regular`, `fa-brands`)
+
+**How to fix:**
+- Replace `bi bi-*` with the equivalent `fa-solid fa-*` icon
 
 ## Phase 2: Missing .Include() on EF Core Queries *(6+ historical fixes)*
 
@@ -181,7 +207,9 @@ EF Core uses `false` as the sentinel value for booleans. `HasDefaultValue(false)
 - Add null checks with appropriate handling (return NotFound, show error, use null-conditional `?.`)
 - For view code, use `??` to provide defaults: `@(ViewBag.Title ?? "Default")`
 
-## Phase 8: Logic Errors and String Handling
+## Phase 8: Logic Errors, State Machines, and String Handling *(20+ historical fixes)*
+
+### String Handling
 
 **How to find them:**
 1. Search for bare string comparisons: `.Equals(` without `StringComparison`, `==` on strings where case matters
@@ -193,6 +221,22 @@ EF Core uses `false` as the sentinel value for booleans. `HasDefaultValue(false)
 - Add `StringComparison.OrdinalIgnoreCase` (for user-facing comparisons) or `StringComparison.Ordinal` (for identifiers)
 - Fix wrong redirects to point to correct actions
 - Replace enum range comparisons with explicit `.Contains()` lists
+
+### State Machine and Boundary Condition Bugs
+
+These are domain logic bugs that silently produce wrong data without crashes. Historically the most frequent category (20+ fixes).
+
+**How to find them:**
+1. **Range/period boundary checks** — search for comparisons using `AbsoluteStart`, `AbsoluteEnd`, `StartDate`, `EndDate`. Verify the correct boundary is used (e.g., "in-progress" should check `AbsoluteEnd > now`, not `AbsoluteStart > now`)
+2. **Aggregation scope** — search for `.Count()`, `.Sum()`, `.GroupBy()`. Verify the grouping/counting unit is correct (e.g., counting signup blocks vs individual days, counting buyers vs attendees)
+3. **Hidden field state corruption** — search for `<input type="hidden"` in forms with conditional fields. When a visible field is conditionally removed, its hidden counterpart may still submit stale values. Verify hidden fields match the visible form state.
+4. **Disabled inputs don't submit** — `disabled` inputs are excluded from form POST data. If code reads a disabled field's value server-side, it will be null/default. Use `readonly` instead, or add a hidden field to preserve the value.
+
+**How to fix:**
+- Fix boundary comparisons to use the correct start/end field
+- Fix aggregation to group/count over the intended unit
+- Add hidden fields to preserve values when visible inputs are conditionally removed
+- Replace `disabled` with `readonly` when the value must be submitted
 
 ## Phase 9: Orphan Pages and Dead Ends *(5+ historical fixes)*
 
@@ -224,6 +268,50 @@ Find catch blocks that don't log the exception. Every catch block should either:
 - Add `ILogger<ClassName>` to constructor if not present
 - Add `_logger.LogError(ex, "Failed to {action} for {context}")` with structured logging
 - Use descriptive messages that include enough context to debug
+
+## Phase 11: Google/External Service Sync Correctness *(12+ historical fixes)*
+
+The app syncs membership data with Google Workspace (Groups, Drive, Gmail). Sync drift — where app state and Google state diverge — has been a recurring source of bugs.
+
+**How to find them:**
+1. **API format mismatches** — search `src/Humans.Infrastructure/Services/Google*/` for API calls. Verify request/response format expectations match the API spec (e.g., requesting JSON format explicitly, handling pagination)
+2. **Email normalization** — search for email comparisons or lookups. `@googlemail.com` and `@gmail.com` are the same mailbox but different strings. Verify normalization happens before comparison or storage.
+3. **Reconciliation persistence** — search background jobs in `src/Humans.Infrastructure/Jobs/` that compare expected vs actual state. Verify they actually persist fixes (`SaveChangesAsync`) after detecting drift, and that they don't silently skip errors.
+4. **Stale external credentials** — search for service account authentication. Verify tokens are refreshed, not cached indefinitely.
+5. **Permission model mismatches** — Google Shared Drive permissions cascade (inherited vs direct). Verify the code only manages direct permissions and excludes inherited ones from drift detection.
+
+**Where to look:**
+- `src/Humans.Infrastructure/Services/Google*/` — all Google API wrappers
+- `src/Humans.Infrastructure/Jobs/` — sync and reconciliation jobs
+- `src/Humans.Infrastructure/Services/*SyncService*` — sync orchestration
+
+**How to fix:**
+- Add explicit format parameters to API calls (e.g., `alt=json`)
+- Normalize emails before comparison: `@googlemail.com` → `@gmail.com`
+- Ensure reconciliation jobs call `SaveChangesAsync` after fixes
+- Filter inherited permissions from drift detection
+
+## Phase 12: Infrastructure Configuration Correctness *(6+ historical fixes)*
+
+Configuration bugs in environment handling, database connections, and external service integration that silently break deployments or produce wrong behavior.
+
+**How to find them:**
+1. **Unhandled enum/status values** — search for `switch` statements and `if`/`else if` chains on external service responses (payment status, webhook events). Verify all possible values are handled, or there's a default/else with logging.
+2. **Environment variable precedence** — search `Program.cs`, `appsettings*.json`, `docker-entrypoint.sh` for conflicting settings (e.g., `ASPNETCORE_URLS` set in both Dockerfile and docker-compose overriding each other).
+3. **Database connection cleanup** — search for direct `NpgsqlConnection` usage (outside EF Core). Verify connections are disposed, and that operations like DB cloning/dropping terminate active connections first.
+4. **Preview environment assumptions** — search for code that extracts PR numbers or branch names from environment variables. Verify the parsing handles edge cases (missing env var, unexpected format).
+
+**Where to look:**
+- `docker-entrypoint.sh`, `Dockerfile`, `docker-compose*.yml`
+- `src/Humans.Web/Program.cs`, `appsettings*.json`
+- `src/Humans.Infrastructure/Services/` — external service integrations (TicketTailor, Google, email)
+- `.github/workflows/` — CI/CD scripts
+
+**How to fix:**
+- Add `default` cases with `_logger.LogWarning` to all switch/enum handling on external data
+- Remove conflicting environment variable definitions
+- Wrap direct DB connections in `using` statements
+- Add null/format checks on environment variable parsing
 
 ## SAFETY CHECKS
 

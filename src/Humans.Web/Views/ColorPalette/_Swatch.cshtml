@@ -1,0 +1,9 @@
+@model (string Variable, string Label)
+<div class="cp-swatch">
+    <div class="cp-swatch-color" style="background-color: var(@Model.Variable);"></div>
+    <div class="cp-swatch-info">
+        <div class="cp-swatch-var">@Model.Variable</div>
+        <div class="cp-swatch-hex" data-var="@Model.Variable"></div>
+        <div class="cp-swatch-label">@Model.Label</div>
+    </div>
+</div>

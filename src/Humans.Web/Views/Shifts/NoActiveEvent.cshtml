@@ -5,8 +5,5 @@
 <div class="container py-4 text-center">
     <h2>Shifts</h2>
     <p class="text-muted mt-4">No active event is configured. An admin needs to set up event settings first.</p>
-    @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
-    {
-        <a asp-action="Settings" class="btn btn-primary mt-2">Configure Event Settings</a>
-    }
+    <a asp-action="Settings" class="btn btn-primary mt-2" authorize-policy="AdminOnly">Configure Event Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
 </div>

@@ -132,6 +132,10 @@
                     {
                         <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
                     }
+                    @foreach (var tag in rota.Tags.OrderBy(t => t.Name, StringComparer.Ordinal))
+                    {
+                        <span class="badge bg-light text-dark border ms-1"><i class="fa-solid fa-tag fa-xs me-1"></i>@tag.Name</span>
+                    }
                     @if (!string.IsNullOrEmpty(rota.Description))
                     {
                         <div class="text-muted small mt-1">@Html.SanitizedMarkdown(rota.Description)</div>
@@ -148,18 +152,24 @@
                             @Html.AntiForgeryToken()
                             @if (rota.IsVisibleToVolunteers)
                             {
-                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Hide from volunteers">
+                                <button type="submit" class="btn btn-sm btn-outline-warning" title="Hide from humans">
                                     <i class="fa-solid fa-eye-slash"></i>
                                 </button>
                             }
                             else
                             {
-                                <button type="submit" class="btn btn-sm btn-warning" title="Show to volunteers">
+                                <button type="submit" class="btn btn-sm btn-warning" title="Show to humans">
                                     <i class="fa-solid fa-eye"></i>
                                 </button>
                             }
                         </form>
                         <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#edit-rota-@rota.Id.ToString("N")">Edit</button>
+                        @if (Model.AllDepartments.Count > 0)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#move-rota-@rota.Id.ToString("N")" title="Move to another team">
+                                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                            </button>
+                        }
                         <form asp-action="DeleteRota" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post" class="d-inline">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-sm btn-outline-danger"
@@ -199,6 +209,11 @@
                                 <div class="col-md-3">
                                     <label class="form-label">Description</label>
                                     <textarea name="Description" class="form-control" rows="2">@rota.Description</textarea>
+                                    <div class="form-text">
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                             <div class="row g-2 mt-2 align-items-end">
@@ -214,14 +229,75 @@
                                 <div class="col-md-6">
                                     <label class="form-label">Practical Info</label>
                                     <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions...">@rota.PracticalInfo</textarea>
+                                    <div class="form-text">
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                        </a>
+                                    </div>
                                 </div>
                                 <div class="col-md-2">
                                     <button type="submit" class="btn btn-primary">Save</button>
                                 </div>
                             </div>
+                            @if (Model.AllTags.Count > 0)
+                            {
+                                <div class="row g-2 mt-2">
+                                    <div class="col-md-12">
+                                        <label class="form-label">Tags</label>
+                                        <div class="d-flex flex-wrap gap-2" data-tag-picker="edit-@rota.Id.ToString("N")">
+                                            @foreach (var tag in Model.AllTags)
+                                            {
+                                                var isSelected = rota.Tags.Any(t => t.Id == tag.Id);
+                                                <div class="form-check form-check-inline">
+                                                    <input class="form-check-input tag-checkbox" type="checkbox"
+                                                           data-tag-id="@tag.Id" id="edit-tag-@rota.Id.ToString("N")-@tag.Id.ToString("N")"
+                                                           @if (isSelected) { <text>checked</text> } />
+                                                    <label class="form-check-label" for="edit-tag-@rota.Id.ToString("N")-@tag.Id.ToString("N")">@tag.Name</label>
+                                                </div>
+                                            }
+                                        </div>
+                                        <input type="hidden" name="TagIds" value="@string.Join(",", rota.Tags.Select(t => t.Id))" data-tag-ids="edit-@rota.Id.ToString("N")" />
+                                        <div class="mt-1">
+                                            <div class="input-group input-group-sm" style="max-width: 300px;">
+                                                <input type="text" class="form-control" placeholder="New tag..." data-new-tag-input="edit-@rota.Id.ToString("N")" maxlength="100" />
+                                                <button type="button" class="btn btn-outline-primary" data-new-tag-btn="edit-@rota.Id.ToString("N")">Add</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
                         </form>
                     </div>
                 </div>
+                @if (Model.AllDepartments.Count > 0)
+                {
+                    <div class="collapse" id="move-rota-@rota.Id.ToString("N")">
+                        <div class="card-body border-bottom">
+                            <form asp-action="MoveRota" asp-route-slug="@Model.Department.Slug" asp-route-rotaId="@rota.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Move to team</label>
+                                        <select name="TargetTeamId" class="form-select" required>
+                                            <option value="">Select a team...</option>
+                                            @foreach (var dept in Model.AllDepartments)
+                                            {
+                                                <option value="@dept.TeamId">@dept.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-warning"
+                                                data-confirm="Move this rota and all its shifts to the selected team?">
+                                            Move
+                                        </button>
+                                    </div>
+                                </div>
+                                <small class="text-muted mt-1 d-block">All shifts and signups will be preserved.</small>
+                            </form>
+                        </div>
+                    </div>
+                }
             }
             <div class="card-body">
                 @if (rota.Shifts.Count > 0)
@@ -317,10 +393,10 @@
                                                         @foreach (var ss in activeSignups)
                                                         {
                                                             <human-link user-id="@ss.UserId" display-name="@(ss.User?.DisplayName)" mode="Avatar" size="26"
-                                                                       profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Human/{ss.UserId}/Picture" : null)" show-popover="true"
+                                                                       profile-picture-url="@(ss.User?.ProfilePictureUrl != null ? $"/Profile/Picture?id={ss.UserId}" : null)" show-popover="true"
                                                                        title="@(ss.User?.DisplayName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
                                                                        class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")"
-                                                                       style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed #6c757d; border-radius: 50%;" : "")" />
+                                                                       style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")" />
                                                         }
                                                     </div>
                                                 }
@@ -367,6 +443,11 @@
                                                     @Html.AntiForgeryToken()
                                                     <div class="mb-2">
                                                         <textarea name="Description" class="form-control form-control-sm" rows="2" placeholder="Shift duties, notes...">@shift.Description</textarea>
+                                                        <div class="form-text">
+                                                            <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                                                <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                                            </a>
+                                                        </div>
                                                     </div>
                                                     @{
                                                         var (editPeriodStart, editPeriodEnd) = rota.Period switch
@@ -864,11 +945,48 @@
                         <div class="col-md-6">
                             <label class="form-label">Description</label>
                             <textarea name="Description" class="form-control" rows="2"></textarea>
+                            <div class="form-text">
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                    <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                </a>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Practical Info</label>
                             <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions..."></textarea>
+                            <div class="form-text">
+                                <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                    <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                </a>
+                            </div>
                         </div>
+                    </div>
+                    @if (Model.AllTags.Count > 0)
+                    {
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-12">
+                                <label class="form-label">Tags</label>
+                                <div class="d-flex flex-wrap gap-2" data-tag-picker="create">
+                                    @foreach (var tag in Model.AllTags)
+                                    {
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input tag-checkbox" type="checkbox"
+                                                   data-tag-id="@tag.Id" id="create-tag-@tag.Id.ToString("N")" />
+                                            <label class="form-check-label" for="create-tag-@tag.Id.ToString("N")">@tag.Name</label>
+                                        </div>
+                                    }
+                                </div>
+                                <input type="hidden" name="TagIds" value="" data-tag-ids="create" />
+                                <div class="mt-1">
+                                    <div class="input-group input-group-sm" style="max-width: 300px;">
+                                        <input type="text" class="form-control" placeholder="New tag..." data-new-tag-input="create" maxlength="100" />
+                                        <button type="button" class="btn btn-outline-primary" data-new-tag-btn="create">Add</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    <div class="row g-2 mt-2">
                         <div class="col-md-2">
                             <button type="submit" class="btn btn-primary">Create</button>
                         </div>
@@ -878,6 +996,8 @@
         </div>
     }
 </div>
+
+<partial name="_MarkdownHelp" />
 
 <script>
 (function() {
@@ -1099,5 +1219,78 @@
             setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
         }
     }
+
+    // Tag picker: sync checkboxes to hidden input
+    function syncTagIds(pickerId) {
+        var container = document.querySelector('[data-tag-picker="' + pickerId + '"]');
+        var hidden = document.querySelector('[data-tag-ids="' + pickerId + '"]');
+        if (!container || !hidden) return;
+        var ids = [];
+        container.querySelectorAll('.tag-checkbox:checked').forEach(function(cb) {
+            ids.push(cb.getAttribute('data-tag-id'));
+        });
+        hidden.value = ids.join(',');
+    }
+
+    document.querySelectorAll('.tag-checkbox').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var picker = this.closest('[data-tag-picker]');
+            if (picker) syncTagIds(picker.getAttribute('data-tag-picker'));
+        });
+    });
+
+    // Initialize tag hidden fields on page load
+    document.querySelectorAll('[data-tag-picker]').forEach(function(picker) {
+        syncTagIds(picker.getAttribute('data-tag-picker'));
+    });
+
+    // New tag creation
+    var tagSearchUrl = '@Url.Action("SearchTags", "ShiftAdmin", new { slug = Model.Department.Slug })';
+    var tagCreateUrl = '@Url.Action("CreateTag", "ShiftAdmin", new { slug = Model.Department.Slug })';
+    var antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+    document.querySelectorAll('[data-new-tag-btn]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var pickerId = this.getAttribute('data-new-tag-btn');
+            var input = document.querySelector('[data-new-tag-input="' + pickerId + '"]');
+            var tagName = input.value.trim();
+            if (!tagName) return;
+
+            fetch(tagCreateUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'RequestVerificationToken': antiForgeryToken },
+                body: 'name=' + encodeURIComponent(tagName) + '&__RequestVerificationToken=' + encodeURIComponent(antiForgeryToken)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(tag) {
+                var container = document.querySelector('[data-tag-picker="' + pickerId + '"]');
+                // Check if tag already exists in picker
+                if (container.querySelector('[data-tag-id="' + tag.id + '"]')) {
+                    container.querySelector('[data-tag-id="' + tag.id + '"]').checked = true;
+                } else {
+                    var div = document.createElement('div');
+                    div.className = 'form-check form-check-inline';
+                    var cbId = pickerId + '-tag-' + tag.id.replace(/-/g, '');
+                    div.innerHTML = '<input class="form-check-input tag-checkbox" type="checkbox" data-tag-id="' + tag.id + '" id="' + cbId + '" checked />'
+                        + '<label class="form-check-label" for="' + cbId + '">' + escapeHtml(tag.name) + '</label>';
+                    container.appendChild(div);
+                    div.querySelector('.tag-checkbox').addEventListener('change', function() { syncTagIds(pickerId); });
+                }
+                syncTagIds(pickerId);
+                input.value = '';
+            });
+        });
+    });
+
+    // Allow Enter key to create new tags
+    document.querySelectorAll('[data-new-tag-input]').forEach(function(input) {
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                var pickerId = this.getAttribute('data-new-tag-input');
+                document.querySelector('[data-new-tag-btn="' + pickerId + '"]').click();
+            }
+        });
+    });
 })();
 </script>

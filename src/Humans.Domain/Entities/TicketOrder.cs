@@ -68,6 +68,12 @@ public class TicketOrder
     /// <summary>Discount amount applied to order (from vendor line items). Stored as positive value.</summary>
     public decimal? DiscountAmount { get; set; }
 
+    /// <summary>Standalone donation amount from vendor line items (VAT-exempt). Stored in euros.</summary>
+    public decimal DonationAmount { get; set; }
+
+    /// <summary>Correctly computed VAT amount using VIP split logic. Not from vendor (TT computes incorrectly).</summary>
+    public decimal VatAmount { get; set; }
+
     /// <summary>Individual attendees (issued tickets) for this order.</summary>
     public ICollection<TicketAttendee> Attendees { get; set; } = new List<TicketAttendee>();
 }

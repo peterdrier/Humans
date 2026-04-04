@@ -7,6 +7,7 @@ using NSubstitute;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
@@ -19,6 +20,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly INotificationService _notificationService;
     private readonly FakeClock _clock;
     private readonly HumansMetricsService _metrics;
     private readonly ProcessGoogleSyncOutboxJob _job;
@@ -31,13 +33,14 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _googleSyncService = Substitute.For<IGoogleSyncService>();
+        _notificationService = Substitute.For<INotificationService>();
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 20, 0));
         _metrics = new HumansMetricsService(
             Substitute.For<IServiceScopeFactory>(),
             Substitute.For<ILogger<HumansMetricsService>>());
         var logger = Substitute.For<ILogger<ProcessGoogleSyncOutboxJob>>();
 
-        _job = new ProcessGoogleSyncOutboxJob(_dbContext, _googleSyncService, _metrics, _clock, logger);
+        _job = new ProcessGoogleSyncOutboxJob(_dbContext, _googleSyncService, _notificationService, _metrics, _clock, logger);
     }
 
     public void Dispose()
@@ -85,7 +88,35 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
         updatedEvent.LastError.Should().Contain("google timeout");
     }
 
-    private async Task<GoogleSyncOutboxEvent> SeedOutboxEventAsync(string eventType)
+    [Fact]
+    public async Task ExecuteAsync_FinalFailure_SendsAdminNotificationToGoogleSyncDashboard()
+    {
+        var outboxEvent = await SeedOutboxEventAsync(
+            GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources,
+            retryCount: 9);
+
+        _googleSyncService
+            .When(s => s.RemoveUserFromTeamResourcesAsync(
+                outboxEvent.TeamId,
+                outboxEvent.UserId,
+                Arg.Any<CancellationToken>()))
+            .Do(_ => throw new InvalidOperationException("google timeout"));
+
+        await _job.ExecuteAsync();
+
+        await _notificationService.Received(1).SendToRoleAsync(
+            NotificationSource.SyncError,
+            NotificationClass.Actionable,
+            NotificationPriority.High,
+            "Google sync event failed after all retries",
+            RoleNames.Admin,
+            Arg.Any<string?>(),
+            "/Google/Sync",
+            "View \u2192",
+            Arg.Any<CancellationToken>());
+    }
+
+    private async Task<GoogleSyncOutboxEvent> SeedOutboxEventAsync(string eventType, int retryCount = 0)
     {
         var outboxEvent = new GoogleSyncOutboxEvent
         {
@@ -94,6 +125,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             TeamId = Guid.NewGuid(),
             UserId = Guid.NewGuid(),
             OccurredAt = _clock.GetCurrentInstant(),
+            RetryCount = retryCount,
             DeduplicationKey = $"{Guid.NewGuid()}:{eventType}"
         };
 

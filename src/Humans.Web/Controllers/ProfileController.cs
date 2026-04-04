@@ -1,6 +1,9 @@
+// @e2e: board.spec.ts
+// @e2e: profile.spec.ts
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
+using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -9,17 +12,22 @@ using Microsoft.Extensions.Localization;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
+using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
 [Authorize]
+[Route("Profile")]
 public class ProfileController : HumansControllerBase
 {
     private readonly UserManager<User> _userManager;
@@ -29,10 +37,18 @@ public class ProfileController : HumansControllerBase
     private readonly IEmailService _emailService;
     private readonly IUserEmailService _userEmailService;
     private readonly ICommunicationPreferenceService _commPrefService;
+    private readonly IAuditLogService _auditLogService;
+    private readonly IOnboardingService _onboardingService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IShiftSignupService _shiftSignupService;
+    private readonly IShiftManagementService _shiftMgmt;
     private readonly IConfiguration _configuration;
+    private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<ProfileController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
+    private readonly IMemoryCache _cache;
+    private readonly IClock _clock;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -65,10 +81,18 @@ public class ProfileController : HumansControllerBase
         IEmailService emailService,
         IUserEmailService userEmailService,
         ICommunicationPreferenceService commPrefService,
+        IAuditLogService auditLogService,
+        IOnboardingService onboardingService,
+        IRoleAssignmentService roleAssignmentService,
+        IShiftSignupService shiftSignupService,
+        IShiftManagementService shiftMgmt,
         IConfiguration configuration,
+        ConfigurationRegistry configRegistry,
         ILogger<ProfileController> logger,
         IStringLocalizer<SharedResource> localizer,
-        HumansDbContext dbContext)
+        HumansDbContext dbContext,
+        IMemoryCache cache,
+        IClock clock)
         : base(userManager)
     {
         _userManager = userManager;
@@ -78,13 +102,27 @@ public class ProfileController : HumansControllerBase
         _emailService = emailService;
         _userEmailService = userEmailService;
         _commPrefService = commPrefService;
+        _auditLogService = auditLogService;
+        _onboardingService = onboardingService;
+        _roleAssignmentService = roleAssignmentService;
+        _shiftSignupService = shiftSignupService;
+        _shiftMgmt = shiftMgmt;
         _configuration = configuration;
+        _configRegistry = configRegistry;
         _logger = logger;
         _localizer = localizer;
         _dbContext = dbContext;
+        _cache = cache;
+        _clock = clock;
     }
 
-    public async Task<IActionResult> Index()
+    // ─── Own Profile (Me) ────────────────────────────────────────────
+
+    [HttpGet("")]
+    public IActionResult Index() => RedirectToAction(nameof(Me));
+
+    [HttpGet("Me")]
+    public async Task<IActionResult> Me()
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
@@ -114,10 +152,10 @@ public class ProfileController : HumansControllerBase
             viewModel.TierApplicationBadgeClass = latestApplication.Status.GetBadgeClass();
         }
 
-        return View(viewModel);
+        return View("Index", viewModel);
     }
 
-    [HttpGet]
+    [HttpGet("Me/Edit")]
     public async Task<IActionResult> Edit([FromQuery] bool preview = false)
     {
         var user = await GetCurrentUserAsync();
@@ -200,17 +238,17 @@ public class ProfileController : HumansControllerBase
             }).ToList()
         };
 
-        ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+        ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
         return View(viewModel);
     }
 
-    [HttpPost]
+    [HttpPost("Me/Edit")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(ProfileViewModel model)
     {
         if (!ModelState.IsValid)
         {
-            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -238,7 +276,7 @@ public class ProfileController : HumansControllerBase
 
         if (ModelState.ErrorCount > 0)
         {
-            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -255,7 +293,7 @@ public class ProfileController : HumansControllerBase
             model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                 && string.IsNullOrEmpty(model.LastName)
                 && string.IsNullOrEmpty(model.EmergencyContactName);
-            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -273,7 +311,7 @@ public class ProfileController : HumansControllerBase
                 model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                     && string.IsNullOrEmpty(model.LastName)
                     && string.IsNullOrEmpty(model.EmergencyContactName);
-                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -295,7 +333,7 @@ public class ProfileController : HumansControllerBase
                     model.ShowPrivateFirst = string.IsNullOrEmpty(model.FirstName)
                         && string.IsNullOrEmpty(model.LastName)
                         && string.IsNullOrEmpty(model.EmergencyContactName);
-                    ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                    ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                     return View(model);
                 }
             }
@@ -310,7 +348,7 @@ public class ProfileController : HumansControllerBase
             {
                 ModelState.AddModelError(nameof(model.ProfilePictureUpload),
                     _localizer["Profile_PictureTooLarge"].Value);
-                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -328,7 +366,7 @@ public class ProfileController : HumansControllerBase
             {
                 ModelState.AddModelError(nameof(model.ProfilePictureUpload),
                     _localizer["Profile_PictureInvalidFormat"].Value);
-                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -339,7 +377,7 @@ public class ProfileController : HumansControllerBase
             {
                 ModelState.AddModelError(nameof(model.ProfilePictureUpload),
                     _localizer["Profile_PictureInvalidFormat"].Value);
-                ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+                ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
                 return View(model);
             }
 
@@ -400,7 +438,7 @@ public class ProfileController : HumansControllerBase
         {
             _logger.LogWarning(ex, "Failed to save contact fields for user {UserId} and profile {ProfileId}", user.Id, profileId);
             ModelState.AddModelError(string.Empty, ex.Message);
-            ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+            ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(_configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
             return View(model);
         }
 
@@ -418,25 +456,10 @@ public class ProfileController : HumansControllerBase
         await _volunteerHistoryService.SaveAsync(profileId, volunteerHistoryDtos);
 
         SetSuccess(_localizer["Profile_Updated"].Value);
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Me));
     }
 
-    [HttpGet]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
-    public async Task<IActionResult> Picture(Guid id)
-    {
-        var (data, contentType) = await _profileService.GetProfilePictureAsync(id);
-
-        if (data is null || string.IsNullOrEmpty(contentType))
-            return NotFound();
-
-        return File(data, contentType);
-    }
-
-    private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
-        Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, _logger);
-
-    [HttpGet]
+    [HttpGet("Me/Emails")]
     public async Task<IActionResult> Emails()
     {
         var user = await GetCurrentUserAsync();
@@ -447,7 +470,7 @@ public class ProfileController : HumansControllerBase
         return View(viewModel);
     }
 
-    [HttpPost]
+    [HttpPost("Me/Emails/Add")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddEmail(EmailsViewModel model)
     {
@@ -455,9 +478,10 @@ public class ProfileController : HumansControllerBase
         if (user is null)
             return NotFound();
 
-        if (string.IsNullOrWhiteSpace(model.NewEmail))
+        if (string.IsNullOrWhiteSpace(model.NewEmail) || !ModelState.IsValid)
         {
-            ModelState.AddModelError(nameof(model.NewEmail), _localizer["Profile_EnterEmail"].Value);
+            if (string.IsNullOrWhiteSpace(model.NewEmail))
+                ModelState.AddModelError(nameof(model.NewEmail), _localizer["Profile_EnterEmail"].Value);
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
 
@@ -503,7 +527,7 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
-    [HttpGet]
+    [HttpGet("Me/Emails/Verify")]
     [AllowAnonymous]
     public async Task<IActionResult> VerifyEmail(Guid userId, string token)
     {
@@ -516,6 +540,7 @@ public class ProfileController : HumansControllerBase
         {
             var decodedToken = HttpUtility.UrlDecode(token);
             var result = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
 
             if (result.MergeRequestCreated)
             {
@@ -555,7 +580,7 @@ public class ProfileController : HumansControllerBase
         return View("VerifyEmailResult");
     }
 
-    [HttpPost]
+    [HttpPost("Me/Emails/SetNotificationTarget")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetNotificationTarget(Guid emailId)
     {
@@ -566,6 +591,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetNotificationTargetAsync(user.Id, emailId);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -577,7 +603,7 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
-    [HttpPost]
+    [HttpPost("Me/Emails/SetVisibility")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetEmailVisibility(Guid emailId, string? visibility)
     {
@@ -605,7 +631,7 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
-    [HttpPost]
+    [HttpPost("Me/Emails/Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteEmail(Guid emailId)
     {
@@ -616,6 +642,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.DeleteEmailAsync(user.Id, emailId);
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
             SetSuccess(_localizer["Profile_EmailDeleted"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -627,7 +654,7 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
-    [HttpPost]
+    [HttpPost("Me/Emails/SetGoogleService")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetGoogleServiceEmail(Guid emailId)
     {
@@ -647,9 +674,7 @@ public class ProfileController : HumansControllerBase
             }
 
             // If they have a @nobodies.team email, it must be used
-            var hasNobodiesTeam = await _dbContext.UserEmails
-                .AnyAsync(ue => ue.UserId == user.Id && ue.IsVerified
-                    && EF.Functions.ILike(ue.Email, "%@nobodies.team"));
+            var hasNobodiesTeam = await _userEmailService.HasNobodiesTeamEmailAsync(user.Id);
 
             if (hasNobodiesTeam && !email.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase))
             {
@@ -658,10 +683,19 @@ public class ProfileController : HumansControllerBase
             }
 
             // null = use OAuth email (default behavior)
+            var previousEmail = user.GoogleEmail;
             user.GoogleEmail = email.IsOAuth ? null : email.Email;
+            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
             await _userManager.UpdateAsync(user);
 
-            SetSuccess("Google service email updated.");
+            // If email changed, enqueue fresh sync events for all current team memberships
+            var newEmail = user.GetGoogleServiceEmail();
+            if (!string.Equals(previousEmail ?? user.Email, newEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                await EnqueueResyncForUserTeamsAsync(user.Id);
+            }
+
+            SetSuccess("Google service email updated. Sync will be retried with the new email.");
         }
         catch (Exception ex)
         {
@@ -672,51 +706,8 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Emails));
     }
 
-    private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user)
-    {
-        var emails = await _userEmailService.GetUserEmailsAsync(user.Id);
-
-        var canAdd = true;
-        var minutesUntilResend = 0;
-
-        var pendingEmail = emails.FirstOrDefault(e => e.IsPendingVerification);
-        if (pendingEmail is not null)
-        {
-            var (cooldownCanAdd, cooldownMinutes, _) =
-                await _profileService.GetEmailCooldownInfoAsync(pendingEmail.Id);
-            canAdd = cooldownCanAdd;
-            minutesUntilResend = cooldownMinutes;
-        }
-
-        var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
-            e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
-
-        return new EmailsViewModel
-        {
-            Emails = emails.Select(e => new EmailRowViewModel
-            {
-                Id = e.Id,
-                Email = e.Email,
-                IsVerified = e.IsVerified,
-                IsOAuth = e.IsOAuth,
-                IsNotificationTarget = e.IsNotificationTarget,
-                Visibility = e.Visibility,
-                IsPendingVerification = e.IsPendingVerification,
-                IsMergePending = e.IsMergePending,
-                IsGoogleServiceEmail = user.GoogleEmail is not null
-                    ? string.Equals(e.Email, user.GoogleEmail, StringComparison.OrdinalIgnoreCase)
-                    : e.IsOAuth,
-                IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase)
-            }).ToList(),
-            CanAddEmail = canAdd,
-            MinutesUntilResend = minutesUntilResend,
-            GoogleServiceEmail = user.GoogleEmail,
-            HasNobodiesTeamEmail = hasNobodiesTeam
-        };
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Outbox()
+    [HttpGet("Me/Outbox")]
+    public async Task<IActionResult> MyOutbox()
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
@@ -727,10 +718,10 @@ public class ProfileController : HumansControllerBase
             .OrderByDescending(m => m.CreatedAt)
             .ToListAsync();
 
-        return View(messages);
+        return View("Outbox", messages);
     }
 
-    [HttpGet]
+    [HttpGet("Me/Privacy")]
     public async Task<IActionResult> Privacy()
     {
         var user = await GetCurrentUserAsync();
@@ -744,11 +735,11 @@ public class ProfileController : HumansControllerBase
             DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc()
         };
 
-        ViewData["DpoEmail"] = _configuration["Email:DpoAddress"];
+        ViewData["DpoEmail"] = _configuration.GetOptionalSetting(_configRegistry, "Email:DpoAddress", "Email", importance: ConfigurationImportance.Recommended);
         return View(viewModel);
     }
 
-    [HttpPost]
+    [HttpPost("Me/Privacy/RequestDeletion")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RequestDeletion()
     {
@@ -773,7 +764,7 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Privacy));
     }
 
-    [HttpPost]
+    [HttpPost("Me/Privacy/CancelDeletion")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelDeletion()
     {
@@ -793,7 +784,7 @@ public class ProfileController : HumansControllerBase
         return RedirectToAction(nameof(Privacy));
     }
 
-    [HttpGet("/Profile/ShiftInfo")]
+    [HttpGet("Me/ShiftInfo")]
     public async Task<IActionResult> ShiftInfo()
     {
         try
@@ -802,20 +793,25 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: true);
+            var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: false);
 
+            var quirks = profile?.Quirks ?? [];
+            var skills = profile?.Skills ?? [];
+            var languages = profile?.Languages ?? [];
             var viewModel = new ShiftInfoViewModel
             {
-                SelectedSkills = profile?.Skills ?? [],
-                SelectedQuirks = profile?.Quirks ?? [],
-                SelectedAllergies = profile?.Allergies ?? [],
-                SelectedIntolerances = profile?.Intolerances ?? [],
-                SelectedLanguages = profile?.Languages ?? [],
-                DietaryPreference = profile?.DietaryPreference,
-                MedicalConditions = profile?.MedicalConditions,
-                AllergyOtherText = profile?.AllergyOtherText,
-                IntoleranceOtherText = profile?.IntoleranceOtherText
+                SelectedSkills = skills.Where(s => !s.StartsWith("Other:", StringComparison.Ordinal)).ToList(),
+                SkillOtherText = skills.FirstOrDefault(s => s.StartsWith("Other:", StringComparison.Ordinal))?.Substring(6).Trim(),
+                SelectedQuirks = ShiftInfoViewModel.ExtractToggleQuirks(quirks),
+                TimePreference = ShiftInfoViewModel.ExtractTimePreference(quirks),
+                SelectedLanguages = languages.Where(l => !l.StartsWith("Other:", StringComparison.Ordinal)).ToList(),
+                LanguageOtherText = languages.FirstOrDefault(l => l.StartsWith("Other:", StringComparison.Ordinal))?.Substring(6).Trim(),
             };
+            // If there was "Other: text" stored, ensure "Other" is in the selected list
+            if (viewModel.SkillOtherText is not null && !viewModel.SelectedSkills.Contains("Other", StringComparer.Ordinal))
+                viewModel.SelectedSkills.Add("Other");
+            if (viewModel.LanguageOtherText is not null && !viewModel.SelectedLanguages.Contains("Other", StringComparer.Ordinal))
+                viewModel.SelectedLanguages.Add("Other");
 
             return View(viewModel);
         }
@@ -823,11 +819,11 @@ public class ProfileController : HumansControllerBase
         {
             _logger.LogError(ex, "Failed to load shift info for user");
             SetError("Failed to load shift info.");
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Me));
         }
     }
 
-    [HttpPost("/Profile/ShiftInfo")]
+    [HttpPost("Me/ShiftInfo")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ShiftInfo(ShiftInfoViewModel model)
     {
@@ -839,15 +835,12 @@ public class ProfileController : HumansControllerBase
 
             var shiftProfile = await _profileService.GetOrCreateShiftProfileAsync(user.Id);
 
-            shiftProfile.Skills = model.SelectedSkills ?? [];
-            shiftProfile.Quirks = model.SelectedQuirks ?? [];
-            shiftProfile.Allergies = model.SelectedAllergies ?? [];
-            shiftProfile.Intolerances = model.SelectedIntolerances ?? [];
-            shiftProfile.AllergyOtherText = model.SelectedAllergies?.Contains("Other", StringComparer.Ordinal) == true ? model.AllergyOtherText : null;
-            shiftProfile.IntoleranceOtherText = model.SelectedIntolerances?.Contains("Other", StringComparer.Ordinal) == true ? model.IntoleranceOtherText : null;
-            shiftProfile.Languages = model.SelectedLanguages ?? [];
-            shiftProfile.DietaryPreference = model.DietaryPreference;
-            shiftProfile.MedicalConditions = model.MedicalConditions;
+            shiftProfile.Skills = ShiftInfoViewModel.MergeSkills(
+                model.SelectedSkills, model.SkillOtherText, shiftProfile.Skills);
+            shiftProfile.Quirks = ShiftInfoViewModel.MergePersistedQuirks(
+                model.TimePreference, model.SelectedQuirks, shiftProfile.Quirks);
+            shiftProfile.Languages = ShiftInfoViewModel.MergeLanguages(
+                model.SelectedLanguages, model.LanguageOtherText, shiftProfile.Languages);
 
             await _profileService.UpdateShiftProfileAsync(shiftProfile);
 
@@ -862,8 +855,8 @@ public class ProfileController : HumansControllerBase
         }
     }
 
-    [HttpGet("/Profile/Notifications")]
-    public async Task<IActionResult> Notifications()
+    [HttpGet("Me/CommunicationPreferences")]
+    public async Task<IActionResult> CommunicationPreferences()
     {
         try
         {
@@ -875,70 +868,41 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load notification settings");
-            SetError("Failed to load notification settings.");
-            return RedirectToAction(nameof(Index));
+            _logger.LogError(ex, "Failed to load communication preferences");
+            SetError("Failed to load communication preferences.");
+            return RedirectToAction(nameof(Me));
         }
     }
 
-    [HttpPost("/Profile/Notifications")]
+    [HttpPost("Me/CommunicationPreferences/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Notifications(CommunicationPreferencesViewModel model)
+    public async Task<IActionResult> UpdatePreference(MessageCategory category, bool emailEnabled, bool alertEnabled)
     {
         try
         {
             var user = await GetCurrentUserAsync();
             if (user is null)
-                return NotFound();
+                return Unauthorized();
 
-            foreach (var item in model.Categories)
-            {
-                if (item.Category == MessageCategory.System)
-                    continue;
+            if (category.IsAlwaysOn())
+                return BadRequest("Cannot change always-on categories.");
 
-                await _commPrefService.UpdatePreferenceAsync(
-                    user.Id, item.Category, item.OptedOut, "Profile");
-            }
+            await _commPrefService.UpdatePreferenceAsync(
+                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile");
 
-            SetSuccess(_localizer["Profile_Updated"].Value);
-            return RedirectToAction(nameof(Notifications));
+            return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save notification settings");
-            SetError("Failed to save notification settings.");
-            PopulateCommunicationPreferenceMetadata(model);
-            return View(model);
+            _logger.LogError(ex, "Failed to save communication preference for {Category}", category);
+            return StatusCode(500);
         }
     }
 
-    private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
-    {
-        var prefs = await _commPrefService.GetPreferencesAsync(userId);
-        return new CommunicationPreferencesViewModel
-        {
-            Categories = prefs.Select(p => new CategoryPreferenceItem
-            {
-                Category = p.Category,
-                DisplayName = p.Category.ToDisplayName(),
-                Description = p.Category.ToDescription(),
-                OptedOut = p.OptedOut,
-                IsEditable = p.Category != MessageCategory.System,
-            }).ToList()
-        };
-    }
+    [HttpGet("Me/Notifications")]
+    public IActionResult Notifications() => RedirectToActionPermanent(nameof(CommunicationPreferences));
 
-    private static void PopulateCommunicationPreferenceMetadata(CommunicationPreferencesViewModel model)
-    {
-        foreach (var item in model.Categories)
-        {
-            item.DisplayName = item.Category.ToDisplayName();
-            item.Description = item.Category.ToDescription();
-            item.IsEditable = item.Category != MessageCategory.System;
-        }
-    }
-
-    [HttpGet]
+    [HttpGet("Me/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> DownloadData()
     {
@@ -954,4 +918,688 @@ public class ProfileController : HumansControllerBase
 
         return File(bytes, "application/json", fileName);
     }
+
+    // ─── Shared (Profile Picture) ────────────────────────────────────
+
+    [HttpGet("Picture")]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
+    public async Task<IActionResult> Picture(Guid id)
+    {
+        var (data, contentType) = await _profileService.GetProfilePictureAsync(id);
+
+        if (data is null || string.IsNullOrEmpty(contentType))
+            return NotFound();
+
+        return File(data, contentType);
+    }
+
+    // ─── View Another Profile ────────────────────────────────────────
+
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> ViewProfile(Guid id)
+    {
+        var profile = await _profileService.GetProfileAsync(id);
+
+        if (profile is null || profile.IsSuspended)
+        {
+            return NotFound();
+        }
+
+        var viewer = await GetCurrentUserAsync();
+        if (viewer is null)
+        {
+            return NotFound();
+        }
+
+        var isOwnProfile = viewer.Id == id;
+
+        // Load no-show history for coordinators/NoInfoAdmin/Admin viewing other profiles
+        List<NoShowHistoryItem>? noShowHistory = null;
+        if (!isOwnProfile)
+        {
+            var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id)).Count > 0;
+            var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+
+            if (viewerCanViewShiftHistory)
+            {
+                var noShows = await _shiftSignupService.GetNoShowHistoryAsync(id);
+                if (noShows.Count > 0)
+                {
+                    noShowHistory = noShows.Select(s =>
+                    {
+                        var signupEs = s.Shift.Rota.EventSettings;
+                        var signupTz = DateTimeZoneProviders.Tzdb[signupEs.TimeZoneId];
+                        var shiftStart = s.Shift.GetAbsoluteStart(signupEs);
+                        var zoned = shiftStart.InZone(signupTz);
+                        return new NoShowHistoryItem
+                        {
+                            ShiftLabel = s.Shift.Rota.Name,
+                            DepartmentName = s.Shift.Rota.Team?.Name ?? "",
+                            ShiftDateLabel = zoned.ToDisplayShortDateTime(),
+                            MarkedByName = s.ReviewedByUser?.DisplayName,
+                            MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDisplayShortMonthDayTime()
+                        };
+                    }).ToList();
+                }
+            }
+        }
+
+        // The ProfileCard ViewComponent handles all data fetching and permission checks.
+        var viewModel = new ProfileViewModel
+        {
+            Id = profile.Id,
+            UserId = id,
+            DisplayName = profile.User.DisplayName,
+            IsOwnProfile = isOwnProfile,
+            IsApproved = profile.IsApproved,
+            NoShowHistory = noShowHistory,
+        };
+
+        return View("Index", viewModel);
+    }
+
+    [HttpGet("{id:guid}/Popover")]
+    public async Task<IActionResult> Popover(Guid id)
+    {
+        var profile = await _profileService.GetProfileAsync(id);
+        if (profile is null || profile.IsSuspended) return NotFound();
+
+        var teams = await _dbContext.TeamMembers
+            .Where(tm => tm.UserId == id && tm.LeftAt == null
+                && tm.Team!.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(tm => tm.Team!.Name)
+            .OrderBy(n => n)
+            .ToListAsync();
+
+        var effectivePictureUrl = profile.HasCustomProfilePicture
+            ? Url.Action(nameof(Picture), "Profile",
+                new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
+            : profile.User.ProfilePictureUrl;
+
+        var vm = new ProfileSummaryViewModel
+        {
+            UserId = id,
+            DisplayName = profile.User.DisplayName,
+            Email = profile.User.Email,
+            ProfilePictureUrl = effectivePictureUrl,
+            MembershipTier = profile.MembershipTier.ToString(),
+            MembershipStatus = profile.IsSuspended ? "Suspended"
+                : profile.IsApproved ? "Active" : "Pending",
+            City = profile.City,
+            CountryCode = profile.CountryCode,
+            Teams = teams
+        };
+
+        return PartialView("_HumanPopover", vm);
+    }
+
+    [HttpGet("{id:guid}/SendMessage")]
+    public async Task<IActionResult> SendMessage(Guid id)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+            return NotFound();
+
+        if (currentUser.Id == id)
+            return RedirectToAction(nameof(ViewProfile), new { id });
+
+        var targetUser = await FindUserByIdAsync(id);
+        if (targetUser is null)
+            return NotFound();
+
+        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        {
+            SetError("This human has opted out of receiving messages.");
+            return RedirectToAction(nameof(ViewProfile), new { id });
+        }
+
+        var viewModel = new SendMessageViewModel
+        {
+            RecipientId = id,
+            RecipientDisplayName = targetUser.DisplayName
+        };
+
+        return View(viewModel);
+    }
+
+    [HttpPost("{id:guid}/SendMessage")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+            return NotFound();
+
+        if (currentUser.Id == id)
+            return RedirectToAction(nameof(ViewProfile), new { id });
+
+        var targetUser = await _userManager.Users
+            .Include(u => u.UserEmails)
+            .FirstOrDefaultAsync(u => u.Id == id);
+        if (targetUser is null)
+            return NotFound();
+
+        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        {
+            SetError("This human has opted out of receiving messages.");
+            return RedirectToAction(nameof(ViewProfile), new { id });
+        }
+
+        model.RecipientId = id;
+        model.RecipientDisplayName = targetUser.DisplayName;
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        // Strip any HTML tags from the message for safety
+        var cleanMessage = System.Text.RegularExpressions.Regex.Replace(
+            model.Message, "<[^>]+>", "", System.Text.RegularExpressions.RegexOptions.None,
+            TimeSpan.FromSeconds(1));
+
+        var sender = await _userManager.Users
+            .Include(u => u.UserEmails)
+            .FirstAsync(u => u.Id == currentUser.Id);
+
+        var recipientEmail = targetUser.GetEffectiveEmail() ?? targetUser.Email;
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
+            return View(model);
+        }
+
+        var senderEmail = sender.GetEffectiveEmail() ?? sender.Email;
+        if (string.IsNullOrWhiteSpace(senderEmail))
+        {
+            ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
+            return View(model);
+        }
+
+        await _emailService.SendFacilitatedMessageAsync(
+            recipientEmail,
+            targetUser.DisplayName,
+            sender.DisplayName,
+            cleanMessage,
+            model.IncludeContactInfo,
+            senderEmail,
+            targetUser.PreferredLanguage);
+
+        await _auditLogService.LogAsync(
+            AuditAction.FacilitatedMessageSent,
+            nameof(User), targetUser.Id,
+            $"Message sent to {targetUser.DisplayName} (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
+            currentUser.Id);
+
+        SetSuccess(string.Format(
+            _localizer["SendMessage_Success"].Value,
+            targetUser.DisplayName));
+
+        return RedirectToAction(nameof(ViewProfile), new { id });
+    }
+
+    // ─── Search ──────────────────────────────────────────────────────
+
+    [HttpGet("Search")]
+    public async Task<IActionResult> Search(string? q)
+    {
+        var viewModel = new HumanSearchViewModel { Query = q };
+
+        if (!q.HasSearchTerm())
+        {
+            return View(viewModel);
+        }
+
+        var results = await _profileService.SearchHumansAsync(q);
+
+        viewModel.Results = results
+            .Select(r => r.ToHumanSearchViewModel(Url))
+            .ToList();
+
+        return View(viewModel);
+    }
+
+    // ─── Admin: All Humans List ──────────────────────────────────────
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpGet("Admin")]
+    public async Task<IActionResult> AdminList(string? search, string? filter, string sort = "name", string dir = "asc", int page = 1)
+    {
+        var pageSize = 20;
+        var allRows = await _profileService.GetFilteredHumansAsync(search, filter);
+        var totalCount = allRows.Count;
+
+        // Materialize for flexible sorting (fine at ~500 users)
+        // nobodies.team email status is now resolved by NobodiesEmailBadgeViewComponent in the view
+        var allMatching = allRows.Select(r => new AdminHumanViewModel
+        {
+            Id = r.UserId,
+            Email = r.Email,
+            DisplayName = r.DisplayName,
+            ProfilePictureUrl = r.ProfilePictureUrl,
+            CreatedAt = r.CreatedAt,
+            LastLoginAt = r.LastLoginAt,
+            HasProfile = r.HasProfile,
+            IsApproved = r.IsApproved,
+            MembershipStatus = r.MembershipStatus
+        }).ToList();
+
+        var ascending = !string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+        IEnumerable<AdminHumanViewModel> sorted = sort?.ToLowerInvariant() switch
+        {
+            "joined" => ascending
+                ? allMatching.OrderBy(m => m.CreatedAt)
+                : allMatching.OrderByDescending(m => m.CreatedAt),
+            "login" => ascending
+                ? allMatching.OrderBy(m => m.LastLoginAt.HasValue ? 0 : 1).ThenBy(m => m.LastLoginAt)
+                : allMatching.OrderBy(m => m.LastLoginAt.HasValue ? 0 : 1).ThenByDescending(m => m.LastLoginAt),
+            "status" => ascending
+                ? allMatching.OrderBy(m => m.MembershipStatus, StringComparer.OrdinalIgnoreCase)
+                : allMatching.OrderByDescending(m => m.MembershipStatus, StringComparer.OrdinalIgnoreCase),
+            _ => ascending
+                ? allMatching.OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                : allMatching.OrderByDescending(m => m.DisplayName, StringComparer.OrdinalIgnoreCase),
+        };
+
+        var members = sorted.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+        var viewModel = new AdminHumanListViewModel
+        {
+            Humans = members,
+            SearchTerm = search,
+            StatusFilter = filter,
+            SortBy = sort?.ToLowerInvariant() ?? "name",
+            SortDir = ascending ? "asc" : "desc",
+            TotalCount = totalCount,
+            PageNumber = page,
+            PageSize = pageSize
+        };
+
+        return View("AdminList", viewModel);
+    }
+
+    // ─── Admin: Per-Person Detail ────────────────────────────────────
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpGet("{id:guid}/Admin")]
+    public async Task<IActionResult> AdminDetail(Guid id)
+    {
+        var data = await _profileService.GetAdminHumanDetailAsync(id);
+        if (data is null)
+        {
+            return NotFound();
+        }
+
+        var campaignGrants = await _dbContext.CampaignGrants
+            .Include(g => g.Campaign)
+            .Include(g => g.Code)
+            .Where(g => g.UserId == id)
+            .OrderByDescending(g => g.AssignedAt)
+            .ToListAsync();
+        ViewBag.CampaignGrants = campaignGrants;
+
+        var outboxCount = await _dbContext.EmailOutboxMessages
+            .CountAsync(m => m.UserId == id);
+        ViewBag.OutboxCount = outboxCount;
+
+        var now = _clock.GetCurrentInstant();
+
+        var viewModel = new AdminHumanDetailViewModel
+        {
+            UserId = data.User.Id,
+            Email = data.User.Email ?? string.Empty,
+            DisplayName = data.User.DisplayName,
+            ProfilePictureUrl = data.User.ProfilePictureUrl,
+            CreatedAt = data.User.CreatedAt.ToDateTimeUtc(),
+            LastLoginAt = data.User.LastLoginAt?.ToDateTimeUtc(),
+            IsSuspended = data.Profile?.IsSuspended ?? false,
+            IsApproved = data.Profile?.IsApproved ?? false,
+            HasProfile = data.Profile is not null,
+            AdminNotes = data.Profile?.AdminNotes,
+            PreferredLanguage = data.User.PreferredLanguage,
+            MembershipTier = data.Profile?.MembershipTier ?? MembershipTier.Volunteer,
+            ConsentCheckStatus = data.Profile?.ConsentCheckStatus,
+            IsRejected = data.Profile?.RejectedAt is not null,
+            RejectionReason = data.Profile?.RejectionReason,
+            RejectedAt = data.Profile?.RejectedAt?.ToDateTimeUtc(),
+            RejectedByName = data.RejectedByName,
+            ApplicationCount = data.Applications.Count,
+            ConsentCount = data.ConsentCount,
+            Applications = data.Applications
+                .Take(5)
+                .Select(a => new AdminHumanApplicationViewModel
+                {
+                    Id = a.Id,
+                    Status = a.Status,
+                    SubmittedAt = a.SubmittedAt.ToDateTimeUtc()
+                }).ToList(),
+            RoleAssignments = data.RoleAssignments.Select(ra => new AdminRoleAssignmentViewModel
+            {
+                Id = ra.Id,
+                UserId = ra.UserId,
+                RoleName = ra.RoleName,
+                ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
+                ValidTo = ra.ValidTo?.ToDateTimeUtc(),
+                Notes = ra.Notes,
+                IsActive = ra.IsActive(now),
+                CreatedByName = ra.CreatedByUser?.DisplayName,
+                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+            }).ToList(),
+        };
+
+        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
+
+        return View("AdminDetail", viewModel);
+    }
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpGet("{id:guid}/Admin/Outbox")]
+    public async Task<IActionResult> AdminOutbox(Guid id)
+    {
+        var messages = await _dbContext.EmailOutboxMessages
+            .Where(m => m.UserId == id)
+            .OrderByDescending(m => m.CreatedAt)
+            .ToListAsync();
+
+        ViewBag.HumanId = id;
+        return View("Outbox", messages);
+    }
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpPost("{id:guid}/Admin/Suspend")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SuspendHuman(Guid id, string? notes)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+            return NotFound();
+
+        var result = await _onboardingService.SuspendAsync(id, currentUser.Id, notes);
+        if (!result.Success)
+            return NotFound();
+
+        SetSuccess(_localizer["Admin_MemberSuspended"].Value);
+        return RedirectToAction(nameof(AdminDetail), new { id });
+    }
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpPost("{id:guid}/Admin/Unsuspend")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UnsuspendHuman(Guid id)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+            return NotFound();
+
+        var result = await _onboardingService.UnsuspendAsync(id, currentUser.Id);
+        if (!result.Success)
+            return NotFound();
+
+        SetSuccess(_localizer["Admin_MemberUnsuspended"].Value);
+        return RedirectToAction(nameof(AdminDetail), new { id });
+    }
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpPost("{id:guid}/Admin/Approve")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveVolunteer(Guid id)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+            return NotFound();
+
+        var result = await _onboardingService.ApproveVolunteerAsync(id, currentUser.Id);
+        if (!result.Success)
+            return NotFound();
+
+        SetSuccess(_localizer["Admin_VolunteerApproved"].Value);
+        return RedirectToAction(nameof(AdminDetail), new { id });
+    }
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpPost("{id:guid}/Admin/Reject")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectSignup(Guid id, string? reason)
+    {
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+            return Unauthorized();
+
+        var result = await _onboardingService.RejectSignupAsync(id, currentUser.Id, reason);
+        if (!result.Success)
+        {
+            if (string.Equals(result.ErrorKey, "AlreadyRejected", StringComparison.Ordinal))
+                SetError("This human has already been rejected.");
+            else
+                return NotFound();
+            return RedirectToAction(nameof(AdminDetail), new { id });
+        }
+
+        SetSuccess("Signup rejected.");
+        return RedirectToAction(nameof(AdminDetail), new { id });
+    }
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpGet("{id:guid}/Admin/Roles/Add")]
+    public async Task<IActionResult> AddRole(Guid id)
+    {
+        var user = await FindUserByIdAsync(id);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        var viewModel = new CreateRoleAssignmentViewModel
+        {
+            UserId = id,
+            UserDisplayName = user.DisplayName,
+            AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)]
+        };
+
+        return View(viewModel);
+    }
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpPost("{id:guid}/Admin/Roles/Add")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddRole(Guid id, CreateRoleAssignmentViewModel model)
+    {
+        var user = await FindUserByIdAsync(id);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        if (string.IsNullOrWhiteSpace(model.RoleName))
+        {
+            ModelState.AddModelError(nameof(model.RoleName), "Please select a role.");
+            model.UserId = id;
+            model.UserDisplayName = user.DisplayName;
+            model.AvailableRoles = [.. RoleChecks.GetAssignableRoles(User)];
+            return View(model);
+        }
+
+        // Enforce role assignment authorization
+        if (!RoleChecks.CanManageRole(User, model.RoleName))
+        {
+            return Forbid();
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _roleAssignmentService.AssignRoleAsync(
+            id, model.RoleName, currentUser.Id, model.Notes);
+
+        if (!result.Success)
+        {
+            SetError(string.Format(_localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
+            return RedirectToAction(nameof(AdminDetail), new { id });
+        }
+
+        SetSuccess(string.Format(_localizer["Admin_RoleAssigned"].Value, model.RoleName));
+        return RedirectToAction(nameof(AdminDetail), new { id });
+    }
+
+    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [HttpPost("{id:guid}/Admin/Roles/{roleId:guid}/End")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
+    {
+        var roleAssignment = await _roleAssignmentService.GetByIdAsync(roleId);
+
+        if (roleAssignment is null)
+        {
+            return NotFound();
+        }
+
+        // Enforce role assignment authorization
+        if (!RoleChecks.CanManageRole(User, roleAssignment.RoleName))
+        {
+            return Forbid();
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _roleAssignmentService.EndRoleAsync(
+            roleId, currentUser.Id, notes);
+
+        if (!result.Success)
+        {
+            SetError(_localizer["Admin_RoleNotActive"].Value);
+            return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
+        }
+
+        SetSuccess(string.Format(_localizer["Admin_RoleEnded"].Value, roleAssignment.RoleName, roleAssignment.User.DisplayName));
+        return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────────
+
+    private (byte[] Data, string ContentType)? ResizeProfilePicture(byte[] imageData, string contentType) =>
+        Helpers.ProfilePictureProcessor.ResizeProfilePicture(imageData, _logger);
+
+    private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user)
+    {
+        var emails = await _userEmailService.GetUserEmailsAsync(user.Id);
+
+        var canAdd = true;
+        var minutesUntilResend = 0;
+
+        var pendingEmail = emails.FirstOrDefault(e => e.IsPendingVerification);
+        if (pendingEmail is not null)
+        {
+            var (cooldownCanAdd, cooldownMinutes, _) =
+                await _profileService.GetEmailCooldownInfoAsync(pendingEmail.Id);
+            canAdd = cooldownCanAdd;
+            minutesUntilResend = cooldownMinutes;
+        }
+
+        var hasNobodiesTeam = emails.Any(e => e.IsVerified &&
+            e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase));
+
+        if (hasNobodiesTeam && user.GoogleEmail is null)
+            await _userEmailService.TryBackfillGoogleEmailAsync(user.Id);
+
+        return new EmailsViewModel
+        {
+            Emails = emails.Select(e => new EmailRowViewModel
+            {
+                Id = e.Id,
+                Email = e.Email,
+                IsVerified = e.IsVerified,
+                IsOAuth = e.IsOAuth,
+                IsNotificationTarget = e.IsNotificationTarget,
+                Visibility = e.Visibility,
+                IsPendingVerification = e.IsPendingVerification,
+                IsMergePending = e.IsMergePending,
+                IsGoogleServiceEmail = user.GoogleEmail is not null
+                    ? string.Equals(e.Email, user.GoogleEmail, StringComparison.OrdinalIgnoreCase)
+                    : e.IsOAuth,
+                IsNobodiesTeamDomain = e.Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase)
+            }).ToList(),
+            CanAddEmail = canAdd,
+            MinutesUntilResend = minutesUntilResend,
+            GoogleServiceEmail = user.GoogleEmail,
+            HasNobodiesTeamEmail = hasNobodiesTeam,
+            GoogleEmailStatus = user.GoogleEmailStatus
+        };
+    }
+
+    /// <summary>
+    /// Enqueues fresh AddUserToTeamResources sync events for all teams the user is currently a member of.
+    /// Used when the Google service email changes to trigger re-sync with the updated email.
+    /// </summary>
+    private async Task EnqueueResyncForUserTeamsAsync(Guid userId)
+    {
+        var memberships = await _dbContext.TeamMembers
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
+            .Select(tm => new { tm.Id, tm.TeamId })
+            .ToListAsync();
+
+        var now = _clock.GetCurrentInstant();
+        foreach (var membership in memberships)
+        {
+            var dedupeKey = $"{membership.Id}:{GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{now}";
+            _dbContext.GoogleSyncOutboxEvents.Add(new GoogleSyncOutboxEvent
+            {
+                Id = Guid.NewGuid(),
+                EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+                TeamId = membership.TeamId,
+                UserId = userId,
+                OccurredAt = now,
+                DeduplicationKey = dedupeKey
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        if (memberships.Count > 0)
+        {
+            _logger.LogInformation(
+                "Enqueued {Count} re-sync events for user {UserId} after Google email change",
+                memberships.Count, userId);
+        }
+    }
+
+    private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
+    {
+        var prefs = await _commPrefService.GetPreferencesAsync(userId);
+        var prefsByCategory = prefs.ToDictionary(p => p.Category);
+
+        // Check if user has a matched ticket order (locks ticketing preference)
+        var hasTicketOrder = await _dbContext.TicketOrders
+            .AnyAsync(o => o.MatchedUserId == userId);
+
+        var categories = new List<CategoryPreferenceItem>();
+
+        foreach (var category in MessageCategoryExtensions.ActiveCategories)
+        {
+            var pref = prefsByCategory.GetValueOrDefault(category);
+            var isAlwaysOn = category.IsAlwaysOn();
+            var isTicketingLocked = category == MessageCategory.Ticketing && hasTicketOrder;
+
+            categories.Add(new CategoryPreferenceItem
+            {
+                Category = category,
+                DisplayName = category == MessageCategory.Ticketing
+                    ? $"Ticketing — {DateTime.UtcNow.Year}"
+                    : category.ToDisplayName(),
+                Description = category.ToDescription(),
+                EmailEnabled = pref is null || !pref.OptedOut,
+                AlertEnabled = pref?.InboxEnabled ?? true,
+                EmailEditable = !isAlwaysOn && !isTicketingLocked,
+                AlertEditable = !isAlwaysOn && !isTicketingLocked,
+                Note = isTicketingLocked ? "Locked — you have a ticket order for this year" : null,
+            });
+        }
+
+        return new CommunicationPreferencesViewModel { Categories = categories };
+    }
+
 }

@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
+using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -46,6 +47,7 @@ public class DevLoginController : Controller
     private readonly IClock _clock;
     private readonly IWebHostEnvironment _env;
     private readonly IConfiguration _config;
+    private readonly ConfigurationRegistry _configRegistry;
     private readonly IMemoryCache _cache;
     private readonly ILogger<DevLoginController> _logger;
 
@@ -56,6 +58,7 @@ public class DevLoginController : Controller
         IClock clock,
         IWebHostEnvironment env,
         IConfiguration config,
+        ConfigurationRegistry configRegistry,
         IMemoryCache cache,
         ILogger<DevLoginController> logger)
     {
@@ -65,6 +68,7 @@ public class DevLoginController : Controller
         _clock = clock;
         _env = env;
         _config = config;
+        _configRegistry = configRegistry;
         _cache = cache;
         _logger = logger;
     }
@@ -155,7 +159,8 @@ public class DevLoginController : Controller
         if (_env.IsProduction())
             return false;
 
-        return _config.GetValue<bool>("DevAuth:Enabled");
+        return _config.GetSettingValue(
+            _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
     private async Task EnsurePersonaAsync(DevPersonaInfo info, Guid id)
@@ -181,7 +186,8 @@ public class DevLoginController : Controller
         var lastName = nameParts.Length > 1 ? nameParts[1] : info.DisplayName;
 
         // Determine role and team assignments
-        var roleName = RoleNameFromSlug(info.Slug);
+        var isCoordinatorPersona = string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase);
+        var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(info.Slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
         Guid[] teams;
         if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
@@ -224,15 +230,45 @@ public class DevLoginController : Controller
             UpdatedAt = now
         });
 
+        var profileId = Guid.NewGuid();
         _db.Profiles.Add(new Profile
         {
-            Id = Guid.NewGuid(),
+            Id = profileId,
             UserId = id,
             BurnerName = displayName,
             FirstName = firstName,
             LastName = lastName,
             IsApproved = true,
             ConsentCheckStatus = ConsentCheckStatus.Cleared,
+            City = "Barcelona",
+            CountryCode = "ES",
+            Bio = $"Dev persona for testing the {info.DisplayName} role.",
+            Pronouns = "they/them",
+            DateOfBirth = new LocalDate(4, 6, 15), // June 15 (year 4 = leap year placeholder)
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        // Seed sample contact fields so profile page exercises the contact rendering path
+        _db.ContactFields.Add(new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profileId,
+            FieldType = ContactFieldType.Signal,
+            Value = $"+34 600 000 {id.ToString()[..3]}",
+            Visibility = ContactFieldVisibility.AllActiveProfiles,
+            DisplayOrder = 0,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        _db.ContactFields.Add(new ContactField
+        {
+            Id = Guid.NewGuid(),
+            ProfileId = profileId,
+            FieldType = ContactFieldType.Telegram,
+            Value = $"@dev_{info.Slug}",
+            Visibility = ContactFieldVisibility.MyTeams,
+            DisplayOrder = 1,
             CreatedAt = now,
             UpdatedAt = now
         });
@@ -264,14 +300,27 @@ public class DevLoginController : Controller
             });
         }
 
+        // Coordinator persona: create a department + sub-team and assign as coordinator
+        if (isCoordinatorPersona)
+        {
+            await SeedCoordinatorTeamsAsync(id, now);
+        }
+
         await _db.SaveChangesAsync();
         _cache.InvalidateApprovedProfiles();
         _cache.InvalidateUserAccess(id);
+        if (isCoordinatorPersona)
+        {
+            _cache.InvalidateActiveTeams();
+        }
 
         _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
             email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
     }
 
+    /// <summary>
+    /// Seeds a test barrio and its lead
+    /// </summary>
     private async Task EnsureBarrioCampAsync(string personaSlug, Guid leadUserId)
     {
         // barrio-1-lead → camp slug "barrio-1", name "Barrio 1"
@@ -332,6 +381,126 @@ public class DevLoginController : Controller
         await _db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Seeds a test department and sub-team for the coordinator persona.
+    /// The coordinator is assigned as coordinator of the department and member of the sub-team.
+    /// Uses deterministic IDs so teams are stable across restarts.
+    /// </summary>
+    private async Task SeedCoordinatorTeamsAsync(Guid coordinatorUserId, Instant now)
+    {
+        var deptId = PersonaGuid("dev-test-department");
+        var subTeamId = PersonaGuid("dev-test-subteam");
+
+        // Only create if the department doesn't already exist
+        var deptExists = await _db.Teams.AnyAsync(t => t.Id == deptId);
+        if (deptExists)
+        {
+            // Ensure the coordinator membership on department exists
+            var hasDeptMembership = await _db.TeamMembers
+                .AnyAsync(tm => tm.TeamId == deptId && tm.UserId == coordinatorUserId);
+            if (!hasDeptMembership)
+            {
+                _db.TeamMembers.Add(new TeamMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = coordinatorUserId,
+                    TeamId = deptId,
+                    Role = TeamMemberRole.Coordinator,
+                    JoinedAt = now
+                });
+            }
+
+            // Ensure sub-team exists (may have been deleted manually in preview env)
+            var subTeamExists = await _db.Teams.AnyAsync(t => t.Id == subTeamId);
+            if (!subTeamExists)
+            {
+                _db.Teams.Add(new Team
+                {
+                    Id = subTeamId,
+                    Name = "Dev Test SubTeam",
+                    Description = "Test sub-team for coordinator e2e tests",
+                    Slug = "dev-test-subteam",
+                    IsActive = true,
+                    RequiresApproval = true,
+                    SystemTeamType = SystemTeamType.None,
+                    ParentTeamId = deptId,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+
+            // Ensure coordinator membership on sub-team exists
+            var hasSubTeamMembership = await _db.TeamMembers
+                .AnyAsync(tm => tm.TeamId == subTeamId && tm.UserId == coordinatorUserId);
+            if (!hasSubTeamMembership)
+            {
+                _db.TeamMembers.Add(new TeamMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = coordinatorUserId,
+                    TeamId = subTeamId,
+                    Role = TeamMemberRole.Member,
+                    JoinedAt = now
+                });
+            }
+
+            return;
+        }
+
+        // Create department
+        _db.Teams.Add(new Team
+        {
+            Id = deptId,
+            Name = "Dev Test Department",
+            Description = "Test department for coordinator e2e tests",
+            Slug = "dev-test-department",
+            IsActive = true,
+            RequiresApproval = true,
+            SystemTeamType = SystemTeamType.None,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        // Create sub-team under the department
+        _db.Teams.Add(new Team
+        {
+            Id = subTeamId,
+            Name = "Dev Test SubTeam",
+            Description = "Test sub-team for coordinator e2e tests",
+            Slug = "dev-test-subteam",
+            IsActive = true,
+            RequiresApproval = true,
+            SystemTeamType = SystemTeamType.None,
+            ParentTeamId = deptId,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        // Add coordinator as coordinator of the department
+        _db.TeamMembers.Add(new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            UserId = coordinatorUserId,
+            TeamId = deptId,
+            Role = TeamMemberRole.Coordinator,
+            JoinedAt = now
+        });
+
+        // Add coordinator as regular member of the sub-team
+        _db.TeamMembers.Add(new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            UserId = coordinatorUserId,
+            TeamId = subTeamId,
+            Role = TeamMemberRole.Member,
+            JoinedAt = now
+        });
+
+        _logger.LogInformation(
+            "DEV: seeded coordinator teams — department {DeptId} ({DeptSlug}), sub-team {SubTeamId} ({SubTeamSlug})",
+            deptId, "dev-test-department", subTeamId, "dev-test-subteam");
+    }
+
     // ============================================================
     // Static helpers
     // ============================================================
@@ -343,6 +512,7 @@ public class DevLoginController : Controller
             new("volunteer", "Volunteer"),
             new("barrio-1-lead", "Barrio 1 Lead"),
             new("barrio-2-lead", "Barrio 2 Lead"),
+            new("coordinator", "Coordinator")
         };
 
         var roles = typeof(RoleNames)

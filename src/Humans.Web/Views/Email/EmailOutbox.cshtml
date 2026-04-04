@@ -1,0 +1,175 @@
+@model Humans.Web.Models.EmailOutboxViewModel
+@using Humans.Domain.Enums
+@{
+    ViewData["Title"] = "Email Outbox";
+}
+@functions {
+    static string FormatApproxCount(int count)
+    {
+        if (count < 1000) return count.ToString();
+        if (count < 10_000) return $"~{count / 1000.0:0.#}k";
+        return $"~{count / 1000}k";
+    }
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="mb-0">Email Outbox</h1>
+        @if (Model.IsPaused)
+        {
+            <span class="text-warning fw-semibold"><i class="fa-solid fa-circle-pause me-1"></i>Sending paused</span>
+        }
+        else
+        {
+            <span class="text-success fw-semibold"><i class="fa-solid fa-circle-check me-1"></i>Sending active</span>
+        }
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        @if (Model.IsPaused)
+        {
+            <form method="post" asp-action="ResumeEmailSending">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-play me-1"></i>Resume Sending
+                </button>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-action="PauseEmailSending">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger">
+                    <i class="fa-solid fa-pause me-1"></i>Pause All Sending
+                </button>
+            </form>
+        }
+        <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">Back</a>
+    </div>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-primary">@FormatApproxCount(Model.TotalMessageCount)</div>
+                <div class="text-muted small">Total Messages</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-warning">@Model.QueuedCount</div>
+                <div class="text-muted small">Queued</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-success">@Model.SentLast24HoursCount</div>
+                <div class="text-muted small">Sent (24h)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-danger">@Model.FailedCount</div>
+                <div class="text-muted small">Failed</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md">
+        <div class="card text-center">
+            <div class="card-body">
+                <div class="display-6 fw-bold text-secondary">10/min</div>
+                <div class="text-muted small">Throttle</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Recent Messages (last 50)</div>
+    @if (!Model.Messages.Any())
+    {
+        <div class="card-body text-muted">No messages in the outbox.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Template</th>
+                        <th>Email Address</th>
+                        <th>Status</th>
+                        <th>Queued At</th>
+                        <th>Sent At</th>
+                        <th>Actions</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var msg in Model.Messages)
+                    {
+                        var badgeClass = msg.Status switch
+                        {
+                            EmailOutboxStatus.Queued => "bg-warning text-dark",
+                            EmailOutboxStatus.Sent => "bg-success",
+                            EmailOutboxStatus.Failed => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+                        <tr>
+                            <td>@(msg.User?.DisplayName ?? msg.RecipientName ?? "—")</td>
+                            <td><code class="small">@msg.TemplateName</code></td>
+                            <td class="small">@msg.RecipientEmail</td>
+                            <td>
+                                <span class="badge @badgeClass">@msg.Status</span>
+                                @if (msg.RetryCount > 0)
+                                {
+                                    <small class="text-muted ms-1">×@msg.RetryCount</small>
+                                }
+                            </td>
+                            <td class="text-nowrap small">@msg.CreatedAt.ToAuditMinuteTimestamp()</td>
+                            <td class="text-nowrap small">
+                                @if (msg.SentAt.HasValue)
+                                {
+                                    @msg.SentAt.Value.ToAuditMinuteTimestamp()
+                                }
+                                else
+                                {
+                                    <span class="text-muted">—</span>
+                                }
+                            </td>
+                            <td>
+                                @if (msg.Status == EmailOutboxStatus.Failed)
+                                {
+                                    <form method="post" asp-action="RetryEmailOutboxMessage" asp-route-id="@msg.Id" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Retry</button>
+                                    </form>
+                                    <form method="post" asp-action="DiscardEmailOutboxMessage" asp-route-id="@msg.Id" class="d-inline ms-1">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                data-confirm="Discard this message? It cannot be recovered.">Discard</button>
+                                    </form>
+                                }
+                            </td>
+                            <td class="small text-danger">
+                                @if (!string.IsNullOrEmpty(msg.LastError))
+                                {
+                                    <span title="@msg.LastError">@msg.LastError[..Math.Min(80, msg.LastError.Length)]@(msg.LastError.Length > 80 ? "…" : "")</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

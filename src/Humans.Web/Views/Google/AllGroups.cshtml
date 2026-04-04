@@ -1,0 +1,283 @@
+@model Humans.Application.DTOs.AllGroupsResult
+@using Humans.Application.Interfaces
+@{
+    ViewData["Title"] = "All Domain Groups";
+    var teams = ViewBag.Teams as IReadOnlyList<TeamSummary> ?? [];
+    var driftedGroups = Model.Groups.Where(g => g.HasDrift).ToList();
+
+    // Standard = settings we enforce (from ExpectedSettings)
+    var standardKeys = Model.ExpectedSettings.Keys.ToList();
+
+    // Extra = non-deprecated settings we show but don't enforce
+    var extraKeys = new List<string> {
+        "WhoCanModerateContent", "WhoCanAssistContent", "WhoCanDiscoverGroup",
+        "WhoCanLeaveGroup", "ArchiveOnly", "ReplyTo", "CustomReplyTo",
+        "IncludeCustomFooter", "CustomFooterText", "SendMessageDenyNotification",
+        "DefaultMessageDenyNotificationText", "FavoriteRepliesOnTop",
+        "DefaultSender", "PrimaryLanguage"
+    };
+
+    // Deprecated = everything else found in actual settings
+    var knownKeys = new HashSet<string>(standardKeys.Concat(extraKeys));
+    var deprecatedKeys = Model.Groups
+        .SelectMany(g => g.ActualSettings.Keys)
+        .Distinct()
+        .Where(k => !knownKeys.Contains(k))
+        .OrderBy(k => k)
+        .ToList();
+
+    var allSettingKeys = standardKeys.Concat(extraKeys).Concat(deprecatedKeys).ToList();
+}
+
+<style>
+    .all-groups-table .sticky-col-email {
+        position: sticky;
+        left: 0;
+        min-width: 12rem;
+        background: #fff;
+        z-index: 2;
+    }
+
+    .all-groups-table .sticky-col-name {
+        position: sticky;
+        left: 12rem;
+        min-width: 14rem;
+        background: #fff;
+        z-index: 2;
+    }
+
+    .all-groups-table thead .sticky-col-email,
+    .all-groups-table thead .sticky-col-name {
+        background: #f8f9fa;
+        z-index: 3;
+    }
+</style>
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+        <h1>All Domain Groups</h1>
+        <div class="d-flex gap-2">
+            @if (driftedGroups.Count > 0)
+            {
+                <form asp-action="RemediateAllGroupSettings" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-warning btn-sm"
+                            data-confirm="Fix settings on all @driftedGroups.Count drifted group(s)?">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Fix All (@driftedGroups.Count)
+                    </button>
+                </form>
+            }
+            <a asp-action="GroupSettingsResults" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-list-check me-1"></i>Per-Team Drift View
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i>Back to Google
+            </a>
+        </div>
+    </div>
+
+    @if (Model.ErrorMessage is not null)
+    {
+        <div class="alert alert-danger">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i>@Model.ErrorMessage
+        </div>
+    }
+    else if (Model.Groups.Count == 0)
+    {
+        <div class="alert alert-info">
+            <i class="fa-solid fa-circle-info me-1"></i>No groups found on the domain.
+        </div>
+    }
+    else
+    {
+        var linkedCount = Model.Groups.Count(g => g.LinkedTeamId is not null);
+        var unlinkedCount = Model.Groups.Count(g => g.LinkedTeamId is null);
+        var errorCount = Model.Groups.Count(g => g.ErrorMessage is not null);
+
+        <div class="alert alert-info mb-3">
+            <i class="fa-solid fa-layer-group me-1"></i>
+            <strong>@Model.Groups.Count</strong> group(s) total —
+            <strong>@linkedCount</strong> linked to teams,
+            <strong>@unlinkedCount</strong> unlinked,
+            <strong>@driftedGroups.Count</strong> with drift@(errorCount > 0 ? $", {errorCount} with errors" : "").
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="table table-sm table-hover all-groups-table" style="white-space: nowrap;">
+                <thead class="table-light">
+                    <tr>
+                        <th class="sticky-col-email">Group Email</th>
+                        <th class="sticky-col-name">Display Name</th>
+                        <th>Team</th>
+                        <th class="text-end">Members</th>
+                        @foreach (var key in allSettingKeys)
+                        {
+                            var isStandard = standardKeys.Contains(key);
+                            var isDeprecated = deprecatedKeys.Contains(key);
+                            if (isStandard)
+                            {
+                                <th title="Standard: enforced by sync">@key</th>
+                            }
+                            else if (isDeprecated)
+                            {
+                                <th title="Deprecated by Google (shown for reference)" class="text-muted" style="text-decoration: line-through; font-weight: normal;">@key&#8203;&#8225;</th>
+                            }
+                            else
+                            {
+                                <th title="Extra: not enforced by sync" class="text-muted" style="font-weight: normal;">@key&#8203;&dagger;</th>
+                            }
+                        }
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in Model.Groups)
+                    {
+                        <tr class="@(group.ErrorMessage is not null ? "table-danger" : "")">
+                            <td class="sticky-col-email">
+                                <code class="small">@(group.GroupEmail.Split('@')[0])@@</code>
+                            </td>
+                            <td class="sticky-col-name">
+                                @group.DisplayName
+                            </td>
+                            <td>
+                                @if (!string.IsNullOrWhiteSpace(group.LinkedTeamSlug))
+                                {
+                                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@group.LinkedTeamSlug"
+                                       class="badge bg-primary text-decoration-none">
+                                        @group.LinkedTeamName
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">—</span>
+                                }
+                            </td>
+                            <td class="text-end">@group.MemberCount</td>
+                            @if (group.ErrorMessage is not null)
+                            {
+                                <td colspan="@allSettingKeys.Count" class="text-danger small">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i>@group.ErrorMessage
+                                </td>
+                            }
+                            else
+                            {
+                                @foreach (var key in allSettingKeys)
+                                {
+                                    var hasActual = group.ActualSettings.TryGetValue(key, out var actual);
+                                    var isEnforced = Model.ExpectedSettings.TryGetValue(key, out var expected);
+                                    var hasDrift = isEnforced && hasActual && actual != expected;
+                                    var isCellDeprecated = deprecatedKeys.Contains(key);
+                                    if (hasDrift)
+                                    {
+                                        <td style="background-color: var(--h-alert-danger-bg); color: var(--h-alert-danger-text);" title="Expected: @expected">
+                                            <small>@actual</small>
+                                        </td>
+                                    }
+                                    else if (isCellDeprecated)
+                                    {
+                                        <td style="opacity: 0.5;">
+                                            <small class="text-muted">@(hasActual ? actual : "—")</small>
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td>
+                                            <small class="text-muted">@(hasActual ? actual : "—")</small>
+                                        </td>
+                                    }
+                                }
+                            }
+                            <td>
+                                <div class="d-flex gap-1">
+                                    @if (group.HasDrift)
+                                    {
+                                        <form asp-action="RemediateGroupSettings" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="groupEmail" value="@group.GroupEmail" />
+                                            <input type="hidden" name="returnUrl" value="@Url.Action("AllGroups")" />
+                                            <button type="submit" class="btn btn-warning btn-sm py-0">
+                                                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Fix
+                                            </button>
+                                        </form>
+                                    }
+                                    @if (group.LinkedTeamId is null && teams.Count > 0)
+                                    {
+                                        <button type="button" class="btn btn-outline-primary btn-sm py-0"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#linkModal"
+                                                data-group-email="@group.GroupEmail"
+                                                data-group-prefix="@group.GroupEmail.Split('@')[0]">
+                                            <i class="fa-solid fa-link me-1"></i>Link
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-muted small mt-1">&dagger; Extra setting (not enforced) &nbsp;|&nbsp; &#8225; Deprecated by Google (shown for reference)</p>
+    }
+</div>
+
+@if (teams.Count > 0)
+{
+    <!-- Link to Team Modal -->
+    <div class="modal fade" id="linkModal" tabindex="-1" aria-labelledby="linkModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-action="LinkGroupToTeam" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="linkModalLabel">Link Group to Team</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small mb-3">
+                            Linking sets the team's Google Group prefix and creates the resource record.
+                        </p>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Group</label>
+                            <input type="text" class="form-control" id="modalGroupEmail" readonly />
+                            <input type="hidden" name="groupPrefix" id="modalGroupPrefix" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="modalTeamId" class="form-label fw-semibold">Team</label>
+                            <select name="teamId" id="modalTeamId" class="form-select" required>
+                                <option value="">Select a team…</option>
+                                @foreach (var team in teams)
+                                {
+                                    <option value="@team.Id">@team.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-link me-1"></i>Link Group
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var linkModal = document.getElementById('linkModal');
+            if (linkModal) {
+                linkModal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget;
+                    var email = button.getAttribute('data-group-email');
+                    var prefix = button.getAttribute('data-group-prefix');
+                    document.getElementById('modalGroupEmail').value = email;
+                    document.getElementById('modalGroupPrefix').value = prefix;
+                });
+            }
+        });
+    </script>
+}

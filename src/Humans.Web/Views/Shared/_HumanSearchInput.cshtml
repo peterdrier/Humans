@@ -51,7 +51,7 @@
     });
 
     function fetchResults(q) {
-        fetch('/api/humans/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+        fetch('/api/profiles/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
             .then(function (results) { renderDropdown(results); })
             .catch(function () { hideDropdown(); });

@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Infrastructure.Services;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
@@ -13,6 +14,7 @@ public class TicketTailorServiceTests
     private static TicketTailorService CreateService(HttpMessageHandler handler)
     {
         var client = new HttpClient(handler);
+        var cache = new MemoryCache(new MemoryCacheOptions());
         var settings = Options.Create(new TicketVendorSettings
         {
             EventId = "ev_test",
@@ -20,7 +22,7 @@ public class TicketTailorServiceTests
             ApiKey = "test_key"
         });
 
-        return new TicketTailorService(client, settings,
+        return new TicketTailorService(client, settings, cache,
             NullLogger<TicketTailorService>.Instance);
     }
 

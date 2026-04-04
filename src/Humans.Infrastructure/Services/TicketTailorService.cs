@@ -3,8 +3,10 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -34,7 +36,10 @@ public class TicketVendorSettings
 public class TicketTailorService : ITicketVendorService
 {
     private const string BaseUrl = "https://api.tickettailor.com/v1";
+    private static readonly TimeSpan EventSummaryCacheTtl = TimeSpan.FromMinutes(15);
+
     private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TicketTailorService> _logger;
     private readonly TicketVendorSettings _settings;
 
@@ -47,9 +52,11 @@ public class TicketTailorService : ITicketVendorService
     public TicketTailorService(
         HttpClient httpClient,
         IOptions<TicketVendorSettings> settings,
+        IMemoryCache cache,
         ILogger<TicketTailorService> logger)
     {
         _httpClient = httpClient;
+        _cache = cache;
         _settings = settings.Value;
         _logger = logger;
 
@@ -92,6 +99,7 @@ public class TicketTailorService : ITicketVendorService
                 // code embedded in description like "NCA Contributor Discount (DISC25-OPGYT8-004)"
                 var discountCode = ExtractDiscountCode(order.LineItems);
                 var discountAmount = ExtractDiscountAmount(order.LineItems);
+                var donationAmount = ExtractDonationAmount(order.LineItems);
 
                 orders.Add(new VendorOrderDto(
                     VendorOrderId: order.Id,
@@ -105,7 +113,8 @@ public class TicketTailorService : ITicketVendorService
                     PurchasedAt: purchasedAt,
                     Tickets: [],
                     StripePaymentIntentId: order.TxnId,
-                    DiscountAmount: discountAmount));
+                    DiscountAmount: discountAmount,
+                    DonationAmount: donationAmount));
             }
 
             cursor = body.Links?.Next is not null ? body.Data[^1].Id : null;
@@ -162,8 +171,26 @@ public class TicketTailorService : ITicketVendorService
     public async Task<VendorEventSummaryDto> GetEventSummaryAsync(
         string eventId, CancellationToken ct = default)
     {
+        var cacheKey = CacheKeys.TicketEventSummary(eventId);
+        if (_cache.TryGetValue<VendorEventSummaryDto>(cacheKey, out var cachedSummary) &&
+            cachedSummary is not null)
+        {
+            return cachedSummary;
+        }
+
         var response = await _httpClient.GetAsync($"{BaseUrl}/events/{eventId}", ct);
-        response.EnsureSuccessStatusCode();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning(
+                "TicketTailor event summary API returned {StatusCode} for event {EventId}",
+                (int)response.StatusCode, eventId);
+
+            if ((int)response.StatusCode >= 500)
+                return new VendorEventSummaryDto(eventId, "Unknown", 0, 0, 0);
+
+            response.EnsureSuccessStatusCode();
+        }
 
         var evt = await response.Content.ReadFromJsonAsync<TtEvent>(JsonOptions, ct);
 
@@ -175,12 +202,15 @@ public class TicketTailorService : ITicketVendorService
             totalCapacity = evt?.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
         var ticketsSold = evt?.TotalIssuedTickets ?? 0;
 
-        return new VendorEventSummaryDto(
+        var summary = new VendorEventSummaryDto(
             EventId: eventId,
             EventName: evt?.Name ?? "Unknown",
             TotalCapacity: totalCapacity,
             TicketsSold: ticketsSold,
             TicketsRemaining: totalCapacity - ticketsSold);
+
+        _cache.Set(cacheKey, summary, EventSummaryCacheTtl);
+        return summary;
     }
 
     public async Task<IReadOnlyList<string>> GenerateDiscountCodesAsync(
@@ -272,6 +302,22 @@ public class TicketTailorService : ITicketVendorService
             .Sum(li => Math.Abs(li.Total ?? 0));
 
         return discountCents > 0 ? discountCents / 100m : null;
+    }
+
+    /// <summary>
+    /// Sum standalone donation line items from TT (type "donation").
+    /// These are VAT-exempt add-on donations. Returns 0 if none.
+    /// TT amounts are in cents — converted to euros.
+    /// </summary>
+    private static decimal ExtractDonationAmount(List<TtLineItem>? lineItems)
+    {
+        if (lineItems is null) return 0m;
+
+        var donationCents = lineItems
+            .Where(li => string.Equals(li.Type, "donation", StringComparison.OrdinalIgnoreCase))
+            .Sum(li => li.Total ?? 0);
+
+        return donationCents > 0 ? donationCents / 100m : 0m;
     }
 
     // --- TicketTailor API response models ---

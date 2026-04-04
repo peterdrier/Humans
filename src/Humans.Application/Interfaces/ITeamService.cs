@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces;
 public record CachedTeam(
     Guid Id, string Name, string? Description, string Slug,
     bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
-    bool IsPublicPage, Instant CreatedAt, List<CachedTeamMember> Members,
+    bool IsPublicPage, bool IsHidden, Instant CreatedAt, List<CachedTeamMember> Members,
     Guid? ParentTeamId = null);
 
 public record CachedTeamMember(
@@ -102,7 +102,8 @@ public record AdminTeamSummary(
     int RoleSlotCount,
     Instant CreatedAt,
     bool IsChildTeam,
-    int PendingShiftSignupCount);
+    int PendingShiftSignupCount,
+    bool IsHidden);
 
 public record AdminTeamListResult(
     IReadOnlyList<AdminTeamSummary> Teams,
@@ -122,6 +123,7 @@ public interface ITeamService
         bool requiresApproval,
         Guid? parentTeamId = null,
         string? googleGroupPrefix = null,
+        bool isHidden = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -180,6 +182,8 @@ public interface ITeamService
         string? googleGroupPrefix = null,
         string? customSlug = null,
         bool? hasBudget = null,
+        bool? isHidden = null,
+        bool? isSensitive = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -285,21 +289,6 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Checks if a user is an admin (has active Admin RoleAssignment).
-    /// </summary>
-    Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks if a user is a board member (has active Board RoleAssignment).
-    /// </summary>
-    Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Checks if a user is a teams admin (has active TeamsAdmin RoleAssignment).
-    /// </summary>
-    Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Removes a member from a team (admin action).
     /// </summary>
     Task<bool> RemoveMemberAsync(
@@ -391,6 +380,7 @@ public interface ITeamService
     Task<TeamRoleDefinition> CreateRoleDefinitionAsync(
         Guid teamId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, RolePeriod period, Guid actorUserId,
+        bool isPublic = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -399,6 +389,7 @@ public interface ITeamService
     Task<TeamRoleDefinition> UpdateRoleDefinitionAsync(
         Guid roleDefinitionId, string name, string? description, int slotCount,
         List<SlotPriority> priorities, int sortOrder, bool isManagement, RolePeriod period, Guid actorUserId,
+        bool isPublic = true,
         CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -1,0 +1,170 @@
+@model Humans.Web.Models.AdminHumanListViewModel
+@{
+    ViewData["Title"] = Localizer["AdminHumans_Title"].Value;
+    string ToggleDir(string col) => Model.SortBy == col && Model.SortDir == "asc" ? "desc" : "asc";
+    string SortIndicator(string col) => Model.SortBy != col ? "" : Model.SortDir == "asc" ? " \u25B2" : " \u25BC";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>@Localizer["AdminHumans_Title"]</h1>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+        <a asp-controller="Contacts" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-address-book"></i> Contacts
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <input type="hidden" name="sort" value="@Model.SortBy" />
+            <input type="hidden" name="dir" value="@Model.SortDir" />
+            <input type="hidden" name="filter" value="@Model.StatusFilter" />
+            <div class="col-auto flex-grow-1">
+                <input type="text" name="search" class="form-control" placeholder="@Localizer["Admin_SearchPlaceholder"].Value"
+                       value="@Model.SearchTerm">
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">@Localizer["Admin_Search"]</button>
+                @if (!string.IsNullOrEmpty(Model.SearchTerm) || !string.IsNullOrEmpty(Model.StatusFilter) || Model.SortBy != "name" || Model.SortDir != "asc")
+                {
+                    <a asp-action="AdminList" class="btn btn-outline-secondary">@Localizer["Admin_Clear"]</a>
+                }
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap gap-3 align-items-center">
+        <div class="btn-group" role="group">
+            <a asp-action="AdminList" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(string.IsNullOrEmpty(Model.StatusFilter) ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_AllStatuses"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="active" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "active" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Active"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="pending" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "pending" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_PendingApproval"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="missingconsents" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "missingconsents" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_MissingConsents"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="incomplete" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "incomplete" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_IncompleteSignup"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="suspended" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "suspended" ? "btn-primary" : "btn-outline-primary")">
+                @Localizer["AdminHumans_Suspended"]
+            </a>
+            <a asp-action="AdminList" asp-route-filter="deleting" asp-route-search="@Model.SearchTerm" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir"
+               class="btn @(Model.StatusFilter == "deleting" ? "btn-danger" : "btn-outline-danger")">
+                @Localizer["AdminHumans_Deleting"]
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        @if (Model.Humans.Count == 0)
+        {
+            <p class="text-muted text-center py-4 mb-0">@Localizer["Admin_NoMembersFound"]</p>
+        }
+        else
+        {
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>
+                            <a asp-action="AdminList" asp-route-sort="name" asp-route-dir="@ToggleDir("name")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
+                               style="text-decoration:none; color:inherit;">@Localizer["Teams_Member"]@SortIndicator("name")</a>
+                        </th>
+                        <th>
+                            <a asp-action="AdminList" asp-route-sort="joined" asp-route-dir="@ToggleDir("joined")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
+                               style="text-decoration:none; color:inherit;">@Localizer["Admin_Joined"]@SortIndicator("joined")</a>
+                        </th>
+                        <th>
+                            <a asp-action="AdminList" asp-route-sort="login" asp-route-dir="@ToggleDir("login")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
+                               style="text-decoration:none; color:inherit;">@Localizer["Admin_LastLogin"]@SortIndicator("login")</a>
+                        </th>
+                        <th>
+                            <a asp-action="AdminList" asp-route-sort="status" asp-route-dir="@ToggleDir("status")" asp-route-search="@Model.SearchTerm" asp-route-filter="@Model.StatusFilter"
+                               style="text-decoration:none; color:inherit;">@Localizer["Common_Status"]@SortIndicator("status")</a>
+                        </th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var member in Model.Humans)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <vc:user-avatar profile-picture-url="@member.ProfilePictureUrl"
+                                                    display-name="@member.DisplayName"
+                                                    size="32"
+                                                    css-class="me-2" />
+                                    <div>
+                                        <div>@member.DisplayName</div>
+                                        <small class="text-muted">@member.Email</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>@member.CreatedAt.ToDisplayDate()</td>
+                            <td>
+                                @if (member.LastLoginAt.HasValue)
+                                {
+                                @member.LastLoginAt.Value.ToDisplayDate()
+                                }
+                                else
+                                {
+                                    <span class="text-muted">@Localizer["Admin_Never"]</span>
+                                }
+                            </td>
+                            <td>
+                                @if (member.HasProfile)
+                                {
+                                    <span class="badge @StatusBadgeExtensions.GetMembershipStatusBadgeClass(member.MembershipStatus)">
+                                        @member.MembershipStatus
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@Localizer["Admin_NoProfile"]</span>
+                                }
+                                @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = member.Id, mode = "status" })
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="AdminDetail" asp-route-id="@member.Id" class="btn btn-sm btn-outline-primary">
+                                    @Localizer["MyTeams_View"]
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            @for (var i = 1; i <= Model.TotalPages && i <= 10; i++)
+            {
+                <li class="page-item @(i == Model.PageNumber ? "active" : "")">
+                    <a class="page-link" asp-action="AdminList" asp-route-page="@i" asp-route-search="@Model.SearchTerm"
+                       asp-route-filter="@Model.StatusFilter" asp-route-sort="@Model.SortBy" asp-route-dir="@Model.SortDir">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

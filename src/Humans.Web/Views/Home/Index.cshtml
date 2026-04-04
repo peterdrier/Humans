@@ -2,93 +2,124 @@
     ViewData["Title"] = Localizer["Home_Title"].Value;
 }
 
-<div class="text-center mb-5">
+<section class="home-hero text-center">
     <h1 class="display-4">@Localizer["Nav_Brand"]</h1>
-    <p class="lead">@Localizer["Home_Tagline"]</p>
-
-    <div class="mt-4">
-        <p class="text-muted mb-3">@Localizer["Home_CTA"]</p>
-        <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg">
-            @Localizer["Login_Title"]
-        </a>
-    </div>
-</div>
+    <p class="lead home-hero-subtitle">@Localizer["Home_Tagline"]</p>
+    <p class="home-hero-description">@Localizer["Home_HeroDescription"]</p>
+    <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg mt-2">
+        <i class="fa-solid fa-right-to-bracket me-2"></i>@Localizer["Login_Title"]
+    </a>
+</section>
 
 <div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card mb-4">
-            <div class="card-body">
-                <h2 class="h4 mb-3">@Localizer["Home_WhyTitle"]</h2>
-                <p>
-                    @Localizer["Home_WhyDescription"]
-                </p>
+    <div class="col-lg-10">
+        <h2 class="text-center h3 mb-4">@Localizer["Home_FeaturesTitle"]</h2>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 home-feature-card">
+                    <div class="card-body text-center">
+                        <div class="home-feature-icon">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <h3 class="h5">@Localizer["Home_ShiftsTitle"]</h3>
+                        <p class="text-muted mb-0">@Localizer["Home_ShiftsDescription"]</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 home-feature-card">
+                    <div class="card-body text-center">
+                        <div class="home-feature-icon">
+                            <i class="fa-solid fa-people-group"></i>
+                        </div>
+                        <h3 class="h5">@Localizer["Home_TeamsTitle"]</h3>
+                        <p class="text-muted mb-0">@Localizer["Home_TeamsDescription"]</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 home-feature-card">
+                    <div class="card-body text-center">
+                        <div class="home-feature-icon">
+                            <i class="fa-solid fa-campground"></i>
+                        </div>
+                        <h3 class="h5">@Localizer["Home_CampsTitle"]</h3>
+                        <p class="text-muted mb-0">@Localizer["Home_CampsDescription"]</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 home-feature-card">
+                    <div class="card-body text-center">
+                        <div class="home-feature-icon">
+                            <i class="fa-solid fa-ticket"></i>
+                        </div>
+                        <h3 class="h5">@Localizer["Home_TicketsTitle"]</h3>
+                        <p class="text-muted mb-0">@Localizer["Home_TicketsDescription"]</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 home-feature-card">
+                    <div class="card-body text-center">
+                        <div class="home-feature-icon">
+                            <i class="fa-solid fa-coins"></i>
+                        </div>
+                        <h3 class="h5">@Localizer["Home_BudgetTitle"]</h3>
+                        <p class="text-muted mb-0">@Localizer["Home_BudgetDescription"]</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 home-feature-card">
+                    <div class="card-body text-center">
+                        <div class="home-feature-icon">
+                            <i class="fa-solid fa-address-card"></i>
+                        </div>
+                        <h3 class="h5">@Localizer["Home_ProfilesTitle"]</h3>
+                        <p class="text-muted mb-0">@Localizer["Home_ProfilesDescription"]</p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="row">
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
+        <div class="row justify-content-center mb-5">
+            <div class="col-lg-8">
+                <div class="card home-onboarding-card">
                     <div class="card-body">
-                        <h3 class="h5">@Localizer["Home_ComplianceTitle"]</h3>
-                        <p class="text-muted mb-0">
-                            @Localizer["Home_ComplianceDescription"]
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h3 class="h5">@Localizer["Home_ResourceAccessTitle"]</h3>
-                        <p class="text-muted mb-0">
-                            @Localizer["Home_ResourceAccessDescription"]
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h3 class="h5">@Localizer["Home_DocumentUpdatesTitle"]</h3>
-                        <p class="text-muted mb-0">
-                            @Localizer["Home_DocumentUpdatesDescription"]
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h3 class="h5">@Localizer["Home_VotingMembershipTitle"]</h3>
-                        <p class="text-muted mb-0">
-                            @Localizer["Home_VotingMembershipDescription"]
+                        <h2 class="h4 mb-3 text-center">@Localizer["Home_GettingStartedTitle"]</h2>
+                        <div class="home-steps">
+                            <div class="home-step">
+                                <span class="home-step-number">1</span>
+                                <span>@Html.Raw(Localizer["Home_Step1"].Value)</span>
+                            </div>
+                            <div class="home-step">
+                                <span class="home-step-number">2</span>
+                                <span>@Html.Raw(Localizer["Home_Step2"].Value)</span>
+                            </div>
+                            <div class="home-step">
+                                <span class="home-step-number">3</span>
+                                <span>@Html.Raw(Localizer["Home_Step3"].Value)</span>
+                            </div>
+                        </div>
+                        <p class="mb-0 text-muted text-center mt-3">
+                            @Localizer["Home_GettingStartedSummary"]
                         </p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-body">
-                <h2 class="h4 mb-3">@Localizer["Home_GettingStartedTitle"]</h2>
-                <ol class="mb-3">
-                    <li class="mb-2">
-                        @Html.Raw(Localizer["Home_Step1"].Value)
-                    </li>
-                    <li class="mb-2">
-                        @Html.Raw(Localizer["Home_Step2"].Value)
-                    </li>
-                    <li class="mb-2">
-                        @Html.Raw(Localizer["Home_Step3"].Value)
-                    </li>
-                </ol>
-                <p class="mb-0 text-muted">
-                    @Localizer["Home_GettingStartedSummary"]
-                </p>
-            </div>
+        <div class="text-center mb-4">
+            <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg">
+                <i class="fa-solid fa-right-to-bracket me-2"></i>@Localizer["Home_CTA"]
+            </a>
         </div>
     </div>
 </div>

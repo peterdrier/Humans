@@ -1,187 +1,247 @@
 @model Humans.Web.Models.ShiftInfoViewModel
 @{
-    ViewData["Title"] = "Shift Info";
+    ViewData["Title"] = "Shift Preferences";
 }
 
 <div class="row">
-    <div class="col-12" style="max-width: 900px;">
+    <div class="col-12" style="max-width: 560px; margin: 0 auto;">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Shift Info</li>
+                <li class="breadcrumb-item active" aria-current="page">Shift Preferences</li>
             </ol>
         </nav>
 
-        <h1>Shift Info</h1>
-        <p class="text-muted">Skills, dietary preferences, and other information for shift coordination.</p>
-
         <vc:temp-data-alerts />
 
-        <form asp-action="ShiftInfo" method="post">
+        @* Wizard header *@
+        <div class="text-center mb-4">
+            <div class="text-muted text-uppercase small" id="stepLabel">Step 1 of 3</div>
+            <h1 class="h4 mt-1 mb-1" id="stepTitle">What are you good at?</h1>
+            <p class="text-muted small" id="stepSubtitle">Select skills you'd like to use. You can change these anytime.</p>
+            <div class="d-flex justify-content-center gap-2 mt-3" id="progressDots">
+                <span class="progress-dot active" data-step="0"></span>
+                <span class="progress-dot" data-step="1"></span>
+                <span class="progress-dot" data-step="2"></span>
+            </div>
+        </div>
+
+        <form asp-action="ShiftInfo" method="post" id="wizardForm">
             @Html.AntiForgeryToken()
 
-            @* Skills *@
-            <div class="card mb-4">
-                <div class="card-body">
-                    <label class="form-label fw-bold">Skills</label>
-                    <div class="row">
-                        @foreach (var skill in Humans.Web.Models.ShiftInfoViewModel.SkillOptions)
-                        {
-                            <div class="col-md-4 mb-1">
-                                <div class="form-check">
-                                    <input type="checkbox" name="SelectedSkills" value="@skill" class="form-check-input"
-                                           @(Model.SelectedSkills.Contains(skill) ? "checked" : "") />
-                                    <label class="form-check-label">@skill</label>
-                                </div>
-                            </div>
-                        }
-                    </div>
+            @* ===== STEP 0: Skills ===== *@
+            <div class="step-pane active" id="step-0">
+                <div class="chip-grid">
+                    @foreach (var skill in Humans.Web.Models.ShiftInfoViewModel.SkillOptions)
+                    {
+                        var isSelected = Model.SelectedSkills.Contains(skill);
+                        var emoji = Humans.Web.Models.ShiftInfoViewModel.SkillEmoji.GetValueOrDefault(skill, "");
+                        <label class="chip @(isSelected ? "selected" : "")" role="checkbox" aria-checked="@(isSelected ? "true" : "false")" tabindex="0">
+                            <input type="checkbox" name="SelectedSkills" value="@skill" class="d-none"
+                                   @(isSelected ? "checked" : "") />
+                            <span class="chip-emoji">@emoji</span> @skill
+                        </label>
+                    }
+                </div>
+                <div class="other-text-input mt-3" style="display: @(Model.SelectedSkills.Contains("Other") ? "block" : "none");">
+                    <input type="text" name="SkillOtherText" class="form-control" maxlength="200"
+                           value="@Model.SkillOtherText" placeholder="What other skills do you have?" />
                 </div>
             </div>
 
-            @* Quirks *@
-            <div class="card mb-4">
-                <div class="card-body">
-                    <label class="form-label fw-bold">Work Preferences</label>
-                    <div class="row">
-                        @foreach (var quirk in Humans.Web.Models.ShiftInfoViewModel.QuirkOptions)
-                        {
-                            <div class="col-md-4 mb-1">
-                                <div class="form-check">
-                                    <input type="checkbox" name="SelectedQuirks" value="@quirk" class="form-check-input"
-                                           @(Model.SelectedQuirks.Contains(quirk) ? "checked" : "") />
-                                    <label class="form-check-label">@quirk</label>
-                                </div>
-                            </div>
-                        }
+            @* ===== STEP 1: Work Style ===== *@
+            <div class="step-pane" id="step-1">
+                <p class="fw-bold small text-muted mb-2">When do you prefer to work?</p>
+                <div class="radio-card-grid">
+                    @foreach (var tp in Humans.Web.Models.ShiftInfoViewModel.TimePreferenceOptions)
+                    {
+                        var isSelected = string.Equals(Model.TimePreference, tp, StringComparison.Ordinal);
+                        var emoji = Humans.Web.Models.ShiftInfoViewModel.TimePreferenceEmoji.GetValueOrDefault(tp, "");
+                        var desc = Humans.Web.Models.ShiftInfoViewModel.TimePreferenceDesc.GetValueOrDefault(tp, "");
+                        <label class="radio-card @(isSelected ? "selected" : "")" tabindex="0">
+                            <input type="radio" name="TimePreference" value="@tp" class="d-none"
+                                   @(isSelected ? "checked" : "") />
+                            <div class="rc-emoji">@emoji</div>
+                            <div class="rc-label">@tp</div>
+                            <div class="rc-desc">@desc</div>
+                        </label>
+                    }
+                </div>
+
+                <p class="fw-bold small text-muted mb-2 mt-4">Other preferences</p>
+                @foreach (var quirk in Humans.Web.Models.ShiftInfoViewModel.ToggleQuirkOptions)
+                {
+                    var isChecked = Model.SelectedQuirks.Contains(quirk);
+                    <div class="form-check form-switch mb-2">
+                        <input type="checkbox" name="SelectedQuirks" value="@quirk" class="form-check-input"
+                               id="quirk-@quirk.Replace(" ", "-")" @(isChecked ? "checked" : "") />
+                        <label class="form-check-label" for="quirk-@quirk.Replace(" ", "-")">@quirk</label>
                     </div>
+                }
+            </div>
+
+            @* ===== STEP 2: Languages ===== *@
+            <div class="step-pane" id="step-2">
+                <div class="chip-grid">
+                    @foreach (var lang in Humans.Web.Models.ShiftInfoViewModel.LanguageOptions)
+                    {
+                        var isSelected = Model.SelectedLanguages.Contains(lang);
+                        var emoji = Humans.Web.Models.ShiftInfoViewModel.LanguageEmoji.GetValueOrDefault(lang, "");
+                        <label class="chip @(isSelected ? "selected" : "")" role="checkbox" aria-checked="@(isSelected ? "true" : "false")" tabindex="0">
+                            <input type="checkbox" name="SelectedLanguages" value="@lang" class="d-none"
+                                   @(isSelected ? "checked" : "") />
+                            <span class="chip-emoji">@emoji</span> @lang
+                        </label>
+                    }
+                </div>
+                <div class="other-text-input mt-3" style="display: @(Model.SelectedLanguages.Contains("Other") ? "block" : "none");">
+                    <input type="text" name="LanguageOtherText" class="form-control" maxlength="200"
+                           value="@Model.LanguageOtherText" placeholder="What other languages do you speak?" />
                 </div>
             </div>
 
-            @* Languages *@
-            <div class="card mb-4">
-                <div class="card-body">
-                    <label class="form-label fw-bold">Languages</label>
-                    <div class="row">
-                        @foreach (var lang in Humans.Web.Models.ShiftInfoViewModel.LanguageOptions)
-                        {
-                            <div class="col-md-4 mb-1">
-                                <div class="form-check">
-                                    <input type="checkbox" name="SelectedLanguages" value="@lang" class="form-check-input"
-                                           @(Model.SelectedLanguages.Contains(lang) ? "checked" : "") />
-                                    <label class="form-check-label">@lang</label>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-
-            @* Dietary *@
-            <div class="card mb-4">
-                <div class="card-body">
-                    <label class="form-label fw-bold">Dietary Preference</label>
-                    <div class="row">
-                        @foreach (var diet in Humans.Web.Models.ShiftInfoViewModel.DietaryOptions)
-                        {
-                            <div class="col-md-3 mb-1">
-                                <div class="form-check">
-                                    <input type="radio" name="DietaryPreference" value="@diet" class="form-check-input"
-                                           @(string.Equals(Model.DietaryPreference, diet, StringComparison.Ordinal) ? "checked" : "") />
-                                    <label class="form-check-label">@diet</label>
-                                </div>
-                            </div>
-                        }
-                        <div class="col-md-3 mb-1">
-                            <div class="form-check">
-                                <input type="radio" name="DietaryPreference" value="" class="form-check-input"
-                                       @(string.IsNullOrEmpty(Model.DietaryPreference) ? "checked" : "") />
-                                <label class="form-check-label text-muted">Not specified</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            @* Allergies *@
-            <div class="card mb-4">
-                <div class="card-body">
-                    <label class="form-label fw-bold">Allergies</label>
-                    <div class="row">
-                        @foreach (var allergy in Humans.Web.Models.ShiftInfoViewModel.AllergyOptions)
-                        {
-                            <div class="col-md-4 mb-1">
-                                <div class="form-check">
-                                    <input type="checkbox" name="SelectedAllergies" value="@allergy" class="form-check-input"
-                                           @(Model.SelectedAllergies.Contains(allergy) ? "checked" : "")
-                                           @(string.Equals(allergy, "Other", StringComparison.Ordinal) ? "data-toggle-target=allergyOtherText" : "") />
-                                    <label class="form-check-label">@allergy</label>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                    <div id="allergyOtherText" class="mt-2" style="display: @(Model.SelectedAllergies.Contains("Other") ? "block" : "none");">
-                        <input type="text" name="AllergyOtherText" class="form-control" maxlength="500"
-                               value="@Model.AllergyOtherText" placeholder="Please specify your other allergy" />
-                    </div>
-                </div>
-            </div>
-
-            @* Intolerances *@
-            <div class="card mb-4">
-                <div class="card-body">
-                    <label class="form-label fw-bold">Intolerances</label>
-                    <div class="row">
-                        @foreach (var intolerance in Humans.Web.Models.ShiftInfoViewModel.IntoleranceOptions)
-                        {
-                            <div class="col-md-4 mb-1">
-                                <div class="form-check">
-                                    <input type="checkbox" name="SelectedIntolerances" value="@intolerance" class="form-check-input"
-                                           @(Model.SelectedIntolerances.Contains(intolerance) ? "checked" : "")
-                                           @(string.Equals(intolerance, "Other", StringComparison.Ordinal) ? "data-toggle-target=intoleranceOtherText" : "") />
-                                    <label class="form-check-label">@intolerance</label>
-                                </div>
-                            </div>
-                        }
-                    </div>
-                    <div id="intoleranceOtherText" class="mt-2" style="display: @(Model.SelectedIntolerances.Contains("Other") ? "block" : "none");">
-                        <input type="text" name="IntoleranceOtherText" class="form-control" maxlength="500"
-                               value="@Model.IntoleranceOtherText" placeholder="Please specify your other intolerance" />
-                    </div>
-                </div>
-            </div>
-
-            @* Medical Conditions *@
-            <div class="card mb-4">
-                <div class="card-body">
-                    <label for="MedicalConditions" class="form-label fw-bold">Medical Conditions</label>
-                    <textarea id="MedicalConditions" name="MedicalConditions" class="form-control" rows="3"
-                              placeholder="Any conditions shift coordinators should know about">@Model.MedicalConditions</textarea>
-                    <div class="form-text text-warning">Visible only to you, NoInfo Admins, and Admins.</div>
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-between">
-                <a asp-action="Index" class="btn btn-outline-secondary">Back to Profile</a>
-                <button type="submit" class="btn btn-primary">Save</button>
+            @* ===== Navigation ===== *@
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <button type="button" class="btn btn-outline-secondary" id="backBtn" style="display:none">
+                    &larr; Back
+                </button>
+                <div></div>
+                <button type="button" class="btn btn-primary" id="nextBtn">
+                    Continue &rarr;
+                </button>
+                <button type="submit" class="btn btn-primary" id="saveBtn" style="display:none">
+                    Save
+                </button>
             </div>
         </form>
     </div>
 </div>
 
 @section Scripts {
+<style>
+    /* Progress dots */
+    .progress-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: var(--h-muted-border); display: inline-block; transition: background 0.2s;
+    }
+    .progress-dot.active, .progress-dot.done { background: var(--h-focus-ring); }
+
+    /* Step panes */
+    .step-pane { display: none; }
+    .step-pane.active { display: block; }
+
+    /* Chip grid */
+    .chip-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 9px 16px; border-radius: 10px; cursor: pointer;
+        background: var(--h-muted-bg); border: 1.5px solid var(--h-muted-border); color: var(--h-chip-text);
+        font-size: 14px; user-select: none; transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--h-muted-border-hover); }
+    .chip:focus-visible { outline: 2px solid var(--h-focus-ring); outline-offset: 2px; }
+    .chip.selected {
+        background: var(--h-selected-bg); border-color: var(--h-focus-ring); color: var(--h-focus-ring); font-weight: 500;
+    }
+    .chip-emoji { font-size: 16px; min-width: 1.5em; text-align: center; }
+
+    /* Radio cards */
+    .radio-card-grid {
+        display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    @@media (max-width: 575.98px) {
+        .radio-card-grid { grid-template-columns: 1fr; }
+    }
+    .radio-card {
+        display: flex; flex-direction: column; align-items: center;
+        padding: 16px 12px; border-radius: 10px; cursor: pointer; text-align: center;
+        background: var(--h-muted-bg); border: 1.5px solid var(--h-muted-border); transition: all 0.15s;
+    }
+    .radio-card:hover { border-color: var(--h-muted-border-hover); }
+    .radio-card:focus-visible { outline: 2px solid var(--h-focus-ring); outline-offset: 2px; }
+    .radio-card.selected {
+        background: var(--h-selected-bg); border-color: var(--h-focus-ring);
+    }
+    .rc-emoji { font-size: 24px; margin-bottom: 6px; }
+    .rc-label { font-weight: 600; font-size: 14px; color: var(--h-text); }
+    .rc-desc { font-size: 12px; color: var(--h-muted-text); margin-top: 2px; }
+</style>
 <script>
-document.querySelectorAll('[data-toggle-target]').forEach(function(cb) {
-    cb.addEventListener('change', function() {
-        var target = document.getElementById(this.dataset.toggleTarget);
-        if (target) {
-            target.style.display = this.checked ? 'block' : 'none';
-            if (!this.checked) {
-                var input = target.querySelector('input');
-                if (input) input.value = '';
+(function() {
+    const STEPS = [
+        { label: 'Step 1 of 3', title: 'What are you good at?', subtitle: 'Select skills you\'d like to use. You can change these anytime.' },
+        { label: 'Step 2 of 3', title: 'How do you like to work?', subtitle: 'Help coordinators match you with shifts that fit your style and availability.' },
+        { label: 'Step 3 of 3', title: 'Which languages do you speak?', subtitle: 'This helps us match you with teams where you can communicate well.' }
+    ];
+
+    let current = 0;
+    const stepLabel = document.getElementById('stepLabel');
+    const stepTitle = document.getElementById('stepTitle');
+    const stepSubtitle = document.getElementById('stepSubtitle');
+    const backBtn = document.getElementById('backBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const dots = document.querySelectorAll('.progress-dot');
+
+    function setStep(n) {
+        document.getElementById('step-' + current).classList.remove('active');
+        current = n;
+        document.getElementById('step-' + current).classList.add('active');
+
+        stepLabel.textContent = STEPS[n].label;
+        stepTitle.textContent = STEPS[n].title;
+        stepSubtitle.textContent = STEPS[n].subtitle;
+
+        dots.forEach(function(dot, i) {
+            dot.classList.remove('active', 'done');
+            if (i < n) dot.classList.add('done');
+            if (i === n) dot.classList.add('active');
+        });
+
+        backBtn.style.display = n === 0 ? 'none' : '';
+        nextBtn.style.display = n === STEPS.length - 1 ? 'none' : '';
+        saveBtn.style.display = n === STEPS.length - 1 ? '' : 'none';
+    }
+
+    backBtn.addEventListener('click', function() { if (current > 0) setStep(current - 1); });
+    nextBtn.addEventListener('click', function() { if (current < STEPS.length - 1) setStep(current + 1); });
+
+    // Chip toggle
+    document.querySelectorAll('.chip').forEach(function(chip) {
+        function toggle() {
+            var cb = chip.querySelector('input[type="checkbox"]');
+            cb.checked = !cb.checked;
+            chip.classList.toggle('selected', cb.checked);
+            chip.setAttribute('aria-checked', cb.checked ? 'true' : 'false');
+            // Show/hide "Other" text input if this chip is the Other option
+            var otherInput = chip.closest('.step-pane')?.querySelector('.other-text-input');
+            if (otherInput && chip.textContent.trim().endsWith('Other')) {
+                otherInput.style.display = cb.checked ? 'block' : 'none';
             }
         }
+        chip.addEventListener('click', function(e) {
+            e.preventDefault();
+            toggle();
+        });
+        chip.addEventListener('keydown', function(e) {
+            if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); }
+        });
     });
-});
+
+    // Radio card toggle
+    document.querySelectorAll('.radio-card').forEach(function(card) {
+        function select() {
+            document.querySelectorAll('.radio-card').forEach(function(c) { c.classList.remove('selected'); });
+            card.classList.add('selected');
+            card.querySelector('input[type="radio"]').checked = true;
+        }
+        card.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT') select();
+        });
+        card.addEventListener('keydown', function(e) {
+            if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); select(); }
+        });
+    });
+})();
 </script>
 }

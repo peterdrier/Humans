@@ -133,7 +133,9 @@ GoogleResource
 ├── ProvisionedAt: Instant
 ├── LastSyncedAt: Instant?
 ├── IsActive: bool
-└── ErrorMessage: string? (2000)
+├── ErrorMessage: string? (2000)
+├── DrivePermissionLevel: DrivePermissionLevel [enum, Drive only]
+└── RestrictInheritedAccess: bool [default false, Drive folders only]
 ```
 
 ### GoogleResourceType Enum
@@ -231,19 +233,43 @@ All Drive API calls MUST use:
 - `SupportsAllDrives = true`
 - `Fields` including `permissionDetails` when listing permissions
 
+### Multi-Team Permission Level Resolution
+When the same Drive resource (same `GoogleId`) is linked to multiple teams with different `DrivePermissionLevel` values, the system resolves the **maximum** level before setting permissions. For example, if Team A links a folder as Viewer and Team B links the same folder as Contributor, a user who belongs to both teams gets Contributor access.
+
+This resolution happens:
+- **Before the Drive API call** — not after. The max level is computed and passed to `AddUserToDriveAsync`.
+- **In `SyncDriveResourceGroupAsync`** — resources are grouped by `GoogleId`, and the max level across the group is used for all adds.
+- **In `AddUserToTeamResourcesAsync`** — when a user is added to a team, the max level is queried across all active resources with the same `GoogleId`.
+- **During reconciliation** — the daily job detects `WrongRole` drift when a user's current Google permission is lower than the resolved max, and upgrades it.
+
+## Subteam Member Rollup
+
+When a department (parent team) has child sub-teams, the effective membership for Google resource sync includes both direct department members and all active members of child teams. This ensures sub-team members automatically get access to department-level resources.
+
+**Key behaviors:**
+- Rollup is one-way: sub-team members get parent department resources. Parent members do NOT get sub-team resources.
+- On subteam join: `AddUserToTeamResourcesAsync` immediately adds the user to parent department resources.
+- On subteam leave: removal is deferred to the reconciliation job, which recomputes effective membership. If the user is still a direct department member or in another sub-team, they keep access.
+- The department detail page (`/Teams/{slug}`) shows a "Humans via sub-teams" section with source team badges, visually distinct from direct members.
+
+**Sync methods that include rollup:**
+- `SyncGroupResourceAsync` — includes child team members via `GetChildTeamMembersAsync`
+- `SyncDriveResourceGroupAsync` — includes child team members via `GetChildTeamMembersAsync`
+
 ## Permission Sync
 
 ### Full Sync (SyncResourcePermissionsAsync)
 For Shared Drive folders:
-1. Load expected members from DB (team members where `LeftAt == null`)
+1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
 2. List current direct permissions from Google (paginated, with `permissionDetails`)
 3. Filter to direct managed permissions only (exclude inherited, owner, service account)
 4. Add missing permissions (expected but not in Google)
 5. Remove stale permissions (in Google but not expected)
-6. Update `LastSyncedAt`
+6. Detect permission level drift (member has access but at wrong level) and upgrade
+7. Update `LastSyncedAt`
 
 For Google Groups:
-1. Load expected members from DB
+1. Load expected members from DB (team members where `LeftAt == null`, plus child team members for departments)
 2. List current group members from Google (paginated)
 3. Add missing members
 4. Remove stale members
@@ -306,22 +332,22 @@ When `GoogleGroupPrefix` is set on a team, `EnsureTeamGroupAsync` is called to:
 When `GoogleGroupPrefix` is cleared, the existing Group resource is deactivated (soft unlink). The Google Group itself is not deleted.
 
 ### Group Settings
-Group creation now applies the configured `GoogleWorkspace:Groups` settings from appsettings. Previously, new groups received Google defaults. This ensures groups are configured consistently (e.g., `AllowExternalMembers = true` per R-04).
+Group creation applies all expected settings via `BuildExpectedGroupSettings()` — the same method used by drift detection, ensuring creation and detection share a single source of truth.
 
 ### Group Settings Drift Detection
-Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift without auto-fixing:
+Settings applied at group creation can drift if someone changes them manually in Google Admin. The system detects this drift:
 
 **Checked settings** (from `GoogleWorkspace:Groups` config):
 - WhoCanJoin, WhoCanViewMembership, WhoCanContactOwner, WhoCanPostMessage, WhoCanViewGroup, WhoCanModerateMembers, AllowExternalMembers
 
-**Additional monitored settings** (sensible defaults):
-- IsArchived (expected: false), MembersCanPostAsTheGroup (expected: false), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: false)
+**Additional hardcoded settings** (applied at creation and checked for drift):
+- IsArchived (expected: true — enables conversation history), MembersCanPostAsTheGroup (expected: true), IncludeInGlobalAddressList (expected: true), AllowWebPosting (expected: true), MessageModerationLevel (expected: MODERATE_NONE), SpamModerationLevel (expected: MODERATE), EnableCollaborativeInbox (expected: true)
 
-**Nightly check:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). Drifts are logged as warnings.
+**Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures are logged but don't stop the reconciliation.
 
 **Manual trigger:** Admin page at `/Admin` has a "Check Group Settings" button. Results show at `/Admin/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
 
-**SyncSettings respected:** If GoogleGroups sync mode is set to None, the check is skipped entirely.
+**SyncSettings respected:** If GoogleGroups sync mode is set to None, both the check and auto-remediation are skipped entirely.
 
 ## Resource Linking (Pre-Shared Access Model)
 
@@ -476,6 +502,8 @@ Process: Reads SyncMode per service from sync_service_settings, then calls
 - `SyncMode.AddOnly` — job computes diff and only adds missing members
 - `SyncMode.AddAndRemove` — job computes diff, adds missing and removes extra members
 
+**Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Teams/Sync` page accurate without requiring manual intervention.
+
 > **Currently disabled:** All jobs that modify Google permissions are disabled until the system is validated. Use the manual "Sync Now" button at `/Teams/Sync` or change sync modes at `/Admin/SyncSettings` instead.
 
 ### SystemTeamSyncJob
@@ -491,9 +519,19 @@ When system teams are synced, Google permissions are also updated:
 
 ## Error Handling
 
-### Retry Strategy
+### Outbox Sync Error Classification
+
+The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categories:
+
+**Permanent failures (HTTP 400, 404):** User-level errors — invalid email format or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user. The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships.
+
+**Transient failures (all other errors including 403, 429, 5xx):** Retried up to 10 times. HTTP 403 is treated as transient because it typically indicates a resource-level permission issue (service account lacks access to a Group or Drive), not a user email problem.
+
+`GoogleEmailStatus` is set to `Valid` only after a successful `AddUserToTeamResources` event where the team has linked Google resources — ensuring the email was actually accepted by a Google API call.
+
+### Resource-Level Retry Strategy
 ```
-On Google API error:
+On Google API error (resource provisioning):
   1. Log error with details
   2. Store error in GoogleResource.ErrorMessage
   3. Set IsActive = false if persistent
@@ -503,11 +541,19 @@ On Google API error:
 ### Error Scenarios
 | Error | Handling |
 |-------|----------|
-| Rate limit exceeded | Exponential backoff |
-| User not in domain | Skip, log warning |
+| Rate limit exceeded (429) | Transient — retry with backoff |
+| User not found (404) | Permanent — mark user email rejected |
+| Invalid email (400) | Permanent — mark user email rejected |
+| Permission denied (403) | Transient — resource-level issue, retry |
 | Folder not found | Re-provision |
-| Permission denied | Alert admin |
 | Inherited permission delete | Skip (cannot remove inherited Shared Drive permissions) |
+
+### Admin Digest Reporting
+
+The daily admin digest reports sync health:
+- **Failed sync events (transient):** Unprocessed events with errors, still being retried
+- **Humans with rejected email:** Distinct users with `GoogleEmailStatus = Rejected`
+- **Transient retries:** Events being retried (have errors but not permanently failed)
 
 ## Security Considerations
 

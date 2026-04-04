@@ -1,0 +1,4 @@
+interface:
+  display_name: "Humans Tech Debt"
+  short_description: "Autonomous repo tech-debt pass for Humans"
+  default_prompt: "Use $humans-tech-debt to run an autonomous tech-debt reduction pass in this repository."

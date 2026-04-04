@@ -115,7 +115,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampCreated, nameof(Camp), camp.Id,
             $"Registered camp '{name}' for {year}",
-            createdByUserId, createdByUserId.ToString());
+            createdByUserId);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         await _systemTeamSync.SyncBarrioLeadsMembershipForUserAsync(createdByUserId, cancellationToken);
@@ -340,6 +340,7 @@ public class CampService : ICampService
             entry.AbsoluteExpirationRelativeToNow = CampSettingsCacheTtl;
             return await _dbContext.CampSettings
                 .AsNoTracking()
+                .OrderBy(s => s.Id)
                 .FirstAsync(cancellationToken);
         }) ?? throw new InvalidOperationException("Camp settings not found.");
     }
@@ -669,7 +670,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampSeasonApproved, nameof(CampSeason), seasonId,
             $"Approved season {season.Year}",
-            reviewedByUserId, reviewedByUserId.ToString(),
+            reviewedByUserId,
             relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -694,7 +695,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampSeasonRejected, nameof(CampSeason), seasonId,
             $"Rejected season {season.Year}: {notes}",
-            reviewedByUserId, reviewedByUserId.ToString(),
+            reviewedByUserId,
             relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -751,12 +752,16 @@ public class CampService : ICampService
             throw new InvalidOperationException($"Cannot reactivate a season with status {season.Status}.");
 
         var now = _clock.GetCurrentInstant();
-        season.Status = CampSeasonStatus.Active;
+        // Withdrawn camps go back to Pending for re-approval; Full camps go back to Active
+        var previousStatus = season.Status;
+        season.Status = season.Status == CampSeasonStatus.Withdrawn
+            ? CampSeasonStatus.Pending
+            : CampSeasonStatus.Active;
         season.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
             AuditAction.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
-            $"Season {season.Year} reactivated",
+            $"Season {season.Year} status changed from {previousStatus} to {season.Status}",
             "CampService",
             relatedEntityId: season.CampId, relatedEntityType: nameof(Camp));
 
@@ -854,7 +859,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampLeadAdded, nameof(CampLead), lead.Id,
             "Added as camp lead",
-            userId, userId.ToString(),
+            userId,
             relatedEntityId: campId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -878,7 +883,7 @@ public class CampService : ICampService
         await _auditLogService.LogAsync(
             AuditAction.CampLeadRemoved, nameof(CampLead), leadId,
             "Removed from camp leads",
-            lead.UserId, lead.UserId.ToString(),
+            lead.UserId,
             relatedEntityId: lead.CampId, relatedEntityType: nameof(Camp));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -1034,7 +1039,7 @@ public class CampService : ICampService
 
     public async Task SetPublicYearAsync(int year, CancellationToken cancellationToken = default)
     {
-        var settings = await _dbContext.CampSettings.FirstAsync(cancellationToken);
+        var settings = await _dbContext.CampSettings.OrderBy(s => s.Id).FirstAsync(cancellationToken);
         settings.PublicYear = year;
         await _dbContext.SaveChangesAsync(cancellationToken);
         _cache.InvalidateCampSettings();
@@ -1042,7 +1047,7 @@ public class CampService : ICampService
 
     public async Task OpenSeasonAsync(int year, CancellationToken cancellationToken = default)
     {
-        var settings = await _dbContext.CampSettings.FirstAsync(cancellationToken);
+        var settings = await _dbContext.CampSettings.OrderBy(s => s.Id).FirstAsync(cancellationToken);
         if (!settings.OpenSeasons.Contains(year))
         {
             settings.OpenSeasons.Add(year);
@@ -1053,7 +1058,7 @@ public class CampService : ICampService
 
     public async Task CloseSeasonAsync(int year, CancellationToken cancellationToken = default)
     {
-        var settings = await _dbContext.CampSettings.FirstAsync(cancellationToken);
+        var settings = await _dbContext.CampSettings.OrderBy(s => s.Id).FirstAsync(cancellationToken);
         if (settings.OpenSeasons.Remove(year))
         {
             await _dbContext.SaveChangesAsync(cancellationToken);

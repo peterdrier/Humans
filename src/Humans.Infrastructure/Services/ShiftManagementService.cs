@@ -27,17 +27,20 @@ public class ShiftManagementService : IShiftManagementService
     };
 
     private readonly HumansDbContext _dbContext;
+    private readonly IAuditLogService _auditLogService;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly ILogger<ShiftManagementService> _logger;
 
     public ShiftManagementService(
         HumansDbContext dbContext,
+        IAuditLogService auditLogService,
         IMemoryCache cache,
         IClock clock,
         ILogger<ShiftManagementService> logger)
     {
         _dbContext = dbContext;
+        _auditLogService = auditLogService;
         _cache = cache;
         _clock = clock;
         _logger = logger;
@@ -49,8 +52,8 @@ public class ShiftManagementService : IShiftManagementService
 
     public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId)
     {
-        var deptIds = await GetCoordinatorDepartmentIdsAsync(userId);
-        if (deptIds.Contains(departmentTeamId))
+        var teamIds = await GetCoordinatorTeamIdsAsync(userId);
+        if (teamIds.Contains(departmentTeamId))
             return true;
 
         // Parent department coordinators can manage child teams
@@ -59,7 +62,7 @@ public class ShiftManagementService : IShiftManagementService
             .Select(t => t.ParentTeamId)
             .FirstOrDefaultAsync();
 
-        return parentTeamId is not null && deptIds.Contains(parentTeamId.Value);
+        return parentTeamId is not null && teamIds.Contains(parentTeamId.Value);
     }
 
     public async Task<bool> CanManageShiftsAsync(Guid userId, Guid departmentTeamId)
@@ -83,29 +86,41 @@ public class ShiftManagementService : IShiftManagementService
         return await IsDeptCoordinatorAsync(userId, departmentTeamId);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetCoordinatorDepartmentIdsAsync(Guid userId)
+    public async Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId)
     {
         var result = await _cache.GetOrCreateAsync(CacheKeys.ShiftAuthorization(userId), async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = AuthCacheDuration;
-            return await LoadCoordinatorDepartmentIdsAsync(userId);
+            return await QueryCoordinatorTeamIdsAsync(userId);
         });
         return result ?? [];
     }
 
-    private async Task<IReadOnlyList<Guid>> LoadCoordinatorDepartmentIdsAsync(Guid userId)
+    private async Task<IReadOnlyList<Guid>> QueryCoordinatorTeamIdsAsync(Guid userId)
     {
-        return await _dbContext.TeamRoleAssignments
+        // Check via IsManagement role assignment (departments and sub-teams)
+        var byRoleAssignment = await _dbContext.TeamRoleAssignments
             .AsNoTracking()
             .Where(tra =>
                 tra.TeamMember.UserId == userId &&
                 tra.TeamMember.LeftAt == null &&
                 tra.TeamRoleDefinition.IsManagement &&
-                tra.TeamRoleDefinition.Team.ParentTeamId == null &&
                 tra.TeamRoleDefinition.Team.SystemTeamType == SystemTeamType.None)
             .Select(tra => tra.TeamRoleDefinition.TeamId)
-            .Distinct()
             .ToListAsync();
+
+        // Also check via TeamMember.Role == Coordinator (may be out of sync with IsManagement)
+        var byMemberRole = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm =>
+                tm.UserId == userId &&
+                tm.LeftAt == null &&
+                tm.Role == TeamMemberRole.Coordinator &&
+                tm.Team.SystemTeamType == SystemTeamType.None)
+            .Select(tm => tm.TeamId)
+            .ToListAsync();
+
+        return byRoleAssignment.Union(byMemberRole).Distinct().ToList();
     }
 
     private async Task<bool> HasActiveRoleAsync(Guid userId, string roleName)
@@ -128,6 +143,7 @@ public class ShiftManagementService : IShiftManagementService
     {
         return await _dbContext.EventSettings
             .AsNoTracking()
+            .OrderBy(e => e.Id)
             .FirstOrDefaultAsync(e => e.IsActive);
     }
 
@@ -198,8 +214,6 @@ public class ShiftManagementService : IShiftManagementService
 
         if (team is null)
             throw new InvalidOperationException("Team not found.");
-        if (team.ParentTeamId is not null)
-            throw new InvalidOperationException("Rotas can only be created on parent teams (departments).");
         if (team.SystemTeamType != SystemTeamType.None)
             throw new InvalidOperationException("Rotas cannot be created on system teams.");
 
@@ -218,6 +232,42 @@ public class ShiftManagementService : IShiftManagementService
         rota.UpdatedAt = _clock.GetCurrentInstant();
         _dbContext.Rotas.Update(rota);
         await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId)
+    {
+        var rota = await _dbContext.Rotas
+            .Include(r => r.Team)
+            .FirstOrDefaultAsync(r => r.Id == rotaId);
+        if (rota is null)
+            throw new InvalidOperationException("Rota not found.");
+
+        var targetTeam = await _dbContext.Teams.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == targetTeamId);
+        if (targetTeam is null)
+            throw new InvalidOperationException("Target team not found.");
+        if (targetTeam.ParentTeamId is not null)
+            throw new InvalidOperationException("Rotas can only be moved to parent teams (departments).");
+        if (targetTeam.SystemTeamType != SystemTeamType.None)
+            throw new InvalidOperationException("Rotas cannot be moved to system teams.");
+        if (rota.TeamId == targetTeamId)
+            throw new InvalidOperationException("Rota is already in this team.");
+
+        var oldTeamName = rota.Team.Name;
+        rota.TeamId = targetTeamId;
+        rota.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _auditLogService.LogAsync(
+            AuditAction.RotaMovedToTeam, nameof(Rota), rota.Id,
+            $"Moved rota '{rota.Name}' from '{oldTeamName}' to '{targetTeam.Name}'",
+            actorUserId,
+            relatedEntityId: targetTeamId, relatedEntityType: nameof(Team));
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Rota {RotaId} '{RotaName}' moved from team '{OldTeam}' to '{NewTeam}' by user {ActorUserId}",
+            rota.Id, rota.Name, oldTeamName, targetTeam.Name, actorUserId);
     }
 
     public async Task DeleteRotaAsync(Guid rotaId)
@@ -264,6 +314,7 @@ public class ShiftManagementService : IShiftManagementService
     {
         return await _dbContext.Rotas
             .Include(r => r.EventSettings)
+            .Include(r => r.Tags)
             .Include(r => r.Shifts)
                 .ThenInclude(s => s.ShiftSignups)
                     .ThenInclude(su => su.User)
@@ -485,7 +536,7 @@ public class ShiftManagementService : IShiftManagementService
             .Select(s =>
             {
                 var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
-                var score = CalculateScore(s, confirmedCount);
+                var score = CalculateScore(s, confirmedCount, es);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
                 return new UrgentShift(s, score, confirmedCount, remaining, s.Rota.Team.Name, []);
             })
@@ -494,7 +545,7 @@ public class ShiftManagementService : IShiftManagementService
             .ToList();
 
         if (limit.HasValue)
-            return urgentShifts.Take(limit.Value).ToList();
+            return ApplyPeriodDiverseLimit(urgentShifts, limit.Value, es);
 
         return urgentShifts;
     }
@@ -515,6 +566,7 @@ public class ShiftManagementService : IShiftManagementService
             query = _dbContext.Shifts
                 .Include(s => s.Rota).ThenInclude(r => r.Team)
                 .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+                .Include(s => s.Rota).ThenInclude(r => r.Tags)
                 .Include(s => s.ShiftSignups).ThenInclude(ss => ss.User);
         }
         else
@@ -522,6 +574,7 @@ public class ShiftManagementService : IShiftManagementService
             query = _dbContext.Shifts
                 .Include(s => s.Rota).ThenInclude(r => r.Team)
                 .Include(s => s.Rota).ThenInclude(r => r.EventSettings)
+                .Include(s => s.Rota).ThenInclude(r => r.Tags)
                 .Include(s => s.ShiftSignups);
         }
 
@@ -554,7 +607,7 @@ public class ShiftManagementService : IShiftManagementService
             .Select(s =>
             {
                 var confirmedCount = s.ShiftSignups.Count(d => d.Status == SignupStatus.Confirmed);
-                var score = CalculateScore(s, confirmedCount);
+                var score = CalculateScore(s, confirmedCount, es);
                 var remaining = Math.Max(0, s.MaxVolunteers - confirmedCount);
                 var signups = includeSignups
                     ? s.ShiftSignups
@@ -571,7 +624,7 @@ public class ShiftManagementService : IShiftManagementService
             .ToList();
     }
 
-    public double CalculateScore(Shift shift, int confirmedCount)
+    public double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings)
     {
         var remainingSlots = Math.Max(0, shift.MaxVolunteers - confirmedCount);
         if (remainingSlots == 0) return 0;
@@ -580,7 +633,61 @@ public class ShiftManagementService : IShiftManagementService
         var durationHours = shift.Duration.TotalHours;
         var understaffedMultiplier = confirmedCount < shift.MinVolunteers ? 2 : 1;
 
-        return remainingSlots * priorityWeight * durationHours * understaffedMultiplier;
+        // Time proximity: shifts happening sooner get a significant boost.
+        // Formula: 1 + 10 / (1 + daysUntilStart)
+        // Today → 11x, tomorrow → 6x, 7 days → 2.25x, 30 days → 1.32x
+        var now = _clock.GetCurrentInstant();
+        var shiftStart = shift.GetAbsoluteStart(eventSettings);
+        var daysUntilStart = Math.Max(0, (shiftStart - now).TotalDays);
+        var proximityBoost = 1.0 + (10.0 / (1.0 + daysUntilStart));
+
+        return remainingSlots * priorityWeight * durationHours * understaffedMultiplier * proximityBoost;
+    }
+
+    /// <summary>
+    /// Selects top-N shifts with period diversity so build shifts don't monopolize the list.
+    /// Reserves one slot per non-Build period (Event, Strike) that has eligible shifts,
+    /// fills remaining slots from the overall top scorers.
+    /// </summary>
+    public static List<UrgentShift> ApplyPeriodDiverseLimit(
+        List<UrgentShift> rankedShifts, int limit, EventSettings es)
+    {
+        if (rankedShifts.Count <= limit)
+            return rankedShifts;
+
+        // Group by computed period
+        var byPeriod = rankedShifts
+            .GroupBy(u => u.Shift.GetShiftPeriod(es))
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Reserve one slot for each non-Build period that has shifts
+        var reserved = new List<UrgentShift>();
+        var reservedIds = new HashSet<Guid>();
+        foreach (var period in new[] { ShiftPeriod.Event, ShiftPeriod.Strike })
+        {
+            if (byPeriod.TryGetValue(period, out var periodShifts) && periodShifts.Count > 0)
+            {
+                // Take the highest-scoring shift from this period
+                var best = periodShifts[0]; // already sorted by score desc
+                reserved.Add(best);
+                reservedIds.Add(best.Shift.Id);
+            }
+        }
+
+        // If we reserved more slots than the limit allows, just take top N from reserved
+        if (reserved.Count >= limit)
+            return reserved.OrderByDescending(u => u.UrgencyScore).Take(limit).ToList();
+
+        // Fill remaining slots from the overall ranked list, skipping already-reserved
+        var result = new List<UrgentShift>(reserved);
+        foreach (var shift in rankedShifts)
+        {
+            if (result.Count >= limit) break;
+            if (!reservedIds.Contains(shift.Shift.Id))
+                result.Add(shift);
+        }
+
+        return result.OrderByDescending(u => u.UrgencyScore).ToList();
     }
 
     // ============================================================
@@ -686,5 +793,130 @@ public class ShiftManagementService : IShiftManagementService
             .ToListAsync();
 
         return teams.Select(x => (x.Id, x.Name)).ToList();
+    }
+
+    // ============================================================
+    // Shift Tags
+    // ============================================================
+
+    public async Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync()
+    {
+        return await _dbContext.ShiftTags
+            .AsNoTracking()
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query)
+    {
+        return await _dbContext.ShiftTags
+            .AsNoTracking()
+            .Where(t => EF.Functions.ILike(t.Name, $"%{query}%"))
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task<ShiftTag> GetOrCreateTagAsync(string name)
+    {
+        var trimmed = name.Trim();
+        var existing = await _dbContext.ShiftTags
+            .FirstOrDefaultAsync(t => EF.Functions.ILike(t.Name, trimmed));
+
+        if (existing is not null)
+            return existing;
+
+        var tag = new ShiftTag
+        {
+            Id = Guid.NewGuid(),
+            Name = trimmed
+        };
+        _dbContext.ShiftTags.Add(tag);
+        await _dbContext.SaveChangesAsync();
+        return tag;
+    }
+
+    public async Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds)
+    {
+        var rota = await _dbContext.Rotas
+            .Include(r => r.Tags)
+            .FirstOrDefaultAsync(r => r.Id == rotaId);
+
+        if (rota is null) return;
+
+        rota.Tags.Clear();
+
+        if (tagIds.Count > 0)
+        {
+            var tags = await _dbContext.ShiftTags
+                .Where(t => tagIds.Contains(t.Id))
+                .ToListAsync();
+
+            foreach (var tag in tags)
+            {
+                rota.Tags.Add(tag);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(Guid userId)
+    {
+        return await _dbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Where(v => v.UserId == userId)
+            .Select(v => v.ShiftTag)
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+
+    public async Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds)
+    {
+        var existing = await _dbContext.VolunteerTagPreferences
+            .Where(v => v.UserId == userId)
+            .ToListAsync();
+
+        _dbContext.VolunteerTagPreferences.RemoveRange(existing);
+
+        foreach (var tagId in tagIds)
+        {
+            _dbContext.VolunteerTagPreferences.Add(new VolunteerTagPreference
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                ShiftTagId = tagId
+            });
+        }
+
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, int>> GetPendingShiftSignupCountsByTeamAsync(
+        Guid eventSettingsId,
+        CancellationToken cancellationToken = default)
+    {
+        var activeEventId = await _dbContext.EventSettings
+            .Where(e => e.IsActive && e.Id == eventSettingsId)
+            .OrderBy(e => e.Id)
+            .Select(e => e.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (activeEventId == Guid.Empty)
+        {
+            return new Dictionary<Guid, int>();
+        }
+
+        return await (
+            from rota in _dbContext.Rotas
+            where rota.EventSettingsId == activeEventId
+            join shift in _dbContext.Shifts on rota.Id equals shift.RotaId
+            join signup in _dbContext.ShiftSignups on shift.Id equals signup.ShiftId
+            where signup.Status == SignupStatus.Pending
+            select new { rota.TeamId, BlockKey = signup.SignupBlockId ?? signup.Id }
+        )
+        .Distinct()
+        .GroupBy(x => x.TeamId)
+        .Select(g => new { TeamId = g.Key, Count = g.Count() })
+        .ToDictionaryAsync(x => x.TeamId, x => x.Count, cancellationToken);
     }
 }

@@ -1,0 +1,28 @@
+@model Humans.Web.Models.NotificationBadgeViewModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Web.SharedResource> Localizer
+
+<div class="notification-bell-wrapper" id="notificationBellWrapper">
+    <button type="button" class="notification-bell-btn" id="notificationBellBtn"
+            aria-label="@Localizer["Notification_Bell_AriaLabel"]"
+            aria-expanded="false"
+            aria-haspopup="true">
+        <i class="fa-solid fa-bell"></i>
+        @if (Model.ActionableUnreadCount > 0)
+        {
+            <span class="notification-badge notification-badge-danger">
+                @(Model.ActionableUnreadCount > 9 ? "9+" : Model.ActionableUnreadCount.ToString())
+            </span>
+        }
+        else if (Model.InformationalUnreadCount > 0)
+        {
+            <span class="notification-badge notification-badge-dot"></span>
+        }
+    </button>
+    <div class="notification-popup" id="notificationPopup" style="display: none;" role="dialog"
+         aria-label="@Localizer["Notification_Popup_AriaLabel"]">
+        <div class="notification-popup-arrow"></div>
+        <div class="notification-popup-content" id="notificationPopupContent">
+            <div class="text-center py-3 text-muted"><i class="fa-solid fa-spinner fa-spin"></i></div>
+        </div>
+    </div>
+</div>

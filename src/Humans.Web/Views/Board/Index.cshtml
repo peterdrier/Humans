@@ -18,7 +18,7 @@
         </div>
     </div>
     <div class="col">
-        <a asp-controller="Human" asp-action="Humans" asp-route-filter="active" class="text-decoration-none">
+        <a asp-controller="Profile" asp-action="AdminList" asp-route-filter="active" class="text-decoration-none">
             <div class="card text-center h-100 bg-success text-white">
                 <div class="card-body">
                     <h2 class="card-title mb-0">@Model.ActiveMembers</h2>
@@ -28,7 +28,7 @@
         </a>
     </div>
     <div class="col">
-        <a asp-controller="Human" asp-action="Humans" asp-route-filter="pending" class="text-decoration-none">
+        <a asp-controller="Profile" asp-action="AdminList" asp-route-filter="pending" class="text-decoration-none">
             <div class="card text-center h-100 @(Model.PendingApproval > 0 ? "bg-warning" : "") ">
                 <div class="card-body">
                     <h2 class="card-title mb-0 @(Model.PendingApproval > 0 ? "" : "text-warning")">@Model.PendingApproval</h2>
@@ -38,7 +38,7 @@
         </a>
     </div>
     <div class="col">
-        <a asp-controller="Human" asp-action="Humans" asp-route-filter="missingconsents" class="text-decoration-none">
+        <a asp-controller="Profile" asp-action="AdminList" asp-route-filter="missingconsents" class="text-decoration-none">
             <div class="card text-center h-100 @(Model.MissingConsents > 0 ? "border-warning" : "")">
                 <div class="card-body">
                     <h2 class="card-title mb-0" style="color: @(Model.MissingConsents > 0 ? "darkorange" : "inherit")">@Model.MissingConsents</h2>
@@ -48,7 +48,7 @@
         </a>
     </div>
     <div class="col">
-        <a asp-controller="Human" asp-action="Humans" asp-route-filter="incomplete" class="text-decoration-none">
+        <a asp-controller="Profile" asp-action="AdminList" asp-route-filter="incomplete" class="text-decoration-none">
             <div class="card text-center h-100 bg-secondary text-white">
                 <div class="card-body">
                     <h2 class="card-title mb-0">@Model.IncompleteSignup</h2>
@@ -58,7 +58,7 @@
         </a>
     </div>
     <div class="col">
-        <a asp-controller="Human" asp-action="Humans" asp-route-filter="suspended" class="text-decoration-none">
+        <a asp-controller="Profile" asp-action="AdminList" asp-route-filter="suspended" class="text-decoration-none">
             <div class="card text-center h-100 @(Model.Suspended > 0 ? "bg-danger text-white" : "")">
                 <div class="card-body">
                     <h2 class="card-title mb-0 @(Model.Suspended > 0 ? "" : "text-danger")">@Model.Suspended</h2>
@@ -68,7 +68,7 @@
         </a>
     </div>
     <div class="col">
-        <a asp-controller="Human" asp-action="Humans" asp-route-filter="deleting" class="text-decoration-none">
+        <a asp-controller="Profile" asp-action="AdminList" asp-route-filter="deleting" class="text-decoration-none">
             <div class="card text-center h-100 @(Model.PendingDeletion > 0 ? "bg-dark text-white" : "")">
                 <div class="card-body">
                     <h2 class="card-title mb-0 @(Model.PendingDeletion > 0 ? "" : "text-dark")">@Model.PendingDeletion</h2>
@@ -86,7 +86,7 @@
                 <span>@Localizer["Admin_QuickActions"]</span>
             </div>
             <div class="list-group list-group-flush">
-                <a asp-controller="Human" asp-action="Humans" asp-route-filter="pending" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <a asp-controller="Profile" asp-action="AdminList" asp-route-filter="pending" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                     @Localizer["Admin_ReviewPendingVolunteers"]
                     @if (Model.PendingApproval > 0)
                     {
@@ -100,7 +100,7 @@
                         <span class="badge bg-warning">@Model.PendingApplications</span>
                     }
                 </a>
-                <a asp-controller="Human" asp-action="Humans" class="list-group-item list-group-item-action">
+                <a asp-controller="Profile" asp-action="AdminList" class="list-group-item list-group-item-action">
                     @Localizer["Admin_ManageMembers"]
                 </a>
                 <a asp-controller="Governance" asp-action="Roles" class="list-group-item list-group-item-action">

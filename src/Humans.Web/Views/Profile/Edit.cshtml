@@ -8,7 +8,12 @@
         <h1>@Localizer["ProfileEdit_Title"]</h1>
 
         <form asp-action="Edit" method="post" enctype="multipart/form-data">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            @if (ViewData.ModelState!.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3" id="validationSummary">
+                    <div asp-validation-summary="All"></div>
+                </div>
+            }
 
             @* === Section ordering: Private first when fields are empty (new user) === *@
             @if (Model.ShowPrivateFirst)
@@ -183,7 +188,7 @@
                                                 var visibility = Model.EditableContactFields[i].Visibility;
                                             }
                                             <select name="EditableContactFields[@i].Visibility" id="EditableContactFields_@(i)__Visibility" class="form-select form-select-sm">
-                                                <option value="AllActiveProfiles" selected="@(visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">All active members</option>
+                                                <option value="AllActiveProfiles" selected="@(visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">All active humans</option>
                                                 <option value="MyTeams" selected="@(visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">My teams (+ coordinators & board)</option>
                                                 <option value="CoordinatorsAndBoard" selected="@(visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">Coordinators + Board</option>
                                                 <option value="BoardOnly" selected="@(visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">Board only</option>
@@ -289,6 +294,9 @@
                         <label asp-for="NoPriorBurnExperience" class="form-check-label">@Localizer["Profile_NoPriorBurnExperience"]</label>
                         <span asp-validation-for="NoPriorBurnExperience" class="text-danger d-block"></span>
                     </div>
+                    <div id="cvRequiredAlert" class="alert alert-danger d-none">
+                        @Localizer["Profile_BurnerCVRequired"]
+                    </div>
 
                     <hr />
 
@@ -317,6 +325,10 @@
                             var isAsociado = Model.SelectedTier == MembershipTier.Asociado;
                         }
                         <div class="mb-3">
+                            @if (Model.IsTierLocked)
+                            {
+                                <input type="hidden" asp-for="SelectedTier" />
+                            }
                             <div class="form-check mb-3">
                                 @if (Model.IsTierLocked)
                                 {
@@ -411,6 +423,13 @@
             @if (!Model.ShowPrivateFirst)
             {
                 <partial name="_EditSectionPrivate" model="Model" />
+            }
+
+            @if (ViewData.ModelState!.ErrorCount > 0)
+            {
+                <div class="alert alert-danger mb-3">
+                    <div asp-validation-summary="All"></div>
+                </div>
             }
 
             <div class="d-flex justify-content-between">
@@ -520,7 +539,7 @@
             gmp-place-autocomplete input:focus {
                 border-color: var(--h-gold);
                 box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.2);
-                background-color: #fff;
+                background-color: var(--h-bg-elevated);
                 outline: none;
             }
         </style>
@@ -576,7 +595,7 @@
                                 <div class="col-md-3">
                                     <select name="EditableContactFields[${index}].Visibility" id="EditableContactFields_${index}__Visibility" class="form-select form-select-sm" required>
                                         <option value="" selected disabled>@Localizer["Profile_ChooseVisibility"]</option>
-                                        <option value="AllActiveProfiles">All active members</option>
+                                        <option value="AllActiveProfiles">All active humans</option>
                                         <option value="MyTeams">My teams (+ coordinators & board)</option>
                                         <option value="CoordinatorsAndBoard">Coordinators + Board</option>
                                         <option value="BoardOnly">Board only</option>
@@ -780,15 +799,19 @@
             const form = document.querySelector('form[action*="Edit"]');
             const checkbox = document.getElementById('noPriorBurnCheckbox');
             const historyContainer = document.getElementById('volunteerHistoryContainer');
-            if (!form || !checkbox || !historyContainer) return;
+            const cvAlert = document.getElementById('cvRequiredAlert');
+            if (!form || !checkbox || !historyContainer || !cvAlert) return;
+
+            checkbox.addEventListener('change', () => cvAlert.classList.add('d-none'));
 
             form.addEventListener('submit', function(e) {
                 const hasRows = historyContainer.querySelectorAll('.volunteer-history-row').length > 0;
                 if (!checkbox.checked && !hasRows) {
                     e.preventDefault();
-                    // Focus the checkbox area
-                    checkbox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    checkbox.focus();
+                    cvAlert.classList.remove('d-none');
+                    cvAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    cvAlert.classList.add('d-none');
                 }
             });
         })();
@@ -843,10 +866,13 @@
             lastNameInput?.addEventListener('input', checkBurnerNameMatch);
             checkBurnerNameMatch();
 
-            // Scroll to first validation error
-            const firstError = document.querySelector('.field-validation-error:not(:empty), .text-danger:not(:empty)');
-            if (firstError) {
-                firstError.closest('.mb-3, .col-md-3, .card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Scroll to validation summary if present, else first inline error
+            const summary = document.getElementById('validationSummary');
+            if (summary) {
+                summary.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                const firstError = document.querySelector('.field-validation-error:not(:empty)');
+                firstError?.closest('.mb-3, .col-md-3, .card')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
             // Clear on submit so saving doesn't trigger warning

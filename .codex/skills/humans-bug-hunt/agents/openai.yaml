@@ -1,0 +1,4 @@
+interface:
+  display_name: "Humans Bug Hunt"
+  short_description: "Autonomous repo bug hunt for Humans"
+  default_prompt: "Use $humans-bug-hunt to run an autonomous bug hunt in this repository."

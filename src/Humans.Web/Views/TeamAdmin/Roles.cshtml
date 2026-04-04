@@ -36,6 +36,10 @@
                         };
                         <span class="badge @rpBadge ms-2">@role.Period</span>
                     }
+                    @if (!role.IsPublic)
+                    {
+                        <span class="badge bg-secondary ms-1"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
+                    }
                     @if (role.IsManagement)
                     {
                         <span class="badge bg-warning text-dark ms-1">Management</span>
@@ -101,35 +105,51 @@
                             }
                         </div>
                     </div>
-                    @if (!Model.IsChildTeam || role.IsManagement)
-                    {
+                    @{
                         var hasAssignments = role.Slots.Any(s => s.IsFilled);
-                        <div class="mb-3 form-check">
-                            @if (role.IsManagement && hasAssignments)
-                            {
-                                <input type="hidden" name="IsManagement" value="true" />
-                                <input type="checkbox" class="form-check-input" id="isManagement-@role.Id" checked disabled />
-                            }
-                            else
-                            {
-                                <input type="checkbox" class="form-check-input" id="isManagement-@role.Id"
-                                       name="IsManagement" value="true" @(role.IsManagement ? "checked" : "") />
-                            }
-                            <label class="form-check-label" for="isManagement-@role.Id">Coordinator role</label>
-                            @if (role.IsManagement && hasAssignments)
-                            {
-                                <div class="form-text text-warning">Unassign all members before unchecking.</div>
-                            }
-                            else
-                            {
-                                <div class="form-text">Members assigned to this role automatically become Coordinators.</div>
-                            }
-                        </div>
                     }
+                    <div class="mb-3 form-check">
+                        @if (role.IsManagement && hasAssignments)
+                        {
+                            <input type="hidden" name="IsManagement" value="true" />
+                            <input type="checkbox" class="form-check-input" id="isManagement-@role.Id" checked disabled />
+                        }
+                        else
+                        {
+                            <input type="checkbox" class="form-check-input" id="isManagement-@role.Id"
+                                   name="IsManagement" value="true" @(role.IsManagement ? "checked" : null) />
+                        }
+                        <label class="form-check-label" for="isManagement-@role.Id">
+                            @(Model.IsChildTeam ? "Manager role" : "Coordinator role")
+                        </label>
+                        @if (role.IsManagement && hasAssignments)
+                        {
+                            <div class="form-text text-warning">Unassign all humans before unchecking.</div>
+                        }
+                        else if (Model.IsChildTeam)
+                        {
+                            <div class="form-text">Humans assigned to this role can manage this sub-team's members, roles, and shifts.</div>
+                        }
+                        else
+                        {
+                            <div class="form-text">Humans assigned to this role automatically become Coordinators.</div>
+                        }
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="isPublic-@role.Id"
+                               name="IsPublic" value="true" @(role.IsPublic ? "checked" : null) />
+                        <input type="hidden" name="IsPublic" value="false" />
+                        <label class="form-check-label" for="isPublic-@role.Id">Visible to volunteers</label>
+                        <div class="form-text">When unchecked, this role is hidden from volunteer-facing views.</div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Description</label>
-                        <small class="text-muted ms-2">Markdown: **bold**, *italic*, - bullets, ## headings</small>
                         <textarea class="form-control" name="Description" rows="3" maxlength="2000">@role.Description</textarea>
+                        <div class="form-text">
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                            </a>
+                        </div>
                     </div>
                 </form>
 
@@ -174,7 +194,7 @@
                                             @Html.AntiForgeryToken()
                                             <div class="input-group input-group-sm" style="max-width: 300px; display: inline-flex !important;">
                                                 <select name="UserId" class="form-select form-select-sm" required>
-                                                    <option value="">Select member...</option>
+                                                    <option value="">Select human...</option>
                                                     @foreach (var member in Model.TeamMembers.Where(m => !role.AssignedUserIds.Contains(m.UserId)))
                                                     {
                                                         <option value="@member.UserId">@member.DisplayName</option>
@@ -244,10 +264,21 @@ else
                     </div>
                 </div>
             </div>
+            <div class="mt-2 form-check">
+                <input type="checkbox" class="form-check-input" id="isPublic-new"
+                       name="IsPublic" value="true" checked />
+                <input type="hidden" name="IsPublic" value="false" />
+                <label class="form-check-label" for="isPublic-new">Visible to volunteers</label>
+                <div class="form-text">When unchecked, this role is hidden from volunteer-facing views.</div>
+            </div>
             <div class="mt-2">
                 <label class="form-label">Description</label>
-                <small class="text-muted ms-2">Markdown: **bold**, *italic*, - bullets, ## headings</small>
                 <textarea class="form-control" name="Description" rows="3" maxlength="2000"></textarea>
+                <div class="form-text">
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                        <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                    </a>
+                </div>
             </div>
         </form>
     </div>
@@ -257,6 +288,8 @@ else
     <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">@Localizer["TeamAdmin_BackToTeam"]</a>
     <a asp-controller="TeamAdmin" asp-action="Members" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">@Localizer["TeamAdmin_ManageMembers"]</a>
 </div>
+
+<partial name="_MarkdownHelp" />
 
 @section Scripts {
 <script>

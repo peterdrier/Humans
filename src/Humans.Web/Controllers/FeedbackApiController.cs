@@ -131,6 +131,10 @@ public class FeedbackApiController : ControllerBase
                 CreatedAt = message.CreatedAt.ToDateTimeUtc()
             });
         }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to post message on feedback {FeedbackId}", id);
@@ -146,6 +150,10 @@ public class FeedbackApiController : ControllerBase
             await _feedbackService.UpdateStatusAsync(id, model.Status, null);
             return Ok(new { success = true });
         }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
@@ -160,6 +168,10 @@ public class FeedbackApiController : ControllerBase
         {
             await _feedbackService.SetGitHubIssueNumberAsync(id, model.IssueNumber);
             return Ok(new { success = true });
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
         }
         catch (Exception ex)
         {

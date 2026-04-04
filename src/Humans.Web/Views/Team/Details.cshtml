@@ -212,6 +212,29 @@
             </div>
         </div>
         }
+
+        @if (Model.IsAuthenticated && Model.ChildTeamMembers.Any())
+        {
+        <div class="card mb-4">
+            <div class="card-header">
+                <span>Humans via sub-teams (@Model.ChildTeamMembers.Count)</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    @foreach (var member in Model.ChildTeamMembers)
+                    {
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                                        mode="Card" size="102"
+                                        profile-picture-url="@member.EffectiveProfilePictureUrl">
+                                <span class="badge bg-secondary bg-opacity-50 small">@member.ChildTeamName</span>
+                            </human-link>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        }
     </div>
 
     <div class="col-md-4">
@@ -319,12 +342,15 @@
                     <a asp-controller="TeamAdmin" asp-action="Roles" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
                         Manage Roles
                     </a>
-                    <a asp-controller="TeamAdmin" asp-action="Resources" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                        @Localizer["TeamDetail_ManageResources"]
-                    </a>
-                    <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" asp-route-teamId="@Model.Id" class="list-group-item list-group-item-action">
-                        @Localizer["TeamDetail_ManageConsents"]
-                    </a>
+                    @if (Model.CanCurrentUserEditTeam)
+                    {
+                        <a asp-controller="TeamAdmin" asp-action="Resources" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
+                            @Localizer["TeamDetail_ManageResources"]
+                        </a>
+                        <a asp-controller="AdminLegalDocuments" asp-action="LegalDocuments" asp-route-teamId="@Model.Id" class="list-group-item list-group-item-action">
+                            @Localizer["TeamDetail_ManageConsents"]
+                        </a>
+                    }
                 </div>
             </div>
         }

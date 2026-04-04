@@ -1,0 +1,262 @@
+@model Humans.Web.Models.BudgetSummaryViewModel
+@{
+    ViewData["Title"] = $"Budget - {Model.YearName}";
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+    var incomeLabels = Model.IncomeSlices.Select(s => s.Name).ToList();
+    var incomeData = Model.IncomeSlices.Select(s => s.Amount).ToList();
+    var expenseLabels = Model.ExpenseSlices.Select(s => s.Name).ToList();
+    var expenseData = Model.ExpenseSlices.Select(s => s.Amount).ToList();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Budget Overview</h1>
+    @if (Model.IsCoordinator)
+    {
+        <a asp-action="Index" class="btn btn-outline-primary">
+            <i class="fa-solid fa-list me-1"></i>Department Detail
+        </a>
+    }
+</div>
+
+<vc:temp-data-alerts />
+
+<p class="text-muted mb-4">How the @Model.YearName budget is allocated across departments and infrastructure.</p>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total Income</h6>
+                <h3 class="card-title mb-0 text-success">&euro;@Model.TotalIncome.ToString("N2")</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Total Expenses</h6>
+                <h3 class="card-title mb-0 text-danger">&euro;@Math.Abs(Model.TotalExpenses).ToString("N2")</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-2 text-muted">Net Balance</h6>
+                <h3 class="card-title mb-0 @(Model.NetBalance >= 0 ? "text-success" : "text-danger")">
+                    &euro;@Model.NetBalance.ToString("N2")
+                </h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.IncomeSlices.Any() || Model.ExpenseSlices.Any())
+{
+    <div class="row">
+        <!-- Income Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="fa-solid fa-arrow-trend-up me-1 text-success"></i>Income
+                </div>
+                <div class="card-body">
+                    @if (Model.IncomeSlices.Any())
+                    {
+                        <canvas id="incomeChart"></canvas>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="fa-solid fa-chart-pie fa-2x mb-2"></i>
+                            <p class="mb-0">No income line items yet.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Expenses Chart -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <i class="fa-solid fa-arrow-trend-down me-1 text-danger"></i>Expenses
+                </div>
+                <div class="card-body">
+                    @if (Model.ExpenseSlices.Any())
+                    {
+                        <canvas id="expenseChart"></canvas>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            <i class="fa-solid fa-chart-pie fa-2x mb-2"></i>
+                            <p class="mb-0">No expense line items yet.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breakdown Tables -->
+    <div class="row">
+        @if (Model.IncomeSlices.Any())
+        {
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">Income Breakdown</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Share</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var slice in Model.IncomeSlices)
+                                {
+                                    <tr>
+                                        <td>@slice.Name</td>
+                                        <td class="text-end">&euro;@slice.Amount.ToString("N2")</td>
+                                        <td class="text-end">@slice.Percentage.ToString("N1")%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+        @if (Model.ExpenseSlices.Any())
+        {
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">Expenses Breakdown</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Share</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var slice in Model.ExpenseSlices)
+                                {
+                                    <tr>
+                                        <td>@slice.Name</td>
+                                        <td class="text-end">&euro;@slice.Amount.ToString("N2")</td>
+                                        <td class="text-end">@slice.Percentage.ToString("N1")%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <script>
+    if (typeof Chart === 'undefined') {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
+        s.onload = function() { renderBudgetCharts(); };
+        document.head.appendChild(s);
+    } else {
+        document.addEventListener('DOMContentLoaded', function() { renderBudgetCharts(); });
+    }
+
+    function renderBudgetCharts() {
+        var cs = getComputedStyle(document.documentElement);
+        var cv = function(n) { return cs.getPropertyValue(n).trim(); };
+        var incomeColors = [
+            cv('--h-chart-cat-1'), cv('--h-chart-cat-2'), cv('--h-chart-cat-3'),
+            cv('--h-chart-cat-4'), cv('--h-chart-cat-5'), cv('--h-chart-cat-6'),
+            cv('--h-chart-cat-7'), cv('--h-chart-cat-8'), cv('--h-chart-cat-9'),
+            cv('--h-chart-cat-10'), cv('--h-chart-cat-11'), cv('--h-chart-cat-12'),
+            cv('--h-chart-cat-13'), cv('--h-chart-cat-14'), cv('--h-chart-cat-15')
+        ];
+        var expenseColors = [
+            cv('--h-chart-exp-1'), cv('--h-chart-exp-2'), cv('--h-chart-exp-3'),
+            cv('--h-chart-exp-4'), cv('--h-chart-exp-5'), cv('--h-chart-exp-6'),
+            cv('--h-chart-exp-7'), cv('--h-chart-exp-8'), cv('--h-chart-exp-9'),
+            cv('--h-chart-exp-10'), cv('--h-chart-exp-11'), cv('--h-chart-exp-12'),
+            cv('--h-chart-exp-13'), cv('--h-chart-exp-14'), cv('--h-chart-exp-15')
+        ];
+        var tooltipCallback = {
+            label: function(ctx) {
+                return ctx.label + ': \u20ac' + ctx.raw.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+        };
+        var legendOpts = {
+            position: 'bottom',
+            labels: { padding: 16, usePointStyle: true }
+        };
+
+        var incomeLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incomeLabels, jsonOpts));
+        var incomeData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(incomeData, jsonOpts));
+        var expenseLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(expenseLabels, jsonOpts));
+        var expenseData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(expenseData, jsonOpts));
+
+        if (incomeData.length > 0) {
+            new Chart(document.getElementById('incomeChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: incomeLabels,
+                    datasets: [{
+                        data: incomeData,
+                        backgroundColor: incomeColors.slice(0, incomeData.length),
+                        borderWidth: 2,
+                        borderColor: cv('--h-bg-elevated')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: legendOpts,
+                        tooltip: { callbacks: tooltipCallback }
+                    }
+                }
+            });
+        }
+
+        if (expenseData.length > 0) {
+            new Chart(document.getElementById('expenseChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: expenseLabels,
+                    datasets: [{
+                        data: expenseData,
+                        backgroundColor: expenseColors.slice(0, expenseData.length),
+                        borderWidth: 2,
+                        borderColor: cv('--h-bg-elevated')
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: legendOpts,
+                        tooltip: { callbacks: tooltipCallback }
+                    }
+                }
+            });
+        }
+    }
+    </script>
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fa-solid fa-chart-pie fa-3x text-muted mb-3"></i>
+            <h4 class="text-muted">Budget data not available yet</h4>
+            <p class="text-muted mb-0">Budget allocations will appear here once they are set up by the finance team.</p>
+        </div>
+    </div>
+}

@@ -27,12 +27,30 @@ public class TeamRoleServiceTests : IDisposable
             .Options;
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 11, 12, 0));
+        var cache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+        var roleAssignmentService = new RoleAssignmentService(
+            _dbContext,
+            Substitute.For<IAuditLogService>(),
+            Substitute.For<ISystemTeamSync>(),
+            _clock,
+            cache,
+            NullLogger<RoleAssignmentService>.Instance);
+        var shiftManagementService = new ShiftManagementService(
+            _dbContext,
+            Substitute.For<IAuditLogService>(),
+            cache,
+            _clock,
+            NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
+            Substitute.For<INotificationService>(),
+            roleAssignmentService,
+            shiftManagementService,
+            Substitute.For<ISystemTeamSync>(),
             _clock,
-            new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
+            cache,
             NullLogger<TeamService>.Instance);
     }
 
@@ -134,6 +152,83 @@ public class TeamRoleServiceTests : IDisposable
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Cannot reduce slot count*");
+    }
+
+    [Fact]
+    public async Task UpdateRoleDefinitionAsync_SetIsManagement_WhenAnotherRoleAlreadyManagement_Throws()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var existingMgmt = SeedRoleDefinition(team, "Coordinator", slotCount: 1, sortOrder: 0, isManagement: true);
+        var otherRole = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        await _dbContext.SaveChangesAsync();
+
+        var act = () => _service.UpdateRoleDefinitionAsync(
+            otherRole.Id, "Designer", null, 2,
+            [SlotPriority.Critical, SlotPriority.Important], 1, true, RolePeriod.YearRound, admin.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*already marked as the management role*");
+    }
+
+    [Fact]
+    public async Task UpdateRoleDefinitionAsync_SetIsManagement_WhenNoOtherManagement_Succeeds()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var role = SeedRoleDefinition(team, "Lead", slotCount: 1, sortOrder: 0);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.UpdateRoleDefinitionAsync(
+            role.Id, "Lead", null, 1,
+            [SlotPriority.Critical], 0, true, RolePeriod.YearRound, admin.Id);
+
+        result.IsManagement.Should().BeTrue();
+    }
+
+    // ==========================================================================
+    // SetRoleIsManagementAsync
+    // ==========================================================================
+
+    [Fact]
+    public async Task SetRoleIsManagementAsync_ClearWithAssignedMembers_DemotesCoordinators()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var user = SeedUser("User");
+        var mgmtRole = SeedRoleDefinition(team, "Coordinator", slotCount: 2, sortOrder: 0, isManagement: true);
+        var member = SeedMember(team, user, TeamMemberRole.Coordinator);
+        SeedRoleAssignment(mgmtRole, member, slotIndex: 0);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.SetRoleIsManagementAsync(mgmtRole.Id, false, admin.Id);
+
+        var roleInDb = await _dbContext.Set<TeamRoleDefinition>().FindAsync(mgmtRole.Id);
+        roleInDb!.IsManagement.Should().BeFalse();
+
+        var memberInDb = await _dbContext.TeamMembers.FindAsync(member.Id);
+        memberInDb!.Role.Should().Be(TeamMemberRole.Member);
+    }
+
+    [Fact]
+    public async Task SetRoleIsManagementAsync_SetWithAssignedMembers_Throws()
+    {
+        var admin = SeedUser("Admin");
+        SeedAdminRole(admin);
+        var team = SeedTeam("Test Team");
+        var user = SeedUser("User");
+        var role = SeedRoleDefinition(team, "Designer", slotCount: 2, sortOrder: 1);
+        var member = SeedMember(team, user);
+        SeedRoleAssignment(role, member, slotIndex: 0);
+        await _dbContext.SaveChangesAsync();
+
+        var act = () => _service.SetRoleIsManagementAsync(role.Id, true, admin.Id);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Cannot set IsManagement*");
     }
 
     // ==========================================================================

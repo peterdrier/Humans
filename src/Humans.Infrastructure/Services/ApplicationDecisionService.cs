@@ -6,6 +6,7 @@ using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain;
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using MemberApplication = Humans.Domain.Entities.Application;
@@ -17,6 +18,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
@@ -27,6 +29,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
         IEmailService emailService,
+        INotificationService notificationService,
         ISystemTeamSync syncJob,
         IHumansMetrics metrics,
         IClock clock,
@@ -36,6 +39,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         _dbContext = dbContext;
         _auditLogService = auditLogService;
         _emailService = emailService;
+        _notificationService = notificationService;
         _syncJob = syncJob;
         _metrics = metrics;
         _clock = clock;
@@ -46,7 +50,6 @@ public class ApplicationDecisionService : IApplicationDecisionService
     public async Task<ApplicationDecisionResult> ApproveAsync(
         Guid applicationId,
         Guid reviewerUserId,
-        string reviewerDisplayName,
         string? notes,
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default)
@@ -84,8 +87,8 @@ public class ApplicationDecisionService : IApplicationDecisionService
         // Audit
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationApproved, nameof(Humans.Domain.Entities.Application), application.Id,
-            $"{application.MembershipTier} application approved for {application.User.DisplayName} by {reviewerDisplayName}",
-            reviewerUserId, reviewerDisplayName);
+            $"{application.MembershipTier} application approved",
+            reviewerUserId);
 
         // GDPR: delete individual board votes
         _dbContext.BoardVotes.RemoveRange(application.BoardVotes);
@@ -117,6 +120,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         }
 
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _metrics.RecordApplicationProcessed("approved");
         _logger.LogInformation("Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
@@ -141,13 +145,32 @@ public class ApplicationDecisionService : IApplicationDecisionService
             _logger.LogError(ex, "Failed to send approval email for {ApplicationId}", application.Id);
         }
 
+        // In-app notification to applicant (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.ApplicationApproved,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"Your {application.MembershipTier} application has been approved",
+                [application.UserId],
+                body: $"Congratulations! Your {application.MembershipTier} application has been approved.",
+                actionUrl: "/Governance/MyApplications",
+                actionLabel: "View application",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ApplicationApproved notification for {ApplicationId}",
+                application.Id);
+        }
+
         return new ApplicationDecisionResult(true);
     }
 
     public async Task<ApplicationDecisionResult> RejectAsync(
         Guid applicationId,
         Guid reviewerUserId,
-        string reviewerDisplayName,
         string reason,
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default)
@@ -172,8 +195,8 @@ public class ApplicationDecisionService : IApplicationDecisionService
         // Audit
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationRejected, nameof(Humans.Domain.Entities.Application), application.Id,
-            $"{application.MembershipTier} application rejected for {application.User.DisplayName} by {reviewerDisplayName}",
-            reviewerUserId, reviewerDisplayName);
+            $"{application.MembershipTier} application rejected",
+            reviewerUserId);
 
         // GDPR: delete individual board votes
         _dbContext.BoardVotes.RemoveRange(application.BoardVotes);
@@ -202,6 +225,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         }
 
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _metrics.RecordApplicationProcessed("rejected");
         _logger.LogInformation("Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
@@ -219,6 +243,26 @@ public class ApplicationDecisionService : IApplicationDecisionService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send rejection email for {ApplicationId}", application.Id);
+        }
+
+        // In-app notification to applicant (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.ApplicationRejected,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"Your {application.MembershipTier} application was not approved",
+                [application.UserId],
+                body: $"Your {application.MembershipTier} application was not approved.",
+                actionUrl: "/Governance/MyApplications",
+                actionLabel: "View application",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ApplicationRejected notification for {ApplicationId}",
+                application.Id);
         }
 
         return new ApplicationDecisionResult(true);
@@ -274,8 +318,29 @@ public class ApplicationDecisionService : IApplicationDecisionService
         _dbContext.Applications.Add(application);
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         _logger.LogInformation("User {UserId} submitted application {ApplicationId}", userId, application.Id);
+
+        // Dispatch in-app notification to Board members
+        try
+        {
+            await _notificationService.SendToRoleAsync(
+                NotificationSource.ApplicationSubmitted,
+                NotificationClass.Actionable,
+                NotificationPriority.Normal,
+                $"New {tier} application submitted",
+                RoleNames.Board,
+                body: $"A new {tier} application requires Board review.",
+                actionUrl: "/OnboardingReview/BoardVoting",
+                actionLabel: "Review \u2192",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ApplicationSubmitted notification for application {ApplicationId}",
+                application.Id);
+        }
 
         return new ApplicationDecisionResult(true, ApplicationId: application.Id);
     }
@@ -296,6 +361,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         application.Withdraw(_clock);
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _metrics.RecordApplicationProcessed("withdrawn");
 
         _logger.LogInformation("User {UserId} withdrew application {ApplicationId}", userId, applicationId);

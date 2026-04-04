@@ -5,7 +5,31 @@ Historical codebase metrics for Nobodies Humans, tracked per day from the initia
 **Excludes:** EF Core migration files (auto-generated, distorts line counts).
 **Test code** is separated from app code in its own columns.
 
-*Last generated: 2026-03-19* — To regenerate: `cd <repo-root> && bash docs/scripts/generate-stats.sh`
+*Last generated: 2026-03-31* — To regenerate: `cd <repo-root> && bash docs/scripts/generate-stats.sh`
+
+## Quick Summary
+
+| Metric | Value |
+|--------|------:|
+| Latest snapshot | 2026-03-31 |
+| Total lines | 110,556 |
+| App / Test lines | 81,197 / 29,359 |
+| Files | 770 |
+| Commits | 708 |
+| Test ratio | 26.6% |
+| 7-day delta | +10,548 total lines from 2026-03-24 to 2026-03-31 |
+| 7-day average | +1,507 lines/day over the same span |
+
+## Language Breakdown
+
+Latest app-code mix at the 2026-03-31 snapshot:
+
+| Language | Lines | Share of App Lines | Files |
+|----------|------:|-------------------:|------:|
+| C# | 50,562 | 66.9% | 469 |
+| Razor (`.cshtml`) | 18,831 | 24.9% | 174 |
+| RESX | 6,110 | 8.1% | 5 |
+| JavaScript | 98 | 0.1% | 1 |
 
 ## Codebase Growth
 
@@ -48,23 +72,36 @@ Historical codebase metrics for Nobodies Humans, tracked per day from the initia
 | 2026-03-17 | 57,898 | 12,091 | 69,989 | 2,582 | 415 | 511 | 400 | 27 | 25 | 117 | 41 | 805 | 548 | 9,909 | 202 |
 | 2026-03-18 | 58,940 | 12,552 | 71,492 | 2,636 | 430 | 515 | 406 | 28 | 25 | 117 | 42 | 805 | 574 | 7,596 | 1,139 |
 | 2026-03-19 | 60,193 | 12,705 | 72,898 | 2,695 | 435 | 524 | 415 | 28 | 25 | 120 | 42 | 817 | 578 | 5,618 | 3,522 |
+| 2026-03-20 | 67,619 | 28,284 | 95,903 | 3,042 | 997 | 679 | 531 | 31 | 30 | 149 | 43 | 852 | 585 | 742 | 84 |
+| 2026-03-21 | 63,754 | 28,276 | 92,030 | 2,877 | 996 | 646 | 508 | 30 | 28 | 132 | 43 | 852 | 572 | 3,387 | 1,343 |
+| 2026-03-22 | 67,741 | 28,287 | 96,028 | 3,048 | 997 | 679 | 533 | 31 | 30 | 149 | 43 | 852 | 591 | 6,259 | 837 |
+| 2026-03-23 | 70,633 | 28,460 | 99,093 | 3,181 | 1,003 | 699 | 553 | 33 | 32 | 155 | 44 | 856 | 601 | 7,045 | 1,001 |
+| 2026-03-24 | 71,430 | 28,578 | 100,008 | 3,216 | 1,007 | 706 | 558 | 34 | 31 | 155 | 46 | 863 | 607 | 3,650 | 841 |
+| 2026-03-25 | 74,153 | 28,916 | 103,069 | 3,330 | 1,018 | 724 | 569 | 36 | 31 | 163 | 46 | 882 | 614 | 3,838 | 261 |
+| 2026-03-26 | 74,312 | 28,916 | 103,228 | 3,336 | 1,018 | 724 | 569 | 36 | 31 | 163 | 46 | 882 | 624 | 268 | 109 |
+| 2026-03-27 | 75,601 | 29,044 | 104,645 | 3,390 | 1,023 | 731 | 585 | 37 | 33 | 163 | 46 | 884 | 645 | 6,167 | 292 |
+| 2026-03-28 | 78,095 | 29,052 | 107,147 | 3,497 | 1,023 | 751 | 597 | 38 | 34 | 168 | 51 | 886 | 651 | 5,133 | 36 |
+| 2026-03-29 | 80,185 | 29,256 | 109,441 | 3,600 | 1,030 | 760 | 607 | 38 | 35 | 173 | 51 | 886 | 666 | 3,417 | 333 |
+| 2026-03-30 | 81,058 | 29,352 | 110,410 | 3,645 | 1,034 | 770 | 624 | 41 | 35 | 174 | 51 | 903 | 707 | 4,777 | 1,477 |
+| 2026-03-31 | 81,197 | 29,359 | 110,556 | 3,651 | 1,034 | 770 | 625 | 41 | 35 | 174 | 51 | 903 | 708 | 148 | 1 |
 
 ## Highlights
 
 - **First commit:** 2026-02-04 (7.5k lines)
-- **Current:** 73k lines across 524 files in 44 days of development
-- **Growth rate:** ~1,657 lines/day average
+- **Current:** 111k lines across 770 files in 56 days of development
+- **Growth rate:** ~1,974 lines/day average
 - **Biggest day:** 2026-02-05 (+14,094 lines) — initial feature buildout
-- **Busiest refactor day:** 2026-03-15 (+10,158 / -3,269) — ticket vendor integration + admin restructure
-- **Test ratio:** 17% of codebase (13k test lines / 73k total)
-- **Localization:** 817 resx keys (5 languages = ~4,085 translated strings)
-- **Architecture:** 415 classes, 28 interfaces, 25 controllers, 120 views, 42 entities
+- **Busiest churn day:** 2026-03-19 (+5,618 / -3,522) — feedback upgrade + polish work
+- **Test ratio:** 27% of codebase (29k test lines / 111k total)
+- **Localization:** 903 resx keys (5 languages = ~4,515 translated strings)
+- **Architecture:** 625 classes, 41 interfaces, 35 controllers, 174 views, 51 entities
 
 ## Column Key
 
 | Column | Description |
 |--------|-------------|
 | App Lines | Lines of code in `src/` excluding migrations and tests (`.cs`, `.cshtml`, `.resx`, `.js`) |
+| C# / Razor / RESX / JS Lines | App-code lines split by language family, using the same exclusions as `App Lines` |
 | Test Lines | Lines of code in test projects (`.cs` only) |
 | App/Test KB | File size in kilobytes |
 | Files | Total source files (app + test, excluding migrations) |

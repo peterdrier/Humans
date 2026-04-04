@@ -16,8 +16,8 @@
         CampaignStatus.Completed => "bg-info",
         _ => "bg-secondary"
     };
-    var isAdmin = User.IsInRole(RoleNames.Admin);
-    var canGenerateCodes = isAdmin || User.IsInRole(RoleNames.TicketAdmin);
+    var isAdmin = Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.Admin, User);
+    var canGenerateCodes = Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.CanManageTickets, User);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -32,7 +32,7 @@
         @if (isAdmin)
         {
             <a asp-action="Edit" asp-route-id="@Model.Campaign.Id" class="btn btn-outline-primary btn-sm">
-                <i class="fa-solid fa-pen me-1"></i>Edit
+                <i class="fa-solid fa-pen me-1"></i>Edit <i class="fa-solid fa-lock auth-lock-icon"></i>
             </a>
             <a asp-action="Index" class="btn btn-outline-secondary">Back to Campaigns</a>
         }
@@ -76,7 +76,7 @@
             </select>
             <input type="number" name="discountValue" min="0" step="0.01" placeholder="Value" class="form-control form-control-sm" style="max-width: 100px;" required />
             <button type="submit" class="btn btn-outline-success btn-sm">
-                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Generate Codes
+                <i class="fa-solid fa-wand-magic-sparkles me-1"></i>Generate Codes <i class="fa-solid fa-lock auth-lock-icon"></i>
             </button>
         </form>
 

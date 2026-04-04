@@ -23,27 +23,21 @@
                 <i class="fa-solid fa-users me-1"></i>Teams
             </a>
         </li>
-        @if (Humans.Web.Authorization.ShiftRoleChecks.CanAccessDashboard(User))
-        {
-            <li class="nav-item">
-                <a class="nav-link @(activeTab == "Urgent" ? "active" : "")" asp-controller="Vol" asp-action="Urgent">
-                    <i class="fa-solid fa-bolt me-1"></i>Urgent
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link @(activeTab == "Management" ? "active" : "")" asp-controller="Vol" asp-action="Management">
-                    <i class="fa-solid fa-chart-bar me-1"></i>Management
-                </a>
-            </li>
-        }
-        @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
-        {
-            <li class="nav-item">
-                <a class="nav-link @(activeTab == "Settings" ? "active" : "")" asp-controller="Vol" asp-action="Settings">
-                    <i class="fa-solid fa-gear me-1"></i>Settings
-                </a>
-            </li>
-        }
+        <li class="nav-item" authorize-policy="ShiftDashboardAccess">
+            <a class="nav-link @(activeTab == "Urgent" ? "active" : "")" asp-controller="Vol" asp-action="Urgent">
+                <i class="fa-solid fa-bolt me-1"></i>Urgent <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
+        </li>
+        <li class="nav-item" authorize-policy="ShiftDashboardAccess">
+            <a class="nav-link @(activeTab == "Management" ? "active" : "")" asp-controller="Vol" asp-action="Management">
+                <i class="fa-solid fa-chart-bar me-1"></i>Management <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
+        </li>
+        <li class="nav-item" authorize-policy="AdminOnly">
+            <a class="nav-link @(activeTab == "Settings" ? "active" : "")" asp-controller="Vol" asp-action="Settings">
+                <i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
+        </li>
     </ul>
     @RenderBody()
 </div>

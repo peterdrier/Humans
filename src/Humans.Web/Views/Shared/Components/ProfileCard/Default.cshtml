@@ -28,12 +28,7 @@
                 {
                     <span class="@Model.PreferredLanguage.ToFlagClass()" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>
                 }
-                @if (Model.HasNobodiesTeamEmail)
-                {
-                    <span class="badge bg-light text-dark border ms-1" title="Has a @@nobodies.team email account" data-bs-toggle="tooltip">
-                        <i class="fa-solid fa-at me-1"></i>nobodies.team
-                    </span>
-                }
+                @await Component.InvokeAsync("NobodiesEmailBadge", new { userId = Model.UserId, mode = "badge" })
                 @if (Model.Teams.Count > 0)
                 {
                     <div class="d-flex flex-wrap gap-2 mt-2">
@@ -99,6 +94,10 @@
                         {
                             <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
                         }
+                        @if (email.VisibilityBadgeText is not null)
+                        {
+                            <span class="badge bg-light text-muted border ms-1">@email.VisibilityBadgeText</span>
+                        }
                     </dd>
                 }
                 @foreach (var field in Model.ContactFields)
@@ -116,11 +115,9 @@
                         {
                             @field.Value
                         }
-                        @if (Model.IsOwnProfile)
+                        @if (field.VisibilityBadgeText is not null)
                         {
-                            <i class="@field.VisibilityIconClass text-muted ms-2"
-                               title="@field.VisibilityTooltip"
-                               data-bs-toggle="tooltip"></i>
+                            <span class="badge bg-light text-muted border ms-1">@field.VisibilityBadgeText</span>
                         }
                     </dd>
                 }
@@ -137,7 +134,7 @@
         @if (Model.CanSendMessage)
         {
             <hr />
-            <a asp-controller="Human" asp-action="SendMessage" asp-route-id="@Model.UserId"
+            <a asp-controller="Profile" asp-action="SendMessage" asp-route-id="@Model.UserId"
                class="btn btn-outline-primary">
                 <i class="fa-solid fa-envelope me-1"></i>
                 @string.Format(Localizer["SendMessage_Button"].Value, Model.DisplayName)
@@ -250,6 +247,10 @@
                         @if (email.IsNotificationTarget)
                         {
                             <span class="badge bg-primary ms-1" title="@Localizer["Profile_NotificationTarget"]" data-bs-toggle="tooltip"><i class="fa-solid fa-bell"></i> @Localizer["Profile_NotificationTargetShort"]</span>
+                        }
+                        @if (email.VisibilityBadgeText is not null)
+                        {
+                            <span class="badge bg-light text-muted border ms-1">@email.VisibilityBadgeText</span>
                         }
                     </dd>
                 }

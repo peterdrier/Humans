@@ -3,14 +3,17 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -21,31 +24,43 @@ public class TeamController : HumansControllerBase
     private readonly ITeamService _teamService;
     private readonly ITeamPageService _teamPageService;
     private readonly IProfileService _profileService;
+    private readonly INotificationService _notificationService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly ITeamResourceService _teamResourceService;
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly IConfiguration _configuration;
+    private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<TeamController> _logger;
+    private readonly IClock _clock;
 
     public TeamController(
         ITeamService teamService,
         ITeamPageService teamPageService,
         UserManager<User> userManager,
         IProfileService profileService,
+        INotificationService notificationService,
         IGoogleSyncService googleSyncService,
+        ITeamResourceService teamResourceService,
         ISystemTeamSync systemTeamSync,
         IStringLocalizer<SharedResource> localizer,
         IConfiguration configuration,
+        ConfigurationRegistry configRegistry,
+        IClock clock,
         ILogger<TeamController> logger)
         : base(userManager)
     {
         _teamService = teamService;
         _teamPageService = teamPageService;
         _profileService = profileService;
+        _notificationService = notificationService;
         _googleSyncService = googleSyncService;
+        _teamResourceService = teamResourceService;
         _systemTeamSync = systemTeamSync;
         _localizer = localizer;
         _configuration = configuration;
+        _configRegistry = configRegistry;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -147,6 +162,46 @@ public class TeamController : HumansControllerBase
             ShiftsSummary = MapShiftsSummary(teamPage.ShiftsSummary, slug)
         };
 
+        // Subteam member rollup: for departments, show child team members not already direct members
+        if (teamPage.IsAuthenticated && teamPage.ChildTeams.Any())
+        {
+            var directMemberUserIds = new HashSet<Guid>(viewModel.Members.Select(m => m.UserId));
+            var addedUserIds = new HashSet<Guid>();
+
+            foreach (var child in teamPage.ChildTeams)
+            {
+                var childMembers = await _teamService.GetTeamMembersAsync(child.Id);
+                foreach (var cm in childMembers)
+                {
+                    if (directMemberUserIds.Contains(cm.UserId) || !addedUserIds.Add(cm.UserId))
+                        continue;
+
+                    viewModel.ChildTeamMembers.Add(new ChildTeamMemberViewModel
+                    {
+                        UserId = cm.UserId,
+                        DisplayName = cm.User.DisplayName,
+                        ProfilePictureUrl = cm.User.ProfilePictureUrl,
+                        ChildTeamName = child.Name,
+                        ChildTeamSlug = child.Slug
+                    });
+                }
+            }
+
+            // Resolve custom profile pictures for child team members
+            if (viewModel.ChildTeamMembers.Count > 0)
+            {
+                var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
+                    _profileService, Url,
+                    viewModel.ChildTeamMembers.Select(m => (m.UserId, m.ProfilePictureUrl)));
+
+                foreach (var member in viewModel.ChildTeamMembers)
+                {
+                    if (effectiveUrls.TryGetValue(member.UserId, out var effectiveUrl))
+                        member.ProfilePictureUrl = effectiveUrl;
+                }
+            }
+        }
+
         return View(viewModel);
     }
 
@@ -226,9 +281,10 @@ public class TeamController : HumansControllerBase
             return currentUserError;
         }
 
-        var currentMonth = month ?? DateTime.UtcNow.Month;
+        var currentZone = HttpContext.Session.GetUserTimeZone();
+        var currentMonth = month ?? _clock.GetCurrentInstant().InZone(currentZone).Month;
         if (currentMonth < 1 || currentMonth > 12)
-            currentMonth = DateTime.UtcNow.Month;
+            currentMonth = _clock.GetCurrentInstant().InZone(currentZone).Month;
 
         // Load all active profiles that have a date of birth
         var profilesWithBirthdays = await _profileService.GetBirthdayProfilesAsync(currentMonth);
@@ -258,25 +314,6 @@ public class TeamController : HumansControllerBase
                 TeamNames = teamsByUser.GetValueOrDefault(p.UserId, [])
             }).ToList()
         };
-
-        return View(viewModel);
-    }
-
-    [HttpGet("Search")]
-    public async Task<IActionResult> Search(string? q)
-    {
-        var viewModel = new HumanSearchViewModel { Query = q };
-
-        if (!q.HasSearchTerm())
-        {
-            return View(viewModel);
-        }
-
-        var results = await _profileService.SearchHumansAsync(q);
-
-        viewModel.Results = results
-            .Select(r => r.ToHumanSearchViewModel(Url))
-            .ToList();
 
         return View(viewModel);
     }
@@ -325,7 +362,8 @@ public class TeamController : HumansControllerBase
             CountryCode = p.CountryCode
         }).ToList();
 
-        ViewData["GoogleMapsApiKey"] = _configuration["GoogleMaps:ApiKey"];
+        ViewData["GoogleMapsApiKey"] = _configuration.GetRequiredSetting(
+            _configRegistry, "GoogleMaps:ApiKey", "Google Maps", isSensitive: true);
 
         return View(new MapViewModel { Markers = markers });
     }
@@ -385,6 +423,12 @@ public class TeamController : HumansControllerBase
             return RedirectToAction(nameof(Details), new { slug });
         }
 
+        // Hidden teams cannot be joined by non-admin users
+        if (team.IsHidden && !RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+        {
+            return NotFound();
+        }
+
         var isMember = await _teamService.IsUserMemberOfTeamAsync(team.Id, user.Id);
         if (isMember)
         {
@@ -431,17 +475,74 @@ public class TeamController : HumansControllerBase
             return BadRequest();
         }
 
+        if (team.IsHidden && !RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+        {
+            return NotFound();
+        }
+
         try
         {
             if (team.RequiresApproval)
             {
                 await _teamService.RequestToJoinTeamAsync(team.Id, user.Id, model.Message);
                 SetSuccess(_localizer["Team_JoinRequestSubmitted"].Value);
+
+                // Notify team coordinators (best-effort)
+                try
+                {
+                    var coordinatorUserIds = team.Members
+                        .Where(m => m.Role == TeamMemberRole.Coordinator)
+                        .Select(m => m.UserId)
+                        .ToList();
+
+                    if (coordinatorUserIds.Count > 0)
+                    {
+                        await _notificationService.SendAsync(
+                            NotificationSource.TeamJoinRequestSubmitted,
+                            NotificationClass.Actionable,
+                            NotificationPriority.Normal,
+                            $"New join request for {team.Name}",
+                            coordinatorUserIds,
+                            body: $"{user.DisplayName} has requested to join {team.Name}.",
+                            actionUrl: $"/Teams/{slug}/Members",
+                            actionLabel: "Review request");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to dispatch TeamJoinRequestSubmitted notification for team {TeamId}", team.Id);
+                }
             }
             else
             {
                 await _teamService.JoinTeamDirectlyAsync(team.Id, user.Id);
                 SetSuccess(_localizer["Team_Joined"].Value);
+
+                // Notify team coordinators of new member (best-effort)
+                try
+                {
+                    var coordinatorUserIds = team.Members
+                        .Where(m => m.Role == TeamMemberRole.Coordinator)
+                        .Select(m => m.UserId)
+                        .ToList();
+
+                    if (coordinatorUserIds.Count > 0)
+                    {
+                        await _notificationService.SendAsync(
+                            NotificationSource.TeamMemberAdded,
+                            NotificationClass.Informational,
+                            NotificationPriority.Normal,
+                            $"{user.DisplayName} joined {team.Name}",
+                            coordinatorUserIds,
+                            body: $"{user.DisplayName} has joined {team.Name}.",
+                            actionUrl: $"/Teams/{slug}/Members",
+                            actionLabel: "View members");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to dispatch TeamMemberAdded notification for team {TeamId}", team.Id);
+                }
             }
 
             return RedirectToAction(nameof(Details), new { slug });
@@ -512,43 +613,6 @@ public class TeamController : HumansControllerBase
         return RedirectToAction(nameof(MyTeams));
     }
 
-    [HttpGet("Sync")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
-    public IActionResult Sync()
-    {
-        var viewModel = new TeamSyncViewModel
-        {
-            CanExecuteActions = RoleChecks.IsAdmin(User)
-        };
-        return View(viewModel);
-    }
-
-    [HttpGet("Sync/Preview/{resourceType}")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
-    public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
-    {
-        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview);
-        return Json(result);
-    }
-
-    [HttpPost("Sync/Execute/{resourceId}")]
-    [Authorize(Roles = RoleNames.Admin)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SyncExecute(Guid resourceId)
-    {
-        var result = await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
-        return Json(result);
-    }
-
-    [HttpPost("Sync/ExecuteAll/{resourceType}")]
-    [Authorize(Roles = RoleNames.Admin)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SyncExecuteAll(GoogleResourceType resourceType)
-    {
-        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute);
-        return Json(result);
-    }
-
     [HttpGet("Summary")]
     [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> Summary()
@@ -587,7 +651,7 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            var team = await _teamService.CreateTeamAsync(model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix);
+            var team = await _teamService.CreateTeamAsync(model.Name, model.Description, model.RequiresApproval, model.ParentTeamId, model.GoogleGroupPrefix, model.IsHidden);
             var currentUser = await GetCurrentUserAsync();
             _logger.LogInformation("Admin {AdminId} created team {TeamId} ({TeamName})", currentUser?.Id, team.Id, team.Name);
 
@@ -656,6 +720,8 @@ public class TeamController : HumansControllerBase
             IsActive = team.IsActive,
             IsSystemTeam = team.IsSystemTeam,
             HasBudget = team.HasBudget,
+            IsHidden = team.IsHidden,
+            IsSensitive = team.IsSensitive,
             ParentTeamId = team.ParentTeamId,
             EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId: id, cancellationToken)
         };
@@ -681,7 +747,7 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget);
+            await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive);
             var currentUser = await GetCurrentUserAsync();
             _logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 
@@ -776,8 +842,29 @@ public class TeamController : HumansControllerBase
         RoleSlotCount = team.RoleSlotCount,
         CreatedAt = team.CreatedAt.ToDateTimeUtc(),
         IsChildTeam = team.IsChildTeam,
-        PendingShiftSignupCount = team.PendingShiftSignupCount
+        PendingShiftSignupCount = team.PendingShiftSignupCount,
+        IsHidden = team.IsHidden
     };
+
+    [HttpGet("{teamId:guid}/GoogleResources")]
+    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    public async Task<IActionResult> GetTeamGoogleResources(Guid teamId, CancellationToken cancellationToken)
+    {
+        var resources = await _teamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
+        var result = resources.Select(r => new
+        {
+            name = r.Name,
+            type = r.ResourceType switch
+            {
+                GoogleResourceType.DriveFolder => "Drive Folder",
+                GoogleResourceType.SharedDrive => "Shared Drive",
+                GoogleResourceType.Group => "Google Group",
+                GoogleResourceType.DriveFile => "Drive File",
+                _ => r.ResourceType.ToString()
+            }
+        });
+        return Json(result);
+    }
 
     private async Task<List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>> GetEligibleParentTeamsAsync(
         Guid? excludeTeamId, CancellationToken cancellationToken)

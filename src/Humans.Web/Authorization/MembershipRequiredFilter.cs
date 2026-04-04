@@ -21,7 +21,9 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Profile",     // Set up profile during onboarding
         "Admin",       // Has its own Roles = "Admin" gate
         "Board",       // Has its own Roles = "Board,Admin" gate
-        "Human",       // Public profile viewing
+        "Contacts",    // Admin contacts (has its own role gate)
+        "HumanRedirect",    // Old route redirects
+        "HumanApiRedirect", // Old API route redirects
         "Language",         // Language switching
         "OnboardingReview", // Has its own coordinator/Board role gate
         "Camp",             // Public camps pages ([AllowAnonymous])
@@ -30,6 +32,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Feedback",         // Feedback submission — accessible to all authenticated users
         "FeedbackApi",      // API key auth, no membership required
         "Legal",            // Public legal documents ([AllowAnonymous])
+        "Notification",     // Notification inbox — accessible to all authenticated users
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)

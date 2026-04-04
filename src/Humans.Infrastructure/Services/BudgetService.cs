@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -30,11 +31,17 @@ public class BudgetService : IBudgetService
 
     // ───────────────────────── Budget Years ─────────────────────────
 
-    public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync()
+    public async Task<IReadOnlyList<BudgetYear>> GetAllYearsAsync(bool includeArchived = false)
     {
-        return await _dbContext.BudgetYears
+        var query = _dbContext.BudgetYears
             .Include(y => y.Groups)
                 .ThenInclude(g => g.Categories)
+            .AsQueryable();
+
+        if (!includeArchived)
+            query = query.Where(y => !y.IsDeleted);
+
+        return await query
             .OrderByDescending(y => y.Year)
             .ToListAsync();
     }
@@ -48,13 +55,16 @@ public class BudgetService : IBudgetService
             .Include(y => y.Groups)
                 .ThenInclude(g => g.Categories)
                     .ThenInclude(c => c.Team)
+            .Include(y => y.Groups)
+                .ThenInclude(g => g.TicketingProjection)
             .FirstOrDefaultAsync(y => y.Id == id);
     }
 
     public async Task<BudgetYear?> GetActiveYearAsync()
     {
         var activeYear = await _dbContext.BudgetYears
-            .FirstOrDefaultAsync(y => y.Status == BudgetYearStatus.Active);
+            .OrderBy(y => y.Id)
+            .FirstOrDefaultAsync(y => y.Status == BudgetYearStatus.Active && !y.IsDeleted);
 
         if (activeYear is null)
             return null;
@@ -116,6 +126,53 @@ public class BudgetService : IBudgetService
             };
 
             _dbContext.BudgetCategories.Add(category);
+        }
+
+        // Auto-create "Ticketing" group with projection defaults
+        var ticketingGroup = new BudgetGroup
+        {
+            Id = Guid.NewGuid(),
+            BudgetYearId = budgetYear.Id,
+            Name = "Ticketing",
+            SortOrder = 1,
+            IsRestricted = false,
+            IsTicketingGroup = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.BudgetGroups.Add(ticketingGroup);
+
+        var ticketingProjection = new TicketingProjection
+        {
+            Id = Guid.NewGuid(),
+            BudgetGroupId = ticketingGroup.Id,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.TicketingProjections.Add(ticketingProjection);
+
+        // Auto-create categories for the ticketing group
+        var ticketingCategories = new[]
+        {
+            ("Ticket Revenue", 0),
+            ("Processing Fees", 1)
+        };
+
+        foreach (var (catName, catSort) in ticketingCategories)
+        {
+            _dbContext.BudgetCategories.Add(new BudgetCategory
+            {
+                Id = Guid.NewGuid(),
+                BudgetGroupId = ticketingGroup.Id,
+                Name = catName,
+                AllocatedAmount = 0,
+                ExpenditureType = ExpenditureType.OpEx,
+                SortOrder = catSort,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
         }
 
         LogAudit(budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
@@ -210,16 +267,19 @@ public class BudgetService : IBudgetService
 
         var now = _clock.GetCurrentInstant();
 
+        // Soft-delete: mark as archived, preserve all data and audit logs
+        year.IsDeleted = true;
+        year.DeletedAt = now;
+        year.Status = BudgetYearStatus.Closed;
+        year.UpdatedAt = now;
+
         LogAudit(year.Id, nameof(BudgetYear), year.Id,
-            $"Deleted budget year '{year.Name}' ({year.Year})",
+            $"Archived budget year '{year.Name}' ({year.Year})",
             actorUserId, now);
 
         await _dbContext.SaveChangesAsync();
 
-        _dbContext.BudgetYears.Remove(year);
-        await _dbContext.SaveChangesAsync();
-
-        _logger.LogInformation("Deleted budget year {YearId} ({Year})", yearId, year.Year);
+        _logger.LogInformation("Archived budget year {YearId} ({Year})", yearId, year.Year);
     }
 
     public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
@@ -228,6 +288,7 @@ public class BudgetService : IBudgetService
 
         var deptGroup = await _dbContext.BudgetGroups
             .Include(g => g.Categories)
+            .OrderBy(g => g.Id)
             .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.IsDepartmentGroup)
             ?? throw new InvalidOperationException("No Departments group found for this budget year");
 
@@ -275,6 +336,78 @@ public class BudgetService : IBudgetService
         _logger.LogInformation("Synced {Count} departments into budget year {YearId}", budgetTeams.Count, budgetYearId);
 
         return budgetTeams.Count;
+    }
+
+    public async Task<bool> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId)
+    {
+        await EnsureYearNotClosedAsync(budgetYearId);
+
+        var exists = await _dbContext.BudgetGroups
+            .AnyAsync(g => g.BudgetYearId == budgetYearId && g.IsTicketingGroup);
+
+        if (exists)
+            return false;
+
+        var now = _clock.GetCurrentInstant();
+
+        var maxSortOrder = await _dbContext.BudgetGroups
+            .Where(g => g.BudgetYearId == budgetYearId)
+            .MaxAsync(g => (int?)g.SortOrder) ?? -1;
+
+        var ticketingGroup = new BudgetGroup
+        {
+            Id = Guid.NewGuid(),
+            BudgetYearId = budgetYearId,
+            Name = "Ticketing",
+            SortOrder = maxSortOrder + 1,
+            IsRestricted = false,
+            IsTicketingGroup = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.BudgetGroups.Add(ticketingGroup);
+
+        var ticketingProjection = new TicketingProjection
+        {
+            Id = Guid.NewGuid(),
+            BudgetGroupId = ticketingGroup.Id,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        _dbContext.TicketingProjections.Add(ticketingProjection);
+
+        var ticketingCategories = new[]
+        {
+            ("Ticket Revenue", 0),
+            ("Processing Fees", 1)
+        };
+
+        foreach (var (catName, catSort) in ticketingCategories)
+        {
+            _dbContext.BudgetCategories.Add(new BudgetCategory
+            {
+                Id = Guid.NewGuid(),
+                BudgetGroupId = ticketingGroup.Id,
+                Name = catName,
+                AllocatedAmount = 0,
+                ExpenditureType = ExpenditureType.OpEx,
+                SortOrder = catSort,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        LogAudit(budgetYearId, nameof(BudgetGroup), ticketingGroup.Id,
+            "Added Ticketing group with projection parameters",
+            actorUserId, now);
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Added ticketing group to budget year {YearId}", budgetYearId);
+
+        return true;
     }
 
     // ───────────────────────── Budget Groups ─────────────────────────
@@ -502,8 +635,11 @@ public class BudgetService : IBudgetService
 
     public async Task<BudgetLineItem> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId)
+        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
+        int vatRate, Guid actorUserId)
     {
+        ValidateVatRate(vatRate);
+
         var category = await _dbContext.BudgetCategories
             .Include(c => c.BudgetGroup)
             .FirstOrDefaultAsync(c => c.Id == budgetCategoryId)
@@ -526,6 +662,7 @@ public class BudgetService : IBudgetService
             ResponsibleTeamId = responsibleTeamId,
             Notes = notes,
             ExpectedDate = expectedDate,
+            VatRate = vatRate,
             SortOrder = maxSortOrder + 1,
             CreatedAt = now,
             UpdatedAt = now
@@ -546,8 +683,11 @@ public class BudgetService : IBudgetService
 
     public async Task UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
-        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, Guid actorUserId)
+        Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
+        int vatRate, Guid actorUserId)
     {
+        ValidateVatRate(vatRate);
+
         var lineItem = await _dbContext.BudgetLineItems
             .Include(li => li.BudgetCategory)
                 .ThenInclude(c => c!.BudgetGroup)
@@ -602,9 +742,24 @@ public class BudgetService : IBudgetService
             lineItem.ExpectedDate = expectedDate;
         }
 
+        if (lineItem.VatRate != vatRate)
+        {
+            LogAudit(budgetYearId, nameof(BudgetLineItem), lineItem.Id,
+                nameof(BudgetLineItem.VatRate),
+                lineItem.VatRate.ToString(CultureInfo.InvariantCulture), vatRate.ToString(CultureInfo.InvariantCulture),
+                actorUserId, now);
+            lineItem.VatRate = vatRate;
+        }
+
         lineItem.UpdatedAt = now;
 
         await _dbContext.SaveChangesAsync();
+    }
+
+    private static void ValidateVatRate(int vatRate)
+    {
+        if (vatRate is < 0 or > 21)
+            throw new ArgumentOutOfRangeException(nameof(vatRate), vatRate, "VAT rate must be between 0 and 21.");
     }
 
     public async Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
@@ -629,6 +784,53 @@ public class BudgetService : IBudgetService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Deleted line item {LineItemId} ('{Description}')", lineItemId, lineItem.Description);
+    }
+
+    // ───────────────────────── Ticketing Projection ─────────────────────────
+
+    public async Task<TicketingProjection?> GetTicketingProjectionAsync(Guid budgetGroupId)
+    {
+        return await _dbContext.TicketingProjections
+            .FirstOrDefaultAsync(p => p.BudgetGroupId == budgetGroupId);
+    }
+
+    public async Task UpdateTicketingProjectionAsync(
+        Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
+        int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
+        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId)
+    {
+        var group = await _dbContext.BudgetGroups.FindAsync(budgetGroupId)
+            ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
+
+        if (!group.IsTicketingGroup)
+            throw new InvalidOperationException("Projection parameters can only be set on ticketing groups.");
+
+        await EnsureYearNotClosedAsync(group.BudgetYearId);
+
+        var projection = await _dbContext.TicketingProjections
+            .FirstOrDefaultAsync(p => p.BudgetGroupId == budgetGroupId)
+            ?? throw new InvalidOperationException("No ticketing projection found for this group.");
+
+        var now = _clock.GetCurrentInstant();
+
+        projection.StartDate = startDate;
+        projection.EventDate = eventDate;
+        projection.InitialSalesCount = initialSalesCount;
+        projection.DailySalesRate = dailySalesRate;
+        projection.AverageTicketPrice = averageTicketPrice;
+        projection.VatRate = vatRate;
+        projection.StripeFeePercent = stripeFeePercent;
+        projection.StripeFeeFixed = stripeFeeFixed;
+        projection.TicketTailorFeePercent = ticketTailorFeePercent;
+        projection.UpdatedAt = now;
+
+        LogAudit(group.BudgetYearId, nameof(TicketingProjection), projection.Id,
+            "Updated ticketing projection parameters",
+            actorUserId, now);
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Updated ticketing projection for group {GroupId}", budgetGroupId);
     }
 
     // ───────────────────────── Audit Log ─────────────────────────
@@ -682,6 +884,49 @@ public class BudgetService : IBudgetService
         _dbContext.BudgetAuditLogs.Add(entry);
     }
 
+    // ───────────────────────── Coordinator ─────────────────────────
+
+    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId)
+    {
+        // Teams where user is direct coordinator (departments only — sub-team managers don't get budget access)
+        var directTeamIds = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null && tm.Role == TeamMemberRole.Coordinator
+                         && tm.Team.ParentTeamId == null)
+            .Select(tm => tm.TeamId)
+            .ToListAsync();
+
+        // Teams where user has management role assignment (departments only)
+        var mgmtTeamIds = await _dbContext.Set<TeamRoleAssignment>()
+            .AsNoTracking()
+            .Where(tra =>
+                tra.TeamMember.UserId == userId &&
+                tra.TeamMember.LeftAt == null &&
+                tra.TeamRoleDefinition.IsManagement &&
+                tra.TeamRoleDefinition.Team.ParentTeamId == null)
+            .Select(tra => tra.TeamMember.TeamId)
+            .ToListAsync();
+
+        var coordinatorTeamIds = directTeamIds.Concat(mgmtTeamIds).ToHashSet();
+
+        // Include child teams (department coordinators manage child team budgets)
+        if (coordinatorTeamIds.Count > 0)
+        {
+            var childTeamIds = await _dbContext.Teams
+                .AsNoTracking()
+                .Where(t => t.ParentTeamId != null && coordinatorTeamIds.Contains(t.ParentTeamId.Value))
+                .Select(t => t.Id)
+                .ToListAsync();
+
+            foreach (var childId in childTeamIds)
+                coordinatorTeamIds.Add(childId);
+        }
+
+        return coordinatorTeamIds;
+    }
+
+    // ───────────────────────── Audit Helpers ─────────────────────────
+
     /// <summary>
     /// Logs a create/delete action with a free-text description.
     /// </summary>
@@ -704,5 +949,126 @@ public class BudgetService : IBudgetService
         };
 
         _dbContext.BudgetAuditLogs.Add(entry);
+    }
+
+    public BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups)
+    {
+        var budgetLineItems = groups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .Where(li => !li.IsCashflowOnly)
+            .ToList();
+
+        // Compute VAT projections
+        var vatProjections = budgetLineItems
+            .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
+            .Select(li => new
+            {
+                VatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate),
+                IsExpense = li.Amount > 0 // Income generates VAT liability (expense)
+            })
+            .ToList();
+
+        var income = budgetLineItems.Where(li => li.Amount > 0).Sum(li => li.Amount);
+        var expenses = budgetLineItems.Where(li => li.Amount < 0).Sum(li => li.Amount);
+        var vatExpenses = vatProjections.Where(v => v.IsExpense).Sum(v => v.VatAmount);
+        var vatCredits = vatProjections.Where(v => !v.IsExpense).Sum(v => v.VatAmount);
+
+        var totalIncome = income + vatCredits;
+        var totalExpenses = expenses - vatExpenses;
+        var netBalance = totalIncome + totalExpenses;
+
+        // Build income slices
+        var incomeCategories = groups
+            .SelectMany(g => g.Categories)
+            .Select(c => new { c.Name, Total = c.LineItems.Where(li => li.Amount > 0 && !li.IsCashflowOnly).Sum(li => li.Amount) })
+            .Where(c => c.Total > 0)
+            .OrderByDescending(c => c.Total)
+            .ToList();
+
+        if (vatCredits > 0)
+            incomeCategories.Add(new { Name = "VAT Credits", Total = vatCredits });
+
+        var totalIncomeForSlices = incomeCategories.Sum(c => c.Total);
+        var incomeSlices = incomeCategories
+            .Select(c => new BudgetSliceResult
+            {
+                Name = c.Name,
+                Amount = c.Total,
+                Percentage = totalIncomeForSlices > 0 ? c.Total / totalIncomeForSlices * 100 : 0
+            })
+            .ToList();
+
+        // Build expense slices
+        var expenseCategories = groups
+            .SelectMany(g => g.Categories)
+            .Select(c => new { c.Name, Total = Math.Abs(c.LineItems.Where(li => li.Amount < 0 && !li.IsCashflowOnly).Sum(li => li.Amount)) })
+            .Where(c => c.Total > 0)
+            .OrderByDescending(c => c.Total)
+            .ToList();
+
+        if (vatExpenses > 0)
+            expenseCategories.Add(new { Name = "VAT Liability", Total = vatExpenses });
+
+        var profit = income + vatCredits - (Math.Abs(expenses) + vatExpenses);
+        if (profit > 0)
+        {
+            expenseCategories.Add(new { Name = "Cash Reserves (90%)", Total = profit * 0.9m });
+            expenseCategories.Add(new { Name = "Spanish Taxes (10%)", Total = profit * 0.1m });
+        }
+
+        var totalExpenseForSlices = expenseCategories.Sum(c => c.Total);
+        var expenseSlices = expenseCategories
+            .Select(c => new BudgetSliceResult
+            {
+                Name = c.Name,
+                Amount = c.Total,
+                Percentage = totalExpenseForSlices > 0 ? c.Total / totalExpenseForSlices * 100 : 0
+            })
+            .ToList();
+
+        return new BudgetSummaryResult
+        {
+            TotalIncome = totalIncome,
+            TotalExpenses = totalExpenses,
+            NetBalance = netBalance,
+            IncomeSlices = incomeSlices,
+            ExpenseSlices = expenseSlices
+        };
+    }
+
+    public IReadOnlyList<VatCashFlowEntry> ComputeVatCashFlowEntries(IEnumerable<BudgetGroup> groups)
+    {
+        return groups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .Where(li => li.VatRate > 0 && li.ExpectedDate.HasValue)
+            .Select(li =>
+            {
+                var vatAmount = Math.Abs(li.Amount) * li.VatRate / (100m + li.VatRate);
+                // Income → VAT liability (expense); expense → VAT credit (income)
+                var cashFlowAmount = li.Amount > 0 ? -vatAmount : vatAmount;
+                var categoryName = li.Amount > 0 ? "VAT Liability" : "VAT Credits";
+                return new VatCashFlowEntry
+                {
+                    CategoryName = categoryName,
+                    Amount = cashFlowAmount,
+                    SettlementDate = ComputeVatSettlementDate(li.ExpectedDate!.Value)
+                };
+            })
+            .ToList();
+    }
+
+    public LocalDate ComputeVatSettlementDate(LocalDate expectedDate)
+    {
+        var quarterEnd = expectedDate.Month switch
+        {
+            >= 1 and <= 3 => new LocalDate(expectedDate.Year, 3, 31),
+            >= 4 and <= 6 => new LocalDate(expectedDate.Year, 6, 30),
+            >= 7 and <= 9 => new LocalDate(expectedDate.Year, 9, 30),
+            _ => new LocalDate(expectedDate.Year, 12, 31)
+        };
+
+        return quarterEnd.PlusDays(45);
     }
 }

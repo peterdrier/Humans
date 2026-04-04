@@ -7,29 +7,34 @@ namespace Humans.Domain.Enums;
 public enum DrivePermissionLevel
 {
     /// <summary>
+    /// Not applicable (Groups) or not yet set. CLR default — avoids EF sentinel trap.
+    /// </summary>
+    None = 0,
+
+    /// <summary>
     /// Read-only access. Google API role: "reader".
     /// </summary>
-    Viewer = 0,
+    Viewer = 1,
 
     /// <summary>
     /// Can view and add comments. Google API role: "commenter".
     /// </summary>
-    Commenter = 1,
+    Commenter = 2,
 
     /// <summary>
     /// Full read/write access. Google API role: "writer".
     /// </summary>
-    Contributor = 2,
+    Contributor = 3,
 
     /// <summary>
     /// Can organize files within folders. Google API role: "fileOrganizer".
     /// </summary>
-    ContentManager = 3,
+    ContentManager = 4,
 
     /// <summary>
     /// Full management including permissions. Google API role: "organizer".
     /// </summary>
-    Manager = 4
+    Manager = 5
 }
 
 public static class DrivePermissionLevelExtensions
@@ -44,6 +49,6 @@ public static class DrivePermissionLevelExtensions
         DrivePermissionLevel.Contributor => "writer",
         DrivePermissionLevel.ContentManager => "fileOrganizer",
         DrivePermissionLevel.Manager => "organizer",
-        _ => "writer"
+        _ => throw new ArgumentOutOfRangeException(nameof(level), level, "Cannot map None or unknown DrivePermissionLevel to an API role")
     };
 }

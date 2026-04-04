@@ -42,10 +42,30 @@ public class ContactService : IContactService
         string? externalSourceId = null, CancellationToken ct = default)
     {
         var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
 
         // Check for existing user with this email
-        var existingUser = await _dbContext.Users
-            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail.ToUpperInvariant(), ct);
+        User? existingUser;
+        if (alternateEmail is null)
+        {
+            existingUser = await _dbContext.Users
+                .FirstOrDefaultAsync(u =>
+                    (u.Email != null && EF.Functions.ILike(u.Email, normalizedEmail)) ||
+                    (u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, normalizedEmail)),
+                    ct);
+        }
+        else
+        {
+            existingUser = await _dbContext.Users
+                .FirstOrDefaultAsync(u =>
+                    (u.Email != null && (
+                        EF.Functions.ILike(u.Email, normalizedEmail) ||
+                        EF.Functions.ILike(u.Email, alternateEmail))) ||
+                    (u.GoogleEmail != null && (
+                        EF.Functions.ILike(u.GoogleEmail, normalizedEmail) ||
+                        EF.Functions.ILike(u.GoogleEmail, alternateEmail))),
+                    ct);
+        }
 
         if (existingUser is not null)
         {
@@ -60,10 +80,22 @@ public class ContactService : IContactService
         }
 
         // Also check UserEmails table
-        var existingUserEmail = await _dbContext.UserEmails
-            .Include(ue => ue.User)
-            .FirstOrDefaultAsync(ue => ue.IsVerified &&
-                EF.Functions.ILike(ue.Email, email), ct);
+        UserEmail? existingUserEmail;
+        if (alternateEmail is null)
+        {
+            existingUserEmail = await _dbContext.UserEmails
+                .Include(ue => ue.User)
+                .FirstOrDefaultAsync(ue => ue.IsVerified &&
+                    EF.Functions.ILike(ue.Email, normalizedEmail), ct);
+        }
+        else
+        {
+            existingUserEmail = await _dbContext.UserEmails
+                .Include(ue => ue.User)
+                .FirstOrDefaultAsync(ue => ue.IsVerified &&
+                    (EF.Functions.ILike(ue.Email, normalizedEmail) ||
+                     EF.Functions.ILike(ue.Email, alternateEmail)), ct);
+        }
 
         if (existingUserEmail is not null)
         {
@@ -126,6 +158,16 @@ public class ContactService : IContactService
             user.Id, email, source);
 
         return user;
+    }
+
+    private static string? GetAlternateComparableEmail(string normalizedEmail)
+    {
+        if (normalizedEmail.EndsWith("@gmail.com", StringComparison.Ordinal))
+        {
+            return $"{normalizedEmail[..^"@gmail.com".Length]}@googlemail.com";
+        }
+
+        return null;
     }
 
     public async Task<IReadOnlyList<AdminContactRow>> GetFilteredContactsAsync(

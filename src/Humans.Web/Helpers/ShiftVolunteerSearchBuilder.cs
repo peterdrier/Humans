@@ -24,6 +24,7 @@ public static class ShiftVolunteerSearchBuilder
 
         var users = await userManager.Users
             .Where(u => EF.Functions.ILike(u.DisplayName, "%" + query + "%"))
+            .OrderBy(u => u.DisplayName)
             .Take(10)
             .ToListAsync();
 

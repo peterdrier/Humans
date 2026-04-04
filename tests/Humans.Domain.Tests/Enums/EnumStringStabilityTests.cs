@@ -150,7 +150,7 @@ public class EnumStringStabilityTests
         },
         {
             typeof(DrivePermissionLevel),
-            new[] { "Viewer", "Commenter", "Contributor", "ContentManager", "Manager" }
+            new[] { "None", "Viewer", "Commenter", "Contributor", "ContentManager", "Manager" }
         },
         {
             typeof(BudgetYearStatus),
@@ -159,6 +159,14 @@ public class EnumStringStabilityTests
         {
             typeof(ExpenditureType),
             new[] { "CapEx", "OpEx" }
+        },
+        {
+            typeof(MessageCategory),
+            new[]
+            {
+                "System", "EventOperations", "CommunityUpdates", "Marketing", "Governance",
+                "CampaignCodes", "FacilitatedMessages", "Ticketing", "VolunteerUpdates", "TeamUpdates"
+            }
         }
     };
 }

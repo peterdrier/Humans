@@ -1,4 +1,5 @@
 using Hangfire;
+using Humans.Application.Configuration;
 using Humans.Infrastructure.Jobs;
 using Microsoft.Extensions.Logging;
 
@@ -11,7 +12,9 @@ public static class RecurringJobExtensions
         var logger = app.Services.GetRequiredService<ILoggerFactory>()
             .CreateLogger(typeof(RecurringJobExtensions));
 
-        var ticketSyncInterval = app.Configuration.GetValue("TicketVendor:SyncIntervalMinutes", 15);
+        var registry = app.Services.GetRequiredService<ConfigurationRegistry>();
+        var ticketSyncInterval = app.Configuration.GetSettingValue(
+            registry, "TicketVendor:SyncIntervalMinutes", "Ticket Vendor", defaultValue: 15);
 
         var jobs = new (string Id, Action Register)[]
         {
@@ -61,9 +64,17 @@ public static class RecurringJobExtensions
             ("cleanup-email-outbox", () => RecurringJob.AddOrUpdate<CleanupEmailOutboxJob>(
                 "cleanup-email-outbox", job => job.ExecuteAsync(CancellationToken.None), "0 3 * * 0")),
 
+            // Clean up resolved notifications older than 7 days — daily at 04:30 UTC.
+            ("cleanup-notifications", () => RecurringJob.AddOrUpdate<CleanupNotificationsJob>(
+                "cleanup-notifications", job => job.ExecuteAsync(CancellationToken.None), "30 4 * * *")),
+
             // Sync ticket data from vendor at configured interval (default 15 min).
             ("ticket-vendor-sync", () => RecurringJob.AddOrUpdate<TicketSyncJob>(
                 "ticket-vendor-sync", job => job.ExecuteAsync(CancellationToken.None), $"*/{ticketSyncInterval} * * * *")),
+
+            // Materialize ticket sales actuals into budget line items daily at 04:30.
+            ("ticketing-budget-sync", () => RecurringJob.AddOrUpdate<TicketingBudgetSyncJob>(
+                "ticketing-budget-sync", job => job.ExecuteAsync(CancellationToken.None), "30 4 * * *")),
         };
 
         foreach (var (id, register) in jobs)

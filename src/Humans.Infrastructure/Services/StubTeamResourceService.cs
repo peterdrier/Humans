@@ -20,6 +20,7 @@ public class StubTeamResourceService : ITeamResourceService
     private readonly HumansDbContext _dbContext;
     private readonly TeamResourceManagementSettings _resourceSettings;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
     private readonly ILogger<StubTeamResourceService> _logger;
 
@@ -27,12 +28,14 @@ public class StubTeamResourceService : ITeamResourceService
         HumansDbContext dbContext,
         IOptions<TeamResourceManagementSettings> resourceSettings,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
         IClock clock,
         ILogger<StubTeamResourceService> logger)
     {
         _dbContext = dbContext;
         _resourceSettings = resourceSettings.Value;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
         _clock = clock;
         _logger = logger;
     }
@@ -170,6 +173,7 @@ public class StubTeamResourceService : ITeamResourceService
     {
         return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
             _teamService,
+            _roleAssignmentService,
             _resourceSettings,
             teamId,
             userId,
@@ -186,5 +190,27 @@ public class StubTeamResourceService : ITeamResourceService
     public async Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
         return await TeamResourcePersistence.GetResourceByIdAsync(_dbContext, resourceId, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdatePermissionLevelAsync(Guid resourceId, DrivePermissionLevel level, CancellationToken ct = default)
+    {
+        var resource = await _dbContext.GoogleResources.FindAsync([resourceId], ct);
+        if (resource is null) return;
+
+        resource.DrivePermissionLevel = level;
+        await _dbContext.SaveChangesAsync(ct);
+        _logger.LogInformation("[STUB] Updated DrivePermissionLevel to {Level} for resource {ResourceId}", level, resourceId);
+    }
+
+    /// <inheritdoc />
+    public async Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default)
+    {
+        var resource = await _dbContext.GoogleResources.FindAsync([resourceId], ct);
+        if (resource is null) return;
+
+        resource.RestrictInheritedAccess = restrict;
+        await _dbContext.SaveChangesAsync(ct);
+        _logger.LogInformation("[STUB] Set RestrictInheritedAccess={Restrict} for resource {ResourceId}", restrict, resourceId);
     }
 }

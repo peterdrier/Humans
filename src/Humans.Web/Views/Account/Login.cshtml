@@ -3,6 +3,10 @@
 @{
     ViewData["Title"] = Localizer["Login_Title"].Value;
     var devAuthEnabled = !HostEnv.IsProduction() && Config.GetValue<bool>("DevAuth:Enabled");
+    var loginError = Context.Request.Query["error"].ToString();
+    var loginErrorMessage = string.Equals(loginError, "lockedout", StringComparison.Ordinal)
+        ? "This account is locked. Contact an admin if you need help signing in."
+        : Localizer["Login_SignInFailed"].Value;
 }
 
 <div class="row justify-content-center">
@@ -11,16 +15,17 @@
         <div class="col-md-6 mb-0">
             <div class="alert alert-warning alert-dismissible fade show mt-5 mb-0" role="alert">
                 <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                @Localizer["Login_SignInFailed"]
+                @loginErrorMessage
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         </div>
     }
     <div class="col-md-6">
-        <div class="card mt-5">
-            <div class="card-body text-center">
-                <h2 class="card-title mb-4">@Localizer["Login_Title"]</h2>
-                <p class="text-muted mb-4">@Localizer["Login_Description"]</p>
+            <div class="card mt-5">
+                <div class="card-body text-center">
+                    <h2 class="card-title mb-4">@Localizer["Login_Title"]</h2>
+                    <p class="text-muted mb-4">@Localizer["Login_Description"]</p>
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4"></div>
 
                 <form asp-controller="Account" asp-action="ExternalLogin" method="post">
                     <input type="hidden" name="provider" value="Google" />

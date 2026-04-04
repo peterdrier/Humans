@@ -38,6 +38,7 @@ public class ShiftSignupServiceTests : IDisposable
 
         _shiftMgmt = new ShiftManagementService(
             _dbContext,
+            _auditLog,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
             NullLogger<ShiftManagementService>.Instance);
@@ -46,6 +47,7 @@ public class ShiftSignupServiceTests : IDisposable
             _dbContext,
             _shiftMgmt,
             _auditLog,
+            Substitute.For<INotificationService>(),
             _clock,
             NullLogger<ShiftSignupService>.Instance);
     }

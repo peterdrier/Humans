@@ -29,13 +29,28 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Campaigns](features/22-campaigns.md) | Campaign system with CSV import and discount codes |
 | [Membership Status](features/23-membership-status.md) | 6-bucket membership partition model |
 | [Ticket Vendor Integration](features/24-ticket-vendor-integration.md) | TicketTailor sync, sales dashboard, attendee matching |
+| [Shift Management](features/25-shift-management.md) | Shift browsing, signup workflows, urgency scoring, coordinator tooling |
+| [Shift Signup Visibility](features/26-shift-signup-visibility.md) | Visibility rules for volunteer and admin shift views |
+| [Feedback System](features/27-feedback-system.md) | Feedback reports, triage workflow, GitHub issue integration |
+| [Communication Preferences](features/28-communication-preferences.md) | Member communication channel and frequency preferences |
+| [Contact Accounts](features/29-contact-accounts.md) | External contact records and account linking |
+| [Magic Link Auth](features/30-magic-link-auth.md) | Passwordless email-based login and signup |
+| [Budget](features/31-budget.md) | Seasonal budget planning, visibility, and approvals |
+| [Workspace Account Provisioning](features/32-workspace-account-provisioning.md) | @nobodies.team account provisioning and linking |
 
 ## Operational Guides
 
 | Document | Description |
 |----------|-------------|
 | [Admin Role Setup](admin-role-setup.md) | Adding initial admin users via SQL |
+| [GUID Reservations](guid-reservations.md) | Reserved deterministic GUID blocks for seeded data |
 | [Google & External Service Setup](google-service-account-setup.md) | OAuth, service account, Maps, GitHub credentials |
+
+## Repository Metrics
+
+| Document | Description |
+|----------|-------------|
+| [Development Statistics](development-stats.md) | Historical codebase growth, file counts, and commit cadence |
 
 ## Historical Design Records
 
@@ -57,5 +72,7 @@ Application     Interfaces, DTOs, Use Cases
 Infrastructure  EF Core, Services, Jobs
 Domain          Entities, Enums, Value Objects
 ```
+
+Primary macro-level guidance lives in [architecture.md](architecture.md).
 
 See the [root CLAUDE.md](../CLAUDE.md) for build commands, coding rules, and project conventions.

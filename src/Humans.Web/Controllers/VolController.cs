@@ -128,7 +128,7 @@ public class VolController : HumansControllerBase
             if (es is null) return View("NoActiveEvent");
 
             var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
-                               (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(user.Id)).Count > 0;
+                               (await _shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
 
             var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
             var hasSignups = userSignups.Count > 0;
@@ -136,13 +136,7 @@ public class VolController : HumansControllerBase
             if (!es.IsShiftBrowsingOpen && !isPrivileged && !hasSignups)
                 return View("BrowsingClosed");
 
-            var userSignupShiftIds = userSignups
-                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                .Select(s => s.ShiftId)
-                .ToHashSet();
-            var userSignupStatuses = userSignups
-                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                .ToDictionary(s => s.ShiftId, s => s.Status);
+            var (userSignupShiftIds, userSignupStatuses) = ShiftSignupHelper.ResolveActiveStatuses(userSignups);
 
             // Parse date range filters
             LocalDate? filterFromDate = null;
@@ -184,7 +178,7 @@ public class VolController : HumansControllerBase
                 .GroupBy(u => u.Shift.Rota.TeamId)
                 .Select(deptGroup =>
                 {
-                    var firstShift = deptGroup.First().Shift;
+                    var firstShift = deptGroup.OrderBy(x => x.Shift.Id).First().Shift;
                     return new DepartmentShiftGroup
                     {
                         TeamId = firstShift.Rota.TeamId,
@@ -193,7 +187,7 @@ public class VolController : HumansControllerBase
                         Rotas = deptGroup.GroupBy(u => u.Shift.RotaId)
                             .Select(rotaGroup =>
                             {
-                                var rota = rotaGroup.First().Shift.Rota;
+                                var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Shift.Rota;
                                 return new RotaShiftGroup
                                 {
                                     Rota = rota,
@@ -210,7 +204,7 @@ public class VolController : HumansControllerBase
                                             RemainingSlots = u.RemainingSlots,
                                             Signups = u.Signups.Select(s => new ShiftSignupInfo(
                                                 s.UserId, s.DisplayName, s.Status,
-                                                s.HasProfilePicture ? $"/Human/{s.UserId}/Picture" : null))
+                                                s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
                                                 .ToList()
                                         };
                                     }).OrderBy(s => s.AbsoluteStart).ToList()
@@ -350,9 +344,8 @@ public class VolController : HumansControllerBase
             var team = await _teamService.GetTeamBySlugAsync(slug);
             if (team is null || team.ParentTeamId is not null) return NotFound();
 
-            var isCoordinator = RoleChecks.IsAdmin(User) ||
-                                User.IsInRole(RoleNames.VolunteerCoordinator) ||
-                                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id);
+            var isCoordinator = RoleChecks.IsVolunteerManager(User) ||
+                                await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
 
             var allTeams = await _teamService.GetAllTeamsAsync();
             var childTeams = allTeams.Where(t => t.ParentTeamId == team.Id && t.IsActive).ToList();
@@ -379,12 +372,55 @@ public class VolController : HumansControllerBase
                 });
             }
 
+            // Build effective members: direct department members + all child team members
+            var effectiveMembersDict = new Dictionary<Guid, DepartmentDetailViewModel.EffectiveMember>();
+
+            // Direct department members
+            var directMembers = await _teamService.GetTeamMembersAsync(team.Id);
+            foreach (var dm in directMembers)
+            {
+                effectiveMembersDict[dm.UserId] = new DepartmentDetailViewModel.EffectiveMember
+                {
+                    UserId = dm.UserId,
+                    DisplayName = dm.User.DisplayName,
+                    ProfilePictureUrl = dm.User.ProfilePictureUrl,
+                    SourceTeams = [team.Name]
+                };
+            }
+
+            // Child team members (rollup)
+            foreach (var child in childTeams)
+            {
+                var childMembers = await _teamService.GetTeamMembersAsync(child.Id);
+                foreach (var cm in childMembers)
+                {
+                    if (effectiveMembersDict.TryGetValue(cm.UserId, out var existing))
+                    {
+                        if (!existing.SourceTeams.Contains(child.Name, StringComparer.Ordinal))
+                            existing.SourceTeams.Add(child.Name);
+                    }
+                    else
+                    {
+                        effectiveMembersDict[cm.UserId] = new DepartmentDetailViewModel.EffectiveMember
+                        {
+                            UserId = cm.UserId,
+                            DisplayName = cm.User.DisplayName,
+                            ProfilePictureUrl = cm.User.ProfilePictureUrl,
+                            SourceTeams = [child.Name]
+                        };
+                    }
+                }
+            }
+
             var model = new DepartmentDetailViewModel
             {
                 Department = team,
                 ChildTeams = childCards,
                 IsCoordinator = isCoordinator,
-                EventSettings = es
+                EventSettings = es,
+                EffectiveMembers = effectiveMembersDict.Values
+                    .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
+                    .ToList()
             };
 
             return View(model);
@@ -414,9 +450,8 @@ public class VolController : HumansControllerBase
             var child = await _teamService.GetTeamBySlugAsync(childSlug);
             if (child is null || child.ParentTeamId != parent.Id) return NotFound();
 
-            var isCoordinator = RoleChecks.IsAdmin(User) ||
-                                User.IsInRole(RoleNames.VolunteerCoordinator) ||
-                                await _shiftMgmt.IsDeptCoordinatorAsync(user.Id, parent.Id);
+            var isCoordinator = RoleChecks.IsVolunteerManager(User) ||
+                                await _teamService.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
 
             var members = await _teamService.GetTeamMembersAsync(child.Id);
 
@@ -444,13 +479,7 @@ public class VolController : HumansControllerBase
                 });
             }
 
-            var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
-            var userSignupShiftIds = userSignups
-                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                .Select(s => s.ShiftId).ToHashSet();
-            var userSignupStatuses = userSignups
-                .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-                .ToDictionary(s => s.ShiftId, s => s.Status);
+            var (userSignupShiftIds, userSignupStatuses) = await _signupService.GetActiveSignupStatusesAsync(user.Id, es.Id);
 
             var pendingRequests = isCoordinator
                 ? (await _teamService.GetPendingRequestsForTeamAsync(child.Id)).ToList()

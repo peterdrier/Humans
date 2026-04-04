@@ -14,7 +14,6 @@ public interface IApplicationDecisionService
     Task<ApplicationDecisionResult> ApproveAsync(
         Guid applicationId,
         Guid reviewerUserId,
-        string reviewerDisplayName,
         string? notes,
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default);
@@ -22,7 +21,6 @@ public interface IApplicationDecisionService
     Task<ApplicationDecisionResult> RejectAsync(
         Guid applicationId,
         Guid reviewerUserId,
-        string reviewerDisplayName,
         string reason,
         LocalDate? boardMeetingDate,
         CancellationToken cancellationToken = default);

@@ -71,6 +71,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
             await SyncAsociadosTeamAsync(report, cancellationToken);
             await SyncColaboradorsTeamAsync(report, cancellationToken);
             await SyncBarrioLeadsTeamAsync(report, cancellationToken);
+            await BackfillGoogleEmailsAsync(report, cancellationToken);
 
             _metrics.RecordJobRun("system_team_sync", "success");
             _logger.LogInformation("Completed system team sync");
@@ -206,13 +207,14 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        // Get all current coordinators (excluding the Coordinators system team itself)
+        // Get all current department coordinators (sub-team managers are excluded)
         var leadUserIds = await _dbContext.TeamMembers
             .AsNoTracking()
             .Where(tm =>
                 tm.LeftAt == null &&
                 tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.SystemTeamType == SystemTeamType.None) // Only from user-created teams
+                tm.Team.SystemTeamType == SystemTeamType.None &&
+                tm.Team.ParentTeamId == null) // Only department coordinators, not sub-team managers
             .Select(tm => tm.UserId)
             .Distinct()
             .ToListAsync(cancellationToken);
@@ -395,14 +397,15 @@ public class SystemTeamSyncJob : ISystemTeamSync
             return;
         }
 
-        // Check if user is currently Coordinator of any user-created team
+        // Check if user is currently Coordinator of any department (sub-team managers excluded)
         var isCoordinatorAnywhere = await _dbContext.TeamMembers
             .AsNoTracking()
             .AnyAsync(tm =>
                 tm.UserId == userId &&
                 tm.LeftAt == null &&
                 tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.SystemTeamType == SystemTeamType.None,
+                tm.Team.SystemTeamType == SystemTeamType.None &&
+                tm.Team.ParentTeamId == null, // Only department coordinators
                 cancellationToken);
 
         var isEligible = isCoordinatorAnywhere
@@ -502,6 +505,48 @@ public class SystemTeamSyncJob : ISystemTeamSync
 
         var eligibleUserIds = isLeadAnywhere ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
+    }
+
+    /// <summary>
+    /// Backfills User.GoogleEmail for users who have a verified @nobodies.team email
+    /// but a null GoogleEmail. This ensures Google Group sync uses the correct address.
+    /// </summary>
+    private async Task BackfillGoogleEmailsAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
+    {
+        var step = new SyncStepResult("Google Email Backfill");
+
+        var usersToFix = await _dbContext.Users
+            .Where(u => u.GoogleEmail == null
+                && _dbContext.UserEmails.Any(ue =>
+                    ue.UserId == u.Id
+                    && ue.IsVerified
+                    && EF.Functions.ILike(ue.Email, "%@nobodies.team")))
+            .ToListAsync(cancellationToken);
+
+        foreach (var user in usersToFix)
+        {
+            var nobodiesEmail = await _dbContext.UserEmails
+                .Where(ue => ue.UserId == user.Id
+                    && ue.IsVerified
+                    && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
+                .Select(ue => ue.Email)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (nobodiesEmail is not null)
+            {
+                user.GoogleEmail = nobodiesEmail;
+                step.Fixed(user.Id, user.DisplayName, $"Set GoogleEmail to {nobodiesEmail}");
+                _logger.LogInformation("Backfilled GoogleEmail for {User} to {Email}",
+                    user.DisplayName, nobodiesEmail);
+            }
+        }
+
+        if (usersToFix.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        report?.Steps.Add(step);
     }
 
     private async Task<Team?> GetSystemTeamAsync(SystemTeamType systemTeamType, CancellationToken cancellationToken)
@@ -605,8 +650,8 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 team.Name, toAdd.Count, toRemove.Count);
         }
 
-        // Send "added to team" emails for newly added members
-        if (toAdd.Count > 0)
+        // Send "added to team" emails for newly added members (skip hidden teams)
+        if (toAdd.Count > 0 && !team.IsHidden)
         {
             var resources = await _dbContext.GoogleResources
                 .AsNoTracking()

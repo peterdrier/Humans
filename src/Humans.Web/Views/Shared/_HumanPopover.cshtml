@@ -1,17 +1,7 @@
 @model Humans.Web.Models.ProfileSummaryViewModel
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
-    @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
-    {
-        <img src="@Model.ProfilePictureUrl" alt="" class="rounded-circle me-2" style="width: 72px; height: 72px; object-fit: cover;" />
-    }
-    else
-    {
-        <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white me-2"
-             style="width: 72px; height: 72px; font-size: 1.25rem;">
-            @Model.DisplayName[..1].ToUpperInvariant()
-        </div>
-    }
+    <vc:user-avatar profile-picture-url="@Model.ProfilePictureUrl" display-name="@Model.DisplayName" size="72" css-class="me-2" />
     <div>
         <div class="fw-semibold">@Model.DisplayName</div>
         @if (!string.IsNullOrEmpty(Model.MembershipTier)

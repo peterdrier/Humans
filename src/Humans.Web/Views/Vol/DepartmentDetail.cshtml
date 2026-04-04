@@ -80,3 +80,47 @@ else
         }
     </div>
 }
+
+@if (Model.EffectiveMembers.Count > 0)
+{
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fa-solid fa-users me-2"></i>All Humans
+                <span class="badge bg-secondary ms-2">@Model.EffectiveMembers.Count</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Human</th>
+                            <th>Teams</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var member in Model.EffectiveMembers)
+                        {
+                            <tr>
+                                <td class="d-flex align-items-center gap-2">
+                                    <vc:user-avatar profile-picture-url="@member.ProfilePictureUrl" display-name="@member.DisplayName" size="28" />
+                                    @member.DisplayName
+                                </td>
+                                <td>
+                                    @foreach (var teamName in member.SourceTeams)
+                                    {
+                                        var isDirect = string.Equals(teamName, Model.Department.Name, StringComparison.Ordinal);
+                                        <span class="badge @(isDirect ? "bg-primary" : "bg-secondary bg-opacity-50") me-1">
+                                            @teamName
+                                        </span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

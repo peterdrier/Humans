@@ -31,9 +31,9 @@ public interface IShiftManagementService
     Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId);
 
     /// <summary>
-    /// Gets all department team IDs where the user is a coordinator.
+    /// Gets all team IDs (departments and sub-teams) where the user is a coordinator or manager.
     /// </summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorDepartmentIdsAsync(Guid userId);
+    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId);
 
     // === EventSettings ===
 
@@ -73,6 +73,12 @@ public interface IShiftManagementService
     /// Updates an existing rota.
     /// </summary>
     Task UpdateRotaAsync(Rota rota);
+
+    /// <summary>
+    /// Moves a rota to a different department (parent team).
+    /// Preserves all shifts and signups. Records an audit log entry.
+    /// </summary>
+    Task MoveRotaToTeamAsync(Guid rotaId, Guid targetTeamId, Guid actorUserId);
 
     /// <summary>
     /// Deletes a rota. Throws if child shifts have confirmed signups.
@@ -156,8 +162,9 @@ public interface IShiftManagementService
 
     /// <summary>
     /// Calculates the urgency score for a single shift.
+    /// Factors in remaining slots, priority, duration, understaffing, and time proximity.
     /// </summary>
-    double CalculateScore(Shift shift, int confirmedCount);
+    double CalculateScore(Shift shift, int confirmedCount, EventSettings eventSettings);
 
     // === Staffing & Summary ===
 
@@ -178,6 +185,45 @@ public interface IShiftManagementService
     /// </summary>
     Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId);
+
+    // === Shift Tags ===
+
+    /// <summary>
+    /// Gets all shift tags, ordered by name.
+    /// </summary>
+    Task<IReadOnlyList<ShiftTag>> GetAllTagsAsync();
+
+    /// <summary>
+    /// Searches tags by name (case-insensitive prefix/contains).
+    /// </summary>
+    Task<IReadOnlyList<ShiftTag>> SearchTagsAsync(string query);
+
+    /// <summary>
+    /// Gets or creates a tag by name. Returns existing if name already exists (case-insensitive).
+    /// </summary>
+    Task<ShiftTag> GetOrCreateTagAsync(string name);
+
+    /// <summary>
+    /// Sets the tags for a rota, replacing any existing tags.
+    /// </summary>
+    Task SetRotaTagsAsync(Guid rotaId, IReadOnlyList<Guid> tagIds);
+
+    /// <summary>
+    /// Gets a volunteer's tag preferences.
+    /// </summary>
+    Task<IReadOnlyList<ShiftTag>> GetVolunteerTagPreferencesAsync(Guid userId);
+
+    /// <summary>
+    /// Sets a volunteer's tag preferences, replacing any existing ones.
+    /// </summary>
+    Task SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds);
+
+    /// <summary>
+    /// Gets the number of distinct pending shift signups per team for an event.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetPendingShiftSignupCountsByTeamAsync(
+        Guid eventSettingsId,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

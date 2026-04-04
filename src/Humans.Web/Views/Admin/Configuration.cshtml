@@ -10,38 +10,62 @@
 
 @{
     var sections = Model.Items.GroupBy(i => i.Section);
-    var missingRequired = Model.Items.Count(i => i.IsRequired && !i.IsSet);
+    var missingCritical = Model.Items.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal) && !i.IsSet);
+    var missingRecommended = Model.Items.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
 }
 
-@if (missingRequired > 0)
+@if (missingCritical > 0)
 {
-    <div class="alert alert-warning" role="alert">
-        <strong>@missingRequired required configuration value(s) missing.</strong> The application may not function correctly.
+    <div class="alert alert-danger" role="alert">
+        <i class="fa-solid fa-circle-exclamation me-1"></i>
+        <strong>@missingCritical critical configuration value(s) missing.</strong> The application may not function correctly.
     </div>
 }
 
+@if (missingRecommended > 0)
+{
+    <div class="alert alert-warning" role="alert">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        <strong>@missingRecommended recommended configuration value(s) missing.</strong> Some features may be degraded.
+    </div>
+}
+
+<div class="mb-3 text-muted small">
+    <i class="fa-solid fa-circle-info me-1"></i>
+    Settings are auto-discovered from code. Adding a new config consumer via the registry helpers automatically surfaces it here.
+</div>
+
 @foreach (var group in sections)
 {
-    var sectionMissing = group.Count(i => i.IsRequired && !i.IsSet);
+    var sectionCriticalMissing = group.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal) && !i.IsSet);
+    var sectionRecommendedMissing = group.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
+    var allSet = group.All(i => i.IsSet);
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
             <strong>@group.Key</strong>
-            @if (sectionMissing > 0)
-            {
-                <span class="badge bg-danger">@sectionMissing missing</span>
-            }
-            else
-            {
-                <span class="badge bg-success">All set</span>
-            }
+            <span>
+                @if (sectionCriticalMissing > 0)
+                {
+                    <span class="badge bg-danger">@sectionCriticalMissing critical missing</span>
+                }
+                @if (sectionRecommendedMissing > 0)
+                {
+                    <span class="badge bg-warning text-dark">@sectionRecommendedMissing recommended missing</span>
+                }
+                @if (allSet)
+                {
+                    <span class="badge bg-success">All set</span>
+                }
+            </span>
         </div>
         <div class="table-responsive">
             <table class="table table-sm mb-0">
                 <thead>
                     <tr>
                         <th>Key</th>
+                        <th>Importance</th>
                         <th>Status</th>
-                        <th>Preview</th>
+                        <th>Value</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -50,9 +74,23 @@
                         <tr>
                             <td>
                                 <code>@item.Key</code>
-                                @if (!item.IsRequired)
+                                @if (item.IsSensitive)
                                 {
-                                    <span class="text-muted small">(optional)</span>
+                                    <i class="fa-solid fa-lock text-muted ms-1" title="Sensitive — value masked"></i>
+                                }
+                            </td>
+                            <td>
+                                @if (string.Equals(item.Importance, "critical", StringComparison.Ordinal))
+                                {
+                                    <span class="badge bg-danger">Critical</span>
+                                }
+                                else if (string.Equals(item.Importance, "recommended", StringComparison.Ordinal))
+                                {
+                                    <span class="badge bg-warning text-dark">Recommended</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Optional</span>
                                 }
                             </td>
                             <td>
@@ -60,16 +98,20 @@
                                 {
                                     <span class="badge bg-success">Set</span>
                                 }
-                                else if (item.IsRequired)
+                                else if (string.Equals(item.Importance, "critical", StringComparison.Ordinal))
                                 {
                                     <span class="badge bg-danger">Missing</span>
+                                }
+                                else if (string.Equals(item.Importance, "recommended", StringComparison.Ordinal))
+                                {
+                                    <span class="badge bg-warning text-dark">Not set</span>
                                 }
                                 else
                                 {
                                     <span class="badge bg-secondary">Not set</span>
                                 }
                             </td>
-                            <td><code>@item.Preview</code></td>
+                            <td><code>@item.DisplayValue</code></td>
                         </tr>
                     }
                 </tbody>

@@ -1,8 +1,10 @@
 using System.Text.Json;
+using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.DriveActivity.v2;
 using Google.Apis.DriveActivity.v2.Data;
 using Google.Apis.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -29,7 +31,13 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
     private readonly ILogger<DriveActivityMonitorService> _logger;
 
     private DriveActivityService? _activityService;
+    private DirectoryService? _directoryService;
     private string? _serviceAccountEmail;
+
+    /// <summary>
+    /// Per-invocation cache for resolved people/ IDs to avoid repeated API calls.
+    /// </summary>
+    private readonly Dictionary<string, string> _peopleIdCache = new(StringComparer.Ordinal);
 
     private const string JobName = "DriveActivityMonitorJob";
 
@@ -137,7 +145,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
                     if (IsPermissionChangeActivity(activity) &&
                         !IsInitiatedByServiceAccount(activity, serviceAccountEmail))
                     {
-                        var description = BuildAnomalyDescription(activity, resourceName);
+                        var description = await BuildAnomalyDescriptionAsync(activity, resourceName, cancellationToken);
 
                         // Skip if this exact anomaly was already logged within the lookback window
                         var alreadyLogged = await _dbContext.AuditLogEntries
@@ -152,7 +160,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
                             continue;
                         }
 
-                        var actorEmail = GetActorEmail(activity);
+                        var actorEmail = await GetActorEmailAsync(activity, cancellationToken);
 
                         _logger.LogWarning(
                             "Anomalous permission change detected on {ResourceName} ({GoogleId}) by {Actor}: {Description}",
@@ -208,7 +216,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         return false;
     }
 
-    private static string? GetActorEmail(DriveActivity activity)
+    private async Task<string?> GetActorEmailAsync(DriveActivity activity, CancellationToken cancellationToken)
     {
         if (activity.Actors is null || activity.Actors.Count == 0)
         {
@@ -219,7 +227,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         {
             if (actor.User?.KnownUser?.PersonName is not null)
             {
-                return actor.User.KnownUser.PersonName;
+                return await ResolvePersonNameAsync(actor.User.KnownUser.PersonName, cancellationToken);
             }
 
             if (actor.Administrator is not null)
@@ -236,9 +244,10 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         return null;
     }
 
-    private static string BuildAnomalyDescription(DriveActivity activity, string resourceName)
+    private async Task<string> BuildAnomalyDescriptionAsync(
+        DriveActivity activity, string resourceName, CancellationToken cancellationToken)
     {
-        var actorEmail = GetActorEmail(activity) ?? "unknown actor";
+        var actorEmail = await GetActorEmailAsync(activity, cancellationToken) ?? "unknown actor";
         var permChange = activity.PrimaryActionDetail?.PermissionChange;
         var parts = new List<string>();
 
@@ -246,7 +255,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         {
             foreach (var perm in permChange.AddedPermissions)
             {
-                var target = GetPermissionTarget(perm);
+                var target = await GetPermissionTargetAsync(perm, cancellationToken);
                 var role = perm.Role ?? "unknown role";
                 parts.Add($"added {role} for {target}");
             }
@@ -256,7 +265,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         {
             foreach (var perm in permChange.RemovedPermissions)
             {
-                var target = GetPermissionTarget(perm);
+                var target = await GetPermissionTargetAsync(perm, cancellationToken);
                 var role = perm.Role ?? "unknown role";
                 parts.Add($"removed {role} for {target}");
             }
@@ -269,11 +278,11 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         return $"Anomalous permission change on '{resourceName}' by {actorEmail}: {changes}";
     }
 
-    private static string GetPermissionTarget(Permission permission)
+    private async Task<string> GetPermissionTargetAsync(Permission permission, CancellationToken cancellationToken)
     {
         if (permission.User?.KnownUser?.PersonName is not null)
         {
-            return permission.User.KnownUser.PersonName;
+            return await ResolvePersonNameAsync(permission.User.KnownUser.PersonName, cancellationToken);
         }
 
         if (permission.Group?.Email is not null)
@@ -294,6 +303,107 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         return "unknown";
     }
 
+    /// <summary>
+    /// Resolves a Drive Activity API person name to an email address.
+    /// If the name is a people/ resource ID (e.g., "people/123456789"), attempts resolution via:
+    /// 1. Per-invocation cache
+    /// 2. Google Admin Directory API
+    /// 3. Local DB lookup (matching Google user IDs)
+    /// Falls back to the raw ID if all resolution fails.
+    /// </summary>
+    private async Task<string> ResolvePersonNameAsync(string personName, CancellationToken cancellationToken)
+    {
+        if (!personName.StartsWith("people/", StringComparison.Ordinal))
+        {
+            // Already an email address
+            return personName;
+        }
+
+        if (_peopleIdCache.TryGetValue(personName, out var cached))
+        {
+            return cached;
+        }
+
+        var resolved = await TryResolveViaDirectoryApiAsync(personName, cancellationToken)
+            ?? await TryResolveViaLocalDbAsync(personName, cancellationToken);
+
+        if (resolved is not null)
+        {
+            _peopleIdCache[personName] = resolved;
+            _logger.LogDebug("Resolved {PersonName} to {Email}", personName, resolved);
+            return resolved;
+        }
+
+        // Fall back to raw ID
+        _peopleIdCache[personName] = personName;
+        _logger.LogDebug("Could not resolve {PersonName} to an email address", personName);
+        return personName;
+    }
+
+    /// <summary>
+    /// Attempts to resolve a people/ ID to an email via the Admin Directory API.
+    /// The people/ ID from Drive Activity API corresponds to a Google user ID.
+    /// </summary>
+    private async Task<string?> TryResolveViaDirectoryApiAsync(string personName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var directoryService = await GetDirectoryServiceAsync();
+            // Extract the numeric user ID from "people/123456789"
+            var userId = personName["people/".Length..];
+            var userRequest = directoryService.Users.Get(userId);
+            var user = await userRequest.ExecuteAsync(cancellationToken);
+            return user?.PrimaryEmail;
+        }
+        catch (Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
+        {
+            _logger.LogDebug("Directory API could not resolve {PersonName} (HTTP {Code})",
+                personName, ex.Error.Code);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error resolving {PersonName} via Directory API", personName);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Attempts to resolve a people/ ID by looking up the user in the local database.
+    /// Users authenticated via Google OAuth have their Google user ID stored in login claims.
+    /// </summary>
+    private async Task<string?> TryResolveViaLocalDbAsync(string personName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Extract the numeric user ID from "people/123456789"
+            var googleUserId = personName["people/".Length..];
+
+            // Check ASP.NET Identity user logins for Google provider
+            var login = await _dbContext.Set<IdentityUserLogin<Guid>>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l =>
+                    l.ProviderKey == googleUserId &&
+                    l.LoginProvider == "Google",
+                    cancellationToken);
+
+            if (login is not null)
+            {
+                var user = await _dbContext.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == login.UserId, cancellationToken);
+                return user?.Email;
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error resolving {PersonName} via local DB", personName);
+            return null;
+        }
+    }
+
     private async Task<DriveActivityService> GetActivityServiceAsync()
     {
         if (_activityService is not null)
@@ -301,7 +411,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             return _activityService;
         }
 
-        var credential = await GetCredentialAsync();
+        var credential = await GetCredentialAsync(DriveActivityService.Scope.DriveActivityReadonly);
 
         _activityService = new DriveActivityService(new BaseClientService.Initializer
         {
@@ -312,7 +422,25 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         return _activityService;
     }
 
-    private async Task<GoogleCredential> GetCredentialAsync()
+    private async Task<DirectoryService> GetDirectoryServiceAsync()
+    {
+        if (_directoryService is not null)
+        {
+            return _directoryService;
+        }
+
+        var credential = await GetCredentialAsync(DirectoryService.Scope.AdminDirectoryUserReadonly);
+
+        _directoryService = new DirectoryService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Humans"
+        });
+
+        return _directoryService;
+    }
+
+    private async Task<GoogleCredential> GetCredentialAsync(params string[] scopes)
     {
         GoogleCredential credential;
 
@@ -334,7 +462,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
                 "Google Workspace credentials not configured. Set ServiceAccountKeyPath or ServiceAccountKeyJson.");
         }
 
-        return credential.CreateScoped(DriveActivityService.Scope.DriveActivityReadonly);
+        return credential.CreateScoped(scopes);
     }
 
     private async Task<string> GetServiceAccountEmailAsync(CancellationToken ct)

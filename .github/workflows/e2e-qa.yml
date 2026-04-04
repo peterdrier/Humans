@@ -1,0 +1,68 @@
+name: E2E Tests (QA)
+
+on:
+  push:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  e2e:
+    if: github.repository == 'peterdrier/Humans'
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: tests/e2e
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Wait for QA deploy
+        id: wait-for-deploy
+        working-directory: .
+        run: |
+          FULL_SHA="${{ github.sha }}"
+          SHORT_SHA="${FULL_SHA:0:8}"
+          URL="https://humans.n.burn.camp/api/version"
+          echo "Waiting for $SHORT_SHA to deploy..."
+
+          for i in $(seq 1 60); do
+            DEPLOYED=$(curl -sf "$URL" | jq -r '.commit // empty' 2>/dev/null || true)
+            if [ "$DEPLOYED" = "$SHORT_SHA" ] || [ "$DEPLOYED" = "$FULL_SHA" ]; then
+              echo "Deploy confirmed after ~$((i * 5))s"
+              echo "found=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Attempt $i: deployed=$DEPLOYED, expected=$SHORT_SHA"
+            sleep 5
+          done
+
+          echo "Build $SHORT_SHA not deployed within 5 minutes — skipping tests (likely superseded by a newer push)"
+          echo "found=false" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        if: steps.wait-for-deploy.outputs.found == 'true'
+        run: npm ci
+
+      - name: Install Playwright browsers
+        if: steps.wait-for-deploy.outputs.found == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        if: steps.wait-for-deploy.outputs.found == 'true'
+        run: npx playwright test
+        env:
+          BASE_URL: https://humans.n.burn.camp
+
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        if: always() && steps.wait-for-deploy.outputs.found == 'true'
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report/
+          retention-days: 14

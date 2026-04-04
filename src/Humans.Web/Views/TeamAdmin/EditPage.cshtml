@@ -32,7 +32,7 @@
                     </label>
                     <div class="form-text">
                         When enabled, anonymous visitors can see this team's page and description.
-                        Regular members are only visible to authenticated users.
+                        Regular humans are only visible to authenticated users.
                     </div>
                 </div>
                 <div class="form-check form-switch">
@@ -50,7 +50,7 @@
     else
     {
         <input type="hidden" asp-for="IsPublicPage" value="false" />
-        <input type="hidden" asp-for="ShowCoordinatorsOnPublicPage" value="true" />
+        <input type="hidden" asp-for="ShowCoordinatorsOnPublicPage" value="false" />
         <div class="alert alert-info mb-4">
             Only top-level departments (non-system, no parent team) can be made public.
         </div>
@@ -63,7 +63,9 @@
                 <textarea asp-for="PageContent" class="form-control font-monospace" rows="15"
                           placeholder="Write your team's page content here..."></textarea>
                 <div class="form-text">
-                    Markdown formatting is supported. Use headings, lists, bold, italic, and links to create rich content.
+                    <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                        <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
+                    </a>
                 </div>
             </div>
         </div>
@@ -108,3 +110,5 @@
         <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.Slug" class="btn btn-outline-secondary">Cancel</a>
     </div>
 </form>
+
+<partial name="_MarkdownHelp" />

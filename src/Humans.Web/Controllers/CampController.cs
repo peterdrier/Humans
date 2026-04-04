@@ -1,17 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Application;
 using Humans.Application.Interfaces;
-using Humans.Application.Extensions;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
-using System.Text.RegularExpressions;
-using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Domain.ValueObjects;
 using Humans.Web.Models;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -22,31 +17,25 @@ namespace Humans.Web.Controllers;
 public class CampController : HumansCampControllerBase
 {
     private readonly ICampService _campService;
+    private readonly ICampContactService _campContactService;
     private readonly IClock _clock;
     private readonly ILogger<CampController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
-    private readonly IEmailService _emailService;
-    private readonly IAuditLogService _auditLogService;
-    private readonly IMemoryCache _cache;
 
     public CampController(
         ICampService campService,
+        ICampContactService campContactService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<CampController> logger,
-        IStringLocalizer<SharedResource> localizer,
-        IEmailService emailService,
-        IAuditLogService auditLogService,
-        IMemoryCache cache)
+        IStringLocalizer<SharedResource> localizer)
         : base(userManager, campService)
     {
         _campService = campService;
+        _campContactService = campContactService;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
-        _emailService = emailService;
-        _auditLogService = auditLogService;
-        _cache = cache;
     }
 
     // ======================================================================
@@ -178,44 +167,34 @@ public class CampController : HumansCampControllerBase
             return View(model);
         }
 
-        // Rate limit: one message per camp per user per 10 minutes
-        // Must be AFTER ModelState check so validation errors don't consume the slot
-        var rateLimitKey = CacheKeys.CampContactRateLimit(currentUser.Id, camp.Id);
-        if (!await _cache.TryReserveAsync(rateLimitKey, TimeSpan.FromMinutes(10)))
-        {
-            SetError(_localizer["Camp_Contact_RateLimited"].Value);
-            return RedirectToAction(nameof(Details), new { slug });
-        }
+        var campDisplayName = camp.Seasons
+            .OrderByDescending(s => s.Year)
+            .FirstOrDefault()?.Name ?? slug;
+        var senderEmail = currentUser.GetEffectiveEmail() ?? currentUser.Email!;
 
         try
         {
-            var cleanMessage = Regex.Replace(
-                model.Message, "<[^>]+>", "", RegexOptions.None, TimeSpan.FromSeconds(1));
-
-            var season2 = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-            var campDisplayName = season2?.Name ?? slug;
-            var senderEmail = currentUser.GetEffectiveEmail() ?? currentUser.Email!;
-
-            await _emailService.SendFacilitatedMessageAsync(
+            var result = await _campContactService.SendFacilitatedMessageAsync(
+                camp.Id,
                 camp.ContactEmail,
                 campDisplayName,
+                currentUser.Id,
                 currentUser.DisplayName,
-                cleanMessage,
-                model.IncludeContactInfo,
-                senderEmail);
+                senderEmail,
+                model.Message,
+                model.IncludeContactInfo);
 
-            await _auditLogService.LogAsync(
-                AuditAction.FacilitatedMessageSent,
-                nameof(Camp), camp.Id,
-                $"Message sent to camp '{campDisplayName}' (contact info shared: {(model.IncludeContactInfo ? "yes" : "no")})",
-                currentUser.Id, currentUser.DisplayName);
+            if (result.RateLimited)
+            {
+                SetError(_localizer["Camp_Contact_RateLimited"].Value);
+                return RedirectToAction(nameof(Details), new { slug });
+            }
 
             SetSuccess(string.Format(_localizer["Camp_Contact_Success"].Value, campDisplayName));
             return RedirectToAction(nameof(Details), new { slug });
         }
         catch (Exception ex)
         {
-            _cache.InvalidateCampContactRateLimit(currentUser.Id, camp.Id);
             _logger.LogError(ex, "Failed to send facilitated message to camp {Slug}", slug);
             SetError(_localizer["Common_Error"].Value);
             return RedirectToAction(nameof(Details), new { slug });
@@ -275,12 +254,7 @@ public class CampController : HumansCampControllerBase
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .ToList();
 
-            var campLinks = model.Links
-                .Where(u => !string.IsNullOrWhiteSpace(u)
-                    && Uri.TryCreate(u.Trim(), UriKind.Absolute, out var parsed)
-                    && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
-                .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
-                .ToList();
+            var campLinks = ParseCampLinks(model.Links);
 
             var camp = await _campService.CreateCampAsync(
                 user.Id,
@@ -288,7 +262,7 @@ public class CampController : HumansCampControllerBase
                 model.ContactEmail,
                 model.ContactPhone,
                 null, // WebOrSocialUrl legacy — new registrations/edits use Links
-                campLinks.Count > 0 ? campLinks : null,
+                campLinks,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
                 MapToSeasonData(model),
@@ -352,19 +326,14 @@ public class CampController : HumansCampControllerBase
 
         try
         {
-            var updateLinks = model.Links
-                .Where(u => !string.IsNullOrWhiteSpace(u)
-                    && Uri.TryCreate(u.Trim(), UriKind.Absolute, out var parsed)
-                    && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal) || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
-                .Select(u => new CampLink { Url = u.Trim(), Platform = PlatformDetector.Detect(u.Trim()).Name })
-                .ToList();
+            var updateLinks = ParseCampLinks(model.Links);
 
             await _campService.UpdateCampAsync(
                 camp.Id,
                 model.ContactEmail,
                 model.ContactPhone,
                 null, // WebOrSocialUrl legacy — new registrations/edits use Links
-                updateLinks.Count > 0 ? updateLinks : null,
+                updateLinks,
                 model.IsSwissCamp,
                 model.TimesAtNowhere,
                 model.HideHistoricalNames);
@@ -850,5 +819,28 @@ public class CampController : HumansCampControllerBase
             ModelState.AddModelError(fieldName,
                 _localizer["Validation_PhoneE164", "Contact Phone"].Value);
         }
+    }
+
+    private static List<CampLink>? ParseCampLinks(IEnumerable<string?> links)
+    {
+        var parsedLinks = links
+            .Where(link => !string.IsNullOrWhiteSpace(link))
+            .Select(link => link!.Trim())
+            .Where(IsHttpUrl)
+            .Select(link => new CampLink
+            {
+                Url = link,
+                Platform = PlatformDetector.Detect(link).Name
+            })
+            .ToList();
+
+        return parsedLinks.Count > 0 ? parsedLinks : null;
+    }
+
+    private static bool IsHttpUrl(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out var parsed)
+            && (string.Equals(parsed.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal)
+                || string.Equals(parsed.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal));
     }
 }

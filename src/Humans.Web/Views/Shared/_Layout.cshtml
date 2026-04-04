@@ -46,81 +46,57 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="BarrioMap" asp-action="Index">@Localizer["Nav_Map"]</a>
+                        </li>
                         @if (User.Identity?.IsAuthenticated != true)
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
                             </li>
                         }
+                        <li class="nav-item" authorize-policy="ActiveMemberOrShiftAccess">
+                            <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="VolunteerSectionAccess">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Vol" asp-action="Index">V</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="ReviewQueueAccess">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="BoardOrAdmin">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="BoardOrAdmin">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="HumanAdminOnly">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Profile" asp-action="AdminList">Humans</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="AdminOnly">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="AdminOnly">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Google" asp-action="Index">Google</a>
+                        </li>
+                        <li class="nav-item" authorize-policy="TicketAdminBoardOrAdmin">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
+                        </li>
                         @if (User.Identity?.IsAuthenticated == true)
                         {
-                            var isActiveMember = User.HasClaim(Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveMemberClaimType, Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue) || Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User);
-                            @if (isActiveMember || Humans.Web.Authorization.ShiftRoleChecks.CanAccessDashboard(User))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Shifts" asp-action="Index">@Localizer["Nav_Shifts"]</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="BarrioMap" asp-action="Index">@Localizer["Nav_Map"]</a>
-                                </li>
-                            }
-                            @if (Humans.Web.Authorization.RoleChecks.IsTeamsAdminBoardOrAdmin(User) || User.IsInRole(Humans.Domain.Constants.RoleNames.VolunteerCoordinator))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-controller="Vol" asp-action="Index">V</a>
-                                </li>
-                            }
-                        }
-                        @if (Humans.Web.Authorization.RoleChecks.CanAccessReviewQueue(User))
-                        {
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="Index">@Localizer["Nav_Review"] @await Component.InvokeAsync("NavBadges", new { queue = "review" })</a>
+                                <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
                             </li>
                         }
-                        @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="OnboardingReview" asp-action="BoardVoting">@Localizer["Nav_Voting"] @await Component.InvokeAsync("NavBadges", new { queue = "voting" })</a>
-                            </li>
-                        }
-                        @if (Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Board" asp-action="Index">@Localizer["Nav_Board"]</a>
-                            </li>
-                        }
-                        @if (Humans.Web.Authorization.RoleChecks.IsHumanAdmin(User) && !Humans.Web.Authorization.RoleChecks.IsAdminOrBoard(User))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Human" asp-action="Humans">Humans</a>
-                            </li>
-                        }
-                        @if (Humans.Web.Authorization.RoleChecks.IsAdmin(User))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">@Localizer["Nav_Admin"]</a>
-                            </li>
-                        }
-                        @if (Humans.Web.Authorization.RoleChecks.CanAccessTickets(User))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
-                            </li>
-                        }
-                        @if (Humans.Web.Authorization.RoleChecks.IsFeedbackAdmin(User))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Feedback" asp-action="Index">Feedback @await Component.InvokeAsync("NavBadges", new { queue = "feedback" })</a>
-                            </li>
-                        }
-                        @if (Humans.Web.Authorization.RoleChecks.CanAccessFinance(User))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Finance" asp-action="Index">Finance</a>
-                            </li>
-                        }
+                        <li class="nav-item" authorize-policy="FinanceAdminOrAdmin">
+                            <a class="nav-link nav-restricted" asp-area="" asp-controller="Finance" asp-action="Index">Finance</a>
+                        </li>
                     </ul>
                     <div class="d-flex align-items-center gap-2">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            @await Component.InvokeAsync("NotificationBell")
+                        }
                         <partial name="_LanguageChooser" />
                         <partial name="_LoginPartial" />
                     </div>
@@ -139,6 +115,7 @@
     </environment>
     <div class="container main-content">
         <main role="main" class="pb-3">
+            <partial name="_AuthorizationPill" />
             @RenderBody()
         </main>
     </div>
@@ -146,12 +123,9 @@
     <footer class="border-top py-3 text-muted text-center">
         <div class="container d-flex justify-content-between align-items-center">
             <div class="d-flex gap-3">
-                <a asp-controller="Home" asp-action="About" class="text-muted small">About</a>
+                <a asp-controller="About" asp-action="Index" class="text-muted small">About</a>
                 <a asp-controller="Home" asp-action="Privacy" class="text-muted small">@Localizer["Nav_Privacy"]</a>
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                    <a href="#" class="text-muted small" data-bs-toggle="modal" data-bs-target="#feedbackModal">@Localizer["Feedback_Button"]</a>
-                }
+
             </div>
             <partial name="_VersionInfo" />
         </div>

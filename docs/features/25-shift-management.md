@@ -33,6 +33,7 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 - Create individual shifts with day offset, start time, duration, min/max volunteers
 - Mark shifts as AdminOnly to restrict to coordinators/admins
 - Delete rotas/shifts (delete blocked if confirmed signups exist; no deactivate — delete is the only removal path)
+- Move a rota to a different department — updates the team FK while preserving all shifts and signups; only available to coordinators/admins; recorded in the audit log (`RotaMovedToTeam`); redirects to the target team's shift admin page
 
 ### US-25.3: Volunteer Browses and Signs Up
 **As a** volunteer
@@ -42,6 +43,8 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 **Acceptance Criteria:**
 - Browse shifts filtered by department and date range (From/To date pickers; either may be omitted for open-ended range)
 - Filter by period (Set-up / Event / Strike toggle buttons)
+- Date picker and period tabs interact cleanly: selecting a date clears the active period tab (dates take precedence); selecting a period tab clears manual dates; date picker min/max constrains to the active period's range when a period is selected
+- Consecutive all-day shifts within the same rota are compressed into date ranges (e.g., "Jun 16–21, 6 days") with aggregated fill status; click to expand individual days
 - Only rotas with `IsVisibleToVolunteers = true` appear (privileged users see all)
 - See fill status (confirmed count vs max)
 - Sign up for a shift (auto-confirmed for Public policy, pending for RequireApproval)
@@ -73,6 +76,42 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 - Bail from confirmed or pending signups
 - Range bail via `BailRangeAsync` — bails all signups sharing a `SignupBlockId` (build/strike date-range signups)
 - Build shift bail blocked after EE close for non-privileged users
+- Reusable `ShiftSignupsViewComponent` shows categorized signups (upcoming/pending/past) on Dashboard and HumanDetail pages
+
+### US-25.7: Guided Shift Discovery
+**As a** volunteer with no upcoming shifts
+**I want to** see a guided introduction to shifts on my dashboard
+**So that** I understand how to get involved
+
+**Acceptance Criteria:**
+- When shift browsing is open and user has no upcoming or pending signups, Dashboard shows a discovery card
+- Discovery card explains the three shift phases (Set-up, Event, Strike) with brief descriptions
+- Urgent understaffed shifts are highlighted within the discovery card
+- Clear CTAs to browse all shifts and view own shift schedule
+- When user has existing signups, the standard shift signups component and urgent shifts list are shown instead
+
+### US-25.8: Rota Tags and Volunteer Preferences
+**As a** coordinator
+**I want to** tag rotas with descriptive labels (e.g., "Heavy lifting", "Working in the sun")
+**So that** volunteers can filter and find shifts matching their interests
+
+**Acceptance Criteria:**
+- Coordinators can add/remove tags from rotas via the shift admin page
+- Tags are shared across all teams — any coordinator can use existing tags or create new ones
+- Tag picker shows existing tags as checkboxes plus an inline "create new tag" field
+- Tags displayed as badges on rota cards in both admin and browse views
+- Initial tags seeded from coordinator feedback: Heavy lifting, Working in the sun, Working in the shade, Organisational task, Meeting new people, Looking after folks, Exploring the site, Feeding and hydrating folks
+
+**As a** volunteer
+**I want to** filter shifts by tag and set tag preferences on the browse page
+**So that** I can find shifts that match the kind of work I enjoy
+
+**Acceptance Criteria:**
+- Tag filter bar on `/Shifts` browse page — click tags to toggle filter (additive)
+- Active tag filters shown as filled buttons with X to remove
+- Volunteers can set preferred tags via a collapsible preferences panel on the browse page
+- Shifts with matching tags are highlighted with a star icon
+- Tag preferences are accessible from the browse page directly (no need to navigate to profile)
 
 ### US-25.6: Post-Event No-Show Tracking
 **As a** coordinator
@@ -93,6 +132,9 @@ See `docs/specs/shift-management-spec.md` for the full design specification.
 | `ShiftSignup` | User-to-shift link with state machine; SignupBlockId groups range signups |
 | `GeneralAvailability` | Per-user per-event day availability (general volunteer pool) |
 | `VolunteerEventProfile` | Per-event skills, dietary, medical info, email preferences |
+| `ShiftTag` | Descriptive label for rotas (Id, Name); shared across all teams |
+| `RotaShiftTag` | Join table: Rota ↔ ShiftTag many-to-many |
+| `VolunteerTagPreference` | Links a volunteer to preferred tags for personalized recommendations |
 
 ## State Machine (ShiftSignup)
 
@@ -117,20 +159,25 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 ## Urgency Scoring
 
-`score = remainingSlots * priorityWeight * durationHours * understaffedMultiplier`
+`score = remainingSlots * priorityWeight * durationHours * understaffedMultiplier * proximityBoost`
 
 - Priority weights: Normal=1, Important=3, Essential=6
 - Understaffed multiplier: 2x when confirmed < minVolunteers, else 1x
+- Proximity boost: `1 + 10 / (1 + daysUntilStart)` — today ~11x, tomorrow ~6x, 7 days ~2.25x, 30 days ~1.3x
 - Score=0 when fully staffed (remaining=0)
+- **Period diversity (homepage top-N):** When a limit is applied (e.g., homepage top 3), the system reserves one slot per non-Build period (Event, Strike) that has eligible shifts. This prevents build shifts from monopolizing the homepage even when they have more total slots. Remaining slots are filled from the overall top scorers.
 
 ## Routes
 
 | Route | Purpose |
 |-------|---------|
-| `/Shifts` | Browse all shifts (filtered by department, date range, period) |
+| `/Shifts` | Browse all shifts (filtered by department, date range, period, tags) |
 | `/Shifts/Mine` | View own signups (upcoming, pending, past) |
+| `/Shifts/Preferences/Tags` | POST: Save volunteer tag preferences |
 | `/Shifts/Settings` | Admin: manage EventSettings |
 | `/Teams/{slug}/Shifts` | Coordinator: manage rotas/shifts for a department |
+| `/` (Dashboard) | Shift signups ViewComponent + guided discovery when no signups |
+| `/Human/{id}/Admin` | Shift signups ViewComponent (admin view of user's shifts) |
 
 ## Related Features
 

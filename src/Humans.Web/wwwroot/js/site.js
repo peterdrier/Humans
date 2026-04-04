@@ -38,6 +38,13 @@ document.addEventListener('submit', function (e) {
     }
 });
 
+// Auto-submit forms when a .js-auto-submit element changes
+document.addEventListener('change', function (e) {
+    if (e.target.closest('.js-auto-submit') && e.target.form) {
+        e.target.form.submit();
+    }
+});
+
 // Clickable table rows via [data-href]
 document.addEventListener('click', function (e) {
     var row = e.target.closest('tr[data-href]');
@@ -60,6 +67,155 @@ document.addEventListener('click', function (e) {
             });
         }
     } catch (_) { /* Intl not supported — fall back to server default */ }
+})();
+
+// Notification bell popup
+(function () {
+    var wrapper = document.getElementById('notificationBellWrapper');
+    var btn = document.getElementById('notificationBellBtn');
+    var popup = document.getElementById('notificationPopup');
+    if (!wrapper || !btn || !popup) return;
+
+    var isOpen = false;
+
+    function updateBellBadge() {
+        // Count remaining rows in the popup by class
+        var actionableRows = popup.querySelectorAll('.notification-row-actionable');
+        var informationalRows = popup.querySelectorAll('.notification-row-informational');
+        var badge = btn.querySelector('.notification-badge');
+        var actionableCount = actionableRows.length;
+        var informationalCount = informationalRows.length;
+
+        // Remove existing badge
+        if (badge) badge.remove();
+
+        if (actionableCount > 0) {
+            var newBadge = document.createElement('span');
+            newBadge.className = 'notification-badge notification-badge-danger';
+            newBadge.textContent = actionableCount > 9 ? '9+' : actionableCount.toString();
+            btn.appendChild(newBadge);
+        } else if (informationalCount > 0) {
+            var dot = document.createElement('span');
+            dot.className = 'notification-badge notification-badge-dot';
+            btn.appendChild(dot);
+        }
+    }
+
+    function openPopup() {
+        popup.style.display = 'block';
+        btn.setAttribute('aria-expanded', 'true');
+        isOpen = true;
+        var content = document.getElementById('notificationPopupContent');
+        if (content) content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-spinner fa-spin"></i></div>';
+        fetch('/Notifications/Popup', { redirect: 'error' })
+            .then(function (r) {
+                if (!r.ok) throw new Error(r.status);
+                return r.text();
+            })
+            .then(function (html) {
+                if (content) content.innerHTML = html;
+                bindPopupClose();
+                bindPopupDismiss();
+                bindPopupMarkAllRead();
+                trapFocus();
+            })
+            .catch(function () {
+                if (content) content.innerHTML = '<div class="text-center py-3 text-muted"><i class="fa-solid fa-bell text-muted mb-2" style="font-size:1.5rem"></i><p class="mb-0 small">Could not load notifications.</p></div>';
+            });
+    }
+
+    function closePopup() {
+        popup.style.display = 'none';
+        btn.setAttribute('aria-expanded', 'false');
+        isOpen = false;
+        btn.focus();
+    }
+
+    function bindPopupClose() {
+        var closeBtn = document.getElementById('notificationPopupClose');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closePopup);
+        }
+    }
+
+    function bindPopupDismiss() {
+        popup.querySelectorAll('[data-ajax-dismiss]').forEach(function (dismissBtn) {
+            dismissBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var form = dismissBtn.closest('form');
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                }).then(function (r) {
+                    if (r.ok) {
+                        var row = dismissBtn.closest('.notification-row');
+                        if (row) row.remove();
+                        updateBellBadge();
+                    }
+                });
+            });
+        });
+    }
+
+    function bindPopupMarkAllRead() {
+        popup.querySelectorAll('[data-ajax-markallread]').forEach(function (markBtn) {
+            markBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var form = markBtn.closest('form');
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new FormData(form)
+                }).then(function (r) {
+                    if (r.ok) {
+                        // Remove badge — all marked as read
+                        var badge = btn.querySelector('.notification-badge');
+                        if (badge) badge.remove();
+                        closePopup();
+                    }
+                });
+            });
+        });
+    }
+
+    function trapFocus() {
+        var focusable = popup.querySelectorAll('a, button, input, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length > 0) focusable[0].focus();
+    }
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (isOpen) closePopup(); else openPopup();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', function (e) {
+        if (isOpen && !wrapper.contains(e.target)) closePopup();
+    });
+
+    // Close on Esc
+    document.addEventListener('keydown', function (e) {
+        if (isOpen && e.key === 'Escape') {
+            e.preventDefault();
+            closePopup();
+        }
+    });
+
+    // Keyboard navigation for rows
+    popup.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            var rows = Array.from(popup.querySelectorAll('.notification-row'));
+            var current = document.activeElement ? document.activeElement.closest('.notification-row') : null;
+            var idx = current ? rows.indexOf(current) : -1;
+            var next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
+            if (next >= 0 && next < rows.length) {
+                var btn2 = rows[next].querySelector('a, button');
+                if (btn2) btn2.focus();
+                e.preventDefault();
+            }
+        }
+    });
 })();
 
 // Human profile popover (lazy-loaded on first hover)
@@ -85,7 +241,7 @@ document.addEventListener('click', function (e) {
         if (cache[userId]) {
             popover.setContent({ '.popover-body': cache[userId] });
         } else {
-            fetch('/Human/' + userId + '/Popover')
+            fetch('/Profile/' + userId + '/Popover')
                 .then(function (r) { return r.ok ? r.text() : ''; })
                 .then(function (html) {
                     if (html) {

@@ -1,0 +1,28 @@
+{
+  "tiers": [
+    {
+      "name": "low",
+      "model": "sonnet",
+      "label": "Grep-detectable inconsistencies",
+      "focus": "Find and fix inconsistencies that a grep can detect:\n\n- Naming inconsistencies: GetXAsync vs FetchXAsync vs LoadXAsync — pick the dominant convention and standardize\n- Magic strings: inline role names that should use RoleNames.*, action names that should use nameof(), cache keys that should be constants\n- Icon mismatches: any bi bi-* (Bootstrap Icons not loaded) → replace with fa-solid fa-*\n- Inline avatar HTML: views using <img> tags for avatars when a UserAvatar ViewComponent exists\n- String methods missing explicit StringComparison parameter\n\nDon't try to understand architecture — just grep, fix, build, commit."
+    },
+    {
+      "name": "medium",
+      "model": "sonnet",
+      "label": "Pattern divergence across files",
+      "focus": "Find places where the same thing is done multiple ways and consolidate on the best pattern:\n\n- Caching: find all IMemoryCache usage, identify the different patterns (GetOrCreateAsync vs TryGetValue+Set vs Get+Set), standardize on the best one\n- Error handling in controllers: find the different patterns (TempData vs ModelState vs nothing), standardize\n- Email rendering: find repetitive render methods that follow the same structure, extract common pattern\n- Background jobs: find inconsistent entry point naming and logging patterns, standardize\n\nYou're looking across 3-5 files at a time, not deep architectural analysis."
+    },
+    {
+      "name": "high",
+      "model": "opus",
+      "label": "Architectural smell detection",
+      "focus": "Find architectural problems that require understanding call graphs and domain boundaries:\n\n- Controllers doing business logic: find controllers that do more than call-service → map → return-view. LINQ transforms, multi-step mutations, domain decisions in controllers should move to services.\n- Authorization pattern inconsistency: find where [Authorize(Roles)] attributes, inline User.IsInRole() checks, and service-level auth calls are used inconsistently. Consolidate where feasible.\n- Duplicated logic across controllers: find the same query, validation, or mapping appearing in multiple controllers. Extract to shared service methods.\n\nUse your judgement on what's highest impact. Fix the worst offenders, not everything."
+    },
+    {
+      "name": "super",
+      "model": "opus",
+      "label": "Domain boundary analysis",
+      "focus": "Find services or controllers that mix unrelated domains. A large file is NOT a problem if all methods belong to the same domain.\n\nWhat to look for:\n- A service containing methods that query/mutate a different domain's entities (e.g., shift logic in a profile service, budget logic in a team service)\n- A controller that injects a service just for one method — that method may belong elsewhere\n- Cross-domain queries that should delegate instead of reaching across boundaries\n\nIMPORTANT: Work in bite-sized pieces. Move ONE method at a time, build, test, commit. Do not attempt large extractions in a single edit.\n\nA 10,000-line TeamService is fine if it's all team stuff. Do NOT split it just because it's big."
+    }
+  ]
+}

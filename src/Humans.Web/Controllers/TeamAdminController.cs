@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
 using Humans.Web.Authorization;
@@ -21,7 +22,10 @@ public class TeamAdminController : HumansTeamControllerBase
     private readonly ITeamResourceService _teamResourceService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IProfileService _profileService;
+    private readonly IEmailProvisioningService _emailProvisioningService;
+    private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _systemTeamSyncJob;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<TeamAdminController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -30,8 +34,11 @@ public class TeamAdminController : HumansTeamControllerBase
         ITeamResourceService teamResourceService,
         IGoogleSyncService googleSyncService,
         IProfileService profileService,
+        IEmailProvisioningService emailProvisioningService,
+        INotificationService notificationService,
         UserManager<User> userManager,
         ISystemTeamSync systemTeamSyncJob,
+        IMemoryCache cache,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager, teamService)
@@ -40,7 +47,10 @@ public class TeamAdminController : HumansTeamControllerBase
         _teamResourceService = teamResourceService;
         _googleSyncService = googleSyncService;
         _profileService = profileService;
+        _emailProvisioningService = emailProvisioningService;
+        _notificationService = notificationService;
         _systemTeamSyncJob = systemTeamSyncJob;
+        _cache = cache;
         _logger = logger;
         _localizer = localizer;
     }
@@ -57,8 +67,26 @@ public class TeamAdminController : HumansTeamControllerBase
 
         try
         {
-            await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
+            var newMember = await _teamService.ApproveJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(_localizer["TeamAdmin_RequestApproved"].Value);
+
+            // Notify requester (best-effort)
+            try
+            {
+                await _notificationService.SendAsync(
+                    NotificationSource.TeamJoinRequestDecided,
+                    NotificationClass.Informational,
+                    NotificationPriority.Normal,
+                    $"Your request to join {team.Name} has been approved",
+                    [newMember.UserId],
+                    body: $"Welcome to {team.Name}!",
+                    actionUrl: $"/Teams/{slug}",
+                    actionLabel: "View team");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch TeamJoinRequestDecided notification for request {RequestId}", requestId);
+            }
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
@@ -85,10 +113,36 @@ public class TeamAdminController : HumansTeamControllerBase
             return RedirectToAction(nameof(Members), new { slug });
         }
 
+        // Look up requester before rejection (service consumes the request)
+        var pendingRequests = await _teamService.GetPendingRequestsForTeamAsync(team.Id);
+        var request = pendingRequests.FirstOrDefault(r => r.Id == requestId);
+        var requesterUserId = request?.UserId;
+
         try
         {
             await _teamService.RejectJoinRequestAsync(requestId, user.Id, model.Notes);
             SetSuccess(_localizer["TeamAdmin_RequestRejected"].Value);
+
+            // Notify requester (best-effort)
+            if (requesterUserId.HasValue)
+            {
+                try
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.TeamJoinRequestDecided,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"Your request to join {team.Name} was not approved",
+                        [requesterUserId.Value],
+                        body: $"Your request to join {team.Name} was not approved.",
+                        actionUrl: "/Teams",
+                        actionLabel: "Browse teams");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to dispatch TeamJoinRequestDecided notification for request {RequestId}", requestId);
+                }
+            }
         }
         catch (InvalidOperationException ex)
         {
@@ -123,6 +177,7 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
+        // nobodies.team email is now resolved by NobodiesEmailBadgeViewComponent in the view
         var members = pagedMembers
             .Select(m => new TeamMemberViewModel
             {
@@ -153,6 +208,48 @@ public class TeamAdminController : HumansTeamControllerBase
                 RequestedAt = r.RequestedAt.ToDateTimeUtc()
             }).ToList();
 
+        // Load Google resources for the resource access summary card
+        var allTeamResources = await _teamResourceService.GetTeamResourcesAsync(team.Id);
+        var teamResources = allTeamResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
+
+        var parentDepartmentResources = new List<GoogleResource>();
+        string? parentDepartmentName = null;
+        string? parentDepartmentSlug = null;
+        if (team.ParentTeam is not null)
+        {
+            parentDepartmentName = team.ParentTeam.Name;
+            parentDepartmentSlug = team.ParentTeam.CustomSlug ?? team.ParentTeam.Slug;
+            var allParentResources = await _teamResourceService.GetTeamResourcesAsync(team.ParentTeam.Id);
+            parentDepartmentResources = allParentResources.Where(r => r.IsActive).OrderBy(r => r.ResourceType).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
+        }
+
+        static ResourceAccessViewModel MapResource(GoogleResource r) => new()
+        {
+            Name = r.Name,
+            ResourceType = r.ResourceType switch
+            {
+                GoogleResourceType.DriveFolder => "Drive Folder",
+                GoogleResourceType.SharedDrive => "Shared Drive",
+                GoogleResourceType.DriveFile => "Drive File",
+                GoogleResourceType.Group => "Google Group",
+                _ => r.ResourceType.ToString()
+            },
+            PermissionLevel = r.ResourceType == GoogleResourceType.Group
+                ? null
+                : r.DrivePermissionLevel != DrivePermissionLevel.None
+                    ? r.DrivePermissionLevel.ToString()
+                    : null,
+            Url = r.Url,
+            IconClass = r.ResourceType switch
+            {
+                GoogleResourceType.DriveFolder => "fa-solid fa-folder",
+                GoogleResourceType.SharedDrive => "fa-solid fa-hard-drive",
+                GoogleResourceType.DriveFile => "fa-solid fa-file",
+                GoogleResourceType.Group => "fa-solid fa-users",
+                _ => "fa-solid fa-link"
+            }
+        };
+
         var viewModel = new TeamMembersViewModel
         {
             TeamId = team.Id,
@@ -160,11 +257,18 @@ public class TeamAdminController : HumansTeamControllerBase
             TeamSlug = team.Slug,
             IsSystemTeam = team.IsSystemTeam,
             CanManageRoles = !team.IsSystemTeam,
+            CanProvisionEmails = true,
             Members = members,
             PendingRequests = pendingRequestViewModels,
             TotalCount = totalCount,
             PageNumber = page,
-            PageSize = pageSize
+            PageSize = pageSize,
+            TeamResources = teamResources.Select(MapResource).ToList(),
+            ParentDepartmentResources = parentDepartmentResources.Select(MapResource).ToList(),
+            ParentDepartmentName = parentDepartmentName,
+            ParentDepartmentSlug = parentDepartmentSlug,
+            IsSensitive = team.IsSensitive,
+            ActorDisplayName = user.DisplayName
         };
 
         return View(viewModel);
@@ -222,6 +326,55 @@ public class TeamAdminController : HumansTeamControllerBase
         return RedirectToAction(nameof(Members), new { slug });
     }
 
+    [HttpPost("Members/{userId}/ProvisionEmail")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ProvisionEmail(string slug, Guid userId, string emailPrefix)
+    {
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+        {
+            return teamError;
+        }
+
+        if (string.IsNullOrWhiteSpace(emailPrefix))
+        {
+            SetError("Email prefix is required.");
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
+        // Verify that the target user is actually a member of this team
+        var teamMembers = await _teamService.GetTeamMembersAsync(team.Id);
+        if (teamMembers.All(m => m.UserId != userId))
+        {
+            SetError("That human is not a member of this team.");
+            return RedirectToAction(nameof(Members), new { slug });
+        }
+
+        var result = await _emailProvisioningService.ProvisionNobodiesEmailAsync(
+            userId, emailPrefix, user.Id);
+
+        if (!result.Success)
+        {
+            SetError(result.ErrorMessage ?? "Provisioning failed.");
+        }
+        else
+        {
+            // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
+            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+
+            if (result.RecoveryEmail is not null)
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. Credentials sent to {result.RecoveryEmail}.");
+            }
+            else
+            {
+                SetSuccess($"Account {result.FullEmail} provisioned and linked. No recovery email found — credentials not sent.");
+            }
+        }
+
+        return RedirectToAction(nameof(Members), new { slug });
+    }
+
     [HttpGet("Members/Search")]
     public async Task<IActionResult> SearchUsers(string slug, string q)
     {
@@ -268,7 +421,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -301,7 +454,9 @@ public class TeamAdminController : HumansTeamControllerBase
                 IsActive = r.IsActive,
                 ErrorMessage = r.ErrorMessage,
                 DrivePermissionLevel = r.DrivePermissionLevel,
-                IsDriveResource = r.ResourceType is GoogleResourceType.DriveFolder or GoogleResourceType.DriveFile or GoogleResourceType.SharedDrive
+                IsDriveResource = r.ResourceType is GoogleResourceType.DriveFolder or GoogleResourceType.DriveFile or GoogleResourceType.SharedDrive,
+                RestrictInheritedAccess = r.RestrictInheritedAccess,
+                IsDriveFolder = r.ResourceType is GoogleResourceType.DriveFolder
             }).ToList()
         };
 
@@ -324,7 +479,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -370,7 +525,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -400,6 +555,75 @@ public class TeamAdminController : HumansTeamControllerBase
         return RedirectToAction(nameof(Resources), new { slug });
     }
 
+    [HttpPost("Resources/{resourceId}/PermissionLevel")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdatePermissionLevel(string slug, Guid resourceId, DrivePermissionLevel level)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        if (level == DrivePermissionLevel.None)
+        {
+            SetError("Invalid permission level.");
+            return RedirectToAction(nameof(Resources), new { slug });
+        }
+
+        await _teamResourceService.UpdatePermissionLevelAsync(resourceId, level);
+        SetSuccess($"Permission level updated to {level}.");
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
+    [HttpPost("Resources/{resourceId}/RestrictInheritedAccess")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ToggleRestrictInheritedAccess(string slug, Guid resourceId, bool restrict)
+    {
+        var (currentUserNotFound, user) = await RequireCurrentUserAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        var team = await _teamService.GetTeamBySlugAsync(slug);
+        if (team is null)
+        {
+            return NotFound();
+        }
+
+        if (!await CanManageResourcesAsync(team, user.Id))
+        {
+            return Forbid();
+        }
+
+        try
+        {
+            await _teamResourceService.SetRestrictInheritedAccessAsync(resourceId, restrict, CancellationToken.None);
+            var label = restrict ? "enabled" : "disabled";
+            SetSuccess($"Inherited access restriction {label}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to toggle RestrictInheritedAccess for resource {ResourceId}", resourceId);
+            SetError($"Failed to update inherited access setting: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(Resources), new { slug });
+    }
+
     [HttpPost("Resources/{resourceId}/Unlink")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UnlinkResource(string slug, Guid resourceId)
@@ -416,7 +640,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -443,7 +667,7 @@ public class TeamAdminController : HumansTeamControllerBase
             return NotFound();
         }
 
-        if (!await CanManageResourcesAsync(team.Id, user.Id))
+        if (!await CanManageResourcesAsync(team, user.Id))
         {
             return Forbid();
         }
@@ -524,7 +748,7 @@ public class TeamAdminController : HumansTeamControllerBase
 
             await _teamService.CreateRoleDefinitionAsync(
                 team.Id, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.Period, user.Id);
+                priorities, model.SortOrder, model.Period, user.Id, model.IsPublic);
 
             SetSuccess($"Role '{model.Name}' created.");
         }
@@ -555,7 +779,8 @@ public class TeamAdminController : HumansTeamControllerBase
 
             await _teamService.UpdateRoleDefinitionAsync(
                 roleId, model.Name, model.Description, model.SlotCount,
-                priorities, model.SortOrder, model.IsManagement, model.Period, user.Id);
+                priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
+                model.IsPublic);
 
             SetSuccess($"Role '{model.Name}' updated.");
         }
@@ -821,10 +1046,14 @@ public class TeamAdminController : HumansTeamControllerBase
         return Json(combined);
     }
 
-    private async Task<bool> CanManageResourcesAsync(Guid teamId, Guid userId)
+    private async Task<bool> CanManageResourcesAsync(Team team, Guid userId)
     {
         // Claims-first for global roles; DB only for team-specific coordinator check
-        return RoleChecks.IsTeamsAdminBoardOrAdmin(User) ||
-               await _teamResourceService.CanManageTeamResourcesAsync(teamId, userId);
+        if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
+            return true;
+
+        // Sub-team managers cannot manage Google resources — check at department level
+        var checkTeamId = team.ParentTeamId ?? team.Id;
+        return await _teamResourceService.CanManageTeamResourcesAsync(checkTeamId, userId);
     }
 }

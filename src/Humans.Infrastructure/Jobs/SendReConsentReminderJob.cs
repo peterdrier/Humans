@@ -12,7 +12,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <summary>
 /// Background job that sends re-consent reminders to members.
 /// </summary>
-public class SendReConsentReminderJob
+public class SendReConsentReminderJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IMembershipCalculator _membershipCalculator;

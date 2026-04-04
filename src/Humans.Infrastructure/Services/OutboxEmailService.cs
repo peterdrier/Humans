@@ -191,7 +191,7 @@ public class OutboxEmailService : IEmailService
         var resourceList = resources.ToList();
         var content = _renderer.RenderAddedToTeam(userName, teamName, teamSlug, resourceList, culture);
         await EnqueueAsync(userEmail, userName, content, "added_to_team", cancellationToken,
-            category: MessageCategory.EventOperations);
+            category: MessageCategory.TeamUpdates);
     }
 
     /// <inheritdoc />
@@ -271,7 +271,7 @@ public class OutboxEmailService : IEmailService
             recipientName, senderName, messageText, includeContactInfo, senderEmail, culture);
         var replyTo = includeContactInfo ? senderEmail : null;
         await EnqueueAsync(recipientEmail, recipientName, content, "facilitated_message", cancellationToken,
-            replyTo: replyTo);
+            replyTo: replyTo, category: MessageCategory.FacilitatedMessages);
     }
 
     /// <inheritdoc />

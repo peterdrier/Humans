@@ -28,10 +28,25 @@ public interface IRoleAssignmentService
     Task<IReadOnlyList<RoleAssignment>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     Task<OnboardingResult> AssignRoleAsync(
-        Guid userId, string roleName, Guid assignerId, string assignerDisplayName,
+        Guid userId, string roleName, Guid assignerId,
         string? notes, CancellationToken ct = default);
 
     Task<OnboardingResult> EndRoleAsync(
-        Guid assignmentId, Guid enderId, string enderDisplayName,
+        Guid assignmentId, Guid enderId,
         string? notes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Checks if a user has an active Admin role assignment.
+    /// </summary>
+    Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a user has an active Board role assignment.
+    /// </summary>
+    Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a user has an active TeamsAdmin role assignment.
+    /// </summary>
+    Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default);
 }

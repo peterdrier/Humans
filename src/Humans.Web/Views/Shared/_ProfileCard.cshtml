@@ -1,18 +1,7 @@
 @model Humans.Web.Models.ProfileSummaryViewModel
 
 <div class="d-flex align-items-start">
-    @if (!string.IsNullOrEmpty(Model.ProfilePictureUrl))
-    {
-        <img src="@Model.ProfilePictureUrl" alt="@Model.DisplayName"
-             class="rounded-circle me-3" style="width: 56px; height: 56px; object-fit: cover;" />
-    }
-    else
-    {
-        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3"
-             style="width: 56px; height: 56px; font-size: 1.4rem; flex-shrink: 0;">
-            @Model.DisplayName[..1].ToUpperInvariant()
-        </div>
-    }
+    <vc:user-avatar profile-picture-url="@Model.ProfilePictureUrl" display-name="@Model.DisplayName" size="56" css-class="me-3" />
     <div class="flex-grow-1">
         <h6 class="mb-0">
             <human-link user-id="@Model.UserId" display-name="@Model.DisplayName" admin="true" />

@@ -9,7 +9,7 @@ namespace Humans.Web.TagHelpers;
 
 /// <summary>
 /// Renders a link to a human's profile with configurable display modes.
-/// Replaces all raw asp-controller="Human" anchor tags across the app.
+/// Replaces all raw asp-controller="Profile" anchor tags across the app.
 /// </summary>
 [HtmlTargetElement("human-link", TagStructure = TagStructure.NormalOrSelfClosing)]
 public class HumanLinkTagHelper : TagHelper
@@ -51,9 +51,9 @@ public class HumanLinkTagHelper : TagHelper
     [HtmlAttributeName("admin")]
     public bool Admin { get; set; }
 
-    /// <summary>Enable hover popover with profile summary.</summary>
+    /// <summary>Enable hover popover with profile summary. Default: true.</summary>
     [HtmlAttributeName("show-popover")]
-    public bool ShowPopover { get; set; }
+    public bool ShowPopover { get; set; } = true;
 
     /// <summary>Additional CSS class(es) for the avatar element.</summary>
     [HtmlAttributeName("avatar-css-class")]
@@ -65,10 +65,14 @@ public class HumanLinkTagHelper : TagHelper
 
     public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
+        // Respect suppression from earlier tag helpers (e.g., AuthorizeViewTagHelper)
+        if (output.TagName is null)
+            return;
+
         var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
         var href = Admin
-            ? urlHelper.Action("HumanDetail", "Human", new { id = UserId })
-            : urlHelper.Action("View", "Human", new { id = UserId });
+            ? urlHelper.Action("AdminDetail", "Profile", new { id = UserId })
+            : urlHelper.Action("ViewProfile", "Profile", new { id = UserId });
 
         output.TagName = "a";
         output.TagMode = TagMode.StartTagAndEndTag;

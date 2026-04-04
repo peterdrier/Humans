@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Background job that processes scheduled account deletions.
 /// Runs daily to anonymize accounts where the 30-day grace period has expired.
 /// </summary>
-public class ProcessAccountDeletionsJob
+public class ProcessAccountDeletionsJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;

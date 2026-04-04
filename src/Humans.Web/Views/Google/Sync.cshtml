@@ -1,0 +1,194 @@
+@model Humans.Web.Models.TeamSyncViewModel
+@{
+    ViewData["Title"] = "Resource Sync Status";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Resource Sync Status</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">Back to Google</a>
+</div>
+
+<ul class="nav nav-tabs" id="syncTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="drives-tab-btn" data-bs-toggle="tab" data-bs-target="#drives-tab"
+                type="button" role="tab" aria-controls="drives-tab" aria-selected="true"
+                data-resource-type="DriveFolder">Drives</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="groups-tab-btn" data-bs-toggle="tab" data-bs-target="#groups-tab"
+                type="button" role="tab" aria-controls="groups-tab" aria-selected="false"
+                data-resource-type="Group">Groups</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link disabled" tabindex="-1" type="button">Discord</button>
+    </li>
+</ul>
+
+<div class="tab-content pt-3" id="syncTabContent">
+    <div class="tab-pane fade show active" id="drives-tab" role="tabpanel" aria-labelledby="drives-tab-btn"></div>
+    <div class="tab-pane fade" id="groups-tab" role="tabpanel" aria-labelledby="groups-tab-btn"></div>
+</div>
+
+<form id="antiForgeryForm" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+<script>
+(function () {
+    'use strict';
+
+    @await Html.PartialAsync("~/Views/Shared/_RequestVerificationTokenScript.cshtml")
+
+    var antiForgeryToken = getRequestVerificationToken('#antiForgeryForm input[name="__RequestVerificationToken"]');
+
+    // Resource type mapping: tab data-resource-type values to API enum values
+    // DriveFolder = 0, Group = 2
+    var resourceTypeMap = { 'DriveFolder': 0, 'Group': 2 };
+
+    function getResourceTypeValue(name) {
+        return resourceTypeMap[name] ?? name;
+    }
+
+    // Load tab data on activation
+    document.querySelectorAll('#syncTabs button[data-resource-type]').forEach(function (btn) {
+        btn.addEventListener('shown.bs.tab', function () {
+            var resourceType = this.getAttribute('data-resource-type');
+            loadTab(resourceType);
+        });
+    });
+
+    // Load the initially active tab
+    var activeBtn = document.querySelector('#syncTabs button.active[data-resource-type]');
+    if (activeBtn) {
+        loadTab(activeBtn.getAttribute('data-resource-type'));
+    }
+
+    function loadTab(resourceType) {
+        var paneId = resourceType === 'DriveFolder' ? 'drives-tab' : 'groups-tab';
+        var pane = document.getElementById(paneId);
+        pane.innerHTML = '<div class="text-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+
+        fetch('/Google/Sync/Preview/' + getResourceTypeValue(resourceType))
+            .then(function (r) {
+                if (!r.ok) throw new Error('Request failed: ' + r.status);
+                return r.text();
+            })
+            .then(function (html) {
+                pane.innerHTML = html;
+                bindTabActions(pane, resourceType);
+            })
+            .catch(function (err) {
+                pane.innerHTML = '<div class="alert alert-danger">Failed to load sync data: ' + err.message + '</div>';
+            });
+    }
+
+    function bindTabActions(pane, resourceType) {
+        // Bind changes-only toggle
+        var toggle = pane.querySelector('.sync-changes-toggle');
+        if (toggle) {
+            toggle.addEventListener('change', function () {
+                applyFilter(pane, this.checked);
+            });
+            applyFilter(pane, toggle.checked);
+        }
+
+        // Bind execute-all buttons
+        pane.querySelectorAll('[data-action="executeAll"]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var syncAction = parseInt(this.getAttribute('data-sync-action'));
+                var rt = this.getAttribute('data-resource-type');
+                var actionName = syncAction === 1 ? 'add all missing humans' : 'sync all humans (add + remove)';
+                if (confirm('Are you sure you want to ' + actionName + ' for all ' + rt + ' resources?')) {
+                    executeAll(rt, syncAction);
+                }
+            });
+        });
+
+        // Bind execute-single buttons
+        pane.querySelectorAll('[data-action="executeSingle"]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var resourceId = this.getAttribute('data-resource-id');
+                var syncAction = parseInt(this.getAttribute('data-sync-action'));
+                var resourceName = this.getAttribute('data-resource-name');
+                var actionName = syncAction === 1 ? 'add missing humans to' : 'sync all humans for';
+                if (confirm('Are you sure you want to ' + actionName + ' "' + resourceName + '"?')) {
+                    executeSingle(resourceId, syncAction, resourceType);
+                }
+            });
+        });
+    }
+
+    function applyFilter(pane, changesOnly) {
+        // Show/hide in-sync resource cards
+        pane.querySelectorAll('.resource-in-sync').forEach(function (card) {
+            card.style.display = changesOnly ? 'none' : '';
+        });
+        // Show/hide correct and inherited member rows
+        pane.querySelectorAll('.member-row').forEach(function (row) {
+            var state = row.getAttribute('data-member-state');
+            if (state === '0' || state === '3') {
+                row.style.display = changesOnly ? 'none' : '';
+            }
+        });
+    }
+
+    function executeSingle(resourceId, syncAction, resourceType) {
+        fetch('/Google/Sync/Execute/' + resourceId + '?action=' + syncAction, {
+            method: 'POST',
+            headers: {
+                'RequestVerificationToken': antiForgeryToken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function (r) {
+            if (!r.ok) throw new Error('Request failed: ' + r.status);
+            return r.json();
+        })
+        .then(function () {
+            loadTab(resourceType);
+        })
+        .catch(function (err) {
+            alert('Sync failed: ' + err.message);
+        });
+    }
+
+    function executeAll(resourceType, syncAction) {
+        var typeValue = getResourceTypeValue(resourceType);
+        fetch('/Google/Sync/ExecuteAll/' + typeValue + '?action=' + syncAction, {
+            method: 'POST',
+            headers: {
+                'RequestVerificationToken': antiForgeryToken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(function (r) {
+            if (!r.ok) throw new Error('Request failed: ' + r.status);
+            return r.json();
+        })
+        .then(function () {
+            loadTab(resourceType);
+        })
+        .catch(function (err) {
+            alert('Sync failed: ' + err.message);
+        });
+    }
+
+    // Rotate chevron on collapse toggle
+    document.addEventListener('show.bs.collapse', function (e) {
+        var btn = e.target.previousElementSibling?.querySelector('.collapse-icon');
+        if (btn) btn.style.transform = 'rotate(90deg)';
+    });
+    document.addEventListener('hide.bs.collapse', function (e) {
+        var btn = e.target.previousElementSibling?.querySelector('.collapse-icon');
+        if (btn) btn.style.transform = '';
+    });
+})();
+</script>
+<style>
+    .collapse-icon {
+        transition: transform 0.2s;
+        font-size: 0.75rem;
+    }
+</style>
+}

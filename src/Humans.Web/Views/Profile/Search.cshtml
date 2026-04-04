@@ -1,0 +1,74 @@
+@model Humans.Web.Models.HumanSearchViewModel
+
+@{
+    ViewData["Title"] = Localizer["Search_Title"].Value;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Team" asp-action="Index">@Localizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item active">@Localizer["Search_Title"]</li>
+    </ol>
+</nav>
+
+<h2>@Localizer["Search_Title"]</h2>
+
+<form method="get" class="mb-4">
+    <div class="input-group" style="max-width: 500px;">
+        <input type="text" name="q" class="form-control" value="@Model.Query"
+               placeholder="@Localizer["Search_Placeholder"]" autofocus />
+        <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-search"></i>
+        </button>
+    </div>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.Query))
+{
+    if (Model.Query.Length < 2)
+    {
+        <div class="alert alert-info">@Localizer["Search_MinChars"]</div>
+    }
+    else if (Model.Results.Count == 0)
+    {
+        <div class="alert alert-info">@Localizer["Search_NoResults"]</div>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var result in Model.Results)
+            {
+                <human-link user-id="@result.UserId" display-name="@result.DisplayName" show-popover="true" class="list-group-item list-group-item-action">
+                    <div class="d-flex align-items-center gap-3">
+                        <vc:user-avatar profile-picture-url="@result.EffectiveProfilePictureUrl"
+                                        display-name="@result.DisplayName"
+                                        size="48" />
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2">
+                                <strong>@result.DisplayName</strong>
+                                @if (result.BurnerName != null && !string.Equals(result.BurnerName, result.DisplayName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <small class="text-muted">(@result.BurnerName)</small>
+                                }
+                                @if (result.City != null)
+                                {
+                                    <small class="text-muted"><i class="fa-solid fa-location-dot"></i> @result.City</small>
+                                }
+                            </div>
+                            @if (result.MatchField != null)
+                            {
+                                <small>
+                                    <span class="badge bg-secondary">@Localizer["Search_MatchedIn"] @result.MatchField</span>
+                                    @if (result.MatchSnippet != null)
+                                    {
+                                        <span class="text-muted ms-1">@result.MatchSnippet</span>
+                                    }
+                                </small>
+                            }
+                        </div>
+                    </div>
+                </human-link>
+            }
+        </div>
+    }
+}

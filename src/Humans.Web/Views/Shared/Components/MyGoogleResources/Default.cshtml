@@ -1,0 +1,31 @@
+@model Humans.Web.ViewComponents.MyGoogleResourcesViewModel
+
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-cloud me-1"></i> Your Google Resources
+    </div>
+    <div class="list-group list-group-flush">
+        @foreach (var item in Model.Resources)
+        {
+            var icon = item.Resource.ResourceType == Humans.Domain.Enums.GoogleResourceType.Group
+                ? "fa-solid fa-users"
+                : "fa-solid fa-folder";
+
+            <div class="list-group-item d-flex justify-content-between align-items-center py-2">
+                <div>
+                    <i class="@icon me-2 text-muted"></i>
+                    @if (item.Resource.Url is not null)
+                    {
+                        <a href="@item.Resource.Url" target="_blank" rel="noopener noreferrer">@item.Resource.Name</a>
+                    }
+                    else
+                    {
+                        @item.Resource.Name
+                    }
+                </div>
+                <a asp-controller="Team" asp-action="Details" asp-route-slug="@item.TeamSlug"
+                   class="badge bg-light text-dark border text-decoration-none">@item.TeamName</a>
+            </div>
+        }
+    </div>
+</div>

@@ -254,6 +254,7 @@ public class ProfileService : IProfileService
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _cache.InvalidateActiveTeams();
 
         // Update profile cache if profile is approved
@@ -318,7 +319,7 @@ public class ProfileService : IProfileService
         await _auditLogService.LogAsync(
             AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), user.Id,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
-            user.Id, user.DisplayName);
+            user.Id);
 
         await _dbContext.SaveChangesAsync(ct);
         UpdateProfileCache(userId, null);
@@ -636,21 +637,6 @@ public class ProfileService : IProfileService
             .OrderByDescending(ra => ra.ValidFrom)
             .ToListAsync(ct);
 
-        var auditEntries = await _dbContext.AuditLogEntries
-            .AsNoTracking()
-            .Where(e =>
-                (e.EntityType == "User" && e.EntityId == userId) ||
-                (e.RelatedEntityId == userId))
-            .OrderByDescending(e => e.OccurredAt)
-            .Take(50)
-            .Select(e => new Application.DTOs.AdminAuditEntry(
-                e.Action.ToString(),
-                e.Description,
-                e.OccurredAt.ToDateTimeUtc(),
-                e.ActorName,
-                e.ActorUserId == null))
-            .ToListAsync(ct);
-
         string? rejectedByName = null;
         if (user.Profile?.RejectedByUserId is not null)
         {
@@ -666,7 +652,6 @@ public class ProfileService : IProfileService
             user.Applications.OrderByDescending(a => a.SubmittedAt).ToList(),
             user.ConsentRecords.Count,
             roleAssignments,
-            auditEntries,
             rejectedByName);
     }
 

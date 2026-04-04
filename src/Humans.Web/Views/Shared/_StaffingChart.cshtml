@@ -39,11 +39,18 @@
         var remaining = data.map(function(d) { return Math.max(0, d.totalSlots - d.confirmedCount); });
         var minLine = data.map(function(d) { return d.minSlots; });
 
+        var cs = getComputedStyle(document.documentElement);
+        var cv = function(n) { return cs.getPropertyValue(n).trim(); };
+        var chartSuccess = cv('--h-chart-success');
+        var chartWarning = cv('--h-chart-warning');
+        var chartDanger = cv('--h-chart-danger');
+        var chartMuted = cv('--h-chart-muted');
+
         var confirmedColors = data.map(function(d) {
-            if (d.totalSlots === 0) return '#198754';
-            if (d.confirmedCount >= d.minSlots) return '#198754';
-            if (d.minSlots > 0 && d.confirmedCount >= d.minSlots * 0.5) return '#ffc107';
-            return '#dc3545';
+            if (d.totalSlots === 0) return chartSuccess;
+            if (d.confirmedCount >= d.minSlots) return chartSuccess;
+            if (d.minSlots > 0 && d.confirmedCount >= d.minSlots * 0.5) return chartWarning;
+            return chartDanger;
         });
 
         new Chart(document.getElementById('@chartKey'), {
@@ -52,8 +59,8 @@
                 labels: labels,
                 datasets: [
                     { label: 'Confirmed', data: confirmed, backgroundColor: confirmedColors },
-                    { label: 'Remaining', data: remaining, backgroundColor: '#e9ecef' },
-                    { label: 'Min needed', data: minLine, type: 'line', borderColor: '#dc3545', borderDash: [5, 5], pointRadius: 0, fill: false, order: 0 }
+                    { label: 'Remaining', data: remaining, backgroundColor: chartMuted },
+                    { label: 'Min needed', data: minLine, type: 'line', borderColor: chartDanger, borderDash: [5, 5], pointRadius: 0, fill: false, order: 0 }
                 ]
             },
             options: {

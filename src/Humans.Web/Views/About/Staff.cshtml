@@ -1,0 +1,59 @@
+@model StaffViewModel
+@{
+    ViewData["Title"] = "The Humans Behind the Curtain";
+}
+
+<div class="text-center my-5">
+    <h1 class="display-4" style="font-family: 'Cormorant Garamond', serif; font-weight: 700;">
+        <i class="fa-solid fa-scroll me-2"></i>The Humans Behind the Curtain
+    </h1>
+    <p class="lead mt-3" style="max-width: 700px; margin: 0 auto; font-style: italic;">
+        Every collective needs its keepers. These are the humans who volunteer their time and energy
+        to keep Nobodies running &mdash; from governance to tech support, from trust and safety to ticket alchemy.
+    </p>
+</div>
+
+@if (Model.RoleSections.Count == 0)
+{
+    <div class="text-center text-muted my-5">
+        <i class="fa-solid fa-ghost fa-3x mb-3"></i>
+        <p>No active role holders found. The castle appears to be empty.</p>
+    </div>
+}
+else
+{
+    @foreach (var roleSection in Model.RoleSections)
+    {
+        <section class="mb-5">
+            <div class="border-bottom pb-2 mb-4">
+                <h2 style="font-family: 'Cormorant Garamond', serif; font-weight: 600;">
+                    <i class="@roleSection.Icon me-2"></i>@roleSection.DisplayTitle
+                </h2>
+                <p class="text-muted mb-0" style="font-style: italic; max-width: 720px;">
+                    @roleSection.Blurb
+                </p>
+            </div>
+
+            <div class="row g-4">
+                @foreach (var holder in roleSection.Holders)
+                {
+                    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                        <human-link user-id="@holder.UserId"
+                                    display-name="@holder.DisplayName"
+                                    profile-picture-url="@holder.ProfilePictureUrl"
+                                    mode="Card"
+                                    size="80"
+                                    avatar-bg-color="bg-primary"
+                                    show-popover="true" />
+                    </div>
+                }
+            </div>
+        </section>
+    }
+}
+
+<div class="text-center my-5">
+    <a asp-controller="About" asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fa-solid fa-arrow-left me-1"></i> Back to About
+    </a>
+</div>

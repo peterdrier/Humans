@@ -66,7 +66,15 @@ public class GoogleResource
     /// <summary>
     /// Permission level for team members on this Drive resource.
     /// Only applicable to Drive resources (folders, files, shared drives), not Groups.
-    /// Default is Contributor (writer) for backward compatibility.
+    /// None (CLR default) for Groups; Drive resources must set an explicit level.
     /// </summary>
-    public DrivePermissionLevel DrivePermissionLevel { get; set; } = DrivePermissionLevel.Contributor;
+    public DrivePermissionLevel DrivePermissionLevel { get; set; }
+
+    /// <summary>
+    /// When true, the system enforces inheritedPermissionsDisabled on the corresponding
+    /// Google Drive folder, preventing parent permission inheritance. The reconciliation
+    /// job detects and corrects drift if someone re-enables inheritance manually.
+    /// Only applicable to Drive folders.
+    /// </summary>
+    public bool RestrictInheritedAccess { get; set; }
 }

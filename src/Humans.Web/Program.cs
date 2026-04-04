@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc.Razor;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
 using NodaTime;
@@ -17,6 +18,7 @@ using NodaTime.Serialization.SystemTextJson;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Humans.Application.Configuration;
 using Humans.Domain.Entities;
 using Humans.Web.Extensions;
 using Humans.Infrastructure.Data;
@@ -58,6 +60,11 @@ builder.Host.UseSerilog();
 
 // Add services to the container
 
+// Configuration registry — auto-collects metadata about every config setting the app touches.
+// Created as a concrete instance so it can be used during startup config (before DI is built).
+var configRegistry = new ConfigurationRegistry();
+builder.Services.AddSingleton(configRegistry);
+
 // Configure NodaTime clock
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 
@@ -66,6 +73,10 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
 });
+
+// Register connection string in the config registry for the Admin Configuration page
+builder.Configuration.GetRequiredSetting(
+    configRegistry, "ConnectionStrings:DefaultConnection", "Database", isSensitive: true);
 
 // Configure Npgsql data source with NodaTime and dynamic JSON (for jsonb Dictionary columns).
 // Registered as a DI singleton so the connection string is resolved at service-resolution time,
@@ -90,6 +101,9 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
         npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
+    // Suppress "First/FirstOrDefault without OrderBy" warning — the codebase universally uses
+    // .FirstOrDefaultAsync(e => e.Id == id) for PK lookups which are deterministic by definition.
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
@@ -127,9 +141,11 @@ builder.Services.ConfigureApplicationCookie(options =>
 builder.Services.AddAuthentication()
     .AddGoogle(options =>
     {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"]
+        options.ClientId = builder.Configuration.GetRequiredSetting(
+                configRegistry, "Authentication:Google:ClientId", "Authentication", isSensitive: true)
             ?? throw new InvalidOperationException("Google ClientId not configured.");
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]
+        options.ClientSecret = builder.Configuration.GetRequiredSetting(
+                configRegistry, "Authentication:Google:ClientSecret", "Authentication", isSensitive: true)
             ?? throw new InvalidOperationException("Google ClientSecret not configured.");
         options.Scope.Add("profile");
         options.Scope.Add("email");
@@ -149,8 +165,8 @@ builder.Services.AddAuthentication()
         };
     });
 
-// Configure Authorization
-builder.Services.AddAuthorization();
+// Configure Authorization — registers all canonical policies (see docs/authorization-inventory.md)
+builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
@@ -197,7 +213,9 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter(options =>
         {
             options.Endpoint = new Uri(
-                builder.Configuration["OpenTelemetry:OtlpEndpoint"] ?? "http://localhost:4317");
+                builder.Configuration.GetOptionalSetting(
+                    configRegistry, "OpenTelemetry:OtlpEndpoint", "OpenTelemetry")
+                ?? "http://localhost:4317");
         }))
     .WithMetrics(metrics => metrics
         .AddAspNetCoreInstrumentation()
@@ -219,7 +237,7 @@ builder.Services.AddHealthChecks()
     .AddCheck<GitHubHealthCheck>("github")
     .AddCheck<GoogleWorkspaceHealthCheck>("google-workspace");
 
-builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
 
 // Configure Response Compression
 builder.Services.AddResponseCompression(options =>
@@ -287,6 +305,7 @@ builder.Services.AddLocalization();
 builder.Services.AddControllersWithViews(options =>
     {
         options.Filters.Add<MembershipRequiredFilter>();
+        options.Filters.Add<Humans.Web.Filters.AuthorizationPillFilter>();
         options.Filters.Add<Humans.Web.Filters.GlobalExceptionFilter>();
     })
     .AddViewLocalization(LanguageViewLocationExpanderFormat.Suffix)
@@ -347,7 +366,7 @@ app.Services.GetRequiredService<HumansMetricsService>();
             assembly.GetName().Name, string.Join(", ", resourceNames));
 
         // Check satellite assemblies
-        foreach (var culture in new[] { "en", "es", "de", "it", "fr" })
+        foreach (var culture in new[] { "en", "es", "de", "it", "fr", "ca" })
         {
             try
             {
@@ -396,12 +415,9 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
 }
 
 app.UseStatusCodePagesWithReExecute("/Home/Error/{0}");
-
-app.UseHttpsRedirection();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -467,6 +483,21 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 
 // Prometheus metrics endpoint
 app.MapPrometheusScrapingEndpoint("/metrics");
+
+// Version endpoint (unauthenticated)
+app.MapGet("/api/version", () =>
+{
+    var assembly = System.Reflection.Assembly.GetEntryAssembly()!;
+    var attr = (System.Reflection.AssemblyInformationalVersionAttribute?)
+        Attribute.GetCustomAttribute(assembly, typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+    var informationalVersion = attr?.InformationalVersion ?? "";
+    var plusIndex = informationalVersion.IndexOf('+', StringComparison.Ordinal);
+    var version = plusIndex >= 0 ? informationalVersion[..plusIndex] : informationalVersion;
+    var fullCommit = plusIndex >= 0 ? informationalVersion[(plusIndex + 1)..] : "";
+    var commit = fullCommit.Length > 8 ? fullCommit[..8] : fullCommit;
+
+    return Results.Ok(new { version, commit, informationalVersion });
+}).AllowAnonymous();
 
 // Hangfire dashboard (admin only in production).
 // Skipped in Testing — MapHangfireDashboard resolves JobStorage from DI eagerly,

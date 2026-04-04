@@ -116,7 +116,6 @@ public class AdminHumanDetailViewModel
     public int ConsentCount { get; set; }
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
-    public List<AuditLogEntryViewModel> AuditLog { get; set; } = [];
 }
 
 public class AdminHumanApplicationViewModel
@@ -215,8 +214,28 @@ public class AuditLogEntryViewModel
     public AuditAction Action { get; set; }
     public string Description { get; set; } = string.Empty;
     public DateTime OccurredAt { get; set; }
-    public string ActorName { get; set; } = string.Empty;
+    public Guid? ActorUserId { get; set; }
     public bool IsSystemAction { get; set; }
+    public string EntityType { get; set; } = string.Empty;
+    public Guid EntityId { get; set; }
+    public string? RelatedEntityType { get; set; }
+    public Guid? RelatedEntityId { get; set; }
+
+    /// <summary>
+    /// Returns the subject user ID (the person acted upon), based on entity type patterns.
+    /// </summary>
+    public Guid? SubjectUserId =>
+        EntityType is "User" or "Profile" or "WorkspaceAccount" ? EntityId :
+        string.Equals(RelatedEntityType, "User", StringComparison.Ordinal) ? RelatedEntityId :
+        null;
+
+    /// <summary>
+    /// Returns the target entity ID (team, resource, etc.), if applicable.
+    /// </summary>
+    public Guid? TargetTeamId =>
+        string.Equals(EntityType, "Team", StringComparison.Ordinal) ? EntityId :
+        string.Equals(RelatedEntityType, "Team", StringComparison.Ordinal) ? RelatedEntityId :
+        null;
 }
 
 public class AuditLogListViewModel : PagedListViewModel
@@ -228,6 +247,8 @@ public class AuditLogListViewModel : PagedListViewModel
     public List<AuditLogEntryViewModel> Entries { get; set; } = [];
     public string? ActionFilter { get; set; }
     public int AnomalyCount { get; set; }
+    public Dictionary<Guid, string> UserDisplayNames { get; set; } = new();
+    public Dictionary<Guid, (string Name, string Slug)> TeamNames { get; set; } = new();
 }
 
 public class GoogleSyncAuditEntryViewModel
@@ -240,7 +261,6 @@ public class GoogleSyncAuditEntryViewModel
     public DateTime OccurredAt { get; set; }
     public bool? Success { get; set; }
     public string? ErrorMessage { get; set; }
-    public string ActorName { get; set; } = string.Empty;
     public string? ResourceName { get; set; }
     public Guid? ResourceId { get; set; }
     public Guid? RelatedEntityId { get; set; }
@@ -259,8 +279,9 @@ public class ConfigurationItemViewModel
     public string Section { get; set; } = string.Empty;
     public string Key { get; set; } = string.Empty;
     public bool IsSet { get; set; }
-    public string? Preview { get; set; }
-    public bool IsRequired { get; set; }
+    public string? DisplayValue { get; set; }
+    public bool IsSensitive { get; set; }
+    public string Importance { get; set; } = "optional";
 }
 
 public class AdminConfigurationViewModel
@@ -335,9 +356,48 @@ public class ProfileSummaryViewModel
 
 public class EmailOutboxViewModel
 {
+    public int TotalMessageCount { get; set; }
     public int QueuedCount { get; set; }
     public int SentLast24HoursCount { get; set; }
     public int FailedCount { get; set; }
     public bool IsPaused { get; set; }
     public List<EmailOutboxMessage> Messages { get; set; } = [];
+}
+
+public class DuplicateAccountListViewModel
+{
+    public List<DuplicateAccountGroupViewModel> Groups { get; set; } = [];
+}
+
+public class DuplicateAccountGroupViewModel
+{
+    public string SharedEmail { get; set; } = string.Empty;
+    public List<DuplicateAccountItemViewModel> Accounts { get; set; } = [];
+}
+
+public class DuplicateAccountItemViewModel
+{
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string? Email { get; set; }
+    public string? ProfilePictureUrl { get; set; }
+    public string? MembershipTier { get; set; }
+    public string? MembershipStatus { get; set; }
+    public DateTime? LastLogin { get; set; }
+    public DateTime? CreatedAt { get; set; }
+    public int TeamCount { get; set; }
+    public int RoleAssignmentCount { get; set; }
+    public bool HasProfile { get; set; }
+    public bool IsProfileComplete { get; set; }
+    public List<string> EmailSources { get; set; } = [];
+    public List<string> Teams { get; set; } = [];
+}
+
+public class DuplicateAccountDetailViewModel
+{
+    public string SharedEmail { get; set; } = string.Empty;
+    public ProfileSummaryViewModel Account1 { get; set; } = new();
+    public ProfileSummaryViewModel Account2 { get; set; } = new();
+    public List<string> Account1EmailSources { get; set; } = [];
+    public List<string> Account2EmailSources { get; set; } = [];
 }

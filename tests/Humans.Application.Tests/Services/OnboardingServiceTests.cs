@@ -24,6 +24,7 @@ public class OnboardingServiceTests : IDisposable
     private readonly OnboardingService _service;
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
+    private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
@@ -38,7 +39,7 @@ public class OnboardingServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _service = new OnboardingService(
-            _dbContext, _auditLogService, _emailService, _syncJob,
+            _dbContext, _auditLogService, _emailService, _notificationService, _syncJob,
             _membershipCalculator, _metrics, _clock, _cache,
             NullLogger<OnboardingService>.Instance);
     }
@@ -58,9 +59,8 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
         await SeedProfileAsync(userId, consentCheckStatus: ConsentCheckStatus.Pending);
-        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>()).Returns(true);
 
-        var result = await _service.ClearConsentCheckAsync(userId, reviewerId, "Reviewer", "All good");
+        var result = await _service.ClearConsentCheckAsync(userId, reviewerId, "All good");
 
         result.Success.Should().BeTrue();
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
@@ -73,7 +73,7 @@ public class OnboardingServiceTests : IDisposable
     [Fact]
     public async Task ClearConsentCheckAsync_ProfileNotFound_ReturnsNotFound()
     {
-        var result = await _service.ClearConsentCheckAsync(Guid.NewGuid(), Guid.NewGuid(), "Reviewer", null);
+        var result = await _service.ClearConsentCheckAsync(Guid.NewGuid(), Guid.NewGuid(), null);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -85,23 +85,26 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedProfileAsync(userId, rejectedAt: _clock.GetCurrentInstant());
 
-        var result = await _service.ClearConsentCheckAsync(userId, Guid.NewGuid(), "Reviewer", null);
+        var result = await _service.ClearConsentCheckAsync(userId, Guid.NewGuid(), null);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyRejected");
     }
 
     [Fact]
-    public async Task ClearConsentCheckAsync_MissingConsents_ReturnsError()
+    public async Task ClearConsentCheckAsync_MissingConsents_StillSucceeds()
     {
         var userId = Guid.NewGuid();
         await SeedProfileAsync(userId, consentCheckStatus: ConsentCheckStatus.Pending);
-        _membershipCalculator.HasAllRequiredConsentsAsync(userId, Arg.Any<CancellationToken>()).Returns(false);
 
-        var result = await _service.ClearConsentCheckAsync(userId, Guid.NewGuid(), "Reviewer", null);
+        var result = await _service.ClearConsentCheckAsync(userId, Guid.NewGuid(), null);
 
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("ConsentsRequired");
+        result.Success.Should().BeTrue();
+        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        profile.ConsentCheckStatus.Should().Be(ConsentCheckStatus.Cleared);
+        profile.IsApproved.Should().BeTrue();
+        // Sync job is called — it independently decides whether to add to team based on consent status
+        await _syncJob.Received().SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -110,7 +113,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedProfileAsync(userId, consentCheckStatus: ConsentCheckStatus.Pending);
 
-        var result = await _service.FlagConsentCheckAsync(userId, Guid.NewGuid(), "Reviewer", "Concern");
+        var result = await _service.FlagConsentCheckAsync(userId, Guid.NewGuid(), "Concern");
 
         result.Success.Should().BeTrue();
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
@@ -122,7 +125,7 @@ public class OnboardingServiceTests : IDisposable
     [Fact]
     public async Task FlagConsentCheckAsync_ProfileNotFound_ReturnsNotFound()
     {
-        var result = await _service.FlagConsentCheckAsync(Guid.NewGuid(), Guid.NewGuid(), "Reviewer", null);
+        var result = await _service.FlagConsentCheckAsync(Guid.NewGuid(), Guid.NewGuid(), null);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -136,7 +139,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, isApproved: false);
 
-        var result = await _service.ApproveVolunteerAsync(userId, Guid.NewGuid(), "Admin");
+        var result = await _service.ApproveVolunteerAsync(userId, Guid.NewGuid());
 
         result.Success.Should().BeTrue();
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
@@ -151,7 +154,7 @@ public class OnboardingServiceTests : IDisposable
         _dbContext.Users.Add(new User { Id = userId, DisplayName = "Test", UserName = "test@test.com", Email = "test@test.com" });
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.ApproveVolunteerAsync(userId, Guid.NewGuid(), "Admin");
+        var result = await _service.ApproveVolunteerAsync(userId, Guid.NewGuid());
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -163,7 +166,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
 
-        var result = await _service.SuspendAsync(userId, Guid.NewGuid(), "Admin", "Policy violation");
+        var result = await _service.SuspendAsync(userId, Guid.NewGuid(), "Policy violation");
 
         result.Success.Should().BeTrue();
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
@@ -175,7 +178,7 @@ public class OnboardingServiceTests : IDisposable
     [Fact]
     public async Task SuspendAsync_NoProfile_ReturnsNotFound()
     {
-        var result = await _service.SuspendAsync(Guid.NewGuid(), Guid.NewGuid(), "Admin", null);
+        var result = await _service.SuspendAsync(Guid.NewGuid(), Guid.NewGuid(), null);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -187,7 +190,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, isSuspended: true);
 
-        var result = await _service.UnsuspendAsync(userId, Guid.NewGuid(), "Admin");
+        var result = await _service.UnsuspendAsync(userId, Guid.NewGuid());
 
         result.Success.Should().BeTrue();
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
@@ -197,7 +200,7 @@ public class OnboardingServiceTests : IDisposable
     [Fact]
     public async Task UnsuspendAsync_NoProfile_ReturnsNotFound()
     {
-        var result = await _service.UnsuspendAsync(Guid.NewGuid(), Guid.NewGuid(), "Admin");
+        var result = await _service.UnsuspendAsync(Guid.NewGuid(), Guid.NewGuid());
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -211,7 +214,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
 
-        var result = await _service.RejectSignupAsync(userId, Guid.NewGuid(), "Reviewer", "Incomplete");
+        var result = await _service.RejectSignupAsync(userId, Guid.NewGuid(), "Incomplete");
 
         result.Success.Should().BeTrue();
         var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
@@ -226,7 +229,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, rejectedAt: _clock.GetCurrentInstant());
 
-        var result = await _service.RejectSignupAsync(userId, Guid.NewGuid(), "Reviewer", "reason");
+        var result = await _service.RejectSignupAsync(userId, Guid.NewGuid(), "reason");
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("AlreadyRejected");
@@ -235,7 +238,7 @@ public class OnboardingServiceTests : IDisposable
     [Fact]
     public async Task RejectSignupAsync_ProfileNotFound_ReturnsNotFound()
     {
-        var result = await _service.RejectSignupAsync(Guid.NewGuid(), Guid.NewGuid(), "Reviewer", null);
+        var result = await _service.RejectSignupAsync(Guid.NewGuid(), Guid.NewGuid(), null);
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotFound");
@@ -247,7 +250,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
 
-        await _service.RejectSignupAsync(userId, Guid.NewGuid(), "Reviewer", "Incomplete");
+        await _service.RejectSignupAsync(userId, Guid.NewGuid(), "Incomplete");
 
         await _emailService.Received().SendSignupRejectedAsync(
             Arg.Any<string>(), Arg.Any<string>(), "Incomplete", Arg.Any<string>());
@@ -259,7 +262,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
 
-        await _service.RejectSignupAsync(userId, Guid.NewGuid(), "Reviewer", "reason");
+        await _service.RejectSignupAsync(userId, Guid.NewGuid(), "reason");
 
         await _syncJob.Received().SyncVolunteersMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
         await _syncJob.Received().SyncColaboradorsMembershipForUserAsync(userId, Arg.Any<CancellationToken>());
@@ -398,8 +401,9 @@ public class OnboardingServiceTests : IDisposable
         var flaggedProfile = await _dbContext.Profiles.FirstAsync(p => p.UserId == flaggedId);
         flaggedProfile.ConsentCheckStatus = ConsentCheckStatus.Flagged;
         await _dbContext.SaveChangesAsync();
+        SetupDefaultMembershipSnapshot();
 
-        var (pending, flagged, _) = await _service.GetReviewQueueAsync();
+        var (pending, flagged, _, _) = await _service.GetReviewQueueAsync();
 
         pending.Should().HaveCount(2);
         pending.Select(p => p.UserId).Should().Contain(noConsentId);
@@ -414,7 +418,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, isApproved: true);
 
-        var (pending, flagged, _) = await _service.GetReviewQueueAsync();
+        var (pending, flagged, _, _) = await _service.GetReviewQueueAsync();
 
         pending.Should().BeEmpty();
         flagged.Should().BeEmpty();
@@ -426,7 +430,7 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, rejectedAt: _clock.GetCurrentInstant());
 
-        var (pending, flagged, _) = await _service.GetReviewQueueAsync();
+        var (pending, flagged, _, _) = await _service.GetReviewQueueAsync();
 
         pending.Should().BeEmpty();
         flagged.Should().BeEmpty();
@@ -438,10 +442,26 @@ public class OnboardingServiceTests : IDisposable
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId);
         await SeedApplicationForUserAsync(userId, Guid.NewGuid());
+        SetupDefaultMembershipSnapshot();
 
-        var (_, _, pendingAppUserIds) = await _service.GetReviewQueueAsync();
+        var (_, _, pendingAppUserIds, _) = await _service.GetReviewQueueAsync();
 
         pendingAppUserIds.Should().Contain(userId);
+    }
+
+    [Fact]
+    public async Task GetReviewQueueAsync_IncludesConsentProgress()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserWithProfileAsync(userId);
+        _membershipCalculator.GetMembershipSnapshotAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new MembershipSnapshot(MembershipStatus.Pending, false, 3, 1, new List<Guid>()));
+
+        var (_, _, _, consentProgress) = await _service.GetReviewQueueAsync();
+
+        consentProgress.Should().ContainKey(userId);
+        consentProgress[userId].Signed.Should().Be(2); // 3 - 1
+        consentProgress[userId].Required.Should().Be(3);
     }
 
     [Fact]
@@ -475,8 +495,9 @@ public class OnboardingServiceTests : IDisposable
             UpdatedAt = now
         });
         await _dbContext.SaveChangesAsync();
+        SetupDefaultMembershipSnapshot();
 
-        var (pending, _, _) = await _service.GetReviewQueueAsync();
+        var (pending, _, _, _) = await _service.GetReviewQueueAsync();
 
         pending.Should().HaveCount(2);
         pending[0].UserId.Should().Be(olderId);
@@ -486,11 +507,12 @@ public class OnboardingServiceTests : IDisposable
     [Fact]
     public async Task GetReviewQueueAsync_EmptyWhenNone()
     {
-        var (pending, flagged, pendingAppUserIds) = await _service.GetReviewQueueAsync();
+        var (pending, flagged, pendingAppUserIds, consentProgress) = await _service.GetReviewQueueAsync();
 
         pending.Should().BeEmpty();
         flagged.Should().BeEmpty();
         pendingAppUserIds.Should().BeEmpty();
+        consentProgress.Should().BeEmpty();
     }
 
     // --- GetReviewDetailAsync ---
@@ -918,6 +940,12 @@ public class OnboardingServiceTests : IDisposable
     }
 
     // --- Helpers ---
+
+    private void SetupDefaultMembershipSnapshot()
+    {
+        _membershipCalculator.GetMembershipSnapshotAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new MembershipSnapshot(MembershipStatus.Pending, false, 0, 0, new List<Guid>()));
+    }
 
     private async Task SeedProfileAsync(Guid userId,
         bool isApproved = false, bool isSuspended = false,

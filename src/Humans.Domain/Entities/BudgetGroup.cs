@@ -14,7 +14,9 @@ public class BudgetGroup
     public int SortOrder { get; set; }
     public bool IsRestricted { get; set; }
     public bool IsDepartmentGroup { get; set; }
+    public bool IsTicketingGroup { get; set; }
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
     public ICollection<BudgetCategory> Categories { get; } = new List<BudgetCategory>();
+    public TicketingProjection? TicketingProjection { get; set; }
 }

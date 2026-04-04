@@ -18,6 +18,10 @@ public static class HtmlHelperExtensions
         return writer.ToString().Replace("'", "\\'", StringComparison.Ordinal);
     }
 
+    private static readonly MarkdownPipeline MarkdownPipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
+        .Build();
+
     public static IHtmlContent SanitizedMarkdown(this IHtmlHelper html, string? markdown)
     {
         ArgumentNullException.ThrowIfNull(html);
@@ -27,11 +31,16 @@ public static class HtmlHelperExtensions
             return HtmlString.Empty;
         }
 
-        var pipeline = new MarkdownPipelineBuilder()
-            .UseAdvancedExtensions()
-            .Build();
-        var rendered = Markdown.ToHtml(markdown, pipeline);
-        var sanitized = new HtmlSanitizer().Sanitize(rendered);
+        var rendered = Markdown.ToHtml(markdown, MarkdownPipeline);
+        var sanitizer = new HtmlSanitizer();
+
+        // Allow task list checkboxes rendered by Markdig's UseTaskLists extension
+        sanitizer.AllowedTags.Add("input");
+        sanitizer.AllowedAttributes.Add("type");
+        sanitizer.AllowedAttributes.Add("checked");
+        sanitizer.AllowedAttributes.Add("disabled");
+
+        var sanitized = sanitizer.Sanitize(rendered);
         return new HtmlString(sanitized);
     }
 }

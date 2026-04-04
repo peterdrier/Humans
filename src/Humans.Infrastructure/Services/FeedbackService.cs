@@ -16,6 +16,7 @@ public class FeedbackService : IFeedbackService
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
@@ -32,6 +33,7 @@ public class FeedbackService : IFeedbackService
     public FeedbackService(
         HumansDbContext dbContext,
         IEmailService emailService,
+        INotificationService notificationService,
         IAuditLogService auditLogService,
         IClock clock,
         IMemoryCache cache,
@@ -40,6 +42,7 @@ public class FeedbackService : IFeedbackService
     {
         _dbContext = dbContext;
         _emailService = emailService;
+        _notificationService = notificationService;
         _auditLogService = auditLogService;
         _clock = clock;
         _cache = cache;
@@ -170,26 +173,19 @@ public class FeedbackService : IFeedbackService
             report.ResolvedByUserId = null;
         }
 
-        string actorName = "API";
-        if (actorUserId.HasValue)
-        {
-            var actor = await _dbContext.Users.FindAsync(new object[] { actorUserId.Value }, cancellationToken);
-            actorName = actor?.DisplayName ?? actorUserId.Value.ToString();
-        }
-
         if (actorUserId.HasValue)
         {
             await _auditLogService.LogAsync(
                 AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
                 $"Feedback {id} status changed to {status}",
-                actorUserId.Value, actorName);
+                actorUserId.Value);
         }
         else
         {
             await _auditLogService.LogAsync(
                 AuditAction.FeedbackStatusChanged, nameof(FeedbackReport), id,
                 $"Feedback {id} status changed to {status}",
-                actorName);
+                "API");
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -250,6 +246,25 @@ public class FeedbackService : IFeedbackService
                     "Skipping feedback response email for report {ReportId} because user {UserId} has no effective email",
                     reportId,
                     user.Id);
+            }
+
+            // In-app notification to the original submitter (best-effort)
+            try
+            {
+                await _notificationService.SendAsync(
+                    NotificationSource.FeedbackResponse,
+                    NotificationClass.Informational,
+                    NotificationPriority.Normal,
+                    "You have a response to your feedback",
+                    [report.UserId],
+                    body: "An admin has responded to your feedback report.",
+                    actionUrl: reportLink,
+                    actionLabel: "View response",
+                    cancellationToken: cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch FeedbackResponse notification for report {ReportId}", reportId);
             }
         }
         else

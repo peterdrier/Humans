@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Configuration;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Application.Extensions;
 
 namespace Humans.Infrastructure.Services;
 
@@ -86,13 +88,7 @@ public class MagicLinkService : IMagicLinkService
     public async Task<User?> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
         // Check if this token was already consumed
-        var cacheKey = $"magic_link_used:{token[..Math.Min(token.Length, 32)]}";
-        if (_memoryCache.TryGetValue(cacheKey, out _))
-        {
-            _logger.LogWarning("Magic link login: token already used for user {UserId}", userId);
-            return null;
-        }
-
+        var cacheKey = CacheKeys.MagicLinkUsed(token[..Math.Min(token.Length, 32)]);
         var user = await _userManager.FindByIdAsync(userId.ToString());
         if (user is null)
         {
@@ -119,7 +115,11 @@ public class MagicLinkService : IMagicLinkService
         }
 
         // Mark token as consumed (cache for token lifetime to prevent replay)
-        _memoryCache.Set(cacheKey, true, TokenLifetime);
+        if (!await _memoryCache.TryReserveAsync(cacheKey, TokenLifetime))
+        {
+            _logger.LogWarning("Magic link login: token already used for user {UserId}", userId);
+            return null;
+        }
 
         return user;
     }
@@ -154,6 +154,22 @@ public class MagicLinkService : IMagicLinkService
         return await _userManager.FindByEmailAsync(email);
     }
 
+    public async Task<User?> FindUserByAnyEmailAsync(string email, CancellationToken ct = default)
+    {
+        // 1. Check verified UserEmails first (strongest match)
+        var verified = await FindUserByVerifiedEmailAsync(email, ct);
+        if (verified is not null)
+            return verified;
+
+        // 2. Check User.Email on other accounts (the account's identity email).
+        // We intentionally skip unverified UserEmail rows — those are in a "pending
+        // verification/merge review" state and auto-linking would bypass the
+        // AccountMergeRequest admin review gate.
+        var normalizedEmail = _userManager.NormalizeEmail(email);
+        return await _userManager.Users
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
+    }
+
     private async Task SendLoginLinkAsync(User user, string sendToEmail, string? returnUrl, CancellationToken ct)
     {
         // Rate limit: one magic link per 60 seconds per user
@@ -186,22 +202,28 @@ public class MagicLinkService : IMagicLinkService
     private async Task SendSignupLinkAsync(string email, string? returnUrl, CancellationToken ct)
     {
         // Rate limit signup emails: one per 60 seconds per email address
-        var cacheKey = $"magic_link_signup:{email.ToUpperInvariant()}";
-        if (_memoryCache.TryGetValue(cacheKey, out _))
+        var cacheKey = CacheKeys.MagicLinkSignupRateLimit(email.ToUpperInvariant());
+        if (!await _memoryCache.TryReserveAsync(cacheKey, TimeSpan.FromSeconds(60)))
         {
             _logger.LogDebug("Magic link signup rate-limited for {Email}", email);
             return;
         }
 
-        var token = _signupProtector.Protect(email, TokenLifetime);
-        var encodedToken = Uri.EscapeDataString(token);
-        var returnUrlParam = string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}";
-        var magicLinkUrl = $"{_emailSettings.BaseUrl}/Account/MagicLinkSignup?token={encodedToken}{returnUrlParam}";
+        try
+        {
+            var token = _signupProtector.Protect(email, TokenLifetime);
+            var encodedToken = Uri.EscapeDataString(token);
+            var returnUrlParam = string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}";
+            var magicLinkUrl = $"{_emailSettings.BaseUrl}/Account/MagicLinkSignup?token={encodedToken}{returnUrlParam}";
 
-        await _emailService.SendMagicLinkSignupAsync(email, magicLinkUrl, ct: ct);
+            await _emailService.SendMagicLinkSignupAsync(email, magicLinkUrl, ct: ct);
 
-        _memoryCache.Set(cacheKey, true, TimeSpan.FromSeconds(60));
-
-        _logger.LogInformation("Magic link signup sent to {Email}", email);
+            _logger.LogInformation("Magic link signup sent to {Email}", email);
+        }
+        catch
+        {
+            _memoryCache.Remove(cacheKey);
+            throw;
+        }
     }
 }

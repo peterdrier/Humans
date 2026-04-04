@@ -7,7 +7,7 @@ export default defineConfig({
   use: {
     baseURL: process.env.BASE_URL || 'https://humans.n.burn.camp',
     screenshot: 'only-on-failure',
-    trace: 'retain-on-failure',
+    trace: 'retain-on-first-failure',
   },
   projects: [
     {

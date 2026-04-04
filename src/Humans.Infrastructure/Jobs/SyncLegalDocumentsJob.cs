@@ -10,7 +10,7 @@ namespace Humans.Infrastructure.Jobs;
 /// <summary>
 /// Background job that syncs legal documents from the GitHub repository.
 /// </summary>
-public class SyncLegalDocumentsJob
+public class SyncLegalDocumentsJob : IRecurringJob
 {
     private readonly ILegalDocumentSyncService _syncService;
     private readonly IEmailService _emailService;

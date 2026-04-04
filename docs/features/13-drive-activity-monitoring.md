@@ -117,7 +117,6 @@ Uses the existing `AuditLogEntry` entity. No new tables or migrations required.
 | EntityType | `GoogleResource` |
 | EntityId | GoogleResource.Id (from DB) |
 | Description | Human-readable: "Anomalous permission change on '{name}' by {actor}: {details}" |
-| ActorName | `DriveActivityMonitorJob` |
 | ActorUserId | `null` (system job) |
 
 ## Background Job

@@ -15,7 +15,7 @@ namespace Humans.Infrastructure.Jobs;
 /// Processes queued email outbox messages by sending them via the email transport.
 /// Runs every 1 minute via Hangfire.
 /// </summary>
-public class ProcessEmailOutboxJob
+public class ProcessEmailOutboxJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailTransport _transport;
@@ -92,6 +92,7 @@ public class ProcessEmailOutboxJob
                     _logger.LogInformation(
                         "Skipped email {MessageId} to test address {Email}",
                         message.Id, message.RecipientEmail);
+                    await _dbContext.SaveChangesAsync(cancellationToken);
                     continue;
                 }
 
@@ -129,6 +130,8 @@ public class ProcessEmailOutboxJob
                     }
                 }
 
+                await _dbContext.SaveChangesAsync(cancellationToken);
+
                 // Throttle: 1 second delay between sends to avoid SMTP rate limits
                 await Task.Delay(1000, cancellationToken);
             }
@@ -162,18 +165,17 @@ public class ProcessEmailOutboxJob
                     message.Id,
                     message.TemplateName,
                     message.RetryCount);
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
             }
         }
 
-        // 5. Save all changes
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        // 6. Set outbox_pending gauge
+        // 5. Set outbox_pending gauge
         var pendingCount = await _dbContext.EmailOutboxMessages
             .CountAsync(m => m.SentAt == null && m.RetryCount < _settings.OutboxMaxRetries, cancellationToken);
         _metrics.SetEmailOutboxPending(pendingCount);
 
-        // 7. Record successful job run
+        // 6. Record successful job run
         _metrics.RecordJobRun("process_email_outbox", "success");
     }
 }

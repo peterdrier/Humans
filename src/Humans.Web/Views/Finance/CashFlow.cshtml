@@ -1,0 +1,173 @@
+@model Humans.Web.Models.CashFlowViewModel
+@{
+    ViewData["Title"] = $"Cash Flow - {Model.YearName}";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">
+        <i class="fa-solid fa-money-bill-transfer me-2"></i>Cash Flow
+        <small class="text-muted fs-5">@Model.YearName</small>
+    </h1>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
+        </a>
+    </div>
+</div>
+
+<vc:temp-data-alerts />
+
+<!-- Period Toggle -->
+<div class="card mb-4">
+    <div class="card-body py-2">
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-muted">Time period:</span>
+            <div class="btn-group btn-group-sm" role="group">
+                <a asp-action="CashFlow" asp-route-period="weekly"
+                   class="btn @(string.Equals(Model.Period, "weekly", StringComparison.OrdinalIgnoreCase) ? "btn-primary" : "btn-outline-primary")">
+                    Weekly
+                </a>
+                <a asp-action="CashFlow" asp-route-period="monthly"
+                   class="btn @(string.Equals(Model.Period, "monthly", StringComparison.OrdinalIgnoreCase) ? "btn-primary" : "btn-outline-primary")">
+                    Monthly
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Periods.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-table me-1"></i>Scheduled Cash Flow
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Period</th>
+                        <th class="text-end">Income</th>
+                        <th class="text-end">Expenses</th>
+                        <th class="text-end">Net</th>
+                        <th class="text-end">Running Net</th>
+                        <th style="width: 30px;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var periodRow in Model.Periods)
+                    {
+                        var detailId = $"period-{periodRow.PeriodStart.ToString("yyyyMMdd", null)}";
+                        <tr class="fw-semibold" role="button" data-bs-toggle="collapse" data-bs-target="#@detailId">
+                            <td>@periodRow.Label</td>
+                            <td class="text-end text-success">&euro;@periodRow.IncomeTotal.ToString("N2")</td>
+                            <td class="text-end text-danger">&euro;@Math.Abs(periodRow.ExpenseTotal).ToString("N2")</td>
+                            <td class="text-end @(periodRow.Net >= 0 ? "text-success" : "text-danger")">
+                                &euro;@periodRow.Net.ToString("N2")
+                            </td>
+                            <td class="text-end @(periodRow.RunningNet >= 0 ? "text-success" : "text-danger")">
+                                <strong>&euro;@periodRow.RunningNet.ToString("N2")</strong>
+                            </td>
+                            <td class="text-center">
+                                <i class="fa-solid fa-chevron-down small text-muted"></i>
+                            </td>
+                        </tr>
+                        <tr class="collapse" id="@detailId">
+                            <td colspan="6" class="p-0">
+                                <table class="table table-sm mb-0 ms-4" style="width: calc(100% - 2rem);">
+                                    <tbody>
+                                        @foreach (var cat in periodRow.Categories)
+                                        {
+                                            <tr class="text-muted small">
+                                                <td>
+                                                    @cat.GroupName <i class="fa-solid fa-chevron-right mx-1 small"></i> @cat.CategoryName
+                                                </td>
+                                                <td class="text-end @(cat.Amount >= 0 ? "text-success" : "text-danger")">
+                                                    &euro;@cat.Amount.ToString("N2")
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="table-light">
+                    @{
+                        var totalIncome = Model.Periods.Sum(p => p.IncomeTotal);
+                        var totalExpenses = Model.Periods.Sum(p => p.ExpenseTotal);
+                        var totalNet = totalIncome + totalExpenses;
+                    }
+                    <tr class="fw-bold">
+                        <td>Total Scheduled</td>
+                        <td class="text-end text-success">&euro;@totalIncome.ToString("N2")</td>
+                        <td class="text-end text-danger">&euro;@Math.Abs(totalExpenses).ToString("N2")</td>
+                        <td class="text-end @(totalNet >= 0 ? "text-success" : "text-danger")">&euro;@totalNet.ToString("N2")</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body text-center py-4 text-muted">
+            <i class="fa-solid fa-calendar-xmark fa-2x mb-2"></i>
+            <p class="mb-0">No scheduled line items found. Add expected dates to line items to see cash flow projections.</p>
+        </div>
+    </div>
+}
+
+<!-- Unscheduled Items -->
+@if (Model.Unscheduled.Categories.Any())
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-calendar-xmark me-1"></i>Unscheduled
+            <small class="text-muted ms-2">Items without an expected date</small>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Category</th>
+                        <th class="text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cat in Model.Unscheduled.Categories)
+                    {
+                        <tr>
+                            <td>
+                                @cat.GroupName <i class="fa-solid fa-chevron-right mx-1 small text-muted"></i> @cat.CategoryName
+                            </td>
+                            <td class="text-end @(cat.Amount >= 0 ? "text-success" : "text-danger")">
+                                &euro;@cat.Amount.ToString("N2")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="table-light">
+                    <tr class="fw-bold">
+                        <td>Total Unscheduled</td>
+                        <td class="text-end @(Model.Unscheduled.Net >= 0 ? "text-success" : "text-danger")">
+                            &euro;@Model.Unscheduled.Net.ToString("N2")
+                        </td>
+                    </tr>
+                    <tr class="text-muted small">
+                        <td class="ps-3">Income</td>
+                        <td class="text-end">&euro;@Model.Unscheduled.IncomeTotal.ToString("N2")</td>
+                    </tr>
+                    <tr class="text-muted small">
+                        <td class="ps-3">Expenses</td>
+                        <td class="text-end">&euro;@Math.Abs(Model.Unscheduled.ExpenseTotal).ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}

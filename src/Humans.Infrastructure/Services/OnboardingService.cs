@@ -19,6 +19,7 @@ public class OnboardingService : IOnboardingService
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
+    private readonly INotificationService _notificationService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHumansMetrics _metrics;
@@ -30,6 +31,7 @@ public class OnboardingService : IOnboardingService
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
         IEmailService emailService,
+        INotificationService notificationService,
         ISystemTeamSync syncJob,
         IMembershipCalculator membershipCalculator,
         IHumansMetrics metrics,
@@ -40,6 +42,7 @@ public class OnboardingService : IOnboardingService
         _dbContext = dbContext;
         _auditLogService = auditLogService;
         _emailService = emailService;
+        _notificationService = notificationService;
         _syncJob = syncJob;
         _membershipCalculator = membershipCalculator;
         _metrics = metrics;
@@ -48,7 +51,8 @@ public class OnboardingService : IOnboardingService
         _logger = logger;
     }
 
-    public async Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds)>
+    public async Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds,
+        Dictionary<Guid, (int Signed, int Required)> ConsentProgress)>
         GetReviewQueueAsync(CancellationToken ct = default)
     {
         var reviewableProfiles = await _dbContext.Profiles
@@ -64,12 +68,19 @@ public class OnboardingService : IOnboardingService
             .Select(a => a.UserId)
             .ToHashSetAsync(ct);
 
+        var consentProgress = new Dictionary<Guid, (int Signed, int Required)>();
+        foreach (var userId in allUserIds)
+        {
+            var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
+            consentProgress[userId] = (snapshot.RequiredConsentCount - snapshot.PendingConsentCount, snapshot.RequiredConsentCount);
+        }
+
         var flagged = reviewableProfiles
             .Where(p => p.ConsentCheckStatus == ConsentCheckStatus.Flagged)
             .ToList();
         var pending = reviewableProfiles.Except(flagged).ToList();
 
-        return (pending, flagged, pendingAppUserIds);
+        return (pending, flagged, pendingAppUserIds, consentProgress);
     }
 
     public async Task<(Profile? Profile, int ConsentCount, int RequiredConsentCount,
@@ -144,7 +155,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> ClearConsentCheckAsync(
-        Guid userId, Guid reviewerId, string reviewerDisplayName, string? notes, CancellationToken ct = default)
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
             .Include(p => p.User)
@@ -155,10 +166,6 @@ public class OnboardingService : IOnboardingService
 
         if (profile.RejectedAt is not null)
             return new OnboardingResult(false, "AlreadyRejected");
-
-        var hasAllRequiredConsents = await _membershipCalculator.HasAllRequiredConsentsAsync(userId, ct);
-        if (!hasAllRequiredConsents)
-            return new OnboardingResult(false, "ConsentsRequired");
 
         var now = _clock.GetCurrentInstant();
 
@@ -171,17 +178,18 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckCleared, nameof(Profile), userId,
-            $"Consent check cleared by {reviewerDisplayName}",
-            reviewerId, reviewerDisplayName);
+            $"Consent check cleared",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         // Add to profile cache (profile is now approved and not suspended)
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
         _cache.UpdateApprovedProfile(userId, CachedProfile.Create(profile, profile.User));
 
-        // Sync Volunteers team membership (adds to team + sends welcome email)
+        // Sync Volunteers team membership (adds to team if consents are also complete)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
 
         // If user already has approved tier applications, sync those teams too.
@@ -205,7 +213,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> FlagConsentCheckAsync(
-        Guid userId, Guid reviewerId, string reviewerDisplayName, string? notes, CancellationToken ct = default)
+        Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
@@ -224,11 +232,12 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.ConsentCheckFlagged, nameof(Profile), userId,
-            $"Consent check flagged by {reviewerDisplayName}: {notes}",
-            reviewerId, reviewerDisplayName);
+            $"Consent check flagged: {notes}",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         // Remove from profile cache (no longer approved)
         _cache.UpdateApprovedProfile(userId, null);
@@ -290,7 +299,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> RejectSignupAsync(
-        Guid userId, Guid reviewerId, string reviewerDisplayName, string? reason, CancellationToken ct = default)
+        Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
             .Include(p => p.User)
@@ -312,11 +321,12 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.SignupRejected, nameof(Profile), userId,
-            $"Signup rejected by {reviewerDisplayName}{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
-            reviewerId, reviewerDisplayName);
+            $"Signup rejected{(string.IsNullOrWhiteSpace(reason) ? "" : $": {reason}")}",
+            reviewerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         // Remove from profile cache (no longer approved)
         _cache.UpdateApprovedProfile(userId, null);
@@ -337,13 +347,34 @@ public class OnboardingService : IOnboardingService
             _logger.LogError(ex, "Failed to send signup rejection email to {UserId}", userId);
         }
 
+        // In-app notification to the user (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.ProfileRejected,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                "Your signup has been reviewed",
+                [userId],
+                body: string.IsNullOrWhiteSpace(reason)
+                    ? "Your signup could not be approved at this time."
+                    : $"Your signup could not be approved: {reason}",
+                actionUrl: "/Profile",
+                actionLabel: "View profile",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ProfileRejected notification for user {UserId}", userId);
+        }
+
         _logger.LogInformation("Signup rejected for user {UserId} by {ReviewerId}", userId, reviewerId);
 
         return new OnboardingResult(true);
     }
 
     public async Task<OnboardingResult> ApproveVolunteerAsync(
-        Guid userId, Guid adminId, string adminDisplayName, CancellationToken ct = default)
+        Guid userId, Guid adminId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users
             .Include(u => u.Profile)
@@ -359,13 +390,14 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
-            $"{user.DisplayName} approved as volunteer by {adminDisplayName}",
-            adminId, adminDisplayName);
+            "Approved as volunteer",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 
         // FIX: cache eviction was missing in AdminController
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
 
         // Add to profile cache (profile is now approved)
         await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
@@ -377,11 +409,30 @@ public class OnboardingService : IOnboardingService
         _metrics.RecordVolunteerApproved();
         _logger.LogInformation("Admin {AdminId} approved human {HumanId}", adminId, userId);
 
+        // In-app notification to the new volunteer (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.VolunteerApproved,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                "Welcome! You have been approved",
+                [userId],
+                body: "Your profile has been approved. Welcome to the community!",
+                actionUrl: "/Profile",
+                actionLabel: "View profile",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch VolunteerApproved notification for user {UserId}", userId);
+        }
+
         return new OnboardingResult(true);
     }
 
     public async Task<OnboardingResult> SuspendAsync(
-        Guid userId, Guid adminId, string adminDisplayName, string? notes, CancellationToken ct = default)
+        Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
     {
         var user = await _dbContext.Users
             .Include(u => u.Profile)
@@ -396,13 +447,34 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.MemberSuspended, nameof(User), userId,
-            $"{user.DisplayName} suspended by {adminDisplayName}{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
-            adminId, adminDisplayName);
+            $"Suspended{(string.IsNullOrWhiteSpace(notes) ? "" : $": {notes}")}",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 
         // Remove from profile cache (suspended)
         _cache.UpdateApprovedProfile(userId, null);
+
+        // In-app notification to the suspended user (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.AccessSuspended,
+                NotificationClass.Actionable,
+                NotificationPriority.Critical,
+                "Your access has been suspended",
+                [userId],
+                body: string.IsNullOrWhiteSpace(notes)
+                    ? "Your access has been suspended by an administrator."
+                    : $"Your access has been suspended: {notes}",
+                actionUrl: "/Profile",
+                actionLabel: "View profile",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", userId);
+        }
 
         _metrics.RecordMemberSuspended("admin");
         _logger.LogInformation("Admin {AdminId} suspended human {HumanId}", adminId, userId);
@@ -411,7 +483,7 @@ public class OnboardingService : IOnboardingService
     }
 
     public async Task<OnboardingResult> UnsuspendAsync(
-        Guid userId, Guid adminId, string adminDisplayName, CancellationToken ct = default)
+        Guid userId, Guid adminId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users
             .Include(u => u.Profile)
@@ -425,8 +497,8 @@ public class OnboardingService : IOnboardingService
 
         await _auditLogService.LogAsync(
             AuditAction.MemberUnsuspended, nameof(User), userId,
-            $"{user.DisplayName} unsuspended by {adminDisplayName}",
-            adminId, adminDisplayName);
+            "Unsuspended",
+            adminId);
 
         await _dbContext.SaveChangesAsync(ct);
 
@@ -457,7 +529,27 @@ public class OnboardingService : IOnboardingService
         profile.UpdatedAt = _clock.GetCurrentInstant();
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
+        _cache.InvalidateNotificationMeters();
         _logger.LogInformation("User {UserId} has all consents signed, consent check set to Pending", userId);
+
+        // Dispatch in-app notification to Consent Coordinators
+        try
+        {
+            await _notificationService.SendToRoleAsync(
+                NotificationSource.ConsentReviewNeeded,
+                NotificationClass.Actionable,
+                NotificationPriority.High,
+                "New consent review needed",
+                RoleNames.ConsentCoordinator,
+                body: "A human has completed all required consents and needs review.",
+                actionUrl: "/OnboardingReview",
+                actionLabel: "Review \u2192",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ConsentReviewNeeded notification for user {UserId}", userId);
+        }
 
         return true;
     }

@@ -77,6 +77,26 @@ public class TeamDetailViewModel
     public Guid? CurrentUserPendingRequestId { get; set; }
     public int PendingRequestCount { get; set; }
     public ShiftsSummaryCardViewModel? ShiftsSummary { get; set; }
+
+    /// <summary>
+    /// Members from child teams rolled up to this department. Only populated for departments.
+    /// </summary>
+    public List<ChildTeamMemberViewModel> ChildTeamMembers { get; set; } = [];
+}
+
+public class ChildTeamMemberViewModel
+{
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public string? ProfilePictureUrl { get; set; }
+    public bool HasCustomProfilePicture { get; set; }
+    public string? CustomProfilePictureUrl { get; set; }
+    public string ChildTeamName { get; set; } = string.Empty;
+    public string ChildTeamSlug { get; set; } = string.Empty;
+
+    public string? EffectiveProfilePictureUrl => HasCustomProfilePicture
+        ? CustomProfilePictureUrl
+        : ProfilePictureUrl;
 }
 
 public class TeamMemberViewModel
@@ -90,6 +110,11 @@ public class TeamMemberViewModel
     public TeamMemberRole Role { get; set; }
     public DateTime JoinedAt { get; set; }
     public bool IsCoordinator { get; set; }
+
+    /// <summary>
+    /// The @nobodies.team email address if provisioned, or null.
+    /// </summary>
+    public string? NobodiesTeamEmail { get; set; }
 
     /// <summary>
     /// The effective profile picture URL (custom upload takes priority over Google avatar).
@@ -190,6 +215,7 @@ public class EditTeamViewModel : TeamFormViewModelBase
     public bool IsActive { get; set; }
     public bool IsSystemTeam { get; set; }
     public bool HasBudget { get; set; }
+    public bool IsSensitive { get; set; }
 }
 
 public class EditTeamPageViewModel
@@ -232,6 +258,46 @@ public class TeamMembersViewModel
     public List<TeamMemberViewModel> Members { get; set; } = [];
     public List<TeamJoinRequestViewModel> PendingRequests { get; set; } = [];
     public bool CanManageRoles { get; set; }
+    public bool CanProvisionEmails { get; set; }
+
+    /// <summary>
+    /// Google resources linked to this team (active only). For the resource access summary card.
+    /// </summary>
+    public List<ResourceAccessViewModel> TeamResources { get; set; } = [];
+
+    /// <summary>
+    /// Google resources linked to the parent department (active only). Shown separately when this is a sub-team.
+    /// </summary>
+    public List<ResourceAccessViewModel> ParentDepartmentResources { get; set; } = [];
+
+    /// <summary>
+    /// Parent department name, if this is a sub-team.
+    /// </summary>
+    public string? ParentDepartmentName { get; set; }
+
+    /// <summary>
+    /// Parent department slug, for linking to its Resources page.
+    /// </summary>
+    public string? ParentDepartmentSlug { get; set; }
+
+    /// <summary>
+    /// Whether the team is flagged as sensitive (admin-only).
+    /// </summary>
+    public bool IsSensitive { get; set; }
+
+    /// <summary>
+    /// The current actor's display name (for audit preview in sensitive team modal).
+    /// </summary>
+    public string? ActorDisplayName { get; set; }
+}
+
+public class ResourceAccessViewModel
+{
+    public string Name { get; set; } = string.Empty;
+    public string ResourceType { get; set; } = string.Empty;
+    public string? PermissionLevel { get; set; }
+    public string? Url { get; set; }
+    public string IconClass { get; set; } = string.Empty;
 }
 
 public class BirthdayCalendarViewModel
@@ -287,6 +353,7 @@ public class TeamRoleDefinitionViewModel
     public int SlotCount { get; set; }
     public List<TeamRoleSlotViewModel> Slots { get; set; } = [];
     public int SortOrder { get; set; }
+    public bool IsPublic { get; set; } = true;
     public bool IsManagement { get; set; }
     public RolePeriod Period { get; set; }
 
@@ -333,6 +400,7 @@ public class TeamRoleDefinitionViewModel
             SlotCount = d.SlotCount,
             Slots = slots,
             SortOrder = d.SortOrder,
+            IsPublic = d.IsPublic,
             IsManagement = d.IsManagement,
             Period = d.Period,
             AssignedUserIds = assignedUserIds
@@ -373,6 +441,7 @@ public class CreateRoleDefinitionModel
     public int SlotCount { get; set; } = 1;
     public List<string> Priorities { get; set; } = ["None"];
     public int SortOrder { get; set; }
+    public bool IsPublic { get; set; } = true;
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 }
 
@@ -385,6 +454,7 @@ public class EditRoleDefinitionModel
     public int SlotCount { get; set; }
     public List<string> Priorities { get; set; } = [];
     public int SortOrder { get; set; }
+    public bool IsPublic { get; set; } = true;
     public bool IsManagement { get; set; }
     public RolePeriod Period { get; set; } = RolePeriod.YearRound;
 }
@@ -464,6 +534,7 @@ public class AdminTeamViewModel
     public DateTime CreatedAt { get; set; }
     public bool IsChildTeam { get; set; }
     public int PendingShiftSignupCount { get; set; }
+    public bool IsHidden { get; set; }
 }
 
 /// <summary>

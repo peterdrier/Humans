@@ -95,4 +95,42 @@ public interface IUserEmailService
         Guid userId,
         string email,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// If the user has a verified @nobodies.team email but GoogleEmail is null, sets it.
+    /// Returns true if GoogleEmail was updated.
+    /// </summary>
+    Task<bool> TryBackfillGoogleEmailAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the verified @nobodies.team email for a user, or null if none exists.
+    /// </summary>
+    Task<string?> GetNobodiesTeamEmailAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a user has a verified @nobodies.team email.
+    /// </summary>
+    Task<bool> HasNobodiesTeamEmailAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets @nobodies.team email status for all users who have one.
+    /// Returns a dictionary of userId → isNotificationTarget (i.e., is it their primary email).
+    /// Used for admin listing pages.
+    /// </summary>
+    Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the verified @nobodies.team email for each of the given users (batch query).
+    /// Returns a dictionary of userId → email address. Users without a @nobodies.team email are omitted.
+    /// </summary>
+    Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default);
 }

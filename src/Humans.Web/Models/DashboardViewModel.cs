@@ -4,6 +4,7 @@ namespace Humans.Web.Models;
 
 public class DashboardViewModel
 {
+    public Guid UserId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }
     public MembershipStatus MembershipStatus { get; set; }
@@ -36,7 +37,20 @@ public class DashboardViewModel
     public bool TermExpiresSoon { get; set; }
     public bool TermExpired { get; set; }
 
+    // Shift discovery
+    public bool IsShiftBrowsingOpen { get; set; }
+    public string? EventName { get; set; }
+
     // Quick stats
     public DateTime MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
+
+    // Things to do wizard
+    public bool HasShiftSignups { get; set; }
+
+    // Per-user ticket status
+    public bool TicketsConfigured { get; set; }
+    public bool HasTicket { get; set; }
+    public int UserTicketCount { get; set; }
+    public string? TicketPurchaseUrl { get; set; }
 }

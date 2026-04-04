@@ -119,7 +119,7 @@ public class RoleAssignmentService : IRoleAssignmentService
     }
 
     public async Task<OnboardingResult> AssignRoleAsync(
-        Guid userId, string roleName, Guid assignerId, string assignerDisplayName,
+        Guid userId, string roleName, Guid assignerId,
         string? notes, CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
@@ -147,8 +147,8 @@ public class RoleAssignmentService : IRoleAssignmentService
 
         await _auditLogService.LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,
-            $"Role '{roleName}' assigned to {user?.DisplayName ?? userId.ToString()}",
-            assignerId, assignerDisplayName);
+            $"Role '{roleName}' assigned",
+            assignerId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -167,7 +167,7 @@ public class RoleAssignmentService : IRoleAssignmentService
     }
 
     public async Task<OnboardingResult> EndRoleAsync(
-        Guid assignmentId, Guid enderId, string enderDisplayName,
+        Guid assignmentId, Guid enderId,
         string? notes, CancellationToken ct = default)
     {
         var roleAssignment = await _dbContext.RoleAssignments
@@ -196,8 +196,8 @@ public class RoleAssignmentService : IRoleAssignmentService
 
         await _auditLogService.LogAsync(
             AuditAction.RoleEnded, nameof(User), roleAssignment.UserId,
-            $"Role '{roleAssignment.RoleName}' ended for {roleAssignment.User.DisplayName}",
-            enderId, enderDisplayName);
+            $"Role '{roleAssignment.RoleName}' ended",
+            enderId);
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
@@ -213,5 +213,41 @@ public class RoleAssignmentService : IRoleAssignmentService
         }
 
         return new OnboardingResult(true);
+    }
+
+    public async Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        return await _dbContext.RoleAssignments
+            .AnyAsync(ra =>
+                ra.UserId == userId &&
+                ra.RoleName == RoleNames.Admin &&
+                ra.ValidFrom <= now &&
+                (ra.ValidTo == null || ra.ValidTo > now),
+                cancellationToken);
+    }
+
+    public async Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        return await _dbContext.RoleAssignments
+            .AnyAsync(ra =>
+                ra.UserId == userId &&
+                ra.RoleName == RoleNames.Board &&
+                ra.ValidFrom <= now &&
+                (ra.ValidTo == null || ra.ValidTo > now),
+                cancellationToken);
+    }
+
+    public async Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        return await _dbContext.RoleAssignments
+            .AnyAsync(ra =>
+                ra.UserId == userId &&
+                ra.RoleName == RoleNames.TeamsAdmin &&
+                ra.ValidFrom <= now &&
+                (ra.ValidTo == null || ra.ValidTo > now),
+                cancellationToken);
     }
 }

@@ -4,16 +4,17 @@ Membership management system for Nobodies Collective, a Spanish nonprofit organi
 
 ## Features
 
-- **Member Management**: Profile management, role assignments, team memberships
-- **Application Workflow**: State machine-based membership application processing
-- **Legal Document Consent**: GDPR-compliant consent tracking with re-consent requirements
-- **Google Integration**: Drive folder provisioning for teams and members
-- **Admin Dashboard**: Member management, application review, reporting
-- **Observability**: OpenTelemetry traces/metrics, Prometheus endpoint, health checks
+- **Member Management**: Profile management, role assignments, contact fields, birthday tracking, and membership status
+- **Applications & Governance**: Colaborador/Asociado applications, Board voting, and temporal governance roles
+- **Volunteer Operations**: Shift browsing, urgent staffing, shift signups, coordinator tooling, and camp registration
+- **Compliance**: GDPR consent tracking, legal document sync from GitHub, re-consent workflows, and audit logs
+- **Integrations**: Google OAuth, Google Workspace provisioning, Drive and Groups sync, ticket vendor sync, and campaign codes
+- **Admin & Finance**: Member administration, feedback triage, email outbox, budget management, and reporting
+- **Observability**: OpenTelemetry traces/metrics, Prometheus endpoint, health checks, and structured logging
 
 ## Technology Stack
 
-- .NET 10 LTS
+- .NET 10 SDK
 - PostgreSQL with EF Core
 - ASP.NET Core Identity with Google OAuth
 - Hangfire for background jobs
@@ -39,7 +40,7 @@ Membership management system for Nobodies Collective, a Spanish nonprofit organi
 docker-compose up -d db
 ```
 
-4. Apply migrations and run:
+4. Run the web app. It applies pending migrations on startup:
 
 ```bash
 dotnet run --project src/Humans.Web
@@ -60,15 +61,16 @@ docker-compose up -d
 This starts:
 - Application (port 5000)
 - PostgreSQL (port 5432)
-- Redis (port 6379)
-- OpenTelemetry Collector (port 4317)
-- Prometheus (port 9091)
-- Grafana (port 3000)
+
+## Documentation
+
+- Full documentation index: [docs/README.md](docs/README.md)
+- Historical repo stats: [docs/development-stats.md](docs/development-stats.md)
 
 ## Project Structure
 
 ```
-profiles.net/
+humans/
 ├── src/
 │   ├── Humans.Domain/           # Entities, enums, value objects
 │   ├── Humans.Application/      # Use cases, DTOs, interfaces
@@ -95,7 +97,12 @@ profiles.net/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OpenTelemetry__OtlpEndpoint` | `http://localhost:4317` | OTLP collector endpoint |
+| `Email__Username` / `Email__Password` | empty | SMTP credentials for outbound mail |
+| `GoogleWorkspace__ServiceAccountKeyJson` | empty | Google Workspace service account key |
+| `GitHub__AccessToken` | empty | GitHub token for legal document sync |
+| `GoogleMaps__ApiKey` | empty | Maps API key for profile locations and maps |
+| `TicketVendor__Provider` | `TicketTailor` | Ticket vendor integration provider |
+| `OpenTelemetry__OtlpEndpoint` | `http://localhost:4317` | OTLP collector endpoint for tracing |
 
 ## API Endpoints
 
@@ -105,6 +112,7 @@ profiles.net/
 | `/health/ready` | Readiness probe |
 | `/metrics` | Prometheus metrics |
 | `/hangfire` | Hangfire dashboard (admin only) |
+| `/api/version` | Build metadata and commit info |
 
 ## Legal Documents
 
@@ -115,9 +123,9 @@ When legal documents are updated:
 2. Members without valid consent are marked as Inactive
 3. Access is restricted until re-consent is provided
 
-## Development Timeline
+## Selected Milestones
 
-Built from zero to production in 40 days (493 commits). Key milestones:
+The project grew quickly from the initial member portal into a broader operational system. Selected milestones:
 
 | Date | Milestone |
 |------|-----------|
@@ -136,6 +144,14 @@ Built from zero to production in 40 days (493 commits). Key milestones:
 | **Mar 13** | Camps — full event camp registration system with approval workflow, co-leads, and public JSON API |
 | **Mar 14** | Email outbox with retry and crash recovery, campaign system with CSV import and discount code distribution |
 | **Mar 15** | Ticket vendor integration (TicketTailor sync), membership status partition model, admin log viewer |
+| **Mar 16** | Shift management foundation and team hierarchy/coordinator workflows |
+| **Mar 18** | Feedback system and shift sign-up visibility work |
+| **Mar 19** | Volunteer management refinements and ticket/vendor follow-up changes |
+| **Mar 22** | Playwright E2E smoke-test coverage and section-based test structure |
+| **Mar 23** | Auth/Google sync hardening, feedback triage workflow, and session polish |
+| **Mar 24** | Feedback upgrade rollout and communication preference work |
+| **Mar 27** | Budget phase 1 foundation and related finance scaffolding |
+| **Mar 30-31** | Documentation refresh, repo stats update, and docs index expansion |
 
 ## License
 

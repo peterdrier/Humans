@@ -40,7 +40,7 @@ public class ShiftsController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false)
+    public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, bool showFull = false, [FromQuery(Name = "tags")] List<Guid>? tagIds = null)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -52,7 +52,7 @@ public class ShiftsController : HumansControllerBase
         if (es is null) return View("NoActiveEvent");
 
         var isPrivileged = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
-                           (await _shiftMgmt.GetCoordinatorDepartmentIdsAsync(user.Id)).Count > 0;
+                           (await _shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id)).Count > 0;
 
         var userSignups = await _signupService.GetByUserAsync(user.Id, es.Id);
         var hasSignups = userSignups.Count > 0;
@@ -60,13 +60,7 @@ public class ShiftsController : HumansControllerBase
         if (!es.IsShiftBrowsingOpen && !isPrivileged && !hasSignups)
             return View("BrowsingClosed");
 
-        var userSignupShiftIds = userSignups
-            .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-            .Select(s => s.ShiftId)
-            .ToHashSet();
-        var userSignupStatuses = userSignups
-            .Where(s => s.Status is SignupStatus.Confirmed or SignupStatus.Pending)
-            .ToDictionary(s => s.ShiftId, s => s.Status);
+        var (userSignupShiftIds, userSignupStatuses) = ShiftSignupHelper.ResolveActiveStatuses(userSignups);
 
         // Parse date range filters
         LocalDate? filterFromDate = null;
@@ -75,6 +69,11 @@ public class ShiftsController : HumansControllerBase
             filterFromDate = fromResult.Value;
         if (!string.IsNullOrEmpty(toDate) && LocalDatePattern.Iso.Parse(toDate) is { Success: true } toResult)
             filterToDate = toResult.Value;
+
+        // Explicit dates take precedence over period tab — prevents conflicting filters
+        // (e.g., user picks a date outside the active period's range)
+        if ((!string.IsNullOrEmpty(fromDate) || !string.IsNullOrEmpty(toDate)) && !string.IsNullOrEmpty(period))
+            period = null;
 
         // Apply period filter — compute date boundaries from EventSettings offsets
         if (!string.IsNullOrEmpty(period) && Enum.TryParse<ShiftPeriod>(period, true, out var parsedPeriod))
@@ -91,12 +90,18 @@ public class ShiftsController : HumansControllerBase
             includeAdminOnly: isPrivileged, includeSignups: isPrivileged,
             includeHidden: isPrivileged);
 
+        // Apply tag filter — keep only shifts whose rota has at least one of the selected tags
+        var activeTagFilter = tagIds?.Where(id => id != Guid.Empty).ToList() ?? [];
+        var filteredShifts = activeTagFilter.Count > 0
+            ? urgentShifts.Where(u => u.Shift.Rota.Tags.Any(t => activeTagFilter.Contains(t.Id))).ToList()
+            : urgentShifts;
+
         // Group by department → rota → shift
-        var departments = urgentShifts
+        var departments = filteredShifts
             .GroupBy(u => u.Shift.Rota.TeamId)
             .Select(deptGroup =>
             {
-                var firstShift = deptGroup.First().Shift;
+                var firstShift = deptGroup.OrderBy(x => x.Shift.Id).First().Shift;
                 return new DepartmentShiftGroup
                 {
                     TeamId = firstShift.Rota.TeamId,
@@ -106,26 +111,26 @@ public class ShiftsController : HumansControllerBase
                         .GroupBy(u => u.Shift.RotaId)
                         .Select(rotaGroup =>
                         {
-                            var rota = rotaGroup.First().Shift.Rota;
+                            var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Shift.Rota;
                             return new RotaShiftGroup
                             {
                                 Rota = rota,
                                 Shifts = rotaGroup
                                     .Select(u =>
                                     {
-                                        var (start, end, period) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
+                                        var (start, end, shiftPeriod) = _shiftMgmt.ResolveShiftTimes(u.Shift, es);
                                         return new ShiftDisplayItem
                                         {
                                             Shift = u.Shift,
                                             AbsoluteStart = start,
                                             AbsoluteEnd = end,
-                                            Period = period,
+                                            Period = shiftPeriod,
                                             ConfirmedCount = u.ConfirmedCount,
                                             RemainingSlots = u.RemainingSlots,
                                             Signups = u.Signups
                                                 .Select(s => new ShiftSignupInfo(
                                                     s.UserId, s.DisplayName, s.Status,
-                                                    s.HasProfilePicture ? $"/Human/{s.UserId}/Picture" : null))
+                                                    s.HasProfilePicture ? $"/Profile/Picture?id={s.UserId}" : null))
                                                 .ToList()
                                         };
                                     })
@@ -156,6 +161,10 @@ public class ShiftsController : HumansControllerBase
                 .ToList();
         }
 
+        // Load all tags for filter UI and volunteer's preferred tags
+        var allTags = await _shiftMgmt.GetAllTagsAsync();
+        var userPreferredTags = await _shiftMgmt.GetVolunteerTagPreferencesAsync(user.Id);
+
         var model = new ShiftBrowseViewModel
         {
             EventSettings = es,
@@ -168,7 +177,10 @@ public class ShiftsController : HumansControllerBase
             UserSignupStatuses = userSignupStatuses,
             Departments = departments,
             AllDepartments = allDepartments,
-            ShowSignups = isPrivileged
+            ShowSignups = isPrivileged,
+            AllTags = allTags.ToList(),
+            FilterTagIds = activeTagFilter,
+            UserPreferredTagIds = userPreferredTags.Select(t => t.Id).ToHashSet()
         };
 
         return View(model);
@@ -311,7 +323,7 @@ public class ShiftsController : HumansControllerBase
 
             switch (signup.Status)
             {
-                case SignupStatus.Confirmed when item.AbsoluteStart > now:
+                case SignupStatus.Confirmed when item.AbsoluteEnd > now:
                     model.Upcoming.Add(item);
                     break;
                 case SignupStatus.Pending:
@@ -379,6 +391,21 @@ public class ShiftsController : HumansControllerBase
 
         SetSuccess("iCal URL regenerated.");
         return RedirectToAction(nameof(Mine));
+    }
+
+    [HttpPost("Preferences/Tags")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveTagPreferences([FromForm(Name = "tagIds")] List<Guid>? tagIds)
+    {
+        var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
+        if (currentUserNotFound is not null)
+        {
+            return currentUserNotFound;
+        }
+
+        await _shiftMgmt.SetVolunteerTagPreferencesAsync(user.Id, tagIds ?? []);
+        SetSuccess("Tag preferences saved.");
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpGet("Settings")]

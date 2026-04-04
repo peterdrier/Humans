@@ -21,6 +21,7 @@ public class TeamServiceTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly TeamService _service;
+    private readonly RoleAssignmentService _roleAssignmentService;
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public TeamServiceTests()
@@ -30,10 +31,27 @@ public class TeamServiceTests : IDisposable
             .Options;
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+        _roleAssignmentService = new RoleAssignmentService(
+            _dbContext,
+            Substitute.For<IAuditLogService>(),
+            Substitute.For<ISystemTeamSync>(),
+            _clock,
+            _cache,
+            NullLogger<RoleAssignmentService>.Instance);
+        var shiftManagementService = new ShiftManagementService(
+            _dbContext,
+            Substitute.For<IAuditLogService>(),
+            _cache,
+            _clock,
+            NullLogger<ShiftManagementService>.Instance);
         _service = new TeamService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
+            Substitute.For<INotificationService>(),
+            _roleAssignmentService,
+            shiftManagementService,
+            Substitute.For<ISystemTeamSync>(),
             _clock,
             _cache,
             NullLogger<TeamService>.Instance);
@@ -58,7 +76,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(10));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeTrue();
     }
@@ -69,7 +87,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -83,7 +101,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -96,7 +114,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() + Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -109,7 +127,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(10));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserAdminAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserAdminAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -126,7 +144,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(10));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
         result.Should().BeTrue();
     }
@@ -137,7 +155,7 @@ public class TeamServiceTests : IDisposable
         var user = SeedUser();
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -151,7 +169,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(1));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -164,7 +182,7 @@ public class TeamServiceTests : IDisposable
             _clock.GetCurrentInstant() - Duration.FromDays(10));
         await _dbContext.SaveChangesAsync();
 
-        var result = await _service.IsUserBoardMemberAsync(user.Id);
+        var result = await _roleAssignmentService.IsUserBoardMemberAsync(user.Id);
 
         result.Should().BeFalse();
     }
@@ -227,6 +245,89 @@ public class TeamServiceTests : IDisposable
         result.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_CoordinatorOfParentTeam_ReturnsTrueForChildTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_MemberOfParentTeam_NotCoordinator_ReturnsFalseForChildTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Member);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsTrue_ForOwnSubTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        var member = SeedTeamMember(child.Id, user.Id, TeamMemberRole.Coordinator);
+        var roleDef = SeedTeamRoleDefinition(child.Id, isManagement: true);
+        SeedTeamRoleAssignment(roleDef.Id, member.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(child.Id, user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsFalse_ForSiblingSubTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var childA = SeedTeam("SubTeamA");
+        childA.ParentTeamId = parent.Id;
+        var childB = SeedTeam("SubTeamB");
+        childB.ParentTeamId = parent.Id;
+        var member = SeedTeamMember(childA.Id, user.Id, TeamMemberRole.Coordinator);
+        var roleDef = SeedTeamRoleDefinition(childA.Id, isManagement: true);
+        SeedTeamRoleAssignment(roleDef.Id, member.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(childB.Id, user.Id);
+
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task IsUserCoordinatorOfTeamAsync_SubTeamManager_ReturnsFalse_ForParentDepartment()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        var member = SeedTeamMember(child.Id, user.Id, TeamMemberRole.Coordinator);
+        var roleDef = SeedTeamRoleDefinition(child.Id, isManagement: true);
+        SeedTeamRoleAssignment(roleDef.Id, member.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.IsUserCoordinatorOfTeamAsync(parent.Id, user.Id);
+
+        result.Should().BeFalse();
+    }
+
     // ==========================================================================
     // CanUserApproveRequestsForTeamAsync
     // ==========================================================================
@@ -268,6 +369,21 @@ public class TeamServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.CanUserApproveRequestsForTeamAsync(team.Id, user.Id);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CanUserApproveRequestsForTeamAsync_CoordinatorOfParentTeam_ReturnsTrueForChildTeam()
+    {
+        var user = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, user.Id, TeamMemberRole.Coordinator);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.CanUserApproveRequestsForTeamAsync(child.Id, user.Id);
 
         result.Should().BeTrue();
     }
@@ -713,6 +829,24 @@ public class TeamServiceTests : IDisposable
 
         result.Should().ContainSingle();
         result[0].TeamId.Should().Be(teamA.Id);
+    }
+
+    [Fact]
+    public async Task GetPendingRequestsForApproverAsync_CoordinatorOfParent_IncludesChildTeamRequests()
+    {
+        var coordinator = SeedUser();
+        var parent = SeedTeam("Department");
+        var child = SeedTeam("SubTeam");
+        child.ParentTeamId = parent.Id;
+        SeedTeamMember(parent.Id, coordinator.Id, TeamMemberRole.Coordinator);
+        var requestor = SeedUser(displayName: "R1");
+        SeedJoinRequest(child.Id, requestor.Id);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _service.GetPendingRequestsForApproverAsync(coordinator.Id);
+
+        result.Should().ContainSingle();
+        result[0].TeamId.Should().Be(child.Id);
     }
 
     [Fact]

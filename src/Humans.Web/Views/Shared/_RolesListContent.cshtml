@@ -91,7 +91,7 @@
                             <td class="text-end">
                                 @if (ra.IsActive)
                                 {
-                                    <form asp-controller="Human" asp-action="EndRole" asp-route-id="@ra.UserId" asp-route-roleId="@ra.Id" method="post" class="d-inline"
+                                    <form asp-controller="Profile" asp-action="EndRole" asp-route-id="@ra.UserId" asp-route-roleId="@ra.Id" method="post" class="d-inline"
                                           data-confirm="@Localizer["AdminHuman_EndRoleConfirm"].Value">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["AdminHuman_End"]</button>

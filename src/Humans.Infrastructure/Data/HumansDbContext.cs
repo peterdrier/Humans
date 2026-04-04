@@ -72,6 +72,11 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
     public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
     public DbSet<BudgetAuditLog> BudgetAuditLogs => Set<BudgetAuditLog>();
+    public DbSet<TicketingProjection> TicketingProjections => Set<TicketingProjection>();
+    public DbSet<ShiftTag> ShiftTags => Set<ShiftTag>();
+    public DbSet<VolunteerTagPreference> VolunteerTagPreferences => Set<VolunteerTagPreference>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

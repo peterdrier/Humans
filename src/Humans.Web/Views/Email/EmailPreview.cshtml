@@ -1,0 +1,120 @@
+@model Humans.Web.Models.EmailPreviewViewModel
+@{
+    ViewData["Title"] = "Email Preview";
+
+    var orderedLanguages = Model.Previews
+        .OrderByDisplayLanguage()
+        .ToList();
+
+    var defaultLang = CultureCatalog.DefaultCultureCode;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Email Preview</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Email Preview</h1>
+    <span class="badge bg-secondary fs-6">@Model.Previews.Values.FirstOrDefault()?.Count emails</span>
+</div>
+
+<p class="text-muted mb-4">
+    Preview all system emails with sample data. Subjects and body content are localized per language tab.
+</p>
+
+<ul class="nav nav-tabs" id="langTabs" role="tablist">
+    @foreach (var lang in orderedLanguages)
+    {
+        var isActive = lang.Key == defaultLang;
+        <li class="nav-item" role="presentation">
+            <button class="nav-link @(isActive ? "active" : "")" id="lang-tab-@lang.Key" data-bs-toggle="tab"
+                    data-bs-target="#lang-@lang.Key" type="button" role="tab"
+                    aria-controls="lang-@lang.Key" aria-selected="@(isActive ? "true" : "false")">
+                @lang.Key.ToDisplayLanguageName()
+            </button>
+        </li>
+    }
+</ul>
+
+<div class="tab-content border border-top-0 bg-white p-3" id="langTabsContent">
+    @foreach (var lang in orderedLanguages)
+    {
+        var isActive = lang.Key == defaultLang;
+        <div class="tab-pane fade @(isActive ? "show active" : "")" id="lang-@lang.Key" role="tabpanel" aria-labelledby="lang-tab-@lang.Key">
+
+            <div class="accordion" id="emails-@lang.Key">
+                @for (var i = 0; i < lang.Value.Count; i++)
+                {
+                    var email = lang.Value[i];
+                    var collapseId = $"collapse-{lang.Key}-{email.Id}";
+                    var headingId = $"heading-{lang.Key}-{email.Id}";
+
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="@headingId">
+                            <button class="accordion-button @(i > 0 ? "collapsed" : "")" type="button"
+                                    data-bs-toggle="collapse" data-bs-target="#@collapseId"
+                                    aria-expanded="@(i == 0 ? "true" : "false")" aria-controls="@collapseId">
+                                <span class="fw-bold me-3">@email.Name</span>
+                                <span class="text-muted small">To: @email.Recipient &mdash; Subject: @email.Subject</span>
+                            </button>
+                        </h2>
+                        <div id="@collapseId" class="accordion-collapse collapse @(i == 0 ? "show" : "")"
+                             aria-labelledby="@headingId" data-bs-parent="#emails-@lang.Key">
+                            <div class="accordion-body p-0">
+                                <div class="p-3 bg-light border-bottom small">
+                                    <strong>From:</strong> @Model.FromAddress &nbsp;|&nbsp;
+                                    <strong>To:</strong> @email.Recipient &nbsp;|&nbsp;
+                                    <strong>Subject:</strong> @email.Subject
+                                </div>
+                                <div class="email-preview-frame p-0">
+                                    <iframe srcdoc="@WrapInEmailTemplate(email.Body)" class="w-100 border-0" style="height: 450px;"></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@functions {
+    string WrapInEmailTemplate(string content)
+    {
+        var html = $@"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=""utf-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <style>
+        body {{ font-family: 'Source Sans 3', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #3d2b1f; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #faf6f0; }}
+        h2 {{ color: #3d2b1f; font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif; font-weight: 600; }}
+        a {{ color: #8b6914; }}
+        ul {{ padding-left: 20px; }}
+        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #c9a96e; font-size: 12px; color: #6b5a4e; }}
+    </style>
+</head>
+<body>
+{content}
+    <div class=""footer"">
+        <p>Humans &mdash; Nobodies Collective<br/>
+        <a href=""https://humans.nobodies.team"">https://humans.nobodies.team</a></p>
+    </div>
+</body>
+</html>";
+        return html;
+    }
+}
+
+<style>
+    .email-preview-frame iframe {
+        min-height: 300px;
+    }
+    .accordion-button:not(.collapsed) {
+        background-color: #f8f5f0;
+        color: #3d2b1f;
+    }
+</style>

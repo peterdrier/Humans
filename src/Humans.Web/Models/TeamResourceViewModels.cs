@@ -25,6 +25,8 @@ public class GoogleResourceViewModel
     public string? ErrorMessage { get; set; }
     public DrivePermissionLevel DrivePermissionLevel { get; set; }
     public bool IsDriveResource { get; set; }
+    public bool RestrictInheritedAccess { get; set; }
+    public bool IsDriveFolder { get; set; }
 }
 
 public class LinkDriveResourceModel

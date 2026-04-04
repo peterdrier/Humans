@@ -55,6 +55,7 @@
                     <th>Email</th>
                     <th><a asp-action="Attendees" asp-route-sortBy="type" asp-route-sortDesc="@(string.Equals(Model.SortBy, "type", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Ticket Type</a></th>
                     <th><a asp-action="Attendees" asp-route-sortBy="price" asp-route-sortDesc="@(string.Equals(Model.SortBy, "price", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Price</a></th>
+                    <th>VIP Split</th>
                     <th><a asp-action="Attendees" asp-route-sortBy="status" asp-route-sortDesc="@(string.Equals(Model.SortBy, "status", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterStatus="@Model.FilterStatus" asp-route-filterMatched="@Model.FilterMatched" asp-route-filterOrderId="@Model.FilterOrderId">Status</a></th>
                     <th>Matched Human</th>
                     <th>Order</th>
@@ -67,7 +68,26 @@
                         <td>@a.AttendeeName</td>
                         <td><small>@(a.AttendeeEmail ?? "\u2014")</small></td>
                         <td>@a.TicketTypeName</td>
-                        <td>@a.Price.ToString("N2")</td>
+                        <td>
+                            @a.Price.ToString("N2")
+                            @if (a.IsVip)
+                            {
+                                <span class="badge bg-warning text-dark" title="VIP ticket">VIP</span>
+                            }
+                        </td>
+                        <td>
+                            @if (a.IsVip)
+                            {
+                                <small>
+                                    <span title="Taxable portion">@a.TaxableAmount.ToString("N2")</span>
+                                    + <span class="text-muted" title="VIP donation (VAT-free)">@a.VipDonation.ToString("N2") donation</span>
+                                </small>
+                            }
+                            else
+                            {
+                                <span class="text-muted">&mdash;</span>
+                            }
+                        </td>
                         <td>
                             @{
                                 var statusClass = a.Status switch
@@ -97,7 +117,7 @@
                 }
                 @if (Model.Attendees.Count == 0)
                 {
-                    <tr><td colspan="7" class="text-muted text-center">No attendees found</td></tr>
+                    <tr><td colspan="8" class="text-muted text-center">No attendees found</td></tr>
                 }
             </tbody>
         </table>

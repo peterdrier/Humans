@@ -89,4 +89,9 @@ public class Rota
     /// Navigation property to shifts within this rota.
     /// </summary>
     public ICollection<Shift> Shifts { get; } = new List<Shift>();
+
+    /// <summary>
+    /// Navigation property to tags applied to this rota (many-to-many via join table).
+    /// </summary>
+    public ICollection<ShiftTag> Tags { get; } = new List<ShiftTag>();
 }
