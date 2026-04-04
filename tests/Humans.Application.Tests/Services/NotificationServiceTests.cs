@@ -114,7 +114,7 @@ public class NotificationServiceTests : IDisposable
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            Category = MessageCategory.EventOperations,
+            Category = MessageCategory.TeamUpdates,
             InboxEnabled = false,
             UpdatedAt = _clock.GetCurrentInstant(),
             UpdateSource = "Test"
@@ -122,7 +122,7 @@ public class NotificationServiceTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         await _service.SendAsync(
-            NotificationSource.TeamMemberAdded, // maps to EventOperations
+            NotificationSource.TeamMemberAdded, // maps to TeamUpdates
             NotificationClass.Informational,
             NotificationPriority.Normal,
             "Added to team",

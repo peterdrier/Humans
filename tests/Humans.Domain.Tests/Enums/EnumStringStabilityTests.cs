@@ -159,6 +159,14 @@ public class EnumStringStabilityTests
         {
             typeof(ExpenditureType),
             new[] { "CapEx", "OpEx" }
+        },
+        {
+            typeof(MessageCategory),
+            new[]
+            {
+                "System", "EventOperations", "CommunityUpdates", "Marketing", "Governance",
+                "CampaignCodes", "FacilitatedMessages", "Ticketing", "VolunteerUpdates", "TeamUpdates"
+            }
         }
     };
 }

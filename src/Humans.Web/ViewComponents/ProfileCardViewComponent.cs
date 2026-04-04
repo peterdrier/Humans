@@ -28,6 +28,7 @@ public class ProfileCardViewComponent : ViewComponent
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IMembershipCalculator _membershipCalculator;
+    private readonly ICommunicationPreferenceService _commPrefService;
 
     public ProfileCardViewComponent(
         HumansDbContext dbContext,
@@ -37,7 +38,8 @@ public class ProfileCardViewComponent : ViewComponent
         VolunteerHistoryService volunteerHistoryService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
-        IMembershipCalculator membershipCalculator)
+        IMembershipCalculator membershipCalculator,
+        ICommunicationPreferenceService commPrefService)
     {
         _dbContext = dbContext;
         _userManager = userManager;
@@ -47,6 +49,7 @@ public class ProfileCardViewComponent : ViewComponent
         _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _membershipCalculator = membershipCalculator;
+        _commPrefService = commPrefService;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
@@ -180,6 +183,7 @@ public class ProfileCardViewComponent : ViewComponent
             PreferredLanguage = user.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)
+                && await _commPrefService.AcceptsFacilitatedMessagesAsync(userId)
         };
 
         return View(model);

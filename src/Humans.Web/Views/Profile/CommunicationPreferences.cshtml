@@ -1,0 +1,138 @@
+@model Humans.Web.Models.CommunicationPreferencesViewModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Web.SharedResource> Localizer
+@{
+    ViewData["Title"] = "Communication Preferences";
+}
+
+<div class="row">
+    <div class="col-12" style="max-width: 900px;">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Communication Preferences</li>
+            </ol>
+        </nav>
+
+        <h1>Communication Preferences</h1>
+        <p class="text-muted">Choose which communications you receive and how.</p>
+
+        <vc:temp-data-alerts />
+
+        <div class="card mb-4">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 250px;">Category</th>
+                            <th class="text-center" style="width: 100px;">Email</th>
+                            <th class="text-center" style="width: 100px;">Alert</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < Model.Categories.Count; i++)
+                        {
+                            var item = Model.Categories[i];
+
+                            <tr class="@(!item.EmailEditable ? "table-light" : "")">
+                                <td>
+                                    <div class="fw-semibold">@item.DisplayName</div>
+                                    <div class="form-text mb-0">@item.Description</div>
+                                    @if (item.Note is not null)
+                                    {
+                                        <div class="form-text text-warning-emphasis mb-0">
+                                            <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
+                                        </div>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (item.EmailEditable)
+                                    {
+                                        <input type="checkbox"
+                                               class="form-check-input pref-toggle"
+                                               data-category="@item.Category"
+                                               data-channel="email"
+                                               @(item.EmailEnabled ? "checked" : null) />
+                                    }
+                                    else
+                                    {
+                                        <input type="checkbox"
+                                               class="form-check-input"
+                                               disabled
+                                               checked />
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    @if (item.AlertEditable)
+                                    {
+                                        <input type="checkbox"
+                                               class="form-check-input pref-toggle"
+                                               data-category="@item.Category"
+                                               data-channel="alert"
+                                               @(item.AlertEnabled ? "checked" : null) />
+                                    }
+                                    else
+                                    {
+                                        <input type="checkbox"
+                                               class="form-check-input"
+                                               disabled
+                                               checked />
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <a asp-action="Index" class="btn btn-outline-secondary">Back to Profile</a>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.querySelectorAll('.pref-toggle').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            var row = this.closest('tr');
+            var category = this.dataset.category;
+            var channel = this.dataset.channel;
+            var value = this.checked;
+
+            // Find both checkboxes in this row to send current state
+            var emailCb = row.querySelector('[data-channel="email"]');
+            var alertCb = row.querySelector('[data-channel="alert"]');
+
+            var body = new URLSearchParams();
+            body.append('category', category);
+            body.append('emailEnabled', emailCb ? emailCb.checked : true);
+            body.append('alertEnabled', alertCb ? alertCb.checked : true);
+            body.append('__RequestVerificationToken',
+                document.querySelector('input[name="__RequestVerificationToken"]').value);
+
+            this.disabled = true;
+            var self = this;
+
+            fetch('@Url.Action("UpdatePreference")', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString()
+            }).then(function (resp) {
+                if (!resp.ok) throw new Error(resp.statusText);
+                // Brief flash on the row to confirm save
+                row.classList.add('table-success');
+                setTimeout(function () { row.classList.remove('table-success'); }, 600);
+            }).catch(function () {
+                // Revert on failure
+                self.checked = !value;
+                row.classList.add('table-danger');
+                setTimeout(function () { row.classList.remove('table-danger'); }, 1500);
+            }).finally(function () {
+                self.disabled = false;
+            });
+        });
+    });
+</script>
+}
+
+@* Anti-forgery token for AJAX posts *@
+<form id="__AjaxAntiForgeryForm" asp-antiforgery="true" style="display:none;"></form>

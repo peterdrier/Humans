@@ -855,8 +855,8 @@ public class ProfileController : HumansControllerBase
         }
     }
 
-    [HttpGet("Me/Notifications")]
-    public async Task<IActionResult> Notifications()
+    [HttpGet("Me/CommunicationPreferences")]
+    public async Task<IActionResult> CommunicationPreferences()
     {
         try
         {
@@ -868,42 +868,39 @@ public class ProfileController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load notification settings");
-            SetError("Failed to load notification settings.");
+            _logger.LogError(ex, "Failed to load communication preferences");
+            SetError("Failed to load communication preferences.");
             return RedirectToAction(nameof(Me));
         }
     }
 
-    [HttpPost("Me/Notifications")]
+    [HttpPost("Me/CommunicationPreferences/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Notifications(CommunicationPreferencesViewModel model)
+    public async Task<IActionResult> UpdatePreference(MessageCategory category, bool emailEnabled, bool alertEnabled)
     {
         try
         {
             var user = await GetCurrentUserAsync();
             if (user is null)
-                return NotFound();
+                return Unauthorized();
 
-            foreach (var item in model.Categories)
-            {
-                if (item.Category == MessageCategory.System)
-                    continue;
+            if (category.IsAlwaysOn())
+                return BadRequest("Cannot change always-on categories.");
 
-                await _commPrefService.UpdatePreferenceAsync(
-                    user.Id, item.Category, item.OptedOut, "Profile");
-            }
+            await _commPrefService.UpdatePreferenceAsync(
+                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile");
 
-            SetSuccess(_localizer["Profile_Updated"].Value);
-            return RedirectToAction(nameof(Notifications));
+            return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save notification settings");
-            SetError("Failed to save notification settings.");
-            PopulateCommunicationPreferenceMetadata(model);
-            return View(model);
+            _logger.LogError(ex, "Failed to save communication preference for {Category}", category);
+            return StatusCode(500);
         }
     }
+
+    [HttpGet("Me/Notifications")]
+    public IActionResult Notifications() => RedirectToActionPermanent(nameof(CommunicationPreferences));
 
     [HttpGet("Me/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
@@ -1050,6 +1047,12 @@ public class ProfileController : HumansControllerBase
         if (targetUser is null)
             return NotFound();
 
+        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        {
+            SetError("This human has opted out of receiving messages.");
+            return RedirectToAction(nameof(ViewProfile), new { id });
+        }
+
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
@@ -1075,6 +1078,12 @@ public class ProfileController : HumansControllerBase
             .FirstOrDefaultAsync(u => u.Id == id);
         if (targetUser is null)
             return NotFound();
+
+        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        {
+            SetError("This human has opted out of receiving messages.");
+            return RedirectToAction(nameof(ViewProfile), new { id });
+        }
 
         model.RecipientId = id;
         model.RecipientDisplayName = targetUser.DisplayName;
@@ -1561,27 +1570,36 @@ public class ProfileController : HumansControllerBase
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
     {
         var prefs = await _commPrefService.GetPreferencesAsync(userId);
-        return new CommunicationPreferencesViewModel
+        var prefsByCategory = prefs.ToDictionary(p => p.Category);
+
+        // Check if user has a matched ticket order (locks ticketing preference)
+        var hasTicketOrder = await _dbContext.TicketOrders
+            .AnyAsync(o => o.MatchedUserId == userId);
+
+        var categories = new List<CategoryPreferenceItem>();
+
+        foreach (var category in MessageCategoryExtensions.ActiveCategories)
         {
-            Categories = prefs.Select(p => new CategoryPreferenceItem
+            var pref = prefsByCategory.GetValueOrDefault(category);
+            var isAlwaysOn = category.IsAlwaysOn();
+            var isTicketingLocked = category == MessageCategory.Ticketing && hasTicketOrder;
+
+            categories.Add(new CategoryPreferenceItem
             {
-                Category = p.Category,
-                DisplayName = p.Category.ToDisplayName(),
-                Description = p.Category.ToDescription(),
-                OptedOut = p.OptedOut,
-                InboxEnabled = p.InboxEnabled,
-                IsEditable = p.Category != MessageCategory.System,
-            }).ToList()
-        };
+                Category = category,
+                DisplayName = category == MessageCategory.Ticketing
+                    ? $"Ticketing — {DateTime.UtcNow.Year}"
+                    : category.ToDisplayName(),
+                Description = category.ToDescription(),
+                EmailEnabled = pref is null || !pref.OptedOut,
+                AlertEnabled = pref?.InboxEnabled ?? true,
+                EmailEditable = !isAlwaysOn && !isTicketingLocked,
+                AlertEditable = !isAlwaysOn && !isTicketingLocked,
+                Note = isTicketingLocked ? "Locked — you have a ticket order for this year" : null,
+            });
+        }
+
+        return new CommunicationPreferencesViewModel { Categories = categories };
     }
 
-    private static void PopulateCommunicationPreferenceMetadata(CommunicationPreferencesViewModel model)
-    {
-        foreach (var item in model.Categories)
-        {
-            item.DisplayName = item.Category.ToDisplayName();
-            item.Description = item.Category.ToDescription();
-            item.IsEditable = item.Category != MessageCategory.System;
-        }
-    }
 }
