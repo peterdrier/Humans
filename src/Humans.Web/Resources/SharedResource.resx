@@ -785,7 +785,6 @@
   <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve"><value>Manage all teams and memberships</value></data>
   <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Safety checks during onboarding</value></data>
   <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Manage camp map and placement phases</value></data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Onboarding facilitation contact</value></data>
   <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Onboarding facilitation, system-wide shift management</value></data>
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Approve shift signups, view volunteer medical data</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notes (optional)</value></data>

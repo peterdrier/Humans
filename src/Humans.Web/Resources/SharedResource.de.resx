@@ -767,7 +767,6 @@
   <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve"><value>Alle Teams und Mitgliedschaften verwalten</value></data>
   <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Sicherheitsprüfungen beim Onboarding</value></data>
   <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Lagerplan und Platzierungsphasen verwalten</value></data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Kontakt für Onboarding-Begleitung</value></data>
   <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Onboarding-Begleitung, systemweite Schichtverwaltung</value></data>
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Schichtanmeldungen genehmigen, medizinische Daten einsehen</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notizen (optional)</value></data>

@@ -767,7 +767,6 @@
   <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve"><value>Gérer toutes les équipes et adhésions</value></data>
   <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Vérifications de sécurité lors de l'intégration</value></data>
   <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Gérer la carte du camp et les phases de placement</value></data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Contact de facilitation d'intégration</value></data>
   <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Facilitation d'intégration, gestion des créneaux globale</value></data>
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Approuver les inscriptions aux créneaux, voir les données médicales</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notes (facultatif)</value></data>

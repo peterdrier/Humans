@@ -767,7 +767,6 @@
   <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve"><value>Gestire tutti i team e le iscrizioni</value></data>
   <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Verifiche di sicurezza durante l'onboarding</value></data>
   <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Gestire la mappa del campo e le fasi di posizionamento</value></data>
-  <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Contatto di facilitazione dell'onboarding</value></data>
   <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Facilitazione onboarding, gestione turni globale</value></data>
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Approvare iscrizioni ai turni, visualizzare dati medici</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Note (facoltative)</value></data>
