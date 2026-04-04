@@ -54,7 +54,7 @@
                     <th><a asp-action="Orders" asp-route-sortBy="name" asp-route-sortDesc="@(string.Equals(Model.SortBy, "name", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "false")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Purchaser</a></th>
                     <th>Email</th>
                     <th><a asp-action="Orders" asp-route-sortBy="tickets" asp-route-sortDesc="@(string.Equals(Model.SortBy, "tickets", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Tickets</a></th>
-                    <th><a asp-action="Orders" asp-route-sortBy="amount" asp-route-sortDesc="@(string.Equals(Model.SortBy, "amount", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Amount</a></th>
+                    <th><a asp-action="Orders" asp-route-sortBy="amount" asp-route-sortDesc="@(string.Equals(Model.SortBy, "amount", StringComparison.OrdinalIgnoreCase) ? (!Model.SortDesc).ToString() : "true")" asp-route-search="@Model.Search" asp-route-pageSize="@Model.PageSize" asp-route-filterPaymentStatus="@Model.FilterPaymentStatus" asp-route-filterTicketType="@Model.FilterTicketType" asp-route-filterMatched="@Model.FilterMatched">Amount (€)</a></th>
                     <th>Discount</th>
                     <th>Donation</th>
                     <th>VAT</th>
@@ -70,11 +70,11 @@
                 {
                     <tr>
                         <td><small><code>@order.VendorOrderId</code></small></td>
-                        <td>@order.PurchasedAt.ToDisplayDate()</td>
+                        <td>@order.PurchasedAt.ToDisplayDateShort()</td>
                         <td>@order.BuyerName</td>
                         <td><small>@order.BuyerEmail</small></td>
                         <td><a asp-action="Attendees" asp-route-filterOrderId="@order.VendorOrderId">@order.AttendeeCount</a></td>
-                        <td>@order.Currency @order.TotalAmount.ToString("N2")</td>
+                        <td>@order.TotalAmount.ToString("N2")</td>
                         <td>
                             @if (order.DiscountAmount.HasValue)
                             {
