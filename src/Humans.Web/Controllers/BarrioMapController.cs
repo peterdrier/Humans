@@ -118,8 +118,22 @@ public class BarrioMapController : HumansControllerBase
             return Forbid();
 
         var pattern = LocalDateTimePattern.CreateWithInvariantCulture("yyyy-MM-ddTHH:mm");
-        LocalDateTime? opens = opensAt is { Length: > 0 } ? pattern.Parse(opensAt).Value : null;
-        LocalDateTime? closes = closesAt is { Length: > 0 } ? pattern.Parse(closesAt).Value : null;
+
+        LocalDateTime? opens = null;
+        if (opensAt is { Length: > 0 })
+        {
+            var result = pattern.Parse(opensAt);
+            if (!result.Success) { SetError("Invalid opens-at date format."); return RedirectToAction(nameof(Admin)); }
+            opens = result.Value;
+        }
+
+        LocalDateTime? closes = null;
+        if (closesAt is { Length: > 0 })
+        {
+            var result = pattern.Parse(closesAt);
+            if (!result.Success) { SetError("Invalid closes-at date format."); return RedirectToAction(nameof(Admin)); }
+            closes = result.Value;
+        }
 
         await _campMapService.UpdatePlacementDatesAsync(opens, closes, cancellationToken);
         SetSuccess("Placement dates updated.");
