@@ -38,17 +38,19 @@ type NavItem = 'volunteer' | 'v' | 'review' | 'voting' | 'board' | 'humans' | 'a
 const ALL_NAV_ITEMS: NavItem[] = ['volunteer', 'v', 'review', 'voting', 'board', 'humans', 'admin', 'google', 'tickets', 'finance'];
 
 function getNavLocators(nav: Locator): Record<NavItem, Locator> {
+  // Scope to ul.navbar-nav to exclude the navbar brand (also named "Humans")
+  const items = nav.locator('ul.navbar-nav');
   return {
-    volunteer: nav.getByRole('link', { name: 'Volunteer', exact: true }),
-    v: nav.getByRole('link', { name: 'V', exact: true }),
-    review: nav.getByRole('link', { name: /^Review/ }),
-    voting: nav.getByRole('link', { name: /^Voting/ }),
-    board: nav.getByRole('link', { name: 'Board', exact: true }),
-    humans: nav.getByRole('link', { name: 'Humans', exact: true }),
-    admin: nav.getByRole('link', { name: 'Admin', exact: true }),
-    google: nav.getByRole('link', { name: 'Google', exact: true }),
-    tickets: nav.getByRole('link', { name: 'Tickets', exact: true }),
-    finance: nav.getByRole('link', { name: 'Finance', exact: true }),
+    volunteer: items.getByRole('link', { name: 'Volunteer', exact: true }),
+    v: items.getByRole('link', { name: 'V', exact: true }),
+    review: items.getByRole('link', { name: /^Review/ }),
+    voting: items.getByRole('link', { name: /^Voting/ }),
+    board: items.getByRole('link', { name: 'Board', exact: true }),
+    humans: items.getByRole('link', { name: 'Humans', exact: true }),
+    admin: items.getByRole('link', { name: 'Admin', exact: true }),
+    google: items.getByRole('link', { name: 'Google', exact: true }),
+    tickets: items.getByRole('link', { name: 'Tickets', exact: true }),
+    finance: items.getByRole('link', { name: 'Finance', exact: true }),
   };
 }
 
