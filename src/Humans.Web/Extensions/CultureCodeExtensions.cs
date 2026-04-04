@@ -6,7 +6,7 @@ public static class CultureCatalog
     public const string CanonicalLegalCultureCode = "es";
 
     public static IReadOnlyList<string> SupportedCultureCodes { get; } =
-        ["en", "es", "de", "it", "fr"];
+        ["en", "es", "de", "it", "fr", "ca"];
 }
 
 public static class CultureCodeExtensions
