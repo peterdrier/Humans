@@ -1,0 +1,102 @@
+@model Humans.Web.Models.CommunicationPreferencesViewModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Web.SharedResource> Localizer
+@{
+    ViewData["Title"] = "Communication Preferences";
+}
+
+<div class="row">
+    <div class="col-12" style="max-width: 900px;">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Communication Preferences</li>
+            </ol>
+        </nav>
+
+        <h1>Communication Preferences</h1>
+        <p class="text-muted">Choose which communications you receive and how.</p>
+
+        <vc:temp-data-alerts />
+
+        <form asp-action="CommunicationPreferences" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="card mb-4">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 250px;">Category</th>
+                                <th class="text-center" style="width: 100px;">Email</th>
+                                <th class="text-center" style="width: 100px;">Alert</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < Model.Categories.Count; i++)
+                            {
+                                var item = Model.Categories[i];
+                                <input type="hidden" name="Categories[@i].Category" value="@item.Category" />
+
+                                <tr class="@(!item.EmailEditable ? "table-light" : "")">
+                                    <td>
+                                        <div class="fw-semibold">@item.DisplayName</div>
+                                        <div class="form-text mb-0">@item.Description</div>
+                                        @if (item.Note is not null)
+                                        {
+                                            <div class="form-text text-warning-emphasis mb-0">
+                                                <i class="fa-solid fa-lock fa-xs me-1"></i>@item.Note
+                                            </div>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (item.EmailEditable)
+                                        {
+                                            <input type="hidden" name="Categories[@i].EmailEnabled" value="false" />
+                                            <input type="checkbox"
+                                                   id="Categories_@(i)_EmailEnabled"
+                                                   name="Categories[@i].EmailEnabled"
+                                                   value="true"
+                                                   class="form-check-input"
+                                                   @(item.EmailEnabled ? "checked" : null) />
+                                        }
+                                        else
+                                        {
+                                            <input type="checkbox"
+                                                   class="form-check-input"
+                                                   disabled
+                                                   checked />
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (item.AlertEditable)
+                                        {
+                                            <input type="hidden" name="Categories[@i].AlertEnabled" value="false" />
+                                            <input type="checkbox"
+                                                   id="Categories_@(i)_AlertEnabled"
+                                                   name="Categories[@i].AlertEnabled"
+                                                   value="true"
+                                                   class="form-check-input"
+                                                   @(item.AlertEnabled ? "checked" : null) />
+                                        }
+                                        else
+                                        {
+                                            <input type="checkbox"
+                                                   class="form-check-input"
+                                                   disabled
+                                                   checked />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <a asp-action="Index" class="btn btn-outline-secondary">Back to Profile</a>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
