@@ -1,6 +1,5 @@
-using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Razor.TagHelpers;
-using Humans.Web.Authorization;
 
 namespace Humans.Web.TagHelpers;
 
@@ -9,22 +8,34 @@ namespace Humans.Web.TagHelpers;
 /// a named authorization policy. Suppresses the element when the current user
 /// does not satisfy the policy.
 ///
+/// Delegates to <see cref="IAuthorizationService"/> so that the same registered
+/// ASP.NET Core policies used by controllers are evaluated consistently in views.
+///
+/// Unknown policy names fail closed (element hidden) and log a warning.
+///
 /// Usage:
-///   &lt;li authorize-policy="Admin"&gt;Only admins see this&lt;/li&gt;
-///   &lt;div authorize-policy="CanAccessReviewQueue"&gt;...&lt;/div&gt;
+///   &lt;li authorize-policy="AdminOnly"&gt;Only admins see this&lt;/li&gt;
+///   &lt;div authorize-policy="ReviewQueueAccess"&gt;...&lt;/div&gt;
 /// </summary>
 [HtmlTargetElement("*", Attributes = "authorize-policy")]
 public class AuthorizeViewTagHelper : TagHelper
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IAuthorizationService _authorizationService;
+    private readonly ILogger<AuthorizeViewTagHelper> _logger;
 
-    public AuthorizeViewTagHelper(IHttpContextAccessor httpContextAccessor)
+    public AuthorizeViewTagHelper(
+        IHttpContextAccessor httpContextAccessor,
+        IAuthorizationService authorizationService,
+        ILogger<AuthorizeViewTagHelper> logger)
     {
         _httpContextAccessor = httpContextAccessor;
+        _authorizationService = authorizationService;
+        _logger = logger;
     }
 
     /// <summary>
-    /// Named policy to evaluate. Must match a key in <see cref="ViewPolicies"/>.
+    /// Named policy to evaluate. Must match a registered ASP.NET Core authorization policy.
     /// </summary>
     [HtmlAttributeName("authorize-policy")]
     public string Policy { get; set; } = "";
@@ -34,98 +45,39 @@ public class AuthorizeViewTagHelper : TagHelper
     /// </summary>
     public override int Order => -1;
 
-    public override void Process(TagHelperContext context, TagHelperOutput output)
+    public override async Task ProcessAsync(TagHelperContext context, TagHelperOutput output)
     {
         var user = _httpContextAccessor.HttpContext?.User;
-        if (user is null || !ViewPolicies.Evaluate(Policy, user))
+        if (user is null)
         {
+            output.SuppressOutput();
+            return;
+        }
+
+        if (string.IsNullOrEmpty(Policy))
+        {
+            output.SuppressOutput();
+            return;
+        }
+
+        try
+        {
+            var result = await _authorizationService.AuthorizeAsync(user, Policy);
+            if (!result.Succeeded)
+            {
+                output.SuppressOutput();
+                return;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // Unknown policy name — fail closed (hide the element)
+            _logger.LogWarning("Unknown authorize-policy \"{PolicyName}\" — element suppressed (fail closed)", Policy);
             output.SuppressOutput();
             return;
         }
 
         // Remove the attribute from rendered HTML
         output.Attributes.RemoveAll("authorize-policy");
-    }
-}
-
-/// <summary>
-/// Centralized view-level authorization policies. Each policy maps a string name
-/// to a role check function. Views reference policy names, not role combinations.
-///
-/// Add new policies here when new role-based visibility requirements emerge.
-/// </summary>
-public static class ViewPolicies
-{
-    public const string Admin = nameof(Admin);
-    public const string Board = nameof(Board);
-    public const string AdminOrBoard = nameof(AdminOrBoard);
-    public const string TeamsAdminBoardOrAdmin = nameof(TeamsAdminBoardOrAdmin);
-    public const string HumanAdminBoardOrAdmin = nameof(HumanAdminBoardOrAdmin);
-    public const string HumanAdmin = nameof(HumanAdmin);
-    public const string CampAdmin = nameof(CampAdmin);
-    public const string CanAccessReviewQueue = nameof(CanAccessReviewQueue);
-    public const string CanAccessTickets = nameof(CanAccessTickets);
-    public const string CanManageTickets = nameof(CanManageTickets);
-    public const string CanAccessVolunteers = nameof(CanAccessVolunteers);
-    public const string CanAccessFinance = nameof(CanAccessFinance);
-    public const string IsFeedbackAdmin = nameof(IsFeedbackAdmin);
-    public const string CanManageDepartment = nameof(CanManageDepartment);
-    public const string CanAccessDashboard = nameof(CanAccessDashboard);
-
-    /// <summary>
-    /// HumanAdmin who is NOT also Admin or Board. Used for the nav "Humans" link
-    /// that only shows when the user has HumanAdmin but not the broader Board/Admin access
-    /// (which already have their own Board nav link with fuller access).
-    /// </summary>
-    public const string HumanAdminOnly = nameof(HumanAdminOnly);
-
-    /// <summary>
-    /// Active member (Volunteers team member) OR TeamsAdmin/Board/Admin.
-    /// Used for nav items that require active membership or administrative roles.
-    /// </summary>
-    public const string IsActiveMember = nameof(IsActiveMember);
-
-    /// <summary>
-    /// Active member (Volunteers team) OR has shift dashboard access.
-    /// Used for Shifts nav visibility in main layout.
-    /// </summary>
-    public const string ActiveMemberOrShiftAccess = nameof(ActiveMemberOrShiftAccess);
-
-    private static readonly Dictionary<string, Func<ClaimsPrincipal, bool>> Policies = new(StringComparer.Ordinal)
-    {
-        [Admin] = RoleChecks.IsAdmin,
-        [Board] = RoleChecks.IsBoard,
-        [AdminOrBoard] = RoleChecks.IsAdminOrBoard,
-        [TeamsAdminBoardOrAdmin] = RoleChecks.IsTeamsAdminBoardOrAdmin,
-        [HumanAdminBoardOrAdmin] = RoleChecks.IsHumanAdminBoardOrAdmin,
-        [HumanAdmin] = RoleChecks.IsHumanAdmin,
-        [CampAdmin] = RoleChecks.IsCampAdmin,
-        [CanAccessReviewQueue] = RoleChecks.CanAccessReviewQueue,
-        [CanAccessTickets] = RoleChecks.CanAccessTickets,
-        [CanManageTickets] = RoleChecks.CanManageTickets,
-        [CanAccessVolunteers] = RoleChecks.CanAccessVolunteers,
-        [CanAccessFinance] = RoleChecks.CanAccessFinance,
-        [IsFeedbackAdmin] = RoleChecks.IsFeedbackAdmin,
-        [CanManageDepartment] = ShiftRoleChecks.CanManageDepartment,
-        [CanAccessDashboard] = ShiftRoleChecks.CanAccessDashboard,
-        [HumanAdminOnly] = user => RoleChecks.IsHumanAdmin(user) && !RoleChecks.IsAdminOrBoard(user),
-        [IsActiveMember] = user =>
-            user.HasClaim(RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-                RoleAssignmentClaimsTransformation.ActiveClaimValue) ||
-            RoleChecks.IsTeamsAdminBoardOrAdmin(user),
-        [ActiveMemberOrShiftAccess] = user =>
-            user.HasClaim(RoleAssignmentClaimsTransformation.ActiveMemberClaimType,
-                RoleAssignmentClaimsTransformation.ActiveClaimValue) ||
-            RoleChecks.IsTeamsAdminBoardOrAdmin(user) ||
-            ShiftRoleChecks.CanAccessDashboard(user),
-    };
-
-    /// <summary>
-    /// Evaluates the named policy against the given user.
-    /// Returns false for unknown policy names (fail-closed).
-    /// </summary>
-    public static bool Evaluate(string policyName, ClaimsPrincipal user)
-    {
-        return Policies.TryGetValue(policyName, out var check) && check(user);
     }
 }

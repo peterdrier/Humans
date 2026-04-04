@@ -51,8 +51,8 @@
         <h2>Browse Volunteer Options</h2>
         <div class="d-flex gap-2">
             <vc:access-matrix section="Shifts" />
-            <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning" authorize-policy="CanManageDepartment"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard <i class="fa-solid fa-lock auth-lock-icon"></i></a>
-            <a asp-action="Settings" class="btn btn-outline-secondary" authorize-policy="Admin"><i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+            <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning" authorize-policy="ShiftDepartmentManager"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+            <a asp-action="Settings" class="btn btn-outline-secondary" authorize-policy="AdminOnly"><i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
             <a asp-action="Mine" class="btn btn-outline-primary">My Shifts</a>
         </div>
     </div>

@@ -5,7 +5,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Teams Summary</h1>
-    <a asp-action="CreateTeam" class="btn btn-primary" authorize-policy="AdminOrBoard">@Localizer["Teams_CreateTeam"]</a>
+    <a asp-action="CreateTeam" class="btn btn-primary" authorize-policy="BoardOrAdmin">@Localizer["Teams_CreateTeam"]</a>
 </div>
 
 <vc:temp-data-alerts />
@@ -25,7 +25,7 @@
                     <th>@Localizer["AdminTeams_DriveResources"]</th>
                     <th>@Localizer["Common_Status"]</th>
                     <th>@Localizer["AdminTeams_Created"]</th>
-                    <th authorize-policy="AdminOrBoard">@Localizer["MyTeams_Actions"]</th>
+                    <th authorize-policy="BoardOrAdmin">@Localizer["MyTeams_Actions"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -69,7 +69,7 @@
                         <td>
                             @if (team.PendingShiftSignupCount > 0)
                             {
-                                @if (Humans.Web.TagHelpers.ViewPolicies.Evaluate(Humans.Web.TagHelpers.ViewPolicies.AdminOrBoard, User))
+                                @if (Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.AdminOrBoard, User))
                                 {
                                     <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@team.Slug">
                                         <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
@@ -121,7 +121,7 @@
                             }
                         </td>
                         <td>@team.CreatedAt.ToDisplayCompactDate()</td>
-                        <td authorize-policy="AdminOrBoard">
+                        <td authorize-policy="BoardOrAdmin">
                             @if (!team.IsSystemTeam)
                             {
                                 <div class="d-flex gap-1" role="group">
