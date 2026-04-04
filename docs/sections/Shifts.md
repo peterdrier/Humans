@@ -26,6 +26,7 @@
 ## Invariants
 
 - Shift signup status follows: Pending then Confirmed, Refused, Bailed, Cancelled, or NoShow. Only valid forward transitions are allowed.
+- MaxVolunteers is a hard capacity ceiling. Signups, approvals, and voluntelling are blocked when the confirmed count reaches MaxVolunteers. Range operations skip full shifts.
 - Rota visibility is controlled by an "is visible to volunteers" toggle (default: visible). Hidden rotas are only shown to coordinators and privileged roles.
 - Voluntelling (admin-initiated signup) records who enrolled the human.
 - Range signups create or cancel all shifts in the date range atomically.

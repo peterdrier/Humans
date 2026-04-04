@@ -536,6 +536,10 @@
                                                         var status = Model.UserSignupStatuses.GetValueOrDefault(shift.Id);
                                                         <span class="badge bg-info">@status</span>
                                                     }
+                                                    else if (isFull)
+                                                    {
+                                                        <span class="badge bg-secondary">Full</span>
+                                                    }
                                                     else
                                                     {
                                                         <form asp-action="SignUp" method="post" class="d-inline">

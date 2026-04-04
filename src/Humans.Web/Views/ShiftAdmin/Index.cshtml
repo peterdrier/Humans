@@ -84,11 +84,26 @@
                                     <td>
                                         @if (isRange && first.SignupBlockId.HasValue)
                                         {
-                                            <form asp-action="ApproveRange" asp-route-slug="@Model.Department.Slug" method="post" class="d-inline">
-                                                @Html.AntiForgeryToken()
-                                                <input type="hidden" name="signupBlockId" value="@first.SignupBlockId" />
-                                                <button type="submit" class="btn btn-sm btn-success">Approve Range</button>
-                                            </form>
+                                            @{
+                                                var allRangeShiftsFull = signups.All(s => s.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= s.Shift.MaxVolunteers);
+                                                var someRangeShiftsFull = signups.Any(s => s.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= s.Shift.MaxVolunteers);
+                                            }
+                                            @if (allRangeShiftsFull)
+                                            {
+                                                <span class="badge bg-secondary">All shifts at capacity</span>
+                                            }
+                                            else
+                                            {
+                                                <form asp-action="ApproveRange" asp-route-slug="@Model.Department.Slug" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <input type="hidden" name="signupBlockId" value="@first.SignupBlockId" />
+                                                    <button type="submit" class="btn btn-sm btn-success">Approve Range</button>
+                                                </form>
+                                                @if (someRangeShiftsFull)
+                                                {
+                                                    <small class="text-warning ms-1"><i class="fa-solid fa-triangle-exclamation"></i> Some shifts at capacity</small>
+                                                }
+                                            }
                                             <form asp-action="RefuseRange" asp-route-slug="@Model.Department.Slug" method="post" class="d-inline">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="signupBlockId" value="@first.SignupBlockId" />
@@ -98,10 +113,20 @@
                                         }
                                         else
                                         {
-                                            <form asp-action="ApproveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@first.Id" method="post" class="d-inline">
-                                                @Html.AntiForgeryToken()
-                                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                            </form>
+                                            @{
+                                                var shiftAtCapacity = first.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= first.Shift.MaxVolunteers;
+                                            }
+                                            @if (shiftAtCapacity)
+                                            {
+                                                <span class="badge bg-secondary">Shift at capacity</span>
+                                            }
+                                            else
+                                            {
+                                                <form asp-action="ApproveSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@first.Id" method="post" class="d-inline">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                                </form>
+                                            }
                                             <form asp-action="RefuseSignup" asp-route-slug="@Model.Department.Slug" asp-route-signupId="@first.Id" method="post" class="d-inline">
                                                 @Html.AntiForgeryToken()
                                                 <input type="text" name="reason" placeholder="Reason (optional)" class="form-control form-control-sm d-inline-block" style="width: 150px; vertical-align: middle;" />

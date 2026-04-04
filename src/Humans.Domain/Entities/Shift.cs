@@ -47,7 +47,7 @@ public class Shift
     public int MinVolunteers { get; set; }
 
     /// <summary>
-    /// Maximum volunteers allowed (capacity ceiling — warning, not hard block).
+    /// Maximum volunteers allowed (hard capacity ceiling — signups and approvals are blocked at this limit).
     /// </summary>
     public int MaxVolunteers { get; set; }
 
