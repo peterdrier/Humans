@@ -363,7 +363,7 @@ app.Services.GetRequiredService<HumansMetricsService>();
             assembly.GetName().Name, string.Join(", ", resourceNames));
 
         // Check satellite assemblies
-        foreach (var culture in new[] { "en", "es", "de", "it", "fr" })
+        foreach (var culture in new[] { "en", "es", "de", "it", "fr", "ca" })
         {
             try
             {

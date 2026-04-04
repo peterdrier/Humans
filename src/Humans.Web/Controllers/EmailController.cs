@@ -135,7 +135,7 @@ public class EmailController : HumansControllerBase
         [FromServices] IOptions<EmailSettings> emailSettings)
     {
         var settings = emailSettings.Value;
-        var cultures = new[] { "en", "es", "de", "fr", "it" };
+        var cultures = new[] { "en", "es", "de", "fr", "it", "ca" };
 
         // Per-locale persona stubs for realistic previews
         var personas = new Dictionary<string, (string Name, string Email)>(StringComparer.Ordinal)
@@ -145,6 +145,7 @@ public class EmailController : HumansControllerBase
             ["de"] = ("Frieda Fischer", "frieda@example.com"),
             ["fr"] = ("Fran\u00e7ois Dupont", "francois@example.com"),
             ["it"] = ("Giulia Rossi", "giulia@example.com"),
+            ["ca"] = ("Jordi Puig", "jordi@example.com"),
         };
 
         var sampleDocs = new[] { "Volunteer Agreement", "Privacy Policy" };

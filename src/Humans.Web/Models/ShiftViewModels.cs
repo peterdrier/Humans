@@ -267,7 +267,7 @@ public class ShiftInfoViewModel
 
     // Skill options with emoji prefixes for display
     public static readonly string[] SkillOptions = ["Bartending", "First Aid", "Driving", "Sound", "Electrical", "Construction", "Cooking", "Art", "DJ", "Other"];
-    public static readonly string[] LanguageOptions = ["English", "Spanish", "German", "French", "Italian", "Portuguese", "Other"];
+    public static readonly string[] LanguageOptions = ["English", "Spanish", "German", "French", "Italian", "Portuguese", "Catalan", "Other"];
 
     // Time preferences — mutually exclusive, stored as quirk value
     public static readonly string[] TimePreferenceOptions = ["Early Bird", "Night Owl", "All Day", "No Preference"];
@@ -301,6 +301,7 @@ public class ShiftInfoViewModel
         ["German"] = "DE",
         ["Italian"] = "IT",
         ["Portuguese"] = "PT",
+        ["Catalan"] = "CA",
         ["Other"] = "\U0001f30d"
     };
 
