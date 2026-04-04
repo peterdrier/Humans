@@ -76,13 +76,13 @@
                     </select>
                 </div>
             }
-            <button id="save-btn" class="btn btn-success btn-sm" disabled>
+            <button id="save-btn" class="btn btn-success btn-sm" style="display:none" disabled>
                 <i class="fa fa-save me-1"></i> Save
             </button>
             <button id="cancel-btn" class="btn btn-outline-secondary btn-sm" style="display:none">
                 <i class="fa fa-times me-1"></i> Cancel
             </button>
-            <button id="history-btn" class="btn btn-outline-primary btn-sm">
+            <button id="history-btn" class="btn btn-outline-primary btn-sm" style="display:none">
                 <i class="fa fa-history me-1"></i> History
             </button>
             </div>
@@ -420,10 +420,19 @@
         function setEditingControlsVisible(visible) {
             const toolbar = document.getElementById('main-toolbar');
             if (!toolbar) return;
+            const saveBtn = document.getElementById('save-btn');
+            const historyBtn = document.getElementById('history-btn');
             if (visible) {
                 toolbar.style.display = '';
+                const addMyBarrioBtn = document.getElementById('add-my-barrio-btn');
+                if (addMyBarrioBtn) addMyBarrioBtn.style.display = 'none';
+                if (saveBtn) saveBtn.style.display = '';
+                if (historyBtn) historyBtn.style.display = '';
                 return;
             }
+            if (saveBtn) saveBtn.style.display = 'none';
+            if (historyBtn) historyBtn.style.display = 'none';
+            updateAddMyBarrioVisibility();
             const addMyBarrioVisible = document.getElementById('add-my-barrio-btn')?.style.display !== 'none';
             const addBarrioPresent = !!document.getElementById('add-barrio-container');
             if (!addMyBarrioVisible && !addBarrioPresent) toolbar.style.display = 'none';
@@ -448,11 +457,13 @@
 
         function updateSaveButton() {
             const features = draw.getAll().features;
-            const editing = features.length > 0 && activeCampSeasonId;
+            const hasValidPolygon = features.some(f =>
+                f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
+            const editing = hasValidPolygon && activeCampSeasonId;
             document.getElementById('save-btn').disabled = !editing;
             const cancelBtn = document.getElementById('cancel-btn');
             if (cancelBtn) cancelBtn.style.display = activeCampSeasonId ? '' : 'none';
-            if (features.length > 0) {
+            if (hasValidPolygon) {
                 const poly = features[0];
                 const area = turf.area(poly);
                 const centroid = turf.centroid(poly);
@@ -488,6 +499,9 @@
         document.addEventListener('keydown', e => {
             if ((e.key === 'Delete' || e.key === 'Backspace') && activeCampSeasonId) {
                 e.preventDefault();
+                // Prevent deletion that would leave fewer than 3 unique points
+                const poly = draw.getAll().features.find(f => f.geometry.type === 'Polygon');
+                if (poly && poly.geometry.coordinates[0].length <= 4) return;
                 draw.trash();
             }
         });
@@ -627,14 +641,14 @@
                 .withAutomaticReconnect()
                 .build();
 
-            connection.on('PolygonUpdated', (campSeasonId, geoJson, areaSqm, soundZone) => {
+            connection.on('PolygonUpdated', (campSeasonId, geoJson, areaSqm, soundZone, campName) => {
                 const idx = state.polygons.findIndex(p => p.campSeasonId === campSeasonId);
                 if (idx >= 0) {
                     state.polygons[idx].geoJson = geoJson;
                     state.polygons[idx].areaSqm = areaSqm;
-                    // soundZone is a CampSeason property — it doesn't change on polygon save
+                    // soundZone and campName are CampSeason properties — they don't change on polygon save
                 } else {
-                    state.polygons.push({ campSeasonId, geoJson, areaSqm, soundZone: soundZone ?? -1, campName: '', campSlug: '' });
+                    state.polygons.push({ campSeasonId, geoJson, areaSqm, soundZone: soundZone ?? -1, campName: campName ?? '', campSlug: '' });
                 }
                 // Refresh the GeoJSON source
                 const src = map.getSource('polygons');

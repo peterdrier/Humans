@@ -46,6 +46,14 @@ public class CampMapService : ICampMapService
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<string?> GetCampSeasonNameAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.CampSeasons
+            .Where(s => s.Id == campSeasonId)
+            .Select(s => s.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutPolygonAsync(int year, CancellationToken cancellationToken = default)
     {
         return await _dbContext.CampSeasons
