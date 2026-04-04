@@ -874,35 +874,28 @@ public class ProfileController : HumansControllerBase
         }
     }
 
-    [HttpPost("Me/CommunicationPreferences")]
+    [HttpPost("Me/CommunicationPreferences/Update")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CommunicationPreferences(CommunicationPreferencesViewModel model)
+    public async Task<IActionResult> UpdatePreference(MessageCategory category, bool emailEnabled, bool alertEnabled)
     {
         try
         {
             var user = await GetCurrentUserAsync();
             if (user is null)
-                return NotFound();
+                return Unauthorized();
 
-            foreach (var item in model.Categories)
-            {
-                if (item.Category.IsAlwaysOn())
-                    continue;
+            if (category.IsAlwaysOn())
+                return BadRequest("Cannot change always-on categories.");
 
-                // Invert EmailEnabled → OptedOut for storage
-                await _commPrefService.UpdatePreferenceAsync(
-                    user.Id, item.Category, optedOut: !item.EmailEnabled, inboxEnabled: item.AlertEnabled, "Profile");
-            }
+            await _commPrefService.UpdatePreferenceAsync(
+                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Profile");
 
-            SetSuccess(_localizer["Profile_Updated"].Value);
-            return RedirectToAction(nameof(CommunicationPreferences));
+            return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save communication preferences");
-            SetError("Failed to save communication preferences.");
-            PopulateCommunicationPreferenceMetadata(model);
-            return View(model);
+            _logger.LogError(ex, "Failed to save communication preference for {Category}", category);
+            return StatusCode(500);
         }
     }
 
@@ -1609,14 +1602,4 @@ public class ProfileController : HumansControllerBase
         return new CommunicationPreferencesViewModel { Categories = categories };
     }
 
-    private static void PopulateCommunicationPreferenceMetadata(CommunicationPreferencesViewModel model)
-    {
-        foreach (var item in model.Categories)
-        {
-            item.DisplayName = item.Category == MessageCategory.Ticketing
-                ? $"Ticketing — {DateTime.UtcNow.Year}"
-                : item.Category.ToDisplayName();
-            item.Description = item.Category.ToDescription();
-        }
-    }
 }
