@@ -3,6 +3,8 @@ using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
+using NodaTime.Text;
 
 namespace Humans.Web.Controllers;
 
@@ -36,6 +38,8 @@ public class BarrioMapController : Controller
         ViewBag.CurrentUserId = userId.ToString();
         ViewBag.SeasonsWithoutCampPolygon = seasonsWithout;
         ViewBag.Year = settings.Year;
+        ViewBag.PlacementOpensAt = settings.PlacementOpensAt;
+        ViewBag.PlacementClosesAt = settings.PlacementClosesAt;
 
         return View();
     }
@@ -83,6 +87,22 @@ public class BarrioMapController : Controller
         using var reader = new StreamReader(file.OpenReadStream());
         var geoJson = await reader.ReadToEndAsync(cancellationToken);
         await _campMapService.UpdateLimitZoneAsync(geoJson, userId, cancellationToken);
+        return RedirectToAction(nameof(Admin));
+    }
+
+    [HttpPost("Admin/UpdatePlacementDates")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdatePlacementDates(string? opensAt, string? closesAt, CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (!await _campMapService.IsUserMapAdminAsync(userId, cancellationToken))
+            return Forbid();
+
+        var pattern = LocalDateTimePattern.CreateWithInvariantCulture("yyyy-MM-ddTHH:mm");
+        LocalDateTime? opens = opensAt is { Length: > 0 } ? pattern.Parse(opensAt).Value : null;
+        LocalDateTime? closes = closesAt is { Length: > 0 } ? pattern.Parse(closesAt).Value : null;
+
+        await _campMapService.UpdatePlacementDatesAsync(opens, closes, cancellationToken);
         return RedirectToAction(nameof(Admin));
     }
 
