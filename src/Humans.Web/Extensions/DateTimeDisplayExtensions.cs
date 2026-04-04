@@ -91,6 +91,12 @@ public static class DateTimeDisplayExtensions
     public static string? ToDisplayDate(this Instant? value) =>
         value?.ToDisplayDate();
 
+    public static string ToDisplayDateShort(this Instant value) =>
+        value.InZone(GetCurrentUserTimeZone()).ToDateTimeUnspecified().ToString("d MMM", CultureInfo.CurrentCulture);
+
+    public static string? ToDisplayDateShort(this Instant? value) =>
+        value?.ToDisplayDateShort();
+
     public static string ToDisplayDate(this LocalDate value) =>
         value.ToString("d MMM yyyy", CultureInfo.CurrentCulture);
 
