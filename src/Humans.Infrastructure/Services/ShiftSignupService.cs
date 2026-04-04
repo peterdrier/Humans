@@ -289,6 +289,23 @@ public class ShiftSignupService : IShiftSignupService
         await DispatchSignupChangeNotificationAsync(signup,
             $"Voluntold for '{shift.Rota.Name}' on day {shift.DayOffset}.");
 
+        // In-app notification to the assigned volunteer (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.ShiftAssigned,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"You were assigned to {shift.Rota.Name} on day {shift.DayOffset}",
+                [userId],
+                actionUrl: "/Shifts",
+                actionLabel: "View shifts");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} shift {ShiftId}", userId, shiftId);
+        }
+
         return SignupResult.Ok(signup);
     }
 
@@ -380,6 +397,23 @@ public class ShiftSignupService : IShiftSignupService
 
         await DispatchSignupChangeNotificationAsync(firstSignup!,
             $"Voluntold range for '{rota.Name}' ({assignable.Count} shifts).");
+
+        // In-app notification to the assigned volunteer (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.ShiftAssigned,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"You were assigned to {rota.Name} ({assignable.Count} shifts)",
+                [userId],
+                actionUrl: "/Shifts",
+                actionLabel: "View shifts");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch ShiftAssigned notification for user {UserId} rota {RotaId}", userId, rotaId);
+        }
 
         return SignupResult.Ok(firstSignup!, warning);
     }

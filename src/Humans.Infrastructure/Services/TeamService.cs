@@ -1163,6 +1163,23 @@ public class TeamService : ITeamService
 
         _logger.LogInformation("Actor {ActorId} removed user {UserId} from team {TeamId}", actorUserId, userId, teamId);
 
+        // In-app notification to the removed user (best-effort)
+        try
+        {
+            await _notificationService.SendAsync(
+                NotificationSource.TeamMemberRemoved,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"You were removed from {team.Name}",
+                [userId],
+                actionUrl: "/Teams",
+                cancellationToken: cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch TeamMemberRemoved notification for user {UserId} team {TeamId}", userId, teamId);
+        }
+
         return wasCoordinator;
     }
 

@@ -55,5 +55,29 @@ public enum NotificationSource
     FeedbackResponse = 15,
 
     /// <summary>Workspace (@nobodies.team) credentials are ready.</summary>
-    WorkspaceCredentialsReady = 16
+    WorkspaceCredentialsReady = 16,
+
+    /// <summary>Budget category spending exceeded warning threshold.</summary>
+    BudgetWarning = 17,
+
+    /// <summary>A governance role was assigned or ended for a user.</summary>
+    RoleAssignmentChanged = 18,
+
+    /// <summary>Campaign code was granted to a user (in-app echo).</summary>
+    CampaignReceived = 19,
+
+    /// <summary>User was removed from a team.</summary>
+    TeamMemberRemoved = 20,
+
+    /// <summary>User was enrolled (voluntold) for a shift by a coordinator.</summary>
+    ShiftAssigned = 21,
+
+    /// <summary>Google reconciliation detected and fixed drift.</summary>
+    GoogleDriftDetected = 22,
+
+    /// <summary>Facilitated message was sent (in-app pointer to check email).</summary>
+    FacilitatedMessageReceived = 23,
+
+    /// <summary>A new legal document version was published.</summary>
+    LegalDocumentPublished = 24
 }

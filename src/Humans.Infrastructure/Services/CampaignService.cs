@@ -20,6 +20,7 @@ public class CampaignService : ICampaignService
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
     private readonly IHumansMetrics _metrics;
+    private readonly INotificationService _notificationService;
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly EmailSettings _settings;
     private readonly string _environmentName;
@@ -29,6 +30,7 @@ public class CampaignService : ICampaignService
         HumansDbContext dbContext,
         IClock clock,
         IHumansMetrics metrics,
+        INotificationService notificationService,
         ICommunicationPreferenceService commPrefService,
         IOptions<EmailSettings> settings,
         IHostEnvironment hostEnvironment,
@@ -37,6 +39,7 @@ public class CampaignService : ICampaignService
         _dbContext = dbContext;
         _clock = clock;
         _metrics = metrics;
+        _notificationService = notificationService;
         _commPrefService = commPrefService;
         _settings = settings.Value;
         _environmentName = hostEnvironment.EnvironmentName;
@@ -396,6 +399,24 @@ public class CampaignService : ICampaignService
         _logger.LogInformation(
             "Campaign {CampaignId}: sent wave to team {TeamId}, {Count} grants created",
             campaignId, teamId, eligibleUsers.Count);
+
+        // In-app notification to each recipient (best-effort)
+        try
+        {
+            var recipientIds = eligibleUsers.Select(u => u.Id).ToList();
+            await _notificationService.SendAsync(
+                NotificationSource.CampaignReceived,
+                NotificationClass.Informational,
+                NotificationPriority.Normal,
+                $"You received a code from campaign: {campaign.Title}",
+                recipientIds,
+                body: "Check your email for your campaign code.",
+                cancellationToken: ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to dispatch CampaignReceived notifications for campaign {CampaignId}", campaignId);
+        }
 
         return eligibleUsers.Count;
     }

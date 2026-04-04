@@ -75,8 +75,38 @@ Shared between popup and inbox. 3px left border accent by priority/class. Type t
 
 All authenticated users can access their own notifications. No role-based restrictions on the inbox itself -- the dispatch service controls who receives notifications.
 
+## Notification Sources
+
+| Source | Class | Recipients | Category | Trigger |
+|--------|-------|------------|----------|---------|
+| TeamMemberAdded | Informational | The user | TeamUpdates | User added to a team |
+| TeamMemberRemoved | Informational | The user | TeamUpdates | User removed from a team |
+| TeamJoinRequestSubmitted | Actionable | Team coordinators | TeamUpdates | User requests to join |
+| TeamJoinRequestDecided | Informational | The requester | TeamUpdates | Request approved/rejected |
+| ShiftCoverageGap | Actionable | Dept coordinators | VolunteerUpdates | Confirmed count drops below min |
+| ShiftSignupChange | Informational | Dept coordinators | VolunteerUpdates | Signup confirmed/bailed |
+| ShiftAssigned | Informational | The volunteer | VolunteerUpdates | Coordinator voluntells a shift |
+| ConsentReviewNeeded | Actionable | ConsentCoordinator role | System | New human completes consents |
+| ApplicationSubmitted | Actionable | Board role | Governance | Tier application submitted |
+| ApplicationApproved | Informational | The applicant | Governance | Board approves application |
+| ApplicationRejected | Informational | The applicant | Governance | Board rejects application |
+| VolunteerApproved | Informational | The user | Governance | Profile cleared for membership |
+| ProfileRejected | Informational | The user | System | Admin rejects signup |
+| AccessSuspended | Actionable | The user | System | Non-compliance suspension |
+| ReConsentRequired | Actionable | All active members | System | Required doc updated |
+| LegalDocumentPublished | Actionable | All active members | System | New required doc published |
+| FeedbackResponse | Informational | The reporter | System | Admin responds to feedback |
+| WorkspaceCredentialsReady | Informational | The user | System | @nobodies.team provisioned |
+| SyncError | Actionable | Admin role | System | Google sync failure |
+| TermRenewalReminder | Actionable | The user | System | 90 days before term expiry |
+| RoleAssignmentChanged | Informational | The user | Governance | Role assigned or ended |
+| CampaignReceived | Informational | Campaign recipients | Marketing | Campaign code granted |
+| BudgetWarning | Actionable | FinanceAdmin role | System | Category spending >= 90% |
+| GoogleDriftDetected | Informational | Admin role | System | Reconciliation fixes drift |
+| FacilitatedMessageReceived | Informational | Camp leads | FacilitatedMessages | Facilitated message sent |
+
 ## Related Features
 
 - Communication Preferences (28) -- InboxEnabled extends existing preference model
 - Teams (06) -- AddedToTeam is the first notification migration
-- Shift Management -- future: shift coverage gap notifications
+- Shift Management -- ShiftCoverageGap and ShiftAssigned notifications

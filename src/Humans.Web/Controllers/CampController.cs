@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Domain.ValueObjects;
 using Humans.Web.Models;
@@ -18,6 +19,7 @@ public class CampController : HumansCampControllerBase
 {
     private readonly ICampService _campService;
     private readonly ICampContactService _campContactService;
+    private readonly INotificationService _notificationService;
     private readonly IClock _clock;
     private readonly ILogger<CampController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -25,6 +27,7 @@ public class CampController : HumansCampControllerBase
     public CampController(
         ICampService campService,
         ICampContactService campContactService,
+        INotificationService notificationService,
         UserManager<User> userManager,
         IClock clock,
         ILogger<CampController> logger,
@@ -33,6 +36,7 @@ public class CampController : HumansCampControllerBase
     {
         _campService = campService;
         _campContactService = campContactService;
+        _notificationService = notificationService;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
@@ -188,6 +192,32 @@ public class CampController : HumansCampControllerBase
             {
                 SetError(_localizer["Camp_Contact_RateLimited"].Value);
                 return RedirectToAction(nameof(Details), new { slug });
+            }
+
+            // In-app notification to camp leads (best-effort)
+            try
+            {
+                var leadUserIds = camp.Leads
+                    .Where(l => l.LeftAt == null)
+                    .Select(l => l.UserId)
+                    .Distinct()
+                    .ToList();
+
+                if (leadUserIds.Count > 0)
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.FacilitatedMessageReceived,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"New message for {campDisplayName} — check your email",
+                        leadUserIds,
+                        actionUrl: $"/Barrios/{slug}",
+                        actionLabel: "View camp");
+                }
+            }
+            catch (Exception notifEx)
+            {
+                _logger.LogError(notifEx, "Failed to dispatch FacilitatedMessageReceived notification for camp {Slug}", slug);
             }
 
             SetSuccess(string.Format(_localizer["Camp_Contact_Success"].Value, campDisplayName));

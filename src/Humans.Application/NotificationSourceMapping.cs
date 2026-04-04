@@ -26,6 +26,14 @@ public static class NotificationSourceMapping
         NotificationSource.WorkspaceCredentialsReady => MessageCategory.System,
         NotificationSource.SyncError => MessageCategory.System,
         NotificationSource.TermRenewalReminder => MessageCategory.System,
+        NotificationSource.BudgetWarning => MessageCategory.System,
+        NotificationSource.RoleAssignmentChanged => MessageCategory.Governance,
+        NotificationSource.CampaignReceived => MessageCategory.Marketing,
+        NotificationSource.TeamMemberRemoved => MessageCategory.TeamUpdates,
+        NotificationSource.ShiftAssigned => MessageCategory.VolunteerUpdates,
+        NotificationSource.GoogleDriftDetected => MessageCategory.System,
+        NotificationSource.FacilitatedMessageReceived => MessageCategory.FacilitatedMessages,
+        NotificationSource.LegalDocumentPublished => MessageCategory.System,
         _ => MessageCategory.System
     };
 }

@@ -306,6 +306,36 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
             "Synced document {Name} version {Version} (SHA: {Sha}, languages: {Languages})",
             document.Name, versionNumber, commitSha, languages);
 
+        // If this is a new required document, notify all active members that consent is needed
+        if (isNew && document.IsRequired)
+        {
+            try
+            {
+                var approvedUserIds = await _dbContext.Set<Profile>()
+                    .Where(p => p.IsApproved && !p.IsSuspended)
+                    .Select(p => p.UserId)
+                    .ToListAsync(cancellationToken);
+
+                if (approvedUserIds.Count > 0)
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.LegalDocumentPublished,
+                        NotificationClass.Actionable,
+                        NotificationPriority.High,
+                        $"New legal document published: {document.Name}",
+                        approvedUserIds,
+                        body: "A new required legal document has been published. Please review and sign it.",
+                        actionUrl: "/Legal/Consent",
+                        actionLabel: "Review document",
+                        cancellationToken: cancellationToken);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to dispatch LegalDocumentPublished notifications for document {DocumentId}", document.Id);
+            }
+        }
+
         // If this version requires re-consent, notify all approved members
         if (newVersion.RequiresReConsent && document.IsRequired)
         {

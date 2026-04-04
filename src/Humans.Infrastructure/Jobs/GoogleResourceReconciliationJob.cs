@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 
@@ -13,17 +14,20 @@ namespace Humans.Infrastructure.Jobs;
 public class GoogleResourceReconciliationJob : IRecurringJob
 {
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly INotificationService _notificationService;
     private readonly HumansMetricsService _metrics;
     private readonly ILogger<GoogleResourceReconciliationJob> _logger;
     private readonly IClock _clock;
 
     public GoogleResourceReconciliationJob(
         IGoogleSyncService googleSyncService,
+        INotificationService notificationService,
         HumansMetricsService metrics,
         ILogger<GoogleResourceReconciliationJob> logger,
         IClock clock)
     {
         _googleSyncService = googleSyncService;
+        _notificationService = notificationService;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -75,6 +79,29 @@ public class GoogleResourceReconciliationJob : IRecurringJob
             if (settingsResult.ErrorCount > 0)
             {
                 _logger.LogWarning("Google Group settings check had {ErrorCount} error(s)", settingsResult.ErrorCount);
+            }
+
+            // Notify Admin if any drift was detected and corrected
+            var totalDrift = inheritanceCorrected + settingsResult.DriftCount;
+            if (totalDrift > 0)
+            {
+                try
+                {
+                    await _notificationService.SendToRoleAsync(
+                        NotificationSource.GoogleDriftDetected,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"Google reconciliation fixed {totalDrift} drift issue(s)",
+                        RoleNames.Admin,
+                        body: $"Inheritance corrections: {inheritanceCorrected}, group settings drift: {settingsResult.DriftCount}",
+                        actionUrl: "/Admin/GoogleSync",
+                        actionLabel: "View sync status",
+                        cancellationToken: cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to dispatch GoogleDriftDetected notification");
+                }
             }
 
             _metrics.RecordJobRun("google_resource_reconciliation", "success");
