@@ -16,6 +16,53 @@ export const DRAW_STYLES = [
     { id: 'gl-draw-polygon-midpoint', type: 'circle', filter: ['all', ['==', '$type', 'Point'], ['==', 'meta', 'midpoint']], paint: { 'circle-radius': 5, 'circle-color': '#ffffff' } },
 ];
 
+function parseHex(hex) {
+    return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+}
+
+function makeImageData(w, h, fillFn) {
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.getImageData(0, 0, w, h);
+    fillFn(img.data, w, h);
+    ctx.putImageData(img, 0, 0);
+    return ctx.getImageData(0, 0, w, h);
+}
+
+// Crosshatch: thin ↘ and ↙ diagonals, for error (outside zone).
+export function generateCrosshatchPattern(hexColor) {
+    const [r, g, b] = parseHex(hexColor);
+    const N = 10; const w = 1;
+    return makeImageData(N, N, (d) => {
+        for (let y = 0; y < N; y++) {
+            for (let x = 0; x < N; x++) {
+                if ((x + y) % N < w || ((x - y + N * 2) % N) < w) {
+                    const i = (y * N + x) * 4;
+                    d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 200;
+                }
+            }
+        }
+    });
+}
+
+// Dashed horizontal lines, for warning (overlap).
+export function generateDashedHorizontalPattern(hexColor) {
+    const [r, g, b] = parseHex(hexColor);
+    const W = 10; const H = 7; // tile: 10px dash+gap × 7px line spacing
+    const dashW = 6; const lineH = 1;
+    return makeImageData(W, H, (d) => {
+        for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+                if (y < lineH && x < dashW) {
+                    const i = (y * W + x) * 4;
+                    d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 160;
+                }
+            }
+        }
+    });
+}
+
 export function generateRainbowPattern() {
     const size = 60;
     const canvas = document.createElement('canvas');
@@ -35,7 +82,7 @@ export function generateRainbowPattern() {
 export function renderMap(onCampPolygonClick) {
     const { map } = appState;
 
-    ['limit-zone-line', 'limit-zone-fill', 'camp-polygons-outline-warning', 'camp-polygons-outline-overlap', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
+    ['limit-zone-line', 'limit-zone-fill', 'camp-polygons-fill-warning', 'camp-polygons-fill-overlap', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
         if (map.getLayer(id)) map.removeLayer(id);
     });
     ['limit-zone', 'camp-polygons'].forEach(id => {
@@ -79,16 +126,14 @@ export function renderMap(onCampPolygonClick) {
         },
     });
     map.addLayer({
-        id: 'camp-polygons-outline-overlap', type: 'line', source: 'camp-polygons',
+        id: 'camp-polygons-fill-overlap', type: 'fill', source: 'camp-polygons',
         filter: ['==', ['get', 'overlaps'], true],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ff8800', 'line-width': 4, 'line-dasharray': [0, 2] },
+        paint: { 'fill-pattern': 'overlap-stripe-pattern' },
     });
     map.addLayer({
-        id: 'camp-polygons-outline-warning', type: 'line', source: 'camp-polygons',
+        id: 'camp-polygons-fill-warning', type: 'fill', source: 'camp-polygons',
         filter: ['==', ['get', 'outsideZone'], true],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ff2222', 'line-width': 1.5, 'line-dasharray': [3, 5] },
+        paint: { 'fill-pattern': 'error-stripe-pattern' },
     });
     map.addLayer({
         id: 'camp-polygons-labels', type: 'symbol', source: 'camp-polygons',

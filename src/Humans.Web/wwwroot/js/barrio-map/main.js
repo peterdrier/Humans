@@ -2,7 +2,7 @@
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
 import { parseLimitZoneGeom } from './geometry.js';
-import { DRAW_STYLES, generateRainbowPattern, renderMap } from './layers.js';
+import { DRAW_STYLES, generateRainbowPattern, generateCrosshatchPattern, generateDashedHorizontalPattern, renderMap } from './layers.js';
 import {
     onCampPolygonClick, exitEditMode, onDrawChange, onDrawDelete,
     setEditingControlsVisible, updateAddMyBarrioVisibility, loadHistory,
@@ -31,7 +31,9 @@ async function init() {
     await new Promise(resolve => appState.map.on('load', resolve));
 
     const { map } = appState;
-    map.addImage('rainbow-pattern', generateRainbowPattern());
+    map.addImage('rainbow-pattern',        generateRainbowPattern());
+    map.addImage('error-stripe-pattern',   generateCrosshatchPattern('#ff2222'));
+    map.addImage('overlap-stripe-pattern', generateDashedHorizontalPattern('#ff8800'));
 
     map.addSource('draw-label', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     map.addLayer({
@@ -49,16 +51,14 @@ async function init() {
 
     map.addSource('draw-warning-error', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     map.addLayer({
-        id: 'draw-warning-error', type: 'line', source: 'draw-warning-error',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ff2222', 'line-width': 1.5, 'line-dasharray': [3, 5] },
+        id: 'draw-warning-error', type: 'fill', source: 'draw-warning-error',
+        paint: { 'fill-pattern': 'error-stripe-pattern' },
     });
 
     map.addSource('draw-warning-overlap', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     map.addLayer({
-        id: 'draw-warning-overlap', type: 'line', source: 'draw-warning-overlap',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ff8800', 'line-width': 4, 'line-dasharray': [0, 2] },
+        id: 'draw-warning-overlap', type: 'fill', source: 'draw-warning-overlap',
+        paint: { 'fill-pattern': 'overlap-stripe-pattern' },
     });
 
     appState.campMap = await (await fetch('/api/camp-map/state')).json();
