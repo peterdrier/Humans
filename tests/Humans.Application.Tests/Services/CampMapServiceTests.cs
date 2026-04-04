@@ -394,4 +394,36 @@ public class CampMapServiceTests : IDisposable
 
         result.Should().BeNull();
     }
+
+    // --- UpdatePlacementDatesAsync ---
+
+    [Fact]
+    public async Task UpdatePlacementDatesAsync_SetsBothDates()
+    {
+        await SeedMapSettingsAsync();
+        var opens = new LocalDateTime(2026, 4, 10, 18, 0);
+        var closes = new LocalDateTime(2026, 4, 20, 23, 59);
+
+        await _sut.UpdatePlacementDatesAsync(opens, closes);
+
+        var settings = await _dbContext.CampMapSettings.SingleAsync();
+        settings.PlacementOpensAt.Should().Be(opens);
+        settings.PlacementClosesAt.Should().Be(closes);
+    }
+
+    [Fact]
+    public async Task UpdatePlacementDatesAsync_ClearsDates_WhenNull()
+    {
+        await SeedMapSettingsAsync();
+        var settings = await _dbContext.CampMapSettings.SingleAsync();
+        settings.PlacementOpensAt = new LocalDateTime(2026, 4, 10, 18, 0);
+        settings.PlacementClosesAt = new LocalDateTime(2026, 4, 20, 23, 59);
+        await _dbContext.SaveChangesAsync();
+
+        await _sut.UpdatePlacementDatesAsync(null, null);
+
+        var updated = await _dbContext.CampMapSettings.SingleAsync();
+        updated.PlacementOpensAt.Should().BeNull();
+        updated.PlacementClosesAt.Should().BeNull();
+    }
 }

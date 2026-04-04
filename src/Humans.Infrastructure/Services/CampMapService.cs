@@ -239,6 +239,15 @@ public class CampMapService : ICampMapService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdatePlacementDatesAsync(LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default)
+    {
+        var settings = await GetSettingsAsync(cancellationToken);
+        settings.PlacementOpensAt = opensAt;
+        settings.PlacementClosesAt = closesAt;
+        settings.UpdatedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {
         var polygons = await _dbContext.CampPolygons

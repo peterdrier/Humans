@@ -13,6 +13,12 @@ public class CampMapSettings
     public Instant? OpenedAt { get; set; }
     public Instant? ClosedAt { get; set; }
 
+    /// <summary>Informational scheduled open time shown in help modal. Not enforced.</summary>
+    public LocalDateTime? PlacementOpensAt { get; set; }
+
+    /// <summary>Informational scheduled close time shown in help modal. Not enforced.</summary>
+    public LocalDateTime? PlacementClosesAt { get; set; }
+
     /// <summary>GeoJSON FeatureCollection defining the visual site boundary. Null until uploaded.</summary>
     public string? LimitZoneGeoJson { get; set; }
 
