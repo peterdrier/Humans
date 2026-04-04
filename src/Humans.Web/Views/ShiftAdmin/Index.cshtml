@@ -84,11 +84,9 @@
                                     <td>
                                         @if (isRange && first.SignupBlockId.HasValue)
                                         {
-                                            @{
-                                                var allRangeShiftsFull = signups.All(s => s.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= s.Shift.MaxVolunteers);
-                                                var someRangeShiftsFull = signups.Any(s => s.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= s.Shift.MaxVolunteers);
-                                            }
-                                            @if (allRangeShiftsFull)
+                                            var allRangeShiftsFull = signups.All(s => s.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= s.Shift.MaxVolunteers);
+                                            var someRangeShiftsFull = signups.Any(s => s.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= s.Shift.MaxVolunteers);
+                                            if (allRangeShiftsFull)
                                             {
                                                 <span class="badge bg-secondary">All shifts at capacity</span>
                                             }
@@ -113,10 +111,8 @@
                                         }
                                         else
                                         {
-                                            @{
-                                                var shiftAtCapacity = first.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= first.Shift.MaxVolunteers;
-                                            }
-                                            @if (shiftAtCapacity)
+                                            var shiftAtCapacity = first.Shift.ShiftSignups.Count(ss => ss.Status == SignupStatus.Confirmed) >= first.Shift.MaxVolunteers;
+                                            if (shiftAtCapacity)
                                             {
                                                 <span class="badge bg-secondary">Shift at capacity</span>
                                             }
