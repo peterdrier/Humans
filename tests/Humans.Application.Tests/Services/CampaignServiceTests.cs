@@ -45,6 +45,7 @@ public class CampaignServiceTests : IDisposable
             _dbContext,
             _clock,
             _metrics,
+            Substitute.For<INotificationService>(),
             Substitute.For<ICommunicationPreferenceService>(),
             emailSettings,
             hostEnvironment,

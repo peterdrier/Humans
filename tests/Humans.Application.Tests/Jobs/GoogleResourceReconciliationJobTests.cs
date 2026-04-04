@@ -30,6 +30,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 
         _job = new GoogleResourceReconciliationJob(
             _googleSyncService,
+            Substitute.For<INotificationService>(),
             _metrics,
             NullLogger<GoogleResourceReconciliationJob>.Instance,
             _clock);

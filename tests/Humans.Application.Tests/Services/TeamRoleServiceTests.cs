@@ -31,6 +31,7 @@ public class TeamRoleServiceTests : IDisposable
         var roleAssignmentService = new RoleAssignmentService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
+            Substitute.For<INotificationService>(),
             Substitute.For<ISystemTeamSync>(),
             _clock,
             cache,

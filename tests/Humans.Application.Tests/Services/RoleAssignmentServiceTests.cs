@@ -33,6 +33,7 @@ public class RoleAssignmentServiceTests : IDisposable
         _service = new RoleAssignmentService(
             _dbContext,
             Substitute.For<Humans.Application.Interfaces.IAuditLogService>(),
+            Substitute.For<Humans.Application.Interfaces.INotificationService>(),
             Substitute.For<Humans.Application.Interfaces.ISystemTeamSync>(),
             _clock,
             _cache,
