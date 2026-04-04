@@ -1,14 +1,17 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import {
   loginAsVolunteer,
+  loginAsCoordinator,
   loginAsAdmin,
   loginAsBoard,
+  loginAsCampAdmin,
+  loginAsConsentCoordinator,
+  loginAsFeedbackAdmin,
+  loginAsFinanceAdmin,
   loginAsHumanAdmin,
+  loginAsNoInfoAdmin,
   loginAsTeamsAdmin,
   loginAsTicketAdmin,
-  loginAsConsentCoordinator,
-  loginAsNoInfoAdmin,
-  loginAsFinanceAdmin,
   loginAsVolunteerCoordinator,
 } from '../helpers/auth';
 
@@ -64,6 +67,11 @@ const roles: RoleTest[] = [
     visible: ['volunteer'],
   },
   {
+    name: 'coordinator',
+    login: loginAsCoordinator,
+    visible: ['volunteer'],
+  },
+  {
     name: 'admin',
     login: loginAsAdmin,
     visible: ['volunteer', 'v', 'review', 'voting', 'board', 'admin', 'google', 'tickets', 'finance'],
@@ -90,9 +98,19 @@ const roles: RoleTest[] = [
     visible: ['volunteer', 'tickets'],
   },
   {
+    name: 'campAdmin',
+    login: loginAsCampAdmin,
+    visible: ['volunteer'],
+  },
+  {
     name: 'consentCoordinator',
     login: loginAsConsentCoordinator,
     visible: ['volunteer', 'review'],
+  },
+  {
+    name: 'feedbackAdmin',
+    login: loginAsFeedbackAdmin,
+    visible: ['volunteer'],
   },
   {
     name: 'noInfoAdmin',
