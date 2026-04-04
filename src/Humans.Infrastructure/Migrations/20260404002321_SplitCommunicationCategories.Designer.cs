@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260404000627_SplitCommunicationCategories")]
+    [Migration("20260404002321_SplitCommunicationCategories")]
     partial class SplitCommunicationCategories
     {
         /// <inheritdoc />
@@ -1536,6 +1536,9 @@ namespace Humans.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("FailedPermanently")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -2932,6 +2935,13 @@ namespace Humans.Infrastructure.Migrations
                     b.Property<string>("GoogleEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<string>("GoogleEmailStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Unknown");
 
                     b.Property<Guid?>("ICalToken")
                         .HasColumnType("uuid");
