@@ -1,11 +1,9 @@
-@using System.Text.Json
 @{
     ViewData["Title"] = "Barrio Map";
     var isPlacementOpen = (bool)ViewBag.IsPlacementOpen;
     var isMapAdmin = (bool)ViewBag.IsMapAdmin;
     var userCampSeasonId = (string)ViewBag.UserCampSeasonId;
     var seasonsWithout = (List<Humans.Application.Interfaces.CampSeasonSummaryDto>)ViewBag.SeasonsWithoutCampPolygon;
-    var year = (int)ViewBag.Year;
     var showMainToolbar = isMapAdmin && seasonsWithout.Any();
 }
 
@@ -13,7 +11,7 @@
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
     <link rel="stylesheet" href="https://unpkg.com/@@mapbox/mapbox-gl-draw@1.5.1/dist/mapbox-gl-draw.css" />
     <style>
-        /* Override the main layout to occupy the whole screen space  */
+        /* Override the main layout to occupy the whole screen space */
         .main-content { display: flex; max-width: 100vw; padding: 0; }
         main { display: flex; flex: 1; padding: 0; }
 
@@ -21,11 +19,9 @@
         #map { height: 100%; width: 100%; }
         .remote-cursor {
             position: relative; background: rgba(255,165,0,0.85); color: white;
-            margin-top: 6px;
-            margin-left: 6px;
+            margin-top: 6px; margin-left: 6px;
             padding: 2px 7px; border-radius: 0 4px 4px 4px; font-size: 12px;
-            white-space: nowrap; pointer-events: none;
-            width: fit-content;
+            white-space: nowrap; pointer-events: none; width: fit-content;
         }
         .remote-cursor::after {
             content: ''; position: absolute; top: -6px; left: -6px;
@@ -36,7 +32,10 @@
 }
 
 <div id="map-page">
-    <div id="map"></div>
+    <div id="map"
+         data-user-camp-season-id="@userCampSeasonId"
+         data-is-placement-open="@(isPlacementOpen ? "true" : "false")"
+         data-is-map-admin="@(isMapAdmin ? "true" : "false")"></div>
 
     @if (isPlacementOpen)
     {
@@ -55,7 +54,8 @@
 
     <!-- Toolbars -->
     <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">
-        @if (isPlacementOpen || isMapAdmin) {
+        @if (isPlacementOpen || isMapAdmin)
+        {
         <div id="main-toolbar" class="card" style="@(showMainToolbar ? "" : "display:none")">
             <div class="card-body d-flex flex-row gap-2 align-items-center">
             @if (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId))
@@ -82,7 +82,7 @@
             <button id="cancel-btn" class="btn btn-outline-secondary btn-sm" style="display:none">
                 <i class="fa fa-times me-1"></i> Cancel
             </button>
-            <button id="history-btn" class="btn btn-outline-primary btn-sm" style="display:none">
+            <button id="history-btn" class="btn btn-outline-primary btn-sm" style="display:none" disabled>
                 <i class="fa fa-history me-1"></i> History
             </button>
             </div>
@@ -99,69 +99,14 @@
         </div>
         }
     </div>
-
-
 </div>
 
-<!-- Placement help modal -->
 @if (isPlacementOpen)
 {
-<div class="modal fade" id="placement-help-modal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Placement phase</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <h6>When is it?</h6>
-                <p class="text-muted small">The placement phase runs for a limited time — exact dates will be shown here soon. Place your barrio before it closes!</p>
-
-                <h6>Placing your barrio</h6>
-                <p class="text-muted small">Click <strong>Add my barrio on the map</strong> to start drawing. Then click on the map to drop points that define your space — each click adds a corner. Close the shape by clicking back on the first point.</p>
-                <div class="bg-light border rounded mb-3 d-flex align-items-center justify-content-center" style="height:100px">
-                    <span class="text-muted small fst-italic">Screenshot coming soon</span>
-                </div>
-
-                <h6>Adjusting the shape</h6>
-                <ul class="text-muted small ps-3 mb-2">
-                    <li>Drag a corner point to move it</li>
-                    <li>Drag the whole shape to reposition it</li>
-                    <li>Click the midpoint of an edge (where the length in metres is shown) to add a new corner</li>
-                    <li>Click a point to select it (it turns orange), then press <kbd>Delete</kbd> or <kbd>Backspace</kbd> to remove it</li>
-                    <li>The area in m² is shown in the centre and updates as you edit</li>
-                </ul>
-                <div class="bg-light border rounded mb-3 d-flex align-items-center justify-content-center" style="height:100px">
-                    <span class="text-muted small fst-italic">Screenshot coming soon</span>
-                </div>
-
-                <h6>Saving &amp; editing later</h6>
-                <p class="text-muted small">Happy with it? Hit <strong>Save</strong>. Afterwards, click your barrio on the map to see its size, then <strong>Edit</strong> to jump back into edit mode. Every save creates a history entry — use the <strong>History</strong> button to browse and restore any previous version. No stress, you can't break anything!</p>
-
-                <h6>Colours &amp; sound zones</h6>
-                <p class="text-muted small">Each barrio is coloured by its preferred sound zone (editable from your barrio page). Not sure which zone fits? Have a look at the map and chat with your neighbours!</p>
-
-                <h6>Stay inside the white zones</h6>
-                <p class="text-muted small">The dashed white areas mark the safe camping zones, protected by lightning poles. <strong>Camping outside them is not allowed</strong>, so keep your barrio inside those boundaries.</p>
-
-                <h6>Overlaps? Talk it out!</h6>
-                <p class="text-muted small">If your barrio overlaps with another, reach out on <a href="https://discord.com/channels/1462886445583962245/1467793922074873896" target="_blank" class="text-decoration-none">Discord #city-planning</a> and work it out together. If there are unresolved conflicts at the end of the phase, the city planning team will sort them out.</p>
-            </div>
-        </div>
-    </div>
-</div>
+    @await Html.PartialAsync("_PlacementHelpModal")
 }
 
-<!-- History offcanvas -->
-<div class="offcanvas offcanvas-end" tabindex="-1" id="history-panel" style="width:360px;">
-    <div class="offcanvas-header">
-        <h5 class="offcanvas-title">Polygon History</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
-    </div>
-    <div class="offcanvas-body p-2" id="history-list">
-        <p class="text-muted text-center py-4">Loading…</p>
-    </div>
-</div>
+@await Html.PartialAsync("_HistoryOffcanvas")
 
 <!-- Anti-forgery token for AJAX calls -->
 @Html.AntiForgeryToken()
@@ -171,607 +116,5 @@
     <script src="https://unpkg.com/@@mapbox/mapbox-gl-draw@1.5.1/dist/mapbox-gl-draw.js"></script>
     <script src="https://unpkg.com/@@turf/turf@7.1.0/turf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
-    <script>
-        // --- Server-side constants ---
-        const USER_CAMP_SEASON_ID = '@userCampSeasonId';
-        const IS_PLACEMENT_OPEN = @(isPlacementOpen ? "true" : "false");
-        const IS_MAP_ADMIN = @(isMapAdmin ? "true" : "false");
-
-        const ESRI_TILES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-        const MAP_BOUNDS = [
-            [
-            -0.14285979741055144,
-            41.696961407716145,
-          ], [
-            -0.13157837273621453,
-            41.70290716137069
-        ]]; // [SW, NE] corners of festival site
-
-        function generateRainbowPattern() {
-            const size = 60;
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-            const colors = ['#ff0000', '#ff8800', '#ffcc00', '#33cc55', '#3388ff', '#cc00cc'];
-            const stripeH = size / colors.length;
-            for (let i = 0; i < colors.length; i++) {
-                ctx.fillStyle = colors[i];
-                ctx.fillRect(0, i * stripeH, size, stripeH);
-            }
-            return ctx.getImageData(0, 0, size, size);
-        }
-
-        let map, draw, state, connection;
-        let activeCampSeasonId = null;
-        let remoteCursors = {};
-        let currentPopup = null;
-        let limitZoneGeom = null;
-
-        function isOutsideZone(feature) {
-            if (!limitZoneGeom) return false;
-            try { return !turf.booleanWithin(feature, limitZoneGeom); } catch { return false; }
-        }
-
-        function parseLimitZoneGeom(geoJson) {
-            if (!geoJson) return null;
-            const lz = JSON.parse(geoJson);
-            if (lz.type === 'FeatureCollection') {
-                return lz.features.length > 0
-                    ? lz.features.reduce((acc, f) => acc ? turf.union(turf.featureCollection([acc, f])) : f)
-                    : null;
-            }
-            return lz;
-        }
-
-        function buildCampPolygonFeatures(campPolygons) {
-            const features = campPolygons.map(p => {
-                const f = JSON.parse(p.geoJson);
-                f.properties = Object.assign(f.properties || {}, {
-                    campSeasonId: p.campSeasonId,
-                    campName: p.campName,
-                    areaSqm: p.areaSqm,
-                    isOwn: p.campSeasonId === USER_CAMP_SEASON_ID,
-                    soundZone: (p.soundZone !== undefined && p.soundZone !== null) ? p.soundZone : -1,
-                    outsideZone: isOutsideZone(f),
-                    overlaps: false
-                });
-                return f;
-            });
-            for (let i = 0; i < features.length; i++) {
-                for (let j = i + 1; j < features.length; j++) {
-                    try {
-                        if (turf.intersect(turf.featureCollection([features[i], features[j]]))) {
-                            features[i].properties.overlaps = true;
-                            features[j].properties.overlaps = true;
-                        }
-                    } catch { /* ignore geometry errors */ }
-                }
-            }
-            return features;
-        }
-
-        function overlapsOtherCamps(feature) {
-            return state.campPolygons
-                .filter(p => p.campSeasonId !== activeCampSeasonId)
-                .some(p => {
-                    try { return !!turf.intersect(turf.featureCollection([feature, JSON.parse(p.geoJson)])); }
-                    catch { return false; }
-                });
-        }
-
-        // --- Initialization ---
-
-        async function init() {
-            map = new maplibregl.Map({
-                container: 'map',
-                style: {
-                    version: 8,
-                    sources: { esri: { type: 'raster', tiles: [ESRI_TILES], tileSize: 256, attribution: '© Esri' } },
-                    layers: [{ id: 'esri-layer', type: 'raster', source: 'esri' }]
-                },
-                bounds: MAP_BOUNDS
-            });
-
-            draw = new MapboxDraw({
-                displayControlsDefault: false,
-                styles: [
-                    { id: 'gl-draw-polygon-fill-inactive', type: 'fill', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']], paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.1 } },
-                    { id: 'gl-draw-polygon-fill-active',   type: 'fill', filter: ['all', ['==', 'active', 'true'],  ['==', '$type', 'Polygon']],                               paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.2 } },
-                    { id: 'gl-draw-polygon-stroke-inactive', type: 'line', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 2 } },
-                    { id: 'gl-draw-polygon-stroke-active',   type: 'line', filter: ['all', ['==', 'active', 'true'],  ['==', '$type', 'Polygon']],                               layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 3 } },
-                    { id: 'gl-draw-line-inactive', type: 'line', filter: ['all', ['==', 'active', 'false'], ['==', '$type', 'LineString'], ['!=', 'mode', 'static']], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 2 } },
-                    { id: 'gl-draw-line-active',   type: 'line', filter: ['all', ['==', 'active', 'true'],  ['==', '$type', 'LineString']],                               layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-dasharray': ['literal', [2, 2]], 'line-width': 3 } },
-                    { id: 'gl-draw-polygon-and-line-vertex-stroke-inactive', type: 'circle', filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static'], ['==', 'active', 'false']], paint: { 'circle-radius': 10, 'circle-color': '#fff' } },
-                    { id: 'gl-draw-polygon-and-line-vertex-inactive',        type: 'circle', filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['!=', 'mode', 'static'], ['==', 'active', 'false']], paint: { 'circle-radius': 7,  'circle-color': '#0080ff' } },
-                    { id: 'gl-draw-polygon-and-line-vertex-stroke-active',   type: 'circle', filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['==', 'active', 'true']],                            paint: { 'circle-radius': 12, 'circle-color': '#fff' } },
-                    { id: 'gl-draw-polygon-and-line-vertex-active',          type: 'circle', filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point'], ['==', 'active', 'true']],                            paint: { 'circle-radius': 8,  'circle-color': '#ff6600' } },
-                    { id: 'gl-draw-polygon-midpoint', type: 'circle', filter: ['all', ['==', '$type', 'Point'], ['==', 'meta', 'midpoint']], paint: { 'circle-radius': 5, 'circle-color': '#ffffff' } },
-                ]
-            });
-            map.addControl(draw);
-
-            map.on('draw.create', onDrawChange);
-            map.on('draw.update', onDrawChange);
-            map.on('draw.render', onDrawChange);
-            map.on('draw.delete', onDrawDelete);
-
-            await new Promise(resolve => map.on('load', resolve));
-
-            map.addImage('rainbow-pattern', generateRainbowPattern());
-
-            map.addSource('draw-label', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-            map.addLayer({
-                id: 'draw-label', type: 'symbol', source: 'draw-label',
-                layout: {
-                    'text-field': ['get', 'label'],
-                    'text-size': 13,
-                    'text-anchor': 'center',
-                    'text-allow-overlap': true
-                },
-                paint: { 'text-color': '#000000', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }
-            });
-
-            map.addSource('draw-edge-labels', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-            map.addLayer({
-                id: 'draw-edge-labels', type: 'symbol', source: 'draw-edge-labels',
-                layout: {
-                    'text-field': ['get', 'label'],
-                    'text-size': 11,
-                    'text-anchor': 'center',
-                    'text-allow-overlap': true
-                },
-                paint: { 'text-color': '#444444', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }
-            });
-
-            map.addSource('draw-warning-error', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-            map.addLayer({
-                id: 'draw-warning-error', type: 'line', source: 'draw-warning-error',
-                layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': '#ff2222', 'line-width': 1.5, 'line-dasharray': [3, 5] }
-            });
-            map.addSource('draw-warning-overlap', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-            map.addLayer({
-                id: 'draw-warning-overlap', type: 'line', source: 'draw-warning-overlap',
-                layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': '#ff8800', 'line-width': 4, 'line-dasharray': [0, 2] }
-            });
-
-            state = await (await fetch('/api/camp-map/state')).json();
-            limitZoneGeom = parseLimitZoneGeom(state.limitZoneGeoJson);
-            renderMap();
-            updateAddMyBarrioVisibility();
-            initSignalR();
-        }
-
-        // --- Map rendering ---
-
-        function renderMap() {
-            ['limit-zone-line', 'limit-zone-fill', 'camp-polygons-outline-warning', 'camp-polygons-outline-overlap', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
-                if (map.getLayer(id)) map.removeLayer(id);
-            });
-            ['limit-zone', 'camp-polygons'].forEach(id => {
-                if (map.getSource(id)) map.removeSource(id);
-            });
-
-            if (state.limitZoneGeoJson) {
-                map.addSource('limit-zone', { type: 'geojson', data: JSON.parse(state.limitZoneGeoJson) });
-                map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 } });
-                map.addLayer({ id: 'limit-zone-line', type: 'line', source: 'limit-zone', paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 2] } });
-            }
-
-            const features = buildCampPolygonFeatures(state.campPolygons);
-
-            map.addSource('camp-polygons', { type: 'geojson', data: { type: 'FeatureCollection', features } });
-            map.addLayer({
-                id: 'camp-polygons-fill', type: 'fill', source: 'camp-polygons',
-                filter: ['!=', ['get', 'soundZone'], 5],
-                paint: {
-                    'fill-color': ['match', ['get', 'soundZone'],
-                        0, '#88aadd',
-                        1, '#88bb88',
-                        2, '#ddcc66',
-                        3, '#ddaa66',
-                        4, '#dd8888',
-                        '#aaaaaa'
-                    ],
-                    'fill-opacity': ['case', ['boolean', ['get', 'isOwn'], false], 0.4, 0.2]
-                }
-            });
-            map.addLayer({
-                id: 'camp-polygons-fill-surprise', type: 'fill', source: 'camp-polygons',
-                filter: ['==', ['get', 'soundZone'], 5],
-                paint: {
-                    'fill-pattern': 'rainbow-pattern',
-                    'fill-opacity': ['case', ['boolean', ['get', 'isOwn'], false], 0.55, 0.35]
-                }
-            });
-            map.addLayer({
-                id: 'camp-polygons-outline', type: 'line', source: 'camp-polygons',
-                paint: {
-                    'line-color': ['match', ['get', 'soundZone'],
-                        0, '#2266cc',
-                        1, '#229944',
-                        2, '#cc9900',
-                        3, '#cc6600',
-                        4, '#cc1111',
-                        5, '#cc00cc',
-                        '#666666'
-                    ],
-                    'line-width': ['case', ['boolean', ['get', 'isOwn'], false], 4, 1]
-                }
-            });
-            map.addLayer({
-                id: 'camp-polygons-outline-overlap', type: 'line', source: 'camp-polygons',
-                filter: ['==', ['get', 'overlaps'], true],
-                layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': '#ff8800', 'line-width': 4, 'line-dasharray': [0, 2] }
-            });
-            map.addLayer({
-                id: 'camp-polygons-outline-warning', type: 'line', source: 'camp-polygons',
-                filter: ['==', ['get', 'outsideZone'], true],
-                layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': '#ff2222', 'line-width': 1.5, 'line-dasharray': [3, 5] }
-            });
-            map.addLayer({
-                id: 'camp-polygons-labels', type: 'symbol', source: 'camp-polygons',
-                layout: {
-                    'text-field': ['case',
-                        ['any', ['boolean', ['get', 'outsideZone'], false], ['boolean', ['get', 'overlaps'], false]],
-                        ['concat', '⚠️ ', ['get', 'campName']],
-                        ['get', 'campName']
-                    ],
-                    'text-size': 14,
-                    'text-anchor': 'center',
-                    'text-allow-overlap': false
-                },
-                paint: {
-                    'text-color': '#000000',
-                    'text-halo-color': '#ffffff',
-                    'text-halo-width': 2
-                }
-            });
-
-            map.on('click', 'camp-polygons-fill', onCampPolygonClick);
-            map.on('click', 'camp-polygons-fill-surprise', onCampPolygonClick);
-            map.on('mouseenter', 'camp-polygons-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
-            map.on('mouseenter', 'camp-polygons-fill-surprise', () => { map.getCanvas().style.cursor = 'pointer'; });
-            map.on('mouseleave', 'camp-polygons-fill', () => { map.getCanvas().style.cursor = ''; });
-            map.on('mouseleave', 'camp-polygons-fill-surprise', () => { map.getCanvas().style.cursor = ''; });
-
-            // Bring draw layers and labels above our polygon layers
-            map.getStyle().layers
-                .filter(l => l.id.startsWith('gl-draw-'))
-                .forEach(l => map.moveLayer(l.id));
-            map.moveLayer('draw-warning-overlap');
-            map.moveLayer('draw-warning-error');
-            map.moveLayer('draw-edge-labels');
-            map.moveLayer('draw-label');
-        }
-
-        function onCampPolygonClick(e) {
-            if (activeCampSeasonId) return;
-            const props = e.features[0].properties;
-            const campSeasonId = props.campSeasonId;
-            const isOwn = props.campSeasonId === USER_CAMP_SEASON_ID;
-            const canEdit = IS_MAP_ADMIN || (IS_PLACEMENT_OPEN && isOwn);
-
-            const area = props.areaSqm ? `<div class="text-muted small">${Math.round(props.areaSqm).toLocaleString()} m²</div>` : '';
-            const warning = props.outsideZone ? `<div class="text-danger small">⚠️ Outside limits</div>` : '';
-            const overlapWarning = props.overlaps ? `<div class="text-warning small">⚠️ Overlaps with another barrio</div>` : '';
-            const editBtn = canEdit ? `<button class="btn btn-primary btn-sm mt-1 js-edit-barrio-btn">Edit</button>` : '';
-
-            if (currentPopup) currentPopup.remove();
-            currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
-                .setHTML(`<div><strong>${props.campName || 'Camp'}</strong></div>${area}${warning}${overlapWarning}${editBtn}`)
-                .addTo(map);
-
-            if (canEdit) {
-                currentPopup.getElement().querySelector('.js-edit-barrio-btn')
-                    .addEventListener('click', () => startEditing(campSeasonId));
-            }
-        }
-
-        function startEditing(campSeasonId) {
-            if (currentPopup) { currentPopup.remove(); currentPopup = null; }
-
-            activeCampSeasonId = campSeasonId;
-            setActivePolygonDim(campSeasonId);
-            draw.deleteAll();
-
-            const poly = state.campPolygons.find(p => p.campSeasonId === campSeasonId);
-            if (poly) {
-                const f = JSON.parse(poly.geoJson);
-                if (!f.id) f.id = 'active-polygon';
-                draw.add(f);
-                draw.changeMode('direct_select', { featureId: f.id });
-            }
-
-            document.getElementById('history-btn').disabled = false;
-            setEditingControlsVisible(true);
-            updateSaveButton();
-        }
-
-        // --- Toolbar state ---
-
-        function setEditingControlsVisible(visible) {
-            const toolbar = document.getElementById('main-toolbar');
-            if (!toolbar) return;
-            const saveBtn = document.getElementById('save-btn');
-            const historyBtn = document.getElementById('history-btn');
-            if (visible) {
-                toolbar.style.display = '';
-                const addMyBarrioBtn = document.getElementById('add-my-barrio-btn');
-                if (addMyBarrioBtn) addMyBarrioBtn.style.display = 'none';
-                if (saveBtn) saveBtn.style.display = '';
-                if (historyBtn) historyBtn.style.display = '';
-                return;
-            }
-            if (saveBtn) saveBtn.style.display = 'none';
-            if (historyBtn) historyBtn.style.display = 'none';
-            updateAddMyBarrioVisibility();
-            const addMyBarrioVisible = document.getElementById('add-my-barrio-btn')?.style.display !== 'none';
-            const addBarrioPresent = !!document.getElementById('add-barrio-container');
-            if (!addMyBarrioVisible && !addBarrioPresent) toolbar.style.display = 'none';
-        }
-
-        function updateAddMyBarrioVisibility() {
-            const btn = document.getElementById('add-my-barrio-btn');
-            if (!btn) return;
-            const hasPolygon = state.campPolygons.some(p => p.campSeasonId === USER_CAMP_SEASON_ID);
-            const show = IS_PLACEMENT_OPEN && USER_CAMP_SEASON_ID && !hasPolygon;
-            btn.style.display = show ? '' : 'none';
-            if (show) {
-                const toolbar = document.getElementById('main-toolbar');
-                if (toolbar) toolbar.style.display = '';
-            }
-        }
-
-        function clearDrawLabel() {
-            map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [] });
-            map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: [] });
-            map.getSource('draw-warning-error').setData({ type: 'FeatureCollection', features: [] });
-            map.getSource('draw-warning-overlap').setData({ type: 'FeatureCollection', features: [] });
-        }
-
-        function updateSaveButton() {
-            const features = draw.getAll().features;
-            const hasValidPolygon = features.some(f =>
-                f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
-            const editing = hasValidPolygon && activeCampSeasonId;
-            document.getElementById('save-btn').disabled = !editing;
-            const cancelBtn = document.getElementById('cancel-btn');
-            if (cancelBtn) cancelBtn.style.display = activeCampSeasonId ? '' : 'none';
-            if (hasValidPolygon) {
-                const poly = features[0];
-                const area = turf.area(poly);
-                const centroid = turf.centroid(poly);
-                const outside = isOutsideZone(poly);
-                const overlap = overlapsOtherCamps(poly);
-                map.getSource('draw-warning-error').setData(outside
-                    ? { type: 'FeatureCollection', features: [poly] }
-                    : { type: 'FeatureCollection', features: [] });
-                map.getSource('draw-warning-overlap').setData(overlap
-                    ? { type: 'FeatureCollection', features: [poly] }
-                    : { type: 'FeatureCollection', features: [] });
-                const warnings = [...(outside ? ['\n⚠️ Outside limits'] : []), ...(overlap ? ['\n⚠️ Overlaps with another barrio'] : [])];
-                centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' + warnings.join('') };
-                map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [centroid] });
-
-                const coords = poly.geometry.coordinates[0];
-                const edgeFeatures = [];
-                for (let i = 0; i < coords.length - 1; i++) {
-                    const lengthM = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: 'meters' });
-                    const mid = turf.midpoint(turf.point(coords[i]), turf.point(coords[i + 1]));
-                    mid.properties = { label: Math.round(lengthM) + ' m' };
-                    edgeFeatures.push(mid);
-                }
-                map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: edgeFeatures });
-            } else {
-                clearDrawLabel();
-            }
-        }
-
-        function setActivePolygonDim(campSeasonId) {
-            const fillOpacity = campSeasonId
-                ? ['case', ['==', ['get', 'campSeasonId'], campSeasonId], 0.1, ['boolean', ['get', 'isOwn'], false], 0.55, 0.35]
-                : ['case', ['boolean', ['get', 'isOwn'], false], 0.55, 0.35];
-            const surpriseOpacity = campSeasonId
-                ? ['case', ['==', ['get', 'campSeasonId'], campSeasonId], 0.1, ['boolean', ['get', 'isOwn'], false], 0.75, 0.55]
-                : ['case', ['boolean', ['get', 'isOwn'], false], 0.75, 0.55];
-            if (map.getLayer('camp-polygons-fill')) map.setPaintProperty('camp-polygons-fill', 'fill-opacity', fillOpacity);
-            if (map.getLayer('camp-polygons-fill-surprise')) map.setPaintProperty('camp-polygons-fill-surprise', 'fill-opacity', surpriseOpacity);
-        }
-
-        // mapbox-gl-draw loses keyboard focus after vertex clicks — handle Delete globally
-        document.addEventListener('keydown', e => {
-            if ((e.key === 'Delete' || e.key === 'Backspace') && activeCampSeasonId) {
-                e.preventDefault();
-                // Prevent deletion that would leave fewer than 3 unique points
-                const poly = draw.getAll().features.find(f => f.geometry.type === 'Polygon');
-                if (poly && poly.geometry.coordinates[0].length <= 4) return;
-                draw.trash();
-            }
-        });
-
-        function onDrawChange() { updateSaveButton(); }
-        function onDrawDelete() {
-            setActivePolygonDim(null);
-            activeCampSeasonId = null;
-            document.getElementById('save-btn').disabled = true;
-            document.getElementById('history-btn').disabled = true;
-            const cancelBtn = document.getElementById('cancel-btn');
-            if (cancelBtn) cancelBtn.style.display = 'none';
-            clearDrawLabel();
-            setEditingControlsVisible(false);
-        }
-
-        // --- Button handlers ---
-
-        document.getElementById('add-my-barrio-btn')?.addEventListener('click', () => {
-            activeCampSeasonId = USER_CAMP_SEASON_ID;
-            draw.deleteAll();
-            draw.changeMode('draw_polygon');
-            setEditingControlsVisible(true);
-        });
-
-        document.getElementById('add-barrio-select')?.addEventListener('change', e => {
-            const val = e.target.value;
-            if (!val) return;
-            activeCampSeasonId = val;
-            draw.deleteAll();
-            draw.changeMode('draw_polygon');
-            e.target.value = '';
-            setEditingControlsVisible(true);
-        });
-
-        document.getElementById('save-btn')?.addEventListener('click', async () => {
-            if (!activeCampSeasonId) return;
-            const features = draw.getAll().features;
-            if (!features.length) return;
-
-            const feature = features[0];
-            const areaSqm = turf.area(feature);
-            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-
-            const resp = await fetch(`/api/camp-map/camp-polygons/${activeCampSeasonId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token },
-                body: JSON.stringify({ geoJson: JSON.stringify(feature), areaSqm })
-            });
-
-            if (resp.ok) {
-                draw.deleteAll();
-                activeCampSeasonId = null;
-                document.getElementById('save-btn').disabled = true;
-                document.getElementById('history-btn').disabled = true;
-                clearDrawLabel();
-                setEditingControlsVisible(false);
-                // SignalR PolygonUpdated will refresh the map layer
-            } else {
-                alert('Failed to save polygon. Please try again.');
-            }
-        });
-
-        document.getElementById('cancel-btn')?.addEventListener('click', () => {
-            if (!confirm('Discard unsaved changes?')) return;
-            draw.deleteAll();
-            setActivePolygonDim(null);
-            activeCampSeasonId = null;
-            document.getElementById('save-btn').disabled = true;
-            document.getElementById('history-btn').disabled = true;
-            document.getElementById('cancel-btn').style.display = 'none';
-            clearDrawLabel();
-            setEditingControlsVisible(false);
-        });
-
-        document.getElementById('history-btn')?.addEventListener('click', async () => {
-            if (!activeCampSeasonId) return;
-            const resp = await fetch(`/api/camp-map/camp-polygons/${activeCampSeasonId}/history`);
-            const history = await resp.json();
-
-            const list = document.getElementById('history-list');
-            if (!history.length) {
-                list.innerHTML = '<p class="text-muted text-center py-4">No history yet.</p>';
-            } else {
-                list.innerHTML = history.map(h => `
-                    <div class="border-bottom py-2 px-1">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="fw-semibold small">${h.modifiedByDisplayName}</div>
-                                <div class="text-muted" style="font-size:12px">${h.modifiedAt} &middot; ${Math.round(h.areaSqm).toLocaleString()} m²</div>
-                                <div class="text-secondary" style="font-size:12px">${h.note}</div>
-                            </div>
-                            <div class="d-flex gap-1 flex-shrink-0">
-                                <button class="btn btn-outline-secondary btn-sm py-0 preview-btn" data-id="${h.id}" data-geojson="${encodeURIComponent(h.geoJson)}">Preview</button>
-                                ${IS_MAP_ADMIN ? `<button class="btn btn-outline-warning btn-sm py-0 restore-btn" data-id="${h.id}">Restore</button>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-
-                list.querySelectorAll('.preview-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        draw.deleteAll();
-                        draw.add(JSON.parse(decodeURIComponent(btn.dataset.geojson)));
-                    });
-                });
-                list.querySelectorAll('.restore-btn').forEach(btn => {
-                    btn.addEventListener('click', () => restoreVersion(btn.dataset.id));
-                });
-            }
-
-            bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
-        });
-
-        async function restoreVersion(historyId) {
-            if (!activeCampSeasonId) return;
-            if (!confirm('Restore this polygon version? The current version will be saved to history first.')) return;
-            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-            const resp = await fetch(`/api/camp-map/camp-polygons/${activeCampSeasonId}/restore/${historyId}`, {
-                method: 'POST',
-                headers: { 'RequestVerificationToken': token }
-            });
-            if (resp.ok) {
-                bootstrap.Offcanvas.getInstance(document.getElementById('history-panel'))?.hide();
-                draw.deleteAll();
-                activeCampSeasonId = null;
-            } else {
-                alert('Restore failed.');
-            }
-        }
-
-        // --- SignalR ---
-
-        function initSignalR() {
-            connection = new signalR.HubConnectionBuilder()
-                .withUrl('/hubs/camp-map')
-                .withAutomaticReconnect()
-                .build();
-
-            connection.on('CampPolygonUpdated', (campSeasonId, geoJson, areaSqm, soundZone, campName) => {
-                const idx = state.campPolygons.findIndex(p => p.campSeasonId === campSeasonId);
-                if (idx >= 0) {
-                    state.campPolygons[idx].geoJson = geoJson;
-                    state.campPolygons[idx].areaSqm = areaSqm;
-                    // soundZone and campName are CampSeason properties — they don't change on polygon save
-                } else {
-                    state.campPolygons.push({ campSeasonId, geoJson, areaSqm, soundZone: soundZone ?? -1, campName: campName ?? '', campSlug: '' });
-                }
-                // Refresh the GeoJSON source
-                const src = map.getSource('camp-polygons');
-                if (src) {
-                    src.setData({ type: 'FeatureCollection', features: buildCampPolygonFeatures(state.campPolygons) });
-                }
-                updateAddMyBarrioVisibility();
-            });
-
-            connection.on('CursorMoved', (connectionId, userName, lat, lng) => {
-                if (!remoteCursors[connectionId]) {
-                    const el = document.createElement('div');
-                    el.className = 'remote-cursor';
-                    el.textContent = userName;
-                    remoteCursors[connectionId] = new maplibregl.Marker({ element: el, anchor: 'top-left' })
-                        .setLngLat([lng, lat]).addTo(map);
-                } else {
-                    remoteCursors[connectionId].setLngLat([lng, lat]);
-                }
-            });
-
-            connection.on('CursorLeft', connectionId => {
-                remoteCursors[connectionId]?.remove();
-                delete remoteCursors[connectionId];
-            });
-
-            connection.start().catch(console.error);
-
-            map.on('mousemove', e => {
-                if (connection.state === signalR.HubConnectionState.Connected) {
-                    connection.invoke('UpdateCursor', e.lngLat.lat, e.lngLat.lng).catch(() => {});
-                }
-            });
-        }
-
-        init();
-    </script>
+    <script type="module" src="~/js/barrio-map/main.js"></script>
 }
