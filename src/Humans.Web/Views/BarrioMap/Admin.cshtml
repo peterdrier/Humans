@@ -101,7 +101,7 @@
                         <form method="post" action="/BarrioMap/Admin/DeleteLimitZone" class="d-inline">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-outline-danger btn-sm"
-                                    onclick="return confirm('Delete the limit zone?')">
+                                    data-confirm="Delete the limit zone?">
                                 <i class="fa fa-trash me-1"></i> Remove
                             </button>
                         </form>
