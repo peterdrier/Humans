@@ -82,10 +82,10 @@ export function generateRainbowPattern() {
 export function renderMap(onCampPolygonClick) {
     const { map } = appState;
 
-    ['limit-zone-line', 'limit-zone-fill', 'camp-polygons-fill-warning', 'camp-polygons-fill-overlap', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
+    ['limit-zone-line', 'limit-zone-fill', 'official-zones-fill', 'official-zones-line', 'official-zones-labels', 'camp-polygons-fill-warning', 'camp-polygons-fill-overlap', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
         if (map.getLayer(id)) map.removeLayer(id);
     });
-    ['limit-zone', 'camp-polygons'].forEach(id => {
+    ['limit-zone', 'official-zones', 'camp-polygons'].forEach(id => {
         if (map.getSource(id)) map.removeSource(id);
     });
 
@@ -93,6 +93,22 @@ export function renderMap(onCampPolygonClick) {
         map.addSource('limit-zone', { type: 'geojson', data: JSON.parse(appState.campMap.limitZoneGeoJson) });
         map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 } });
         map.addLayer({ id: 'limit-zone-line', type: 'line', source: 'limit-zone', paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 2] } });
+    }
+
+    if (appState.campMap.officialZonesGeoJson) {
+        map.addSource('official-zones', { type: 'geojson', data: JSON.parse(appState.campMap.officialZonesGeoJson) });
+        map.addLayer({ id: 'official-zones-fill', type: 'fill', source: 'official-zones', paint: { 'fill-color': '#ffdd44', 'fill-opacity': 0.12 } });
+        map.addLayer({ id: 'official-zones-line', type: 'line', source: 'official-zones', paint: { 'line-color': '#ffdd44', 'line-width': 1.5 } });
+        map.addLayer({
+            id: 'official-zones-labels', type: 'symbol', source: 'official-zones',
+            layout: {
+                'text-field': ['get', 'name'],
+                'text-size': 12,
+                'text-anchor': 'center',
+                'text-allow-overlap': false,
+            },
+            paint: { 'text-color': '#ffdd44', 'text-halo-color': '#000000', 'text-halo-width': 1.5 },
+        });
     }
 
     const features = buildCampPolygonFeatures(appState.campMap.campPolygons);
