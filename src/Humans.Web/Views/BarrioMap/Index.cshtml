@@ -225,7 +225,7 @@
         }
 
         function buildCampPolygonFeatures(campPolygons) {
-            return campPolygons.map(p => {
+            const features = campPolygons.map(p => {
                 const f = JSON.parse(p.geoJson);
                 f.properties = Object.assign(f.properties || {}, {
                     campSeasonId: p.campSeasonId,
@@ -233,10 +233,31 @@
                     areaSqm: p.areaSqm,
                     isOwn: p.campSeasonId === USER_CAMP_SEASON_ID,
                     soundZone: (p.soundZone !== undefined && p.soundZone !== null) ? p.soundZone : -1,
-                    outsideZone: isOutsideZone(f)
+                    outsideZone: isOutsideZone(f),
+                    overlaps: false
                 });
                 return f;
             });
+            for (let i = 0; i < features.length; i++) {
+                for (let j = i + 1; j < features.length; j++) {
+                    try {
+                        if (turf.intersect(turf.featureCollection([features[i], features[j]]))) {
+                            features[i].properties.overlaps = true;
+                            features[j].properties.overlaps = true;
+                        }
+                    } catch { /* ignore geometry errors */ }
+                }
+            }
+            return features;
+        }
+
+        function overlapsOtherCamps(feature) {
+            return state.campPolygons
+                .filter(p => p.campSeasonId !== activeCampSeasonId)
+                .some(p => {
+                    try { return !!turf.intersect(turf.featureCollection([feature, JSON.parse(p.geoJson)])); }
+                    catch { return false; }
+                });
         }
 
         // --- Initialization ---
@@ -303,11 +324,17 @@
                 paint: { 'text-color': '#444444', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }
             });
 
-            map.addSource('draw-warning', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addSource('draw-warning-error', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
             map.addLayer({
-                id: 'draw-warning', type: 'line', source: 'draw-warning',
+                id: 'draw-warning-error', type: 'line', source: 'draw-warning-error',
                 layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': '#ff2222', 'line-width': 3, 'line-dasharray': [2, 2] }
+                paint: { 'line-color': '#ff2222', 'line-width': 1.5, 'line-dasharray': [3, 5] }
+            });
+            map.addSource('draw-warning-overlap', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+            map.addLayer({
+                id: 'draw-warning-overlap', type: 'line', source: 'draw-warning-overlap',
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: { 'line-color': '#ff8800', 'line-width': 4, 'line-dasharray': [0, 2] }
             });
 
             state = await (await fetch('/api/camp-map/state')).json();
@@ -320,7 +347,7 @@
         // --- Map rendering ---
 
         function renderMap() {
-            ['limit-zone-line', 'limit-zone-fill', 'camp-polygons-outline-warning', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
+            ['limit-zone-line', 'limit-zone-fill', 'camp-polygons-outline-warning', 'camp-polygons-outline-overlap', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
                 if (map.getLayer(id)) map.removeLayer(id);
             });
             ['limit-zone', 'camp-polygons'].forEach(id => {
@@ -341,14 +368,14 @@
                 filter: ['!=', ['get', 'soundZone'], 5],
                 paint: {
                     'fill-color': ['match', ['get', 'soundZone'],
-                        0, '#3388ff',
-                        1, '#33cc55',
-                        2, '#ffcc00',
-                        3, '#ff8800',
-                        4, '#ff3333',
-                        '#999999'
+                        0, '#88aadd',
+                        1, '#88bb88',
+                        2, '#ddcc66',
+                        3, '#ddaa66',
+                        4, '#dd8888',
+                        '#aaaaaa'
                     ],
-                    'fill-opacity': ['case', ['boolean', ['get', 'isOwn'], false], 0.55, 0.35]
+                    'fill-opacity': ['case', ['boolean', ['get', 'isOwn'], false], 0.4, 0.2]
                 }
             });
             map.addLayer({
@@ -375,15 +402,22 @@
                 }
             });
             map.addLayer({
+                id: 'camp-polygons-outline-overlap', type: 'line', source: 'camp-polygons',
+                filter: ['==', ['get', 'overlaps'], true],
+                layout: { 'line-cap': 'round', 'line-join': 'round' },
+                paint: { 'line-color': '#ff8800', 'line-width': 4, 'line-dasharray': [0, 2] }
+            });
+            map.addLayer({
                 id: 'camp-polygons-outline-warning', type: 'line', source: 'camp-polygons',
                 filter: ['==', ['get', 'outsideZone'], true],
                 layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': '#ff2222', 'line-width': 3, 'line-dasharray': [2, 2] }
+                paint: { 'line-color': '#ff2222', 'line-width': 1.5, 'line-dasharray': [3, 5] }
             });
             map.addLayer({
                 id: 'camp-polygons-labels', type: 'symbol', source: 'camp-polygons',
                 layout: {
-                    'text-field': ['case', ['boolean', ['get', 'outsideZone'], false],
+                    'text-field': ['case',
+                        ['any', ['boolean', ['get', 'outsideZone'], false], ['boolean', ['get', 'overlaps'], false]],
                         ['concat', '⚠️ ', ['get', 'campName']],
                         ['get', 'campName']
                     ],
@@ -409,7 +443,8 @@
             map.getStyle().layers
                 .filter(l => l.id.startsWith('gl-draw-'))
                 .forEach(l => map.moveLayer(l.id));
-            map.moveLayer('draw-warning');
+            map.moveLayer('draw-warning-overlap');
+            map.moveLayer('draw-warning-error');
             map.moveLayer('draw-edge-labels');
             map.moveLayer('draw-label');
         }
@@ -423,11 +458,12 @@
 
             const area = props.areaSqm ? `<div class="text-muted small">${Math.round(props.areaSqm).toLocaleString()} m²</div>` : '';
             const warning = props.outsideZone ? `<div class="text-danger small">⚠️ Outside limits</div>` : '';
+            const overlapWarning = props.overlaps ? `<div class="text-warning small">⚠️ Overlaps with another barrio</div>` : '';
             const editBtn = canEdit ? `<button class="btn btn-primary btn-sm mt-1 js-edit-barrio-btn">Edit</button>` : '';
 
             if (currentPopup) currentPopup.remove();
             currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
-                .setHTML(`<div><strong>${props.campName || 'Camp'}</strong></div>${area}${warning}${editBtn}`)
+                .setHTML(`<div><strong>${props.campName || 'Camp'}</strong></div>${area}${warning}${overlapWarning}${editBtn}`)
                 .addTo(map);
 
             if (canEdit) {
@@ -494,7 +530,8 @@
         function clearDrawLabel() {
             map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [] });
             map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: [] });
-            map.getSource('draw-warning').setData({ type: 'FeatureCollection', features: [] });
+            map.getSource('draw-warning-error').setData({ type: 'FeatureCollection', features: [] });
+            map.getSource('draw-warning-overlap').setData({ type: 'FeatureCollection', features: [] });
         }
 
         function updateSaveButton() {
@@ -510,10 +547,15 @@
                 const area = turf.area(poly);
                 const centroid = turf.centroid(poly);
                 const outside = isOutsideZone(poly);
-                map.getSource('draw-warning').setData(outside
+                const overlap = overlapsOtherCamps(poly);
+                map.getSource('draw-warning-error').setData(outside
                     ? { type: 'FeatureCollection', features: [poly] }
                     : { type: 'FeatureCollection', features: [] });
-                centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' + (outside ? '\n⚠️ Outside limits' : '') };
+                map.getSource('draw-warning-overlap').setData(overlap
+                    ? { type: 'FeatureCollection', features: [poly] }
+                    : { type: 'FeatureCollection', features: [] });
+                const warnings = [...(outside ? ['\n⚠️ Outside limits'] : []), ...(overlap ? ['\n⚠️ Overlaps with another barrio'] : [])];
+                centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' + warnings.join('') };
                 map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [centroid] });
 
                 const coords = poly.geometry.coordinates[0];
