@@ -271,7 +271,7 @@
     <div class="card-body">
         <p class="text-muted">Permanently delete a camp and all its seasons, images, and leads.</p>
         <form asp-controller="CampAdmin" asp-action="Delete" method="post" class="d-flex gap-2"
-              onsubmit="return confirm('Are you sure? This action cannot be undone.');">
+              data-confirm="Are you sure? This action cannot be undone.">
             @Html.AntiForgeryToken()
             <input type="text" name="campId" class="form-control form-control-sm" style="max-width: 320px;" placeholder="Camp ID (GUID)" required pattern="^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$" />
             <button type="submit" class="btn btn-danger btn-sm text-nowrap">

@@ -389,16 +389,32 @@ public class GoogleController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncExecute(Guid resourceId)
     {
-        var result = await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
-        return Json(result);
+        try
+        {
+            var result = await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
+            return Json(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to execute sync for resource {ResourceId}", resourceId);
+            return Json(new { ErrorMessage = ex.Message });
+        }
     }
 
     [HttpPost("Sync/ExecuteAll/{resourceType}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncExecuteAll(GoogleResourceType resourceType)
     {
-        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute);
-        return Json(result);
+        try
+        {
+            var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute);
+            return Json(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to execute sync for resource type {ResourceType}", resourceType);
+            return Json(new { ErrorMessage = ex.Message });
+        }
     }
 
     // --- Drive Activity (from BoardController) ---

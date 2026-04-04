@@ -5,6 +5,8 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using NodaTime;
+using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Xunit;
@@ -41,6 +43,7 @@ public class GoogleAdminServiceTests : IDisposable
             _googleSyncService,
             _userEmailService,
             _auditLogService,
+            new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<GoogleAdminService>.Instance);
     }
 

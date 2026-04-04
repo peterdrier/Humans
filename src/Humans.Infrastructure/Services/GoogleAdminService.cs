@@ -1,9 +1,12 @@
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using NodaTime;
 
 namespace Humans.Infrastructure.Services;
 
@@ -18,6 +21,7 @@ public class GoogleAdminService : IGoogleAdminService
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IClock _clock;
     private readonly ILogger<GoogleAdminService> _logger;
 
     private const string NobodiesTeamDomain = "nobodies.team";
@@ -28,6 +32,7 @@ public class GoogleAdminService : IGoogleAdminService
         IGoogleSyncService googleSyncService,
         IUserEmailService userEmailService,
         IAuditLogService auditLogService,
+        IClock clock,
         ILogger<GoogleAdminService> logger)
     {
         _dbContext = dbContext;
@@ -35,6 +40,7 @@ public class GoogleAdminService : IGoogleAdminService
         _googleSyncService = googleSyncService;
         _userEmailService = userEmailService;
         _auditLogService = auditLogService;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -256,9 +262,39 @@ public class GoogleAdminService : IGoogleAdminService
             // Add as verified email (also sets notification target for @nobodies.team)
             await _userEmailService.AddVerifiedEmailAsync(userId, email, ct);
 
-            // Auto-set as Google service email
+            // Auto-set as Google service email and reset sync state
             user.GoogleEmail = email;
+            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
             await _dbContext.SaveChangesAsync(ct);
+
+            // Enqueue re-sync for all current team memberships
+            var memberships = await _dbContext.TeamMembers
+                .Where(tm => tm.UserId == userId && tm.LeftAt == null)
+                .Select(tm => new { tm.Id, tm.TeamId })
+                .ToListAsync(ct);
+
+            var now = _clock.GetCurrentInstant();
+            foreach (var membership in memberships)
+            {
+                var dedupeKey = $"{membership.Id}:{GoogleSyncOutboxEventTypes.AddUserToTeamResources}:link:{now}";
+                _dbContext.GoogleSyncOutboxEvents.Add(new GoogleSyncOutboxEvent
+                {
+                    Id = Guid.NewGuid(),
+                    EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+                    TeamId = membership.TeamId,
+                    UserId = userId,
+                    OccurredAt = now,
+                    DeduplicationKey = dedupeKey
+                });
+            }
+
+            if (memberships.Count > 0)
+            {
+                await _dbContext.SaveChangesAsync(ct);
+                _logger.LogInformation(
+                    "Enqueued {Count} re-sync events for user {UserId} after admin email link",
+                    memberships.Count, userId);
+            }
 
             // Audit
             await _auditLogService.LogAsync(

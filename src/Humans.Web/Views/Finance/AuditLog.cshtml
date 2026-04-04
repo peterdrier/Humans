@@ -21,7 +21,7 @@
             <form method="get" asp-action="AuditLog" class="row g-2 align-items-end">
                 <div class="col-auto">
                     <label class="form-label">Filter by Year</label>
-                    <select name="yearId" class="form-select" onchange="this.form.submit()">
+                    <select name="yearId" class="form-select js-auto-submit">
                         <option value="">All Years</option>
                         @foreach (var y in years)
                         {

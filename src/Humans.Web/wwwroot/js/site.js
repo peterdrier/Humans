@@ -38,6 +38,13 @@ document.addEventListener('submit', function (e) {
     }
 });
 
+// Auto-submit forms when a .js-auto-submit element changes
+document.addEventListener('change', function (e) {
+    if (e.target.closest('.js-auto-submit') && e.target.form) {
+        e.target.form.submit();
+    }
+});
+
 // Clickable table rows via [data-href]
 document.addEventListener('click', function (e) {
     var row = e.target.closest('tr[data-href]');
