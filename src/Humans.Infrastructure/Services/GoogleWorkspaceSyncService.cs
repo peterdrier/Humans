@@ -1037,7 +1037,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 _logger.LogWarning("Group {GroupId} not found in Google for resource {ResourceId} (HTTP {Code})",
                     resource.GoogleId, resource.Id, ex.Error.Code);
-                resource.ErrorMessage = "Group not found in Google";
+                if (action == SyncAction.Execute)
+                    resource.ErrorMessage = "Group not found in Google";
                 return new ResourceSyncDiff
                 {
                     ResourceId = resource.Id,
