@@ -195,6 +195,41 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <summary>
+    /// Pre-loads child team members for a set of parent team IDs in a single query,
+    /// eliminating redundant per-resource DB queries during parallel sync.
+    /// </summary>
+    private async Task<Dictionary<Guid, List<TeamMember>>> PreloadChildTeamMembersAsync(
+        IEnumerable<Guid> parentTeamIds,
+        CancellationToken cancellationToken)
+    {
+        var distinctIds = parentTeamIds.Distinct().ToList();
+        if (distinctIds.Count == 0)
+            return new Dictionary<Guid, List<TeamMember>>();
+
+        var allChildMembers = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Include(tm => tm.User)
+            .Include(tm => tm.Team)
+            .Where(tm =>
+                distinctIds.Contains(tm.Team.ParentTeamId!.Value) &&
+                tm.Team.IsActive &&
+                tm.LeftAt == null)
+            .ToListAsync(cancellationToken);
+
+        var result = new Dictionary<Guid, List<TeamMember>>();
+        foreach (var id in distinctIds)
+            result[id] = [];
+
+        foreach (var tm in allChildMembers)
+        {
+            if (tm.Team.ParentTeamId is { } parentId && result.ContainsKey(parentId))
+                result[parentId].Add(tm);
+        }
+
+        return result;
+    }
+
+    /// <summary>
     /// Resolves the maximum DrivePermissionLevel for a specific user on a Drive resource,
     /// considering only resources whose teams the user is an active member of.
     /// </summary>
@@ -833,26 +868,46 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             .Where(r => r.ResourceType == resourceType && r.IsActive)
             .ToListAsync(cancellationToken);
 
-        var diffs = new List<ResourceSyncDiff>();
         var now = _clock.GetCurrentInstant();
+
+        // Pre-load child team members for all team IDs in a single query to avoid
+        // redundant DB calls during parallel sync (DbContext is not thread-safe).
+        var teamIds = resources.Select(r => r.TeamId).Distinct().ToList();
+        var childMembersCache = await PreloadChildTeamMembersAsync(teamIds, cancellationToken);
+
+        List<ResourceSyncDiff> diffs;
 
         if (resourceType == GoogleResourceType.Group)
         {
-            // Groups: one group per team
-            foreach (var resource in resources)
+            // Groups: one group per team — compute diffs in parallel (Google API reads only)
+            var diffTasks = resources.Select(resource =>
+                SyncGroupResourceAsync(resource, SyncAction.Preview, now, childMembersCache, cancellationToken));
+            diffs = (await Task.WhenAll(diffTasks)).ToList();
+
+            // Apply mutations sequentially if Execute mode (gateway methods use DbContext)
+            if (action == SyncAction.Execute)
             {
-                var diff = await SyncGroupResourceAsync(resource, action, now, cancellationToken);
-                diffs.Add(diff);
+                foreach (var (resource, diff) in resources.Zip(diffs))
+                {
+                    await ExecuteGroupSyncActionsAsync(resource, diff, now, cancellationToken);
+                }
             }
         }
         else
         {
             // Drive resources: group by GoogleId since multiple teams can share one resource
-            var grouped = resources.GroupBy(r => r.GoogleId, StringComparer.Ordinal);
-            foreach (var group in grouped)
+            var grouped = resources.GroupBy(r => r.GoogleId, StringComparer.Ordinal).ToList();
+            var diffTasks = grouped.Select(group =>
+                SyncDriveResourceGroupAsync(group.ToList(), SyncAction.Preview, now, childMembersCache, cancellationToken));
+            diffs = (await Task.WhenAll(diffTasks)).ToList();
+
+            // Apply mutations sequentially if Execute mode (gateway methods use DbContext)
+            if (action == SyncAction.Execute)
             {
-                var diff = await SyncDriveResourceGroupAsync(group.ToList(), action, now, cancellationToken);
-                diffs.Add(diff);
+                foreach (var (group, diff) in grouped.Zip(diffs))
+                {
+                    await ExecuteDriveSyncActionsAsync(group.ToList(), diff, now, cancellationToken);
+                }
             }
         }
 
@@ -890,7 +945,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         if (resource.ResourceType == GoogleResourceType.Group)
         {
-            diff = await SyncGroupResourceAsync(resource, action, now, cancellationToken);
+            diff = await SyncGroupResourceAsync(resource, action, now, childMembersCache: null, cancellationToken);
         }
         else
         {
@@ -902,7 +957,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 .Where(r => r.GoogleId == resource.GoogleId && r.IsActive)
                 .ToListAsync(cancellationToken);
 
-            diff = await SyncDriveResourceGroupAsync(allWithSameGoogleId, action, now, cancellationToken);
+            diff = await SyncDriveResourceGroupAsync(allWithSameGoogleId, action, now, childMembersCache: null, cancellationToken);
         }
 
         if (action == SyncAction.Execute)
@@ -915,6 +970,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         GoogleResource resource,
         SyncAction action,
         Instant now,
+        Dictionary<Guid, List<TeamMember>>? childMembersCache,
         CancellationToken cancellationToken)
     {
         try
@@ -926,7 +982,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 .ToList();
 
             // Subteam member rollup: include child team members for departments
-            var childMembers = await GetChildTeamMembersAsync(resource.TeamId, cancellationToken);
+            var childMembers = childMembersCache is not null && childMembersCache.TryGetValue(resource.TeamId, out var cached)
+                ? cached
+                : await GetChildTeamMembersAsync(resource.TeamId, cancellationToken);
             foreach (var cm in childMembers)
             {
                 var email = cm.User.GetGoogleServiceEmail();
@@ -1082,10 +1140,131 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         }
     }
 
+    /// <summary>
+    /// Applies Group sync mutations sequentially after parallel diff collection.
+    /// Handles adding/removing members and updating resource metadata.
+    /// </summary>
+    private async Task ExecuteGroupSyncActionsAsync(
+        GoogleResource resource,
+        ResourceSyncDiff diff,
+        Instant now,
+        CancellationToken cancellationToken)
+    {
+        if (diff.ErrorMessage is not null)
+        {
+            resource.ErrorMessage = diff.ErrorMessage;
+            return;
+        }
+
+        foreach (var member in diff.Members.Where(m => m.State == MemberSyncState.Missing))
+        {
+            try
+            {
+                await AddUserToGroupAsync(resource.Id, member.Email, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add {Email} to group {GroupId}",
+                    member.Email, resource.GoogleId);
+            }
+        }
+
+        foreach (var member in diff.Members.Where(m => m.State == MemberSyncState.Extra))
+        {
+            try
+            {
+                await RemoveUserFromGroupAsync(resource.Id, member.Email, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to remove {Email} from group {GroupId}",
+                    member.Email, resource.GoogleId);
+            }
+        }
+
+        resource.LastSyncedAt = now;
+        resource.ErrorMessage = null;
+    }
+
+    /// <summary>
+    /// Applies Drive sync mutations sequentially after parallel diff collection.
+    /// Handles adding/removing permissions and updating resource metadata.
+    /// </summary>
+    private async Task ExecuteDriveSyncActionsAsync(
+        List<GoogleResource> resources,
+        ResourceSyncDiff diff,
+        Instant now,
+        CancellationToken cancellationToken)
+    {
+        var primary = resources[0];
+
+        if (diff.ErrorMessage is not null)
+        {
+            foreach (var resource in resources)
+                resource.ErrorMessage = diff.ErrorMessage;
+            return;
+        }
+
+        // Add missing members and fix wrong permission levels
+        foreach (var member in diff.Members.Where(m => m.State is MemberSyncState.Missing or MemberSyncState.WrongRole))
+        {
+            try
+            {
+                var memberLevel = ParseApiRole(member.ExpectedRole) ?? DrivePermissionLevel.Contributor;
+                await AddUserToDriveAsync(primary, member.Email, memberLevel, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to grant Drive access to {Email} on {GoogleId}",
+                    member.Email, primary.GoogleId);
+            }
+        }
+
+        // Remove extra members — need to re-fetch permissions for permission IDs
+        var extraMembers = diff.Members.Where(m => m.State == MemberSyncState.Extra).ToList();
+        if (extraMembers.Count > 0)
+        {
+            var drive = await GetDriveServiceAsync();
+            var permissions = await ListDrivePermissionsAsync(drive, primary.GoogleId, cancellationToken);
+
+            foreach (var member in extraMembers)
+            {
+                try
+                {
+                    var permToRemove = permissions.FirstOrDefault(p =>
+                        IsDirectManagedPermission(p) &&
+                        string.Equals(p.EmailAddress, member.Email, StringComparison.OrdinalIgnoreCase));
+
+                    if (permToRemove is null)
+                    {
+                        _logger.LogInformation(
+                            "Skipping removal of {Email} from {GoogleId} — permission is inherited, not direct",
+                            member.Email, primary.GoogleId);
+                        continue;
+                    }
+
+                    await RemoveUserFromDriveAsync(primary, permToRemove.Id, member.Email, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to remove Drive access for {Email} on {GoogleId}",
+                        member.Email, primary.GoogleId);
+                }
+            }
+        }
+
+        foreach (var resource in resources)
+        {
+            resource.LastSyncedAt = now;
+            resource.ErrorMessage = null;
+        }
+    }
+
     private async Task<ResourceSyncDiff> SyncDriveResourceGroupAsync(
         List<GoogleResource> resources,
         SyncAction action,
         Instant now,
+        Dictionary<Guid, List<TeamMember>>? childMembersCache,
         CancellationToken cancellationToken)
     {
         var primary = resources[0];
@@ -1126,7 +1305,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 }
 
                 // Subteam member rollup: include child team members for departments
-                var childMembers = await GetChildTeamMembersAsync(resource.TeamId, cancellationToken);
+                var childMembers = childMembersCache is not null && childMembersCache.TryGetValue(resource.TeamId, out var cached)
+                    ? cached
+                    : await GetChildTeamMembersAsync(resource.TeamId, cancellationToken);
                 foreach (var cm in childMembers)
                 {
                     var memberEmail = cm.User.GetGoogleServiceEmail();
