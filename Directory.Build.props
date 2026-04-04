@@ -11,6 +11,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
+    <!-- Only include English and Spanish satellite assemblies -->
     <SatelliteResourceLanguages>en;es</SatelliteResourceLanguages>
 
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -18,23 +19,30 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest</AnalysisLevel>
 
+    <!-- CS1591: Missing XML comment for publicly visible type or member -->
+    <!-- MA0048: File name must match type name -->
+    <!-- MA0016: Prefer using collection abstraction instead of implementation -->
+    <!-- MA0026: Fix TODO comment -->
+    <!-- MA0051: Method is too long -->
+    <!-- VSTHRD200: Async suffix not required for ASP.NET Core controller actions -->
     <NoWarn>$(NoWarn);CS1591;MA0048;MA0016;MA0026;MA0051;VSTHRD200</NoWarn>
   </PropertyGroup>
 
-  <Target Name="SetSourceRevisionId" BeforeTargets="InitializeSourceControlInformation"
-    Condition="'$(SourceRevisionId)' == ''">
-    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true"
-      StandardErrorImportance="low">
+  <!-- Embed git commit hash into InformationalVersion at build time (skip when already set via -p:SourceRevisionId) -->
+  <Target Name="SetSourceRevisionId" BeforeTargets="InitializeSourceControlInformation" Condition="'$(SourceRevisionId)' == ''">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardErrorImportance="low">
       <Output TaskParameter="ConsoleOutput" PropertyName="SourceRevisionId" />
     </Exec>
   </Target>
 
+  <!-- Versioning -->
   <ItemGroup>
-    <PackageReference Include="MinVer" Condition="'$(Configuration)' == 'Release'">
+    <PackageReference Include="MinVer">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
   </ItemGroup>
 
+  <!-- Analyzers -->
   <ItemGroup>
     <PackageReference Include="Roslynator.Analyzers">
       <PrivateAssets>all</PrivateAssets>
