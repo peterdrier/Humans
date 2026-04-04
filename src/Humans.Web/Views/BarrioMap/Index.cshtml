@@ -79,6 +79,9 @@
             <button id="save-btn" class="btn btn-success btn-sm" disabled>
                 <i class="fa fa-save me-1"></i> Save
             </button>
+            <button id="cancel-btn" class="btn btn-outline-secondary btn-sm" style="display:none">
+                <i class="fa fa-times me-1"></i> Cancel
+            </button>
             <button id="history-btn" class="btn btn-outline-primary btn-sm">
                 <i class="fa fa-history me-1"></i> History
             </button>
@@ -445,7 +448,10 @@
 
         function updateSaveButton() {
             const features = draw.getAll().features;
-            document.getElementById('save-btn').disabled = !(features.length > 0 && activeCampSeasonId);
+            const editing = features.length > 0 && activeCampSeasonId;
+            document.getElementById('save-btn').disabled = !editing;
+            const cancelBtn = document.getElementById('cancel-btn');
+            if (cancelBtn) cancelBtn.style.display = activeCampSeasonId ? '' : 'none';
             if (features.length > 0) {
                 const poly = features[0];
                 const area = turf.area(poly);
@@ -492,6 +498,8 @@
             activeCampSeasonId = null;
             document.getElementById('save-btn').disabled = true;
             document.getElementById('history-btn').disabled = true;
+            const cancelBtn = document.getElementById('cancel-btn');
+            if (cancelBtn) cancelBtn.style.display = 'none';
             clearDrawLabel();
             setEditingControlsVisible(false);
         }
@@ -541,6 +549,18 @@
             } else {
                 alert('Failed to save polygon. Please try again.');
             }
+        });
+
+        document.getElementById('cancel-btn')?.addEventListener('click', () => {
+            if (!confirm('Discard unsaved changes?')) return;
+            draw.deleteAll();
+            setActivePolygonDim(null);
+            activeCampSeasonId = null;
+            document.getElementById('save-btn').disabled = true;
+            document.getElementById('history-btn').disabled = true;
+            document.getElementById('cancel-btn').style.display = 'none';
+            clearDrawLabel();
+            setEditingControlsVisible(false);
         });
 
         document.getElementById('history-btn')?.addEventListener('click', async () => {
