@@ -100,6 +100,11 @@ public class BarrioMapController : HumansControllerBase
 
         if (!await IsMapAdminAsync(user.Id, cancellationToken))
             return Forbid();
+        if (file is null || file.Length == 0)
+        {
+            SetError("Please select a GeoJSON file to upload.");
+            return RedirectToAction(nameof(Admin));
+        }
         using var reader = new StreamReader(file.OpenReadStream());
         var geoJson = await reader.ReadToEndAsync(cancellationToken);
         await _campMapService.UpdateLimitZoneAsync(geoJson, user.Id, cancellationToken);
@@ -178,6 +183,11 @@ public class BarrioMapController : HumansControllerBase
 
         if (!await IsMapAdminAsync(user.Id, cancellationToken))
             return Forbid();
+        if (file is null || file.Length == 0)
+        {
+            SetError("Please select a GeoJSON file to upload.");
+            return RedirectToAction(nameof(Admin));
+        }
         using var reader = new StreamReader(file.OpenReadStream());
         var geoJson = await reader.ReadToEndAsync(cancellationToken);
         await _campMapService.UpdateOfficialZonesAsync(geoJson, user.Id, cancellationToken);
