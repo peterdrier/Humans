@@ -1054,6 +1054,12 @@ public class ProfileController : HumansControllerBase
         if (targetUser is null)
             return NotFound();
 
+        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        {
+            SetError("This human has opted out of receiving messages.");
+            return RedirectToAction(nameof(ViewProfile), new { id });
+        }
+
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
@@ -1079,6 +1085,12 @@ public class ProfileController : HumansControllerBase
             .FirstOrDefaultAsync(u => u.Id == id);
         if (targetUser is null)
             return NotFound();
+
+        if (!await _commPrefService.AcceptsFacilitatedMessagesAsync(id))
+        {
+            SetError("This human has opted out of receiving messages.");
+            return RedirectToAction(nameof(ViewProfile), new { id });
+        }
 
         model.RecipientId = id;
         model.RecipientDisplayName = targetUser.DisplayName;
