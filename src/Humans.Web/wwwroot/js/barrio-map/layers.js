@@ -97,8 +97,8 @@ export function renderMap(onCampPolygonClick) {
 
     if (appState.campMap.officialZonesGeoJson) {
         map.addSource('official-zones', { type: 'geojson', data: JSON.parse(appState.campMap.officialZonesGeoJson) });
-        map.addLayer({ id: 'official-zones-fill', type: 'fill', source: 'official-zones', paint: { 'fill-color': '#ffdd44', 'fill-opacity': 0.12 } });
-        map.addLayer({ id: 'official-zones-line', type: 'line', source: 'official-zones', paint: { 'line-color': '#ffdd44', 'line-width': 1.5 } });
+        map.addLayer({ id: 'official-zones-fill', type: 'fill', source: 'official-zones', paint: { 'fill-color': '#555555', 'fill-opacity': 0.12 } });
+        map.addLayer({ id: 'official-zones-line', type: 'line', source: 'official-zones', paint: { 'line-color': '#555555', 'line-width': 1.5 } });
         map.addLayer({
             id: 'official-zones-labels', type: 'symbol', source: 'official-zones',
             layout: {
@@ -107,7 +107,7 @@ export function renderMap(onCampPolygonClick) {
                 'text-anchor': 'center',
                 'text-allow-overlap': false,
             },
-            paint: { 'text-color': '#ffdd44', 'text-halo-color': '#000000', 'text-halo-width': 1.5 },
+            paint: { 'text-color': '#333333', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
         });
     }
 
