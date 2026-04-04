@@ -21,10 +21,13 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
     private static readonly Dictionary<MessageCategory, bool> DefaultOptedOut = new()
     {
         [MessageCategory.System] = false,
-        [MessageCategory.EventOperations] = false,
-        [MessageCategory.CommunityUpdates] = true,
-        [MessageCategory.Marketing] = true,
+        [MessageCategory.CampaignCodes] = false,
+        [MessageCategory.FacilitatedMessages] = false,
+        [MessageCategory.Ticketing] = false,
+        [MessageCategory.VolunteerUpdates] = false,
+        [MessageCategory.TeamUpdates] = false,
         [MessageCategory.Governance] = false,
+        [MessageCategory.Marketing] = true,
     };
 
     private readonly HumansDbContext _db;
@@ -91,8 +94,8 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
     public async Task<bool> IsOptedOutAsync(
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default)
     {
-        // System messages can never be opted out of
-        if (category == MessageCategory.System)
+        // Always-on categories can never be opted out of
+        if (category.IsAlwaysOn())
             return false;
 
         var pref = await _db.CommunicationPreferences
@@ -108,10 +111,10 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         Guid userId, MessageCategory category, bool optedOut, string source,
         CancellationToken cancellationToken = default)
     {
-        // System messages cannot be opted out of
-        if (category == MessageCategory.System)
+        // Always-on categories cannot be opted out of
+        if (category.IsAlwaysOn())
         {
-            _logger.LogWarning("Attempted to change System preference for user {UserId} — ignored", userId);
+            _logger.LogWarning("Attempted to change always-on preference {Category} for user {UserId} — ignored", category, userId);
             return;
         }
 
@@ -165,10 +168,10 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         Guid userId, MessageCategory category, bool optedOut, bool inboxEnabled, string source,
         CancellationToken cancellationToken = default)
     {
-        // System messages cannot be opted out of
-        if (category == MessageCategory.System)
+        // Always-on categories cannot be opted out of
+        if (category.IsAlwaysOn())
         {
-            _logger.LogWarning("Attempted to change System preference for user {UserId} — ignored", userId);
+            _logger.LogWarning("Attempted to change always-on preference {Category} for user {UserId} — ignored", category, userId);
             return;
         }
 
@@ -246,6 +249,12 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
             _logger.LogWarning(ex, "Failed to validate unsubscribe token");
             return null;
         }
+    }
+
+    public async Task<bool> AcceptsFacilitatedMessagesAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        return !await IsOptedOutAsync(userId, MessageCategory.FacilitatedMessages, cancellationToken);
     }
 
     public Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category)
