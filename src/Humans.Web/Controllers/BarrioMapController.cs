@@ -116,4 +116,28 @@ public class BarrioMapController : Controller
         await _campMapService.DeleteLimitZoneAsync(userId, cancellationToken);
         return RedirectToAction(nameof(Admin));
     }
+
+    [HttpPost("Admin/UploadOfficialZones")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UploadOfficialZones(IFormFile file, CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (!await _campMapService.IsUserMapAdminAsync(userId, cancellationToken))
+            return Forbid();
+        using var reader = new StreamReader(file.OpenReadStream());
+        var geoJson = await reader.ReadToEndAsync(cancellationToken);
+        await _campMapService.UpdateOfficialZonesAsync(geoJson, userId, cancellationToken);
+        return RedirectToAction(nameof(Admin));
+    }
+
+    [HttpPost("Admin/DeleteOfficialZones")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteOfficialZones(CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (!await _campMapService.IsUserMapAdminAsync(userId, cancellationToken))
+            return Forbid();
+        await _campMapService.DeleteOfficialZonesAsync(userId, cancellationToken);
+        return RedirectToAction(nameof(Admin));
+    }
 }

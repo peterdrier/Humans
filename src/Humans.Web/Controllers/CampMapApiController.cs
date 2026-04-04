@@ -41,6 +41,7 @@ public class CampMapApiController : ControllerBase
         {
             isPlacementOpen = settings.IsPlacementOpen,
             limitZoneGeoJson = settings.LimitZoneGeoJson,
+            officialZonesGeoJson = settings.OfficialZonesGeoJson,
             campPolygons,
             campSeasonsWithoutPolygon = seasonsWithout
         });
