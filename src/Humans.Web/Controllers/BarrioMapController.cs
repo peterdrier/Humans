@@ -106,6 +106,19 @@ public class BarrioMapController : Controller
         return RedirectToAction(nameof(Admin));
     }
 
+    [HttpGet("Admin/DownloadLimitZone")]
+    public async Task<IActionResult> DownloadLimitZone(CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (!await _campMapService.IsUserMapAdminAsync(userId, cancellationToken))
+            return Forbid();
+        var settings = await _campMapService.GetSettingsAsync(cancellationToken);
+        if (settings.LimitZoneGeoJson is null)
+            return NotFound();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(settings.LimitZoneGeoJson);
+        return File(bytes, "application/geo+json", $"limit-zone-{settings.Year}.geojson");
+    }
+
     [HttpPost("Admin/DeleteLimitZone")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteLimitZone(CancellationToken cancellationToken)
@@ -128,6 +141,19 @@ public class BarrioMapController : Controller
         var geoJson = await reader.ReadToEndAsync(cancellationToken);
         await _campMapService.UpdateOfficialZonesAsync(geoJson, userId, cancellationToken);
         return RedirectToAction(nameof(Admin));
+    }
+
+    [HttpGet("Admin/DownloadOfficialZones")]
+    public async Task<IActionResult> DownloadOfficialZones(CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (!await _campMapService.IsUserMapAdminAsync(userId, cancellationToken))
+            return Forbid();
+        var settings = await _campMapService.GetSettingsAsync(cancellationToken);
+        if (settings.OfficialZonesGeoJson is null)
+            return NotFound();
+        var bytes = System.Text.Encoding.UTF8.GetBytes(settings.OfficialZonesGeoJson);
+        return File(bytes, "application/geo+json", $"official-zones-{settings.Year}.geojson");
     }
 
     [HttpPost("Admin/DeleteOfficialZones")]

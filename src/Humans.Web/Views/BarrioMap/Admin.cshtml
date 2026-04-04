@@ -98,13 +98,18 @@
                     @if (settings.LimitZoneGeoJson != null)
                     {
                         <p class="text-success mb-3"><i class="fa fa-check-circle me-1"></i> Limit zone uploaded</p>
-                        <form method="post" action="/BarrioMap/Admin/DeleteLimitZone" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                    data-confirm="Delete the limit zone?">
-                                <i class="fa fa-trash me-1"></i> Remove
-                            </button>
-                        </form>
+                        <div class="d-flex gap-2">
+                            <a href="/BarrioMap/Admin/DownloadLimitZone" class="btn btn-outline-secondary btn-sm" download="limit-zone-@(settings.Year).geojson">
+                                <i class="fa fa-download me-1"></i> Download
+                            </a>
+                            <form method="post" action="/BarrioMap/Admin/DeleteLimitZone" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                        data-confirm="Delete the limit zone?">
+                                    <i class="fa fa-trash me-1"></i> Remove
+                                </button>
+                            </form>
+                        </div>
                     }
                     else
                     {
@@ -134,13 +139,18 @@
                     @if (settings.OfficialZonesGeoJson != null)
                     {
                         <p class="text-success mb-3"><i class="fa fa-check-circle me-1"></i> Official zones uploaded</p>
-                        <form method="post" action="/BarrioMap/Admin/DeleteOfficialZones" class="d-inline">
-                            @Html.AntiForgeryToken()
-                            <button type="submit" class="btn btn-outline-danger btn-sm"
-                                    data-confirm="Delete the official zones?">
-                                <i class="fa fa-trash me-1"></i> Remove
-                            </button>
-                        </form>
+                        <div class="d-flex gap-2">
+                            <a href="/BarrioMap/Admin/DownloadOfficialZones" class="btn btn-outline-secondary btn-sm" download="official-zones-@(settings.Year).geojson">
+                                <i class="fa fa-download me-1"></i> Download
+                            </a>
+                            <form method="post" action="/BarrioMap/Admin/DeleteOfficialZones" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-danger btn-sm"
+                                        data-confirm="Delete the official zones?">
+                                    <i class="fa fa-trash me-1"></i> Remove
+                                </button>
+                            </form>
+                        </div>
                     }
                     else
                     {
