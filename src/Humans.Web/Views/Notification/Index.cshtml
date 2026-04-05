@@ -2,7 +2,6 @@
 @inject Microsoft.Extensions.Localization.IStringLocalizer<Humans.Web.SharedResource> Localizer
 @{
     ViewData["Title"] = Localizer["Notification_PageTitle"];
-    var hasUnresolved = Model.NeedsAttention.Count > 0 || Model.Informational.Count > 0;
 }
 
 <h1>@Localizer["Notification_PageTitle"]</h1>

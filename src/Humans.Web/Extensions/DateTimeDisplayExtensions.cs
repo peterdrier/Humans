@@ -1,6 +1,5 @@
 using System.Globalization;
 using Humans.Web.Controllers;
-using Microsoft.AspNetCore.Http;
 using NodaTime;
 
 namespace Humans.Web.Extensions;

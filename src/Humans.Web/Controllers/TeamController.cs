@@ -275,7 +275,7 @@ public class TeamController : HumansControllerBase
     [HttpGet("Birthdays")]
     public async Task<IActionResult> Birthdays(int? month)
     {
-        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        var (currentUserError, _) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (currentUserError is not null)
         {
             return currentUserError;

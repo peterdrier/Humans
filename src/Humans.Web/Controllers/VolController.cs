@@ -26,7 +26,6 @@ public class VolController : HumansControllerBase
     private readonly IProfileService _profileService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly ILogger<VolController> _logger;
-    private readonly IClock _clock;
 
     public VolController(
         IShiftManagementService shiftMgmt,
@@ -35,8 +34,7 @@ public class VolController : HumansControllerBase
         IProfileService profileService,
         IGeneralAvailabilityService availabilityService,
         UserManager<User> userManager,
-        ILogger<VolController> logger,
-        IClock clock)
+        ILogger<VolController> logger)
         : base(userManager)
     {
         _shiftMgmt = shiftMgmt;
@@ -45,7 +43,6 @@ public class VolController : HumansControllerBase
         _profileService = profileService;
         _availabilityService = availabilityService;
         _logger = logger;
-        _clock = clock;
     }
 
     [HttpGet("")]
@@ -289,7 +286,7 @@ public class VolController : HumansControllerBase
     {
         try
         {
-            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
+            var (err, _) = await ResolveCurrentUserOrChallengeAsync();
             if (err is not null) return err;
 
             var es = await _shiftMgmt.GetActiveAsync();

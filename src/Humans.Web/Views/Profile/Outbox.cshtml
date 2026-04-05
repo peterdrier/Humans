@@ -1,5 +1,4 @@
 @model IList<Humans.Domain.Entities.EmailOutboxMessage>
-@using Humans.Domain.Enums
 @{
     var humanId = (Guid?)ViewBag.HumanId;
     var isAdminView = humanId.HasValue;

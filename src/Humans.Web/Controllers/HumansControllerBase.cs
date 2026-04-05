@@ -1,5 +1,4 @@
 using Humans.Domain.Entities;
-using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;

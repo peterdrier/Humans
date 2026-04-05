@@ -1,7 +1,4 @@
 @model Humans.Web.Models.AdminHumanDetailViewModel
-@using Humans.Domain.Entities
-@using Humans.Domain.Enums
-@using Humans.Web.Extensions
 @{
     ViewData["Title"] = string.Format(Localizer["AdminHumanDetail_Title"].Value, Model.DisplayName);
     var campaignGrants = (IList<CampaignGrant>?)ViewBag.CampaignGrants;

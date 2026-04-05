@@ -689,7 +689,7 @@ public class TeamAdminController : HumansTeamControllerBase
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(string slug)
     {
-        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
         if (teamError is not null)
         {
             return teamError;

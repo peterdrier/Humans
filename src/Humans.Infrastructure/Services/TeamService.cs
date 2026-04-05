@@ -11,7 +11,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 using Humans.Infrastructure.Data;
-using System.Text.RegularExpressions;
 
 namespace Humans.Infrastructure.Services;
 
@@ -361,8 +360,6 @@ public class TeamService : ITeamService
         var allMemberships = await GetUserTeamsAsync(userId, cancellationToken);
         var memberships = allMemberships;
         var isBoardMember = await _roleAssignmentService.IsUserBoardMemberAsync(userId, cancellationToken);
-        var isAdmin = await _roleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
-        var isTeamsAdmin = await _roleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
 
         var coordinatorTeamIds = memberships
             .Where(m => (m.Role == TeamMemberRole.Coordinator || isBoardMember) && !m.Team.IsSystemTeam)

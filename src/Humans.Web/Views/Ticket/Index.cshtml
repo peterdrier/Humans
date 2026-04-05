@@ -32,9 +32,6 @@
                     <h3 class="card-title">@Model.TicketsSold.ToString("N0")</h3>
                     @if (Model.TotalCapacity > 0)
                     {
-                        var bePct = Model.BreakEvenTarget > 0
-                            ? (int)(Model.BreakEvenTarget * 100.0 / Model.TotalCapacity)
-                            : 0;
                         var soldPct = (int)(Model.TicketsSold * 100.0 / Model.TotalCapacity);
                         <div class="progress mt-2" style="height: 10px;">
                             <div class="progress-bar @(Model.TicketsSold >= Model.BreakEvenTarget ? "bg-success" : "bg-primary")" style="width: @(soldPct)%"></div>

@@ -38,8 +38,7 @@ public class CampServiceTests : IDisposable
             _auditLog,
             Substitute.For<ISystemTeamSync>(),
             _clock,
-            new MemoryCache(new MemoryCacheOptions()),
-            NullLogger<CampService>.Instance);
+            new MemoryCache(new MemoryCacheOptions()));
     }
 
     public void Dispose()

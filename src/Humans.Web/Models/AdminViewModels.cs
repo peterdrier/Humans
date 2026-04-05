@@ -1,6 +1,5 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using NodaTime;
 
 namespace Humans.Web.Models;
 
@@ -42,7 +41,7 @@ public class RecentActivityViewModel
 
 public class AdminHumanListViewModel : PagedListViewModel
 {
-    public AdminHumanListViewModel() : base(20)
+    public AdminHumanListViewModel() : base()
     {
     }
 
@@ -127,7 +126,7 @@ public class AdminHumanApplicationViewModel
 
 public class AdminApplicationListViewModel : PagedListViewModel
 {
-    public AdminApplicationListViewModel() : base(20)
+    public AdminApplicationListViewModel() : base()
     {
     }
 

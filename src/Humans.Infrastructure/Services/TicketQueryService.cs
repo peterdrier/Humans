@@ -117,8 +117,8 @@ public class TicketQueryService : ITicketQueryService
             a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn);
         var paidOrders = orders.Where(o => o.PaymentStatus == TicketPaymentStatus.Paid);
         var revenue = await paidOrders.SumAsync(o => o.TotalAmount);
-        var totalStripeFees = await paidOrders.SumAsync(o => (decimal?)o.StripeFee ?? 0m);
-        var totalAppFees = await paidOrders.SumAsync(o => (decimal?)o.ApplicationFee ?? 0m);
+        var totalStripeFees = await paidOrders.SumAsync(o => o.StripeFee ?? 0m);
+        var totalAppFees = await paidOrders.SumAsync(o => o.ApplicationFee ?? 0m);
         var netRevenue = revenue - totalStripeFees - totalAppFees;
         var avgPrice = ticketsSold > 0 ? netRevenue / ticketsSold : 0;
         var unmatchedCount = await orders.CountAsync(o => o.MatchedUserId == null);
@@ -593,7 +593,7 @@ public class TicketQueryService : ITicketQueryService
 
         if (HasSearchTerm(search, 1))
         {
-            var normalizedSearch = search!.ToLowerInvariant();
+            var normalizedSearch = search.ToLowerInvariant();
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
             query = query.Where(o =>
                 o.BuyerName.ToLower().Contains(normalizedSearch) ||
@@ -668,7 +668,7 @@ public class TicketQueryService : ITicketQueryService
 
         if (HasSearchTerm(search, 1))
         {
-            var normalizedSearch = search!.ToLowerInvariant();
+            var normalizedSearch = search.ToLowerInvariant();
 #pragma warning disable MA0011 // EF LINQ: ToLower() translates to SQL lower()
             query = query.Where(a =>
                 a.AttendeeName.ToLower().Contains(normalizedSearch) ||
@@ -757,8 +757,8 @@ public class TicketQueryService : ITicketQueryService
         if (HasSearchTerm(search, 1))
         {
             filteredHumans = filteredHumans.Where(u =>
-                ContainsIgnoreCase(u.DisplayName, search!) ||
-                u.UserEmails.Any(e => ContainsIgnoreCase(e.Email, search!)));
+                ContainsIgnoreCase(u.DisplayName, search) ||
+                u.UserEmails.Any(e => ContainsIgnoreCase(e.Email, search)));
         }
 
         return filteredHumans.ToList();

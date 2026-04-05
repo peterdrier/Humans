@@ -5,7 +5,6 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services;
@@ -18,18 +17,15 @@ public class NotificationInboxService : INotificationInboxService
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
-    private readonly ILogger<NotificationInboxService> _logger;
 
     public NotificationInboxService(
         HumansDbContext dbContext,
         IClock clock,
-        IMemoryCache cache,
-        ILogger<NotificationInboxService> logger)
+        IMemoryCache cache)
     {
         _dbContext = dbContext;
         _clock = clock;
         _cache = cache;
-        _logger = logger;
     }
 
     public async Task<NotificationInboxResult> GetInboxAsync(

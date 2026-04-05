@@ -3,10 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -17,7 +15,6 @@ namespace Humans.Web.Controllers;
 public class ApplicationController : HumansControllerBase
 {
     private readonly IApplicationDecisionService _applicationDecisionService;
-    private readonly UserManager<Domain.Entities.User> _userManager;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ApplicationController> _logger;
 
@@ -29,7 +26,6 @@ public class ApplicationController : HumansControllerBase
         : base(userManager)
     {
         _applicationDecisionService = applicationDecisionService;
-        _userManager = userManager;
         _localizer = localizer;
         _logger = logger;
     }

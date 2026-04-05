@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
-using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -1006,8 +1005,8 @@ public class ProfileController : HumansControllerBase
 
         var teams = await _dbContext.TeamMembers
             .Where(tm => tm.UserId == id && tm.LeftAt == null
-                && tm.Team!.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(tm => tm.Team!.Name)
+                && tm.Team.SystemTeamType != SystemTeamType.Volunteers)
+            .Select(tm => tm.Team.Name)
             .OrderBy(n => n)
             .ToListAsync();
 

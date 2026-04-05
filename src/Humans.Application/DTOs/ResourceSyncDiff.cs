@@ -1,4 +1,3 @@
-using Humans.Domain.Enums;
 
 namespace Humans.Application.DTOs;
 

@@ -31,8 +31,7 @@ public class NotificationInboxServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _cache = new MemoryCache(new MemoryCacheOptions());
         _service = new NotificationInboxService(
-            _dbContext, _clock, _cache,
-            NullLogger<NotificationInboxService>.Instance);
+            _dbContext, _clock, _cache);
     }
 
     public void Dispose()

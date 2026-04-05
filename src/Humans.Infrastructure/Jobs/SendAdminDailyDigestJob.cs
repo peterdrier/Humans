@@ -64,7 +64,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
                 .ToListAsync(cancellationToken);
             var leadsWithAllConsents = leadUserIds.Count > 0
                 ? await _membershipCalculator.GetUsersWithAllRequiredConsentsForTeamAsync(leadUserIds, SystemTeamIds.Coordinators, cancellationToken)
-                : (IReadOnlySet<Guid>)new HashSet<Guid>();
+                : new HashSet<Guid>();
 
             var pendingConsentsCount = allUserIds.Count(id =>
                 !usersWithAllConsents.Contains(id) ||

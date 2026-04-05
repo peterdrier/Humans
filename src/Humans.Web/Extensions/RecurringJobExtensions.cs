@@ -1,7 +1,6 @@
 using Hangfire;
 using Humans.Application.Configuration;
 using Humans.Infrastructure.Jobs;
-using Microsoft.Extensions.Logging;
 
 namespace Humans.Web.Extensions;
 

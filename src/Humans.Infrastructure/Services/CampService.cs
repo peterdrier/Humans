@@ -8,7 +8,6 @@ using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services;
@@ -20,7 +19,6 @@ public class CampService : ICampService
     private readonly ISystemTeamSync _systemTeamSync;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
-    private readonly ILogger<CampService> _logger;
 
     private static readonly TimeSpan CampsForYearCacheTtl = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan CampSettingsCacheTtl = TimeSpan.FromMinutes(5);
@@ -30,15 +28,13 @@ public class CampService : ICampService
         IAuditLogService auditLogService,
         ISystemTeamSync systemTeamSync,
         IClock clock,
-        IMemoryCache cache,
-        ILogger<CampService> logger)
+        IMemoryCache cache)
     {
         _dbContext = dbContext;
         _auditLogService = auditLogService;
         _systemTeamSync = systemTeamSync;
         _clock = clock;
         _cache = cache;
-        _logger = logger;
     }
 
     // ==========================================================================

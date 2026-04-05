@@ -48,7 +48,7 @@ public class TeamPageService : ITeamPageService
                 : [];
 
         var customPictures = await GetCustomPicturesByUserIdAsync(
-            visibleMembers as IReadOnlyList<TeamDetailMemberSummary> ?? visibleMembers.ToList(),
+            visibleMembers,
             cancellationToken);
         var members = visibleMembers
             .Select(member => new TeamPageMemberSummary(

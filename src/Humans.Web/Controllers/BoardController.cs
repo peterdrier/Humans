@@ -6,7 +6,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
-using Humans.Web.Extensions;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;

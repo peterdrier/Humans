@@ -2,10 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
-using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -16,7 +14,6 @@ namespace Humans.Web.Controllers;
 [Route("[controller]")]
 public class GovernanceController : HumansControllerBase
 {
-    private readonly ILogger<GovernanceController> _logger;
     private readonly ILegalDocumentService _legalDocService;
     private readonly IProfileService _profileService;
     private readonly IApplicationDecisionService _applicationDecisionService;
@@ -25,7 +22,6 @@ public class GovernanceController : HumansControllerBase
 
     public GovernanceController(
         UserManager<Domain.Entities.User> userManager,
-        ILogger<GovernanceController> logger,
         ILegalDocumentService legalDocService,
         IProfileService profileService,
         IApplicationDecisionService applicationDecisionService,
@@ -33,7 +29,6 @@ public class GovernanceController : HumansControllerBase
         IClock clock)
         : base(userManager)
     {
-        _logger = logger;
         _legalDocService = legalDocService;
         _profileService = profileService;
         _applicationDecisionService = applicationDecisionService;

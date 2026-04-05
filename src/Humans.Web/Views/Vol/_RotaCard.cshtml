@@ -1,6 +1,4 @@
 @model (Humans.Web.Models.RotaShiftGroup RotaGroup, Humans.Domain.Entities.EventSettings Es, HashSet<Guid> UserSignupShiftIds, Dictionary<Guid, Humans.Domain.Enums.SignupStatus> UserSignupStatuses, bool ShowSignups)
-@using Humans.Domain.Enums
-@using NodaTime
 
 @{
     var rotaGroup = Model.RotaGroup;

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using Humans.Domain.Constants;
 
 namespace Humans.Web.Authorization;
 

@@ -1,11 +1,8 @@
-@using Humans.Domain.Enums
-@using Humans.Web.Models
 @model Humans.Web.Models.CoordinatorCategoryDetailViewModel
 @{
     ViewData["Title"] = $"Budget - {Model.Category.Name}";
     var category = Model.Category;
     var group = category.BudgetGroup;
-    var year = group?.BudgetYear;
     var lineItemTotal = category.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount);
     var unallocated = category.AllocatedAmount - lineItemTotal;
 

@@ -10,7 +10,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Web.Extensions;
 using Humans.Web.Models;
 using NodaTime;
 

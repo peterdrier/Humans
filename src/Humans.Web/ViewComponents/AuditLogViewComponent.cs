@@ -56,10 +56,10 @@ public class AuditLogViewComponent : ViewComponent
             // Batch-load display names for all referenced user IDs
             // (actors, subjects via EntityId for User/Profile types, and RelatedEntityId for User types)
             var userIds = model.Entries
-                .SelectMany(e => new[]
+                .SelectMany(e => new Guid?[]
                 {
                     e.ActorUserId,
-                    e.EntityType is "User" or "Profile" or "WorkspaceAccount" ? (Guid?)e.EntityId : null,
+                    e.EntityType is "User" or "Profile" or "WorkspaceAccount" ? e.EntityId : null,
                     string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal) ? e.RelatedEntityId : null
                 })
                 .Where(id => id.HasValue)
@@ -77,9 +77,9 @@ public class AuditLogViewComponent : ViewComponent
 
             // Batch-load team names for entries that reference teams
             var teamIds = model.Entries
-                .SelectMany(e => new[]
+                .SelectMany(e => new Guid?[]
                 {
-                    string.Equals(e.EntityType, "Team", StringComparison.Ordinal) ? (Guid?)e.EntityId : null,
+                    string.Equals(e.EntityType, "Team", StringComparison.Ordinal) ? e.EntityId : null,
                     string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) ? e.RelatedEntityId : null
                 })
                 .Where(id => id.HasValue)

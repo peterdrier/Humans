@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -142,8 +141,6 @@ public class RoleAssignmentService : IRoleAssignmentService
         };
 
         _dbContext.RoleAssignments.Add(roleAssignment);
-
-        var user = await _dbContext.Users.FindAsync([userId], ct);
 
         await _auditLogService.LogAsync(
             AuditAction.RoleAssigned, nameof(User), userId,

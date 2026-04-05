@@ -297,7 +297,7 @@ public class CampaignService : ICampaignService
     public async Task<WaveSendPreview> PreviewWaveSendAsync(Guid campaignId, Guid teamId,
         CancellationToken ct = default)
     {
-        var campaign = await _dbContext.Campaigns
+        _ = await _dbContext.Campaigns
             .FirstOrDefaultAsync(c => c.Id == campaignId, ct)
             ?? throw new InvalidOperationException($"Campaign {campaignId} not found.");
 
