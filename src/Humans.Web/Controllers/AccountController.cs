@@ -322,6 +322,9 @@ public class AccountController : Controller
     [HttpGet]
     public IActionResult MagicLinkSignup(string token, string? returnUrl = null)
     {
+        if (string.IsNullOrEmpty(token))
+            return View("MagicLinkError");
+
         var email = _magicLinkService.VerifySignupToken(token);
         if (email is null)
         {
@@ -338,6 +341,9 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CompleteSignup(string token, string displayName, string? returnUrl = null)
     {
+        if (string.IsNullOrEmpty(token))
+            return View("MagicLinkError");
+
         returnUrl ??= Url.Content("~/");
 
         var email = _magicLinkService.VerifySignupToken(token);
