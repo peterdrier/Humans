@@ -15,16 +15,14 @@ public class DevSeedController : HumansControllerBase
     private readonly IWebHostEnvironment _environment;
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
-    private readonly DevelopmentBudgetSeeder _budgetSeeder;
-    private readonly DevelopmentTicketSeeder _ticketSeeder;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<DevSeedController> _logger;
 
     public DevSeedController(
         IWebHostEnvironment environment,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
-        DevelopmentBudgetSeeder budgetSeeder,
-        DevelopmentTicketSeeder ticketSeeder,
+        IServiceProvider serviceProvider,
         UserManager<User> userManager,
         ILogger<DevSeedController> logger)
         : base(userManager)
@@ -32,8 +30,7 @@ public class DevSeedController : HumansControllerBase
         _environment = environment;
         _configuration = configuration;
         _configRegistry = configRegistry;
-        _budgetSeeder = budgetSeeder;
-        _ticketSeeder = ticketSeeder;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -55,7 +52,8 @@ public class DevSeedController : HumansControllerBase
 
         try
         {
-            var result = await _budgetSeeder.SeedAsync(user.Id, cancellationToken);
+            var seeder = _serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
+            var result = await seeder.SeedAsync(user.Id, cancellationToken);
 
             return Ok(new
             {
@@ -93,7 +91,8 @@ public class DevSeedController : HumansControllerBase
 
         try
         {
-            var result = await _ticketSeeder.SeedAsync(cancellationToken);
+            var seeder = _serviceProvider.GetRequiredService<DevelopmentTicketSeeder>();
+            var result = await seeder.SeedAsync(cancellationToken);
 
             return Ok(new
             {
