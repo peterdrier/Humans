@@ -134,12 +134,12 @@ public partial class QueryMonitoringInterceptor : DbCommandInterceptor
         return match.Success ? match.Groups[1].Value : null;
     }
 
-    [GeneratedRegex(@"\bFROM\s+(["""]?[\w.]+["""]?)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bFROM\s+(""?[\w.]+""?)", RegexOptions.IgnoreCase)]
     private static partial Regex FromTablePattern();
 
-    [GeneratedRegex(@"\bINSERT\s+INTO\s+(["""]?[\w.]+["""]?)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bINSERT\s+INTO\s+(""?[\w.]+""?)", RegexOptions.IgnoreCase)]
     private static partial Regex InsertTablePattern();
 
-    [GeneratedRegex(@"\bUPDATE\s+(["""]?[\w.]+["""]?)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bUPDATE\s+(""?[\w.]+""?)", RegexOptions.IgnoreCase)]
     private static partial Regex UpdateTablePattern();
 }
