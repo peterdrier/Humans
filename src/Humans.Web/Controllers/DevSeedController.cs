@@ -55,23 +55,7 @@ public class DevSeedController : HumansControllerBase
         {
             var seeder = _serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
             var result = await seeder.SeedAsync(user.Id, cancellationToken);
-
-            return Ok(new
-            {
-                message = $"Seeded budget demo data for {result.BudgetYearName}.",
-                result.BudgetYearId,
-                result.BudgetYearCode,
-                result.BudgetYearName,
-                result.ActivatedBudgetYear,
-                result.TeamsCreated,
-                result.TeamsUpdated,
-                result.DepartmentCategoriesSynced,
-                result.GroupsCreated,
-                result.CategoriesCreated,
-                result.LineItemsCreated,
-                financeYearDetailUrl = Url.Action(nameof(FinanceController.YearDetail), "Finance", new { id = result.BudgetYearId }),
-                financeAdminUrl = Url.Action(nameof(FinanceController.Admin), "Finance")
-            });
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -97,19 +81,7 @@ public class DevSeedController : HumansControllerBase
             // Reset sync state so the full dataset is fetched from the stub vendor
             await syncService.ResetSyncStateForFullResyncAsync();
             var result = await syncService.SyncOrdersAndAttendeesAsync(cancellationToken);
-
-            return Ok(new
-            {
-                message = "Synced stub ticket data through the real pipeline.",
-                result.OrdersSynced,
-                result.AttendeesSynced,
-                result.OrdersMatched,
-                result.AttendeesMatched,
-                result.CodesRedeemed,
-                ticketsDashboardUrl = Url.Action(nameof(TicketController.Index), "Ticket"),
-                ticketsOrdersUrl = Url.Action(nameof(TicketController.Orders), "Ticket"),
-                ticketsAttendeesUrl = Url.Action(nameof(TicketController.Attendees), "Ticket")
-            });
+            return Ok(result);
         }
         catch (Exception ex)
         {
