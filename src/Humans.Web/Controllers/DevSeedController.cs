@@ -17,6 +17,7 @@ public class DevSeedController : HumansControllerBase
     private readonly ConfigurationRegistry _configRegistry;
     private readonly DevelopmentBudgetSeeder _budgetSeeder;
     private readonly DevelopmentTicketSeeder _ticketSeeder;
+    private readonly ILogger<DevSeedController> _logger;
 
     public DevSeedController(
         IWebHostEnvironment environment,
@@ -24,7 +25,8 @@ public class DevSeedController : HumansControllerBase
         ConfigurationRegistry configRegistry,
         DevelopmentBudgetSeeder budgetSeeder,
         DevelopmentTicketSeeder ticketSeeder,
-        UserManager<User> userManager)
+        UserManager<User> userManager,
+        ILogger<DevSeedController> logger)
         : base(userManager)
     {
         _environment = environment;
@@ -32,6 +34,7 @@ public class DevSeedController : HumansControllerBase
         _configRegistry = configRegistry;
         _budgetSeeder = budgetSeeder;
         _ticketSeeder = ticketSeeder;
+        _logger = logger;
     }
 
     [Authorize(Roles = RoleGroups.FinanceAdminOrAdmin)]
@@ -50,24 +53,32 @@ public class DevSeedController : HumansControllerBase
             return errorResult;
         }
 
-        var result = await _budgetSeeder.SeedAsync(user.Id, cancellationToken);
-
-        return Ok(new
+        try
         {
-            message = $"Seeded budget demo data for {result.BudgetYearName}.",
-            result.BudgetYearId,
-            result.BudgetYearCode,
-            result.BudgetYearName,
-            result.ActivatedBudgetYear,
-            result.TeamsCreated,
-            result.TeamsUpdated,
-            result.DepartmentCategoriesSynced,
-            result.GroupsCreated,
-            result.CategoriesCreated,
-            result.LineItemsCreated,
-            financeYearDetailUrl = Url.Action(nameof(FinanceController.YearDetail), "Finance", new { id = result.BudgetYearId }),
-            financeAdminUrl = Url.Action(nameof(FinanceController.Admin), "Finance")
-        });
+            var result = await _budgetSeeder.SeedAsync(user.Id, cancellationToken);
+
+            return Ok(new
+            {
+                message = $"Seeded budget demo data for {result.BudgetYearName}.",
+                result.BudgetYearId,
+                result.BudgetYearCode,
+                result.BudgetYearName,
+                result.ActivatedBudgetYear,
+                result.TeamsCreated,
+                result.TeamsUpdated,
+                result.DepartmentCategoriesSynced,
+                result.GroupsCreated,
+                result.CategoriesCreated,
+                result.LineItemsCreated,
+                financeYearDetailUrl = Url.Action(nameof(FinanceController.YearDetail), "Finance", new { id = result.BudgetYearId }),
+                financeAdminUrl = Url.Action(nameof(FinanceController.Admin), "Finance")
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to seed budget demo data for user {UserId}", user.Id);
+            return StatusCode(500, new { error = "Budget seeding failed. Check logs for details." });
+        }
     }
 
     [Authorize(Roles = RoleGroups.TicketAdminBoardOrAdmin + "," + RoleNames.FinanceAdmin)]
@@ -80,28 +91,36 @@ public class DevSeedController : HumansControllerBase
             return NotFound();
         }
 
-        var result = await _ticketSeeder.SeedAsync(cancellationToken);
-
-        return Ok(new
+        try
         {
-            message = "Seeded ticketing demo data.",
-            result.PaidOrders,
-            result.NonPaidOrders,
-            result.OrdersCreated,
-            result.AttendeesCreated,
-            result.PaidTicketsSold,
-            result.GrossRevenue,
-            result.DonationRevenue,
-            result.DiscountTotal,
-            result.OrdersWithDonation,
-            result.OrdersWithDiscountCode,
-            result.MatchedOrders,
-            result.MatchedAttendees,
-            result.TwoTicketOrders,
-            ticketsDashboardUrl = Url.Action(nameof(TicketController.Index), "Ticket"),
-            ticketsOrdersUrl = Url.Action(nameof(TicketController.Orders), "Ticket"),
-            ticketsAttendeesUrl = Url.Action(nameof(TicketController.Attendees), "Ticket")
-        });
+            var result = await _ticketSeeder.SeedAsync(cancellationToken);
+
+            return Ok(new
+            {
+                message = "Seeded ticketing demo data.",
+                result.PaidOrders,
+                result.NonPaidOrders,
+                result.OrdersCreated,
+                result.AttendeesCreated,
+                result.PaidTicketsSold,
+                result.GrossRevenue,
+                result.DonationRevenue,
+                result.DiscountTotal,
+                result.OrdersWithDonation,
+                result.OrdersWithDiscountCode,
+                result.MatchedOrders,
+                result.MatchedAttendees,
+                result.TwoTicketOrders,
+                ticketsDashboardUrl = Url.Action(nameof(TicketController.Index), "Ticket"),
+                ticketsOrdersUrl = Url.Action(nameof(TicketController.Orders), "Ticket"),
+                ticketsAttendeesUrl = Url.Action(nameof(TicketController.Attendees), "Ticket")
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to seed ticket demo data");
+            return StatusCode(500, new { error = "Ticket seeding failed. Check logs for details." });
+        }
     }
 
     private bool IsDevSeedEnabled()
