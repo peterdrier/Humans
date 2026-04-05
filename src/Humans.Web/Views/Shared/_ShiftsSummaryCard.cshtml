@@ -30,6 +30,12 @@
         {
             <p class="text-muted mb-0">No shifts configured yet.</p>
         }
+        @if (Model.IncludesSubTeamCount > 0)
+        {
+            <small class="text-muted d-block mt-1">
+                <i class="fa-solid fa-sitemap me-1"></i>Includes shifts from @Model.IncludesSubTeamCount sub-team@(Model.IncludesSubTeamCount != 1 ? "s" : "")
+            </small>
+        }
         @if (Model.CanManageShifts)
         {
             <a href="@Model.ShiftsUrl" class="btn btn-sm btn-outline-primary mt-2 w-100">Manage Shifts <i class="fa-solid fa-lock auth-lock-icon"></i></a>

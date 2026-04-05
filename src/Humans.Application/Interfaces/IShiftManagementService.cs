@@ -181,6 +181,12 @@ public interface IShiftManagementService
         Guid eventSettingsId, Guid departmentTeamId);
 
     /// <summary>
+    /// Gets aggregated shifts summary across multiple teams. Returns null if no rotas.
+    /// </summary>
+    Task<ShiftsSummaryData?> GetShiftsSummaryForTeamsAsync(
+        Guid eventSettingsId, IReadOnlyList<Guid> teamIds);
+
+    /// <summary>
     /// Gets all parent teams that have active rotas in the given event.
     /// </summary>
     Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(

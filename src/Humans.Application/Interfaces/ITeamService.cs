@@ -315,6 +315,15 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the management role definition name for each team that has one.
+    /// </summary>
+    /// <param name="teamIds">The team IDs to check.</param>
+    /// <returns>Dictionary mapping team ID to the management role name.</returns>
+    Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
+        IEnumerable<Guid> teamIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets non-system team names for users, grouped by user ID.
     /// Used for birthday display.
     /// </summary>
