@@ -76,6 +76,12 @@ public class DevSeedController : HumansControllerBase
             return NotFound();
         }
 
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
         try
         {
             var syncService = _serviceProvider.GetRequiredService<ITicketSyncService>();
@@ -87,7 +93,7 @@ public class DevSeedController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to sync stub ticket data");
+            _logger.LogError(ex, "Failed to sync stub ticket data for user {UserId}", user.Id);
             SetError("Ticket sync failed. Check logs for details.");
         }
 
