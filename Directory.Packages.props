@@ -6,16 +6,16 @@
   <ItemGroup>
     <!-- Core Framework -->
     <PackageVersion Include="HtmlSanitizer" Version="9.0.892" />
-    <PackageVersion Include="Markdig" Version="1.1.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.3" />
+    <PackageVersion Include="Markdig" Version="1.1.2" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.5" />
     <!-- Database -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.1" />
     <!-- NodaTime -->
     <PackageVersion Include="NodaTime" Version="3.3.1" />
     <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.3.1" />
@@ -32,7 +32,7 @@
     <!-- Google Workspace APIs -->
     <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.73.0.4075" />
     <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.73.0.4030" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.73.0.4068" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.73.0.4098" />
     <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.70.0.3880" />
     <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.68.0.2721" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.73.0" />
@@ -54,10 +54,10 @@
     <!-- Image Processing -->
     <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="14.11.1" />
     <!-- Localization -->
-    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.5" />
     <!-- Data Protection -->
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.3" />
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.5" />
     <!-- Health Checks -->
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Hangfire" Version="9.0.0" />
@@ -66,7 +66,7 @@
     <PackageVersion Include="MinVer" Version="7.0.0" />
     <!-- Analyzers -->
     <PackageVersion Include="Roslynator.Analyzers" Version="4.15.0" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.19" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.44" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.14.15" />
     <!-- Testing -->
     <PackageVersion Include="coverlet.collector" Version="8.0.0" />

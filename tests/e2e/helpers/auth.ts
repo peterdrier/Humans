@@ -3,7 +3,7 @@ import { type Page, type APIResponse, expect } from '@playwright/test';
 const NAV_SELECTOR = '[data-testid="user-nav"], .navbar .dropdown:has(.profile-dropdown-menu)';
 
 async function loginAs(page: Page, slug: string): Promise<void> {
-  await page.goto(`/dev/login/${slug}`, { waitUntil: 'networkidle' });
+  await page.goto(`/dev/login/${slug}`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector(NAV_SELECTOR);
 }
 
