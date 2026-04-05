@@ -25,8 +25,8 @@ public sealed class DevelopmentBudgetSeeder
     private static readonly BudgetTeamSeed[] TeamSeeds =
     [
         new(
-            Slug: "kitchen",
-            Name: "Kitchen",
+            Slug: "demo-kitchen",
+            Name: "Demo Kitchen",
             Description: "Food, water, and volunteer hydration operations.",
             AllocatedAmount: -55199.22m,
             ExpenditureType: ExpenditureType.OpEx,
@@ -38,8 +38,8 @@ public sealed class DevelopmentBudgetSeeder
                 new("Water station consumables", -4932.96m, "Cups, filtration cartridges, and cleaning supplies.", new LocalDate(2026, 7, 6), 21)
             ]),
         new(
-            Slug: "site-ops",
-            Name: "Site Ops",
+            Slug: "demo-site-ops",
+            Name: "Demo Site Ops",
             Description: "Core site readiness, lighting, fencing, and directional systems.",
             AllocatedAmount: -82111.96m,
             ExpenditureType: ExpenditureType.OpEx,
@@ -51,8 +51,8 @@ public sealed class DevelopmentBudgetSeeder
                 new("Tooling and repairs", -7805.32m, "Consumables and small repairs during build week.", new LocalDate(2026, 7, 2), 21)
             ]),
         new(
-            Slug: "welfare",
-            Name: "Welfare",
+            Slug: "demo-welfare",
+            Name: "Demo Welfare",
             Description: "Shade, wellbeing, first aid, and volunteer care.",
             AllocatedAmount: -37215.76m,
             ExpenditureType: ExpenditureType.OpEx,
@@ -64,8 +64,8 @@ public sealed class DevelopmentBudgetSeeder
                 new("Volunteer wellbeing budget", -5682.27m, "Hot-weather extras and crew decompression supplies.", new LocalDate(2026, 7, 9), 21)
             ]),
         new(
-            Slug: "build-crew",
-            Name: "Build Crew",
+            Slug: "demo-build-crew",
+            Name: "Demo Build Crew",
             Description: "Build and strike materials, fixings, and shared fabrication support.",
             AllocatedAmount: -64471.94m,
             ExpenditureType: ExpenditureType.CapEx,
