@@ -4,7 +4,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
 namespace Humans.Web.Infrastructure;
@@ -26,7 +25,7 @@ public sealed class DevelopmentBudgetSeeder
     private static readonly BudgetTeamSeed[] TeamSeeds =
     [
         new(
-            Slug: "demo-kitchen",
+            Slug: "kitchen",
             Name: "Kitchen",
             Description: "Food, water, and volunteer hydration operations.",
             AllocatedAmount: -55199.22m,
@@ -39,7 +38,7 @@ public sealed class DevelopmentBudgetSeeder
                 new("Water station consumables", -4932.96m, "Cups, filtration cartridges, and cleaning supplies.", new LocalDate(2026, 7, 6), 21)
             ]),
         new(
-            Slug: "demo-site-ops",
+            Slug: "site-ops",
             Name: "Site Ops",
             Description: "Core site readiness, lighting, fencing, and directional systems.",
             AllocatedAmount: -82111.96m,
@@ -52,7 +51,7 @@ public sealed class DevelopmentBudgetSeeder
                 new("Tooling and repairs", -7805.32m, "Consumables and small repairs during build week.", new LocalDate(2026, 7, 2), 21)
             ]),
         new(
-            Slug: "demo-welfare",
+            Slug: "welfare",
             Name: "Welfare",
             Description: "Shade, wellbeing, first aid, and volunteer care.",
             AllocatedAmount: -37215.76m,
@@ -65,7 +64,7 @@ public sealed class DevelopmentBudgetSeeder
                 new("Volunteer wellbeing budget", -5682.27m, "Hot-weather extras and crew decompression supplies.", new LocalDate(2026, 7, 9), 21)
             ]),
         new(
-            Slug: "demo-build-crew",
+            Slug: "build-crew",
             Name: "Build Crew",
             Description: "Build and strike materials, fixings, and shared fabrication support.",
             AllocatedAmount: -64471.94m,
@@ -139,21 +138,21 @@ public sealed class DevelopmentBudgetSeeder
 
     private readonly HumansDbContext _dbContext;
     private readonly IBudgetService _budgetService;
+    private readonly ITeamService _teamService;
     private readonly IClock _clock;
-    private readonly IMemoryCache _cache;
     private readonly ILogger<DevelopmentBudgetSeeder> _logger;
 
     public DevelopmentBudgetSeeder(
         HumansDbContext dbContext,
         IBudgetService budgetService,
+        ITeamService teamService,
         IClock clock,
-        IMemoryCache cache,
         ILogger<DevelopmentBudgetSeeder> logger)
     {
         _dbContext = dbContext;
         _budgetService = budgetService;
+        _teamService = teamService;
         _clock = clock;
-        _cache = cache;
         _logger = logger;
     }
 
@@ -177,13 +176,7 @@ public sealed class DevelopmentBudgetSeeder
         var teamsUpdated = 0;
         foreach (var seed in TeamSeeds)
         {
-            await EnsureBudgetTeamAsync(seed, now, cancellationToken, onCreated: () => teamsCreated++, onUpdated: () => teamsUpdated++);
-        }
-
-        if (teamsCreated > 0 || teamsUpdated > 0)
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            _cache.InvalidateActiveTeams();
+            await EnsureBudgetTeamAsync(seed, cancellationToken, onCreated: () => teamsCreated++, onUpdated: () => teamsUpdated++);
         }
 
         var budgetYear = await _dbContext.BudgetYears
@@ -307,93 +300,30 @@ public sealed class DevelopmentBudgetSeeder
 
     private async Task EnsureBudgetTeamAsync(
         BudgetTeamSeed seed,
-        Instant now,
         CancellationToken cancellationToken,
         Action onCreated,
         Action onUpdated)
     {
-        var existing = await _dbContext.Teams
-            .FirstOrDefaultAsync(t => t.Slug == seed.Slug, cancellationToken);
+        var existing = await _teamService.GetTeamBySlugAsync(seed.Slug, cancellationToken);
 
         if (existing is null)
         {
-            _dbContext.Teams.Add(new Team
-            {
-                Id = DeterministicGuid($"dev-budget-team:{seed.Slug}"),
-                Name = seed.Name,
-                Description = seed.Description,
-                Slug = seed.Slug,
-                IsActive = true,
-                RequiresApproval = true,
-                SystemTeamType = SystemTeamType.None,
-                CreatedAt = now,
-                UpdatedAt = now,
-                IsPublicPage = false,
-                ShowCoordinatorsOnPublicPage = true,
-                HasBudget = true,
-                IsHidden = false,
-                IsSensitive = false
-            });
+            var team = await _teamService.CreateTeamAsync(
+                seed.Name, seed.Description, requiresApproval: true, cancellationToken: cancellationToken);
+
+            await _teamService.UpdateTeamAsync(
+                team.Id, team.Name, team.Description, team.RequiresApproval, isActive: true,
+                hasBudget: true, isHidden: false, isSensitive: false, cancellationToken: cancellationToken);
 
             onCreated();
             return;
         }
 
-        var updated = false;
+        await _teamService.UpdateTeamAsync(
+            existing.Id, seed.Name, seed.Description, existing.RequiresApproval, isActive: true,
+            hasBudget: true, isHidden: false, isSensitive: false, cancellationToken: cancellationToken);
 
-        if (!string.Equals(existing.Name, seed.Name, StringComparison.Ordinal))
-        {
-            existing.Name = seed.Name;
-            updated = true;
-        }
-
-        if (!string.Equals(existing.Description, seed.Description, StringComparison.Ordinal))
-        {
-            existing.Description = seed.Description;
-            updated = true;
-        }
-
-        if (!existing.IsActive)
-        {
-            existing.IsActive = true;
-            updated = true;
-        }
-
-        if (!existing.HasBudget)
-        {
-            existing.HasBudget = true;
-            updated = true;
-        }
-
-        if (existing.SystemTeamType != SystemTeamType.None)
-        {
-            existing.SystemTeamType = SystemTeamType.None;
-            updated = true;
-        }
-
-        if (existing.ParentTeamId is not null)
-        {
-            existing.ParentTeamId = null;
-            updated = true;
-        }
-
-        if (existing.IsHidden)
-        {
-            existing.IsHidden = false;
-            updated = true;
-        }
-
-        if (existing.IsSensitive)
-        {
-            existing.IsSensitive = false;
-            updated = true;
-        }
-
-        if (updated)
-        {
-            existing.UpdatedAt = now;
-            onUpdated();
-        }
+        onUpdated();
     }
 
     private async Task<BudgetGroup> EnsureGroupAsync(
@@ -428,9 +358,8 @@ public sealed class DevelopmentBudgetSeeder
         CancellationToken cancellationToken,
         Action onCategoryCreated)
     {
-        var team = await _dbContext.Teams
-            .AsNoTracking()
-            .FirstAsync(t => t.Slug == seed.Slug, cancellationToken);
+        var team = await _teamService.GetTeamBySlugAsync(seed.Slug, cancellationToken)
+            ?? throw new InvalidOperationException($"Team with slug '{seed.Slug}' not found after seeding");
 
         var existing = await _dbContext.BudgetCategories
             .AsNoTracking()
@@ -543,13 +472,6 @@ public sealed class DevelopmentBudgetSeeder
             .Include(y => y.Groups)
                 .ThenInclude(g => g.TicketingProjection)
             .FirstAsync(y => y.Id == budgetYearId, cancellationToken);
-    }
-
-    private static Guid DeterministicGuid(string value)
-    {
-        using var sha = System.Security.Cryptography.SHA256.Create();
-        var hash = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(value));
-        return new Guid(hash.AsSpan(0, 16));
     }
 
     private sealed record BudgetTeamSeed(
