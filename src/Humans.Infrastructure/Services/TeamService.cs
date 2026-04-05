@@ -2005,7 +2005,7 @@ public class TeamService : ITeamService
 
         return await _dbContext.Set<TeamRoleDefinition>()
             .AsNoTracking()
-            .Where(d => teamIdList.Contains(d.TeamId) && d.IsManagement)
+            .Where(d => teamIdList.Contains(d.TeamId) && d.IsManagement && d.IsPublic)
             .ToDictionaryAsync(d => d.TeamId, d => d.Name, cancellationToken);
     }
 

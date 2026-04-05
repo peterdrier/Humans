@@ -175,13 +175,23 @@ public class TeamPageService : ITeamPageService
                 return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
             }
 
+            // Count only child teams that actually have shifts in the active event
+            var childTeamsWithShifts = await _dbContext.Rotas
+                .AsNoTracking()
+                .Where(r => r.EventSettingsId == activeEvent.Id
+                    && childTeams.Contains(r.TeamId)
+                    && r.Shifts.Any())
+                .Select(r => r.TeamId)
+                .Distinct()
+                .CountAsync(cancellationToken);
+
             return new TeamPageShiftsSummary(
                 aggregatedData.TotalSlots,
                 aggregatedData.ConfirmedCount,
                 aggregatedData.PendingCount,
                 aggregatedData.UniqueVolunteerCount,
                 canManageShifts,
-                childTeams.Count);
+                childTeamsWithShifts);
         }
 
         // Child team or standalone team: show only own shifts
