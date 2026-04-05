@@ -4,14 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Web.Authorization;
 using Humans.Infrastructure.Data;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleNames.Admin)]
 [Route("Admin")]
 public class AdminController : HumansControllerBase
 {
@@ -40,12 +39,14 @@ public class AdminController : HumansControllerBase
     }
 
     [HttpGet("")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult Index()
     {
         return View();
     }
 
     [HttpPost("Humans/{id}/Purge")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PurgeHuman(Guid id)
     {
@@ -92,6 +93,7 @@ public class AdminController : HumansControllerBase
     }
 
     [HttpGet("Logs")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult Logs(int count = 50)
     {
         count = Math.Clamp(count, 1, 200);
@@ -100,6 +102,7 @@ public class AdminController : HumansControllerBase
     }
 
     [HttpGet("Configuration")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult Configuration()
     {
         var entries = _configRegistry.GetAll();
@@ -166,6 +169,7 @@ public class AdminController : HumansControllerBase
     }
 
     [HttpPost("ClearHangfireLocks")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ClearHangfireLocks()
     {
