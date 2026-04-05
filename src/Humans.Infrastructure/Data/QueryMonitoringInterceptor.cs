@@ -119,27 +119,27 @@ public partial class QueryMonitoringInterceptor : DbCommandInterceptor
     private static string? ExtractFromClause(string sql)
     {
         var match = FromTablePattern().Match(sql);
-        return match.Success ? match.Groups[1].Value : null;
+        return match.Success ? match.Groups["table"].Value : null;
     }
 
     private static string? ExtractInsertTable(string sql)
     {
         var match = InsertTablePattern().Match(sql);
-        return match.Success ? match.Groups[1].Value : null;
+        return match.Success ? match.Groups["table"].Value : null;
     }
 
     private static string? ExtractUpdateTable(string sql)
     {
         var match = UpdateTablePattern().Match(sql);
-        return match.Success ? match.Groups[1].Value : null;
+        return match.Success ? match.Groups["table"].Value : null;
     }
 
-    [GeneratedRegex(@"\bFROM\s+(""?[\w.]+""?)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bFROM\s+(?<table>""?[\w.]+""?)", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking)]
     private static partial Regex FromTablePattern();
 
-    [GeneratedRegex(@"\bINSERT\s+INTO\s+(""?[\w.]+""?)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bINSERT\s+INTO\s+(?<table>""?[\w.]+""?)", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking)]
     private static partial Regex InsertTablePattern();
 
-    [GeneratedRegex(@"\bUPDATE\s+(""?[\w.]+""?)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bUPDATE\s+(?<table>""?[\w.]+""?)", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking)]
     private static partial Regex UpdateTablePattern();
 }
