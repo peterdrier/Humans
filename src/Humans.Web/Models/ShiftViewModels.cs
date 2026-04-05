@@ -431,6 +431,11 @@ public class ShiftsSummaryCardViewModel
     public int UniqueVolunteerCount { get; set; }
     public string ShiftsUrl { get; set; } = "";
     public bool CanManageShifts { get; set; }
+
+    /// <summary>
+    /// When > 0, indicates this summary includes data from child teams.
+    /// </summary>
+    public int IncludesSubTeamCount { get; set; }
 }
 
 // === Shift Signups ViewComponent ===

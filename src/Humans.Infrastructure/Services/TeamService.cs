@@ -1993,6 +1993,22 @@ public class TeamService : ITeamService
         return result;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
+        IEnumerable<Guid> teamIds,
+        CancellationToken cancellationToken = default)
+    {
+        var teamIdList = teamIds.ToList();
+        if (teamIdList.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        return await _dbContext.Set<TeamRoleDefinition>()
+            .AsNoTracking()
+            .Where(d => teamIdList.Contains(d.TeamId) && d.IsManagement && d.IsPublic)
+            .ToDictionaryAsync(d => d.TeamId, d => d.Name, cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, List<string>>> GetNonSystemTeamNamesByUserIdsAsync(
         IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default)

@@ -213,6 +213,32 @@
         </div>
         }
 
+        @if (Model.IsAuthenticated && Model.SubteamLeads.Any())
+        {
+        <div class="card mb-4">
+            <div class="card-header">
+                <span>Subteam Leads (@Model.SubteamLeads.Count)</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    @foreach (var lead in Model.SubteamLeads)
+                    {
+                        <div class="col-6 col-sm-4 col-md-3">
+                            <human-link user-id="@lead.UserId" display-name="@lead.DisplayName"
+                                        mode="Card" size="128"
+                                        profile-picture-url="@lead.EffectiveProfilePictureUrl"
+                                        avatar-css-class="border border-primary border-3"
+                                        avatar-bg-color="bg-primary">
+                                <span class="badge bg-primary small">@(lead.RoleTitle ?? "Coordinator")</span>
+                                <span class="badge bg-secondary bg-opacity-50 small">@lead.ChildTeamName</span>
+                            </human-link>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        }
+
         @if (Model.IsAuthenticated && Model.ChildTeamMembers.Any())
         {
         <div class="card mb-4">

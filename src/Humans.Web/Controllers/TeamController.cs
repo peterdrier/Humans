@@ -168,11 +168,34 @@ public class TeamController : HumansControllerBase
             var directMemberUserIds = new HashSet<Guid>(viewModel.Members.Select(m => m.UserId));
             var addedUserIds = new HashSet<Guid>();
 
+            // Build a lookup of management role definitions by child team ID
+            var childTeamIds = teamPage.ChildTeams.Select(c => c.Id).ToList();
+            var managementRolesByTeam = await _teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds);
+
             foreach (var child in teamPage.ChildTeams)
             {
                 var childMembers = await _teamService.GetTeamMembersAsync(child.Id);
+                var managementRoleName = managementRolesByTeam.GetValueOrDefault(child.Id);
+
                 foreach (var cm in childMembers)
                 {
+                    var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
+
+                    // Add coordinators to the subteam leads list (allow duplicates across teams)
+                    if (isCoordinator)
+                    {
+                        viewModel.SubteamLeads.Add(new ChildTeamMemberViewModel
+                        {
+                            UserId = cm.UserId,
+                            DisplayName = cm.User.DisplayName,
+                            ProfilePictureUrl = cm.User.ProfilePictureUrl,
+                            ChildTeamName = child.Name,
+                            ChildTeamSlug = child.Slug,
+                            IsCoordinator = true,
+                            RoleTitle = managementRoleName
+                        });
+                    }
+
                     if (directMemberUserIds.Contains(cm.UserId) || !addedUserIds.Add(cm.UserId))
                         continue;
 
@@ -182,19 +205,25 @@ public class TeamController : HumansControllerBase
                         DisplayName = cm.User.DisplayName,
                         ProfilePictureUrl = cm.User.ProfilePictureUrl,
                         ChildTeamName = child.Name,
-                        ChildTeamSlug = child.Slug
+                        ChildTeamSlug = child.Slug,
+                        IsCoordinator = isCoordinator,
+                        RoleTitle = isCoordinator ? managementRoleName : null
                     });
                 }
             }
 
-            // Resolve custom profile pictures for child team members
-            if (viewModel.ChildTeamMembers.Count > 0)
+            // Resolve custom profile pictures for child team members and subteam leads
+            var allChildUserEntries = viewModel.ChildTeamMembers
+                .Concat(viewModel.SubteamLeads)
+                .ToList();
+
+            if (allChildUserEntries.Count > 0)
             {
                 var effectiveUrls = await ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
                     _profileService, Url,
-                    viewModel.ChildTeamMembers.Select(m => (m.UserId, m.ProfilePictureUrl)));
+                    allChildUserEntries.Select(m => (m.UserId, m.ProfilePictureUrl)));
 
-                foreach (var member in viewModel.ChildTeamMembers)
+                foreach (var member in allChildUserEntries)
                 {
                     if (effectiveUrls.TryGetValue(member.UserId, out var effectiveUrl))
                         member.ProfilePictureUrl = effectiveUrl;
@@ -268,7 +297,8 @@ public class TeamController : HumansControllerBase
             PendingCount = summary.PendingCount,
             UniqueVolunteerCount = summary.UniqueVolunteerCount,
             ShiftsUrl = Url.Action(nameof(ShiftAdminController.Index), "ShiftAdmin", new { slug })!,
-            CanManageShifts = summary.CanManageShifts
+            CanManageShifts = summary.CanManageShifts,
+            IncludesSubTeamCount = summary.IncludesSubTeamCount
         };
     }
 

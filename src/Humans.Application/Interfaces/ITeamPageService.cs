@@ -25,7 +25,8 @@ public record TeamPageShiftsSummary(
     int ConfirmedCount,
     int PendingCount,
     int UniqueVolunteerCount,
-    bool CanManageShifts);
+    bool CanManageShifts,
+    int IncludesSubTeamCount = 0);
 
 public record TeamPageDetailResult(
     Team Team,

@@ -157,6 +157,44 @@ public class TeamPageService : ITeamPageService
             return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
         }
 
+        // For parent teams, aggregate shifts from the parent team plus all child teams
+        var childTeams = await _dbContext.Teams
+            .AsNoTracking()
+            .Where(t => t.ParentTeamId == team.Id && t.IsActive)
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
+
+        if (childTeams.Count > 0)
+        {
+            var allTeamIds = new List<Guid> { team.Id };
+            allTeamIds.AddRange(childTeams);
+
+            var aggregatedData = await _shiftManagementService.GetShiftsSummaryForTeamsAsync(activeEvent.Id, allTeamIds);
+            if (aggregatedData is null)
+            {
+                return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
+            }
+
+            // Count only child teams that actually have shifts in the active event
+            var childTeamsWithShifts = await _dbContext.Rotas
+                .AsNoTracking()
+                .Where(r => r.EventSettingsId == activeEvent.Id
+                    && childTeams.Contains(r.TeamId)
+                    && r.Shifts.Any())
+                .Select(r => r.TeamId)
+                .Distinct()
+                .CountAsync(cancellationToken);
+
+            return new TeamPageShiftsSummary(
+                aggregatedData.TotalSlots,
+                aggregatedData.ConfirmedCount,
+                aggregatedData.PendingCount,
+                aggregatedData.UniqueVolunteerCount,
+                canManageShifts,
+                childTeamsWithShifts);
+        }
+
+        // Child team or standalone team: show only own shifts
         var summaryData = await _shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, team.Id);
         if (summaryData is null)
         {

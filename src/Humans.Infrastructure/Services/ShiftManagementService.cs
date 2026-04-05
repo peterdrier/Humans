@@ -781,6 +781,39 @@ public class ShiftManagementService : IShiftManagementService
                 .Count());
     }
 
+    public async Task<ShiftsSummaryData?> GetShiftsSummaryForTeamsAsync(
+        Guid eventSettingsId, IReadOnlyList<Guid> teamIds)
+    {
+        if (teamIds.Count == 0) return null;
+
+        var rotas = await _dbContext.Rotas
+            .AsNoTracking()
+            .Include(r => r.Shifts).ThenInclude(s => s.ShiftSignups)
+            .Where(r => r.EventSettingsId == eventSettingsId && teamIds.Contains(r.TeamId))
+            .ToListAsync();
+
+        if (rotas.Count == 0) return null;
+
+        var allShifts = rotas.SelectMany(r => r.Shifts).ToList();
+        if (allShifts.Count == 0) return null;
+
+        var allSignups = allShifts.SelectMany(s => s.ShiftSignups).ToList();
+
+        return new ShiftsSummaryData(
+            TotalSlots: allShifts.Sum(s => s.MaxVolunteers),
+            ConfirmedCount: allSignups.Count(s => s.Status == SignupStatus.Confirmed),
+            PendingCount: allSignups
+                .Where(s => s.Status == SignupStatus.Pending)
+                .Select(s => s.SignupBlockId ?? s.Id)
+                .Distinct()
+                .Count(),
+            UniqueVolunteerCount: allSignups
+                .Where(s => s.Status == SignupStatus.Confirmed)
+                .Select(s => s.UserId)
+                .Distinct()
+                .Count());
+    }
+
     public async Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId)
     {
