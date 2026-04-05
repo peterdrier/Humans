@@ -34,12 +34,12 @@ else
         <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="dbStatsTable">
             <thead>
                 <tr>
-                    <th style="cursor:pointer;" onclick="sortTable(0)">Operation <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" onclick="sortTable(1)">Table <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" onclick="sortTable(2)" class="text-end">Count <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" onclick="sortTable(3)" class="text-end">Avg (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" onclick="sortTable(4)" class="text-end">Max (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" onclick="sortTable(5)" class="text-end">Total (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="0">Operation <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="1">Table <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Count <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="3" class="text-end">Avg (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="4" class="text-end">Max (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Total (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
                 </tr>
             </thead>
             <tbody>
@@ -69,27 +69,32 @@ else
 
 @section Scripts {
     <script>
-        // Simple client-side column sorting
-        let sortDir = {};
-        function sortTable(colIndex) {
-            const table = document.getElementById('dbStatsTable');
-            const tbody = table.querySelector('tbody');
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            const isNumeric = colIndex >= 2;
+        // Simple client-side column sorting (uses data attributes instead of
+        // inline onclick handlers, which are blocked by the CSP nonce policy)
+        (function () {
+            const sortDir = {};
+            document.querySelectorAll('#dbStatsTable th[data-sort-col]').forEach(th => {
+                th.addEventListener('click', function () {
+                    const colIndex = parseInt(this.dataset.sortCol);
+                    const tbody = document.querySelector('#dbStatsTable tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    const isNumeric = colIndex >= 2;
 
-            sortDir[colIndex] = !sortDir[colIndex];
-            const dir = sortDir[colIndex] ? 1 : -1;
+                    sortDir[colIndex] = !sortDir[colIndex];
+                    const dir = sortDir[colIndex] ? 1 : -1;
 
-            rows.sort((a, b) => {
-                const aVal = a.cells[colIndex].textContent.trim().replace(/,/g, '');
-                const bVal = b.cells[colIndex].textContent.trim().replace(/,/g, '');
-                if (isNumeric) {
-                    return (parseFloat(aVal) - parseFloat(bVal)) * dir;
-                }
-                return aVal.localeCompare(bVal) * dir;
+                    rows.sort((a, b) => {
+                        const aVal = a.cells[colIndex].textContent.trim().replace(/,/g, '');
+                        const bVal = b.cells[colIndex].textContent.trim().replace(/,/g, '');
+                        if (isNumeric) {
+                            return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+                        }
+                        return aVal.localeCompare(bVal) * dir;
+                    });
+
+                    rows.forEach(row => tbody.appendChild(row));
+                });
             });
-
-            rows.forEach(row => tbody.appendChild(row));
-        }
+        })();
     </script>
 }
