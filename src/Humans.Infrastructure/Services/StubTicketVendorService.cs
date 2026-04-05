@@ -155,6 +155,9 @@ public sealed class StubTicketVendorService : ITicketVendorService
                 var attendee = BuildPerson(orderIndex * 10 + t + 500);
                 var vendorTicketId = $"stub-ticket-{orderIndex + 1:D4}-{t + 1:D2}";
 
+                // Every 5th ticket is checked in for realistic event summary stats
+                var status = (orderIndex * 10 + t) % 5 == 0 ? "checked_in" : "valid";
+
                 var ticketDto = new VendorTicketDto(
                     VendorTicketId: vendorTicketId,
                     VendorOrderId: vendorOrderId,
@@ -162,7 +165,7 @@ public sealed class StubTicketVendorService : ITicketVendorService
                     AttendeeEmail: attendee.Email,
                     TicketTypeName: ticket.Type,
                     Price: ticket.Price,
-                    Status: "valid");
+                    Status: status);
 
                 vendorTickets.Add(ticketDto);
                 tickets.Add(ticketDto);
