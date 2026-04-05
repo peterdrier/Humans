@@ -1,12 +1,10 @@
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
-using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -25,7 +23,6 @@ public class BudgetServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _service = new BudgetService(
             _dbContext,
-            Substitute.For<INotificationService>(),
             new FakeClock(NodaTime.Instant.FromUtc(2026, 3, 31, 12, 0)),
             NullLogger<BudgetService>.Instance);
     }

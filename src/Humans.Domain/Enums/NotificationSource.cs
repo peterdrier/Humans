@@ -57,9 +57,6 @@ public enum NotificationSource
     /// <summary>Workspace (@nobodies.team) credentials are ready.</summary>
     WorkspaceCredentialsReady = 16,
 
-    /// <summary>Budget category spending exceeded warning threshold.</summary>
-    BudgetWarning = 17,
-
     /// <summary>A governance role was assigned or ended for a user.</summary>
     RoleAssignmentChanged = 18,
 

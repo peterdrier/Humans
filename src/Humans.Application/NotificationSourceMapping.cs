@@ -26,7 +26,6 @@ public static class NotificationSourceMapping
         NotificationSource.WorkspaceCredentialsReady => MessageCategory.System,
         NotificationSource.SyncError => MessageCategory.System,
         NotificationSource.TermRenewalReminder => MessageCategory.System,
-        NotificationSource.BudgetWarning => MessageCategory.System,
         NotificationSource.RoleAssignmentChanged => MessageCategory.Governance,
         NotificationSource.CampaignReceived => MessageCategory.Marketing,
         NotificationSource.TeamMemberRemoved => MessageCategory.TeamUpdates,

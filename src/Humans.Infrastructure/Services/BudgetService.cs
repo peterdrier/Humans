@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -16,25 +15,16 @@ namespace Humans.Infrastructure.Services;
 /// </summary>
 public class BudgetService : IBudgetService
 {
-    /// <summary>
-    /// Budget warning threshold: notify FinanceAdmin when a category's line item total
-    /// exceeds this fraction of the allocated amount.
-    /// </summary>
-    private const decimal BudgetWarningThreshold = 0.9m;
-
     private readonly HumansDbContext _dbContext;
-    private readonly INotificationService _notificationService;
     private readonly IClock _clock;
     private readonly ILogger<BudgetService> _logger;
 
     public BudgetService(
         HumansDbContext dbContext,
-        INotificationService notificationService,
         IClock clock,
         ILogger<BudgetService> logger)
     {
         _dbContext = dbContext;
-        _notificationService = notificationService;
         _clock = clock;
         _logger = logger;
     }
@@ -688,8 +678,6 @@ public class BudgetService : IBudgetService
 
         _logger.LogInformation("Created line item '{Description}' in category {CategoryId}", description, budgetCategoryId);
 
-        await CheckBudgetWarningAsync(budgetCategoryId);
-
         return lineItem;
     }
 
@@ -766,8 +754,6 @@ public class BudgetService : IBudgetService
         lineItem.UpdatedAt = now;
 
         await _dbContext.SaveChangesAsync();
-
-        await CheckBudgetWarningAsync(lineItem.BudgetCategoryId);
     }
 
     private static void ValidateVatRate(int vatRate)
@@ -1086,47 +1072,4 @@ public class BudgetService : IBudgetService
         return quarterEnd.PlusDays(45);
     }
 
-    /// <summary>
-    /// Checks if total line item spending in a category exceeds the warning threshold
-    /// of allocated amount, and notifies FinanceAdmin if so.
-    /// </summary>
-    private async Task CheckBudgetWarningAsync(Guid budgetCategoryId)
-    {
-        try
-        {
-            var category = await _dbContext.BudgetCategories
-                .Include(c => c.LineItems)
-                .FirstOrDefaultAsync(c => c.Id == budgetCategoryId);
-
-            if (category is null || category.AllocatedAmount == 0)
-                return;
-
-            // Sum absolute values of expense line items (negative amounts)
-            var totalSpent = category.LineItems
-                .Where(li => li.Amount < 0 && !li.IsCashflowOnly)
-                .Sum(li => Math.Abs(li.Amount));
-
-            var allocatedExpense = Math.Abs(category.AllocatedAmount);
-            if (allocatedExpense <= 0 || totalSpent < allocatedExpense * BudgetWarningThreshold)
-                return;
-
-            var percentage = allocatedExpense > 0
-                ? (totalSpent / allocatedExpense * 100).ToString("N0", CultureInfo.InvariantCulture)
-                : "N/A";
-
-            await _notificationService.SendToRoleAsync(
-                NotificationSource.BudgetWarning,
-                NotificationClass.Actionable,
-                NotificationPriority.High,
-                $"Budget warning: {category.Name} at {percentage}% of allocation",
-                RoleNames.FinanceAdmin,
-                body: $"Spending in '{category.Name}' has reached {totalSpent:N2} of {allocatedExpense:N2} allocated.",
-                actionUrl: "/Budget",
-                actionLabel: "View budget");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to check/dispatch BudgetWarning for category {CategoryId}", budgetCategoryId);
-        }
-    }
 }

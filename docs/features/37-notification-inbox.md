@@ -101,7 +101,6 @@ All authenticated users can access their own notifications. No role-based restri
 | TermRenewalReminder | Actionable | The user | System | 90 days before term expiry |
 | RoleAssignmentChanged | Informational | The user | Governance | Role assigned or ended |
 | CampaignReceived | Informational | Campaign recipients | Marketing | Campaign code granted |
-| BudgetWarning | Actionable | FinanceAdmin role | System | Category spending >= 90% |
 | GoogleDriftDetected | Informational | Admin role | System | Reconciliation fixes drift |
 | FacilitatedMessageReceived | Informational | Camp leads | FacilitatedMessages | Facilitated message sent |
 
