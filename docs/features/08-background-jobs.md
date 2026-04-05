@@ -16,10 +16,10 @@ Several system operations need to run automatically without user interaction: sy
 | ProcessEmailOutboxJob | Frequent | Send emails queued in the outbox table |
 | CleanupEmailOutboxJob | Daily | Delete old processed outbox entries |
 | ProcessGoogleSyncOutboxJob | Frequent | Process Google sync outbox (add/remove from Groups and Drive) |
-| TicketSyncJob | Daily | Sync ticket orders from TicketTailor |
+| TicketSyncJob | Every 15 min (configurable) | Sync ticket orders from TicketTailor |
 | TicketingBudgetSyncJob | Daily 4:30 AM | Materialize weekly ticket actuals into budget line items |
 | SendAdminDailyDigestJob | Daily | Email digest to Admin: sync health, anomalies |
-| SendBoardDailyDigestJob | Daily | Email digest to Board: pending signups, applications |
+| SendBoardDailyDigestJob | Every other day 2:00 AM | Email digest to Board: pending signups, applications |
 | CleanupNotificationsJob | Daily | Delete resolved notifications older than 7 days |
 | SystemTeamSyncJob | **DISABLED** | Sync system team membership + Google permissions |
 | GoogleResourceReconciliationJob | **DISABLED** | Full Google resource reconciliation |

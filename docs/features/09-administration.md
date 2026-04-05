@@ -182,7 +182,7 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Google/Accounts/Reactivate` | Admin | POST: Reactivate account |
 | `/Google/Accounts/ResetPassword` | Admin | POST: Reset password |
 | `/Google/Accounts/Link` | Admin | POST: Link existing account |
-| `/Google/LinkGroupToTeam` | TeamsAdmin, Board, Admin | POST: Link group to team |
+| `/Google/LinkGroupToTeam` | Admin | POST: Link group to team |
 | `/Google/CheckEmailMismatches` | Admin | POST: Check email mismatches |
 | `/Google/EmailBackfillReview` | HumanAdmin, Admin | GET: Review email backfill |
 | `/Google/ApplyEmailBackfill` | Admin | POST: Apply email backfill |
@@ -207,13 +207,16 @@ Duplicate account detection and resolution (added in Controller Consolidation PR
 | Route | Action | Description |
 |-------|--------|-------------|
 | `/Admin/DuplicateAccounts` | Index | List duplicate account candidates |
-| `/Admin/DuplicateAccounts/{id}` | Detail | Review a specific duplicate candidate |
+| `/Admin/DuplicateAccounts/Detail?userId1=&userId2=` | Detail | Review a specific duplicate candidate |
 
-### AdminMergeController (`/Admin/Merge/`) — Admin only
+### AdminMergeController (`/Admin/MergeRequests/`) — Admin only
 
 | Route | Action | Description |
 |-------|--------|-------------|
-| `/Admin/Merge` | Index/actions | Merge account flows |
+| `/Admin/MergeRequests` | Index | List pending merge requests |
+| `/Admin/MergeRequests/{id}` | Detail | Merge request detail |
+| `/Admin/MergeRequests/{id}/Accept` | Accept | Accept a merge request |
+| `/Admin/MergeRequests/{id}/Reject` | Reject | Reject a merge request |
 
 ## Dashboard Metrics
 
