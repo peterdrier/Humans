@@ -24,9 +24,10 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 **So that** I can verify the current state on demand
 
 **Acceptance Criteria:**
-- "Check Drive Activity Now" button on the Audit Log page
+- "Check Drive Activity Now" button on the Audit Log page (`/Board/AuditLog`)
 - Shows result count after completion
 - Redirects to filtered audit log view showing anomalous permission entries
+- Trigger endpoint: `POST /Google/AuditLog/CheckDriveActivity` (on `GoogleController`)
 
 ### US-13.3: Audit Log View with Anomaly Alerts
 **As a** Board member or Admin
@@ -34,12 +35,12 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 **So that** I can review system activity and investigate anomalies
 
 **Acceptance Criteria:**
-- Global audit log page at `/Admin/AuditLog`
+- Global audit log page at `/Board/AuditLog` (on `BoardController`, not `AdminController`)
 - Filter by action type (All, Anomalous Permissions, Access Granted/Revoked, Suspensions, Roles)
 - Anomalous entries highlighted with warning styling
 - Alert banner showing total anomaly count
 - Paginated (50 per page)
-- Accessible from admin dashboard quick actions
+- Accessible from Board dashboard
 
 ## Architecture
 
@@ -57,9 +58,9 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 - `DriveActivityMonitorJob` - Hangfire background job wrapper
 
 **Web:**
-- `AdminController.AuditLog` action - paginated audit log with filtering
-- `AdminController.CheckDriveActivity` action - manual trigger
-- `AuditLog.cshtml` view
+- `BoardController.AuditLog` action (`/Board/AuditLog`) - paginated audit log with filtering
+- `GoogleController.CheckDriveActivity` action (`POST /Google/AuditLog/CheckDriveActivity`) - manual trigger
+- `Views/Shared/AuditLog.cshtml` shared view
 
 ### Service Registration
 

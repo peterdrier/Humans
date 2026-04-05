@@ -122,53 +122,98 @@ Approval and consent completion both trigger `SyncVolunteersMembershipForUserAsy
 
 ### BoardController (`/Board/`) — Board, Admin
 
+`BoardController` is now a slim dashboard-only controller. Most human management and Google sync operations have been extracted to `ProfileController` and `GoogleController`.
+
 | Route | Action | Description |
 |-------|--------|-------------|
-| `/Board` | Index | Dashboard |
-| `/Board/Humans` | Humans | Member list with search |
-| `/Board/Humans/{id}` | HumanDetail | Individual member view |
-| `/Board/Humans/{id}/Approve` | ApproveVolunteer | POST: Approve volunteer |
-| `/Board/Humans/{id}/Suspend` | SuspendHuman | POST: Suspend member |
-| `/Board/Humans/{id}/Unsuspend` | UnsuspendHuman | POST: Unsuspend member |
-| `/Board/Humans/{id}/Reject` | RejectSignup | POST: Reject signup |
-| `/Board/Applications` | Applications | Application list |
-| `/Board/Applications/{id}` | ApplicationDetail | Application review |
-| `/Board/Teams` | Teams | Team list |
-| `/Board/Teams/Create` | CreateTeam | New team form |
-| `/Board/Teams/{id}/Edit` | EditTeam | Edit team (includes GoogleGroupPrefix) |
-| `/Board/Teams/{id}/Delete` | DeleteTeam | POST: Deactivate team |
-| `/Board/Roles` | Roles | Role assignment management |
-| `/Board/Humans/{id}/Roles/Add` | AddRole | Add role assignment |
-| `/Board/Roles/{id}/End` | EndRole | POST: End role assignment |
-| `/Board/AuditLog` | AuditLog | Global audit log |
-| `/Board/AuditLog/CheckDriveActivity` | CheckDriveActivity | POST: Manual Drive Activity check |
-| `/Board/GoogleSync/Resource/{id}/Audit` | GoogleSyncAudit | Resource sync audit log |
-| `/Board/Humans/{id}/GoogleSyncAudit` | HumanGoogleSyncAudit | User sync audit log |
+| `/Board` | Index | Dashboard with stats and recent audit log |
+| `/Board/AuditLog` | AuditLog | Global audit log (paginated, filterable) |
+
+### ProfileController (`/Profile/`) — Human management actions
+
+Human management (previously on `BoardController`) is now on `ProfileController` under the `/Profile/Admin` sub-path, accessible to HumanAdmin, Board, and Admin roles.
+
+| Route | Action | Roles |
+|-------|--------|-------|
+| `/Profile/Admin` | AdminList | HumanAdmin, Board, Admin — member list |
+| `/Profile/{id}/Admin` | AdminDetail | HumanAdmin, Board, Admin — member detail |
+| `/Profile/{id}/Admin/Outbox` | AdminOutbox | HumanAdmin, Board, Admin — view email outbox |
+| `/Profile/{id}/Admin/Suspend` | Suspend | POST: HumanAdmin, Board, Admin |
+| `/Profile/{id}/Admin/Unsuspend` | Unsuspend | POST: HumanAdmin, Board, Admin |
+| `/Profile/{id}/Admin/Approve` | Approve | POST: HumanAdmin, Board, Admin |
+| `/Profile/{id}/Admin/Reject` | Reject | POST: HumanAdmin, Board, Admin |
+| `/Profile/{id}/Admin/Roles/Add` | AddRole | GET/POST: HumanAdmin, Board, Admin |
+| `/Profile/{id}/Admin/Roles/{roleId}/End` | EndRole | POST: HumanAdmin, Board, Admin |
+
+### ContactsController (`/Contacts/`) — HumanAdmin, Board, Admin
+
+External contacts (not yet registered users) are managed at `/Contacts/`, NOT `/Human/Admin/Contacts/` as the spec may suggest.
+
+| Route | Action | Description |
+|-------|--------|-------------|
+| `/Contacts` | Index | Contacts list |
+| `/Contacts/{id}` | Detail | Contact detail |
+| `/Contacts/Create` | Create | GET/POST: Create contact |
+
+### GoogleController (`/Google/`) — Admin (mostly)
+
+Google sync, settings, account provisioning, and audit routes have been extracted from `AdminController` and `BoardController` into `GoogleController`. These were previously documented as `/Admin/*` or `/Board/*` routes.
+
+| Route | Auth | Description |
+|-------|------|-------------|
+| `/Google/SyncSettings` | Admin | GET/POST: Per-service sync mode configuration |
+| `/Google/SyncResults` | Admin | GET: Results of last sync check |
+| `/Google/CheckGroupSettings` | Admin | POST: Check Google Group settings for drift |
+| `/Google/GroupSettingsResults` | Admin | GET: Display group settings drift results |
+| `/Google/RemediateGroupSettings` | Admin | POST: Fix settings drift on one group |
+| `/Google/RemediateAllGroupSettings` | Admin | POST: Fix settings drift on all groups |
+| `/Google/AllGroups` | Admin | GET: All Google groups |
+| `/Google/Sync` | TeamsAdmin, Board, Admin | GET: Sync status page (tabbed: Drive/Groups) |
+| `/Google/Sync/Preview/{resourceType}` | TeamsAdmin, Board, Admin | GET: AJAX preview drift |
+| `/Google/Sync/Execute/{resourceId}` | Admin | POST: Sync one resource |
+| `/Google/Sync/ExecuteAll/{resourceType}` | Admin | POST: Sync all of a type |
+| `/Google/AuditLog/CheckDriveActivity` | Board, Admin | POST: Manual Drive Activity check |
+| `/Google/Sync/Resource/{id}/Audit` | Board, Admin | GET: Per-resource sync audit log |
+| `/Google/Human/{id}/SyncAudit` | HumanAdmin, Admin | GET: Per-user sync audit log |
+| `/Google/Human/{id}/ProvisionEmail` | Admin | POST: Provision @nobodies.team email |
+| `/Google/Accounts` | Admin | GET: All @nobodies.team accounts |
+| `/Google/Accounts/Provision` | Admin | POST: Provision account |
+| `/Google/Accounts/Suspend` | Admin | POST: Suspend account |
+| `/Google/Accounts/Reactivate` | Admin | POST: Reactivate account |
+| `/Google/Accounts/ResetPassword` | Admin | POST: Reset password |
+| `/Google/Accounts/Link` | Admin | POST: Link existing account |
+| `/Google/LinkGroupToTeam` | TeamsAdmin, Board, Admin | POST: Link group to team |
+| `/Google/CheckEmailMismatches` | Admin | POST: Check email mismatches |
+| `/Google/EmailBackfillReview` | HumanAdmin, Admin | GET: Review email backfill |
+| `/Google/ApplyEmailBackfill` | Admin | POST: Apply email backfill |
 
 ### AdminController (`/Admin/`) — Admin only
+
+`AdminController` is now a slim technical-operations controller.
 
 | Route | Action | Description |
 |-------|--------|-------------|
 | `/Admin` | Index | Admin dashboard |
 | `/Admin/Humans/{id}/Purge` | PurgeHuman | POST: Dev/QA user purge (non-production) |
-| `/Admin/SyncSystemTeams` | SyncSystemTeams | POST: Trigger system team sync |
 | `/Admin/Configuration` | Configuration | Configuration status page |
-| `/Admin/EmailPreview` | EmailPreview | Preview all system emails with language tabs |
-| `/Admin/GoogleSync` | GoogleSync | Legacy Google resource sync status |
-| `/Admin/GoogleSync/Apply` | ApplyGoogleSync | POST: Run legacy full sync |
-| `/Admin/SyncSettings` | SyncSettings | Per-service sync mode configuration |
-| `/Admin/CheckGroupSettings` | CheckGroupSettings | POST: Check Google Group settings for drift |
-| `/Admin/GroupSettingsResults` | GroupSettingsResults | Display group settings drift results |
+| `/Admin/Logs` | Logs | View recent log entries |
 | `/Admin/DbVersion` | DbVersion | Database migration version |
+| `/Admin/ClearHangfireLocks` | ClearHangfireLocks | POST: Admin-only lock cleanup |
 
-### Sync Status (`/Teams/Sync`) — TeamsAdmin, Board, Admin
+### AdminDuplicateAccountsController (`/Admin/DuplicateAccounts/`) — Admin only
+
+Duplicate account detection and resolution (added in Controller Consolidation PR).
 
 | Route | Action | Description |
 |-------|--------|-------------|
-| `/Teams/Sync` | Sync | Sync status dashboard (tabbed: Drive/Groups) |
-| `/Teams/Sync/Preview/{resourceType}` | SyncPreview | AJAX: Preview drift for resource type |
-| `/Teams/Sync/Execute/{resourceId}` | SyncExecute | POST: Sync one resource (Admin only) |
-| `/Teams/Sync/ExecuteAll/{resourceType}` | SyncExecuteAll | POST: Sync all of a type (Admin only) |
+| `/Admin/DuplicateAccounts` | Index | List duplicate account candidates |
+| `/Admin/DuplicateAccounts/{id}` | Detail | Review a specific duplicate candidate |
+
+### AdminMergeController (`/Admin/Merge/`) — Admin only
+
+| Route | Action | Description |
+|-------|--------|-------------|
+| `/Admin/Merge` | Index/actions | Merge account flows |
 
 ## Dashboard Metrics
 
@@ -328,25 +373,30 @@ A user can hold both roles simultaneously. Admin is a superset for role assignme
 
 ### Additional Roles
 
+All roles are defined in `RoleNames` constants and use temporal `RoleAssignment` records (same as Board and Admin).
+
 | Role | Purpose |
 |------|---------|
-| **TeamsAdmin** | System-wide team management (edit teams, approve joins, assign coordinators, configure Google Group prefixes). Can view sync status at `/Teams/Sync` but cannot execute sync actions. |
-| **ConsentCoordinator** | Safety checks on new humans during onboarding |
-| **VolunteerCoordinator** | Read-only access to onboarding review queue |
+| **HumanAdmin** | View human admin pages, approve/suspend/reject humans, provision @nobodies.team accounts, manage role assignments. Does NOT include Board or Admin capabilities. |
+| **TeamsAdmin** | System-wide team management (edit teams, approve joins, assign coordinators, configure Google Group prefixes). Can view sync status at `/Google/Sync` but cannot execute sync actions. |
+| **CampAdmin** | Manage camps, approve/reject season registrations, configure camp settings system-wide. |
+| **TicketAdmin** | Manage ticket vendor integration, trigger syncs, generate discount codes, export ticket data. |
+| **NoInfoAdmin** | Approve/voluntell shift signups (cannot create/edit shifts). Access to volunteer event profile medical data. |
+| **FeedbackAdmin** | View all feedback reports, respond to reporters, manage feedback status, link GitHub issues. |
+| **FinanceAdmin** | Manage budgets, budget years, groups, categories, and line items. Full Finance section access. |
+| **ConsentCoordinator** | Safety checks on new humans during onboarding. Can clear or flag consent checks. Bypasses MembershipRequiredFilter. |
+| **VolunteerCoordinator** | Read-only access to onboarding review queue. Bypasses MembershipRequiredFilter. |
 
-### How It Works
+### Authorization Foundation
+
+The app uses both role-based `[Authorize(Roles = "...")]` attributes (on controllers) and policy-based `[Authorize(Policy = "...")]` attributes (on views and tag helpers via `PolicyNames` constants). Policies are defined in `AuthorizationPolicyExtensions` and registered in `Program.cs`. Policy names are in `PolicyNames` constants.
 
 Role claims are synced from the `RoleAssignment` table to Identity claims via `RoleAssignmentClaimsTransformation` (an `IClaimsTransformation`). This makes `User.IsInRole()` and `[Authorize(Roles = "...")]` work correctly based on temporal role assignments.
 
-```csharp
-[Authorize(Roles = "Board,Admin")]
-[Route("Admin")]
-public class AdminController : Controller
-```
-
 ### Role Assignment Authorization
-- **Admin** can assign/end any role: Admin, Board, Coordinator
-- **Board** (non-Admin) can assign/end: Board, Coordinator only
+- **Admin** can assign/end any role
+- **Board** (non-Admin) can assign/end: Board, ConsentCoordinator, VolunteerCoordinator (not Admin)
+- **HumanAdmin** actions use `HumanAdminBoardOrAdmin` role group
 - Attempting to assign a role outside your permissions returns 403 Forbidden
 
 ### Hangfire Dashboard
@@ -378,22 +428,18 @@ _logger.LogInformation(
 
 | Action | Link | Badge |
 |--------|------|-------|
-| Review Pending Volunteers | `/Board/Humans?filter=pending` | Pending count |
-| Review Applications | `/Board/Applications` | Pending count |
-| Manage Humans | `/Board/Humans` | - |
-| Manage Teams | `/Board/Teams` | - |
-| Manage Roles | `/Board/Roles` | - |
+| Manage Humans | `/Profile/Admin` | - |
 | Audit Log | `/Board/AuditLog` | - |
-| Sync Status | `/Teams/Sync` | - |
+| Sync Status | `/Google/Sync` | - |
 
 ### Admin Dashboard (`/Admin`)
 
 | Action | Link | Badge |
 |--------|------|-------|
-| Sync Settings | `/Admin/SyncSettings` | - |
+| Sync Settings | `/Google/SyncSettings` | - |
 | Configuration Status | `/Admin/Configuration` | - |
-| Email Preview | `/Admin/EmailPreview` | - |
 | Background Jobs | `/hangfire` | - |
+| Check Group Settings | `/Google/CheckGroupSettings` | - |
 
 ## System Health
 

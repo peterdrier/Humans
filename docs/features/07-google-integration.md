@@ -439,15 +439,15 @@ Actions:
 
 ## Sync Status Page
 
-### Route: `/Teams/Sync`
-Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resources with a tabbed interface (Google Drive / Google Groups).
+### Route: `/Google/Sync`
+Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resources with a tabbed interface (Google Drive / Google Groups). Formerly at `/Teams/Sync`.
 
 | Route | Method | Auth | Action |
 |-------|--------|------|--------|
-| `/Teams/Sync` | GET | TeamsAdmin, Board, Admin | Sync status page |
-| `/Teams/Sync/Preview/{resourceType}` | GET | TeamsAdmin, Board, Admin | AJAX: preview drift for resource type |
-| `/Teams/Sync/Execute/{resourceId}` | POST | Admin only | Execute sync for one resource |
-| `/Teams/Sync/ExecuteAll/{resourceType}` | POST | Admin only | Execute sync for all resources of a type |
+| `/Google/Sync` | GET | TeamsAdmin, Board, Admin | Sync status page |
+| `/Google/Sync/Preview/{resourceType}` | GET | TeamsAdmin, Board, Admin | AJAX: preview drift for resource type |
+| `/Google/Sync/Execute/{resourceId}` | POST | Admin only | Execute sync for one resource |
+| `/Google/Sync/ExecuteAll/{resourceType}` | POST | Admin only | Execute sync for all resources of a type |
 
 ### Summary Cards (per tab)
 - **Total Resources** — count of active GoogleResource records of that type
@@ -459,25 +459,17 @@ Accessible to TeamsAdmin, Board, and Admin. Shows drift across all active resour
 Per resource: Name, Team, Status badge, members to add/remove.
 Drifted resources shown first, then in-sync.
 
-### Admin Sync Settings Page
+### Sync Settings Page
 
-#### Route: `/Admin/SyncSettings`
-Admin-only page for configuring per-service sync modes.
-
-| Route | Method | Action |
-|-------|--------|--------|
-| `/Admin/SyncSettings` | GET | View current sync mode per service |
-| `/Admin/SyncSettings` | POST | Update sync mode for a service |
-
-### Legacy Admin Sync Page
-
-#### Route: `/Admin/GoogleSync`
-Retained for backward compatibility. Shows the old-style combined sync preview/apply.
+#### Route: `/Google/SyncSettings`
+Admin-only page for configuring per-service sync modes. Formerly at `/Admin/SyncSettings`.
 
 | Route | Method | Action |
 |-------|--------|--------|
-| `/Admin/GoogleSync` | GET | Preview drift (read-only API calls) |
-| `/Admin/GoogleSync/Apply` | POST | Run full sync now |
+| `/Google/SyncSettings` | GET | View current sync mode per service |
+| `/Google/SyncSettings` | POST | Update sync mode for a service |
+
+> **Note:** The legacy `/Admin/GoogleSync` route (combined sync preview/apply) has been removed. All sync operations are now at `/Google/Sync`.
 
 ## Stub Implementations
 

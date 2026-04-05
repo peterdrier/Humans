@@ -12,11 +12,20 @@ Several system operations need to run automatically without user interaction: sy
 | SendReConsentReminderJob | Daily | Remind about missing consents |
 | SuspendNonCompliantMembersJob | Daily 4:30 AM | Enforce compliance deadlines |
 | ProcessAccountDeletionsJob | Daily | Process account deletion requests |
+| TermRenewalReminderJob | Daily | Notify humans with approaching Colaborador/Asociado term expiry |
+| ProcessEmailOutboxJob | Frequent | Send emails queued in the outbox table |
+| CleanupEmailOutboxJob | Daily | Delete old processed outbox entries |
+| ProcessGoogleSyncOutboxJob | Frequent | Process Google sync outbox (add/remove from Groups and Drive) |
+| TicketSyncJob | Daily | Sync ticket orders from TicketTailor |
+| TicketingBudgetSyncJob | Daily 4:30 AM | Materialize weekly ticket actuals into budget line items |
+| SendAdminDailyDigestJob | Daily | Email digest to Admin: sync health, anomalies |
+| SendBoardDailyDigestJob | Daily | Email digest to Board: pending signups, applications |
+| CleanupNotificationsJob | Daily | Delete resolved notifications older than 7 days |
 | SystemTeamSyncJob | **DISABLED** | Sync system team membership + Google permissions |
 | GoogleResourceReconciliationJob | **DISABLED** | Full Google resource reconciliation |
 | DriveActivityMonitorJob | Hourly | Check Drive Activity API for anomalous permission changes |
 
-> **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` are currently disabled because they modify Google Shared Drive and Group permissions. Use the manual "Sync Now" button at `/Teams/Sync` until automated sync is validated. Per-service sync modes are configured at `/Admin/SyncSettings`.
+> **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` are currently disabled because they modify Google Shared Drive and Group permissions. Use the manual "Sync Now" button at `/Google/Sync` until automated sync is validated. Per-service sync modes are configured at `/Google/SyncSettings`.
 
 ## Job Details
 

@@ -9,7 +9,7 @@ Tracks when recurring maintenance processes were last run.
 | Code simplification | 2026-02-24 | — | After features | codex: ~5% | Dead code, unused abstractions |
 | ReSharper InspectCode | 2026-02-24 | 2026-03-03 | Weekly | — | `/resharper` — fix Tier 1+2 warnings. Codex can't run `jb` in sandbox. |
 | Context cleanup | 2026-03-18 | 2026-04-18 | Monthly | — | CLAUDE.md, .claude/, todos.md |
-| Feature spec sync | 2026-02-12 | 2026-03-12 | Monthly | — | docs/features/ vs implementation |
+| Feature spec sync | 2026-04-05 | 2026-05-05 | Monthly | — | docs/features/ vs implementation |
 | i18n audit | 2026-02-24 | 2026-03-24 | Monthly | gemini: ~2% | Missing translations |
 | Data model doc sync | 2026-02-12 | As needed | As needed | — | .claude/DATA_MODEL.md vs entities |
 | Navigation audit | 2026-03-22 | 2026-04-22 | Monthly | — | `/nav-audit` — discoverability, backlinks |

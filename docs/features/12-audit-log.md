@@ -46,23 +46,60 @@ Database triggers prevent UPDATE and DELETE on the `audit_log` table, matching t
 
 Stored as string in the database. New values can be appended without migration.
 
+**Team membership:**
 - `TeamMemberAdded` — System sync added a user to a team
 - `TeamMemberRemoved` — System sync removed a user from a team
-- `MemberSuspended` — Admin or system suspended a member
-- `MemberUnsuspended` — Admin unsuspended a member
-- `AccountAnonymized` — Account deletion job anonymized a user
-- `RoleAssigned` — Admin assigned a governance role
-- `RoleEnded` — Admin ended a governance role
-- `VolunteerApproved` — Admin approved a volunteer
-- `GoogleResourceAccessGranted` — Google resource access granted (Group or Drive folder)
-- `GoogleResourceAccessRevoked` — Google resource access revoked (Group or Drive folder)
-- `GoogleResourceProvisioned` — New Google resource created (Drive folder or Group)
 - `TeamJoinedDirectly` — User joined an open team directly
 - `TeamLeft` — User left a team voluntarily
 - `TeamJoinRequestApproved` — Approver approved a team join request
 - `TeamJoinRequestRejected` — Approver rejected a team join request
 - `TeamMemberRoleChanged` — Member role changed within a team
+- `TeamPageContentUpdated` — Team page content (markdown, CTAs, visibility) updated
+
+**Member lifecycle:**
+- `MemberSuspended` — Admin or system suspended a member
+- `MemberUnsuspended` — Admin unsuspended a member
+- `AccountAnonymized` — Account deletion job anonymized a user
+- `MembershipsRevokedOnDeletionRequest` — Memberships ended when deletion was requested
+- `VolunteerApproved` — Admin approved a volunteer
+- `ConsentCheckCleared` — Consent Coordinator cleared a consent check
+- `ConsentCheckFlagged` — Consent Coordinator flagged a consent check
+- `SignupRejected` — Signup rejected (sets RejectedAt)
+- `TierApplicationApproved` — Board approved a Colaborador/Asociado application
+- `TierApplicationRejected` — Board rejected a Colaborador/Asociado application
+- `TierDowngraded` — Human's tier was downgraded
+
+**Roles:**
+- `RoleAssigned` — Admin assigned a governance role
+- `RoleEnded` — Admin ended a governance role
+- `TeamRoleDefinitionCreated/Updated/Deleted` — Team role slot managed
+- `TeamRoleAssigned/Unassigned` — Member assigned to/from a team role slot
+
+**Google sync:**
+- `GoogleResourceAccessGranted` — Google resource access granted (Group or Drive folder)
+- `GoogleResourceAccessRevoked` — Google resource access revoked (Group or Drive folder)
+- `GoogleResourceProvisioned` — New Google resource created (Drive folder or Group)
+- `GoogleResourceDeactivated` — Google resource soft-unlinked
+- `GoogleResourceSettingsRemediated` — Group settings drift auto-corrected
+- `GoogleResourceInheritanceDriftCorrected` — Shared Drive inheritance setting fixed
 - `AnomalousPermissionDetected` — Drive Activity API detected a permission change not made by the system
+
+**Workspace accounts:**
+- `WorkspaceAccountProvisioned` — @nobodies.team account created
+- `WorkspaceAccountSuspended` — Workspace account suspended
+- `WorkspaceAccountReactivated` — Workspace account reactivated
+- `WorkspaceAccountPasswordReset` — Workspace account password reset
+- `WorkspaceAccountLinked` — Existing workspace account linked to a human
+
+**Other features:**
+- `FacilitatedMessageSent` — User-to-user message sent via Humans
+- `FeedbackResponseSent` / `FeedbackStatusChanged` — Feedback management
+- `CommunicationPreferenceChanged` — User changed email/alert preferences
+- `ContactCreated` — Admin created an external contact
+- `AccountMergeRequested/Accepted/Rejected` — Duplicate account merge flow
+- `CampCreated/Updated/Deleted`, `CampSeasonCreated/Approved/Rejected/Withdrawn/StatusChanged`, etc. — Camp management
+- `ShiftSignupConfirmed/Refused/Voluntold/Bailed/NoShow/Cancelled` — Shift lifecycle
+- `RotaMovedToTeam` — Shift rota reassigned to a different department
 
 ## Service Design
 
@@ -131,22 +168,25 @@ The service method sets `EntityType = "GoogleResource"` and `EntityId = resource
 
 ## User Interface
 
-### Global Audit Log Page (`/Admin/AuditLog`)
+### Global Audit Log Page (`/Board/AuditLog`)
 
-Displays all audit log entries with filtering by action type. Features:
+Accessible to Board and Admin. Displays all audit log entries with filtering by action type. Features:
 - Filter buttons: All, Anomalous Permissions, Access Granted/Revoked, Suspensions, Roles
 - Anomalous entries highlighted with warning styling
 - Alert banner showing total anomaly count
-- "Check Drive Activity Now" button for manual trigger
 - Paginated (50 per page)
 
-### Per-Resource Google Sync Audit (`/Admin/GoogleSync/Resource/{id}/Audit`)
+### Drive Activity Check (`/Google/AuditLog/CheckDriveActivity`)
 
-Displays all audit entries for a specific Google resource, queried by `ResourceId`. Shows structured Google sync details: user email, role, sync source, success/failure status, and error messages. Accessed via "Audit" button on each row of the Google Sync page.
+POST action on `GoogleController`. Manual trigger for the Drive Activity monitor. Redirects to `/Board/AuditLog?filter=AnomalousPermissionDetected` after completion.
 
-### Per-User Google Sync Audit (`/Admin/Humans/{id}/GoogleSyncAudit`)
+### Per-Resource Google Sync Audit (`/Google/Sync/Resource/{id}/Audit`)
 
-Displays all Google sync audit entries affecting a specific user, queried by `RelatedEntityId = userId` where `ResourceId IS NOT NULL`. Includes the Google resource name via navigation property. Accessed via "View Google Sync Audit" button on the Member Detail page sidebar.
+Displays all audit entries for a specific Google resource, queried by `ResourceId`. Shows structured Google sync details: user email, role, sync source, success/failure status, and error messages. Accessible to Board and Admin. Accessed via "Audit" button on each row of the Google Sync page.
+
+### Per-User Google Sync Audit (`/Google/Human/{id}/SyncAudit`)
+
+Displays all Google sync audit entries affecting a specific user, queried by `RelatedEntityId = userId` where `ResourceId IS NOT NULL`. Includes the Google resource name via navigation property. Accessible to HumanAdmin and Admin. Accessed via the Member Detail page sidebar.
 
 ### Per-User Audit View (MemberDetail page)
 
@@ -162,7 +202,7 @@ Each entry shows:
 
 ## Authorization
 
-Audit log is visible only to Board and Admin roles (inherits from AdminController's `[Authorize(Roles = "Board,Admin")]`).
+The global audit log (`/Board/AuditLog`) is visible only to Board and Admin roles — it lives on `BoardController` (`[Authorize(Roles = "Board,Admin")]`). The Finance audit log (`/Finance/AuditLog`) is restricted to FinanceAdmin and Admin. Per-resource and per-user Google sync audit views are on `GoogleController`.
 
 ## Related Features
 

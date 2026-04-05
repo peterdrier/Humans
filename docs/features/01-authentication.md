@@ -101,19 +101,45 @@ RoleAssignment
 
 ## Authorization Roles
 
+All roles are stored as temporal `RoleAssignment` records. Role claims are added to the user's identity via `RoleAssignmentClaimsTransformation` on each request.
+
+### Governance Roles (manage the platform)
+
 | Role | Description | Capabilities |
 |------|-------------|--------------|
 | **Admin** | System administrator | Full platform access, manage all features, Hangfire |
-| **Board** | Board member | Approve volunteers, approve team joins, view legal names, system oversight |
-| **Member** | Regular member | Access own profile, join teams, submit applications |
+| **Board** | Board member | Vote on tier applications, view legal names, system oversight |
+
+### Coordinator Roles (operational, bypass MembershipRequiredFilter)
+
+| Role | Description |
+|------|-------------|
+| **ConsentCoordinator** | Safety checks on new humans (clear/flag consent checks) |
+| **VolunteerCoordinator** | Read-only onboarding queue access; assists new humans |
+
+### Section Admin Roles (scoped to one functional area)
+
+| Role | Description |
+|------|-------------|
+| **HumanAdmin** | Human management pages, approve/suspend/reject humans, provision @nobodies.team accounts |
+| **TeamsAdmin** | System-wide team management; view sync status but not execute |
+| **CampAdmin** | Camp management and season approval |
+| **TicketAdmin** | Ticket vendor integration, discount codes, ticket data export |
+| **FeedbackAdmin** | View all feedback, respond to reporters, manage status |
+| **FinanceAdmin** | Budget management (years, groups, categories, line items) |
+| **NoInfoAdmin** | Approve/voluntell shift signups; access volunteer medical data |
 
 ### ActiveMember Claim
 
-In addition to governance roles (Admin, Board), `RoleAssignmentClaimsTransformation` adds an `ActiveMember` claim when the user is a member of the Volunteers team. This claim is the primary authorization gate for most application features.
+In addition to governance roles, `RoleAssignmentClaimsTransformation` adds an `ActiveMember` claim when the user is a member of the Volunteers team. This claim is the primary authorization gate for most application features.
 
 - **Granted when**: User is in the Volunteers team (approved + all consents signed)
 - **Checked by**: `MembershipRequiredFilter` (global action filter) and `_Layout.cshtml` (nav visibility)
 - **Effect**: Without this claim, users can only access onboarding pages (Home, Profile, Consent, Account, Application)
+
+### Authorization Policies
+
+The app registers named authorization policies (`PolicyNames` constants in `Humans.Web.Authorization`) backed by custom `IAuthorizationHandler` implementations. These are used in views and tag helpers (`authorize-policy` attribute) alongside role-based `[Authorize(Roles = "...")]` on controllers.
 
 See [Volunteer Status](05-volunteer-status.md) for the full onboarding pipeline and gating details.
 
