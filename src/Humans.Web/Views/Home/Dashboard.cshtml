@@ -77,35 +77,35 @@
             @* Guided shift discovery — shown when user has no upcoming shifts *@
             <div class="card mb-4 border-primary">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fa-solid fa-hand-holding-heart me-2"></i>Get Involved — @Model.EventName</h5>
+                    <h5 class="mb-0"><i class="fa-solid fa-hand-holding-heart me-2"></i>@Localizer["GetInvolved_Title"] — @Model.EventName</h5>
                 </div>
                 <div class="card-body">
-                    <p>The event runs on human power. Pick shifts that fit your schedule — every hour helps.</p>
+                    <p>@Localizer["GetInvolved_Intro"]</p>
 
                     <div class="row g-3 mb-3">
                         <div class="col-md-4">
                             <div class="border rounded p-3 h-100">
-                                <h6><span class="badge bg-info me-1">Set-up</span></h6>
-                                <small class="text-muted">Build the site before gates open. Physical work, flexible hours, great for meeting the crew.</small>
+                                <h6><span class="badge bg-info me-1">@Localizer["GetInvolved_Phase_Setup"]</span></h6>
+                                <small class="text-muted">@Localizer["GetInvolved_Phase_Setup_Desc"]</small>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="border rounded p-3 h-100">
-                                <h6><span class="badge bg-success me-1">Event</span></h6>
-                                <small class="text-muted">Keep things running during the event. Bars, gates, safety, art — something for everyone.</small>
+                                <h6><span class="badge bg-success me-1">@Localizer["GetInvolved_Phase_Event"]</span></h6>
+                                <small class="text-muted">@Localizer["GetInvolved_Phase_Event_Desc"]</small>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="border rounded p-3 h-100">
-                                <h6><span class="badge bg-secondary me-1">Strike</span></h6>
-                                <small class="text-muted">Take it all down and leave no trace. Satisfying work, usually shorter commitment.</small>
+                                <h6><span class="badge bg-secondary me-1">@Localizer["GetInvolved_Phase_Strike"]</span></h6>
+                                <small class="text-muted">@Localizer["GetInvolved_Phase_Strike_Desc"]</small>
                             </div>
                         </div>
                     </div>
 
                     @if (shiftCards?.UrgentShifts.Count > 0)
                     {
-                        <h6 class="mt-3"><i class="fa-solid fa-fire text-danger me-1"></i>Shifts that need humans now</h6>
+                        <h6 class="mt-3"><i class="fa-solid fa-fire text-danger me-1"></i>@Localizer["GetInvolved_UrgentShifts"]</h6>
                         <ul class="list-unstyled mb-3">
                             @foreach (var item in shiftCards.UrgentShifts)
                             {
@@ -122,10 +122,10 @@
                 </div>
                 <div class="card-footer d-flex gap-2">
                     <a asp-controller="Shifts" asp-action="Index" class="btn btn-primary">
-                        <i class="fa-solid fa-calendar-alt me-1"></i>Browse All Shifts
+                        <i class="fa-solid fa-calendar-alt me-1"></i>@Localizer["GetInvolved_BrowseAllShifts"]
                     </a>
                     <a asp-controller="Shifts" asp-action="Mine" class="btn btn-outline-secondary">
-                        <i class="fa-solid fa-clipboard-list me-1"></i>My Shifts
+                        <i class="fa-solid fa-clipboard-list me-1"></i>@Localizer["GetInvolved_MyShifts"]
                     </a>
                 </div>
             </div>

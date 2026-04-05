@@ -1314,4 +1314,17 @@
   <data name="Notification_Bulk_Resolve" xml:space="preserve"><value>Resolve selected</value></data>
   <data name="Notification_Bulk_Dismiss" xml:space="preserve"><value>Dismiss selected</value></data>
 
+  <!-- Get Involved card (Dashboard) -->
+  <data name="GetInvolved_Title" xml:space="preserve"><value>Participa</value></data>
+  <data name="GetInvolved_Intro" xml:space="preserve"><value>El evento funciona con energía humana. Elige turnos que encajen en tu horario — cada hora cuenta.</value></data>
+  <data name="GetInvolved_Phase_Setup" xml:space="preserve"><value>Montaje</value></data>
+  <data name="GetInvolved_Phase_Setup_Desc" xml:space="preserve"><value>Construye el recinto antes de abrir puertas. Trabajo físico, horarios flexibles, ideal para conocer al equipo.</value></data>
+  <data name="GetInvolved_Phase_Event" xml:space="preserve"><value>Evento</value></data>
+  <data name="GetInvolved_Phase_Event_Desc" xml:space="preserve"><value>Mantén todo en marcha durante el evento. Barras, puertas, seguridad, arte — hay algo para todos.</value></data>
+  <data name="GetInvolved_Phase_Strike" xml:space="preserve"><value>Desmontaje</value></data>
+  <data name="GetInvolved_Phase_Strike_Desc" xml:space="preserve"><value>Desmonta todo y no dejes rastro. Trabajo gratificante, normalmente de menor duración.</value></data>
+  <data name="GetInvolved_UrgentShifts" xml:space="preserve"><value>Turnos que necesitan humans ahora</value></data>
+  <data name="GetInvolved_BrowseAllShifts" xml:space="preserve"><value>Ver todos los turnos</value></data>
+  <data name="GetInvolved_MyShifts" xml:space="preserve"><value>Mis turnos</value></data>
+
 </root>
