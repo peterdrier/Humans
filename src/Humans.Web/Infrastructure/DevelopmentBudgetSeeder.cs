@@ -188,6 +188,9 @@ public sealed class DevelopmentBudgetSeeder
         }
         else if (budgetYear.IsDeleted)
         {
+            budgetYear.IsDeleted = false;
+            budgetYear.DeletedAt = null;
+            await _dbContext.SaveChangesAsync();
             await _budgetService.UpdateYearStatusAsync(budgetYear.Id, BudgetYearStatus.Draft, actorUserId);
         }
 
