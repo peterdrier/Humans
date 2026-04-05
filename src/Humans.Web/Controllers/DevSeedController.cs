@@ -55,13 +55,15 @@ public class DevSeedController : HumansControllerBase
         {
             var seeder = _serviceProvider.GetRequiredService<DevelopmentBudgetSeeder>();
             var result = await seeder.SeedAsync(user.Id, cancellationToken);
-            return Ok(result);
+            SetSuccess($"Budget demo data seeded: {result.TeamsCreated} teams created, {result.TeamsUpdated} updated, {result.CategoriesCreated} categories, {result.LineItemsCreated} line items.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to seed budget demo data for user {UserId}", user.Id);
-            return StatusCode(500, new { error = "Budget seeding failed. Check logs for details." });
+            SetError("Budget seeding failed. Check logs for details.");
         }
+
+        return RedirectToAction("Users", "DevLogin");
     }
 
     [Authorize(Roles = RoleGroups.TicketAdminBoardOrAdmin + "," + RoleNames.FinanceAdmin)]
@@ -81,13 +83,15 @@ public class DevSeedController : HumansControllerBase
             // Reset sync state so the full dataset is fetched from the stub vendor
             await syncService.ResetSyncStateForFullResyncAsync();
             var result = await syncService.SyncOrdersAndAttendeesAsync(cancellationToken);
-            return Ok(result);
+            SetSuccess($"Ticket data synced: {result.OrdersSynced} orders, {result.AttendeesSynced} attendees.");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to sync stub ticket data");
-            return StatusCode(500, new { error = "Ticket sync failed. Check logs for details." });
+            SetError("Ticket sync failed. Check logs for details.");
         }
+
+        return RedirectToAction("Users", "DevLogin");
     }
 
     private bool IsDevSeedEnabled()

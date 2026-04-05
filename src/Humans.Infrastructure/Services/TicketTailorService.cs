@@ -25,7 +25,10 @@ public class TicketVendorSettings
     /// Not stored in appsettings (sensitive). Accessible in settings for testability.</summary>
     public string ApiKey { get; set; } = string.Empty;
 
+    public const string DevStubKey = "__dev_stub__";
+
     public bool IsConfigured => !string.IsNullOrEmpty(EventId) && !string.IsNullOrEmpty(ApiKey);
+    public bool IsDevStub => string.Equals(ApiKey, DevStubKey, StringComparison.Ordinal);
 }
 
 /// <summary>

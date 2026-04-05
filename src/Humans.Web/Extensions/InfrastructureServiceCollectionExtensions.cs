@@ -221,7 +221,7 @@ public static class InfrastructureServiceCollectionExtensions
             // API keys are always sourced from the environment, never from appsettings.
             // The dev stub still needs settings to look configured, so give it a sentinel key.
             opts.ApiKey = useDevelopmentTicketStub
-                ? "__dev_stub__"
+                ? TicketVendorSettings.DevStubKey
                 : ticketVendorApiKey;
         });
 

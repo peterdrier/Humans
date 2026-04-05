@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using NodaTime;
@@ -178,10 +179,13 @@ public sealed class StubTicketVendorService : ITicketVendorService
                 VendorDashboardUrl: $"https://demo.tickettailor.local/orders/{vendorOrderId}",
                 PurchasedAt: purchasedAt,
                 Tickets: vendorTickets,
-                StripePaymentIntentId: $"pi_stub_{orderIndex + 1:D6}",
+                StripePaymentIntentId: null,
                 DiscountAmount: discountAmount,
                 DonationAmount: donation));
         }
+
+        Debug.Assert(ticketCursor == ticketPool.Count,
+            $"Ticket pool size mismatch: cursor {ticketCursor} != pool size {ticketPool.Count}");
 
         // Add a few non-paid orders
         var nonPaidStatuses = new[] { "pending", "pending", "refunded", "cancelled" };

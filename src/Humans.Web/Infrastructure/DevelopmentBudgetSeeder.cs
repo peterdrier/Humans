@@ -179,13 +179,16 @@ public sealed class DevelopmentBudgetSeeder
             await EnsureBudgetTeamAsync(seed, cancellationToken, onCreated: () => teamsCreated++, onUpdated: () => teamsUpdated++);
         }
 
-        var budgetYear = await _dbContext.BudgetYears
-            .AsNoTracking()
-            .FirstOrDefaultAsync(y => !y.IsDeleted && y.Year == budgetYearCode, cancellationToken);
+        var allYears = await _budgetService.GetAllYearsAsync(includeArchived: true);
+        var budgetYear = allYears.FirstOrDefault(y => string.Equals(y.Year, budgetYearCode, StringComparison.Ordinal));
 
         if (budgetYear is null)
         {
             budgetYear = await _budgetService.CreateYearAsync(budgetYearCode, budgetYearName, actorUserId);
+        }
+        else if (budgetYear.IsDeleted)
+        {
+            await _budgetService.UpdateYearStatusAsync(budgetYear.Id, BudgetYearStatus.Draft, actorUserId);
         }
 
         var departmentCategoriesSynced = await _budgetService.SyncDepartmentsAsync(budgetYear.Id, actorUserId);
@@ -341,14 +344,16 @@ public sealed class DevelopmentBudgetSeeder
 
         if (existing is null)
         {
-            var created = await _budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, actorUserId);
+            existing = await _budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, actorUserId);
             onCreated();
-            existing = created;
         }
 
         await _budgetService.UpdateGroupAsync(existing.Id, name, sortOrder, isRestricted, actorUserId);
 
-        return existing;
+        // Re-fetch to return the updated state
+        return await _dbContext.BudgetGroups
+            .AsNoTracking()
+            .FirstAsync(g => g.Id == existing.Id, cancellationToken);
     }
 
     private async Task<BudgetCategory> EnsureDepartmentCategoryAsync(
@@ -423,11 +428,10 @@ public sealed class DevelopmentBudgetSeeder
         CancellationToken cancellationToken,
         Action onLineItemCreated)
     {
-        var category = await _dbContext.BudgetCategories
-            .AsNoTracking()
-            .FirstAsync(c => c.Id == categoryId, cancellationToken);
+        var category = await _budgetService.GetCategoryByIdAsync(categoryId)
+            ?? throw new InvalidOperationException($"Budget category {categoryId} not found");
 
-        await _budgetService.UpdateCategoryAsync(category.Id, name, allocatedAmount, expenditureType, actorUserId);
+        await _budgetService.UpdateCategoryAsync(categoryId, name, allocatedAmount, expenditureType, actorUserId);
 
         foreach (var lineItem in lineItems)
         {

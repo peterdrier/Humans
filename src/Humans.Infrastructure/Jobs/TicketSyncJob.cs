@@ -29,9 +29,9 @@ public class TicketSyncJob : IRecurringJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        if (!_settings.IsConfigured)
+        if (!_settings.IsConfigured || _settings.IsDevStub)
         {
-            _logger.LogDebug("Ticket vendor not configured, skipping sync");
+            _logger.LogDebug("Ticket vendor not configured or using dev stub, skipping scheduled sync");
             return;
         }
 
