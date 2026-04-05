@@ -40,6 +40,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
     private readonly Dictionary<string, string> _peopleIdCache = new(StringComparer.Ordinal);
 
     private const string JobName = "DriveActivityMonitorJob";
+    private const string LastRunSettingKey = "DriveActivityMonitor:LastRunAt";
 
     public DriveActivityMonitorService(
         HumansDbContext dbContext,
@@ -71,10 +72,16 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         var activityService = await GetActivityServiceAsync();
         var serviceAccountEmail = await GetServiceAccountEmailAsync(cancellationToken);
         var anomalyCount = 0;
+        var hadFailures = false;
 
-        // Check activity from the last 24 hours
-        var lookbackTime = _clock.GetCurrentInstant().Minus(Duration.FromHours(24));
+        // Use time-window dedup: only process events since the last successful run.
+        // Falls back to 24 hours on first run or if the stored timestamp is missing.
+        var now = _clock.GetCurrentInstant();
+        var lookbackTime = await GetLastRunTimestampAsync(cancellationToken)
+            ?? now.Minus(Duration.FromHours(24));
         var filterTime = lookbackTime.ToInvariantInstantString();
+
+        _logger.LogDebug("Drive activity monitor checking events since {LookbackTime}", filterTime);
 
         foreach (var resource in resources)
         {
@@ -82,7 +89,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             {
                 var anomalies = await CheckResourceActivityAsync(
                     activityService, resource.GoogleId, resource.Id, resource.Name,
-                    serviceAccountEmail, filterTime, lookbackTime, cancellationToken);
+                    serviceAccountEmail, filterTime, cancellationToken);
                 anomalyCount += anomalies;
             }
             catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
@@ -92,6 +99,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             }
             catch (Exception ex)
             {
+                hadFailures = true;
                 _logger.LogError(ex, "Error checking Drive activity for resource {ResourceId} ({GoogleId})",
                     resource.Id, resource.GoogleId);
             }
@@ -99,7 +107,6 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
         if (anomalyCount > 0)
         {
-            await _dbContext.SaveChangesAsync(cancellationToken);
             _logger.LogWarning("Detected {AnomalyCount} anomalous permission change(s) across {ResourceCount} resources",
                 anomalyCount, resources.Count);
         }
@@ -107,6 +114,17 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         {
             _logger.LogInformation("Drive activity check completed: no anomalous changes detected across {ResourceCount} resources",
                 resources.Count);
+        }
+
+        // Only advance the last-run marker when every resource was processed successfully.
+        // If any resource failed, we keep the old marker so the next run re-checks those events.
+        if (hadFailures)
+        {
+            _logger.LogWarning("Skipping last-run marker update due to partial failures — next run will re-process from {LookbackTime}", filterTime);
+        }
+        else
+        {
+            await SaveLastRunTimestampAsync(now, cancellationToken);
         }
 
         return anomalyCount;
@@ -119,7 +137,6 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         string resourceName,
         string serviceAccountEmail,
         string filterTime,
-        Instant lookbackInstant,
         CancellationToken cancellationToken)
     {
         var anomalyCount = 0;
@@ -146,20 +163,6 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
                         !IsInitiatedByServiceAccount(activity, serviceAccountEmail))
                     {
                         var description = await BuildAnomalyDescriptionAsync(activity, resourceName, cancellationToken);
-
-                        // Skip if this exact anomaly was already logged within the lookback window
-                        var alreadyLogged = await _dbContext.AuditLogEntries
-                            .AsNoTracking()
-                            .AnyAsync(e => e.Action == AuditAction.AnomalousPermissionDetected
-                                && e.EntityId == resourceId
-                                && e.Description == description
-                                && e.OccurredAt >= lookbackInstant, cancellationToken);
-
-                        if (alreadyLogged)
-                        {
-                            continue;
-                        }
-
                         var actorEmail = await GetActorEmailAsync(activity, cancellationToken);
 
                         _logger.LogWarning(
@@ -402,6 +405,57 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             _logger.LogWarning(ex, "Error resolving {PersonName} via local DB", personName);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Reads the last successful run timestamp from SystemSettings.
+    /// Returns null if no previous run has been recorded (first run).
+    /// </summary>
+    private async Task<Instant?> GetLastRunTimestampAsync(CancellationToken cancellationToken)
+    {
+        var setting = await _dbContext.SystemSettings
+            .FirstOrDefaultAsync(s => s.Key == LastRunSettingKey, cancellationToken);
+
+        if (setting is null || string.IsNullOrEmpty(setting.Value))
+        {
+            return null;
+        }
+
+        var pattern = NodaTime.Text.InstantPattern.General;
+        var result = pattern.Parse(setting.Value);
+        if (result.Success)
+        {
+            return result.Value;
+        }
+
+        _logger.LogWarning("Could not parse stored Drive activity monitor timestamp '{Value}', falling back to default lookback",
+            setting.Value);
+        return null;
+    }
+
+    /// <summary>
+    /// Saves the run timestamp to SystemSettings so subsequent runs only process newer events.
+    /// </summary>
+    private async Task SaveLastRunTimestampAsync(Instant timestamp, CancellationToken cancellationToken)
+    {
+        var value = timestamp.ToInvariantInstantString();
+        var setting = await _dbContext.SystemSettings
+            .FirstOrDefaultAsync(s => s.Key == LastRunSettingKey, cancellationToken);
+
+        if (setting is not null)
+        {
+            setting.Value = value;
+        }
+        else
+        {
+            _dbContext.SystemSettings.Add(new SystemSetting
+            {
+                Key = LastRunSettingKey,
+                Value = value
+            });
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<DriveActivityService> GetActivityServiceAsync()

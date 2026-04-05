@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -12,7 +11,6 @@ using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleNames.Admin)]
 [Route("Google")]
 public class GoogleController : HumansControllerBase
 {
@@ -47,6 +45,7 @@ public class GoogleController : HumansControllerBase
     // --- Sync Settings (from AdminController) ---
 
     [HttpGet("SyncSettings")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> SyncSettings([FromServices] ISyncSettingsService syncSettingsService)
     {
         var settings = await syncSettingsService.GetAllAsync();
@@ -65,6 +64,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("SyncSettings")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateSyncSetting(
         [FromServices] ISyncSettingsService syncSettingsService,
@@ -85,6 +85,7 @@ public class GoogleController : HumansControllerBase
     // --- System Team Sync (from AdminController) ---
 
     [HttpPost("SyncSystemTeams")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncSystemTeams(
         [FromServices] Humans.Infrastructure.Jobs.SystemTeamSyncJob systemTeamSyncJob)
@@ -105,6 +106,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpGet("SyncResults")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult SyncResults()
     {
         SyncReport? report = null;
@@ -125,6 +127,7 @@ public class GoogleController : HumansControllerBase
     // --- Google Group Settings (from AdminController) ---
 
     [HttpPost("CheckGroupSettings")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CheckGroupSettings()
     {
@@ -144,6 +147,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpGet("GroupSettingsResults")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult GroupSettingsResults()
     {
         GroupSettingsDriftResult? result = null;
@@ -162,6 +166,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("RemediateGroupSettings")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemediateGroupSettings(
         [FromForm] string groupEmail, [FromForm] string? returnUrl)
@@ -181,6 +186,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("RemediateAllGroupSettings")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RemediateAllGroupSettings()
     {
@@ -234,6 +240,7 @@ public class GoogleController : HumansControllerBase
     // --- All Domain Groups (from AdminController) ---
 
     [HttpGet("AllGroups")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> AllGroups()
     {
         try
@@ -252,6 +259,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("LinkGroupToTeam")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkGroupToTeam(
         [FromForm] Guid teamId, [FromForm] string groupPrefix)
@@ -277,6 +285,7 @@ public class GoogleController : HumansControllerBase
     // --- Email Backfill (from AdminController) ---
 
     [HttpPost("CheckEmailMismatches")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CheckEmailMismatches()
     {
@@ -296,6 +305,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpGet("EmailBackfillReview")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult EmailBackfillReview()
     {
         EmailBackfillResult? result = null;
@@ -314,6 +324,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("ApplyEmailBackfill")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ApplyEmailBackfill(
         [FromForm] List<Guid> selectedUserIds,
@@ -342,7 +353,7 @@ public class GoogleController : HumansControllerBase
     // --- Resource Sync Dashboard (from TeamController) ---
 
     [HttpGet("Sync")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public IActionResult Sync()
     {
         var viewModel = new TeamSyncViewModel
@@ -353,7 +364,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpGet("Sync/Preview/{resourceType}")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
     {
         var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview);
@@ -386,6 +397,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("Sync/Execute/{resourceId}")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncExecute(Guid resourceId)
     {
@@ -402,6 +414,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("Sync/ExecuteAll/{resourceType}")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SyncExecuteAll(GoogleResourceType resourceType)
     {
@@ -420,7 +433,7 @@ public class GoogleController : HumansControllerBase
     // --- Drive Activity (from BoardController) ---
 
     [HttpPost("AuditLog/CheckDriveActivity")]
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CheckDriveActivity(
         [FromServices] IDriveActivityMonitorService monitorService)
@@ -449,7 +462,7 @@ public class GoogleController : HumansControllerBase
     // --- Sync Audit Views (from BoardController and HumanController) ---
 
     [HttpGet("Sync/Resource/{id:guid}/Audit")]
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> GoogleSyncResourceAudit(Guid id)
     {
         var resource = await _teamResourceService.GetResourceByIdAsync(id);
@@ -468,7 +481,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpGet("Human/{id:guid}/SyncAudit")]
-    [Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     public async Task<IActionResult> HumanGoogleSyncAudit(Guid id)
     {
         var user = await FindUserByIdAsync(id);
@@ -489,7 +502,7 @@ public class GoogleController : HumansControllerBase
     // --- Human Email Provisioning (from HumanController) ---
 
     [HttpPost("Human/{id:guid}/ProvisionEmail")]
-    [Authorize(Roles = RoleGroups.HumanAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.HumanAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionEmail(Guid id, string emailPrefix)
     {
@@ -531,6 +544,7 @@ public class GoogleController : HumansControllerBase
     // --- Workspace Accounts (from AdminEmailController) ---
 
     [HttpGet("Accounts")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Accounts()
     {
         var result = await _googleAdminService.GetWorkspaceAccountListAsync();
@@ -566,6 +580,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("Accounts/Provision")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ProvisionAccount(ProvisionWorkspaceAccountModel model)
     {
@@ -593,6 +608,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("Accounts/Suspend")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SuspendAccount(string email)
     {
@@ -616,6 +632,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("Accounts/Reactivate")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReactivateAccount(string email)
     {
@@ -639,6 +656,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("Accounts/ResetPassword")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword(string email)
     {
@@ -662,6 +680,7 @@ public class GoogleController : HumansControllerBase
     }
 
     [HttpPost("Accounts/Link")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> LinkAccount(string email, Guid userId)
     {
@@ -693,6 +712,7 @@ public class GoogleController : HumansControllerBase
     // --- Index ---
 
     [HttpGet("")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult Index()
     {
         return View();
