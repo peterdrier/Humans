@@ -72,6 +72,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         var activityService = await GetActivityServiceAsync();
         var serviceAccountEmail = await GetServiceAccountEmailAsync(cancellationToken);
         var anomalyCount = 0;
+        var hadFailures = false;
 
         // Use time-window dedup: only process events since the last successful run.
         // Falls back to 24 hours on first run or if the stored timestamp is missing.
@@ -98,6 +99,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             }
             catch (Exception ex)
             {
+                hadFailures = true;
                 _logger.LogError(ex, "Error checking Drive activity for resource {ResourceId} ({GoogleId})",
                     resource.Id, resource.GoogleId);
             }
@@ -114,10 +116,16 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
                 resources.Count);
         }
 
-        // Save the run timestamp so the next invocation only processes newer events.
-        // This is saved regardless of whether anomalies were found — we've processed all
-        // events up to 'now' and don't want to re-process them.
-        await SaveLastRunTimestampAsync(now, cancellationToken);
+        // Only advance the last-run marker when every resource was processed successfully.
+        // If any resource failed, we keep the old marker so the next run re-checks those events.
+        if (hadFailures)
+        {
+            _logger.LogWarning("Skipping last-run marker update due to partial failures — next run will re-process from {LookbackTime}", filterTime);
+        }
+        else
+        {
+            await SaveLastRunTimestampAsync(now, cancellationToken);
+        }
 
         return anomalyCount;
     }
