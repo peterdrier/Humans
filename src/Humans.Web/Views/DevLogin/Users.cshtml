@@ -38,12 +38,14 @@
             </div>
         </div>
 
+        @if (User.Identity?.IsAuthenticated == true)
+        {
         <div class="card mt-4 border-info">
             <div class="card-header bg-info text-white">
                 <strong>Dev Tools — Seed Data</strong>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-3">Populate dev/preview environments with realistic demo data. Requires sign-in first.</p>
+                <p class="text-muted mb-3">Populate dev/preview environments with realistic demo data.</p>
                 <div class="d-flex gap-2">
                     <form action="/dev/seed/budget" method="post">
                         @Html.AntiForgeryToken()
@@ -60,5 +62,6 @@
                 </div>
             </div>
         </div>
+        }
     </div>
 </div>
