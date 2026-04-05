@@ -35,7 +35,8 @@ public class DevSeedController : HumansControllerBase
     }
 
     [Authorize(Roles = RoleGroups.FinanceAdminOrAdmin)]
-    [HttpGet("budget")]
+    [HttpPost("budget")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SeedBudget(CancellationToken cancellationToken)
     {
         if (!IsDevSeedEnabled())
@@ -70,7 +71,8 @@ public class DevSeedController : HumansControllerBase
     }
 
     [Authorize(Roles = RoleGroups.TicketAdminBoardOrAdmin + "," + RoleNames.FinanceAdmin)]
-    [HttpGet("tickets")]
+    [HttpPost("tickets")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> SeedTickets(CancellationToken cancellationToken)
     {
         if (!IsDevSeedEnabled())
