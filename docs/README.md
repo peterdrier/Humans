@@ -44,6 +44,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 |----------|-------------|
 | [Admin Role Setup](admin-role-setup.md) | Adding initial admin users via SQL |
 | [GUID Reservations](guid-reservations.md) | Reserved deterministic GUID blocks for seeded data |
+| [Seed Data Strategy](seed-data.md) | When to use `HasData`, migration backfills, and dev-only runtime seeders |
 | [Google & External Service Setup](google-service-account-setup.md) | OAuth, service account, Maps, GitHub credentials |
 
 ## Repository Metrics
