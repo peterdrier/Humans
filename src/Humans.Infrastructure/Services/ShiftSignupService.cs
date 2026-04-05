@@ -530,7 +530,8 @@ public class ShiftSignupService : IShiftSignupService
 
         if (conflictingDays.Count > 0)
         {
-            var dayList = string.Join(", ", conflictingDays);
+            var dayList = string.Join(", ", conflictingDays.Select(offset =>
+                FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
             return SignupResult.Fail($"Time conflict on day(s): {dayList}.");
         }
 
@@ -554,7 +555,11 @@ public class ShiftSignupService : IShiftSignupService
             return SignupResult.Fail("All shifts in this range are at capacity.");
 
         if (fullDays.Count > 0)
-            warning = $"Day(s) {string.Join(", ", fullDays)} skipped (at capacity).";
+        {
+            var dayList = string.Join(", ", fullDays.Select(offset =>
+                FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+            warning = $"Day(s) {dayList} are at capacity.";
+        }
 
         // EE cap check for build shifts
         if (rota.Period == RotaPeriod.Build)
@@ -573,7 +578,9 @@ public class ShiftSignupService : IShiftSignupService
 
             if (fullEeDays.Count > 0)
             {
-                var eeWarning = $"Early entry capacity reached for day(s): {string.Join(", ", fullEeDays)}.";
+                var eeDayList = string.Join(", ", fullEeDays.Select(offset =>
+                    FormatShiftDate(es.GateOpeningDate.PlusDays(offset))));
+                var eeWarning = $"Early entry capacity reached for day(s): {eeDayList}.";
                 warning = warning is null ? eeWarning : $"{warning} {eeWarning}";
             }
         }
@@ -973,4 +980,11 @@ public class ShiftSignupService : IShiftSignupService
             _logger.LogError(ex, "Failed to dispatch ShiftSignupChange notification for signup {SignupId}", signup.Id);
         }
     }
+
+    /// <summary>
+    /// Formats a LocalDate for display in shift messages (e.g., "Wed Jul 1").
+    /// Mirrors the Web-layer ToDisplayShiftDate() extension.
+    /// </summary>
+    private static string FormatShiftDate(LocalDate date) =>
+        date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
 }
