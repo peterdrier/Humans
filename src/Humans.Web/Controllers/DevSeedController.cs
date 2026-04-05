@@ -1,4 +1,5 @@
 using Humans.Application.Configuration;
+using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Infrastructure;
@@ -91,25 +92,20 @@ public class DevSeedController : HumansControllerBase
 
         try
         {
-            var seeder = _serviceProvider.GetRequiredService<DevelopmentTicketSeeder>();
-            var result = await seeder.SeedAsync(cancellationToken);
+            var syncService = _serviceProvider.GetRequiredService<ITicketSyncService>();
+
+            // Reset sync state so the full dataset is fetched from the stub vendor
+            await syncService.ResetSyncStateForFullResyncAsync();
+            var result = await syncService.SyncOrdersAndAttendeesAsync(cancellationToken);
 
             return Ok(new
             {
-                message = "Seeded ticketing demo data.",
-                result.PaidOrders,
-                result.NonPaidOrders,
-                result.OrdersCreated,
-                result.AttendeesCreated,
-                result.PaidTicketsSold,
-                result.GrossRevenue,
-                result.DonationRevenue,
-                result.DiscountTotal,
-                result.OrdersWithDonation,
-                result.OrdersWithDiscountCode,
-                result.MatchedOrders,
-                result.MatchedAttendees,
-                result.TwoTicketOrders,
+                message = "Synced stub ticket data through the real pipeline.",
+                result.OrdersSynced,
+                result.AttendeesSynced,
+                result.OrdersMatched,
+                result.AttendeesMatched,
+                result.CodesRedeemed,
                 ticketsDashboardUrl = Url.Action(nameof(TicketController.Index), "Ticket"),
                 ticketsOrdersUrl = Url.Action(nameof(TicketController.Orders), "Ticket"),
                 ticketsAttendeesUrl = Url.Action(nameof(TicketController.Attendees), "Ticket")
@@ -117,8 +113,8 @@ public class DevSeedController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to seed ticket demo data");
-            return StatusCode(500, new { error = "Ticket seeding failed. Check logs for details." });
+            _logger.LogError(ex, "Failed to sync stub ticket data");
+            return StatusCode(500, new { error = "Ticket sync failed. Check logs for details." });
         }
     }
 

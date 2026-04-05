@@ -70,7 +70,6 @@ builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 if (!builder.Environment.IsProduction())
 {
     builder.Services.AddScoped<DevelopmentBudgetSeeder>();
-    builder.Services.AddScoped<DevelopmentTicketSeeder>();
 }
 
 // Configure JSON options with NodaTime support
