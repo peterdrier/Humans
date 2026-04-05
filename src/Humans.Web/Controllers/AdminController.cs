@@ -172,6 +172,7 @@ public class AdminController : HumansControllerBase
     }
 
     [HttpGet("DbStats")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public IActionResult DbStats()
     {
         try
@@ -201,6 +202,7 @@ public class AdminController : HumansControllerBase
     }
 
     [HttpPost("DbStats/Reset")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public IActionResult ResetDbStats()
     {

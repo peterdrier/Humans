@@ -850,6 +850,9 @@
   <data name="TeamDetail_LastUpdated" xml:space="preserve"><value>Última actualización</value></data>
   <data name="TeamDetail_NoPageContent" xml:space="preserve"><value>Este equipo aún no tiene una página. Añade contenido para contar a los humans de qué se trata.</value></data>
   <data name="TeamDetail_AddPageContent" xml:space="preserve"><value>Añadir Contenido</value></data>
+  <data name="TeamDetail_ChildTeamMembers" xml:space="preserve"><value>Humans via sub-teams ({0})</value><comment>{0} = count</comment></data>
+  <data name="TeamDetail_ManageRoles" xml:space="preserve"><value>Gestionar Roles</value></data>
+  <data name="TeamDetail_SubTeams" xml:space="preserve"><value>Sub-teams</value></data>
   <data name="Teams_PublicDirectory" xml:space="preserve"><value>Equipos</value></data>
   <data name="Teams_PublicDirectorySubtitle" xml:space="preserve"><value>Descubre los equipos que hacen que las cosas sucedan.</value></data>
   <data name="Teams_LearnMore" xml:space="preserve"><value>Más Info</value></data>

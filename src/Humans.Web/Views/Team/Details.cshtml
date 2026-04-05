@@ -243,7 +243,7 @@
         {
         <div class="card mb-4">
             <div class="card-header">
-                <span>Humans via sub-teams (@Model.ChildTeamMembers.Count)</span>
+                <span>@Localizer["TeamDetail_ChildTeamMembers", Model.ChildTeamMembers.Count]</span>
             </div>
             <div class="card-body">
                 <div class="row g-3">
@@ -366,7 +366,7 @@
                         }
                     </a>
                     <a asp-controller="TeamAdmin" asp-action="Roles" asp-route-slug="@Model.Slug" class="list-group-item list-group-item-action">
-                        Manage Roles
+                        @Localizer["TeamDetail_ManageRoles"]
                     </a>
                     @if (Model.CanCurrentUserEditTeam)
                     {
@@ -384,7 +384,7 @@
         @if (Model.ChildTeams.Any())
         {
             <div class="card mb-4">
-                <div class="card-header">Sub-teams</div>
+                <div class="card-header">@Localizer["TeamDetail_SubTeams"]</div>
                 <div class="list-group list-group-flush">
                     @foreach (var child in Model.ChildTeams)
                     {
