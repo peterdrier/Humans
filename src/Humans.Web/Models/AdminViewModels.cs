@@ -364,6 +364,22 @@ public class EmailOutboxViewModel
     public List<EmailOutboxMessage> Messages { get; set; } = [];
 }
 
+public class DbStatsViewModel
+{
+    public long TotalQueryCount { get; set; }
+    public List<DbStatEntryViewModel> Entries { get; set; } = [];
+}
+
+public class DbStatEntryViewModel
+{
+    public string Operation { get; set; } = string.Empty;
+    public string Table { get; set; } = string.Empty;
+    public long Count { get; set; }
+    public double AverageMs { get; set; }
+    public double MaxMs { get; set; }
+    public double TotalMs { get; set; }
+}
+
 public class DuplicateAccountListViewModel
 {
     public List<DuplicateAccountGroupViewModel> Groups { get; set; } = [];

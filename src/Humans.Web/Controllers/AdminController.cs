@@ -21,6 +21,7 @@ public class AdminController : HumansControllerBase
     private readonly IWebHostEnvironment _environment;
     private readonly IOnboardingService _onboardingService;
     private readonly ConfigurationRegistry _configRegistry;
+    private readonly QueryStatistics _queryStatistics;
 
     public AdminController(
         HumansDbContext dbContext,
@@ -28,7 +29,8 @@ public class AdminController : HumansControllerBase
         ILogger<AdminController> logger,
         IWebHostEnvironment environment,
         IOnboardingService onboardingService,
-        ConfigurationRegistry configRegistry)
+        ConfigurationRegistry configRegistry,
+        QueryStatistics queryStatistics)
         : base(userManager)
     {
         _dbContext = dbContext;
@@ -37,6 +39,7 @@ public class AdminController : HumansControllerBase
         _environment = environment;
         _onboardingService = onboardingService;
         _configRegistry = configRegistry;
+        _queryStatistics = queryStatistics;
     }
 
     [HttpGet("")]
@@ -163,6 +166,54 @@ public class AdminController : HumansControllerBase
             appliedCount = applied.Count,
             pendingCount = pending.Count()
         });
+    }
+
+    [HttpGet("DbStats")]
+    public IActionResult DbStats()
+    {
+        try
+        {
+            var snapshot = _queryStatistics.GetSnapshot();
+            var model = new DbStatsViewModel
+            {
+                TotalQueryCount = _queryStatistics.TotalCount,
+                Entries = snapshot.Select(e => new DbStatEntryViewModel
+                {
+                    Operation = e.Operation,
+                    Table = e.Table,
+                    Count = e.Count,
+                    AverageMs = Math.Round(e.AverageMilliseconds, 2),
+                    MaxMs = Math.Round(e.MaxMilliseconds, 2),
+                    TotalMs = Math.Round(e.TotalMilliseconds, 2)
+                }).ToList()
+            };
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading DB stats");
+            SetError("Failed to load database statistics.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("DbStats/Reset")]
+    [ValidateAntiForgeryToken]
+    public IActionResult ResetDbStats()
+    {
+        try
+        {
+            _queryStatistics.Reset();
+            _logger.LogInformation("Admin reset DB query statistics");
+            SetSuccess("Query statistics have been reset.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting DB stats");
+            SetError("Failed to reset database statistics.");
+        }
+
+        return RedirectToAction(nameof(DbStats));
     }
 
     [HttpPost("ClearHangfireLocks")]

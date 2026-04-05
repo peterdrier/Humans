@@ -1,0 +1,95 @@
+@model DbStatsViewModel
+@{
+    ViewData["Title"] = "Database Query Statistics";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Database Query Statistics</h1>
+    <div class="d-flex align-items-center gap-3">
+        <span class="text-muted">@Model.TotalQueryCount.ToString("N0") total queries since last restart</span>
+        <form asp-action="ResetDbStats" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-warning btn-sm"
+                    data-confirm="Reset all query statistics?">
+                <i class="fa-solid fa-rotate-right me-1"></i>Reset
+            </button>
+        </form>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Admin
+        </a>
+    </div>
+</div>
+
+<vc:temp-data-alerts />
+
+@if (Model.Entries.Count == 0)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-info-circle me-1"></i>No query statistics recorded yet. Navigate around the app to generate data.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover font-monospace" style="font-size: 0.85rem;" id="dbStatsTable">
+            <thead>
+                <tr>
+                    <th style="cursor:pointer;" onclick="sortTable(0)">Operation <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" onclick="sortTable(1)">Table <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" onclick="sortTable(2)" class="text-end">Count <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" onclick="sortTable(3)" class="text-end">Avg (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" onclick="sortTable(4)" class="text-end">Max (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" onclick="sortTable(5)" class="text-end">Total (ms) <i class="fa-solid fa-sort fa-xs"></i></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in Model.Entries)
+                {
+                    var opClass = entry.Operation switch
+                    {
+                        "SELECT" => "",
+                        "INSERT" => "table-success",
+                        "UPDATE" => "table-info",
+                        "DELETE" => "table-warning",
+                        _ => ""
+                    };
+                    <tr class="@opClass">
+                        <td>@entry.Operation</td>
+                        <td>@entry.Table</td>
+                        <td class="text-end">@entry.Count.ToString("N0")</td>
+                        <td class="text-end">@entry.AverageMs.ToString("F2")</td>
+                        <td class="text-end">@entry.MaxMs.ToString("F2")</td>
+                        <td class="text-end">@entry.TotalMs.ToString("F2")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Simple client-side column sorting
+        let sortDir = {};
+        function sortTable(colIndex) {
+            const table = document.getElementById('dbStatsTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const isNumeric = colIndex >= 2;
+
+            sortDir[colIndex] = !sortDir[colIndex];
+            const dir = sortDir[colIndex] ? 1 : -1;
+
+            rows.sort((a, b) => {
+                const aVal = a.cells[colIndex].textContent.trim().replace(/,/g, '');
+                const bVal = b.cells[colIndex].textContent.trim().replace(/,/g, '');
+                if (isNumeric) {
+                    return (parseFloat(aVal) - parseFloat(bVal)) * dir;
+                }
+                return aVal.localeCompare(bVal) * dir;
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
+}

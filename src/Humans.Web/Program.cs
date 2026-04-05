@@ -91,6 +91,10 @@ builder.Services.AddSingleton(sp =>
     return dsb.Build();
 });
 
+// Query monitoring — singleton interceptor tracks execution counts by table + operation
+builder.Services.AddSingleton<QueryStatistics>();
+builder.Services.AddSingleton<QueryMonitoringInterceptor>();
+
 // Configure EF Core with PostgreSQL
 builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
 {
@@ -100,6 +104,7 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
         npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
         npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
     });
+    options.AddInterceptors(sp.GetRequiredService<QueryMonitoringInterceptor>());
     // Suppress "First/FirstOrDefault without OrderBy" warning — the codebase universally uses
     // .FirstOrDefaultAsync(e => e.Id == id) for PK lookups which are deterministic by definition.
     options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
