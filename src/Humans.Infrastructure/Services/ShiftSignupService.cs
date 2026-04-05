@@ -744,7 +744,12 @@ public class ShiftSignupService : IShiftSignupService
         }
 
         if (approved.Count == 0)
+        {
+            // Still need to persist the auto-refused signups
+            if (skippedAtCapacity.Count > 0)
+                await _dbContext.SaveChangesAsync();
             return SignupResult.Fail("Cannot approve: all shifts in this range are at capacity.");
+        }
 
         await _dbContext.SaveChangesAsync();
 

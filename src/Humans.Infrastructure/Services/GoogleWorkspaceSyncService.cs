@@ -881,7 +881,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             // Eagerly initialize Google API clients before parallel execution to avoid
             // non-thread-safe lazy init race in GetCloudIdentityServiceAsync/GetDriveServiceAsync.
-            await GetCloudIdentityServiceAsync();
+            if (resources.Count > 0)
+                await GetCloudIdentityServiceAsync();
 
             // Groups: one group per team — compute diffs in parallel (Google API reads only)
             var diffTasks = resources.Select(resource =>
@@ -900,7 +901,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         else
         {
             // Eagerly initialize Drive client before parallel execution
-            await GetDriveServiceAsync();
+            if (resources.Count > 0)
+                await GetDriveServiceAsync();
 
             // Drive resources: group by GoogleId since multiple teams can share one resource
             var grouped = resources.GroupBy(r => r.GoogleId, StringComparer.Ordinal).ToList();
