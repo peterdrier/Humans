@@ -77,6 +77,7 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<VolunteerTagPreference> VolunteerTagPreferences => Set<VolunteerTagPreference>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
+    public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

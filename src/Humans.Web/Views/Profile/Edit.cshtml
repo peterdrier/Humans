@@ -236,6 +236,59 @@
                         <span asp-validation-for="Bio" class="text-danger"></span>
                         <div class="form-text">@Localizer["ProfileEdit_BioHelp"]</div>
                     </div>
+
+                    <hr />
+                    <h6>@Localizer["Profile_Languages"]</h6>
+                    <p class="text-muted small mb-3">
+                        @Localizer["ProfileEdit_LanguagesHelp"]
+                    </p>
+
+                    <div id="languagesContainer">
+                        @for (var i = 0; i < Model.EditableLanguages.Count; i++)
+                        {
+                            <div class="language-row card mb-2" data-index="@i">
+                                <div class="card-body py-2">
+                                    <div class="row g-2 align-items-end">
+                                        <input type="hidden" name="EditableLanguages[@i].Id" value="@Model.EditableLanguages[i].Id" />
+
+                                        <div class="col-md-5">
+                                            <label class="form-label small" for="EditableLanguages_@(i)__LanguageCode">Language</label>
+                                            <select name="EditableLanguages[@i].LanguageCode" id="EditableLanguages_@(i)__LanguageCode" class="form-select form-select-sm language-code-select" required>
+                                                <option value="">— Select language —</option>
+                                                @foreach (var lang in Humans.Web.Helpers.LanguageCatalog.Languages)
+                                                {
+                                                    <option value="@lang.Key" selected="@(Model.EditableLanguages[i].LanguageCode == lang.Key ? "selected" : null)">@lang.Value (@lang.Key)</option>
+                                                }
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-4">
+                                            @{
+                                                var proficiency = Model.EditableLanguages[i].Proficiency;
+                                            }
+                                            <label class="form-label small" for="EditableLanguages_@(i)__Proficiency">Proficiency</label>
+                                            <select name="EditableLanguages[@i].Proficiency" id="EditableLanguages_@(i)__Proficiency" class="form-select form-select-sm" required>
+                                                <option value="Basic" selected="@(proficiency == LanguageProficiency.Basic ? "selected" : null)">Basic</option>
+                                                <option value="Conversational" selected="@(proficiency == LanguageProficiency.Conversational ? "selected" : null)">Conversational</option>
+                                                <option value="Fluent" selected="@(proficiency == LanguageProficiency.Fluent ? "selected" : null)">Fluent</option>
+                                                <option value="Native" selected="@(proficiency == LanguageProficiency.Native ? "selected" : null)">Native</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-3 text-end">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-language" title="Remove this language">
+                                                <i class="fa-solid fa-trash me-1"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <button type="button" id="addLanguage" class="btn btn-outline-secondary btn-sm mb-3">
+                        <i class="fa-solid fa-plus me-1"></i> @Localizer["ProfileEdit_AddLanguage"]
+                    </button>
                 </div>
             </div>
 
@@ -770,6 +823,97 @@
                 row.querySelector('input[type="date"]').focus();
             });
         })();
+
+        // Language Management
+        (function() {
+            const container = document.getElementById('languagesContainer');
+            const addButton = document.getElementById('addLanguage');
+            if (!container || !addButton) return;
+
+            const languageOptions = `@Html.Raw(string.Join("", Humans.Web.Helpers.LanguageCatalog.Languages.Select(l => $"<option value=\"{l.Key}\">{l.Value} ({l.Key})</option>")))`;
+
+            function getNextIndex() {
+                const rows = container.querySelectorAll('.language-row');
+                if (rows.length === 0) return 0;
+                const indices = Array.from(rows).map(r => parseInt(r.dataset.index) || 0);
+                return Math.max(...indices) + 1;
+            }
+
+            function createLanguageRow(index) {
+                const html = `
+                    <div class="language-row card mb-2" data-index="${index}">
+                        <div class="card-body py-2">
+                            <div class="row g-2 align-items-end">
+                                <input type="hidden" name="EditableLanguages[${index}].Id" value="" />
+
+                                <div class="col-md-5">
+                                    <label class="form-label small" for="EditableLanguages_${index}__LanguageCode">Language</label>
+                                    <select name="EditableLanguages[${index}].LanguageCode" id="EditableLanguages_${index}__LanguageCode" class="form-select form-select-sm language-code-select" required>
+                                        <option value="">— Select language —</option>
+                                        ${languageOptions}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label small" for="EditableLanguages_${index}__Proficiency">Proficiency</label>
+                                    <select name="EditableLanguages[${index}].Proficiency" id="EditableLanguages_${index}__Proficiency" class="form-select form-select-sm" required>
+                                        <option value="Basic">Basic</option>
+                                        <option value="Conversational">Conversational</option>
+                                        <option value="Fluent">Fluent</option>
+                                        <option value="Native" selected>Native</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3 text-end">
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-language" title="Remove this language">
+                                        <i class="fa-solid fa-trash me-1"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                const template = document.createElement('template');
+                template.innerHTML = html.trim();
+                return template.content.firstChild;
+            }
+
+            function setupLanguageRow(row) {
+                const removeBtn = row.querySelector('.remove-language');
+                removeBtn.addEventListener('click', function() {
+                    row.remove();
+                    reindexLanguageRows();
+                });
+            }
+
+            function reindexLanguageRows() {
+                const rows = container.querySelectorAll('.language-row');
+                rows.forEach((row, idx) => {
+                    row.dataset.index = idx;
+                    row.querySelectorAll('[name]').forEach(input => {
+                        input.name = input.name.replace(/\[\d+\]/, `[${idx}]`);
+                    });
+                    row.querySelectorAll('[id]').forEach(el => {
+                        el.id = el.id.replace(/_\d+__/, `_${idx}__`);
+                    });
+                    row.querySelectorAll('label[for]').forEach(label => {
+                        label.setAttribute('for', label.getAttribute('for').replace(/_\d+__/, `_${idx}__`));
+                    });
+                });
+            }
+
+            // Setup existing rows
+            container.querySelectorAll('.language-row').forEach(setupLanguageRow);
+
+            // Add new row
+            addButton.addEventListener('click', function() {
+                const index = getNextIndex();
+                const row = createLanguageRow(index);
+                container.appendChild(row);
+                setupLanguageRow(row);
+                row.querySelector('.language-code-select').focus();
+            });
+        })();
     </script>
     <script>
         // Tier selection show/hide for application section and Asociado questions
@@ -841,8 +985,10 @@
             const opts = { childList: true };
             const cf = document.getElementById('contactFieldsContainer');
             const vh = document.getElementById('volunteerHistoryContainer');
+            const lc = document.getElementById('languagesContainer');
             if (cf) observer.observe(cf, opts);
             if (vh) observer.observe(vh, opts);
+            if (lc) observer.observe(lc, opts);
 
             // Burner name / legal name match warning
             const burnerNameInput = document.getElementById('BurnerName');

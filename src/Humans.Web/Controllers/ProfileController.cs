@@ -174,6 +174,15 @@ public class ProfileController : HumansControllerBase
             ? await _volunteerHistoryService.GetAllAsync(profile.Id)
             : [];
 
+        // Get profile languages for editing
+        var languages = profile is not null
+            ? await _dbContext.ProfileLanguages
+                .AsNoTracking()
+                .Where(pl => pl.ProfileId == profile.Id)
+                .OrderBy(pl => pl.LanguageCode)
+                .ToListAsync()
+            : [];
+
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
 
         // Initial setup = no profile or not yet approved (onboarding)
@@ -234,6 +243,12 @@ public class ProfileController : HumansControllerBase
                 DateString = vh.Date.ToIsoDateString(),
                 EventName = vh.EventName,
                 Description = vh.Description
+            }).ToList(),
+            EditableLanguages = languages.Select(pl => new ProfileLanguageEditViewModel
+            {
+                Id = pl.Id,
+                LanguageCode = pl.LanguageCode,
+                Proficiency = pl.Proficiency
             }).ToList()
         };
 
@@ -453,6 +468,29 @@ public class ProfileController : HumansControllerBase
             .ToList();
 
         await _volunteerHistoryService.SaveAsync(profileId, volunteerHistoryDtos);
+
+        // Save profile languages (remove-and-replace)
+        var existingLanguages = await _dbContext.ProfileLanguages
+            .Where(pl => pl.ProfileId == profileId)
+            .ToListAsync();
+        _dbContext.ProfileLanguages.RemoveRange(existingLanguages);
+
+        var newLanguages = model.EditableLanguages
+            .Where(l => !string.IsNullOrWhiteSpace(l.LanguageCode))
+            .Select(l => new ProfileLanguage
+            {
+                Id = Guid.NewGuid(),
+                ProfileId = profileId,
+                LanguageCode = l.LanguageCode.Trim(),
+                Proficiency = l.Proficiency
+            })
+            .ToList();
+
+        if (newLanguages.Count > 0)
+        {
+            _dbContext.ProfileLanguages.AddRange(newLanguages);
+        }
+        await _dbContext.SaveChangesAsync();
 
         SetSuccess(_localizer["Profile_Updated"].Value);
         return RedirectToAction(nameof(Me));
@@ -1239,6 +1277,14 @@ public class ProfileController : HumansControllerBase
             .CountAsync(m => m.UserId == id);
         ViewBag.OutboxCount = outboxCount;
 
+        var profileLanguages = data.Profile is not null
+            ? await _dbContext.ProfileLanguages
+                .AsNoTracking()
+                .Where(pl => pl.ProfileId == data.Profile.Id)
+                .OrderBy(pl => pl.LanguageCode)
+                .ToListAsync()
+            : [];
+
         var now = _clock.GetCurrentInstant();
 
         var viewModel = new AdminHumanDetailViewModel
@@ -1281,6 +1327,12 @@ public class ProfileController : HumansControllerBase
                 IsActive = ra.IsActive(now),
                 CreatedByName = ra.CreatedByUser?.DisplayName,
                 CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+            }).ToList(),
+            Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
+            {
+                LanguageCode = pl.LanguageCode,
+                LanguageName = Helpers.LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                Proficiency = pl.Proficiency
             }).ToList(),
         };
 

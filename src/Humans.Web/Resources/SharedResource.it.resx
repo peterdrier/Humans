@@ -239,6 +239,9 @@
   <data name="ProfileEdit_CityHelp" xml:space="preserve"><value>Cerchi la Sua città per impostare la Sua posizione.</value></data>
   <data name="ProfileEdit_CurrentLocation" xml:space="preserve"><value>Posizione attuale:</value></data>
   <data name="ProfileEdit_BioHelp" xml:space="preserve"><value>Ci racconti qualcosa di sé.</value></data>
+  <data name="Profile_Languages" xml:space="preserve"><value>Lingue parlate</value></data>
+  <data name="ProfileEdit_LanguagesHelp" xml:space="preserve"><value>Quali lingue parli? Questo aiuta a coordinare la nostra comunit&#xE0; multilingue.</value></data>
+  <data name="ProfileEdit_AddLanguage" xml:space="preserve"><value>Aggiungi lingua</value></data>
   <data name="Profile_Pronouns" xml:space="preserve"><value>Pronomi</value></data>
   <data name="ProfileEdit_PronounsPlaceholder" xml:space="preserve"><value>es., loro, lei, lui</value></data>
   <data name="ProfileEdit_ContactInfoHelp" xml:space="preserve"><value>Aggiunga modalità di contatto per gli altri humans. Controlli chi può vedere ogni informazione.</value></data>

@@ -148,6 +148,22 @@
             <p class="mb-0" style="white-space: pre-line">@Model.Bio</p>
         }
 
+        @* Languages *@
+        @if (Model.Languages.Count > 0)
+        {
+            <hr />
+            <h6 class="text-muted mb-2">@Localizer["Profile_Languages"]</h6>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var lang in Model.Languages)
+                {
+                    <span class="badge @lang.ProficiencyBadgeClass">
+                        @lang.LanguageName
+                        <small class="ms-1 opacity-75">(@lang.Proficiency)</small>
+                    </span>
+                }
+            </div>
+        }
+
         @* Contribution Interests *@
         @if (!string.IsNullOrEmpty(Model.ContributionInterests))
         {

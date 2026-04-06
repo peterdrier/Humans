@@ -75,6 +75,22 @@
                     <dt class="col-sm-3">Language</dt>
                     <dd class="col-sm-9"><span class="@Model.PreferredLanguage.ToFlagClass() me-1"></span>@Model.PreferredLanguage.ToDisplayLanguageName()</dd>
 
+                    @if (Model.Languages.Count > 0)
+                    {
+                        <dt class="col-sm-3">@Localizer["Profile_Languages"]</dt>
+                        <dd class="col-sm-9">
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var lang in Model.Languages)
+                                {
+                                    <span class="badge @lang.ProficiencyBadgeClass">
+                                        @lang.LanguageName
+                                        <small class="ms-1 opacity-75">(@lang.Proficiency)</small>
+                                    </span>
+                                }
+                            </div>
+                        </dd>
+                    }
+
                     <dt class="col-sm-3">@Localizer["AdminHuman_ConsentCheck"]</dt>
                     <dd class="col-sm-9">
                         @if (Model.ConsentCheckStatus.HasValue)

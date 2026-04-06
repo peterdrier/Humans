@@ -1,5 +1,6 @@
 using NodaTime;
 using Humans.Domain.Enums;
+using Humans.Web.Helpers;
 using Humans.Web.ViewComponents;
 
 namespace Humans.Web.Models;
@@ -41,6 +42,7 @@ public class ProfileCardViewModel
     public IReadOnlyList<ContactFieldViewModel> ContactFields { get; set; } = [];
     public IReadOnlyList<VolunteerHistoryEntryViewModel> VolunteerHistory { get; set; } = [];
     public IReadOnlyList<TeamMembershipViewModel> Teams { get; set; } = [];
+    public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 
     public bool IsOwnProfile => ViewMode == ProfileCardViewMode.Self;
 

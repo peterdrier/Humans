@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Humans.Web.Controllers;
+using Humans.Web.Helpers;
 using Humans.Web.Models;
 
 namespace Humans.Web.ViewComponents;
@@ -106,6 +107,15 @@ public class ProfileCardViewComponent : ViewComponent
             ? await _volunteerHistoryService.GetAllAsync(profile.Id)
             : [];
 
+        // Get profile languages
+        var profileLanguages = profile is not null
+            ? await _dbContext.ProfileLanguages
+                .AsNoTracking()
+                .Where(pl => pl.ProfileId == profile.Id)
+                .OrderBy(pl => pl.LanguageCode)
+                .ToListAsync()
+            : [];
+
         // Get user's teams (excluding Volunteers system team)
         var userTeams = await _teamService.GetUserTeamsAsync(userId);
         var displayableTeams = userTeams
@@ -180,6 +190,12 @@ public class ProfileCardViewComponent : ViewComponent
                 Description = vh.Description
             }).ToList(),
             Teams = displayableTeams,
+            Languages = profileLanguages.Select(pl => new ProfileLanguageDisplayViewModel
+            {
+                LanguageCode = pl.LanguageCode,
+                LanguageName = LanguageCatalog.GetDisplayName(pl.LanguageCode),
+                Proficiency = pl.Proficiency
+            }).ToList(),
             PreferredLanguage = user.PreferredLanguage,
             CanSendMessage = !isOwnProfile
                 && !visibleEmails.Any(e => e.Visibility >= ContactFieldVisibility.AllActiveProfiles)

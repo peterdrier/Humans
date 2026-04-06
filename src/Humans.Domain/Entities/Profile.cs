@@ -283,4 +283,9 @@ public class Profile
     /// Volunteer history entries documenting involvement in events, roles, and camps.
     /// </summary>
     public ICollection<VolunteerHistoryEntry> VolunteerHistory { get; } = new List<VolunteerHistoryEntry>();
+
+    /// <summary>
+    /// Languages spoken by the member with proficiency levels.
+    /// </summary>
+    public ICollection<ProfileLanguage> Languages { get; } = new List<ProfileLanguage>();
 }

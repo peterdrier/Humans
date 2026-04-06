@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using NodaTime;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Web.Helpers;
 
 namespace Humans.Web.Models;
 
@@ -311,6 +312,16 @@ public class ProfileViewModel
     /// No-show history for coordinators/admins viewing other profiles.
     /// </summary>
     public List<NoShowHistoryItem>? NoShowHistory { get; set; }
+
+    /// <summary>
+    /// Languages for editing (owner only).
+    /// </summary>
+    public List<ProfileLanguageEditViewModel> EditableLanguages { get; set; } = [];
+
+    /// <summary>
+    /// Languages for display (profile card).
+    /// </summary>
+    public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 }
 
 /// <summary>
@@ -518,6 +529,43 @@ public class UserEmailDisplayViewModel
         ContactFieldVisibility.CoordinatorsAndBoard => "Coordinators + Board",
         ContactFieldVisibility.MyTeams => "My teams",
         _ => null
+    };
+}
+
+/// <summary>
+/// Language entry for editing purposes.
+/// </summary>
+public class ProfileLanguageEditViewModel
+{
+    public Guid? Id { get; set; }
+
+    [Required]
+    [StringLength(10)]
+    public string LanguageCode { get; set; } = string.Empty;
+
+    [Required]
+    public LanguageProficiency Proficiency { get; set; }
+}
+
+/// <summary>
+/// Language entry for display purposes.
+/// </summary>
+public class ProfileLanguageDisplayViewModel
+{
+    public string LanguageCode { get; set; } = string.Empty;
+    public string LanguageName { get; set; } = string.Empty;
+    public LanguageProficiency Proficiency { get; set; }
+
+    /// <summary>
+    /// Bootstrap badge class for the proficiency level.
+    /// </summary>
+    public string ProficiencyBadgeClass => Proficiency switch
+    {
+        LanguageProficiency.Native => "bg-success",
+        LanguageProficiency.Fluent => "bg-primary",
+        LanguageProficiency.Conversational => "bg-info text-dark",
+        LanguageProficiency.Basic => "bg-secondary",
+        _ => "bg-secondary"
     };
 }
 
