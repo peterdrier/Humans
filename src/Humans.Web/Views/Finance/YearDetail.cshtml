@@ -360,7 +360,7 @@
                     }
                     </div>
                 }
-                else if (!group.IsTicketingGroup)
+                @if (!group.IsTicketingGroup)
                 {
                     <div class="p-3 border-top bg-light">
                         <form asp-action="CreateCategory" method="post" class="row g-2 align-items-end">
