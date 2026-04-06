@@ -95,6 +95,32 @@ public class BudgetController : HumansControllerBase
                 .Where(li => !li.IsCashflowOnly)
                 .Sum(li => li.Amount);
 
+            // Compute per-group buffer: allocated money not yet detailed into line items
+            var bufferEntries = visibleGroups
+                .Where(g => !g.IsTicketingGroup)
+                .Select(g => new
+                {
+                    Name = $"{g.Name} Buffer",
+                    Amount = g.Categories.Sum(c =>
+                        c.AllocatedAmount - c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount))
+                })
+                .Where(b => b.Amount > 0)
+                .ToList();
+
+            var allExpenseEntries = summary.ExpenseSlices
+                .Select(s => new { s.Name, s.Amount })
+                .Concat(bufferEntries)
+                .ToList();
+            var totalExpenseForSlices = allExpenseEntries.Sum(s => s.Amount);
+            var expenseSlices = allExpenseEntries
+                .Select(s => new BudgetSlice
+                {
+                    Name = s.Name,
+                    Amount = s.Amount,
+                    Percentage = totalExpenseForSlices > 0 ? s.Amount / totalExpenseForSlices * 100 : 0
+                })
+                .ToList();
+
             var coordinatorTeamIds = await _budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id);
 
             var model = new BudgetSummaryViewModel
@@ -105,7 +131,7 @@ public class BudgetController : HumansControllerBase
                 NetBalance = summary.NetBalance,
                 TotalLineItems = totalLineItems,
                 IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
-                ExpenseSlices = summary.ExpenseSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+                ExpenseSlices = expenseSlices,
                 IsCoordinator = coordinatorTeamIds.Count > 0 || (await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded
             };
             return View(model);
