@@ -561,8 +561,8 @@ public class FinanceController : HumansControllerBase
     /// </summary>
     private FinanceOverviewViewModel BuildFinanceOverview(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
     {
-        // All groups (including restricted) for FinanceAdmin summary
-        var summary = _budgetService.ComputeBudgetSummary(year.Groups);
+        // All groups (including restricted) for FinanceAdmin summary, with buffer slices
+        var summary = _budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
 
         return new FinanceOverviewViewModel
         {
