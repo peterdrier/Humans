@@ -327,5 +327,57 @@ document.querySelectorAll('.slot-count-input').forEach(function(input) {
         }
     });
 });
+
+// Dirty-state tracking for role edit forms
+document.querySelectorAll('form[action*="/Edit"]').forEach(function(form) {
+    var card = form.closest('.card');
+    var saveBtn = form.querySelector('button[type="submit"]');
+    var unsavedBadge = null;
+
+    function markDirty() {
+        if (unsavedBadge) return;
+        if (!card) return;
+        card.classList.add('border-warning');
+        unsavedBadge = document.createElement('span');
+        unsavedBadge.className = 'badge bg-warning text-dark ms-2 unsaved-badge';
+        unsavedBadge.textContent = 'Unsaved';
+        var header = card.querySelector('.card-header h5');
+        if (header) header.appendChild(unsavedBadge);
+    }
+
+    function clearDirty() {
+        if (card) card.classList.remove('border-warning');
+        if (unsavedBadge) { unsavedBadge.remove(); unsavedBadge = null; }
+    }
+
+    form.addEventListener('input', markDirty);
+    form.addEventListener('change', markDirty);
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (saveBtn) saveBtn.disabled = true;
+        var formData = new FormData(form);
+        fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                clearDirty();
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.message || 'Save failed.', 'danger');
+            }
+        })
+        .catch(function() {
+            showToast('Save failed. Please try again.', 'danger');
+        })
+        .finally(function() {
+            if (saveBtn) saveBtn.disabled = false;
+        });
+    });
+});
 </script>
 }

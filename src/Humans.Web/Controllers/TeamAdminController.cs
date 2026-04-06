@@ -754,7 +754,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
+            _logger.LogDebug(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -765,10 +765,12 @@ public class TeamAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditRole(string slug, Guid roleId, EditRoleDefinitionModel model)
     {
+        var isAjax = Request.Headers.XRequestedWith == "XMLHttpRequest";
+
         var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
         if (teamError is not null)
         {
-            return teamError;
+            return isAjax ? Unauthorized() : teamError;
         }
 
         try
@@ -782,11 +784,14 @@ public class TeamAdminController : HumansTeamControllerBase
                 priorities, model.SortOrder, model.IsManagement, model.Period, user.Id,
                 model.IsPublic);
 
-            SetSuccess($"Role '{model.Name}' updated.");
+            var successMsg = $"Role '{model.Name}' updated.";
+            if (isAjax) return Json(new { success = true, message = successMsg });
+            SetSuccess(successMsg);
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            _logger.LogDebug(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            if (isAjax) return Json(new { success = false, message = ex.Message });
             SetError(ex.Message);
         }
 
@@ -810,7 +815,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            _logger.LogDebug(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -843,7 +848,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            _logger.LogDebug(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -868,7 +873,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
+            _logger.LogDebug(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -903,7 +908,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogWarning(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
+            _logger.LogDebug(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
