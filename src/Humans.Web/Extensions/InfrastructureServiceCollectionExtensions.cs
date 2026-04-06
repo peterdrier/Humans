@@ -215,6 +215,12 @@ public static class InfrastructureServiceCollectionExtensions
         }
         else
         {
+            // Stub is self-contained — fill in defaults so IsConfigured passes
+            services.PostConfigure<TicketVendorSettings>(opts =>
+            {
+                if (string.IsNullOrEmpty(opts.EventId)) opts.EventId = "stub-event";
+                if (string.IsNullOrEmpty(opts.ApiKey)) opts.ApiKey = "stub";
+            });
             services.AddScoped<ITicketVendorService, StubTicketVendorService>();
         }
 
