@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = $"Budget - {Model.Year.Name}";
     var groups = Model.Year.Groups
-        .Where(g => (!g.IsRestricted && !g.IsTicketingGroup) || Model.IsFinanceAdmin)
+        .Where(g => !g.IsTicketingGroup || Model.IsFinanceAdmin)
         .OrderBy(g => g.SortOrder)
         .ToList();
     var totalAllocated = groups.SelectMany(g => g.Categories).Sum(c => c.AllocatedAmount);
@@ -77,6 +77,10 @@
                 {
                     <span class="badge bg-info ms-1">Departments</span>
                 }
+                @if (group.IsRestricted)
+                {
+                    <span class="badge bg-secondary ms-1"><i class="fa-solid fa-lock me-1"></i>Restricted</span>
+                }
             </div>
             <span class="text-muted">&euro;@groupAllocated.ToString("N2")</span>
         </div>
@@ -102,6 +106,7 @@
                                 var catUnallocated = cat.AllocatedAmount - catLineItemTotal;
                                 var isOwnDept = cat.TeamId.HasValue && Model.EditableTeamIds.Contains(cat.TeamId.Value);
                                 var isEditable = Model.IsFinanceAdmin || isOwnDept;
+                                var isGroupRestricted = group.IsRestricted && !Model.IsFinanceAdmin;
                                 <tr>
                                     <td>
                                         @cat.Name
@@ -121,10 +126,17 @@
                                         </span>
                                     </td>
                                     <td class="text-end">
-                                        <a asp-action="CategoryDetail" asp-route-id="@cat.Id"
-                                           class="btn btn-outline-@(isEditable ? "primary" : "secondary") btn-sm">
-                                            @(isEditable ? "Manage" : "View") <i class="fa-solid fa-arrow-right ms-1"></i>
-                                        </a>
+                                        @if (isGroupRestricted)
+                                        {
+                                            <span class="badge bg-secondary"><i class="fa-solid fa-lock me-1"></i>Restricted</span>
+                                        }
+                                        else
+                                        {
+                                            <a asp-action="CategoryDetail" asp-route-id="@cat.Id"
+                                               class="btn btn-outline-@(isEditable ? "primary" : "secondary") btn-sm">
+                                                @(isEditable ? "Manage" : "View") <i class="fa-solid fa-arrow-right ms-1"></i>
+                                            </a>
+                                        }
                                     </td>
                                 </tr>
                             }
