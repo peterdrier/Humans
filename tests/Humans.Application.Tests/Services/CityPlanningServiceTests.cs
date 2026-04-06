@@ -239,6 +239,16 @@ public class CityPlanningServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CanUserEditAsync_LeadOfDifferentYear_ReturnsFalse()
+    {
+        var (_, season2027, user) = await SeedCampWithLeadAsync(year: 2027);
+        await SeedMapSettingsAsync(year: 2026, placementOpen: true);
+
+        var result = await _sut.CanUserEditAsync(user.Id, season2027.Id);
+        result.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task GetSettingsAsync_CreatesRowIfMissing()
     {
         await SeedCampSettingsAsync(publicYear: 2026);

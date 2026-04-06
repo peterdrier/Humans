@@ -107,6 +107,11 @@ public class CityPlanningController : HumansControllerBase
         }
         using var reader = new StreamReader(file.OpenReadStream());
         var geoJson = await reader.ReadToEndAsync(cancellationToken);
+        if (!IsValidJson(geoJson))
+        {
+            SetError("Invalid GeoJSON file. Please upload a valid JSON file.");
+            return RedirectToAction(nameof(Admin));
+        }
         await _cityPlanningService.UpdateLimitZoneAsync(geoJson, user.Id, cancellationToken);
         SetSuccess("Limit zone uploaded.");
         return RedirectToAction(nameof(Admin));
@@ -190,6 +195,11 @@ public class CityPlanningController : HumansControllerBase
         }
         using var reader = new StreamReader(file.OpenReadStream());
         var geoJson = await reader.ReadToEndAsync(cancellationToken);
+        if (!IsValidJson(geoJson))
+        {
+            SetError("Invalid GeoJSON file. Please upload a valid JSON file.");
+            return RedirectToAction(nameof(Admin));
+        }
         await _cityPlanningService.UpdateOfficialZonesAsync(geoJson, user.Id, cancellationToken);
         SetSuccess("Official zones uploaded.");
         return RedirectToAction(nameof(Admin));
@@ -222,5 +232,18 @@ public class CityPlanningController : HumansControllerBase
         await _cityPlanningService.DeleteOfficialZonesAsync(user.Id, cancellationToken);
         SetSuccess("Official zones deleted.");
         return RedirectToAction(nameof(Admin));
+    }
+
+    private static bool IsValidJson(string value)
+    {
+        try
+        {
+            System.Text.Json.JsonDocument.Parse(value).Dispose();
+            return true;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
     }
 }

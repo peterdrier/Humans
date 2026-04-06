@@ -197,6 +197,7 @@ public class CityPlanningService : ICityPlanningService
         var campSeason = await _dbContext.CampSeasons
             .FirstOrDefaultAsync(s => s.Id == campSeasonId, cancellationToken);
         if (campSeason == null) return false;
+        if (campSeason.Year != settings.Year) return false;
 
         return await _dbContext.CampLeads
             .AnyAsync(l => l.CampId == campSeason.CampId && l.UserId == userId && l.LeftAt == null, cancellationToken);
