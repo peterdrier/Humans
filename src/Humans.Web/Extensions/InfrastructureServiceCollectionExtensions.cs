@@ -202,36 +202,20 @@ public static class InfrastructureServiceCollectionExtensions
 
         // Ticket vendor integration
         var ticketVendorApiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY") ?? string.Empty;
-        var hasTicketVendorApiKey = !string.IsNullOrWhiteSpace(ticketVendorApiKey);
-        var ticketVendorEventId = configuration[$"{TicketVendorSettings.SectionName}:EventId"] ?? string.Empty;
-        var hasTicketVendorEventId = !string.IsNullOrWhiteSpace(ticketVendorEventId);
-        var isDevelopmentWithDevAuth = !environment.IsProduction() && configuration.GetValue<bool>("DevAuth:Enabled");
-
-        // Production, and any environment with real credentials, should use the live TicketTailor client.
-        // Development can fall back to the local stub only when DevAuth is enabled, the ticket feature
-        // is configured with an event id, and there is no real API key available.
-        var useDevelopmentTicketStub = isDevelopmentWithDevAuth
-            && hasTicketVendorEventId
-            && !hasTicketVendorApiKey;
 
         services.Configure<TicketVendorSettings>(opts =>
         {
             configuration.GetSection(TicketVendorSettings.SectionName).Bind(opts);
-
-            // API keys are always sourced from the environment, never from appsettings.
-            // The dev stub still needs settings to look configured, so give it a sentinel key.
-            opts.ApiKey = useDevelopmentTicketStub
-                ? TicketVendorSettings.DevStubKey
-                : ticketVendorApiKey;
+            opts.ApiKey = ticketVendorApiKey;
         });
 
-        if (useDevelopmentTicketStub)
+        if (environment.IsProduction())
         {
-            services.AddScoped<ITicketVendorService, StubTicketVendorService>();
+            services.AddHttpClient<ITicketVendorService, TicketTailorService>();
         }
         else
         {
-            services.AddHttpClient<ITicketVendorService, TicketTailorService>();
+            services.AddScoped<ITicketVendorService, StubTicketVendorService>();
         }
 
         services.AddScoped<ITicketSyncService, TicketSyncService>();
