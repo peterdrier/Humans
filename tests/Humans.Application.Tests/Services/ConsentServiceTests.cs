@@ -22,6 +22,7 @@ public class ConsentServiceTests : IDisposable
     private readonly ConsentService _service;
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
@@ -35,7 +36,7 @@ public class ConsentServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _service = new ConsentService(
             _dbContext, _onboardingService, _membershipCalculator,
-            _syncJob, _metrics, _clock,
+            _notificationInboxService, _syncJob, _metrics, _clock,
             NullLogger<ConsentService>.Instance);
     }
 

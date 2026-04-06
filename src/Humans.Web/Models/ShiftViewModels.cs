@@ -402,6 +402,7 @@ public class ShiftDashboardViewModel
     public List<UrgentShift> Shifts { get; set; } = [];
     public List<DepartmentOption> Departments { get; set; } = [];
     public Guid? SelectedDepartmentId { get; set; }
+    public Guid? SelectedRotaId { get; set; }
     public string? SelectedDate { get; set; }
     public EventSettings EventSettings { get; set; } = null!;
     public List<DailyStaffingData> StaffingData { get; set; } = [];

@@ -42,7 +42,7 @@ public class ShiftDashboardController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, string? date)
+    public async Task<IActionResult> Index(Guid? departmentId, Guid? rotaId, string? date)
     {
         var es = await _shiftMgmt.GetActiveAsync();
         if (es is null)
@@ -74,6 +74,7 @@ public class ShiftDashboardController : HumansControllerBase
             Shifts = shifts.ToList(),
             Departments = departments,
             SelectedDepartmentId = departmentId,
+            SelectedRotaId = rotaId,
             SelectedDate = date,
             EventSettings = es,
             StaffingData = staffingData.ToList()

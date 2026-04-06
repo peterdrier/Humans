@@ -1009,8 +1009,15 @@ public class ShiftSignupService : IShiftSignupService
     {
         try
         {
-            var teamId = signup.Shift.Rota.TeamId;
-            var rotaName = signup.Shift.Rota.Name;
+            var shift = signup.Shift;
+            var rota = shift.Rota;
+            var teamId = rota.TeamId;
+            var rotaName = rota.Name;
+
+            // Enrich description with shift date and rota name for context
+            var es = rota.EventSettings;
+            var shiftDate = es.GateOpeningDate.PlusDays(shift.DayOffset);
+            var enrichedDescription = $"{changeDescription} ({rotaName}, {FormatShiftDate(shiftDate)})";
 
             // Find coordinators for this department team
             var coordinatorIds = await _dbContext.TeamMembers
@@ -1029,8 +1036,8 @@ public class ShiftSignupService : IShiftSignupService
                 NotificationPriority.Normal,
                 $"Shift signup change: {rotaName}",
                 coordinatorIds,
-                body: changeDescription,
-                actionUrl: $"/Shifts/Dashboard?departmentId={teamId}",
+                body: enrichedDescription,
+                actionUrl: $"/Shifts/Dashboard?departmentId={teamId}&rotaId={rota.Id}",
                 actionLabel: "View \u2192");
         }
         catch (Exception ex)
