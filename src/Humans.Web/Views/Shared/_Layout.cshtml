@@ -46,9 +46,12 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
                         </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
                         </li>
+                        }
                         @if (User.Identity?.IsAuthenticated != true)
                         {
                             <li class="nav-item">
