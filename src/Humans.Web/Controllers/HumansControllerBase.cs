@@ -60,7 +60,7 @@ public abstract class HumansControllerBase : Controller
     {
         var logger = HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger(GetType());
-        logger.LogWarning("Error toast: {Message} (Action: {Action})", message, ControllerContext.ActionDescriptor.ActionName);
+        logger.LogDebug("Error toast: {Message} (Action: {Action})", message, ControllerContext.ActionDescriptor.ActionName);
         TempData["ErrorMessage"] = message;
     }
 

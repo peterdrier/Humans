@@ -165,7 +165,16 @@ builder.Services.AddAuthentication()
             {
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
                     .CreateLogger("GoogleOAuth");
-                logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", context.Failure?.Message);
+
+                var isCorrelationFailure = context.Failure?.Message?.Contains("Correlation", StringComparison.OrdinalIgnoreCase) == true;
+                if (isCorrelationFailure)
+                {
+                    logger.LogDebug(context.Failure, "Google sign-in correlation failed (expected for stale/duplicate requests)");
+                }
+                else
+                {
+                    logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", context.Failure?.Message);
+                }
 
                 context.Response.Redirect("/Account/Login?error=sign-in-failed");
                 context.HandleResponse();
