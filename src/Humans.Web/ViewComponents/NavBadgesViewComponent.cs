@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -32,20 +33,42 @@ public class NavBadgesViewComponent : ViewComponent
             var reviewCount = await _dbContext.Profiles
                 .CountAsync(p => !p.IsApproved && p.RejectedAt == null);
 
-            var votingCount = await _dbContext.Applications
-                .CountAsync(a => a.Status == ApplicationStatus.Submitted);
-
             var feedbackCount = await _feedbackService.GetActionableCountAsync();
 
-            return (Review: reviewCount, Voting: votingCount, Feedback: feedbackCount);
+            return (Review: reviewCount, Feedback: feedbackCount);
         });
 
-        var count = string.Equals(queue, "review", StringComparison.OrdinalIgnoreCase)
-            ? counts.Review
-            : string.Equals(queue, "feedback", StringComparison.OrdinalIgnoreCase)
-            ? counts.Feedback
-            : counts.Voting;
+        int count;
+        if (string.Equals(queue, "voting", StringComparison.OrdinalIgnoreCase))
+        {
+            count = await GetPerUserVotingCountAsync();
+        }
+        else if (string.Equals(queue, "review", StringComparison.OrdinalIgnoreCase))
+        {
+            count = counts.Review;
+        }
+        else
+        {
+            count = counts.Feedback;
+        }
 
         return View(count);
+    }
+
+    private async Task<int> GetPerUserVotingCountAsync()
+    {
+        var claim = UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(claim, out var currentUserId))
+            return 0;
+
+        var cacheKey = $"NavBadge:Voting:{currentUserId:N}";
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+
+            return await _dbContext.Applications
+                .CountAsync(a => a.Status == ApplicationStatus.Submitted
+                    && !a.BoardVotes.Any(v => v.BoardMemberUserId == currentUserId));
+        });
     }
 }

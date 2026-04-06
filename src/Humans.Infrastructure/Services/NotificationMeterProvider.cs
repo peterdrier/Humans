@@ -57,16 +57,24 @@ public class NotificationMeterProvider : INotificationMeterProvider
             });
         }
 
-        // Applications pending board vote — Board
-        if (isBoard && counts.ApplicationsPendingVote > 0)
+        // Applications pending board vote — Board (per-user count)
+        if (isBoard)
         {
-            meters.Add(new NotificationMeter
+            var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (Guid.TryParse(userIdClaim, out var boardMemberUserId))
             {
-                Title = "Applications pending board vote",
-                Count = counts.ApplicationsPendingVote,
-                ActionUrl = "/OnboardingReview/BoardVoting",
-                Priority = 9,
-            });
+                var pendingVoteCount = await GetPerUserVotingCountAsync(boardMemberUserId, cancellationToken);
+                if (pendingVoteCount > 0)
+                {
+                    meters.Add(new NotificationMeter
+                    {
+                        Title = "Applications pending your vote",
+                        Count = pendingVoteCount,
+                        ActionUrl = "/OnboardingReview/BoardVoting",
+                        Priority = 9,
+                    });
+                }
+            }
         }
 
         // Pending account deletions — Admin
@@ -153,6 +161,20 @@ public class NotificationMeterProvider : INotificationMeterProvider
         return counts!;
     }
 
+    private async Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken)
+    {
+        var cacheKey = $"NavBadge:Voting:{boardMemberUserId:N}";
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
+
+            return await _dbContext.Applications
+                .CountAsync(a => a.Status == ApplicationStatus.Submitted
+                    && !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId),
+                    cancellationToken);
+        });
+    }
+
     private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
     {
         // Consent reviews pending (Pending or Flagged, not rejected)
@@ -161,10 +183,6 @@ public class NotificationMeterProvider : INotificationMeterProvider
                 && (p.ConsentCheckStatus == ConsentCheckStatus.Pending
                     || p.ConsentCheckStatus == ConsentCheckStatus.Flagged)
                 && p.RejectedAt == null, cancellationToken);
-
-        // Applications pending board vote
-        var applicationsPendingVote = await _dbContext.Applications
-            .CountAsync(a => a.Status == ApplicationStatus.Submitted, cancellationToken);
 
         // Pending account deletions
         var pendingDeletions = await _dbContext.Users
@@ -193,7 +211,6 @@ public class NotificationMeterProvider : INotificationMeterProvider
         return new MeterCounts
         {
             ConsentReviewsPending = consentReviewsPending,
-            ApplicationsPendingVote = applicationsPendingVote,
             PendingDeletions = pendingDeletions,
             FailedSyncEvents = failedSyncEvents,
             OnboardingPending = onboardingPending,
@@ -205,7 +222,6 @@ public class NotificationMeterProvider : INotificationMeterProvider
     private sealed class MeterCounts
     {
         public int ConsentReviewsPending { get; init; }
-        public int ApplicationsPendingVote { get; init; }
         public int PendingDeletions { get; init; }
         public int FailedSyncEvents { get; init; }
         public int OnboardingPending { get; init; }
