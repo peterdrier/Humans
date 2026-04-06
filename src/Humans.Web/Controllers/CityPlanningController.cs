@@ -105,6 +105,11 @@ public class CityPlanningController : HumansControllerBase
             SetError("Please select a GeoJSON file to upload.");
             return RedirectToAction(nameof(Admin));
         }
+        if (file.Length > 10 * 1024 * 1024)
+        {
+            SetError("File too large. Maximum size is 10 MB.");
+            return RedirectToAction(nameof(Admin));
+        }
         using var reader = new StreamReader(file.OpenReadStream());
         var geoJson = await reader.ReadToEndAsync(cancellationToken);
         if (!IsValidJson(geoJson))
@@ -191,6 +196,11 @@ public class CityPlanningController : HumansControllerBase
         if (file is null || file.Length == 0)
         {
             SetError("Please select a GeoJSON file to upload.");
+            return RedirectToAction(nameof(Admin));
+        }
+        if (file.Length > 10 * 1024 * 1024)
+        {
+            SetError("File too large. Maximum size is 10 MB.");
             return RedirectToAction(nameof(Admin));
         }
         using var reader = new StreamReader(file.OpenReadStream());

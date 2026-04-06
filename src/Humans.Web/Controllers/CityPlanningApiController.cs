@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
@@ -17,15 +18,18 @@ public class CityPlanningApiController : ControllerBase
     private readonly ICityPlanningService _cityPlanningService;
     private readonly IHubContext<CityPlanningHub> _hubContext;
     private readonly UserManager<User> _userManager;
+    private readonly ILogger<CityPlanningApiController> _logger;
 
     public CityPlanningApiController(
         ICityPlanningService cityPlanningService,
         IHubContext<CityPlanningHub> hubContext,
-        UserManager<User> userManager)
+        UserManager<User> userManager,
+        ILogger<CityPlanningApiController> logger)
     {
         _cityPlanningService = cityPlanningService;
         _hubContext = hubContext;
         _userManager = userManager;
+        _logger = logger;
     }
 
     private Guid CurrentUserId()
@@ -79,6 +83,9 @@ public class CityPlanningApiController : ControllerBase
         if (!await _cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
             return Forbid();
 
+        if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidJson(request.GeoJson))
+            return BadRequest("Invalid GeoJSON.");
+
         var (polygon, _) = await _cityPlanningService.SaveCampPolygonAsync(
             campSeasonId, request.GeoJson, request.AreaSqm, userId,
             cancellationToken: cancellationToken);
@@ -86,8 +93,15 @@ public class CityPlanningApiController : ControllerBase
         var soundZone = await _cityPlanningService.GetCampSeasonSoundZoneAsync(campSeasonId, cancellationToken);
         var soundZoneValue = soundZone.HasValue ? (int)soundZone.Value : -1;
         var campName = await _cityPlanningService.GetCampSeasonNameAsync(campSeasonId, cancellationToken) ?? string.Empty;
-        await _hubContext.Clients.All.SendAsync(
-            "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
+        try
+        {
+            await _hubContext.Clients.All.SendAsync(
+                "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
+        }
 
         return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
     }
@@ -110,8 +124,15 @@ public class CityPlanningApiController : ControllerBase
         var soundZone = await _cityPlanningService.GetCampSeasonSoundZoneAsync(campSeasonId, cancellationToken);
         var soundZoneValue = soundZone.HasValue ? (int)soundZone.Value : -1;
         var campName = await _cityPlanningService.GetCampSeasonNameAsync(campSeasonId, cancellationToken) ?? string.Empty;
-        await _hubContext.Clients.All.SendAsync(
-            "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
+        try
+        {
+            await _hubContext.Clients.All.SendAsync(
+                "CampPolygonUpdated", campSeasonId, polygon.GeoJson, polygon.AreaSqm, soundZoneValue, campName, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to broadcast CampPolygonUpdated for {CampSeasonId}", campSeasonId);
+        }
 
         return Ok(new { campSeasonId, geoJson = polygon.GeoJson, areaSqm = polygon.AreaSqm });
     }
@@ -129,5 +150,18 @@ public class CityPlanningApiController : ControllerBase
         var geoJson = await _cityPlanningService.ExportAsGeoJsonAsync(exportYear, cancellationToken);
 
         return Content(geoJson, "application/geo+json");
+    }
+
+    private static bool IsValidJson(string value)
+    {
+        try
+        {
+            JsonDocument.Parse(value).Dispose();
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }

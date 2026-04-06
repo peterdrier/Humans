@@ -74,18 +74,20 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampPolygonHistories
+        var rows = await _dbContext.CampPolygonHistories
             .Include(h => h.ModifiedByUser)
             .Where(h => h.CampSeasonId == campSeasonId)
             .OrderByDescending(h => h.ModifiedAt)
-            .Select(h => new CampPolygonHistoryEntryDto(
-                h.Id,
-                h.ModifiedByUser.UserName ?? h.ModifiedByUserId.ToString(),
-                h.ModifiedAt.ToString("g", null),
-                h.AreaSqm,
-                h.Note,
-                h.GeoJson))
             .ToListAsync(cancellationToken);
+
+        return rows.Select(h => new CampPolygonHistoryEntryDto(
+            h.Id,
+            h.ModifiedByUser.UserName ?? h.ModifiedByUserId.ToString(),
+            h.ModifiedAt.InZone(DateTimeZone.Utc).ToDateTimeUnspecified()
+                .ToString("d MMM yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+            h.AreaSqm,
+            h.Note,
+            h.GeoJson)).ToList();
     }
 
     public async Task<Guid?> GetUserCampSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default)
