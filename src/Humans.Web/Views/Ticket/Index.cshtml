@@ -43,7 +43,9 @@
                             <span class="text-muted">0</span>
                             @if (Model.BreakEvenTarget > 0)
                             {
-                                <span class="@(Model.TicketsSold >= Model.BreakEvenTarget ? "text-success fw-bold" : "text-warning")">@Model.BreakEvenTarget.ToString("N0") break-even</span>
+                                <span class="@(Model.TicketsSold >= Model.BreakEvenTarget ? "text-success fw-bold" : "text-warning")"
+                                      title="@Model.BreakEvenDetail"
+                                      aria-label="@Model.BreakEvenDetail">@Model.BreakEvenTarget.ToString("N0") break-even</span>
                             }
                             <span class="text-muted">@Model.TotalCapacity.ToString("N0") capacity</span>
                         </div>
