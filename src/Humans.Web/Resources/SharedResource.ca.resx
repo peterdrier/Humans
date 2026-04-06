@@ -877,7 +877,7 @@
   <!-- ======================== -->
   <!-- Volunteer Map            -->
   <!-- ======================== -->
-  <data name="Nav_Map" xml:space="preserve"><value>Mapa</value></data>
+  <data name="Nav_City" xml:space="preserve"><value>Mapa</value></data>
   <data name="Map_Title" xml:space="preserve"><value>Mapa de Humans</value></data>
   <data name="Map_Count" xml:space="preserve"><value>{0} humans amb ubicació</value></data>
   <data name="Map_None" xml:space="preserve"><value>Cap human no ha establert encara la seva ubicació.</value></data>
@@ -1329,5 +1329,70 @@
   <data name="GetInvolved_UrgentShifts" xml:space="preserve"><value>Torns que necessiten humans ara</value></data>
   <data name="GetInvolved_BrowseAllShifts" xml:space="preserve"><value>Veure tots els torns</value></data>
   <data name="GetInvolved_MyShifts" xml:space="preserve"><value>Els meus torns</value></data>
+
+  <!-- ======================== -->
+  <!-- CityPlanning                -->
+  <!-- ======================== -->
+  <data name="CityPlanning_PlacementPhase" xml:space="preserve"><value>Fase de col·locació</value></data>
+  <data name="CityPlanning_StatusOpen" xml:space="preserve"><value>Oberta</value></data>
+  <data name="CityPlanning_StatusClosed" xml:space="preserve"><value>Tancada</value></data>
+  <data name="CityPlanning_HelpButton" xml:space="preserve"><value>Ajuda</value></data>
+  <data name="CityPlanning_AddMyBarrioButton" xml:space="preserve"><value>Afegir el meu barrio al mapa</value></data>
+  <data name="CityPlanning_AddABarrioOption" xml:space="preserve"><value>Afegir un barrio…</value></data>
+  <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Desar</value></data>
+  <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Historial</value></data>
+  <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
+  <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin del Mapa de Barrios</value></data>
+  <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Veure mapa</value></data>
+  <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Fase de Col·locació</value></data>
+  <data name="CityPlanning_Admin_Status" xml:space="preserve"><value>Estat:</value></data>
+  <data name="CityPlanning_Admin_OpenedAt" xml:space="preserve"><value>Oberta {0}</value></data>
+  <data name="CityPlanning_Admin_ClosedAt" xml:space="preserve"><value>Tancada {0}</value></data>
+  <data name="CityPlanning_Admin_ClosePlacement" xml:space="preserve"><value>Tancar fase</value></data>
+  <data name="CityPlanning_Admin_OpenPlacement" xml:space="preserve"><value>Obrir fase</value></data>
+  <data name="CityPlanning_Admin_PlacementDatesCard" xml:space="preserve"><value>Dates de col·locació</value></data>
+  <data name="CityPlanning_Admin_PlacementDatesHint" xml:space="preserve"><value>Només informatiu — es mostra al modal d'ajuda (hora d'Espanya). No obre ni tanca la fase automàticament.</value></data>
+  <data name="CityPlanning_Admin_OpensAt" xml:space="preserve"><value>Obre el</value></data>
+  <data name="CityPlanning_Admin_ClosesAt" xml:space="preserve"><value>Tanca el</value></data>
+  <data name="CityPlanning_Admin_SaveDates" xml:space="preserve"><value>Desar dates</value></data>
+  <data name="CityPlanning_Admin_LimitZoneCard" xml:space="preserve"><value>Zona límit dels barrios</value></data>
+  <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Zona límit pujada</value></data>
+  <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>Eliminar la zona límit?</value></data>
+  <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>Encara no s'ha pujat cap zona límit.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Zones oficials</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Zones oficials pujades</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>Eliminar les zones oficials?</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>Encara no s'han pujat zones oficials.</value></data>
+  <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>Pujar arxiu GeoJSON</value></data>
+  <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Pujar</value></data>
+  <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Descarregar</value></data>
+  <data name="CityPlanning_Admin_Remove" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exportar</value></data>
+  <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Descarregar tots els polígons de barrios de {0} com a GeoJSON FeatureCollection.</value></data>
+  <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Descarregar GeoJSON ({0})</value></data>
+  <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historial de polígons</value></data>
+  <data name="CityPlanning_Loading" xml:space="preserve"><value>Carregant…</value></data>
+  <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>Quan és?</value></data>
+  <data name="CityPlanning_Help_Opens" xml:space="preserve"><value>Obre:</value></data>
+  <data name="CityPlanning_Help_Closes" xml:space="preserve"><value>Tanca:</value></data>
+  <data name="CityPlanning_Help_SpainTime" xml:space="preserve"><value>(hora d'Espanya)</value></data>
+  <data name="CityPlanning_Help_WhenPlaceholder" xml:space="preserve"><value>La fase de col·locació dura un temps limitat — aviat es mostraran les dates exactes aquí. Col·loca el teu barrio abans que tanqui!</value></data>
+  <data name="CityPlanning_Help_PlacingTitle" xml:space="preserve"><value>Col·locar el teu barrio</value></data>
+  <data name="CityPlanning_Help_PlacingBody" xml:space="preserve"><value>Fes clic a {0} per començar a dibuixar. Després fes clic al mapa per col·locar punts que defineixin el teu espai — cada clic afegeix un racó. Tanca la forma fent clic al primer punt.</value></data>
+  <data name="CityPlanning_Help_AdjustingTitle" xml:space="preserve"><value>Ajustar la forma</value></data>
+  <data name="CityPlanning_Help_Adjusting_VertexMove" xml:space="preserve"><value>Arrossega un punt de cantonada per moure'l</value></data>
+  <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Arrossega tota la forma per reposicionar-la</value></data>
+  <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Fes clic al punt mig d'un costat (on es mostra la longitud en metres) per afegir una nova cantonada</value></data>
+  <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Fes clic en un punt per seleccionar-lo (es torna taronja), després prem Delete o Backspace per eliminar-lo</value></data>
+  <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>La superfície en m² es mostra al centre i s'actualitza en editar</value></data>
+  <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Desar &amp; editar més tard</value></data>
+  <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Satisfet? Prem Save. Després, fes clic al teu barrio al mapa per veure la mida, i Edit per tornar al mode d'edició. Cada desat crea una entrada a l'historial — usa el botó History per navegar i restaurar versions anteriors. Sense estrès, no pots trencar res!</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Queda't dins les zones blanques</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Les àrees blanques discontínues marquen les zones d'acampada segures, protegides per parallamps. Acampar fora no està permès, mantén el teu barrio dins d'aquests límits.</value></data>
+  <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>Solapaments? Parla-ho!</value></data>
+  <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>Si el teu barrio se solapa amb un altre, contacta'ns a {0} i resoleu-ho junts. Si hi ha conflictes sense resoldre al final de la fase, l'equip de city planning s'encarregarà.</value></data>
+  <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>
+  <data name="CityPlanning_Help_ColorsTitle" xml:space="preserve"><value>Colors &amp; zones sonores</value></data>
+  <data name="CityPlanning_Help_ColorsBody" xml:space="preserve"><value>Cada barrio està acolorit segons la seva zona sonora preferida (editable des de la pàgina del barrio).</value></data>
 
 </root>

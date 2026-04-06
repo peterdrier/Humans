@@ -1,0 +1,133 @@
+@{
+    ViewData["Title"] = "City Planning";
+    var isPlacementOpen = (bool)ViewBag.IsPlacementOpen;
+    var isMapAdmin = (bool)ViewBag.IsMapAdmin;
+    var userCampSeasonId = (string)ViewBag.UserCampSeasonId;
+    var seasonsWithout = (List<Humans.Application.Interfaces.CampSeasonSummaryDto>)ViewBag.SeasonsWithoutCampPolygon;
+    var showMainToolbar = isMapAdmin && seasonsWithout.Any();
+    var placementOpensAt = ViewBag.PlacementOpensAt as NodaTime.LocalDateTime?;
+    var placementClosesAt = ViewBag.PlacementClosesAt as NodaTime.LocalDateTime?;
+    var showPlacementCard = isPlacementOpen || placementOpensAt.HasValue || placementClosesAt.HasValue;
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.css" />
+    <link rel="stylesheet" href="https://unpkg.com/@@mapbox/mapbox-gl-draw@1.5.1/dist/mapbox-gl-draw.css" />
+    <style>
+        /* Override the main layout to occupy the whole screen space */
+        .main-content { display: flex; max-width: 100vw; padding: 0; }
+        main { display: flex; flex: 1; padding: 0; }
+
+        #map-page { flex: 1; position: relative; overflow: hidden; }
+        #map { height: 100%; width: 100%; }
+        .remote-cursor {
+            position: relative; background: rgba(255,165,0,0.85); color: white;
+            margin-top: 6px; margin-left: 6px;
+            padding: 2px 7px; border-radius: 0 4px 4px 4px; font-size: 12px;
+            white-space: nowrap; pointer-events: none; width: fit-content;
+        }
+        .remote-cursor::after {
+            content: ''; position: absolute; top: -6px; left: -6px;
+            border-right: 12px solid transparent;
+            border-top: 12px solid rgba(255,165,0,0.85);
+        }
+    </style>
+}
+
+<div id="map-page">
+    <div id="map"
+         data-user-camp-season-id="@userCampSeasonId"
+         data-is-placement-open="@(isPlacementOpen ? "true" : "false")"
+         data-is-map-admin="@(isMapAdmin ? "true" : "false")"></div>
+
+    @if (showPlacementCard)
+    {
+    <!-- Placement phase card -->
+    <div class="position-absolute top-0 start-0 m-3">
+        <div class="card shadow-sm">
+            <div class="card-body py-2 px-3 d-flex flex-column align-items-center gap-1">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fw-semibold">@Localizer["CityPlanning_PlacementPhase"]</span>
+                    @if (isPlacementOpen)
+                    {
+                        <span class="badge bg-success">@Localizer["CityPlanning_StatusOpen"]</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">@Localizer["CityPlanning_StatusClosed"]</span>
+                    }
+                </div>
+                <button class="btn btn-primary btn-sm small" data-bs-toggle="modal" data-bs-target="#placement-help-modal">
+                    <i class="fa fa-question-circle me-1"></i>@Localizer["CityPlanning_HelpButton"]
+                </button>
+            </div>
+        </div>
+    </div>
+    }
+
+    <!-- Toolbars -->
+    <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">
+        @if (isPlacementOpen || isMapAdmin)
+        {
+        <div id="main-toolbar" class="card" style="@(showMainToolbar ? "" : "display:none")">
+            <div class="card-body d-flex flex-row gap-2 align-items-center">
+            @if (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId))
+            {
+                <button id="add-my-barrio-btn" class="btn btn-primary btn-sm shadow" style="display:none">
+                    <i class="fa fa-plus me-1"></i> @Localizer["CityPlanning_AddMyBarrioButton"]
+                </button>
+            }
+            @if (isMapAdmin && seasonsWithout.Any())
+            {
+                <div id="add-barrio-container" class="d-flex gap-2 align-items-center">
+                    <select id="add-barrio-select" class="form-select form-select-sm" style="width:200px;">
+                        <option value="">@Localizer["CityPlanning_AddABarrioOption"]</option>
+                        @foreach (var s in seasonsWithout)
+                        {
+                            <option value="@s.CampSeasonId">@s.CampName</option>
+                        }
+                    </select>
+                </div>
+            }
+            <button id="save-btn" class="btn btn-success btn-sm" style="display:none" disabled>
+                <i class="fa fa-save me-1"></i> @Localizer["CityPlanning_SaveButton"]
+            </button>
+            <button id="cancel-btn" class="btn btn-outline-secondary btn-sm" style="display:none">
+                <i class="fa fa-times me-1"></i> @Localizer["Common_Cancel"]
+            </button>
+            <button id="history-btn" class="btn btn-outline-primary btn-sm" style="display:none" disabled>
+                <i class="fa fa-history me-1"></i> @Localizer["CityPlanning_HistoryButton"]
+            </button>
+            </div>
+        </div>
+        }
+        @if (isMapAdmin)
+        {
+        <div class="card">
+            <div class="card-body">
+                <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm">
+                    <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
+                </a>
+            </div>
+        </div>
+        }
+    </div>
+</div>
+
+@if (showPlacementCard)
+{
+    @await Html.PartialAsync("_PlacementHelpModal")
+}
+
+@await Html.PartialAsync("_HistoryOffcanvas")
+
+<!-- Anti-forgery token for AJAX calls -->
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="https://unpkg.com/maplibre-gl@5.20.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@@mapbox/mapbox-gl-draw@1.5.1/dist/mapbox-gl-draw.js"></script>
+    <script src="https://unpkg.com/@@turf/turf@7.1.0/turf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.7/dist/browser/signalr.min.js"></script>
+    <script type="module" src="~/js/city-planning/main.js"></script>
+}

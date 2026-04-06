@@ -23,5 +23,8 @@ git pull --ff-only
 export SOURCE_COMMIT
 SOURCE_COMMIT=$(git rev-parse --short HEAD)
 
+export ASPNETCORE_ENVIRONMENT=Staging
+export DevAuth__Enabled=true
+
 docker compose up --build -d
 echo "Deployed $SOURCE_COMMIT to QA"

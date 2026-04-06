@@ -26,7 +26,7 @@ Clean Architecture with 4 layers:
 
 ## Domain Entities
 
-See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relationships, and serialization notes. Key entities: `User`, `Profile`, `ContactField`, `Application` (Colaborador/Asociado tier applications), `BoardVote` (transient), `RoleAssignment`, `LegalDocument`/`DocumentVersion`, `ConsentRecord` (append-only), `Team`/`TeamMember`, `GoogleResource`, `BudgetYear`/`BudgetGroup`/`BudgetCategory`/`BudgetLineItem`, `BudgetAuditLog` (append-only).
+See [`.claude/DATA_MODEL.md`](.claude/DATA_MODEL.md) for full data model, relationships, and serialization notes. Key entities: `User`, `Profile`, `ContactField`, `Application` (Colaborador/Asociado tier applications), `BoardVote` (transient), `RoleAssignment`, `LegalDocument`/`DocumentVersion`, `ConsentRecord` (append-only), `Team`/`TeamMember`, `GoogleResource`, `BudgetYear`/`BudgetGroup`/`BudgetCategory`/`BudgetLineItem`, `BudgetAuditLog` (append-only), `CityPlanningSettings`, `CampPolygon`, `CampPolygonHistory`.
 
 ## Important: Shared Drives Only
 
@@ -155,7 +155,7 @@ The project is licensed under **AGPL-3.0** (`LICENSE` at repo root).
 
 ## Section Invariants
 
-`docs/sections/` contains terse invariant documents for each major section of the app (Profiles, Budget, Teams, Feedback, Camps, Governance, Legal & Consent, Onboarding, Google Integration, Shifts, Campaigns, Tickets, Admin). Each doc defines:
+`docs/sections/` contains terse invariant documents for each major section of the app (Profiles, Budget, Teams, Feedback, Camps, City Planning, Governance, Legal & Consent, Onboarding, Google Integration, Shifts, Campaigns, Tickets, Admin). Each doc defines:
 - **Actors & Roles** — who interacts and in what capacity
 - **Invariants** — hard rules that must always be true (authorization, data integrity, workflow constraints)
 - **Triggers** — side effects and cascades ("when X happens, Y must happen")

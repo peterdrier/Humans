@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Source+Sans+3:wght@400;500;600;700&display=swap">
     <link rel="icon" href="~/img/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="~/css/site.css" />
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     <header>
@@ -45,6 +46,12 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
                         </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
+                        </li>
+                        }
                         @if (User.Identity?.IsAuthenticated != true)
                         {
                             <li class="nav-item">

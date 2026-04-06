@@ -3,10 +3,12 @@ using System.Security.Cryptography;
 using System.Text;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
+using Humans.Infrastructure.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -49,6 +51,7 @@ public class DevLoginController : Controller
     private readonly IConfiguration _config;
     private readonly ConfigurationRegistry _configRegistry;
     private readonly IMemoryCache _cache;
+    private readonly IOptions<CityPlanningOptions> _cityPlanningOptions;
     private readonly ILogger<DevLoginController> _logger;
 
     public DevLoginController(
@@ -60,6 +63,7 @@ public class DevLoginController : Controller
         IConfiguration config,
         ConfigurationRegistry configRegistry,
         IMemoryCache cache,
+        IOptions<CityPlanningOptions> campMapOptions,
         ILogger<DevLoginController> logger)
     {
         _userManager = userManager;
@@ -70,6 +74,7 @@ public class DevLoginController : Controller
         _config = config;
         _configRegistry = configRegistry;
         _cache = cache;
+        _cityPlanningOptions = campMapOptions;
         _logger = logger;
     }
 
@@ -93,6 +98,10 @@ public class DevLoginController : Controller
         try
         {
             await EnsurePersonaAsync(info, id);
+            if (IsBarrioLeadSlug(info.Slug))
+                await EnsureBarrioCampAsync(info.Slug, id);
+            if (IsCityPlanningSlug(info.Slug))
+                await EnsureCityPlanningTeamAsync(id);
         }
         finally
         {
@@ -187,9 +196,13 @@ public class DevLoginController : Controller
         var isCoordinatorPersona = string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase);
         var roleName = isCoordinatorPersona ? null : RoleNameFromSlug(info.Slug);
         var roles = roleName is not null ? new[] { roleName } : Array.Empty<string>();
-        var teams = roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal)
-            ? new[] { SystemTeamIds.Volunteers, SystemTeamIds.Board }
-            : new[] { SystemTeamIds.Volunteers };
+        Guid[] teams;
+        if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
+            teams = [SystemTeamIds.Volunteers, SystemTeamIds.Board];
+        else if (IsBarrioLeadSlug(info.Slug))
+            teams = [SystemTeamIds.Volunteers, SystemTeamIds.BarrioLeads];
+        else
+            teams = [SystemTeamIds.Volunteers];
 
         var user = new User
         {
@@ -313,6 +326,72 @@ public class DevLoginController : Controller
     }
 
     /// <summary>
+    /// Seeds a test barrio
+    /// </summary>
+    private async Task EnsureBarrioCampAsync(string personaSlug, Guid leadUserId)
+    {
+        // barrio-1-lead → camp slug "barrio-1", name "Barrio 1"
+        var campSlug = personaSlug[..^"-lead".Length]; // "barrio-1" or "barrio-2"
+        var campName = campSlug.Replace("-", " ", StringComparison.Ordinal); // "barrio 1" → title-case below
+        campName = string.Concat(campName[..1].ToUpperInvariant(), campName.AsSpan(1)); // "Barrio 1" / "Barrio 2"
+
+        var year = (await _db.CampSettings.FirstAsync()).PublicYear;
+
+        var campId = PersonaGuid($"dev-camp:{campSlug}");
+        var seasonId = PersonaGuid($"dev-camp-season:{campSlug}:{year}");
+        var leadId = PersonaGuid($"dev-camp-lead:{campSlug}:{leadUserId}");
+
+        var now = _clock.GetCurrentInstant();
+
+        if (!await _db.Set<Humans.Domain.Entities.Camp>().AnyAsync(c => c.Id == campId))
+        {
+            _db.Set<Humans.Domain.Entities.Camp>().Add(new Humans.Domain.Entities.Camp
+            {
+                Id = campId,
+                Slug = campSlug,
+                ContactEmail = $"dev-{campSlug}@localhost",
+                ContactPhone = "+34 600 000 000",
+                CreatedByUserId = leadUserId,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+
+            _db.Set<Humans.Domain.Entities.CampSeason>().Add(new Humans.Domain.Entities.CampSeason
+            {
+                Id = seasonId,
+                CampId = campId,
+                Year = year,
+                Name = campName,
+                Status = Humans.Domain.Enums.CampSeasonStatus.Active,
+                BlurbShort = $"A dev test barrio ({campName}).",
+                BlurbLong = $"{campName} is a development test barrio used for local and preview environment testing. Feel free to edit this description.",
+                Languages = "English, Spanish",
+                MemberCount = 42,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+
+            _logger.LogInformation("DEV: seeded camp {Slug} ({Id})", campSlug, campId);
+        }
+
+        if (!await _db.Set<Humans.Domain.Entities.CampLead>().AnyAsync(l => l.Id == leadId))
+        {
+            _db.Set<Humans.Domain.Entities.CampLead>().Add(new Humans.Domain.Entities.CampLead
+            {
+                Id = leadId,
+                CampId = campId,
+                UserId = leadUserId,
+                Role = Humans.Domain.Enums.CampLeadRole.Primary,
+                JoinedAt = now
+            });
+
+            _logger.LogInformation("DEV: seeded camp lead for {Slug} user {UserId}", campSlug, leadUserId);
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
     /// Seeds a test department and sub-team for the coordinator persona.
     /// The coordinator is assigned as coordinator of the department and member of the sub-team.
     /// Uses deterministic IDs so teams are stable across restarts.
@@ -432,6 +511,63 @@ public class DevLoginController : Controller
             deptId, "dev-test-department", subTeamId, "dev-test-subteam");
     }
 
+    /// <summary>
+    /// Ensures the city planning team (from config) exists and the user is a coordinator of it.
+    /// </summary>
+    private async Task EnsureCityPlanningTeamAsync(Guid userId)
+    {
+        var teamSlug = _cityPlanningOptions.Value.CityPlanningTeamSlug;
+        if (string.IsNullOrEmpty(teamSlug))
+        {
+            _logger.LogWarning("DEV: CityPlanning:CityPlanningTeamSlug is not configured, skipping city planning team seeding");
+            return;
+        }
+
+        var now = _clock.GetCurrentInstant();
+        var changed = false;
+
+        var team = await _db.Teams.FirstOrDefaultAsync(t => t.Slug == teamSlug);
+        if (team is null)
+        {
+            team = new Team
+            {
+                Id = Guid.NewGuid(),
+                Name = "City Planning",
+                Description = "Dev-seeded city planning team",
+                Slug = teamSlug,
+                IsActive = true,
+                RequiresApproval = false,
+                SystemTeamType = SystemTeamType.None,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            _db.Teams.Add(team);
+            changed = true;
+            _logger.LogInformation("DEV: seeded city planning team {Slug}", teamSlug);
+        }
+
+        var hasMembership = await _db.TeamMembers.AnyAsync(tm => tm.TeamId == team.Id && tm.UserId == userId);
+        if (!hasMembership)
+        {
+            _db.TeamMembers.Add(new TeamMember
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                TeamId = team.Id,
+                Role = TeamMemberRole.Coordinator,
+                JoinedAt = now
+            });
+            changed = true;
+        }
+
+        if (changed)
+        {
+            await _db.SaveChangesAsync();
+            _cache.InvalidateActiveTeams();
+            _cache.InvalidateUserAccess(userId);
+        }
+    }
+
     // ============================================================
     // Static helpers
     // ============================================================
@@ -441,7 +577,10 @@ public class DevLoginController : Controller
         var list = new List<DevPersonaInfo>
         {
             new("volunteer", "Volunteer"),
-            new("coordinator", "Coordinator")
+            new("barrio-1-lead", "Barrio 1 Lead"),
+            new("barrio-2-lead", "Barrio 2 Lead"),
+            new("coordinator", "Coordinator"),
+            new("city-planning", "City Planning Team")
         };
 
         var roles = typeof(RoleNames)
@@ -457,6 +596,13 @@ public class DevLoginController : Controller
 
         return list;
     }
+
+    private static bool IsBarrioLeadSlug(string slug) =>
+        slug.EndsWith("-lead", StringComparison.OrdinalIgnoreCase) &&
+        slug.StartsWith("barrio-", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCityPlanningSlug(string slug) =>
+        string.Equals(slug, "city-planning", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Deterministic GUID from persona slug — stable across restarts for idempotent seeding.

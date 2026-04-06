@@ -1,0 +1,108 @@
+<div class="modal fade" id="placement-help-modal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Localizer["CityPlanning_PlacementPhase"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>@Localizer["CityPlanning_Help_WhenIsIt"]</h6>
+                @{
+                    var placementOpensAt = ViewBag.PlacementOpensAt as NodaTime.LocalDateTime?;
+                    var placementClosesAt = ViewBag.PlacementClosesAt as NodaTime.LocalDateTime?;
+                    const string dtFmt = "d MMMM 'at' HH:mm";
+                }
+                @if (placementOpensAt.HasValue || placementClosesAt.HasValue)
+                {
+                    <p class="text-muted small">
+                        @if (placementOpensAt.HasValue && placementClosesAt.HasValue)
+                        {
+                            <span>@Localizer["CityPlanning_Help_Opens"] <strong>@placementOpensAt.Value.ToString(dtFmt, null)</strong> &middot; @Localizer["CityPlanning_Help_Closes"] <strong>@placementClosesAt.Value.ToString(dtFmt, null)</strong> @Localizer["CityPlanning_Help_SpainTime"]</span>
+                        }
+                        else if (placementOpensAt.HasValue)
+                        {
+                            <span>@Localizer["CityPlanning_Help_Opens"] <strong>@placementOpensAt.Value.ToString(dtFmt, null)</strong> @Localizer["CityPlanning_Help_SpainTime"]</span>
+                        }
+                        else
+                        {
+                            <span>@Localizer["CityPlanning_Help_Closes"] <strong>@placementClosesAt!.Value.ToString(dtFmt, null)</strong> @Localizer["CityPlanning_Help_SpainTime"]</span>
+                        }
+                    </p>
+                }
+                else
+                {
+                    <p class="text-muted small">@Localizer["CityPlanning_Help_WhenPlaceholder"]</p>
+                }
+
+                <div class="row g-4">
+
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100">
+                            <img src="~/img/city-planning/barrio-draw.png" class="card-img-top" style="max-height: 250px; object-fit: contain; object-position: top;" alt="Drawing a barrio" />
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1">@Localizer["CityPlanning_Help_PlacingTitle"]</h6>
+                                <p class="card-text text-muted small mb-0">@Html.Raw(string.Format(Localizer["CityPlanning_Help_PlacingBody"].Value, $"<strong>{Localizer["CityPlanning_AddMyBarrioButton"]}</strong>"))</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100">
+                            <img src="~/img/city-planning/barrio-edit.png" class="card-img-top" style="max-height: 250px; object-fit: contain; object-position: top;" alt="Editing a barrio shape" />
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1">@Localizer["CityPlanning_Help_AdjustingTitle"]</h6>
+                                <ul class="card-text text-muted small ps-3 mb-0">
+                                    <li>@Localizer["CityPlanning_Help_Adjusting_VertexMove"]</li>
+                                    <li>@Localizer["CityPlanning_Help_Adjusting_Reposition"]</li>
+                                    <li>@Localizer["CityPlanning_Help_Adjusting_AddVertex"]</li>
+                                    <li>@Localizer["CityPlanning_Help_Adjusting_DeleteVertex"]</li>
+                                    <li>@Localizer["CityPlanning_Help_Adjusting_Area"]</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100">
+                            <img src="~/img/city-planning/barrio-history.png" class="card-img-top" style="max-height: 250px; object-fit: contain; object-position: top;" alt="History of a barrio" />
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1">@Localizer["CityPlanning_Help_SavingTitle"]</h6>
+                                <p class="card-text text-muted small mb-0">@Localizer["CityPlanning_Help_SavingBody"]</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100">
+                            <img src="~/img/city-planning/barrio-out-of-zone.png" class="card-img-top" style="max-height: 250px; object-fit: contain; object-position: top;" alt="Invalid placement" />
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1">@Localizer["CityPlanning_Help_ZonesTitle"]</h6>
+                                <p class="card-text text-muted small mb-0">@Localizer["CityPlanning_Help_ZonesBody"]</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100">
+                            <img src="~/img/city-planning/barrio-overlap.png" class="card-img-top" style="max-height: 250px; object-fit: contain; object-position: top;" alt="Overlap of two barrios" />
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1">@Localizer["CityPlanning_Help_OverlapsTitle"]</h6>
+                                <p class="card-text text-muted small mb-0">@Html.Raw(string.Format(Localizer["CityPlanning_Help_OverlapsBody"].Value, $"<a href=\"https://discord.com/channels/1462886445583962245/1467793922074873896\" target=\"_blank\" class=\"text-decoration-none\">{Localizer["CityPlanning_Help_OverlapsDiscordChannel"]}</a>"))</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="card h-100">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-1">@Localizer["CityPlanning_Help_ColorsTitle"]</h6>
+                                <p class="card-text text-muted small mb-0">@Localizer["CityPlanning_Help_ColorsBody"]</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

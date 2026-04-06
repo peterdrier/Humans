@@ -46,6 +46,12 @@ docker-compose up -d db
 dotnet run --project src/Humans.Web
 ```
 
+For development with live reload (Razor views update on browser refresh):
+
+```bash
+dotnet watch --project src/Humans.Web
+```
+
 ### Full Stack with Docker
 
 ```bash

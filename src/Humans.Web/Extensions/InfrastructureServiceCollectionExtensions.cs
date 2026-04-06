@@ -31,6 +31,7 @@ public static class InfrastructureServiceCollectionExtensions
         });
         services.Configure<GoogleWorkspaceSettings>(configuration.GetSection(GoogleWorkspaceSettings.SectionName));
         services.Configure<TeamResourceManagementSettings>(configuration.GetSection(TeamResourceManagementSettings.SectionName));
+        services.Configure<CityPlanningOptions>(configuration.GetSection(CityPlanningOptions.SectionName));
 
         // Register all infrastructure config keys in the registry for the Admin Configuration page
         if (configRegistry is not null)
@@ -88,6 +89,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITeamService, TeamService>();
         services.AddScoped<ITeamPageService, TeamPageService>();
         services.AddScoped<ICampService, CampService>();
+        services.AddScoped<ICityPlanningService, CityPlanningService>();
         services.AddScoped<ICampContactService, CampContactService>();
         services.AddScoped<ICommunicationPreferenceService, CommunicationPreferenceService>();
         services.AddScoped<ICampaignService, CampaignService>();

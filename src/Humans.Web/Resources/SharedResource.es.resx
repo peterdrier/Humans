@@ -771,6 +771,7 @@
   <data name="AdminAddRole_BoardDesc" xml:space="preserve"><value>Permisos de miembro de la junta</value></data>
   <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve"><value>Gestionar todos los equipos y membresías</value></data>
   <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Verificaciones de seguridad durante la incorporación</value></data>
+  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Gestionar el mapa del campamento y las fases de colocación</value></data>
   <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Facilitación de incorporación, gestión de turnos global</value></data>
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Aprobar inscripciones en turnos, ver datos médicos de voluntarios</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notas (opcional)</value></data>
@@ -877,7 +878,7 @@
   <!-- ======================== -->
   <!-- Volunteer Map            -->
   <!-- ======================== -->
-  <data name="Nav_Map" xml:space="preserve"><value>Mapa</value></data>
+  <data name="Nav_City" xml:space="preserve"><value>Mapa</value></data>
   <data name="Map_Title" xml:space="preserve"><value>Mapa de Humans</value></data>
   <data name="Map_Count" xml:space="preserve"><value>{0} humans con ubicaci&#xF3;n</value></data>
   <data name="Map_None" xml:space="preserve"><value>Ning&#xFA;n human ha establecido su ubicaci&#xF3;n a&#xFA;n.</value></data>
@@ -1329,5 +1330,70 @@
   <data name="GetInvolved_UrgentShifts" xml:space="preserve"><value>Turnos que necesitan humans ahora</value></data>
   <data name="GetInvolved_BrowseAllShifts" xml:space="preserve"><value>Ver todos los turnos</value></data>
   <data name="GetInvolved_MyShifts" xml:space="preserve"><value>Mis turnos</value></data>
+
+  <!-- ======================== -->
+  <!-- CityPlanning                -->
+  <!-- ======================== -->
+  <data name="CityPlanning_PlacementPhase" xml:space="preserve"><value>Fase de colocación</value></data>
+  <data name="CityPlanning_StatusOpen" xml:space="preserve"><value>Abierta</value></data>
+  <data name="CityPlanning_StatusClosed" xml:space="preserve"><value>Cerrada</value></data>
+  <data name="CityPlanning_HelpButton" xml:space="preserve"><value>Ayuda</value></data>
+  <data name="CityPlanning_AddMyBarrioButton" xml:space="preserve"><value>Añadir mi barrio al mapa</value></data>
+  <data name="CityPlanning_AddABarrioOption" xml:space="preserve"><value>Añadir un barrio…</value></data>
+  <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Guardar</value></data>
+  <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Historial</value></data>
+  <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
+  <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Admin del Mapa de Barrios</value></data>
+  <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Ver Mapa</value></data>
+  <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Fase de Colocación</value></data>
+  <data name="CityPlanning_Admin_Status" xml:space="preserve"><value>Estado:</value></data>
+  <data name="CityPlanning_Admin_OpenedAt" xml:space="preserve"><value>Abierta {0}</value></data>
+  <data name="CityPlanning_Admin_ClosedAt" xml:space="preserve"><value>Cerrada {0}</value></data>
+  <data name="CityPlanning_Admin_ClosePlacement" xml:space="preserve"><value>Cerrar Fase</value></data>
+  <data name="CityPlanning_Admin_OpenPlacement" xml:space="preserve"><value>Abrir Fase</value></data>
+  <data name="CityPlanning_Admin_PlacementDatesCard" xml:space="preserve"><value>Fechas de Colocación</value></data>
+  <data name="CityPlanning_Admin_PlacementDatesHint" xml:space="preserve"><value>Solo informativo — se muestra en el modal de ayuda (hora de España). No abre ni cierra la fase automáticamente.</value></data>
+  <data name="CityPlanning_Admin_OpensAt" xml:space="preserve"><value>Abre el</value></data>
+  <data name="CityPlanning_Admin_ClosesAt" xml:space="preserve"><value>Cierra el</value></data>
+  <data name="CityPlanning_Admin_SaveDates" xml:space="preserve"><value>Guardar fechas</value></data>
+  <data name="CityPlanning_Admin_LimitZoneCard" xml:space="preserve"><value>Zona Límite de Barrios</value></data>
+  <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Zona límite subida</value></data>
+  <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>¿Eliminar la zona límite?</value></data>
+  <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>Aún no se ha subido ninguna zona límite.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Zonas Oficiales</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Zonas oficiales subidas</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>¿Eliminar las zonas oficiales?</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>Aún no se han subido zonas oficiales.</value></data>
+  <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>Subir archivo GeoJSON</value></data>
+  <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Subir</value></data>
+  <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Descargar</value></data>
+  <data name="CityPlanning_Admin_Remove" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exportar</value></data>
+  <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Descargar todos los polígonos de barrios de {0} como GeoJSON FeatureCollection.</value></data>
+  <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>Descargar GeoJSON ({0})</value></data>
+  <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Historial de polígonos</value></data>
+  <data name="CityPlanning_Loading" xml:space="preserve"><value>Cargando…</value></data>
+  <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>¿Cuándo es?</value></data>
+  <data name="CityPlanning_Help_Opens" xml:space="preserve"><value>Abre:</value></data>
+  <data name="CityPlanning_Help_Closes" xml:space="preserve"><value>Cierra:</value></data>
+  <data name="CityPlanning_Help_SpainTime" xml:space="preserve"><value>(hora de España)</value></data>
+  <data name="CityPlanning_Help_WhenPlaceholder" xml:space="preserve"><value>La fase de colocación dura un tiempo limitado — pronto se mostrarán las fechas exactas aquí. ¡Coloca tu barrio antes de que cierre!</value></data>
+  <data name="CityPlanning_Help_PlacingTitle" xml:space="preserve"><value>Colocar tu barrio</value></data>
+  <data name="CityPlanning_Help_PlacingBody" xml:space="preserve"><value>Haz clic en {0} para empezar a dibujar. Luego haz clic en el mapa para colocar puntos que definan tu espacio — cada clic añade una esquina. Cierra la forma haciendo clic sobre el primer punto.</value></data>
+  <data name="CityPlanning_Help_AdjustingTitle" xml:space="preserve"><value>Ajustar la forma</value></data>
+  <data name="CityPlanning_Help_Adjusting_VertexMove" xml:space="preserve"><value>Arrastra un punto de esquina para moverlo</value></data>
+  <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Arrastra toda la forma para reposicionarla</value></data>
+  <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Haz clic en el punto medio de un borde (donde se muestra la longitud en metros) para añadir una nueva esquina</value></data>
+  <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Haz clic en un punto para seleccionarlo (se pone naranja), luego pulsa Delete o Backspace para eliminarlo</value></data>
+  <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>El área en m² se muestra en el centro y se actualiza al editar</value></data>
+  <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Guardar y editar después</value></data>
+  <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>¿Satisfecho? Dale a Save. Después, haz clic en tu barrio en el mapa para ver su tamaño, luego Edit para volver al modo edición. Cada guardado crea una entrada en el historial — usa el botón History para ver y restaurar versiones anteriores: haz clic en el botón de vista previa para mostrarla y guarda la que quieras restaurar. ¡Sin estrés, no puedes romper nada!</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Quédate dentro de las zonas blancas</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Las áreas blancas discontinuas marcan las zonas de acampada seguras, protegidas por pararrayos. Acampar fuera de ellas no está permitido, así que mantén tu barrio dentro de esos límites.</value></data>
+  <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>¿Solapamientos? ¡Háblalo!</value></data>
+  <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>Si tu barrio se solapa con otro, escríbenos en {0} y resolvedlo juntos. Si hay conflictos sin resolver al final de la fase, el equipo de city planning los gestionará.</value></data>
+  <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>
+  <data name="CityPlanning_Help_ColorsTitle" xml:space="preserve"><value>Colores y zonas de sonido</value></data>
+  <data name="CityPlanning_Help_ColorsBody" xml:space="preserve"><value>Cada barrio está coloreado según su zona de sonido preferida (editable desde la página de tu barrio).</value></data>
 
 </root>
