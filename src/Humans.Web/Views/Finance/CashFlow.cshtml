@@ -55,11 +55,22 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @{
+                        var runwayExhausted = false;
+                    }
                     @foreach (var periodRow in Model.Periods)
                     {
                         var detailId = $"period-{periodRow.PeriodStart.ToString("yyyyMMdd", null)}";
-                        <tr class="fw-semibold" role="button" data-bs-toggle="collapse" data-bs-target="#@detailId">
-                            <td>@periodRow.Label</td>
+                        var isRunwayBoundary = !runwayExhausted && periodRow.RunningNet < 0;
+                        if (isRunwayBoundary) { runwayExhausted = true; }
+                        <tr class="fw-semibold @(isRunwayBoundary ? "table-warning" : "")" role="button" data-bs-toggle="collapse" data-bs-target="#@detailId">
+                            <td>
+                                @periodRow.Label
+                                @if (isRunwayBoundary)
+                                {
+                                    <span class="badge bg-warning text-dark ms-2"><i class="fa-solid fa-triangle-exclamation me-1"></i>Funds exhausted</span>
+                                }
+                            </td>
                             <td class="text-end text-success">&euro;@periodRow.IncomeTotal.ToString("N2")</td>
                             <td class="text-end text-danger">&euro;@Math.Abs(periodRow.ExpenseTotal).ToString("N2")</td>
                             <td class="text-end @(periodRow.Net >= 0 ? "text-success" : "text-danger")">
