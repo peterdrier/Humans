@@ -53,4 +53,37 @@
         document.getElementById('feedbackPageUrl').value = window.location.href;
         document.getElementById('feedbackUserAgent').value = navigator.userAgent;
     });
+
+    (function () {
+        var form = document.querySelector('#feedbackModal form');
+        if (!form) return;
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            var formData = new FormData(form);
+            fetch(form.action, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    form.reset();
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('feedbackModal'));
+                    if (modal) modal.hide();
+                    showToast(data.message, 'success');
+                } else {
+                    showToast(data.message || 'Something went wrong.', 'danger');
+                }
+            })
+            .catch(function () {
+                showToast('Something went wrong. Please try again.', 'danger');
+            })
+            .finally(function () {
+                if (submitBtn) submitBtn.disabled = false;
+            });
+        });
+    })();
 </script>

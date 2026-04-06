@@ -218,6 +218,31 @@ document.addEventListener('click', function (e) {
     });
 })();
 
+// Show a Bootstrap toast notification
+// Usage: showToast('Success!', 'success') or showToast('Error!', 'danger')
+function showToast(message, type) {
+    type = type || 'success';
+    var container = document.getElementById('toastContainer');
+    if (!container) return;
+    var iconClass = type === 'success' ? 'fa-check-circle text-success' : 'fa-exclamation-circle text-danger';
+    var toastEl = document.createElement('div');
+    toastEl.className = 'toast align-items-center border-0';
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    toastEl.innerHTML =
+        '<div class="d-flex">' +
+            '<div class="toast-body">' +
+                '<i class="fa-solid ' + iconClass + ' me-2"></i>' + message +
+            '</div>' +
+            '<button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+        '</div>';
+    container.appendChild(toastEl);
+    var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    toast.show();
+    toastEl.addEventListener('hidden.bs.toast', function () { toastEl.remove(); });
+}
+
 // Human profile popover (lazy-loaded on first hover)
 (function () {
     var cache = {};

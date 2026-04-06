@@ -97,12 +97,19 @@ public class FeedbackController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Submit(SubmitFeedbackViewModel model)
     {
+        var isAjax = Request.Headers.XRequestedWith == "XMLHttpRequest";
+
         var (userMissing, user) = await RequireCurrentUserAsync();
-        if (userMissing is not null) return userMissing;
+        if (userMissing is not null)
+        {
+            return isAjax ? Unauthorized() : userMissing;
+        }
 
         if (!ModelState.IsValid)
         {
-            SetError(_localizer["Feedback_Error"].Value);
+            var errorMsg = _localizer["Feedback_Error"].Value;
+            if (isAjax) return Json(new { success = false, message = errorMsg });
+            SetError(errorMsg);
             return LocalRedirect(Url.IsLocalUrl(model.PageUrl) ? model.PageUrl : "/");
         }
 
@@ -116,12 +123,16 @@ public class FeedbackController : HumansControllerBase
                 model.PageUrl, model.UserAgent, additionalContext,
                 model.Screenshot);
 
-            SetSuccess(_localizer["Feedback_Submitted"].Value);
+            var successMsg = _localizer["Feedback_Submitted"].Value;
+            if (isAjax) return Json(new { success = true, message = successMsg });
+            SetSuccess(successMsg);
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Feedback submission failed for user {UserId}", user.Id);
-            SetError(_localizer["Feedback_Error"].Value);
+            _logger.LogDebug(ex, "Feedback submission failed for user {UserId}", user.Id);
+            var errorMsg = _localizer["Feedback_Error"].Value;
+            if (isAjax) return Json(new { success = false, message = errorMsg });
+            SetError(errorMsg);
         }
 
         return LocalRedirect(Url.IsLocalUrl(model.PageUrl) ? model.PageUrl : "/");
