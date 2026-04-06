@@ -22,7 +22,9 @@ How to use the skills and agents in this project. Ordered by typical workflow.
 
 **What it does:** Launches an agent swarm — one agent per batch, each in its own worktree. Parallel-safe batches run concurrently (max 3). Each agent implements issues sequentially, runs spec review per-issue, runs code review per-batch, fixes failures in a loop (max 3 iterations), and creates one PR per batch.
 
-**Output:** PRs on peterdrier/Humans, one per batch. Summary report showing pass/fail per batch.
+**Output:** QA PRs on peterdrier/Humans, one per batch. Summary report showing pass/fail per batch.
+
+See [docs/pull-request-workflow.md](docs/pull-request-workflow.md) for the repo-specific QA-first PR flow.
 
 ```
 /execute-sprint batch 2       # execute one batch
@@ -116,6 +118,7 @@ These are used internally by the skills above:
 2. **`/execute-sprint batch N`** — let the swarm do the work (or work manually)
 3. **`/spec-review`** — verify before PR (automatic in execute-sprint)
 4. **`/code-review`** — quality check before PR (automatic in execute-sprint)
-5. **Merge PRs** — squash merge to main, Coolify auto-deploys to QA
-6. **`/test-site`** — smoke test the deployment
-7. **`/finish`** — clean up, capture context
+5. **Merge or land the QA PR** — `peterdrier/Humans` drives the QA deploy path
+6. **`/test-site`** — smoke test the QA deployment
+7. **Open the upstream production PR** — only after QA passes, target `nobodies-collective/Humans`
+8. **`/finish`** — clean up, capture context
