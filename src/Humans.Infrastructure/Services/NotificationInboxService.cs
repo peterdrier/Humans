@@ -343,6 +343,32 @@ public class NotificationInboxService : INotificationInboxService
         return recipient.Notification.ActionUrl;
     }
 
+    public async Task ResolveBySourceAsync(
+        Guid userId, NotificationSource source,
+        CancellationToken ct = default)
+    {
+        var now = _clock.GetCurrentInstant();
+
+        var notifications = await _dbContext.Notifications
+            .Include(n => n.Recipients)
+            .Where(n => n.Source == source
+                && n.ResolvedAt == null
+                && n.Recipients.Any(r => r.UserId == userId))
+            .ToListAsync(ct);
+
+        if (notifications.Count == 0)
+            return;
+
+        foreach (var notification in notifications)
+        {
+            notification.ResolvedAt = now;
+            notification.ResolvedByUserId = userId;
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+        InvalidateBadgeCaches([userId]);
+    }
+
     private static NotificationRowDto MapToRow(NotificationRecipient nr)
     {
         var n = nr.Notification;

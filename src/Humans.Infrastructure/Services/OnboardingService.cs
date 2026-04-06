@@ -18,6 +18,7 @@ public class OnboardingService : IOnboardingService
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
+    private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHumansMetrics _metrics;
@@ -30,6 +31,7 @@ public class OnboardingService : IOnboardingService
         IAuditLogService auditLogService,
         IEmailService emailService,
         INotificationService notificationService,
+        INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
         IMembershipCalculator membershipCalculator,
         IHumansMetrics metrics,
@@ -41,6 +43,7 @@ public class OnboardingService : IOnboardingService
         _auditLogService = auditLogService;
         _emailService = emailService;
         _notificationService = notificationService;
+        _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
         _membershipCalculator = membershipCalculator;
         _metrics = metrics;
@@ -505,6 +508,16 @@ public class OnboardingService : IOnboardingService
         {
             await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
             _cache.UpdateApprovedProfile(userId, CachedProfile.Create(user.Profile, user));
+        }
+
+        // Auto-resolve any outstanding AccessSuspended notifications (best-effort)
+        try
+        {
+            await _notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
         }
 
         _logger.LogInformation("Admin {AdminId} unsuspended human {HumanId}", adminId, userId);

@@ -74,6 +74,15 @@ public interface INotificationInboxService
     Task<string?> ClickThroughAsync(
         Guid notificationId, Guid userId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Resolves all unresolved notifications of a given source type for a user.
+    /// Used for auto-resolving notifications when the underlying condition is fixed
+    /// (e.g., resolving AccessSuspended notifications when consents are completed).
+    /// </summary>
+    Task ResolveBySourceAsync(
+        Guid userId, NotificationSource source,
+        CancellationToken ct = default);
 }
 
 /// <summary>

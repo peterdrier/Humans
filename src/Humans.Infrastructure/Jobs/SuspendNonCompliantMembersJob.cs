@@ -93,6 +93,12 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     continue;
                 }
 
+                // Skip users who are already suspended — avoids re-sending notifications
+                if (user.Profile.IsSuspended)
+                {
+                    continue;
+                }
+
                 // 1. Set suspended flag on profile
                 user.Profile.IsSuspended = true;
                 user.Profile.UpdatedAt = now;

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Services;
@@ -14,6 +15,7 @@ public class ConsentService : IConsentService
     private readonly HumansDbContext _dbContext;
     private readonly IOnboardingService _onboardingService;
     private readonly IMembershipCalculator _membershipCalculator;
+    private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
@@ -23,6 +25,7 @@ public class ConsentService : IConsentService
         HumansDbContext dbContext,
         IOnboardingService onboardingService,
         IMembershipCalculator membershipCalculator,
+        INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
         IHumansMetrics metrics,
         IClock clock,
@@ -31,6 +34,7 @@ public class ConsentService : IConsentService
         _dbContext = dbContext;
         _onboardingService = onboardingService;
         _membershipCalculator = membershipCalculator;
+        _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
         _metrics = metrics;
         _clock = clock;
@@ -150,6 +154,16 @@ public class ConsentService : IConsentService
         // Sync system team memberships (adds user if eligible + all consents done)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
         await _syncJob.SyncCoordinatorsMembershipForUserAsync(userId);
+
+        // Auto-resolve any outstanding AccessSuspended notifications (best-effort)
+        try
+        {
+            await _notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resolve AccessSuspended notifications for user {UserId}", userId);
+        }
 
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocument.Name);
     }
