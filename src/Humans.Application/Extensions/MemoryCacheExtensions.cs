@@ -71,6 +71,27 @@ public static class MemoryCacheExtensions
     public static void InvalidateCampSettings(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.CampSettings);
 
+    public static void InvalidateUserTicketCount(this IMemoryCache cache, Guid userId) =>
+        cache.Remove(CacheKeys.UserTicketCount(userId));
+
+    public static void InvalidateTicketDashboardStats(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.TicketDashboardStats);
+
+    public static void InvalidateUserIdsWithTickets(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.UserIdsWithTickets);
+
+    /// <summary>
+    /// Invalidate all ticket-related caches after a sync or data change.
+    /// </summary>
+    public static void InvalidateTicketCaches(this IMemoryCache cache)
+    {
+        cache.InvalidateTicketDashboardStats();
+        cache.InvalidateUserIdsWithTickets();
+    }
+
+    public static void InvalidateUserProfile(this IMemoryCache cache, Guid userId) =>
+        cache.Remove(CacheKeys.UserProfile(userId));
+
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 

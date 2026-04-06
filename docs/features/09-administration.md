@@ -197,6 +197,10 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 | `/Admin/Humans/{id}/Purge` | PurgeHuman | POST: Dev/QA user purge (non-production) |
 | `/Admin/Configuration` | Configuration | Configuration status page |
 | `/Admin/Logs` | Logs | View recent log entries |
+| `/Admin/DbStats` | DbStats | Database query statistics |
+| `/Admin/DbStats/Reset` | ResetDbStats | POST: Reset query statistics |
+| `/Admin/CacheStats` | CacheStats | Cache hit/miss statistics per key type |
+| `/Admin/CacheStats/Reset` | ResetCacheStats | POST: Reset cache statistics |
 | `/Admin/DbVersion` | DbVersion | Database migration version |
 | `/Admin/ClearHangfireLocks` | ClearHangfireLocks | POST: Admin-only lock cleanup |
 
