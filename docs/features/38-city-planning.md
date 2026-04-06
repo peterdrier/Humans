@@ -1,8 +1,8 @@
-# Barrio Map
+# City Planning
 
 ## Business Context
 
-The Barrio Map gives camps a collaborative, real-time tool to stake out and refine their polygon on an aerial map of the site before the event. Camp leads draw their own shapes during the placement phase; map admins oversee the process, manage the site boundary and informational overlays, and export the final placement as GeoJSON for use in logistics and public materials.
+City Planning gives camps a collaborative, real-time tool to stake out and refine their polygon on an aerial map of the site before the event. Camp leads draw their own shapes during the placement phase; map admins oversee the process, manage the site boundary and informational overlays, and export the final placement as GeoJSON for use in logistics and public materials.
 
 **Goals:**
 - Let camp leads place their own barrio without manual back-and-forth with organizers
@@ -51,9 +51,9 @@ CampPolygonHistory
 └── Note: string ("Saved" by default; "Restored from {ISO timestamp}" for restores)
 ```
 
-### CampMapSettings (singleton per year)
+### CityPlanningSettings (singleton per year)
 ```
-CampMapSettings
+CityPlanningSettings
 ├── Id: Guid
 ├── Year: int [unique]
 ├── IsPlacementOpen: bool
@@ -81,9 +81,9 @@ The map page is a full-screen MapLibre GL JS map with a vanilla ES module fronte
 | `config.js` | Server-rendered config values read from DOM data attributes |
 
 **State flow:**
-1. Page loads → `GET /api/camp-map/state` fetches settings + all polygons
+1. Page loads → `GET /api/city-planning/state` fetches settings + all polygons
 2. Map renders via `renderMap()` using fetched data
-3. Edit actions call `PUT /api/camp-map/camp-polygons/{id}`
+3. Edit actions call `PUT /api/city-planning/camp-polygons/{id}`
 4. Server broadcasts `CampPolygonUpdated` via SignalR → all clients re-render that polygon
 
 **Visual encoding (sound zones):**
@@ -115,7 +115,7 @@ Own camp polygon uses 2× outline width and higher fill opacity. Active edit pol
 | Export GeoJSON | Map admin |
 | Admin panel (placement toggle, dates, zone uploads) | Map admin |
 
-Map admin is determined by `ICampMapService.IsUserMapAdminAsync` (role-based, implementation in Infrastructure).
+Map admin is determined by `ICityPlanningService.IsUserMapAdminAsync` (role-based, implementation in Infrastructure).
 
 ## URL Structure
 
@@ -123,31 +123,31 @@ Map admin is determined by `ICampMapService.IsUserMapAdminAsync` (role-based, im
 
 | Route | Description |
 |-------|-------------|
-| `GET /BarrioMap` | Full-screen map page |
-| `GET /BarrioMap/Admin` | Admin settings panel |
-| `POST /BarrioMap/Admin/OpenPlacement` | Open placement phase |
-| `POST /BarrioMap/Admin/ClosePlacement` | Close placement phase |
-| `POST /BarrioMap/Admin/UpdatePlacementDates` | Set informational open/close datetimes |
-| `POST /BarrioMap/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
-| `GET /BarrioMap/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
-| `POST /BarrioMap/Admin/DeleteLimitZone` | Delete limit zone |
-| `POST /BarrioMap/Admin/UploadOfficialZones` | Upload official zones GeoJSON |
-| `GET /BarrioMap/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
-| `POST /BarrioMap/Admin/DeleteOfficialZones` | Delete official zones |
+| `GET /CityPlanning` | Full-screen map page |
+| `GET /CityPlanning/Admin` | Admin settings panel |
+| `POST /CityPlanning/Admin/OpenPlacement` | Open placement phase |
+| `POST /CityPlanning/Admin/ClosePlacement` | Close placement phase |
+| `POST /CityPlanning/Admin/UpdatePlacementDates` | Set informational open/close datetimes |
+| `POST /CityPlanning/Admin/UploadLimitZone` | Upload limit zone GeoJSON |
+| `GET /CityPlanning/Admin/DownloadLimitZone` | Download limit zone GeoJSON |
+| `POST /CityPlanning/Admin/DeleteLimitZone` | Delete limit zone |
+| `POST /CityPlanning/Admin/UploadOfficialZones` | Upload official zones GeoJSON |
+| `GET /CityPlanning/Admin/DownloadOfficialZones` | Download official zones GeoJSON |
+| `POST /CityPlanning/Admin/DeleteOfficialZones` | Delete official zones |
 
 ### API Routes
 
 | Route | Description |
 |-------|-------------|
-| `GET /api/camp-map/state` | Map state: settings + all polygons + unmapped seasons |
-| `PUT /api/camp-map/camp-polygons/{campSeasonId}` | Save or update a polygon |
-| `GET /api/camp-map/camp-polygons/{campSeasonId}/history` | Version history for a polygon |
-| `POST /api/camp-map/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore a historical version |
-| `GET /api/camp-map/export.geojson?year={year}` | Export all polygons as GeoJSON |
+| `GET /api/city-planning/state` | Map state: settings + all polygons + unmapped seasons |
+| `PUT /api/city-planning/camp-polygons/{campSeasonId}` | Save or update a polygon |
+| `GET /api/city-planning/camp-polygons/{campSeasonId}/history` | Version history for a polygon |
+| `POST /api/city-planning/camp-polygons/{campSeasonId}/restore/{historyId}` | Restore a historical version |
+| `GET /api/city-planning/export.geojson?year={year}` | Export all polygons as GeoJSON |
 
 ### SignalR Hub
 
-`/hubs/camp-map` — broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` and receives `CursorMoved(lng, lat)` from clients.
+`/hubs/city-planning` — broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campName)` and receives `CursorMoved(lng, lat)` from clients.
 
 ## Related Features
 

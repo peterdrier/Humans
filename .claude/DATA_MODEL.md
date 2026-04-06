@@ -37,6 +37,9 @@
 | CampImage | Image metadata (files stored on disk) |
 | CampHistoricalName | Name history for tracking renames |
 | CampSettings | Singleton settings (public year, open seasons) |
+| CityPlanningSettings | Per-year city planning config (placement phase, limit zone, official zones) |
+| CampPolygon | Polygon placement for a camp season (one per CampSeason) |
+| CampPolygonHistory | Append-only version history of polygon edits |
 | EmailOutboxMessage | Queued/sent/failed transactional email records |
 | Campaign | Bulk code distribution campaign |
 | CampaignCode | Individual code belonging to a campaign |
@@ -100,6 +103,12 @@ Camp 1──n CampHistoricalName
 Camp n──1 User (CreatedByUser)
 CampLead n──1 User
 CampSeason n──1 User (ReviewedByUser, optional)
+
+CityPlanningSettings (standalone, one per year)
+CampPolygon n──1 CampSeason (unique — one polygon per season)
+CampPolygon n──1 User (LastModifiedByUser)
+CampPolygonHistory n──1 CampSeason
+CampPolygonHistory n──1 User (ModifiedByUser)
 
 Campaign 1──n CampaignCode
 Campaign 1──n CampaignGrant
@@ -599,6 +608,58 @@ Colaborador and Asociado memberships have 2-year synchronized terms expiring Dec
 | ElectricalGrid | Yellow, Red, Norg, OwnSupply, Unknown |
 
 All stored as strings via `HasConversion<string>()`. `Vibes` stored as jsonb array.
+
+## City Planning Entities
+
+### CityPlanningSettings
+
+Per-year singleton controlling the placement phase and map overlays. Auto-created from `CampSettings.PublicYear`.
+
+**Table:** `city_planning_settings`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| Year | int | Season year (unique) |
+| IsPlacementOpen | bool | Whether camp leads can edit polygons |
+| OpenedAt | Instant? | When placement was last opened |
+| ClosedAt | Instant? | When placement was last closed |
+| PlacementOpensAt | LocalDateTime? | Informational scheduled open (not enforced) |
+| PlacementClosesAt | LocalDateTime? | Informational scheduled close (not enforced) |
+| LimitZoneGeoJson | text? | GeoJSON FeatureCollection — site boundary |
+| OfficialZonesGeoJson | text? | GeoJSON FeatureCollection — named overlay zones |
+| UpdatedAt | Instant | Last modification |
+
+### CampPolygon
+
+One polygon per CampSeason representing the camp's placed barrio area.
+
+**Table:** `camp_polygons`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| CampSeasonId | Guid | FK → CampSeason (unique — one polygon per season) |
+| GeoJson | text | GeoJSON Feature with Polygon geometry |
+| AreaSqm | double | Computed area in square meters |
+| LastModifiedByUserId | Guid | FK → User |
+| LastModifiedAt | Instant | Last modification |
+
+### CampPolygonHistory
+
+Append-only version history of polygon edits and restores.
+
+**Table:** `camp_polygon_histories`
+
+| Property | Type | Notes |
+|----------|------|-------|
+| Id | Guid | PK |
+| CampSeasonId | Guid | FK → CampSeason |
+| GeoJson | text | GeoJSON snapshot |
+| AreaSqm | double | Area at time of snapshot |
+| ModifiedByUserId | Guid | FK → User |
+| ModifiedAt | Instant | When this version was saved |
+| Note | string (512) | "Saved" or "Restored from {timestamp}" |
 
 ## Serialization Notes
 
