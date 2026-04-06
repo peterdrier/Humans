@@ -95,21 +95,22 @@ public class BudgetController : HumansControllerBase
                 .Where(li => !li.IsCashflowOnly)
                 .Sum(li => li.Amount);
 
-            // Compute per-group buffer: allocated money not yet detailed into line items
-            var bufferEntries = visibleGroups
+            // Compute per-group buffer: allocated money not yet detailed into line items.
+            // Negative = expense buffer, positive = income buffer.
+            var groupBuffers = visibleGroups
                 .Where(g => !g.IsTicketingGroup)
                 .Select(g => new
                 {
                     Name = $"{g.Name} Buffer",
-                    Amount = g.Categories.Sum(c =>
+                    Raw = g.Categories.Sum(c =>
                         c.AllocatedAmount - c.LineItems.Where(li => !li.IsCashflowOnly).Sum(li => li.Amount))
                 })
-                .Where(b => b.Amount > 0)
+                .Where(b => b.Raw != 0)
                 .ToList();
 
             var allExpenseEntries = summary.ExpenseSlices
                 .Select(s => new { s.Name, s.Amount })
-                .Concat(bufferEntries)
+                .Concat(groupBuffers.Where(b => b.Raw < 0).Select(b => new { b.Name, Amount = Math.Abs(b.Raw) }))
                 .ToList();
             var totalExpenseForSlices = allExpenseEntries.Sum(s => s.Amount);
             var expenseSlices = allExpenseEntries
@@ -118,6 +119,20 @@ public class BudgetController : HumansControllerBase
                     Name = s.Name,
                     Amount = s.Amount,
                     Percentage = totalExpenseForSlices > 0 ? s.Amount / totalExpenseForSlices * 100 : 0
+                })
+                .ToList();
+
+            var allIncomeEntries = summary.IncomeSlices
+                .Select(s => new { s.Name, s.Amount })
+                .Concat(groupBuffers.Where(b => b.Raw > 0).Select(b => new { b.Name, Amount = b.Raw }))
+                .ToList();
+            var totalIncomeForSlices = allIncomeEntries.Sum(s => s.Amount);
+            var incomeSlices = allIncomeEntries
+                .Select(s => new BudgetSlice
+                {
+                    Name = s.Name,
+                    Amount = s.Amount,
+                    Percentage = totalIncomeForSlices > 0 ? s.Amount / totalIncomeForSlices * 100 : 0
                 })
                 .ToList();
 
@@ -130,7 +145,7 @@ public class BudgetController : HumansControllerBase
                 TotalExpenses = summary.TotalExpenses,
                 NetBalance = summary.NetBalance,
                 TotalLineItems = totalLineItems,
-                IncomeSlices = summary.IncomeSlices.Select(s => new BudgetSlice { Name = s.Name, Amount = s.Amount, Percentage = s.Percentage }).ToList(),
+                IncomeSlices = incomeSlices,
                 ExpenseSlices = expenseSlices,
                 IsCoordinator = coordinatorTeamIds.Count > 0 || (await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded
             };
