@@ -19,6 +19,7 @@ export const loginAsVolunteerCoordinator = (page: Page) => loginAs(page, 'volunt
 export const loginAsHumanAdmin = (page: Page) => loginAs(page, 'human-admin');
 export const loginAsFinanceAdmin = (page: Page) => loginAs(page, 'finance-admin');
 export const loginAsFeedbackAdmin = (page: Page) => loginAs(page, 'feedback-admin');
+export const loginAsCityPlanning = (page: Page) => loginAs(page, 'city-planning');
 
 /**
  * Login as a team coordinator. This persona is coordinator of "Dev Test Department"
