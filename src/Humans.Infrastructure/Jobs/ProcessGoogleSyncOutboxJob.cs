@@ -62,6 +62,16 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
             return;
         }
 
+        // Pre-load contextual info for richer error messages
+        var userIds = pendingEvents.Select(e => e.UserId).Distinct().ToList();
+        var teamIds = pendingEvents.Select(e => e.TeamId).Distinct().ToList();
+        var userEmailLookup = await _dbContext.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Email ?? "unknown", cancellationToken);
+        var teamNameLookup = await _dbContext.Teams
+            .Where(t => teamIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
+
         foreach (var outboxEvent in pendingEvents)
         {
             try
@@ -116,9 +126,11 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
 
                 _logger.LogWarning(
                     ex,
-                    "Permanent failure processing Google sync outbox event {OutboxId} ({EventType}) — HTTP {StatusCode}, not retrying",
+                    "Permanent failure processing Google sync outbox event {OutboxId} ({EventType}) for user {UserEmail} in team {TeamName} — HTTP {StatusCode}, not retrying",
                     outboxEvent.Id,
                     outboxEvent.EventType,
+                    userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown"),
+                    teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString()),
                     ex.Error?.Code);
 
                 // Mark user's Google email as Rejected
@@ -136,10 +148,20 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
 
                 _logger.LogError(
                     ex,
-                    "Failed processing Google sync outbox event {OutboxId} ({EventType}) attempt {Attempt}",
+                    "Failed processing Google sync outbox event {OutboxId} ({EventType}) for user {UserEmail} in team {TeamName} — attempt {Attempt}/{MaxRetries}",
                     outboxEvent.Id,
                     outboxEvent.EventType,
-                    outboxEvent.RetryCount);
+                    userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown"),
+                    teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString()),
+                    outboxEvent.RetryCount,
+                    MaxRetryCount);
+
+                // Mark as permanently failed when retries are exhausted
+                if (outboxEvent.RetryCount >= MaxRetryCount)
+                {
+                    outboxEvent.FailedPermanently = true;
+                    outboxEvent.ProcessedAt = _clock.GetCurrentInstant();
+                }
 
                 await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -155,7 +177,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
                             "Google sync event failed after all retries",
                             RoleNames.Admin,
                             body: $"Event {outboxEvent.EventType} for team {outboxEvent.TeamId} failed: {outboxEvent.LastError?[..Math.Min(200, outboxEvent.LastError.Length)]}",
-                            actionUrl: "/Google/Sync",
+                            actionUrl: "/Google/SyncOutbox",
                             actionLabel: "View \u2192",
                             cancellationToken: cancellationToken);
                     }

@@ -1,0 +1,60 @@
+@using Humans.Web.Extensions
+@model IList<Humans.Domain.Entities.GoogleSyncOutboxEvent>
+@{
+    ViewData["Title"] = "Google Sync Outbox";
+    var userLookup = (Dictionary<Guid, string>)ViewBag.UserLookup;
+    var teamLookup = (Dictionary<Guid, string>)ViewBag.TeamLookup;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Google Sync Outbox</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Back to Google Integration
+    </a>
+</div>
+
+<vc:temp-data-alerts />
+
+@{
+    var failedPermanently = Model.Where(e => e.FailedPermanently).ToList();
+    var pending = Model.Where(e => e.ProcessedAt == null && !e.FailedPermanently).ToList();
+    var processed = Model.Where(e => e.ProcessedAt != null && !e.FailedPermanently).ToList();
+}
+
+@if (failedPermanently.Count > 0)
+{
+    <div class="alert alert-danger">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+        <strong>@failedPermanently.Count permanently failed event(s)</strong> require manual attention.
+    </div>
+}
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#failed-tab" type="button">
+            Failed <span class="badge bg-danger ms-1">@failedPermanently.Count</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pending-tab" type="button">
+            Pending <span class="badge bg-warning text-dark ms-1">@pending.Count</span>
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#processed-tab" type="button">
+            Processed <span class="badge bg-success ms-1">@processed.Count</span>
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="failed-tab">
+        @await Html.PartialAsync("_SyncOutboxTable", failedPermanently, new ViewDataDictionary(ViewData) { { "UserLookup", userLookup }, { "TeamLookup", teamLookup }, { "ShowError", true } })
+    </div>
+    <div class="tab-pane fade" id="pending-tab">
+        @await Html.PartialAsync("_SyncOutboxTable", pending, new ViewDataDictionary(ViewData) { { "UserLookup", userLookup }, { "TeamLookup", teamLookup }, { "ShowError", true } })
+    </div>
+    <div class="tab-pane fade" id="processed-tab">
+        @await Html.PartialAsync("_SyncOutboxTable", processed, new ViewDataDictionary(ViewData) { { "UserLookup", userLookup }, { "TeamLookup", teamLookup }, { "ShowError", false } })
+    </div>
+</div>

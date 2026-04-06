@@ -1,0 +1,64 @@
+@using Humans.Web.Extensions
+@model IList<Humans.Domain.Entities.GoogleSyncOutboxEvent>
+@{
+    var userLookup = (Dictionary<Guid, string>)ViewData["UserLookup"]!;
+    var teamLookup = (Dictionary<Guid, string>)ViewData["TeamLookup"]!;
+    var showError = (bool)ViewData["ShowError"]!;
+}
+
+@if (Model.Count == 0)
+{
+    <div class="text-muted text-center py-4">No events.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>Event Type</th>
+                    <th>Human</th>
+                    <th>Team</th>
+                    <th>Occurred</th>
+                    <th>Retries</th>
+                    @if (showError)
+                    {
+                        <th>Last Error</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var evt in Model)
+                {
+                    var userEmail = userLookup.GetValueOrDefault(evt.UserId, "unknown");
+                    var teamName = teamLookup.GetValueOrDefault(evt.TeamId, evt.TeamId.ToString());
+                    <tr>
+                        <td><code>@evt.EventType</code></td>
+                        <td>
+                            <human-link user-id="@evt.UserId" display-name="@userEmail" admin="true" show-popover="true" />
+                        </td>
+                        <td>@teamName</td>
+                        <td class="text-nowrap">@evt.OccurredAt.ToDisplayDateTime()</td>
+                        <td>
+                            @if (evt.RetryCount > 0)
+                            {
+                                <span class="badge bg-secondary">@evt.RetryCount</span>
+                            }
+                        </td>
+                        @if (showError)
+                        {
+                            <td>
+                                @if (!string.IsNullOrEmpty(evt.LastError))
+                                {
+                                    <small class="text-danger" title="@evt.LastError">
+                                        @(evt.LastError.Length > 120 ? evt.LastError[..120] + "..." : evt.LastError)
+                                    </small>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1073,13 +1073,20 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     UserId: expected.Id, ProfilePictureUrl: expected.ProfilePictureUrl));
             }
 
-            foreach (var email in currentEmails)
-            {
-                // Skip the service account — it's the group owner added at creation
-                if (string.Equals(email, saEmail, StringComparison.OrdinalIgnoreCase))
-                    continue;
+            var extraEmails = currentEmails
+                .Where(e => !expectedEmails.Contains(e) &&
+                    !string.Equals(e, saEmail, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var extraIdentities = await ResolveExtraEmailIdentitiesAsync(extraEmails, cancellationToken);
 
-                if (!expectedEmails.Contains(email))
+            foreach (var email in extraEmails)
+            {
+                if (extraIdentities.TryGetValue(email, out var identity))
+                {
+                    members.Add(new MemberSyncStatus(email, identity.DisplayName, MemberSyncState.Extra, [],
+                        UserId: identity.UserId, ProfilePictureUrl: identity.ProfilePictureUrl));
+                }
+                else
                 {
                     members.Add(new MemberSyncStatus(email, email, MemberSyncState.Extra, []));
                 }
@@ -1402,18 +1409,26 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             }
 
             var saEmail = await GetServiceAccountEmailAsync();
-            foreach (var email in allEmails)
-            {
-                // Skip the service account — it manages the resources
-                if (string.Equals(email, saEmail, StringComparison.OrdinalIgnoreCase))
-                    continue;
+            var nonMemberEmails = allEmails
+                .Where(e => !membersByEmail.ContainsKey(e) &&
+                    !string.Equals(e, saEmail, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var extraIdentities = await ResolveExtraEmailIdentitiesAsync(nonMemberEmails, cancellationToken);
 
-                if (!membersByEmail.ContainsKey(email))
+            foreach (var email in nonMemberEmails)
+            {
+                var state = directEmails.Contains(email)
+                    ? MemberSyncState.Extra
+                    : MemberSyncState.Inherited;
+                roleByEmail.TryGetValue(email, out var extraRole);
+
+                if (extraIdentities.TryGetValue(email, out var identity))
                 {
-                    var state = directEmails.Contains(email)
-                        ? MemberSyncState.Extra
-                        : MemberSyncState.Inherited;
-                    roleByEmail.TryGetValue(email, out var extraRole);
+                    members.Add(new MemberSyncStatus(email, identity.DisplayName, state, [], extraRole,
+                        UserId: identity.UserId, ProfilePictureUrl: identity.ProfilePictureUrl));
+                }
+                else
+                {
                     members.Add(new MemberSyncStatus(email, email, state, [], extraRole));
                 }
             }
@@ -2344,5 +2359,34 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             await _dbContext.SaveChangesAsync(cancellationToken);
 
         return correctedCount;
+    }
+
+    /// <summary>
+    /// Resolves extra emails against UserEmail records to get display names, user IDs, and profile pictures.
+    /// Returns a lookup keyed by email (case-insensitive) with user identity info.
+    /// </summary>
+    private async Task<Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl)>>
+        ResolveExtraEmailIdentitiesAsync(IEnumerable<string> emails, CancellationToken cancellationToken)
+    {
+        var emailList = emails.ToList();
+        if (emailList.Count == 0)
+            return new Dictionary<string, (string, Guid, string?)>(NormalizingEmailComparer.Instance);
+
+        var matches = await _dbContext.UserEmails
+            .AsNoTracking()
+            .Include(ue => ue.User)
+            .Where(ue => emailList.Contains(ue.Email))
+            .ToListAsync(cancellationToken);
+
+        var result = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl)>(
+            NormalizingEmailComparer.Instance);
+
+        foreach (var match in matches)
+        {
+            // First match wins (a user might have multiple matching emails)
+            result.TryAdd(match.Email, (match.User.DisplayName, match.UserId, match.User.ProfilePictureUrl));
+        }
+
+        return result;
     }
 }

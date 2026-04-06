@@ -33,6 +33,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
     private DriveActivityService? _activityService;
     private DirectoryService? _directoryService;
     private string? _serviceAccountEmail;
+    private string? _serviceAccountClientId;
 
     /// <summary>
     /// Per-invocation cache for resolved people/ IDs to avoid repeated API calls.
@@ -71,8 +72,16 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
         var activityService = await GetActivityServiceAsync();
         var serviceAccountEmail = await GetServiceAccountEmailAsync(cancellationToken);
+        var serviceAccountClientId = await GetServiceAccountClientIdAsync(cancellationToken);
         var anomalyCount = 0;
         var hadFailures = false;
+
+        // Seed the people ID cache with the service account's client_id so that
+        // ResolvePersonNameAsync maps "people/{client_id}" back to the SA email.
+        if (serviceAccountClientId is not null)
+        {
+            _peopleIdCache[$"people/{serviceAccountClientId}"] = serviceAccountEmail;
+        }
 
         // Use time-window dedup: only process events since the last successful run.
         // Falls back to 24 hours on first run or if the stored timestamp is missing.
@@ -89,7 +98,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
             {
                 var anomalies = await CheckResourceActivityAsync(
                     activityService, resource.GoogleId, resource.Id, resource.Name,
-                    serviceAccountEmail, filterTime, cancellationToken);
+                    serviceAccountEmail, serviceAccountClientId, filterTime, cancellationToken);
                 anomalyCount += anomalies;
             }
             catch (Google.GoogleApiException ex) when (ex.Error?.Code == 404)
@@ -136,6 +145,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         Guid resourceId,
         string resourceName,
         string serviceAccountEmail,
+        string? serviceAccountClientId,
         string filterTime,
         CancellationToken cancellationToken)
     {
@@ -160,7 +170,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
                 foreach (var activity in response.Activities)
                 {
                     if (IsPermissionChangeActivity(activity) &&
-                        !IsInitiatedByServiceAccount(activity, serviceAccountEmail))
+                        !IsInitiatedByServiceAccount(activity, serviceAccountEmail, serviceAccountClientId))
                     {
                         var description = await BuildAnomalyDescriptionAsync(activity, resourceName, cancellationToken);
                         var actorEmail = await GetActorEmailAsync(activity, cancellationToken);
@@ -197,7 +207,8 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         return activity.PrimaryActionDetail.PermissionChange is not null;
     }
 
-    private static bool IsInitiatedByServiceAccount(DriveActivity activity, string serviceAccountEmail)
+    private static bool IsInitiatedByServiceAccount(
+        DriveActivity activity, string serviceAccountEmail, string? serviceAccountClientId)
     {
         if (activity.Actors is null || activity.Actors.Count == 0)
         {
@@ -208,8 +219,18 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         {
             if (actor.User?.KnownUser?.PersonName is not null)
             {
-                // The personName field contains the user's email in Drive Activity API
-                if (string.Equals(actor.User.KnownUser.PersonName, serviceAccountEmail, StringComparison.OrdinalIgnoreCase))
+                var personName = actor.User.KnownUser.PersonName;
+
+                // The personName field may contain the SA email directly
+                if (string.Equals(personName, serviceAccountEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                // Drive Activity API often returns "people/{client_id}" instead of the email
+                // for service accounts. Match against the SA's client_id.
+                if (serviceAccountClientId is not null &&
+                    string.Equals(personName, $"people/{serviceAccountClientId}", StringComparison.Ordinal))
                 {
                     return true;
                 }
@@ -532,16 +553,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
     private async Task<string> ExtractServiceAccountEmailAsync(CancellationToken ct)
     {
-        string? json = null;
-
-        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
-        {
-            json = _settings.ServiceAccountKeyJson;
-        }
-        else if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
-        {
-            json = await System.IO.File.ReadAllTextAsync(_settings.ServiceAccountKeyPath, ct);
-        }
+        var json = await GetServiceAccountJsonAsync(ct);
 
         if (json is not null)
         {
@@ -553,5 +565,46 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
         }
 
         return "unknown@serviceaccount.iam.gserviceaccount.com";
+    }
+
+    /// <summary>
+    /// Gets the service account's client_id from the key JSON.
+    /// Drive Activity API uses "people/{client_id}" to identify the SA as an actor.
+    /// </summary>
+    private async Task<string?> GetServiceAccountClientIdAsync(CancellationToken ct)
+    {
+        if (_serviceAccountClientId is not null)
+        {
+            return _serviceAccountClientId;
+        }
+
+        var json = await GetServiceAccountJsonAsync(ct);
+
+        if (json is not null)
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("client_id", out var clientIdElement))
+            {
+                _serviceAccountClientId = clientIdElement.GetString();
+                return _serviceAccountClientId;
+            }
+        }
+
+        return null;
+    }
+
+    private async Task<string?> GetServiceAccountJsonAsync(CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyJson))
+        {
+            return _settings.ServiceAccountKeyJson;
+        }
+
+        if (!string.IsNullOrEmpty(_settings.ServiceAccountKeyPath))
+        {
+            return await System.IO.File.ReadAllTextAsync(_settings.ServiceAccountKeyPath, ct);
+        }
+
+        return null;
     }
 }

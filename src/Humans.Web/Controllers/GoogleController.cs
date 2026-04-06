@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 
@@ -707,6 +709,32 @@ public class GoogleController : HumansControllerBase
         }
 
         return RedirectToAction(nameof(Accounts));
+    }
+
+    // --- Sync Outbox ---
+
+    [HttpGet("SyncOutbox")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> SyncOutbox([FromServices] HumansDbContext dbContext)
+    {
+        var events = await dbContext.GoogleSyncOutboxEvents
+            .OrderByDescending(e => e.OccurredAt)
+            .Take(200)
+            .ToListAsync();
+
+        // Resolve user emails and team names for display
+        var userIds = events.Select(e => e.UserId).Distinct().ToList();
+        var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
+        var userLookup = await dbContext.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Email ?? "unknown");
+        var teamLookup = await dbContext.Teams
+            .Where(t => teamIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => t.Name);
+
+        ViewBag.UserLookup = userLookup;
+        ViewBag.TeamLookup = teamLookup;
+        return View(events);
     }
 
     // --- Index ---
