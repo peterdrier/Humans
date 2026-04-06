@@ -766,6 +766,7 @@
   <data name="AdminAddRole_BoardDesc" xml:space="preserve"><value>Vorstandsmitglied-Berechtigungen</value></data>
   <data name="AdminAddRole_TeamsAdminDesc" xml:space="preserve"><value>Alle Teams und Mitgliedschaften verwalten</value></data>
   <data name="AdminAddRole_ConsentCoordinatorDesc" xml:space="preserve"><value>Sicherheitsprüfungen beim Onboarding</value></data>
+  <data name="AdminAddRole_CampAdminDesc" xml:space="preserve"><value>Lagerplan und Platzierungsphasen verwalten</value></data>
   <data name="AdminAddRole_VolunteerCoordinatorDesc" xml:space="preserve"><value>Onboarding-Begleitung, systemweite Schichtverwaltung</value></data>
   <data name="AdminAddRole_NoInfoAdminDesc" xml:space="preserve"><value>Schichtanmeldungen genehmigen, medizinische Daten einsehen</value></data>
   <data name="AdminAddRole_NotesLabel" xml:space="preserve"><value>Notizen (optional)</value></data>
@@ -872,7 +873,7 @@
   <!-- ======================== -->
   <!-- Volunteer Map            -->
   <!-- ======================== -->
-  <data name="Nav_Map" xml:space="preserve"><value>Karte</value></data>
+  <data name="Nav_City" xml:space="preserve"><value>Karte</value></data>
   <data name="Map_Title" xml:space="preserve"><value>Humans-Karte</value></data>
   <data name="Map_Count" xml:space="preserve"><value>{0} Humans mit Standort</value></data>
   <data name="Map_None" xml:space="preserve"><value>Noch kein Human hat seinen Standort angegeben.</value></data>
@@ -1327,5 +1328,70 @@
   <data name="GetInvolved_UrgentShifts" xml:space="preserve"><value>Schichten, die jetzt humans brauchen</value></data>
   <data name="GetInvolved_BrowseAllShifts" xml:space="preserve"><value>Alle Schichten ansehen</value></data>
   <data name="GetInvolved_MyShifts" xml:space="preserve"><value>Meine Schichten</value></data>
+
+  <!-- ======================== -->
+  <!-- CityPlanning                -->
+  <!-- ======================== -->
+  <data name="CityPlanning_PlacementPhase" xml:space="preserve"><value>Platzierungsphase</value></data>
+  <data name="CityPlanning_StatusOpen" xml:space="preserve"><value>Offen</value></data>
+  <data name="CityPlanning_StatusClosed" xml:space="preserve"><value>Geschlossen</value></data>
+  <data name="CityPlanning_HelpButton" xml:space="preserve"><value>Hilfe</value></data>
+  <data name="CityPlanning_AddMyBarrioButton" xml:space="preserve"><value>Mein Barrio auf der Karte hinzufügen</value></data>
+  <data name="CityPlanning_AddABarrioOption" xml:space="preserve"><value>Barrio hinzufügen…</value></data>
+  <data name="CityPlanning_SaveButton" xml:space="preserve"><value>Speichern</value></data>
+  <data name="CityPlanning_HistoryButton" xml:space="preserve"><value>Verlauf</value></data>
+  <data name="CityPlanning_AdminLink" xml:space="preserve"><value>Admin</value></data>
+  <data name="CityPlanning_Admin_Title" xml:space="preserve"><value>Barrio-Karte Admin</value></data>
+  <data name="CityPlanning_Admin_ViewMap" xml:space="preserve"><value>Karte anzeigen</value></data>
+  <data name="CityPlanning_Admin_PlacementPhaseCard" xml:space="preserve"><value>Platzierungsphase</value></data>
+  <data name="CityPlanning_Admin_Status" xml:space="preserve"><value>Status:</value></data>
+  <data name="CityPlanning_Admin_OpenedAt" xml:space="preserve"><value>Geöffnet {0}</value></data>
+  <data name="CityPlanning_Admin_ClosedAt" xml:space="preserve"><value>Geschlossen {0}</value></data>
+  <data name="CityPlanning_Admin_ClosePlacement" xml:space="preserve"><value>Phase schließen</value></data>
+  <data name="CityPlanning_Admin_OpenPlacement" xml:space="preserve"><value>Phase öffnen</value></data>
+  <data name="CityPlanning_Admin_PlacementDatesCard" xml:space="preserve"><value>Platzierungsdaten</value></data>
+  <data name="CityPlanning_Admin_PlacementDatesHint" xml:space="preserve"><value>Nur informativ — wird im Hilfe-Modal angezeigt (Spanische Zeit). Öffnet oder schließt die Phase nicht automatisch.</value></data>
+  <data name="CityPlanning_Admin_OpensAt" xml:space="preserve"><value>Öffnet am</value></data>
+  <data name="CityPlanning_Admin_ClosesAt" xml:space="preserve"><value>Schließt am</value></data>
+  <data name="CityPlanning_Admin_SaveDates" xml:space="preserve"><value>Daten speichern</value></data>
+  <data name="CityPlanning_Admin_LimitZoneCard" xml:space="preserve"><value>Barrio-Grenzzone</value></data>
+  <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Grenzzone hochgeladen</value></data>
+  <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>Grenzzone löschen?</value></data>
+  <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>Noch keine Grenzzone hochgeladen.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Offizielle Zonen</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Offizielle Zonen hochgeladen</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>Offizielle Zonen löschen?</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>Noch keine offiziellen Zonen hochgeladen.</value></data>
+  <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>GeoJSON-Datei hochladen</value></data>
+  <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Hochladen</value></data>
+  <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Herunterladen</value></data>
+  <data name="CityPlanning_Admin_Remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="CityPlanning_Admin_ExportCard" xml:space="preserve"><value>Exportieren</value></data>
+  <data name="CityPlanning_Admin_ExportDescription" xml:space="preserve"><value>Alle Barrio-Polygone für {0} als GeoJSON FeatureCollection herunterladen.</value></data>
+  <data name="CityPlanning_Admin_DownloadGeoJson" xml:space="preserve"><value>GeoJSON herunterladen ({0})</value></data>
+  <data name="CityPlanning_HistoryTitle" xml:space="preserve"><value>Polygon-Verlauf</value></data>
+  <data name="CityPlanning_Loading" xml:space="preserve"><value>Wird geladen…</value></data>
+  <data name="CityPlanning_Help_WhenIsIt" xml:space="preserve"><value>Wann ist es?</value></data>
+  <data name="CityPlanning_Help_Opens" xml:space="preserve"><value>Öffnet:</value></data>
+  <data name="CityPlanning_Help_Closes" xml:space="preserve"><value>Schließt:</value></data>
+  <data name="CityPlanning_Help_SpainTime" xml:space="preserve"><value>(Spanische Zeit)</value></data>
+  <data name="CityPlanning_Help_WhenPlaceholder" xml:space="preserve"><value>Die Platzierungsphase läuft für begrenzte Zeit — genaue Daten werden hier bald angezeigt. Platziere dein Barrio vor dem Ende!</value></data>
+  <data name="CityPlanning_Help_PlacingTitle" xml:space="preserve"><value>Dein Barrio platzieren</value></data>
+  <data name="CityPlanning_Help_PlacingBody" xml:space="preserve"><value>Klicke auf {0} um mit dem Zeichnen zu beginnen. Klicke dann auf die Karte, um Punkte zu setzen — jeder Klick fügt eine Ecke hinzu. Schließe die Form, indem du auf den ersten Punkt klickst.</value></data>
+  <data name="CityPlanning_Help_AdjustingTitle" xml:space="preserve"><value>Form anpassen</value></data>
+  <data name="CityPlanning_Help_Adjusting_VertexMove" xml:space="preserve"><value>Ziehe einen Eckpunkt, um ihn zu verschieben</value></data>
+  <data name="CityPlanning_Help_Adjusting_Reposition" xml:space="preserve"><value>Ziehe die gesamte Form, um sie neu zu positionieren</value></data>
+  <data name="CityPlanning_Help_Adjusting_AddVertex" xml:space="preserve"><value>Klicke auf den Mittelpunkt einer Kante (wo die Länge in Metern angezeigt wird), um eine neue Ecke hinzuzufügen</value></data>
+  <data name="CityPlanning_Help_Adjusting_DeleteVertex" xml:space="preserve"><value>Klicke auf einen Punkt, um ihn auszuwählen (er wird orange), dann drücke Delete oder Backspace, um ihn zu entfernen</value></data>
+  <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>Die Fläche in m² wird in der Mitte angezeigt und aktualisiert sich beim Bearbeiten</value></data>
+  <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Speichern &amp; später bearbeiten</value></data>
+  <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Zufrieden? Klicke auf Save. Danach klicke auf dein Barrio auf der Karte, um die Größe zu sehen, dann Edit, um in den Bearbeitungsmodus zurückzukehren. Jedes Speichern erstellt einen Verlaufseintrag — nutze die Schaltfläche History, um frühere Versionen zu durchsuchen und wiederherzustellen. Kein Stress, du kannst nichts kaputtmachen!</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Bleib innerhalb der weißen Zonen</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Die gestrichelten weißen Bereiche markieren die sicheren Campingzonen, geschützt durch Blitzableiter. Campen außerhalb ist nicht erlaubt, halte dein Barrio also innerhalb dieser Grenzen.</value></data>
+  <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>Überschneidungen? Sprich darüber!</value></data>
+  <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>Wenn sich dein Barrio mit einem anderen überschneidet, melde dich auf {0} und klärt es gemeinsam. Wenn am Ende der Phase noch Konflikte bestehen, kümmert sich das City-Planning-Team darum.</value></data>
+  <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>
+  <data name="CityPlanning_Help_ColorsTitle" xml:space="preserve"><value>Farben &amp; Klangzonen</value></data>
+  <data name="CityPlanning_Help_ColorsBody" xml:space="preserve"><value>Jedes Barrio ist entsprechend seiner bevorzugten Klangzone eingefärbt (auf der Barrio-Seite bearbeitbar).</value></data>
 
 </root>
