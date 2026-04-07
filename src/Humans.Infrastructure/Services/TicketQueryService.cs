@@ -289,13 +289,10 @@ public class TicketQueryService : ITicketQueryService
             return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
         }
 
-        var visibleGroups = canAccessFinance
-            ? activeBudgetYear.Groups
-            : activeBudgetYear.Groups.Where(g => !g.IsRestricted).ToList();
-
-        // Use raw expense line items (not ComputeBudgetSummary) to avoid VAT adjustments.
-        // Revenue is gross, so expenses must also be gross for an apples-to-apples comparison.
-        var plannedExpenses = Math.Abs(visibleGroups
+        // Use ALL groups (including restricted) — break-even must reflect total planned expenses
+        // regardless of the caller's finance visibility. The canAccessFinance flag only controls
+        // whether the detail breakdown string is shown.
+        var plannedExpenses = Math.Abs(activeBudgetYear.Groups
             .SelectMany(g => g.Categories)
             .SelectMany(c => c.LineItems)
             .Where(li => !li.IsCashflowOnly && li.Amount < 0)
