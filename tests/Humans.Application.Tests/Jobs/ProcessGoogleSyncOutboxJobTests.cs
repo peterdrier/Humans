@@ -111,7 +111,7 @@ public class ProcessGoogleSyncOutboxJobTests : IDisposable
             "Google sync event failed after all retries",
             RoleNames.Admin,
             Arg.Any<string?>(),
-            "/Google/Sync",
+            "/Google/SyncOutbox",
             "View \u2192",
             Arg.Any<CancellationToken>());
     }
