@@ -261,7 +261,7 @@ public class FeedbackController : HumansControllerBase
     }
 
     [HttpPost("{id}/Assignment")]
-    [Authorize(Roles = RoleGroups.FeedbackAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateAssignment(Guid id, UpdateFeedbackAssignmentModel model)
     {
@@ -355,10 +355,31 @@ public class FeedbackController : HumansControllerBase
             .Select(t => new TeamOption { Id = t.Id, Name = t.Name })
             .ToList();
 
+        // Include currently assigned team even if inactive, to prevent silent clearing
+        if (viewModel.AssignedToTeamId.HasValue &&
+            viewModel.TeamOptions.All(t => t.Id != viewModel.AssignedToTeamId.Value))
+        {
+            var inactiveTeam = allTeams.FirstOrDefault(t => t.Id == viewModel.AssignedToTeamId.Value);
+            if (inactiveTeam is not null)
+            {
+                viewModel.TeamOptions.Insert(0,
+                    new TeamOption { Id = inactiveTeam.Id, Name = $"{inactiveTeam.Name} (inactive)" });
+            }
+        }
+
         var humans = await _profileService.GetFilteredHumansAsync(null, "Active");
         viewModel.AssigneeOptions = humans
             .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Select(h => new AssigneeOption { Id = h.UserId, DisplayName = h.DisplayName })
             .ToList();
+
+        // Include currently assigned human even if inactive, to prevent silent clearing
+        if (viewModel.AssignedToUserId.HasValue &&
+            viewModel.AssigneeOptions.All(a => a.Id != viewModel.AssignedToUserId.Value))
+        {
+            var label = viewModel.AssignedToName ?? "Unknown";
+            viewModel.AssigneeOptions.Insert(0,
+                new AssigneeOption { Id = viewModel.AssignedToUserId.Value, DisplayName = $"{label} (inactive)" });
+        }
     }
 }
