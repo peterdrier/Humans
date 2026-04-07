@@ -36,7 +36,7 @@ public interface IFeedbackService
         Guid reportId, CancellationToken cancellationToken = default);
 
     Task UpdateAssignmentAsync(
-        Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid actorUserId,
+        Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
         CancellationToken cancellationToken = default);
 
     Task<int> GetActionableCountAsync(

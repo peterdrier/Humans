@@ -304,7 +304,7 @@ public class FeedbackService : IFeedbackService
     }
 
     public async Task UpdateAssignmentAsync(
-        Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid actorUserId,
+        Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
         CancellationToken cancellationToken = default)
     {
         var report = await _dbContext.FeedbackReports
@@ -351,12 +351,21 @@ public class FeedbackService : IFeedbackService
         report.UpdatedAt = _clock.GetCurrentInstant();
 
         var description = $"Feedback {id} assignment changed: {string.Join("; ", changes)}";
-        await _auditLogService.LogAsync(
-            AuditAction.FeedbackAssignmentChanged, nameof(FeedbackReport), id,
-            description, actorUserId);
+        if (actorUserId.HasValue)
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.FeedbackAssignmentChanged, nameof(FeedbackReport), id,
+                description, actorUserId.Value);
+        }
+        else
+        {
+            await _auditLogService.LogAsync(
+                AuditAction.FeedbackAssignmentChanged, nameof(FeedbackReport), id,
+                description, "API");
+        }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        _logger.LogInformation("Feedback {ReportId} assignment updated by {ActorId}: {Changes}", id, actorUserId, string.Join("; ", changes));
+        _logger.LogInformation("Feedback {ReportId} assignment updated by {ActorId}: {Changes}", id, actorUserId?.ToString() ?? "API", string.Join("; ", changes));
     }
 
     public async Task<int> GetActionableCountAsync(

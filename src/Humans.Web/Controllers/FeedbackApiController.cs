@@ -174,7 +174,7 @@ public class FeedbackApiController : ControllerBase
     {
         try
         {
-            await _feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, Guid.Empty);
+            await _feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, null);
             return Ok(new { success = true });
         }
         catch (InvalidOperationException)
