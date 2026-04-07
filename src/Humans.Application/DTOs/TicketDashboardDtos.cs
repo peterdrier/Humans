@@ -12,6 +12,7 @@ public class TicketDashboardStats
     public decimal TotalApplicationFees { get; init; }
     public decimal NetRevenue { get; init; }
     public decimal AveragePrice { get; init; }
+    public decimal GrossAveragePrice { get; init; }
     public int UnmatchedOrderCount { get; init; }
 
     public List<FeeBreakdownByMethod> FeesByPaymentMethod { get; init; } = [];
@@ -120,6 +121,14 @@ public class CodeDetailDto
     public string? RedeemedByName { get; init; }
     public string? RedeemedByEmail { get; init; }
     public string? RedeemedOrderVendorId { get; init; }
+}
+
+/// <summary>Break-even calculation result.</summary>
+public class BreakEvenResult
+{
+    public int Target { get; init; }
+    public string? Detail { get; init; }
+    public string Currency { get; init; } = "EUR";
 }
 
 /// <summary>A single row in the orders list page.</summary>

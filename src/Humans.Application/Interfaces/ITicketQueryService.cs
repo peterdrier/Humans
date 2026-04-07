@@ -39,6 +39,16 @@ public interface ITicketQueryService
     Task<TicketDashboardStats> GetDashboardStatsAsync();
 
     /// <summary>
+    /// Calculate break-even target using gross average ticket price and planned expenses.
+    /// </summary>
+    /// <param name="ticketsSold">Current number of tickets sold.</param>
+    /// <param name="grossRevenue">Gross ticket revenue (TotalAmount sum).</param>
+    /// <param name="currency">Currency code for display.</param>
+    /// <param name="canAccessFinance">Whether the caller can see the finance detail breakdown.</param>
+    /// <param name="fallbackTarget">Fallback break-even target from settings when calculation is not possible.</param>
+    Task<BreakEvenResult> CalculateBreakEvenAsync(int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget);
+
+    /// <summary>
     /// Compute weekly and quarterly sales aggregates for reporting.
     /// </summary>
     Task<TicketSalesAggregates> GetSalesAggregatesAsync();
