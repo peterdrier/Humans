@@ -51,6 +51,54 @@
         }
     </div>
 
+    @if (Model.IsAdmin)
+    {
+        <div class="mt-2 d-flex gap-2 align-items-center flex-wrap">
+            <form asp-action="UpdateAssignment" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="AssignedToTeamId" value="@Model.AssignedToTeamId" />
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text"><i class="fa-solid fa-user fa-xs"></i></span>
+                    <select name="AssignedToUserId" class="form-select form-select-sm detail-auto-submit" style="width: auto; min-width: 160px;">
+                        <option value="">Unassigned</option>
+                        @foreach (var a in Model.AssigneeOptions)
+                        {
+                            if (Model.AssignedToUserId == a.Id)
+                            {
+                                <option value="@a.Id" selected>@a.DisplayName</option>
+                            }
+                            else
+                            {
+                                <option value="@a.Id">@a.DisplayName</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </form>
+            <form asp-action="UpdateAssignment" asp-route-id="@Model.Id" method="post" class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="AssignedToUserId" value="@Model.AssignedToUserId" />
+                <div class="input-group input-group-sm" style="width: auto;">
+                    <span class="input-group-text"><i class="fa-solid fa-users fa-xs"></i></span>
+                    <select name="AssignedToTeamId" class="form-select form-select-sm detail-auto-submit" style="width: auto; min-width: 160px;">
+                        <option value="">No team</option>
+                        @foreach (var t in Model.TeamOptions)
+                        {
+                            if (Model.AssignedToTeamId == t.Id)
+                            {
+                                <option value="@t.Id" selected>@t.Name</option>
+                            }
+                            else
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
+                        }
+                    </select>
+                </div>
+            </form>
+        </div>
+    }
+
     @if (!string.IsNullOrEmpty(Model.UserAgent) || !string.IsNullOrEmpty(Model.AdditionalContext))
     {
         <div class="text-muted mt-2" style="font-size: 0.75rem;">

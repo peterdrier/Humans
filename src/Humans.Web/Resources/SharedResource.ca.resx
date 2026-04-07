@@ -1253,6 +1253,7 @@
   <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Sol·licita un enllaç nou</value></data>
   <data name="MagicLinkError_Title" xml:space="preserve"><value>Enllaç expirat o no vàlid</value></data>
   <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Torna a l’inici de sessió</value></data>
+  <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>El teu enllaç expira a les {0}.</value></data>
   <data name="MagicLinkSent_Title" xml:space="preserve"><value>Revisa el teu correu</value></data>
   <data name="ProfileEdit_ManageEmails" xml:space="preserve"><value>Adreces de correu</value></data>
   <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>Afegeix adreces de correu, estableix preferències de notificació i controla la visibilitat del perfil.</value></data>

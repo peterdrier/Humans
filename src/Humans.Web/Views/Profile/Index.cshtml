@@ -1,3 +1,6 @@
+@using Microsoft.AspNetCore.Authorization
+@using Humans.Web.Authorization
+@inject IAuthorizationService AuthService
 @model Humans.Web.Models.ProfileViewModel
 @{
     ViewData["Title"] = Model.IsOwnProfile ? Localizer["Profile_Title"].Value : Model.DisplayName;
@@ -57,7 +60,7 @@
         @{
             var cardViewMode = Model.IsOwnProfile
                 ? ProfileCardViewMode.Self
-                : Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.TeamsAdminBoardOrAdmin, User)
+                : (await AuthService.AuthorizeAsync(User, PolicyNames.TeamsAdminBoardOrAdmin)).Succeeded
                     ? ProfileCardViewMode.Admin
                     : ProfileCardViewMode.Public;
         }

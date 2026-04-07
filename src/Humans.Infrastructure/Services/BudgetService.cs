@@ -210,9 +210,6 @@ public class BudgetService : IBudgetService
                 LogAudit(active.Id, nameof(BudgetYear), active.Id,
                     nameof(BudgetYear.Status), BudgetYearStatus.Active.ToString(), BudgetYearStatus.Closed.ToString(),
                     actorUserId, now);
-
-                _logger.LogInformation("Auto-closed budget year {YearId} ({Year}) due to activation of {NewYearId}",
-                    active.Id, active.Year, yearId);
             }
         }
 
@@ -891,6 +888,7 @@ public class BudgetService : IBudgetService
         string fieldName, string? oldValue, string? newValue,
         Guid actorUserId, Instant occurredAt)
     {
+        var description = $"Changed {entityType}.{fieldName} from '{oldValue}' to '{newValue}'";
         var entry = new BudgetAuditLog
         {
             Id = Guid.NewGuid(),
@@ -900,12 +898,15 @@ public class BudgetService : IBudgetService
             FieldName = fieldName,
             OldValue = oldValue,
             NewValue = newValue,
-            Description = $"Changed {entityType}.{fieldName} from '{oldValue}' to '{newValue}'",
+            Description = description,
             ActorUserId = actorUserId,
             OccurredAt = occurredAt
         };
 
         _dbContext.BudgetAuditLogs.Add(entry);
+
+        _logger.LogInformation("BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
+            entityType, entityId, description, actorUserId);
     }
 
     // ───────────────────────── Coordinator ─────────────────────────
@@ -973,6 +974,9 @@ public class BudgetService : IBudgetService
         };
 
         _dbContext.BudgetAuditLogs.Add(entry);
+
+        _logger.LogInformation("BudgetAudit: {EntityType} {EntityId} — {Description} by user {ActorUserId}",
+            entityType, entityId, description, actorUserId);
     }
 
     public BudgetSummaryResult ComputeBudgetSummary(IEnumerable<BudgetGroup> groups)

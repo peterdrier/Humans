@@ -21,11 +21,13 @@ public class TicketQueryService : ITicketQueryService
 
     private readonly HumansDbContext _dbContext;
     private readonly IMemoryCache _cache;
+    private readonly IBudgetService _budgetService;
 
-    public TicketQueryService(HumansDbContext dbContext, IMemoryCache cache)
+    public TicketQueryService(HumansDbContext dbContext, IMemoryCache cache, IBudgetService budgetService)
     {
         _dbContext = dbContext;
         _cache = cache;
+        _budgetService = budgetService;
     }
 
     public async Task<int> GetUserTicketCountAsync(Guid userId)
@@ -145,6 +147,7 @@ public class TicketQueryService : ITicketQueryService
         var totalAppFees = await paidOrders.SumAsync(o => o.ApplicationFee ?? 0m);
         var netRevenue = revenue - totalStripeFees - totalAppFees;
         var avgPrice = ticketsSold > 0 ? netRevenue / ticketsSold : 0;
+        var grossAvgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
         var unmatchedCount = await orders.CountAsync(o => o.MatchedUserId == null);
 
         // Fee breakdown by payment method (load in memory — small dataset)
@@ -252,6 +255,7 @@ public class TicketQueryService : ITicketQueryService
             TotalApplicationFees = totalAppFees,
             NetRevenue = netRevenue,
             AveragePrice = avgPrice,
+            GrossAveragePrice = grossAvgPrice,
             UnmatchedOrderCount = unmatchedCount,
             FeesByPaymentMethod = feesByMethod,
             DailySalesPoints = dailySalesPoints,
@@ -263,6 +267,70 @@ public class TicketQueryService : ITicketQueryService
             VolunteersWithTickets = volunteersWithTickets,
             VolunteerCoveragePercent = volunteerCoveragePct,
         };
+    }
+
+    public async Task<decimal> GetGrossTicketRevenueAsync()
+    {
+        return await _dbContext.TicketOrders
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+            .SumAsync(o => o.TotalAmount);
+    }
+
+    public async Task<BreakEvenResult> CalculateBreakEvenAsync(int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget)
+    {
+        if (ticketsSold <= 0 || grossRevenue <= 0)
+        {
+            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+        }
+
+        var activeBudgetYear = await _budgetService.GetActiveYearAsync();
+        if (activeBudgetYear is null)
+        {
+            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+        }
+
+        // Use ALL groups (including restricted) — break-even must reflect total planned expenses
+        // regardless of the caller's finance visibility. The canAccessFinance flag only controls
+        // whether the detail breakdown string is shown.
+        var plannedExpenses = Math.Abs(activeBudgetYear.Groups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .Where(li => !li.IsCashflowOnly && li.Amount < 0)
+            .Sum(li => li.Amount));
+        if (plannedExpenses <= 0)
+        {
+            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+        }
+
+        // Break-even target from current realized gross average revenue per ticket:
+        // A = tickets sold so far, B = gross revenue so far, C = gross planned expenses
+        // D = remaining expenses = C - B
+        // E = gross average ticket price = B / A
+        // F = remaining tickets = D / E
+        // G = break-even target = A + F
+        // Finance hover shows D / E = F tickets still to sell.
+        var grossAverageTicketPrice = grossRevenue / ticketsSold;
+
+        var remainingExpenses = Math.Max(0m, plannedExpenses - grossRevenue);
+        long remainingTicketsToSell = 0;
+        if (remainingExpenses > 0)
+        {
+            var remainingTicketCount = Math.Ceiling(remainingExpenses / grossAverageTicketPrice);
+            remainingTicketsToSell = remainingTicketCount > int.MaxValue
+                ? int.MaxValue
+                : decimal.ToInt32(remainingTicketCount);
+        }
+
+        var breakEvenTarget = (long)ticketsSold + remainingTicketsToSell;
+        var target = breakEvenTarget > int.MaxValue
+            ? int.MaxValue
+            : (int)breakEvenTarget;
+
+        var detail = canAccessFinance
+            ? $"{currency} {remainingExpenses:N2} remaining expenses / {currency} {grossAverageTicketPrice:N2} gross avg. per ticket = {remainingTicketsToSell:N0} tickets still to sell"
+            : null;
+
+        return new BreakEvenResult { Target = target, Detail = detail, Currency = currency };
     }
 
     public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search)

@@ -16,7 +16,9 @@ public interface IFeedbackService
 
     Task<IReadOnlyList<FeedbackReport>> GetFeedbackListAsync(
         FeedbackStatus? status = null, FeedbackCategory? category = null,
-        Guid? reporterUserId = null, int limit = 50,
+        Guid? reporterUserId = null, Guid? assignedToUserId = null,
+        Guid? assignedToTeamId = null, bool? unassignedOnly = null,
+        int limit = 50,
         CancellationToken cancellationToken = default);
 
     Task UpdateStatusAsync(
@@ -33,6 +35,13 @@ public interface IFeedbackService
     Task<IReadOnlyList<FeedbackMessage>> GetMessagesAsync(
         Guid reportId, CancellationToken cancellationToken = default);
 
+    Task UpdateAssignmentAsync(
+        Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid? actorUserId,
+        CancellationToken cancellationToken = default);
+
     Task<int> GetActionableCountAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
         CancellationToken cancellationToken = default);
 }

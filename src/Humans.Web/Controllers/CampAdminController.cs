@@ -4,6 +4,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.CampAdminOrAdmin)]
+[Authorize(Policy = PolicyNames.CampAdminOrAdmin)]
 [Route("Barrios/Admin")]
 [Route("Camps/Admin")]
 public class CampAdminController : HumansControllerBase
@@ -255,7 +256,7 @@ public class CampAdminController : HumansControllerBase
 
     [HttpPost("Delete")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Delete([FromForm] Guid campId)
     {
         try

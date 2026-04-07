@@ -145,6 +145,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<IEmailRenderer, EmailRenderer>();
         services.AddScoped<IEmailService, OutboxEmailService>();
+        services.AddScoped<IEmailOutboxService, EmailOutboxService>();
         services.AddScoped<IMembershipCalculator, MembershipCalculator>();
         services.AddScoped<IRoleAssignmentService, RoleAssignmentService>();
         services.AddScoped<IAuditLogService, AuditLogService>();

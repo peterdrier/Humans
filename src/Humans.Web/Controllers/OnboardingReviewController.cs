@@ -16,7 +16,7 @@ namespace Humans.Web.Controllers;
 /// Review queue for Consent Coordinators and Volunteer Coordinators.
 /// Manages the consent check gate for new humans during onboarding.
 /// </summary>
-[Authorize(Roles = RoleGroups.ReviewQueueAccess)]
+[Authorize(Policy = PolicyNames.ReviewQueueAccess)]
 [Route("[controller]")]
 public class OnboardingReviewController : HumansControllerBase
 {
@@ -87,7 +87,7 @@ public class OnboardingReviewController : HumansControllerBase
 
     [HttpPost("{userId:guid}/Clear")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleGroups.ConsentCoordinatorBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Clear(Guid userId, string? notes)
     {
         var currentUser = await GetCurrentUserAsync();
@@ -121,7 +121,7 @@ public class OnboardingReviewController : HumansControllerBase
 
     [HttpPost("{userId:guid}/Flag")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleGroups.ConsentCoordinatorBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Flag(Guid userId, string? notes)
     {
         var currentUser = await GetCurrentUserAsync();
@@ -151,7 +151,7 @@ public class OnboardingReviewController : HumansControllerBase
 
     [HttpPost("{userId:guid}/Reject")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleGroups.ConsentCoordinatorBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.ConsentCoordinatorBoardOrAdmin)]
     public async Task<IActionResult> Reject(Guid userId, string? reason)
     {
         var currentUser = await GetCurrentUserAsync();
@@ -182,7 +182,7 @@ public class OnboardingReviewController : HumansControllerBase
     }
 
     [HttpGet("BoardVoting")]
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> BoardVoting()
     {
         var (applications, boardMembers) = await _onboardingService.GetBoardVotingDashboardAsync();
@@ -225,7 +225,7 @@ public class OnboardingReviewController : HumansControllerBase
     }
 
     [HttpGet("BoardVoting/{applicationId:guid}")]
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> BoardVotingDetail(Guid applicationId)
     {
         var application = await _onboardingService.GetBoardVotingDetailAsync(applicationId);
@@ -278,7 +278,7 @@ public class OnboardingReviewController : HumansControllerBase
 
     [HttpPost("BoardVoting/Vote")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Board)]
+    [Authorize(Policy = PolicyNames.BoardOnly)]
     public async Task<IActionResult> Vote(Guid applicationId, VoteChoice vote, string? note)
     {
         var currentUser = await GetCurrentUserAsync();
@@ -314,7 +314,7 @@ public class OnboardingReviewController : HumansControllerBase
 
     [HttpPost("BoardVoting/Finalize")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Finalize(BoardVotingFinalizeModel model)
     {
         var currentUser = await GetCurrentUserAsync();

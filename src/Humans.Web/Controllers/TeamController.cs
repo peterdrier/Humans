@@ -644,7 +644,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("Summary")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> Summary()
     {
         var result = await _teamService.GetAdminTeamListAsync(1, 500);
@@ -658,7 +658,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("Create")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> CreateTeam(CancellationToken cancellationToken)
     {
         var model = new CreateTeamViewModel
@@ -669,7 +669,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpPost("Create")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateTeam(CreateTeamViewModel model)
     {
@@ -728,7 +728,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("{id:guid}/Edit")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> EditTeam(Guid id, CancellationToken cancellationToken)
     {
         var team = await _teamService.GetTeamByIdAsync(id, cancellationToken);
@@ -760,7 +760,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpPost("{id:guid}/Edit")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditTeam(Guid id, EditTeamViewModel model)
     {
@@ -834,7 +834,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpPost("{id:guid}/Delete")]
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteTeam(Guid id)
     {
@@ -877,7 +877,7 @@ public class TeamController : HumansControllerBase
     };
 
     [HttpGet("{teamId:guid}/GoogleResources")]
-    [Authorize(Roles = RoleGroups.TeamsAdminBoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> GetTeamGoogleResources(Guid teamId, CancellationToken cancellationToken)
     {
         var resources = await _teamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);

@@ -27,8 +27,29 @@ public class FeedbackPageViewModel
     public List<FeedbackListItemViewModel> Reports { get; set; } = new();
     public FeedbackStatus? StatusFilter { get; set; }
     public FeedbackCategory? CategoryFilter { get; set; }
+    public Guid? ReporterFilter { get; set; }
+    public List<ReporterDropdownItem> Reporters { get; set; } = new();
+    public Guid? AssignedToFilter { get; set; }
+    public Guid? TeamFilter { get; set; }
+    public bool UnassignedFilter { get; set; }
     public bool IsAdmin { get; set; }
     public Guid? SelectedReportId { get; set; }
+    public Guid CurrentUserId { get; set; }
+    public List<AssigneeOption> AssigneeOptions { get; set; } = new();
+    public List<TeamOption> TeamOptions { get; set; } = new();
+}
+
+public class AssigneeOption
+{
+    public Guid Id { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+}
+
+public class ReporterDropdownItem
+{
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public int Count { get; set; }
 }
 
 public class FeedbackListItemViewModel
@@ -45,6 +66,10 @@ public class FeedbackListItemViewModel
     public int MessageCount { get; set; }
     public bool NeedsReply { get; set; }
     public int? GitHubIssueNumber { get; set; }
+    public string? AssignedToName { get; set; }
+    public Guid? AssignedToUserId { get; set; }
+    public string? AssignedToTeamName { get; set; }
+    public Guid? AssignedToTeamId { get; set; }
 }
 
 public class FeedbackDetailViewModel
@@ -65,6 +90,12 @@ public class FeedbackDetailViewModel
     public DateTime? ResolvedAt { get; set; }
     public string? ResolvedByName { get; set; }
     public bool IsAdmin { get; set; }
+    public Guid? AssignedToUserId { get; set; }
+    public string? AssignedToName { get; set; }
+    public Guid? AssignedToTeamId { get; set; }
+    public string? AssignedToTeamName { get; set; }
+    public List<AssigneeOption> AssigneeOptions { get; set; } = new();
+    public List<TeamOption> TeamOptions { get; set; } = new();
     public List<FeedbackMessageViewModel> Messages { get; set; } = new();
 }
 
@@ -95,4 +126,10 @@ public class PostFeedbackMessageModel
     [Required]
     [StringLength(5000)]
     public string Content { get; set; } = string.Empty;
+}
+
+public class UpdateFeedbackAssignmentModel
+{
+    public Guid? AssignedToUserId { get; set; }
+    public Guid? AssignedToTeamId { get; set; }
 }

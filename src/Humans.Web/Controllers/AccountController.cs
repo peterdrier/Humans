@@ -284,6 +284,11 @@ public class AccountController : Controller
         }
 
         // Always show "check your email" — no account enumeration
+        // Calculate expiry time in Europe/Madrid timezone for display
+        var madridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+        var expiryInstant = _clock.GetCurrentInstant() + Duration.FromMinutes(15);
+        var expiryLocal = expiryInstant.InZone(madridZone);
+        ViewData["ExpiryTime"] = expiryLocal.ToString("HH:mm", null);
         return View("MagicLinkSent");
     }
 
@@ -320,37 +325,39 @@ public class AccountController : Controller
     }
 
     [HttpGet]
-    public IActionResult MagicLinkSignup(string token, string? returnUrl = null)
+    public IActionResult MagicLinkSignup(string token, string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
             return View("MagicLinkError");
 
-        var email = _magicLinkService.VerifySignupToken(token);
-        if (email is null)
+        var verifiedEmail = _magicLinkService.VerifySignupToken(token, email);
+        if (verifiedEmail is null)
         {
             return View("MagicLinkError");
         }
 
         ViewData["ReturnUrl"] = returnUrl;
-        ViewData["Email"] = email;
+        ViewData["Email"] = verifiedEmail;
         ViewData["Token"] = token;
         return View("CompleteSignup");
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CompleteSignup(string token, string displayName, string? returnUrl = null)
+    public async Task<IActionResult> CompleteSignup(string token, string displayName, string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
             return View("MagicLinkError");
 
         returnUrl ??= Url.Content("~/");
 
-        var email = _magicLinkService.VerifySignupToken(token);
-        if (email is null)
+        var verifiedEmail = _magicLinkService.VerifySignupToken(token, email);
+        if (verifiedEmail is null)
         {
             return View("MagicLinkError");
         }
+
+        email = verifiedEmail;
 
         // Check if account was already created (double-click protection)
         var existingUser = await _magicLinkService.FindUserByVerifiedEmailAsync(email);
@@ -376,8 +383,8 @@ public class AccountController : Controller
         var createResult = await _userManager.CreateAsync(user);
         if (!createResult.Succeeded)
         {
-            _logger.LogError("Failed to create user via magic link signup: {Errors}",
-                string.Join(", ", createResult.Errors.Select(e => e.Description)));
+            _logger.LogError("Failed to create user via magic link signup for {Email}: {Errors}",
+                email, string.Join(", ", createResult.Errors.Select(e => e.Description)));
             return View("MagicLinkError");
         }
 
@@ -385,7 +392,7 @@ public class AccountController : Controller
         await _userEmailService.AddOAuthEmailAsync(user.Id, email);
 
         await _signInManager.SignInAsync(user, isPersistent: false);
-        _logger.LogInformation("User {UserId} created account via magic link signup", user.Id);
+        _logger.LogInformation("Magic link signup: user {UserId} created account for {Email}", user.Id, email);
 
         return RedirectToLocal(returnUrl);
     }

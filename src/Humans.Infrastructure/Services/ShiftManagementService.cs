@@ -264,10 +264,6 @@ public class ShiftManagementService : IShiftManagementService
             relatedEntityId: targetTeamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync();
-
-        _logger.LogInformation(
-            "Rota {RotaId} '{RotaName}' moved from team '{OldTeam}' to '{NewTeam}' by user {ActorUserId}",
-            rota.Id, rota.Name, oldTeamName, targetTeam.Name, actorUserId);
     }
 
     public async Task DeleteRotaAsync(Guid rotaId)

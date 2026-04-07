@@ -4,11 +4,12 @@ using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleNames.Admin)]
+[Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Admin/DuplicateAccounts")]
 public class AdminDuplicateAccountsController : HumansControllerBase
 {

@@ -10,12 +10,13 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleNames.Admin)]
+[Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Email")]
 public class EmailController : HumansControllerBase
 {
@@ -97,32 +98,21 @@ public class EmailController : HumansControllerBase
 
     [HttpPost("EmailOutbox/Retry/{id:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RetryEmailOutboxMessage(Guid id)
+    public async Task<IActionResult> RetryEmailOutboxMessage(Guid id, [FromServices] IEmailOutboxService outboxService)
     {
-        var message = await _dbContext.EmailOutboxMessages.FindAsync(id);
-        if (message is null) return NotFound();
+        var recipient = await outboxService.RetryMessageAsync(id);
+        if (recipient is null) return NotFound();
 
-        message.Status = EmailOutboxStatus.Queued;
-        message.RetryCount = 0;
-        message.LastError = null;
-        message.NextRetryAt = null;
-        message.PickedUpAt = null;
-        await _dbContext.SaveChangesAsync();
-
-        SetSuccess($"Message to {message.RecipientEmail} queued for retry.");
+        SetSuccess($"Message to {recipient} queued for retry.");
         return RedirectToAction(nameof(EmailOutbox));
     }
 
     [HttpPost("EmailOutbox/Discard/{id:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DiscardEmailOutboxMessage(Guid id)
+    public async Task<IActionResult> DiscardEmailOutboxMessage(Guid id, [FromServices] IEmailOutboxService outboxService)
     {
-        var message = await _dbContext.EmailOutboxMessages.FindAsync(id);
-        if (message is null) return NotFound();
-
-        var recipient = message.RecipientEmail;
-        _dbContext.EmailOutboxMessages.Remove(message);
-        await _dbContext.SaveChangesAsync();
+        var recipient = await outboxService.DiscardMessageAsync(id);
+        if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} discarded.");
         return RedirectToAction(nameof(EmailOutbox));

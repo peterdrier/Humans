@@ -1239,6 +1239,7 @@
   <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Richiedi un nuovo link</value></data>
   <data name="MagicLinkError_Title" xml:space="preserve"><value>Link scaduto o non valido</value></data>
   <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Torna all'accesso</value></data>
+  <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>Il tuo link scade alle {0}.</value></data>
   <data name="MagicLinkSent_Title" xml:space="preserve"><value>Controlla la tua e-mail</value></data>
   <data name="ProfileEdit_ManageEmails" xml:space="preserve"><value>Indirizzi e-mail</value></data>
   <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>Aggiungi indirizzi e-mail, imposta le preferenze di notifica e controlla la visibilità del profilo.</value></data>

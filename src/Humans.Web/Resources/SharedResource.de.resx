@@ -1239,6 +1239,7 @@
   <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Neuen Link anfordern</value></data>
   <data name="MagicLinkError_Title" xml:space="preserve"><value>Link abgelaufen oder ungültig</value></data>
   <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Zurück zur Anmeldung</value></data>
+  <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>Dein Link läuft um {0} ab.</value></data>
   <data name="MagicLinkSent_Title" xml:space="preserve"><value>Überprüfe deine E-Mails</value></data>
   <data name="ProfileEdit_ManageEmails" xml:space="preserve"><value>E-Mail-Adressen</value></data>
   <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>E-Mail-Adressen hinzufügen, Benachrichtigungseinstellungen festlegen und Profilsichtbarkeit steuern.</value></data>

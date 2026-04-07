@@ -11,6 +11,7 @@
                 <h2 class="card-title text-center mb-4">@Localizer["CompleteSignup_Title"]</h2>
                 <form asp-action="CompleteSignup" method="post">
                     <input type="hidden" name="token" value="@token" />
+                    <input type="hidden" name="email" value="@email" />
                     <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
                     <div class="mb-3">
                         <label class="form-label">Email</label>

@@ -10,7 +10,7 @@
 | Actor | Capabilities |
 |-------|-------------|
 | Any authenticated human | Submit feedback (with optional screenshot). View and reply to their own feedback reports. Accessible even during onboarding (before becoming an active member) |
-| FeedbackAdmin, Admin | View all feedback reports. Update status. Add admin notes. Send email responses to reporters. Link GitHub issues. Reply to any report |
+| FeedbackAdmin, Admin | View all feedback reports. Update status. Assign to humans or teams. Add admin notes. Send email responses to reporters. Link GitHub issues. Reply to any report |
 | API (key auth) | Full CRUD on feedback reports via the REST API (no user session required) |
 
 ## Invariants
@@ -20,11 +20,13 @@
 - Feedback status follows: Open then Acknowledged then Resolved or WontFix.
 - Regular humans can only see their own feedback reports. FeedbackAdmin and Admin can see all reports.
 - A report tracks whether it needs a reply (the reporter sent a message that the admin has not yet responded to).
+- A report can optionally be assigned to a human and/or a team. Both assignments are independent and nullable.
+- Assignment changes are audit-logged.
 
 ## Negative Access Rules
 
 - Regular humans **cannot** view other humans' feedback reports.
-- Regular humans **cannot** update feedback status, add admin notes, link GitHub issues, or send admin responses.
+- Regular humans **cannot** update feedback status, assign reports, add admin notes, link GitHub issues, or send admin responses.
 - FeedbackAdmin **cannot** perform system administration tasks — their elevated access is scoped to feedback only.
 
 ## Triggers

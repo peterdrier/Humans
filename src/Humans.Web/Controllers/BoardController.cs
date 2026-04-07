@@ -6,11 +6,12 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.BoardOrAdmin)]
+[Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Board")]
 public class BoardController : HumansControllerBase
 {

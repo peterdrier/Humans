@@ -1256,6 +1256,7 @@
   <data name="CompleteSignup_DisplayNameLabel" xml:space="preserve"><value>Display name</value></data>
   <data name="CompleteSignup_Submit" xml:space="preserve"><value>Create account</value></data>
   <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Back to login</value></data>
+  <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>Your link expires at {0}.</value></data>
   <data name="MagicLinkConfirm_Title" xml:space="preserve"><value>Sign in</value></data>
   <data name="MagicLinkConfirm_Message" xml:space="preserve"><value>Click the button below to sign in to your account.</value></data>
   <data name="MagicLinkConfirm_SignIn" xml:space="preserve"><value>Sign in</value></data>

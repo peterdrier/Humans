@@ -49,7 +49,7 @@ public class AuditLogService : IAuditLogService
 
         _dbContext.AuditLogEntries.Add(entry);
 
-        _logger.LogDebug("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
+        _logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
             action, entityType, entityId, jobName, description);
 
         return Task.CompletedTask;
@@ -75,7 +75,7 @@ public class AuditLogService : IAuditLogService
 
         _dbContext.AuditLogEntries.Add(entry);
 
-        _logger.LogDebug("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
+        _logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
             action, entityType, entityId, actorUserId, description);
 
         return Task.CompletedTask;
@@ -109,7 +109,7 @@ public class AuditLogService : IAuditLogService
 
         _dbContext.AuditLogEntries.Add(entry);
 
-        _logger.LogDebug(
+        _logger.LogInformation(
             "Audit: {Action} {Role} for {Email} on resource {ResourceId} ({Source}, Success={Success})",
             action, role, userEmail, resourceId, source, success);
 

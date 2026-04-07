@@ -16,39 +16,89 @@ namespace Humans.Web.Controllers;
 public class FeedbackController : HumansControllerBase
 {
     private readonly IFeedbackService _feedbackService;
+    private readonly ITeamService _teamService;
+    private readonly IProfileService _profileService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<FeedbackController> _logger;
 
     public FeedbackController(
         IFeedbackService feedbackService,
+        ITeamService teamService,
+        IProfileService profileService,
         UserManager<User> userManager,
         IStringLocalizer<SharedResource> localizer,
         ILogger<FeedbackController> logger)
         : base(userManager)
     {
         _feedbackService = feedbackService;
+        _teamService = teamService;
+        _profileService = profileService;
         _localizer = localizer;
         _logger = logger;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> Index(
-        FeedbackStatus? status, FeedbackCategory? category, Guid? selected)
+        FeedbackStatus? status, FeedbackCategory? category, Guid? reporterUserId,
+        Guid? assignedTo, Guid? team, bool unassigned, Guid? selected)
     {
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
         var isAdmin = RoleChecks.IsFeedbackAdmin(User);
-        Guid? reporterFilter = isAdmin ? null : user.Id;
+        Guid? reporterFilter = isAdmin ? reporterUserId : user.Id;
 
-        var reports = await _feedbackService.GetFeedbackListAsync(status, category, reporterFilter);
+        var reports = await _feedbackService.GetFeedbackListAsync(
+            status, category, reporterFilter,
+            assignedToUserId: isAdmin ? assignedTo : null,
+            assignedToTeamId: isAdmin ? team : null,
+            unassignedOnly: isAdmin && unassigned ? true : null);
+
+        var assigneeOptions = new List<AssigneeOption>();
+        var teamOptions = new List<TeamOption>();
+
+        if (isAdmin)
+        {
+            var allTeams = await _teamService.GetAllTeamsAsync();
+            teamOptions = allTeams
+                .Where(t => t.IsActive)
+                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(t => new TeamOption { Id = t.Id, Name = t.Name })
+                .ToList();
+
+            var humans = await _profileService.GetFilteredHumansAsync(null, "Active");
+            assigneeOptions = humans
+                .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(h => new AssigneeOption { Id = h.UserId, DisplayName = h.DisplayName })
+                .ToList();
+        }
+
+        var reporters = new List<ReporterDropdownItem>();
+        if (isAdmin)
+        {
+            var distinctReporters = await _feedbackService.GetDistinctReportersAsync();
+            reporters = distinctReporters.Select(r => new ReporterDropdownItem
+            {
+                UserId = r.UserId,
+                DisplayName = r.DisplayName,
+                Count = r.Count
+            }).ToList();
+        }
 
         var viewModel = new FeedbackPageViewModel
         {
             StatusFilter = status,
             CategoryFilter = category,
+            ReporterFilter = isAdmin ? reporterUserId : null,
+            Reporters = reporters,
+            AssignedToFilter = assignedTo,
+            TeamFilter = team,
+            UnassignedFilter = unassigned,
             IsAdmin = isAdmin,
             SelectedReportId = selected,
+            CurrentUserId = user.Id,
+            AssigneeOptions = assigneeOptions,
+            TeamOptions = teamOptions,
             Reports = reports.Select(r => new FeedbackListItemViewModel
             {
                 Id = r.Id,
@@ -64,7 +114,11 @@ public class FeedbackController : HumansControllerBase
                 GitHubIssueNumber = r.GitHubIssueNumber,
                 NeedsReply = (r.LastReporterMessageAt.HasValue &&
                     (!r.LastAdminMessageAt.HasValue || r.LastReporterMessageAt > r.LastAdminMessageAt)) ||
-                    (r.Status == FeedbackStatus.Open && !r.LastAdminMessageAt.HasValue)
+                    (r.Status == FeedbackStatus.Open && !r.LastAdminMessageAt.HasValue),
+                AssignedToName = r.AssignedToUser?.DisplayName,
+                AssignedToUserId = r.AssignedToUserId,
+                AssignedToTeamName = r.AssignedToTeam?.Name,
+                AssignedToTeamId = r.AssignedToTeamId
             }).ToList()
         };
 
@@ -84,6 +138,11 @@ public class FeedbackController : HumansControllerBase
         if (!isAdmin && report.UserId != user.Id) return NotFound();
 
         var viewModel = MapDetailViewModel(report, isAdmin);
+
+        if (isAdmin)
+        {
+            await PopulateAssignmentOptionsAsync(viewModel);
+        }
 
         if (Request.Headers.XRequestedWith == "XMLHttpRequest")
         {
@@ -176,7 +235,7 @@ public class FeedbackController : HumansControllerBase
     }
 
     [HttpPost("{id}/Status")]
-    [Authorize(Roles = RoleGroups.FeedbackAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStatus(Guid id, UpdateFeedbackStatusModel model)
     {
@@ -201,8 +260,34 @@ public class FeedbackController : HumansControllerBase
         return RedirectToAction(nameof(Index), new { selected = id });
     }
 
+    [HttpPost("{id}/Assignment")]
+    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateAssignment(Guid id, UpdateFeedbackAssignmentModel model)
+    {
+        try
+        {
+            var (userMissing, user) = await RequireCurrentUserAsync();
+            if (userMissing is not null) return userMissing;
+
+            await _feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, user.Id);
+            SetSuccess("Assignment updated.");
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update assignment for feedback {FeedbackId}", id);
+            SetError("Failed to update assignment.");
+        }
+
+        return RedirectToAction(nameof(Index), new { selected = id });
+    }
+
     [HttpPost("{id}/GitHubIssue")]
-    [Authorize(Roles = RoleGroups.FeedbackAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetGitHubIssue(Guid id, SetGitHubIssueModel model)
     {
@@ -245,6 +330,10 @@ public class FeedbackController : HumansControllerBase
             ResolvedAt = report.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = report.ResolvedByUser?.DisplayName,
             IsAdmin = isAdmin,
+            AssignedToUserId = report.AssignedToUserId,
+            AssignedToName = report.AssignedToUser?.DisplayName,
+            AssignedToTeamId = report.AssignedToTeamId,
+            AssignedToTeamName = report.AssignedToTeam?.Name,
             Messages = report.Messages.Select(m => new FeedbackMessageViewModel
             {
                 Id = m.Id,
@@ -255,5 +344,42 @@ public class FeedbackController : HumansControllerBase
                 IsReporter = m.SenderUserId.HasValue && m.SenderUserId == report.UserId
             }).ToList()
         };
+    }
+
+    private async Task PopulateAssignmentOptionsAsync(FeedbackDetailViewModel viewModel)
+    {
+        var allTeams = await _teamService.GetAllTeamsAsync();
+        viewModel.TeamOptions = allTeams
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => new TeamOption { Id = t.Id, Name = t.Name })
+            .ToList();
+
+        // Include currently assigned team even if inactive, to prevent silent clearing
+        if (viewModel.AssignedToTeamId.HasValue &&
+            viewModel.TeamOptions.All(t => t.Id != viewModel.AssignedToTeamId.Value))
+        {
+            var inactiveTeam = allTeams.FirstOrDefault(t => t.Id == viewModel.AssignedToTeamId.Value);
+            if (inactiveTeam is not null)
+            {
+                viewModel.TeamOptions.Insert(0,
+                    new TeamOption { Id = inactiveTeam.Id, Name = $"{inactiveTeam.Name} (inactive)" });
+            }
+        }
+
+        var humans = await _profileService.GetFilteredHumansAsync(null, "Active");
+        viewModel.AssigneeOptions = humans
+            .OrderBy(h => h.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .Select(h => new AssigneeOption { Id = h.UserId, DisplayName = h.DisplayName })
+            .ToList();
+
+        // Include currently assigned human even if inactive, to prevent silent clearing
+        if (viewModel.AssignedToUserId.HasValue &&
+            viewModel.AssigneeOptions.All(a => a.Id != viewModel.AssignedToUserId.Value))
+        {
+            var label = viewModel.AssignedToName ?? "Unknown";
+            viewModel.AssigneeOptions.Insert(0,
+                new AssigneeOption { Id = viewModel.AssignedToUserId.Value, DisplayName = $"{label} (inactive)" });
+        }
     }
 }
