@@ -92,9 +92,10 @@
                         };
                         var priorityLabel = shift.Rota.Priority.ToString();
                         var understaffed = item.ConfirmedCount < shift.MinVolunteers;
+                        var isHighlighted = Model.SelectedRotaId.HasValue && shift.RotaId == Model.SelectedRotaId.Value;
                         var collapseId = "voluntell-" + shift.Id.ToString("N");
 
-                        <tr>
+                        <tr class="@(isHighlighted ? "table-warning" : "")">
                             <td>
                                 @shift.Rota.Name
                                 @if (shift.AdminOnly) { <span class="badge bg-dark ms-1">Admin</span> }
