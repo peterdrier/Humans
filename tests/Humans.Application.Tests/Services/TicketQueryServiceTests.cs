@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -7,6 +8,7 @@ using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -23,7 +25,7 @@ public class TicketQueryServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
-        _service = new TicketQueryService(_dbContext, new MemoryCache(new MemoryCacheOptions()));
+        _service = new TicketQueryService(_dbContext, new MemoryCache(new MemoryCacheOptions()), Substitute.For<IBudgetService>());
     }
 
     public void Dispose()
