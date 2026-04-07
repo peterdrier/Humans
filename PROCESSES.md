@@ -24,8 +24,6 @@ How to use the skills and agents in this project. Ordered by typical workflow.
 
 **Output:** QA PRs on peterdrier/Humans, one per batch. Summary report showing pass/fail per batch.
 
-See [docs/pull-request-workflow.md](docs/pull-request-workflow.md) for the repo-specific QA-first PR flow.
-
 ```
 /execute-sprint batch 2       # execute one batch
 /execute-sprint batch 2,3,5   # execute specific batches
