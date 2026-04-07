@@ -58,8 +58,20 @@ public class FeedbackReportConfiguration : IEntityTypeConfiguration<FeedbackRepo
             .HasForeignKey(f => f.ResolvedByUserId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(f => f.AssignedToUser)
+            .WithMany()
+            .HasForeignKey(f => f.AssignedToUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(f => f.AssignedToTeam)
+            .WithMany()
+            .HasForeignKey(f => f.AssignedToTeamId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(f => f.Status);
         builder.HasIndex(f => f.CreatedAt);
         builder.HasIndex(f => f.UserId);
+        builder.HasIndex(f => f.AssignedToUserId);
+        builder.HasIndex(f => f.AssignedToTeamId);
     }
 }
