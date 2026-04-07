@@ -32,5 +32,11 @@ public class FeedbackReport
     public Guid? ResolvedByUserId { get; set; }
     public User? ResolvedByUser { get; set; }
 
+    public Guid? AssignedToUserId { get; set; }
+    public User? AssignedToUser { get; set; }
+
+    public Guid? AssignedToTeamId { get; set; }
+    public Team? AssignedToTeam { get; set; }
+
     public ICollection<FeedbackMessage> Messages { get; set; } = new List<FeedbackMessage>();
 }

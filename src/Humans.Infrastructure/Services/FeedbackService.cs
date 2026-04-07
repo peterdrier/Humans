@@ -118,6 +118,8 @@ public class FeedbackService : IFeedbackService
         return await _dbContext.FeedbackReports
             .Include(f => f.User)
             .Include(f => f.ResolvedByUser)
+            .Include(f => f.AssignedToUser)
+            .Include(f => f.AssignedToTeam)
             .Include(f => f.Messages.OrderBy(m => m.CreatedAt))
                 .ThenInclude(m => m.SenderUser)
             .FirstOrDefaultAsync(f => f.Id == id, cancellationToken);
@@ -125,12 +127,16 @@ public class FeedbackService : IFeedbackService
 
     public async Task<IReadOnlyList<FeedbackReport>> GetFeedbackListAsync(
         FeedbackStatus? status = null, FeedbackCategory? category = null,
-        Guid? reporterUserId = null, int limit = 50,
+        Guid? reporterUserId = null, Guid? assignedToUserId = null,
+        Guid? assignedToTeamId = null, bool? unassignedOnly = null,
+        int limit = 50,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.FeedbackReports
             .Include(f => f.User)
             .Include(f => f.ResolvedByUser)
+            .Include(f => f.AssignedToUser)
+            .Include(f => f.AssignedToTeam)
             .Include(f => f.Messages)
             .AsQueryable();
 
@@ -142,6 +148,15 @@ public class FeedbackService : IFeedbackService
 
         if (reporterUserId.HasValue)
             query = query.Where(f => f.UserId == reporterUserId.Value);
+
+        if (assignedToUserId.HasValue)
+            query = query.Where(f => f.AssignedToUserId == assignedToUserId.Value);
+
+        if (assignedToTeamId.HasValue)
+            query = query.Where(f => f.AssignedToTeamId == assignedToTeamId.Value);
+
+        if (unassignedOnly == true)
+            query = query.Where(f => f.AssignedToUserId == null && f.AssignedToTeamId == null);
 
         return await query
             .OrderByDescending(f => f.CreatedAt)
@@ -286,6 +301,62 @@ public class FeedbackService : IFeedbackService
             .OrderBy(m => m.CreatedAt)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task UpdateAssignmentAsync(
+        Guid id, Guid? assignedToUserId, Guid? assignedToTeamId, Guid actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var report = await _dbContext.FeedbackReports
+            .Include(f => f.AssignedToUser)
+            .Include(f => f.AssignedToTeam)
+            .FirstOrDefaultAsync(f => f.Id == id, cancellationToken)
+            ?? throw new InvalidOperationException($"Feedback report {id} not found");
+
+        var changes = new List<string>();
+
+        if (report.AssignedToUserId != assignedToUserId)
+        {
+            var oldName = report.AssignedToUser?.DisplayName ?? "Unassigned";
+            report.AssignedToUserId = assignedToUserId;
+
+            // Resolve new assignee name
+            string newName = "Unassigned";
+            if (assignedToUserId.HasValue)
+            {
+                var user = await _dbContext.Users.FindAsync(new object[] { assignedToUserId.Value }, cancellationToken);
+                newName = user?.DisplayName ?? assignedToUserId.Value.ToString();
+            }
+            changes.Add($"Assignee: {oldName} → {newName}");
+        }
+
+        if (report.AssignedToTeamId != assignedToTeamId)
+        {
+            var oldTeamName = report.AssignedToTeam?.Name ?? "Unassigned";
+            report.AssignedToTeamId = assignedToTeamId;
+
+            // Resolve new team name
+            string newTeamName = "Unassigned";
+            if (assignedToTeamId.HasValue)
+            {
+                var team = await _dbContext.Teams.FindAsync(new object[] { assignedToTeamId.Value }, cancellationToken);
+                newTeamName = team?.Name ?? assignedToTeamId.Value.ToString();
+            }
+            changes.Add($"Team: {oldTeamName} → {newTeamName}");
+        }
+
+        if (changes.Count == 0)
+            return;
+
+        report.UpdatedAt = _clock.GetCurrentInstant();
+
+        var description = $"Feedback {id} assignment changed: {string.Join("; ", changes)}";
+        await _auditLogService.LogAsync(
+            AuditAction.FeedbackAssignmentChanged, nameof(FeedbackReport), id,
+            description, actorUserId);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation("Feedback {ReportId} assignment updated by {ActorId}: {Changes}", id, actorUserId, string.Join("; ", changes));
     }
 
     public async Task<int> GetActionableCountAsync(

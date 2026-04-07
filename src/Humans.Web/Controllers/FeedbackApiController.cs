@@ -51,7 +51,11 @@ public class FeedbackApiController : ControllerBase
             LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = r.ResolvedByUser?.DisplayName,
-            MessageCount = r.Messages.Count
+            MessageCount = r.Messages.Count,
+            AssignedToUserId = r.AssignedToUserId,
+            AssignedToName = r.AssignedToUser?.DisplayName,
+            AssignedToTeamId = r.AssignedToTeamId,
+            AssignedToTeamName = r.AssignedToTeam?.Name
         });
 
         return Ok(result);
@@ -84,6 +88,10 @@ public class FeedbackApiController : ControllerBase
             LastAdminMessageAt = r.LastAdminMessageAt?.ToDateTimeUtc(),
             ResolvedAt = r.ResolvedAt?.ToDateTimeUtc(),
             ResolvedByName = r.ResolvedByUser?.DisplayName,
+            AssignedToUserId = r.AssignedToUserId,
+            AssignedToName = r.AssignedToUser?.DisplayName,
+            AssignedToTeamId = r.AssignedToTeamId,
+            AssignedToTeamName = r.AssignedToTeam?.Name,
             Messages = r.Messages.Select(m => new
             {
                 m.Id,
@@ -158,6 +166,25 @@ public class FeedbackApiController : ControllerBase
         {
             _logger.LogError(ex, "Failed to update feedback {FeedbackId} status", id);
             return StatusCode(500, new { error = "Failed to update status" });
+        }
+    }
+
+    [HttpPatch("{id}/assignment")]
+    public async Task<IActionResult> UpdateAssignment(Guid id, [FromBody] UpdateFeedbackAssignmentModel model)
+    {
+        try
+        {
+            await _feedbackService.UpdateAssignmentAsync(id, model.AssignedToUserId, model.AssignedToTeamId, Guid.Empty);
+            return Ok(new { success = true });
+        }
+        catch (InvalidOperationException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update assignment for feedback {FeedbackId}", id);
+            return StatusCode(500, new { error = "Failed to update assignment" });
         }
     }
 
