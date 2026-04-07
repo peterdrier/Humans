@@ -27,8 +27,17 @@ public class FeedbackPageViewModel
     public List<FeedbackListItemViewModel> Reports { get; set; } = new();
     public FeedbackStatus? StatusFilter { get; set; }
     public FeedbackCategory? CategoryFilter { get; set; }
+    public Guid? ReporterFilter { get; set; }
+    public List<ReporterDropdownItem> Reporters { get; set; } = new();
     public bool IsAdmin { get; set; }
     public Guid? SelectedReportId { get; set; }
+}
+
+public class ReporterDropdownItem
+{
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public int Count { get; set; }
 }
 
 public class FeedbackListItemViewModel

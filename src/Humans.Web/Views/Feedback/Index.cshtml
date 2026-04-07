@@ -36,7 +36,24 @@
                 }
             }
         </select>
-        @if (Model.StatusFilter.HasValue || Model.CategoryFilter.HasValue)
+        @if (Model.IsAdmin && Model.Reporters.Count > 0)
+        {
+            <select name="reporterUserId" class="form-select form-select-sm" style="width: auto;">
+                <option value="">All Reporters</option>
+                @foreach (var r in Model.Reporters)
+                {
+                    if (Model.ReporterFilter == r.UserId)
+                    {
+                        <option value="@r.UserId" selected>@r.DisplayName (@r.Count)</option>
+                    }
+                    else
+                    {
+                        <option value="@r.UserId">@r.DisplayName (@r.Count)</option>
+                    }
+                }
+            </select>
+        }
+        @if (Model.StatusFilter.HasValue || Model.CategoryFilter.HasValue || Model.ReporterFilter.HasValue)
         {
             <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
         }

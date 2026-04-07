@@ -33,20 +33,34 @@ public class FeedbackController : HumansControllerBase
 
     [HttpGet("")]
     public async Task<IActionResult> Index(
-        FeedbackStatus? status, FeedbackCategory? category, Guid? selected)
+        FeedbackStatus? status, FeedbackCategory? category, Guid? reporterUserId, Guid? selected)
     {
         var (userMissing, user) = await RequireCurrentUserAsync();
         if (userMissing is not null) return userMissing;
 
         var isAdmin = RoleChecks.IsFeedbackAdmin(User);
-        Guid? reporterFilter = isAdmin ? null : user.Id;
+        Guid? reporterFilter = isAdmin ? reporterUserId : user.Id;
 
         var reports = await _feedbackService.GetFeedbackListAsync(status, category, reporterFilter);
+
+        var reporters = new List<ReporterDropdownItem>();
+        if (isAdmin)
+        {
+            var distinctReporters = await _feedbackService.GetDistinctReportersAsync();
+            reporters = distinctReporters.Select(r => new ReporterDropdownItem
+            {
+                UserId = r.UserId,
+                DisplayName = r.DisplayName,
+                Count = r.Count
+            }).ToList();
+        }
 
         var viewModel = new FeedbackPageViewModel
         {
             StatusFilter = status,
             CategoryFilter = category,
+            ReporterFilter = isAdmin ? reporterUserId : null,
+            Reporters = reporters,
             IsAdmin = isAdmin,
             SelectedReportId = selected,
             Reports = reports.Select(r => new FeedbackListItemViewModel
