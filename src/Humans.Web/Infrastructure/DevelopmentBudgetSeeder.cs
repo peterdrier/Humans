@@ -2,8 +2,6 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Web.Infrastructure;
@@ -136,22 +134,22 @@ public sealed class DevelopmentBudgetSeeder
             ])
     ];
 
-    private readonly HumansDbContext _dbContext;
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
+    private readonly ICampService _campService;
     private readonly IClock _clock;
     private readonly ILogger<DevelopmentBudgetSeeder> _logger;
 
     public DevelopmentBudgetSeeder(
-        HumansDbContext dbContext,
         IBudgetService budgetService,
         ITeamService teamService,
+        ICampService campService,
         IClock clock,
         ILogger<DevelopmentBudgetSeeder> logger)
     {
-        _dbContext = dbContext;
         _budgetService = budgetService;
         _teamService = teamService;
+        _campService = campService;
         _clock = clock;
         _logger = logger;
     }
@@ -159,10 +157,8 @@ public sealed class DevelopmentBudgetSeeder
     public async Task<DevelopmentBudgetSeedResult> SeedAsync(Guid actorUserId, CancellationToken cancellationToken = default)
     {
         var now = _clock.GetCurrentInstant();
-        var publicYear = await _dbContext.CampSettings
-            .AsNoTracking()
-            .Select(s => s.PublicYear)
-            .FirstOrDefaultAsync(cancellationToken);
+        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
+        var publicYear = campSettings.PublicYear;
 
         if (publicYear <= 0)
         {
@@ -207,18 +203,23 @@ public sealed class DevelopmentBudgetSeeder
             activatedBudgetYear = true;
         }
 
-        var currentYear = await LoadBudgetYearAsync(budgetYear.Id, cancellationToken);
+        // Load full year tree — groups, categories, line items — for in-memory lookups
+        var currentYear = await _budgetService.GetYearByIdAsync(budgetYear.Id)
+            ?? throw new InvalidOperationException($"Budget year {budgetYear.Id} not found after creation");
+
         var departmentGroup = currentYear.Groups.Single(g => g.IsDepartmentGroup);
         await _budgetService.UpdateGroupAsync(departmentGroup.Id, departmentGroup.Name, 0, departmentGroup.IsRestricted, actorUserId);
 
-        var sharedServicesGroup = await EnsureGroupAsync(
-            budgetYear.Id,
-            "Shared Services",
-            sortOrder: 1,
-            isRestricted: false,
-            actorUserId,
-            cancellationToken,
-            onCreated: () => groupsCreated++);
+        var sharedServicesGroup = currentYear.Groups.FirstOrDefault(g =>
+            string.Equals(g.Name, "Shared Services", StringComparison.Ordinal));
+
+        if (sharedServicesGroup is null)
+        {
+            sharedServicesGroup = await _budgetService.CreateGroupAsync(budgetYear.Id, "Shared Services", false, actorUserId);
+            groupsCreated++;
+        }
+
+        await _budgetService.UpdateGroupAsync(sharedServicesGroup.Id, sharedServicesGroup.Name, 1, sharedServicesGroup.IsRestricted, actorUserId);
 
         var ticketingGroup = currentYear.Groups.Single(g => g.IsTicketingGroup);
         await _budgetService.UpdateGroupAsync(ticketingGroup.Id, ticketingGroup.Name, 2, ticketingGroup.IsRestricted, actorUserId);
@@ -226,49 +227,59 @@ public sealed class DevelopmentBudgetSeeder
         var categoriesCreated = 0;
         var lineItemsCreated = 0;
 
+        // Re-load after group changes for accurate category lookups
+        currentYear = await _budgetService.GetYearByIdAsync(budgetYear.Id)
+            ?? throw new InvalidOperationException($"Budget year {budgetYear.Id} not found");
+
+        departmentGroup = currentYear.Groups.Single(g => g.IsDepartmentGroup);
+        sharedServicesGroup = currentYear.Groups.Single(g =>
+            string.Equals(g.Name, "Shared Services", StringComparison.Ordinal));
+        ticketingGroup = currentYear.Groups.Single(g => g.IsTicketingGroup);
+
         foreach (var teamSeed in TeamSeeds)
         {
-            var category = await EnsureDepartmentCategoryAsync(
-                departmentGroup.Id,
-                teamSeed,
-                actorUserId,
-                cancellationToken,
-                onCategoryCreated: () => categoriesCreated++);
+            var team = await _teamService.GetTeamBySlugAsync(teamSeed.Slug, cancellationToken)
+                ?? throw new InvalidOperationException($"Team with slug '{teamSeed.Slug}' not found after seeding");
 
-            await ConfigureCategoryAsync(category.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType,
-                teamSeed.LineItems, actorUserId, cancellationToken, onLineItemCreated: () => lineItemsCreated++);
+            var category = departmentGroup.Categories.FirstOrDefault(c => c.TeamId == team.Id);
+            if (category is null)
+            {
+                category = await _budgetService.CreateCategoryAsync(
+                    departmentGroup.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId);
+                categoriesCreated++;
+            }
+
+            await SeedLineItemsAsync(category, teamSeed.LineItems, actorUserId, cancellationToken, () => lineItemsCreated++);
         }
 
         foreach (var sharedSeed in SharedServicesCategories)
         {
-            var category = await EnsureCategoryAsync(
-                sharedServicesGroup.Id,
-                sharedSeed.Name,
-                sharedSeed.AllocatedAmount,
-                sharedSeed.ExpenditureType,
-                teamId: null,
-                actorUserId,
-                cancellationToken,
-                onCategoryCreated: () => categoriesCreated++);
+            var category = sharedServicesGroup.Categories.FirstOrDefault(c =>
+                string.Equals(c.Name, sharedSeed.Name, StringComparison.Ordinal));
 
-            await ConfigureCategoryAsync(category.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType,
-                sharedSeed.LineItems, actorUserId, cancellationToken, onLineItemCreated: () => lineItemsCreated++);
+            if (category is null)
+            {
+                category = await _budgetService.CreateCategoryAsync(
+                    sharedServicesGroup.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId);
+                categoriesCreated++;
+            }
+
+            await SeedLineItemsAsync(category, sharedSeed.LineItems, actorUserId, cancellationToken, () => lineItemsCreated++);
         }
 
         foreach (var ticketSeed in TicketingCategories)
         {
-            var category = await EnsureCategoryAsync(
-                ticketingGroup.Id,
-                ticketSeed.Name,
-                ticketSeed.AllocatedAmount,
-                ticketSeed.ExpenditureType,
-                teamId: null,
-                actorUserId,
-                cancellationToken,
-                onCategoryCreated: () => categoriesCreated++);
+            var category = ticketingGroup.Categories.FirstOrDefault(c =>
+                string.Equals(c.Name, ticketSeed.Name, StringComparison.Ordinal));
 
-            await ConfigureCategoryAsync(category.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType,
-                ticketSeed.LineItems, actorUserId, cancellationToken, onLineItemCreated: () => lineItemsCreated++);
+            if (category is null)
+            {
+                category = await _budgetService.CreateCategoryAsync(
+                    ticketingGroup.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId);
+                categoriesCreated++;
+            }
+
+            await SeedLineItemsAsync(category, ticketSeed.LineItems, actorUserId, cancellationToken, () => lineItemsCreated++);
         }
 
         await _budgetService.UpdateTicketingProjectionAsync(
@@ -329,120 +340,25 @@ public sealed class DevelopmentBudgetSeeder
         onUpdated();
     }
 
-    private async Task<BudgetGroup> EnsureGroupAsync(
-        Guid budgetYearId,
-        string name,
-        int sortOrder,
-        bool isRestricted,
-        Guid actorUserId,
-        CancellationToken cancellationToken,
-        Action onCreated)
-    {
-        var existing = await _dbContext.BudgetGroups
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.BudgetYearId == budgetYearId && g.Name == name, cancellationToken);
-
-        if (existing is null)
-        {
-            existing = await _budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, actorUserId);
-            onCreated();
-        }
-
-        await _budgetService.UpdateGroupAsync(existing.Id, name, sortOrder, isRestricted, actorUserId);
-
-        // Re-fetch to return the updated state
-        return await _dbContext.BudgetGroups
-            .AsNoTracking()
-            .FirstAsync(g => g.Id == existing.Id, cancellationToken);
-    }
-
-    private async Task<BudgetCategory> EnsureDepartmentCategoryAsync(
-        Guid budgetGroupId,
-        BudgetTeamSeed seed,
-        Guid actorUserId,
-        CancellationToken cancellationToken,
-        Action onCategoryCreated)
-    {
-        var team = await _teamService.GetTeamBySlugAsync(seed.Slug, cancellationToken)
-            ?? throw new InvalidOperationException($"Team with slug '{seed.Slug}' not found after seeding");
-
-        var existing = await _dbContext.BudgetCategories
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.BudgetGroupId == budgetGroupId && c.TeamId == team.Id, cancellationToken);
-
-        if (existing is not null)
-        {
-            return existing;
-        }
-
-        var created = await _budgetService.CreateCategoryAsync(
-            budgetGroupId,
-            seed.Name,
-            seed.AllocatedAmount,
-            seed.ExpenditureType,
-            team.Id,
-            actorUserId);
-
-        onCategoryCreated();
-        return created;
-    }
-
-    private async Task<BudgetCategory> EnsureCategoryAsync(
-        Guid budgetGroupId,
-        string name,
-        decimal allocatedAmount,
-        ExpenditureType expenditureType,
-        Guid? teamId,
-        Guid actorUserId,
-        CancellationToken cancellationToken,
-        Action onCategoryCreated)
-    {
-        var existing = await _dbContext.BudgetCategories
-            .AsNoTracking()
-            .FirstOrDefaultAsync(c => c.BudgetGroupId == budgetGroupId && c.Name == name, cancellationToken);
-
-        if (existing is not null)
-        {
-            return existing;
-        }
-
-        var created = await _budgetService.CreateCategoryAsync(
-            budgetGroupId,
-            name,
-            allocatedAmount,
-            expenditureType,
-            teamId,
-            actorUserId);
-
-        onCategoryCreated();
-        return created;
-    }
-
-    private async Task ConfigureCategoryAsync(
-        Guid categoryId,
-        string name,
-        decimal allocatedAmount,
-        ExpenditureType expenditureType,
+    private async Task SeedLineItemsAsync(
+        BudgetCategory category,
         IReadOnlyList<BudgetLineItemSeed> lineItems,
         Guid actorUserId,
         CancellationToken cancellationToken,
         Action onLineItemCreated)
     {
-        var category = await _budgetService.GetCategoryByIdAsync(categoryId)
-            ?? throw new InvalidOperationException($"Budget category {categoryId} not found");
-
-        await _budgetService.UpdateCategoryAsync(categoryId, name, allocatedAmount, expenditureType, actorUserId);
+        await _budgetService.UpdateCategoryAsync(category.Id, category.Name,
+            lineItems.Sum(li => li.Amount), category.ExpenditureType, actorUserId);
 
         foreach (var lineItem in lineItems)
         {
-            var existing = await _dbContext.BudgetLineItems
-                .AsNoTracking()
-                .FirstOrDefaultAsync(li => li.BudgetCategoryId == categoryId && li.Description == lineItem.Description, cancellationToken);
+            var existing = category.LineItems.FirstOrDefault(li =>
+                string.Equals(li.Description, lineItem.Description, StringComparison.Ordinal));
 
             if (existing is null)
             {
                 await _budgetService.CreateLineItemAsync(
-                    categoryId,
+                    category.Id,
                     lineItem.Description,
                     lineItem.Amount,
                     responsibleTeamId: category.TeamId,
@@ -465,17 +381,6 @@ public sealed class DevelopmentBudgetSeeder
                 vatRate: lineItem.VatRate,
                 actorUserId);
         }
-    }
-
-    private async Task<BudgetYear> LoadBudgetYearAsync(Guid budgetYearId, CancellationToken cancellationToken)
-    {
-        return await _dbContext.BudgetYears
-            .Include(y => y.Groups)
-                .ThenInclude(g => g.Categories)
-                    .ThenInclude(c => c.LineItems)
-            .Include(y => y.Groups)
-                .ThenInclude(g => g.TicketingProjection)
-            .FirstAsync(y => y.Id == budgetYearId, cancellationToken);
     }
 
     private sealed record BudgetTeamSeed(
