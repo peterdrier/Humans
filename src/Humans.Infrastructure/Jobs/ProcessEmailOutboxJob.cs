@@ -84,7 +84,8 @@ public class ProcessEmailOutboxJob : IRecurringJob
             try
             {
                 // Skip invalid test addresses — sending to these bounces and damages sender reputation
-                if (message.RecipientEmail.EndsWith("@localhost", StringComparison.OrdinalIgnoreCase))
+                if (message.RecipientEmail.EndsWith("@localhost", StringComparison.OrdinalIgnoreCase) ||
+                    message.RecipientEmail.EndsWith("@ticketstub.local", StringComparison.OrdinalIgnoreCase))
                 {
                     message.Status = EmailOutboxStatus.Sent;
                     message.SentAt = now;
