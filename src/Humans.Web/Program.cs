@@ -19,8 +19,10 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Humans.Application.Configuration;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Web.Extensions;
+using Microsoft.Extensions.Caching.Memory;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
@@ -99,6 +101,13 @@ builder.Services.AddSingleton(sp =>
 // Query monitoring — singleton interceptor tracks execution counts by table + operation
 builder.Services.AddSingleton<QueryStatistics>();
 builder.Services.AddSingleton<QueryMonitoringInterceptor>();
+
+// Cache monitoring — decorator wraps real MemoryCache to track hit/miss stats per key type.
+// Register TrackingMemoryCache as both IMemoryCache (decorator) and ICacheStatsProvider (stats).
+builder.Services.AddSingleton<TrackingMemoryCache>(sp =>
+    new TrackingMemoryCache(new MemoryCache(new MemoryCacheOptions())));
+builder.Services.AddSingleton<IMemoryCache>(sp => sp.GetRequiredService<TrackingMemoryCache>());
+builder.Services.AddSingleton<ICacheStatsProvider>(sp => sp.GetRequiredService<TrackingMemoryCache>());
 
 // Configure EF Core with PostgreSQL
 builder.Services.AddDbContext<HumansDbContext>((sp, options) =>

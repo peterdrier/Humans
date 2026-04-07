@@ -71,6 +71,30 @@ public static class MemoryCacheExtensions
     public static void InvalidateCampSettings(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.CampSettings);
 
+    public static void InvalidateUserTicketCount(this IMemoryCache cache, Guid userId) =>
+        cache.Remove(CacheKeys.UserTicketCount(userId));
+
+    public static void InvalidateTicketDashboardStats(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.TicketDashboardStats);
+
+    public static void InvalidateUserIdsWithTickets(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.UserIdsWithTickets);
+
+    /// <summary>
+    /// Invalidate all ticket-related caches after a sync or data change.
+    /// Per-user UserTicketCount entries are NOT invalidated here because they use
+    /// per-user keys that can't be enumerated for bulk invalidation. They expire
+    /// naturally via their 5-minute TTL, which is acceptable at ~500-user scale.
+    /// </summary>
+    public static void InvalidateTicketCaches(this IMemoryCache cache)
+    {
+        cache.InvalidateTicketDashboardStats();
+        cache.InvalidateUserIdsWithTickets();
+    }
+
+    public static void InvalidateUserProfile(this IMemoryCache cache, Guid userId) =>
+        cache.Remove(CacheKeys.UserProfile(userId));
+
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 

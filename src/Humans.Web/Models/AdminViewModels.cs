@@ -380,6 +380,26 @@ public class DbStatEntryViewModel
     public double TotalMs { get; set; }
 }
 
+public class CacheStatsViewModel
+{
+    public long TotalHits { get; set; }
+    public long TotalMisses { get; set; }
+
+    public double OverallHitRatePercent => TotalHits + TotalMisses > 0
+        ? Math.Round(TotalHits * 100.0 / (TotalHits + TotalMisses), 1)
+        : 0;
+
+    public List<CacheStatEntryViewModel> Entries { get; set; } = [];
+}
+
+public class CacheStatEntryViewModel
+{
+    public string KeyType { get; set; } = string.Empty;
+    public long Hits { get; set; }
+    public long Misses { get; set; }
+    public double HitRatePercent { get; set; }
+}
+
 public class DuplicateAccountListViewModel
 {
     public List<DuplicateAccountGroupViewModel> Groups { get; set; } = [];

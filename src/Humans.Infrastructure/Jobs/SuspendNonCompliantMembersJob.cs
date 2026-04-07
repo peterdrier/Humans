@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -23,6 +25,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
+    private readonly IMemoryCache _cache;
     private readonly HumansMetricsService _metrics;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
     private readonly IClock _clock;
@@ -36,6 +39,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         IAuditLogService auditLogService,
         IProfileService profileService,
         ITeamService teamService,
+        IMemoryCache cache,
         HumansMetricsService metrics,
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
@@ -48,6 +52,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         _auditLogService = auditLogService;
         _profileService = profileService;
         _teamService = teamService;
+        _cache = cache;
         _metrics = metrics;
         _logger = logger;
         _clock = clock;
@@ -172,6 +177,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 foreach (var userId in suspendedUserIds)
                 {
                     _profileService.UpdateProfileCache(userId, null);
+                    _cache.InvalidateUserProfile(userId);
                     _teamService.RemoveMemberFromAllTeamsCache(userId);
                 }
             }

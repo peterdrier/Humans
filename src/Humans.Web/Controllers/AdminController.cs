@@ -21,6 +21,7 @@ public class AdminController : HumansControllerBase
     private readonly IOnboardingService _onboardingService;
     private readonly ConfigurationRegistry _configRegistry;
     private readonly QueryStatistics _queryStatistics;
+    private readonly ICacheStatsProvider _cacheStatsProvider;
 
     public AdminController(
         HumansDbContext dbContext,
@@ -29,7 +30,8 @@ public class AdminController : HumansControllerBase
         IWebHostEnvironment environment,
         IOnboardingService onboardingService,
         ConfigurationRegistry configRegistry,
-        QueryStatistics queryStatistics)
+        QueryStatistics queryStatistics,
+        ICacheStatsProvider cacheStatsProvider)
         : base(userManager)
     {
         _dbContext = dbContext;
@@ -39,6 +41,7 @@ public class AdminController : HumansControllerBase
         _onboardingService = onboardingService;
         _configRegistry = configRegistry;
         _queryStatistics = queryStatistics;
+        _cacheStatsProvider = cacheStatsProvider;
     }
 
     [HttpGet("")]
@@ -231,5 +234,54 @@ public class AdminController : HumansControllerBase
         _logger.LogWarning("Admin cleared {Count} stale Hangfire locks", deleted);
         SetSuccess($"Cleared {deleted} Hangfire lock(s). Restart the app to re-register recurring jobs.");
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet("CacheStats")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public IActionResult CacheStats()
+    {
+        try
+        {
+            var snapshot = _cacheStatsProvider.GetSnapshot();
+            var model = new CacheStatsViewModel
+            {
+                TotalHits = _cacheStatsProvider.TotalHits,
+                TotalMisses = _cacheStatsProvider.TotalMisses,
+                Entries = snapshot.Select(e => new CacheStatEntryViewModel
+                {
+                    KeyType = e.KeyType,
+                    Hits = e.Hits,
+                    Misses = e.Misses,
+                    HitRatePercent = e.HitRatePercent
+                }).ToList()
+            };
+            return View(model);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading cache stats");
+            SetError("Failed to load cache statistics.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("CacheStats/Reset")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public IActionResult ResetCacheStats()
+    {
+        try
+        {
+            _cacheStatsProvider.Reset();
+            _logger.LogInformation("Admin reset cache statistics");
+            SetSuccess("Cache statistics have been reset.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting cache stats");
+            SetError("Failed to reset cache statistics.");
+        }
+
+        return RedirectToAction(nameof(CacheStats));
     }
 }

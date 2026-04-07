@@ -45,12 +45,28 @@ public class ProfileService : IProfileService
         _logger = logger;
     }
 
+    private static readonly TimeSpan ProfileCacheTtl = TimeSpan.FromMinutes(2);
+
+    // Caches the detached Profile entity (with User navigation). Callers must treat
+    // the returned object as read-only — mutating it corrupts the cache for other callers.
+    // At ~500-user scale this is acceptable; if mutation risks emerge, cache a DTO instead.
     public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        return await _dbContext.Profiles
+        var cacheKey = CacheKeys.UserProfile(userId);
+        if (_cache.TryGetExistingValue<Profile>(cacheKey, out var cached))
+            return cached;
+
+        var profile = await _dbContext.Profiles
             .AsNoTracking()
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+        if (profile is not null)
+        {
+            _cache.Set(cacheKey, profile, ProfileCacheTtl);
+        }
+
+        return profile;
     }
 
     public async Task<(Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
@@ -255,6 +271,7 @@ public class ProfileService : IProfileService
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateActiveTeams();
+        _cache.InvalidateUserProfile(userId);
 
         // Update profile cache if profile is approved
         if (profile.IsApproved && !profile.IsSuspended && user is not null)
@@ -323,6 +340,7 @@ public class ProfileService : IProfileService
         await _dbContext.SaveChangesAsync(ct);
         UpdateProfileCache(userId, null);
         _cache.InvalidateUserAccess(userId);
+        _cache.InvalidateUserProfile(userId);
 
         _logger.LogWarning(
             "User {UserId} requested account deletion. Scheduled for {DeletionDate}. " +
@@ -357,6 +375,7 @@ public class ProfileService : IProfileService
         user.DeletionRequestedAt = null;
         user.DeletionScheduledFor = null;
         await _dbContext.SaveChangesAsync(ct);
+        _cache.InvalidateUserProfile(userId);
 
         // Re-add to profile cache if approved
         var profile = await _dbContext.Profiles

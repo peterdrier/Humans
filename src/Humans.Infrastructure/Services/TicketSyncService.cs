@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application;
 using Humans.Domain.Constants;
@@ -118,8 +119,9 @@ public class TicketSyncService : ITicketSyncService
             syncState.LastError = null;
             await _dbContext.SaveChangesAsync(ct);
 
-            // Dashboard event summary is cached separately; refresh it after successful sync.
+            // Invalidate all ticket-related caches after successful sync.
             _cache.Remove(CacheKeys.TicketEventSummary(eventId));
+            _cache.InvalidateTicketCaches();
 
             var result = new TicketSyncResult(ordersSynced, attendeesSynced,
                 ordersMatched, attendeesMatched, codesRedeemed);

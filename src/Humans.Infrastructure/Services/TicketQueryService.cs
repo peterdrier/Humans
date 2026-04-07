@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
@@ -13,14 +15,31 @@ namespace Humans.Infrastructure.Services;
 
 public class TicketQueryService : ITicketQueryService
 {
-    private readonly HumansDbContext _dbContext;
+    private static readonly TimeSpan TicketCountCacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan DashboardStatsCacheTtl = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan UserIdsWithTicketsCacheTtl = TimeSpan.FromMinutes(5);
 
-    public TicketQueryService(HumansDbContext dbContext)
+    private readonly HumansDbContext _dbContext;
+    private readonly IMemoryCache _cache;
+
+    public TicketQueryService(HumansDbContext dbContext, IMemoryCache cache)
     {
         _dbContext = dbContext;
+        _cache = cache;
     }
 
     public async Task<int> GetUserTicketCountAsync(Guid userId)
+    {
+        var cacheKey = CacheKeys.UserTicketCount(userId);
+        if (_cache.TryGetExistingValue(cacheKey, out int cached))
+            return cached;
+
+        var count = await GetUserTicketCountCoreAsync(userId);
+        _cache.Set(cacheKey, count, TicketCountCacheTtl);
+        return count;
+    }
+
+    private async Task<int> GetUserTicketCountCoreAsync(Guid userId)
     {
         // Match on attendees only — a buyer who purchased tickets for others
         // should NOT count as having a ticket themselves.
@@ -55,16 +74,21 @@ public class TicketQueryService : ITicketQueryService
 
     public async Task<HashSet<Guid>> GetUserIdsWithTicketsAsync()
     {
-        // Match on attendees only — a buyer who purchased tickets for others
-        // should NOT count as having a ticket themselves.
-        var attendeeUserIds = await _dbContext.TicketAttendees
-            .Where(a => a.MatchedUserId != null &&
-                (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
-            .Select(a => a.MatchedUserId!.Value)
-            .Distinct()
-            .ToListAsync();
+        return await _cache.GetOrCreateAsync(CacheKeys.UserIdsWithTickets, async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = UserIdsWithTicketsCacheTtl;
 
-        return attendeeUserIds.ToHashSet();
+            // Match on attendees only — a buyer who purchased tickets for others
+            // should NOT count as having a ticket themselves.
+            var attendeeUserIds = await _dbContext.TicketAttendees
+                .Where(a => a.MatchedUserId != null &&
+                    (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn))
+                .Select(a => a.MatchedUserId!.Value)
+                .Distinct()
+                .ToListAsync();
+
+            return attendeeUserIds.ToHashSet();
+        }) ?? [];
     }
 
     public Task<List<string>> GetAvailableTicketTypesAsync()

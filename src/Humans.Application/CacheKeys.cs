@@ -14,6 +14,12 @@ public static class CacheKeys
 
     public static string CampSeasonsByYear(int year) => $"camps_year_{year}";
 
+    public static string UserProfile(Guid userId) => $"UserProfile:{userId:N}";
+
+    public static string UserTicketCount(Guid userId) => $"UserTicketCount:{userId:N}";
+    public const string TicketDashboardStats = "TicketDashboardStats";
+    public const string UserIdsWithTickets = "UserIdsWithTickets";
+
     public static string CampContactRateLimit(Guid userId, Guid campId) =>
         $"CampContactRateLimit:{userId:N}:{campId:N}";
 

@@ -5,6 +5,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Xunit;
 
@@ -22,7 +23,7 @@ public class TicketQueryServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
-        _service = new TicketQueryService(_dbContext);
+        _service = new TicketQueryService(_dbContext, new MemoryCache(new MemoryCacheOptions()));
     }
 
     public void Dispose()
