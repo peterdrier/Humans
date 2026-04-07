@@ -76,7 +76,7 @@ public class NotificationMeterProvider : INotificationMeterProvider
             {
                 Title = "Pending account deletions",
                 Count = counts.PendingDeletions,
-                ActionUrl = "/Admin",
+                ActionUrl = "/Profile/Admin?filter=deleting&sort=name&dir=asc",
                 Priority = 8,
             });
         }

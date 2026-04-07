@@ -224,15 +224,6 @@
                                         <option value="RequireApproval" selected="@(rota.Policy == SignupPolicy.RequireApproval ? "selected" : null)">Require Approval</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Description</label>
-                                    <textarea name="Description" class="form-control" rows="2">@rota.Description</textarea>
-                                    <div class="form-text">
-                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
-                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
-                                        </a>
-                                    </div>
-                                </div>
                             </div>
                             <div class="row g-2 mt-2 align-items-end">
                                 <div class="col-md-2">
@@ -244,7 +235,16 @@
                                         <option value="All" selected="@(rota.Period == RotaPeriod.All ? "selected" : null)">All Phases</option>
                                     </select>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
+                                    <label class="form-label">Description</label>
+                                    <textarea name="Description" class="form-control" rows="2">@rota.Description</textarea>
+                                    <div class="form-text">
+                                        <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
+                                            <i class="fa-solid fa-circle-info me-1"></i>Markdown
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label">Practical Info</label>
                                     <textarea name="PracticalInfo" class="form-control" rows="2" placeholder="Meeting point, instructions...">@rota.PracticalInfo</textarea>
                                     <div class="form-text">
