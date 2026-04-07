@@ -10,11 +10,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Humans.Infrastructure.Data.Migrations
+namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260401205748_AddRestrictInheritedAccessToGoogleResource")]
-    partial class AddRestrictInheritedAccessToGoogleResource
+    [Migration("20260327201246_AddStripeFeeTracking")]
+    partial class AddStripeFeeTracking
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -313,233 +313,6 @@ namespace Humans.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("board_votes", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetAuditLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ActorUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BudgetYearId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("FieldName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("NewValue")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<Instant>("OccurredAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OldValue")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActorUserId");
-
-                    b.HasIndex("BudgetYearId");
-
-                    b.HasIndex("OccurredAt");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.ToTable("budget_audit_logs", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("AllocatedAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<Guid>("BudgetGroupId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ExpenditureType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("TeamId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TeamId")
-                        .HasFilter("\"TeamId\" IS NOT NULL");
-
-                    b.HasIndex("BudgetGroupId", "SortOrder");
-
-                    b.ToTable("budget_categories", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("BudgetYearId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDepartmentGroup")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsRestricted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BudgetYearId", "SortOrder");
-
-                    b.ToTable("budget_groups", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetLineItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<Guid>("BudgetCategoryId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<LocalDate?>("ExpectedDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid?>("ResponsibleTeamId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("VatRate")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ResponsibleTeamId")
-                        .HasFilter("\"ResponsibleTeamId\" IS NOT NULL");
-
-                    b.HasIndex("BudgetCategoryId", "SortOrder");
-
-                    b.ToTable("budget_line_items", (string)null);
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetYear", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Instant?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<Instant>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Year")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("Year")
-                        .IsUnique();
-
-                    b.ToTable("budget_years", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
@@ -1486,9 +1259,6 @@ namespace Humans.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<bool>("RestrictInheritedAccess")
-                        .HasColumnType("boolean");
-
                     b.Property<Guid>("TeamId")
                         .HasColumnType("uuid");
 
@@ -1968,68 +1738,6 @@ namespace Humans.Infrastructure.Data.Migrations
                     b.ToTable("shift_signups", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.ShiftTag", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique()
-                        .HasDatabaseName("IX_shift_tags_name_unique");
-
-                    b.ToTable("shift_tags", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0003-000000000001"),
-                            Name = "Heavy lifting"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0003-000000000002"),
-                            Name = "Working in the sun"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0003-000000000003"),
-                            Name = "Working in the shade"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0003-000000000004"),
-                            Name = "Organisational task"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0003-000000000005"),
-                            Name = "Meeting new people"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0003-000000000006"),
-                            Name = "Looking after folks"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0003-000000000007"),
-                            Name = "Exploring the site"
-                        },
-                        new
-                        {
-                            Id = new Guid("00000000-0000-0000-0003-000000000008"),
-                            Name = "Feeding and hydrating folks"
-                        });
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.SyncServiceSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2132,13 +1840,7 @@ namespace Humans.Infrastructure.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<bool>("HasBudget")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsHidden")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsPublicPage")
@@ -2214,9 +1916,7 @@ namespace Humans.Infrastructure.Data.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000001"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All active volunteers with signed required documents",
-                            HasBudget = false,
                             IsActive = true,
-                            IsHidden = false,
                             IsPublicPage = false,
                             Name = "Volunteers",
                             RequiresApproval = false,
@@ -2230,9 +1930,7 @@ namespace Humans.Infrastructure.Data.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000002"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All team coordinators",
-                            HasBudget = false,
                             IsActive = true,
-                            IsHidden = false,
                             IsPublicPage = false,
                             Name = "Coordinators",
                             RequiresApproval = false,
@@ -2246,9 +1944,7 @@ namespace Humans.Infrastructure.Data.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000003"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Board members with active role assignments",
-                            HasBudget = false,
                             IsActive = true,
-                            IsHidden = false,
                             IsPublicPage = false,
                             Name = "Board",
                             RequiresApproval = false,
@@ -2262,9 +1958,7 @@ namespace Humans.Infrastructure.Data.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000004"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Voting members with approved asociado applications",
-                            HasBudget = false,
                             IsActive = true,
-                            IsHidden = false,
                             IsPublicPage = false,
                             Name = "Asociados",
                             RequiresApproval = false,
@@ -2278,9 +1972,7 @@ namespace Humans.Infrastructure.Data.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000005"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "Active contributors with approved colaborador applications",
-                            HasBudget = false,
                             IsActive = true,
-                            IsHidden = false,
                             IsPublicPage = false,
                             Name = "Colaboradors",
                             RequiresApproval = false,
@@ -2294,9 +1986,7 @@ namespace Humans.Infrastructure.Data.Migrations
                             Id = new Guid("00000000-0000-0000-0001-000000000006"),
                             CreatedAt = NodaTime.Instant.FromUnixTimeTicks(17702491570000000L),
                             Description = "All active camp leads across all camps",
-                            HasBudget = false,
                             IsActive = true,
-                            IsHidden = false,
                             IsPublicPage = false,
                             Name = "Barrio Leads",
                             RequiresApproval = false,
@@ -2482,11 +2172,6 @@ namespace Humans.Infrastructure.Data.Migrations
                     b.Property<bool>("IsManagement")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsPublic")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -2622,10 +2307,6 @@ namespace Humans.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<decimal>("DonationAmount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
                     b.Property<Guid?>("MatchedUserId")
                         .HasColumnType("uuid");
 
@@ -2657,10 +2338,6 @@ namespace Humans.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("TotalAmount")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("numeric(10,2)");
-
-                    b.Property<decimal>("VatAmount")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)");
 
@@ -3003,31 +2680,6 @@ namespace Humans.Infrastructure.Data.Migrations
                     b.ToTable("volunteer_history_entries", (string)null);
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.VolunteerTagPreference", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ShiftTagId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ShiftTagId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "ShiftTagId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_volunteer_tag_preferences_user_tag_unique");
-
-                    b.ToTable("volunteer_tag_preferences", (string)null);
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
@@ -3177,21 +2829,6 @@ namespace Humans.Infrastructure.Data.Migrations
                     b.ToTable("user_tokens", (string)null);
                 });
 
-            modelBuilder.Entity("RotaShiftTag", b =>
-                {
-                    b.Property<Guid>("RotaId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ShiftTagId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("RotaId", "ShiftTagId");
-
-                    b.HasIndex("ShiftTagId");
-
-                    b.ToTable("rota_shift_tags", (string)null);
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.AccountMergeRequest", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.User", "ResolvedByUser")
@@ -3289,72 +2926,6 @@ namespace Humans.Infrastructure.Data.Migrations
                     b.Navigation("Application");
 
                     b.Navigation("BoardMemberUser");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetAuditLog", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.User", "ActorUser")
-                        .WithMany()
-                        .HasForeignKey("ActorUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.BudgetYear", "BudgetYear")
-                        .WithMany("AuditLogs")
-                        .HasForeignKey("BudgetYearId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("ActorUser");
-
-                    b.Navigation("BudgetYear");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.BudgetGroup", "BudgetGroup")
-                        .WithMany("Categories")
-                        .HasForeignKey("BudgetGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.Team", "Team")
-                        .WithMany()
-                        .HasForeignKey("TeamId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("BudgetGroup");
-
-                    b.Navigation("Team");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.BudgetYear", "BudgetYear")
-                        .WithMany("Groups")
-                        .HasForeignKey("BudgetYearId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BudgetYear");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetLineItem", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.BudgetCategory", "BudgetCategory")
-                        .WithMany("LineItems")
-                        .HasForeignKey("BudgetCategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.Team", "ResponsibleTeam")
-                        .WithMany()
-                        .HasForeignKey("ResponsibleTeamId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("BudgetCategory");
-
-                    b.Navigation("ResponsibleTeam");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
@@ -3920,25 +3491,6 @@ namespace Humans.Infrastructure.Data.Migrations
                     b.Navigation("Profile");
                 });
 
-            modelBuilder.Entity("Humans.Domain.Entities.VolunteerTagPreference", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.ShiftTag", "ShiftTag")
-                        .WithMany("VolunteerPreferences")
-                        .HasForeignKey("ShiftTagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ShiftTag");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -3990,43 +3542,11 @@ namespace Humans.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("RotaShiftTag", b =>
-                {
-                    b.HasOne("Humans.Domain.Entities.Rota", null)
-                        .WithMany()
-                        .HasForeignKey("RotaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Humans.Domain.Entities.ShiftTag", null)
-                        .WithMany()
-                        .HasForeignKey("ShiftTagId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Humans.Domain.Entities.Application", b =>
                 {
                     b.Navigation("BoardVotes");
 
                     b.Navigation("StateHistory");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetCategory", b =>
-                {
-                    b.Navigation("LineItems");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetGroup", b =>
-                {
-                    b.Navigation("Categories");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.BudgetYear", b =>
-                {
-                    b.Navigation("AuditLogs");
-
-                    b.Navigation("Groups");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Camp", b =>
@@ -4092,11 +3612,6 @@ namespace Humans.Infrastructure.Data.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.Shift", b =>
                 {
                     b.Navigation("ShiftSignups");
-                });
-
-            modelBuilder.Entity("Humans.Domain.Entities.ShiftTag", b =>
-                {
-                    b.Navigation("VolunteerPreferences");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.Team", b =>
