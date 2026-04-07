@@ -24,8 +24,10 @@ public interface IMagicLinkService
     /// <summary>
     /// Verifies a signup magic link token and returns the email if valid.
     /// </summary>
+    /// <param name="token">The signup token to verify.</param>
+    /// <param name="expectedEmail">Optional email for logging on failure.</param>
     /// <returns>The email address if the token is valid; null if expired or invalid.</returns>
-    string? VerifySignupToken(string token);
+    string? VerifySignupToken(string token, string? expectedEmail = null);
 
     /// <summary>
     /// Finds a user by checking verified UserEmails first, then User.NormalizedEmail.

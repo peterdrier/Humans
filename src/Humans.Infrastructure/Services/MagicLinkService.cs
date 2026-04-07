@@ -124,7 +124,7 @@ public class MagicLinkService : IMagicLinkService
         return user;
     }
 
-    public string? VerifySignupToken(string token)
+    public string? VerifySignupToken(string token, string? expectedEmail = null)
     {
         try
         {
@@ -132,7 +132,8 @@ public class MagicLinkService : IMagicLinkService
         }
         catch (CryptographicException)
         {
-            _logger.LogWarning("Magic link signup: invalid or expired token");
+            _logger.LogWarning("Magic link signup: invalid or expired token for email {Email}",
+                expectedEmail ?? "unknown");
             return null;
         }
     }
@@ -214,7 +215,8 @@ public class MagicLinkService : IMagicLinkService
             var token = _signupProtector.Protect(email, TokenLifetime);
             var encodedToken = Uri.EscapeDataString(token);
             var returnUrlParam = string.IsNullOrEmpty(returnUrl) ? "" : $"&returnUrl={Uri.EscapeDataString(returnUrl)}";
-            var magicLinkUrl = $"{_emailSettings.BaseUrl}/Account/MagicLinkSignup?token={encodedToken}{returnUrlParam}";
+            var encodedEmail = Uri.EscapeDataString(email);
+            var magicLinkUrl = $"{_emailSettings.BaseUrl}/Account/MagicLinkSignup?token={encodedToken}&email={encodedEmail}{returnUrlParam}";
 
             await _emailService.SendMagicLinkSignupAsync(email, magicLinkUrl, ct: ct);
 

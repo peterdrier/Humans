@@ -1254,6 +1254,7 @@
   <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Solicitar un nuevo enlace</value></data>
   <data name="MagicLinkError_Title" xml:space="preserve"><value>Enlace expirado o inválido</value></data>
   <data name="MagicLinkSent_BackToLogin" xml:space="preserve"><value>Volver al inicio de sesión</value></data>
+  <data name="MagicLinkSent_Expiry" xml:space="preserve"><value>Tu enlace expira a las {0}.</value></data>
   <data name="MagicLinkSent_Title" xml:space="preserve"><value>Revisa tu correo</value></data>
   <data name="ProfileEdit_ManageEmails" xml:space="preserve"><value>Direcciones de correo</value></data>
   <data name="ProfileEdit_ManageEmailsHelp" xml:space="preserve"><value>Agregar direcciones de correo, establecer preferencias de notificación y controlar la visibilidad del perfil.</value></data>
