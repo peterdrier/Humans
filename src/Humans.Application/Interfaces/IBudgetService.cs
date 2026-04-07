@@ -18,6 +18,7 @@ public interface IBudgetService
     Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
     Task UpdateYearAsync(Guid yearId, string year, string name, Guid actorUserId);
     Task DeleteYearAsync(Guid yearId, Guid actorUserId);
+    Task RestoreYearAsync(Guid yearId, Guid actorUserId);
 
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
     Task<bool> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId);

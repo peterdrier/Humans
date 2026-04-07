@@ -282,6 +282,30 @@ public class BudgetService : IBudgetService
         _logger.LogInformation("Archived budget year {YearId} ({Year})", yearId, year.Year);
     }
 
+    public async Task RestoreYearAsync(Guid yearId, Guid actorUserId)
+    {
+        var year = await _dbContext.BudgetYears.FindAsync(yearId)
+            ?? throw new InvalidOperationException($"Budget year {yearId} not found");
+
+        if (!year.IsDeleted)
+            return;
+
+        var now = _clock.GetCurrentInstant();
+
+        year.IsDeleted = false;
+        year.DeletedAt = null;
+        year.Status = BudgetYearStatus.Draft;
+        year.UpdatedAt = now;
+
+        LogAudit(year.Id, nameof(BudgetYear), year.Id,
+            $"Restored budget year '{year.Name}' ({year.Year})",
+            actorUserId, now);
+
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Restored budget year {YearId} ({Year})", yearId, year.Year);
+    }
+
     public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
     {
         await EnsureYearNotClosedAsync(budgetYearId);
