@@ -163,7 +163,7 @@ public class NotificationMeterProvider : INotificationMeterProvider
 
     private async Task<int> GetPerUserVotingCountAsync(Guid boardMemberUserId, CancellationToken cancellationToken)
     {
-        var cacheKey = $"NavBadge:Voting:{boardMemberUserId:N}";
+        var cacheKey = CacheKeys.VotingBadge(boardMemberUserId);
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;

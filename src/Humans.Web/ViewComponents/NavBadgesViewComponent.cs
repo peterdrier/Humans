@@ -61,7 +61,7 @@ public class NavBadgesViewComponent : ViewComponent
         if (!Guid.TryParse(claim, out var currentUserId))
             return 0;
 
-        var cacheKey = $"NavBadge:Voting:{currentUserId:N}";
+        var cacheKey = CacheKeys.VotingBadge(currentUserId);
         return await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;

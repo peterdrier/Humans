@@ -763,7 +763,7 @@ public class ShiftSignupService : IShiftSignupService
     public async Task<SignupResult> RefuseRangeAsync(Guid signupBlockId, Guid reviewerUserId, string? reason)
     {
         var signups = await _dbContext.ShiftSignups
-            .Include(s => s.Shift).ThenInclude(s => s.Rota)
+            .Include(s => s.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
             .Where(s => s.SignupBlockId == signupBlockId && s.Status == SignupStatus.Pending)
             .ToListAsync();
 

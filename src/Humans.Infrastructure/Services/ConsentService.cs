@@ -155,10 +155,13 @@ public class ConsentService : IConsentService
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
         await _syncJob.SyncCoordinatorsMembershipForUserAsync(userId);
 
-        // Auto-resolve any outstanding AccessSuspended notifications (best-effort)
+        // Auto-resolve AccessSuspended notifications only once ALL required consents are complete
         try
         {
-            await _notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+            if (await _membershipCalculator.HasAllRequiredConsentsAsync(userId, ct))
+            {
+                await _notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
+            }
         }
         catch (Exception ex)
         {

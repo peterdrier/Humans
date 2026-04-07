@@ -293,6 +293,8 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
 
+        _cache.InvalidateVotingBadge(boardMemberUserId);
+
         _logger.LogInformation("Board member {UserId} voted {Vote} on application {ApplicationId}",
             boardMemberUserId, vote, applicationId);
 

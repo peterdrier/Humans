@@ -120,6 +120,8 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
+        foreach (var vote in application.BoardVotes)
+            _cache.InvalidateVotingBadge(vote.BoardMemberUserId);
         _metrics.RecordApplicationProcessed("approved");
         _logger.LogInformation("Application {ApplicationId} approved by {UserId}",
             application.Id, reviewerUserId);
@@ -225,6 +227,8 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
+        foreach (var vote in application.BoardVotes)
+            _cache.InvalidateVotingBadge(vote.BoardMemberUserId);
         _metrics.RecordApplicationProcessed("rejected");
         _logger.LogInformation("Application {ApplicationId} rejected by {UserId}",
             application.Id, reviewerUserId);
