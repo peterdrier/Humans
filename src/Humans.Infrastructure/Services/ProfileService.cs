@@ -47,6 +47,11 @@ public class ProfileService : IProfileService
 
     private static readonly TimeSpan ProfileCacheTtl = TimeSpan.FromMinutes(2);
 
+    /// <remarks>
+    /// Caches the detached Profile entity (with User navigation). Callers must treat
+    /// the returned object as read-only — mutating it corrupts the cache for other callers.
+    /// At ~500-user scale this is acceptable; if mutation risks emerge, cache a DTO instead.
+    /// </remarks>
     public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
     {
         var cacheKey = CacheKeys.UserProfile(userId);

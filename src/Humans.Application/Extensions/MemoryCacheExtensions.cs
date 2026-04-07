@@ -82,6 +82,9 @@ public static class MemoryCacheExtensions
 
     /// <summary>
     /// Invalidate all ticket-related caches after a sync or data change.
+    /// Per-user UserTicketCount entries are NOT invalidated here because they use
+    /// per-user keys that can't be enumerated for bulk invalidation. They expire
+    /// naturally via their 5-minute TTL, which is acceptable at ~500-user scale.
     /// </summary>
     public static void InvalidateTicketCaches(this IMemoryCache cache)
     {
