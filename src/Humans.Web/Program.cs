@@ -576,9 +576,6 @@ if (!app.Environment.IsEnvironment("Testing"))
     });
 }
 
-// Redirect /favicon.ico to the SVG favicon for browsers that request the legacy path
-app.MapGet("/favicon.ico", () => Results.Redirect("/img/favicon.svg", permanent: true));
-
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
