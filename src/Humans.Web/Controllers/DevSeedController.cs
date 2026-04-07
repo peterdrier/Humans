@@ -2,6 +2,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Web.Authorization;
 using Humans.Web.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -35,7 +36,7 @@ public class DevSeedController : HumansControllerBase
         _logger = logger;
     }
 
-    [Authorize(Roles = RoleGroups.FinanceAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]
     [HttpPost("budget")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SeedBudget(CancellationToken cancellationToken)

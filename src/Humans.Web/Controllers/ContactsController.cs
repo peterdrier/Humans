@@ -5,11 +5,12 @@ using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleGroups.HumanAdminBoardOrAdmin)]
+[Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
 [Route("Contacts")]
 public class ContactsController : HumansControllerBase
 {

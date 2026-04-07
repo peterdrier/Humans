@@ -6,6 +6,7 @@ using Microsoft.Extensions.Localization;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 
@@ -226,7 +227,7 @@ public class ApplicationController : HumansControllerBase
     }
 
     [HttpGet("Application/Admin")]
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> Applications(string? status, string? tier, int page = 1)
     {
         var pageSize = 20;
@@ -260,7 +261,7 @@ public class ApplicationController : HumansControllerBase
     }
 
     [HttpGet("Application/Admin/{id:guid}")]
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     public async Task<IActionResult> ApplicationDetail(Guid id)
     {
         var application = await _applicationDecisionService.GetApplicationDetailAsync(id);

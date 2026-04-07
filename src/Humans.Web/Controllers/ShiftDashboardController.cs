@@ -13,7 +13,7 @@ using NodaTime.Text;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleNames.Admin + "," + RoleNames.NoInfoAdmin + "," + RoleNames.VolunteerCoordinator)]
+[Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
 [Route("Shifts/Dashboard")]
 public class ShiftDashboardController : HumansControllerBase
 {

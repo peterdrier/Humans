@@ -5,6 +5,7 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
+using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 
@@ -72,7 +73,7 @@ public class GovernanceController : HumansControllerBase
         return View(viewModel);
     }
 
-    [Authorize(Roles = RoleGroups.BoardOrAdmin)]
+    [Authorize(Policy = PolicyNames.BoardOrAdmin)]
     [HttpGet("Roles")]
     public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
     {

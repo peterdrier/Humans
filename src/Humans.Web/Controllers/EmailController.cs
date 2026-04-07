@@ -10,12 +10,13 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
+using Humans.Web.Authorization;
 using Humans.Web.Models;
 using NodaTime;
 
 namespace Humans.Web.Controllers;
 
-[Authorize(Roles = RoleNames.Admin)]
+[Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Email")]
 public class EmailController : HumansControllerBase
 {

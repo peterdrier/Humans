@@ -176,7 +176,7 @@ public class FeedbackController : HumansControllerBase
     }
 
     [HttpPost("{id}/Status")]
-    [Authorize(Roles = RoleGroups.FeedbackAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateStatus(Guid id, UpdateFeedbackStatusModel model)
     {
@@ -202,7 +202,7 @@ public class FeedbackController : HumansControllerBase
     }
 
     [HttpPost("{id}/GitHubIssue")]
-    [Authorize(Roles = RoleGroups.FeedbackAdminOrAdmin)]
+    [Authorize(Policy = PolicyNames.FeedbackAdminOrAdmin)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> SetGitHubIssue(Guid id, SetGitHubIssueModel model)
     {

@@ -409,7 +409,7 @@ public class ShiftsController : HumansControllerBase
     }
 
     [HttpGet("Settings")]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Settings()
     {
         var es = await _shiftMgmt.GetActiveAsync();
@@ -442,7 +442,7 @@ public class ShiftsController : HumansControllerBase
 
     [HttpPost("Settings")]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = RoleNames.Admin)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     public async Task<IActionResult> Settings(EventSettingsViewModel model)
     {
         if (!ModelState.IsValid)

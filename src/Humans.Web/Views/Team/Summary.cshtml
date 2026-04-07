@@ -1,3 +1,6 @@
+@using Microsoft.AspNetCore.Authorization
+@using Humans.Web.Authorization
+@inject IAuthorizationService AuthService
 @model Humans.Web.Models.AdminTeamListViewModel
 @{
     ViewData["Title"] = "Teams Summary";
@@ -69,7 +72,7 @@
                         <td>
                             @if (team.PendingShiftSignupCount > 0)
                             {
-                                @if (Humans.Web.Authorization.ViewPolicies.Evaluate(Humans.Web.Authorization.ViewPolicies.AdminOrBoard, User))
+                                @if ((await AuthService.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded)
                                 {
                                     <a asp-controller="ShiftAdmin" asp-action="Index" asp-route-slug="@team.Slug">
                                         <span class="badge bg-warning">@team.PendingShiftSignupCount</span>
