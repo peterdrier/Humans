@@ -230,13 +230,22 @@ function showToast(message, type) {
     toastEl.setAttribute('role', 'alert');
     toastEl.setAttribute('aria-live', 'assertive');
     toastEl.setAttribute('aria-atomic', 'true');
-    toastEl.innerHTML =
-        '<div class="d-flex">' +
-            '<div class="toast-body">' +
-                '<i class="fa-solid ' + iconClass + ' me-2"></i>' + message +
-            '</div>' +
-            '<button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
-        '</div>';
+    var wrapper = document.createElement('div');
+    wrapper.className = 'd-flex';
+    var body = document.createElement('div');
+    body.className = 'toast-body';
+    var icon = document.createElement('i');
+    icon.className = 'fa-solid ' + iconClass + ' me-2';
+    body.appendChild(icon);
+    body.appendChild(document.createTextNode(message));
+    wrapper.appendChild(body);
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn-close me-2 m-auto';
+    closeBtn.setAttribute('data-bs-dismiss', 'toast');
+    closeBtn.setAttribute('aria-label', 'Close');
+    wrapper.appendChild(closeBtn);
+    toastEl.appendChild(wrapper);
     container.appendChild(toastEl);
     var toast = new bootstrap.Toast(toastEl, { delay: 4000 });
     toast.show();
