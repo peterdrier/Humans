@@ -284,6 +284,14 @@ builder.Services.AddRateLimiter(options =>
 {
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
     {
+        // Exclude error pages — prevent rate limit cascade when error page triggers additional requests
+        if (context.Request.Path.StartsWithSegments("/Home/Error", StringComparison.OrdinalIgnoreCase))
+            return RateLimitPartition.GetNoLimiter(string.Empty);
+
+        // Exclude favicon — browsers request this automatically on every page load
+        if (context.Request.Path == "/favicon.ico")
+            return RateLimitPartition.GetNoLimiter(string.Empty);
+
         // Exclude profile picture requests — list pages legitimately load ~30 images at once
         if (context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
             return RateLimitPartition.GetNoLimiter(string.Empty);
@@ -298,16 +306,45 @@ builder.Services.AddRateLimiter(options =>
             });
     });
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.OnRejected = (context, _) =>
+    options.OnRejected = async (context, cancellationToken) =>
     {
         var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger("RateLimiting");
-        var identity = context.HttpContext.User.Identity?.Name
-            ?? context.HttpContext.Connection.RemoteIpAddress?.ToString()
-            ?? "anonymous";
-        logger.LogWarning("Rate limit exceeded for {Identity}: {Method} {Path}",
-            identity, context.HttpContext.Request.Method, context.HttpContext.Request.Path);
-        return ValueTask.CompletedTask;
+        var remoteIp = context.HttpContext.Connection.RemoteIpAddress?.ToString();
+        var authenticatedUser = context.HttpContext.User.Identity?.IsAuthenticated == true
+            ? context.HttpContext.User.Identity.Name
+            : null;
+        var identity = authenticatedUser ?? remoteIp ?? "anonymous";
+
+        // Best-effort reverse DNS lookup
+        string? reverseDns = null;
+        if (remoteIp is not null)
+        {
+            try
+            {
+                using var dnsCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(dnsCts.Token, cancellationToken);
+                var hostEntry = await System.Net.Dns.GetHostEntryAsync(remoteIp, linkedCts.Token);
+                reverseDns = hostEntry.HostName;
+            }
+            catch
+            {
+                // DNS lookup failed or timed out — continue without it
+            }
+        }
+
+        // Permit usage info from the lease metadata
+        string? permitInfo = null;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            permitInfo = $"RetryAfter={retryAfter.TotalSeconds:F0}s";
+        }
+
+        logger.LogWarning(
+            "Rate limit exceeded for {Identity} (IP={RemoteIp}, ReverseDns={ReverseDns}, User={AuthenticatedUser}, {PermitInfo}): {Method} {Path}",
+            identity, remoteIp ?? "unknown", reverseDns ?? "N/A",
+            authenticatedUser ?? "anonymous", permitInfo ?? "no metadata",
+            context.HttpContext.Request.Method, context.HttpContext.Request.Path);
     };
 });
 
@@ -354,7 +391,7 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
             var user = await userManager.GetUserAsync(context.User);
             if (user is not null && !string.IsNullOrEmpty(user.PreferredLanguage))
             {
-                return new ProviderCultureResult(user.PreferredLanguage);
+                return new ProviderCultureResult(culture: "en", uiCulture: user.PreferredLanguage);
             }
         }
         return null;
@@ -538,6 +575,9 @@ if (!app.Environment.IsEnvironment("Testing"))
             : [new Humans.Web.HangfireAuthorizationFilter()]
     });
 }
+
+// Redirect /favicon.ico to the SVG favicon for browsers that request the legacy path
+app.MapGet("/favicon.ico", () => Results.Redirect("/img/favicon.svg", permanent: true));
 
 app.MapControllerRoute(
     name: "default",
