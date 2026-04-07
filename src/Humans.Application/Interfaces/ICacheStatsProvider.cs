@@ -32,13 +32,13 @@ public sealed class CacheStatEntry
         Misses = misses;
     }
 
-    internal CacheStatEntry RecordHit()
+    public CacheStatEntry RecordHit()
     {
         Hits++;
         return this;
     }
 
-    internal CacheStatEntry RecordMiss()
+    public CacheStatEntry RecordMiss()
     {
         Misses++;
         return this;

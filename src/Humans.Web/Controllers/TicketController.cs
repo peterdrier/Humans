@@ -6,7 +6,6 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
-using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
