@@ -154,9 +154,6 @@ public class RoleAssignmentService : IRoleAssignmentService
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateRoleAssignmentClaims(userId);
 
-        _logger.LogInformation("Admin {AdminId} assigned role {Role} to user {UserId}",
-            assignerId, roleName, userId);
-
         // In-app notification to the user (best-effort)
         try
         {
@@ -219,9 +216,6 @@ public class RoleAssignmentService : IRoleAssignmentService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateRoleAssignmentClaims(roleAssignment.UserId);
-
-        _logger.LogInformation("Admin {AdminId} ended role {Role} for user {UserId}",
-            enderId, roleAssignment.RoleName, roleAssignment.UserId);
 
         // In-app notification to the user (best-effort)
         try

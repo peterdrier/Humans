@@ -585,9 +585,6 @@ public class TeamService : ITeamService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         TryUpdateCachedTeam(teamId, cachedTeam => cachedTeam with { IsPublicPage = isPublicPage });
-
-        _logger.LogInformation("Team {TeamId} page content updated by {UserId}. Public: {IsPublic}",
-            teamId, updatedByUserId, isPublicPage);
     }
 
     public async Task DeleteTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
@@ -745,8 +742,6 @@ public class TeamService : ITeamService
             throw;
         }
 
-        _logger.LogInformation("User {UserId} joined team {TeamId} directly", userId, teamId);
-
         // Update cache
         var joinedUser = await _dbContext.Users.FindAsync([userId], cancellationToken);
         if (joinedUser is not null)
@@ -811,8 +806,6 @@ public class TeamService : ITeamService
         await _dbContext.SaveChangesAsync(cancellationToken);
         RemoveMemberFromTeamCache(teamId, userId);
         InvalidateShiftAuthorizationIfNeeded(userId, roleAssignments);
-
-        _logger.LogInformation("User {UserId} left team {TeamId}", userId, teamId);
 
         return wasCoordinator;
     }
@@ -894,9 +887,6 @@ public class TeamService : ITeamService
             throw;
         }
 
-        _logger.LogInformation("Approver {ApproverId} approved join request {RequestId} for user {UserId} to team {TeamId}",
-            approverUserId, requestId, request.UserId, request.TeamId);
-
         // Update cache
         _cache.InvalidateNotificationMeters();
         var joinedUser = await _dbContext.Users.FindAsync([request.UserId], cancellationToken);
@@ -939,8 +929,6 @@ public class TeamService : ITeamService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         _cache.InvalidateNotificationMeters();
-
-        _logger.LogInformation("Approver {ApproverId} rejected join request {RequestId}", approverUserId, requestId);
     }
 
     public async Task<IReadOnlyList<TeamJoinRequest>> GetPendingRequestsForApproverAsync(
@@ -1158,8 +1146,6 @@ public class TeamService : ITeamService
         RemoveMemberFromTeamCache(teamId, userId);
         InvalidateShiftAuthorizationIfNeeded(userId, roleAssignments);
 
-        _logger.LogInformation("Actor {ActorId} removed user {UserId} from team {TeamId}", actorUserId, userId, teamId);
-
         // In-app notification to the removed user (best-effort)
         try
         {
@@ -1250,8 +1236,6 @@ public class TeamService : ITeamService
 
             throw;
         }
-
-        _logger.LogInformation("Actor {ActorId} added user {UserId} to team {TeamId}", actorUserId, targetUserId, teamId);
 
         // Update cache
         var addedUser = await _dbContext.Users.FindAsync([targetUserId], cancellationToken);
@@ -1353,8 +1337,6 @@ public class TeamService : ITeamService
             relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation("Created role definition '{RoleName}' for team {TeamId}", name, teamId);
 
         return definition;
     }
@@ -1486,8 +1468,6 @@ public class TeamService : ITeamService
 
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
 
-        _logger.LogInformation("Updated role definition {RoleDefinitionId} '{RoleName}'", roleDefinitionId, name);
-
         return definition;
     }
 
@@ -1522,9 +1502,6 @@ public class TeamService : ITeamService
         _dbContext.Set<TeamRoleDefinition>().Remove(definition);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation("Deleted role definition {RoleDefinitionId} '{RoleName}' from team {TeamId}",
-            roleDefinitionId, definition.Name, definition.TeamId);
     }
 
     public async Task SetRoleIsManagementAsync(
@@ -1609,8 +1586,6 @@ public class TeamService : ITeamService
             _cache.InvalidateActiveTeams();
         }
         InvalidateShiftAuthorization(usersNeedingShiftAuthorizationInvalidation);
-
-        _logger.LogInformation("Set IsManagement={IsManagement} on role definition {RoleDefinitionId}", isManagement, roleDefinitionId);
     }
 
     public async Task<IReadOnlyList<TeamRoleDefinition>> GetRoleDefinitionsAsync(
@@ -1831,9 +1806,6 @@ public class TeamService : ITeamService
             });
         }
 
-        _logger.LogInformation("Assigned user {UserId} to role '{RoleName}' (slot {SlotIndex}) in team {TeamId}",
-            targetUserId, definition.Name, nextSlotIndex, definition.TeamId);
-
         return assignment;
     }
 
@@ -1891,8 +1863,6 @@ public class TeamService : ITeamService
             UpdateMemberRoleInTeamCache(definition.TeamId, assignment.TeamMember.UserId, assignment.TeamMember.Role);
         }
 
-        _logger.LogInformation("Unassigned team member {TeamMemberId} from role '{RoleName}' in team {TeamId}",
-            teamMemberId, definition.Name, definition.TeamId);
     }
 
     private async Task SendAddedToTeamEmailAsync(Guid userId, Team team, CancellationToken cancellationToken)

@@ -153,10 +153,6 @@ public class ContactService : IContactService
 
         await _dbContext.SaveChangesAsync(ct);
 
-        _logger.LogInformation(
-            "Created contact {UserId} for {Email} from {Source}",
-            user.Id, email, source);
-
         return user;
     }
 

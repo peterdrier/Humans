@@ -152,10 +152,6 @@ public class AccountMergeService : IAccountMergeService
         // Invalidate caches
         _profileService.UpdateProfileCache(sourceUser.Id, null);
         _teamService.RemoveMemberFromAllTeamsCache(sourceUser.Id);
-
-        _logger.LogInformation(
-            "Merge request {RequestId} accepted. Source {SourceUserId} archived, data migrated to {TargetUserId}",
-            requestId, sourceUser.Id, targetUser.Id);
     }
 
     public async Task RejectAsync(
@@ -194,10 +190,6 @@ public class AccountMergeService : IAccountMergeService
             adminUserId);
 
         await _dbContext.SaveChangesAsync(ct);
-
-        _logger.LogInformation(
-            "Merge request {RequestId} rejected by admin {AdminId}",
-            requestId, adminUserId);
     }
 
     private async Task AnonymizeSourceAccountAsync(User sourceUser, Instant now, CancellationToken ct)

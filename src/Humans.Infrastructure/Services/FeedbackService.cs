@@ -190,8 +190,6 @@ public class FeedbackService : IFeedbackService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         _cache.InvalidateNavBadgeCounts();
-
-        _logger.LogInformation("Feedback {ReportId} status changed to {Status} by {ActorId}", id, status, actorUserId);
     }
 
     public async Task SetGitHubIssueNumberAsync(

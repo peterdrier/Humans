@@ -328,7 +328,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Created Drive folder {FolderId} for team {TeamId}", folder.Id, teamId);
         return resource;
     }
 
@@ -402,9 +401,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Created Google Group {GroupId} ({GroupEmail}) for team {TeamId}",
-            createdGroupId, groupEmail, teamId);
-
         return resource;
     }
 
@@ -454,8 +450,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 $"Granted Google Group access to {userEmail} ({resource.Name})",
                 nameof(GoogleWorkspaceSyncService),
                 userEmail, "MEMBER", GoogleSyncSource.ManualSync, success: true);
-
-            _logger.LogInformation("Added {UserEmail} to group {GroupId}", userEmail, resource.GoogleId);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 409)
         {
@@ -526,8 +520,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             $"Removed {userEmail} from Google Group ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
             userEmail, "MEMBER", GoogleSyncSource.ManualSync, success: true);
-
-        _logger.LogInformation("Removed {UserEmail} from group {GroupId}", userEmail, resource.GoogleId);
     }
 
     /// <summary>
@@ -578,9 +570,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 $"Granted Drive access ({effectiveLevel}) to {userEmail} ({resource.Name})",
                 nameof(GoogleWorkspaceSyncService),
                 userEmail, apiRole, GoogleSyncSource.ManualSync, success: true);
-
-            _logger.LogInformation("Granted Drive access to {Email} on {GoogleId} at level {Level}",
-                userEmail, resource.GoogleId, effectiveLevel);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 400)
         {
@@ -616,8 +605,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             $"Removed Drive access for {userEmail} ({resource.Name})",
             nameof(GoogleWorkspaceSyncService),
             userEmail, resource.DrivePermissionLevel.ToApiRole(), GoogleSyncSource.ManualSync, success: true);
-
-        _logger.LogInformation("Removed Drive access for {Email} on {GoogleId}", userEmail, resource.GoogleId);
     }
 
     /// <inheritdoc />
@@ -1618,8 +1605,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
             await _dbContext.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Reactivated Google Group resource {ResourceId} for team {TeamId}",
-                inactiveForTeam.Id, teamId);
             return GroupLinkResult.Ok();
         }
 
@@ -1627,8 +1612,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         if (existingGroup is not null)
         {
             existingGroup.IsActive = false;
-            _logger.LogInformation("Deactivated Group resource {ResourceId} for team {TeamId} (prefix changed to '{Prefix}')",
-                existingGroup.Id, teamId, team.GoogleGroupPrefix);
 
             await _auditLogService.LogAsync(
                 AuditAction.GoogleResourceDeactivated, nameof(GoogleResource), existingGroup.Id,
@@ -1673,9 +1656,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 relatedEntityId: teamId, relatedEntityType: nameof(Team));
 
             await _dbContext.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Linked existing Google Group {GroupId} ({Email}) to team {TeamId}",
-                groupId, email, teamId);
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
         {
@@ -1901,8 +1881,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var settings = BuildExpectedGroupSettings();
             var request = groupssettingsService.Groups.Update(settings, groupEmail);
             await request.ExecuteAsync(cancellationToken);
-
-            _logger.LogInformation("Remediated settings for Google Group {GroupEmail}", groupEmail);
 
             await _auditLogService.LogAsync(
                 AuditAction.GoogleResourceSettingsRemediated, nameof(GoogleResource), Guid.Empty,
