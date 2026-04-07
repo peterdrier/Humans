@@ -166,19 +166,22 @@ public class CityPlanningServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task IsUserMapAdminAsync_CampAdminRole_ReturnsTrue()
+    public async Task IsCityPlanningTeamMemberAsync_TeamMember_ReturnsTrue()
     {
-        var adminId = await SeedCampAdminUserAsync();
-        var result = await _sut.IsUserMapAdminAsync(adminId);
+        var plannerId = await SeedCityPlanningTeamMemberAsync();
+        var result = await _sut.IsCityPlanningTeamMemberAsync(plannerId);
         result.Should().BeTrue();
     }
 
     [Fact]
-    public async Task IsUserMapAdminAsync_CityPlanningTeamMember_ReturnsTrue()
+    public async Task IsCityPlanningTeamMemberAsync_NonMember_ReturnsFalse()
     {
-        var plannerId = await SeedCityPlanningTeamMemberAsync();
-        var result = await _sut.IsUserMapAdminAsync(plannerId);
-        result.Should().BeTrue();
+        var otherUser = new User { Id = Guid.NewGuid(), UserName = "other@test.com", Email = "other@test.com" };
+        _dbContext.Users.Add(otherUser);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await _sut.IsCityPlanningTeamMemberAsync(otherUser.Id);
+        result.Should().BeFalse();
     }
 
     [Fact]
@@ -189,17 +192,6 @@ public class CityPlanningServiceTests : IDisposable
         await SeedMapSettingsAsync(placementOpen: false);
 
         var result = await _sut.CanUserEditAsync(plannerId, season.Id);
-        result.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task CanUserEditAsync_CampAdmin_AlwaysTrue_EvenWhenPlacementClosed()
-    {
-        var adminId = await SeedCampAdminUserAsync();
-        var (_, season, _) = await SeedCampWithLeadAsync();
-        await SeedMapSettingsAsync(placementOpen: false);
-
-        var result = await _sut.CanUserEditAsync(adminId, season.Id);
         result.Should().BeTrue();
     }
 

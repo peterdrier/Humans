@@ -115,7 +115,7 @@ Own camp polygon uses 2× outline width and higher fill opacity. Active edit pol
 | Export GeoJSON | Map admin |
 | Admin panel (placement toggle, dates, zone uploads) | Map admin |
 
-Map admin is determined by `ICityPlanningService.IsUserMapAdminAsync` (role-based, implementation in Infrastructure).
+Map admin is determined at the controller level via claims-first pattern: `RoleChecks.IsCampAdmin(User)` for global roles, then `ICityPlanningService.IsCityPlanningTeamMemberAsync` for team-specific access.
 
 ## URL Structure
 

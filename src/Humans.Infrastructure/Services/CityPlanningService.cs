@@ -160,25 +160,6 @@ public class CityPlanningService : ICityPlanningService
         return await SaveCampPolygonAsync(campSeasonId, entry.GeoJson, entry.AreaSqm, restoredByUserId, note, cancellationToken);
     }
 
-    public async Task<bool> IsUserMapAdminAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var now = _clock.GetCurrentInstant();
-        if (await _dbContext.RoleAssignments.AnyAsync(ra =>
-                ra.UserId == userId &&
-                (ra.RoleName == RoleNames.Admin || ra.RoleName == RoleNames.CampAdmin) &&
-                ra.ValidFrom <= now &&
-                (ra.ValidTo == null || ra.ValidTo > now),
-                cancellationToken))
-            return true;
-
-        var team = await _dbContext.Teams
-            .FirstOrDefaultAsync(t => t.Slug == _options.Value.CityPlanningTeamSlug, cancellationToken);
-        if (team == null) return false;
-
-        return await _dbContext.TeamMembers
-            .AnyAsync(tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt == null, cancellationToken);
-    }
-
     public async Task<bool> IsCityPlanningTeamMemberAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams
@@ -191,7 +172,9 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<bool> CanUserEditAsync(Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default)
     {
-        if (await IsUserMapAdminAsync(userId, cancellationToken)) return true;
+        // Global role checks (Admin, CampAdmin) are done at the controller level via claims.
+        // This method only checks team-specific access: city planning team membership + camp lead.
+        if (await IsCityPlanningTeamMemberAsync(userId, cancellationToken)) return true;
 
         var settings = await GetSettingsAsync(cancellationToken);
         if (!settings.IsPlacementOpen) return false;

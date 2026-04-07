@@ -24,9 +24,8 @@ public interface ICityPlanningService
         Guid campSeasonId, Guid historyId, Guid restoredByUserId,
         CancellationToken cancellationToken = default);
 
-    // Authorization
+    // Authorization (global role checks belong at the controller level via claims)
     Task<bool> CanUserEditAsync(Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default);
-    Task<bool> IsUserMapAdminAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<bool> IsCityPlanningTeamMemberAsync(Guid userId, CancellationToken cancellationToken = default);
 
     // Settings (creates row on demand for PublicYear)

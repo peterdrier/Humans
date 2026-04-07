@@ -80,7 +80,8 @@ public class CityPlanningApiController : ControllerBase
         CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
-        if (!await _cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
+        if (!RoleChecks.IsCampAdmin(User) &&
+            !await _cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
             return Forbid();
 
         if (string.IsNullOrWhiteSpace(request.GeoJson) || !IsValidJson(request.GeoJson))
