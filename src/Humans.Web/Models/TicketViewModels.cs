@@ -9,6 +9,7 @@ public class TicketDashboardViewModel
     public int TotalCapacity { get; set; }
     public decimal Revenue { get; set; }
     public decimal AveragePrice { get; set; }
+    public string? BreakEvenDetail { get; set; }
     public int TicketsRemaining { get; set; }
     public int BreakEvenTarget { get; set; }
     public string Currency { get; set; } = "EUR";

@@ -4,6 +4,7 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
+using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
@@ -18,6 +19,7 @@ namespace Humans.Web.Controllers;
 [Route("Tickets")]
 public class TicketController : HumansControllerBase
 {
+    private readonly IBudgetService _budgetService;
     private readonly ITicketVendorService _vendorService;
     private readonly TicketVendorSettings _settings;
     private readonly ITicketQueryService _ticketQueryService;
@@ -25,6 +27,7 @@ public class TicketController : HumansControllerBase
     private readonly ILogger<TicketController> _logger;
 
     public TicketController(
+        IBudgetService budgetService,
         ITicketVendorService vendorService,
         IOptions<TicketVendorSettings> settings,
         ITicketQueryService ticketQueryService,
@@ -33,6 +36,7 @@ public class TicketController : HumansControllerBase
         ILogger<TicketController> logger)
         : base(userManager)
     {
+        _budgetService = budgetService;
         _vendorService = vendorService;
         _settings = settings.Value;
         _ticketQueryService = ticketQueryService;
@@ -49,6 +53,9 @@ public class TicketController : HumansControllerBase
         }
 
         var stats = await _ticketQueryService.GetDashboardStatsAsync();
+        var currency = stats.RecentOrders.FirstOrDefault()?.Currency ?? "EUR";
+        var canAccessFinance = RoleChecks.CanAccessFinance(User);
+        var breakEven = await CalculateBreakEvenAsync(stats.TicketsSold, stats.Revenue, currency, canAccessFinance);
 
         int totalCapacity = 0;
         try
@@ -65,7 +72,9 @@ public class TicketController : HumansControllerBase
         {
             TicketsSold = stats.TicketsSold,
             TotalCapacity = totalCapacity,
-            BreakEvenTarget = _settings.BreakEvenTarget,
+            BreakEvenDetail = breakEven.Detail,
+            BreakEvenTarget = breakEven.Target,
+            Currency = breakEven.Currency,
             Revenue = stats.Revenue,
             AveragePrice = stats.AveragePrice,
             TicketsRemaining = totalCapacity - stats.TicketsSold,
@@ -109,6 +118,68 @@ public class TicketController : HumansControllerBase
 
         return View(model);
     }
+
+    private async Task<BreakEvenCalculation> CalculateBreakEvenAsync(int ticketsSold, decimal revenue, string currency, bool canAccessFinance)
+    {
+        if (ticketsSold <= 0 || revenue <= 0)
+        {
+            return new BreakEvenCalculation(_settings.BreakEvenTarget, null, currency);
+        }
+
+        var activeBudgetYear = await _budgetService.GetActiveYearAsync();
+        if (activeBudgetYear is null)
+        {
+            return new BreakEvenCalculation(_settings.BreakEvenTarget, null, currency);
+        }
+
+        var visibleGroups = canAccessFinance
+            ? activeBudgetYear.Groups
+            : activeBudgetYear.Groups.Where(g => !g.IsRestricted).ToList();
+
+        // Use raw expense line items (not ComputeBudgetSummary) to avoid VAT adjustments.
+        // Revenue is gross, so expenses must also be gross for an apples-to-apples comparison.
+        var plannedExpenses = Math.Abs(visibleGroups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .Where(li => !li.IsCashflowOnly && li.Amount < 0)
+            .Sum(li => li.Amount));
+        if (plannedExpenses <= 0)
+        {
+            return new BreakEvenCalculation(_settings.BreakEvenTarget, null, currency);
+        }
+
+        // Break-even target from current realized average revenue per ticket:
+        // A = tickets sold so far, B = gross revenue so far, C = gross planned expenses
+        // D = remaining expenses = C - B
+        // E = average ticket price = B / A
+        // F = remaining tickets = D / E
+        // G = break-even target = A + F
+        // Finance hover shows D / E = F tickets still to sell.
+        var averageTicketPrice = revenue / ticketsSold;
+
+        var remainingExpenses = Math.Max(0m, plannedExpenses - revenue);
+        long remainingTicketsToSell = 0;
+        if (remainingExpenses > 0)
+        {
+            var remainingTicketCount = Math.Ceiling(remainingExpenses / averageTicketPrice);
+            remainingTicketsToSell = remainingTicketCount > int.MaxValue
+                ? int.MaxValue
+                : decimal.ToInt32(remainingTicketCount);
+        }
+
+        var breakEvenTarget = (long)ticketsSold + remainingTicketsToSell;
+        var target = breakEvenTarget > int.MaxValue
+            ? int.MaxValue
+            : (int)breakEvenTarget;
+
+        var detail = canAccessFinance
+            ? $"{currency} {remainingExpenses:N2} remaining expenses / {currency} {averageTicketPrice:N2} per ticket = {remainingTicketsToSell:N0} tickets still to sell"
+            : null;
+
+        return new BreakEvenCalculation(target, detail, currency);
+    }
+
+    private sealed record BreakEvenCalculation(int Target, string? Detail, string Currency);
 
     [HttpGet("Orders")]
     public async Task<IActionResult> Orders(
