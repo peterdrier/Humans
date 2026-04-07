@@ -63,41 +63,7 @@ public class DevSeedController : HumansControllerBase
             SetError("Budget seeding failed. Check logs for details.");
         }
 
-        return RedirectToAction("Users", "DevLogin");
-    }
-
-    [Authorize(Roles = RoleGroups.TicketAdminBoardOrAdmin + "," + RoleNames.FinanceAdmin)]
-    [HttpPost("tickets")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SeedTickets(CancellationToken cancellationToken)
-    {
-        if (!IsDevSeedEnabled())
-        {
-            return NotFound();
-        }
-
-        var (errorResult, user) = await RequireCurrentUserAsync();
-        if (errorResult is not null)
-        {
-            return errorResult;
-        }
-
-        try
-        {
-            var syncService = _serviceProvider.GetRequiredService<ITicketSyncService>();
-
-            // Reset sync state so the full dataset is fetched from the stub vendor
-            await syncService.ResetSyncStateForFullResyncAsync();
-            var result = await syncService.SyncOrdersAndAttendeesAsync(cancellationToken);
-            SetSuccess($"Ticket data synced: {result.OrdersSynced} orders, {result.AttendeesSynced} attendees.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to sync stub ticket data for user {UserId}", user.Id);
-            SetError("Ticket sync failed. Check logs for details.");
-        }
-
-        return RedirectToAction("Users", "DevLogin");
+        return RedirectToAction("Index", "Admin");
     }
 
     private bool IsDevSeedEnabled()

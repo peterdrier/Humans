@@ -38,28 +38,5 @@
             </div>
         </div>
 
-        @if (User.Identity?.IsAuthenticated == true)
-        {
-        <div class="card mt-4 border-info">
-            <div class="card-header bg-info text-white">
-                <strong>Dev Tools — Seed Data</strong>
-            </div>
-            <div class="card-body">
-                <p class="text-muted mb-3">Populate dev/preview environments with realistic demo data.</p>
-                <div class="d-flex gap-2">
-                    <form asp-controller="DevSeed" asp-action="SeedBudget" method="post">
-                        <button type="submit" class="btn btn-outline-info">
-                            <i class="fa-solid fa-coins me-1"></i> Seed Budget Data
-                        </button>
-                    </form>
-                    <form asp-controller="DevSeed" asp-action="SeedTickets" method="post">
-                        <button type="submit" class="btn btn-outline-info">
-                            <i class="fa-solid fa-ticket me-1"></i> Seed Ticket Data
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-        }
     </div>
 </div>

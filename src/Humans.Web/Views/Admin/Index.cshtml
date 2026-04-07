@@ -1,3 +1,4 @@
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostEnv
 @{
     ViewData["Title"] = "Admin Tools";
 }
@@ -70,5 +71,22 @@
                 </a>
             </div>
         </div>
+
+        @if (!HostEnv.IsProduction())
+        {
+        <div class="card mb-4 border-info">
+            <div class="card-header bg-info text-white">Seed Development Data</div>
+            <div class="card-body">
+                <p class="text-muted mb-3">Populate this environment with realistic demo data.</p>
+                <div class="d-flex gap-2">
+                    <form asp-controller="DevSeed" asp-action="SeedBudget" method="post">
+                        <button type="submit" class="btn btn-outline-info">
+                            <i class="fa-solid fa-coins me-1"></i> Seed Budget Data
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        }
     </div>
 </div>
