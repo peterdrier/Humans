@@ -135,28 +135,26 @@ public class TicketController : HumansControllerBase
             ? activeBudgetYear.Groups
             : activeBudgetYear.Groups.Where(g => !g.IsRestricted).ToList();
 
-        var budgetSummary = _budgetService.ComputeBudgetSummary(visibleGroups);
-        var plannedExpenses = Math.Abs(budgetSummary.TotalExpenses);
+        // Use raw expense line items (not ComputeBudgetSummary) to avoid VAT adjustments.
+        // Revenue is gross, so expenses must also be gross for an apples-to-apples comparison.
+        var plannedExpenses = Math.Abs(visibleGroups
+            .SelectMany(g => g.Categories)
+            .SelectMany(c => c.LineItems)
+            .Where(li => !li.IsCashflowOnly && li.Amount < 0)
+            .Sum(li => li.Amount));
         if (plannedExpenses <= 0)
         {
             return new BreakEvenCalculation(_settings.BreakEvenTarget, null, currency);
         }
 
-        // Break-even target is based on the current realized average revenue per sold ticket:
-        // A = number of tickets sold so far
-        // B = revenue so far
-        // C = total planned expenses
+        // Break-even target from current realized average revenue per ticket:
+        // A = tickets sold so far, B = gross revenue so far, C = gross planned expenses
         // D = remaining expenses = C - B
         // E = average ticket price = B / A
-        // F = remaining tickets to sell = D / E = (C - B) / (B / A)
-        // G = tickets to breakeven = tickets sold so far + remaining tickets to sell = A + F = A + (C - B) / (B / A)
-        // So the breakeven target is G.
-        // Finance hover shows remaining expenses (D) / average ticket price (E) = F tickets still to sell.
+        // F = remaining tickets = D / E
+        // G = break-even target = A + F
+        // Finance hover shows D / E = F tickets still to sell.
         var averageTicketPrice = revenue / ticketsSold;
-        if (averageTicketPrice <= 0)
-        {
-            return new BreakEvenCalculation(_settings.BreakEvenTarget, null, currency);
-        }
 
         var remainingExpenses = Math.Max(0m, plannedExpenses - revenue);
         long remainingTicketsToSell = 0;
