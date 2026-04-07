@@ -269,6 +269,13 @@ public class TicketQueryService : ITicketQueryService
         };
     }
 
+    public async Task<decimal> GetGrossTicketRevenueAsync()
+    {
+        return await _dbContext.TicketOrders
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
+            .SumAsync(o => o.TotalAmount);
+    }
+
     public async Task<BreakEvenResult> CalculateBreakEvenAsync(int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget)
     {
         if (ticketsSold <= 0 || grossRevenue <= 0)

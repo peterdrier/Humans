@@ -39,6 +39,12 @@ public interface ITicketQueryService
     Task<TicketDashboardStats> GetDashboardStatsAsync();
 
     /// <summary>
+    /// Get total gross ticket revenue (sum of TotalAmount for paid orders).
+    /// Used by cash flow runway calculations.
+    /// </summary>
+    Task<decimal> GetGrossTicketRevenueAsync();
+
+    /// <summary>
     /// Calculate break-even target using gross average ticket price and planned expenses.
     /// </summary>
     /// <param name="ticketsSold">Current number of tickets sold.</param>
