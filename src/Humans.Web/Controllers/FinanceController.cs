@@ -18,12 +18,14 @@ public class FinanceController : HumansControllerBase
 {
     private readonly IBudgetService _budgetService;
     private readonly ITicketingBudgetService _ticketingBudgetService;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly HumansDbContext _dbContext;
     private readonly ILogger<FinanceController> _logger;
 
     public FinanceController(
         IBudgetService budgetService,
         ITicketingBudgetService ticketingBudgetService,
+        ITicketQueryService ticketQueryService,
         HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<FinanceController> logger)
@@ -31,6 +33,7 @@ public class FinanceController : HumansControllerBase
     {
         _budgetService = budgetService;
         _ticketingBudgetService = ticketingBudgetService;
+        _ticketQueryService = ticketQueryService;
         _dbContext = dbContext;
         _logger = logger;
     }
@@ -139,7 +142,8 @@ public class FinanceController : HumansControllerBase
                 return RedirectToAction(nameof(Index));
             }
 
-            var model = BuildCashFlowModel(activeYear, period);
+            var grossTicketRevenue = await _ticketQueryService.GetGrossTicketRevenueAsync();
+            var model = BuildCashFlowModel(activeYear, period, grossTicketRevenue);
             return View(model);
         }
         catch (Exception ex)
@@ -582,7 +586,7 @@ public class FinanceController : HumansControllerBase
     /// Generates synthetic VAT settlement entries at their settlement dates.
     /// Restricted groups are included (FinanceAdmin-only page).
     /// </summary>
-    private CashFlowViewModel BuildCashFlowModel(BudgetYear year, string period)
+    private CashFlowViewModel BuildCashFlowModel(BudgetYear year, string period, decimal grossTicketRevenue)
     {
         // Normalize period parameter
         if (!string.Equals(period, "weekly", StringComparison.OrdinalIgnoreCase) &&
@@ -615,12 +619,24 @@ public class FinanceController : HumansControllerBase
             var grouped = isWeekly ? GroupByWeek(scheduled) : GroupByMonth(scheduled);
 
             decimal runningNet = 0;
+            // Expense-only runway: start from gross ticket revenue, subtract only expenses.
+            // Income line items do NOT extend the runway — they're budgeted, not realized.
+            decimal runningExpenseBalance = grossTicketRevenue;
+            var fundsExhausted = false;
             foreach (var pg in grouped.OrderBy(g => g.PeriodStart))
             {
                 var periodIncome = pg.Items.Where(x => x.Amount > 0).Sum(x => x.Amount);
                 var periodExpense = pg.Items.Where(x => x.Amount < 0).Sum(x => x.Amount);
                 var periodNet = periodIncome + periodExpense;
                 runningNet += periodNet;
+
+                // Subtract expenses (periodExpense is negative, so add it to subtract)
+                runningExpenseBalance += periodExpense;
+                var isExhausted = !fundsExhausted && runningExpenseBalance <= 0;
+                if (isExhausted)
+                {
+                    fundsExhausted = true;
+                }
 
                 var categories = BuildCategoryRows(pg.Items);
 
@@ -633,6 +649,7 @@ public class FinanceController : HumansControllerBase
                     ExpenseTotal = periodExpense,
                     Net = periodNet,
                     RunningNet = runningNet,
+                    FundsExhausted = isExhausted,
                     Categories = categories
                 });
             }

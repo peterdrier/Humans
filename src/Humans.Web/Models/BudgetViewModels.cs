@@ -87,6 +87,14 @@ public class CashFlowPeriodRow
     public decimal ExpenseTotal { get; init; }
     public decimal Net { get; init; }
     public decimal RunningNet { get; init; }
+
+    /// <summary>
+    /// True when cumulative expenses (ignoring income) have exceeded gross ticket revenue.
+    /// Used for the "Funds Exhausted" pill — marks the first period where the expense-only
+    /// runway runs out.
+    /// </summary>
+    public bool FundsExhausted { get; init; }
+
     public required IReadOnlyList<CashFlowCategoryRow> Categories { get; init; }
 }
 
