@@ -167,6 +167,13 @@
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Votre inscription a &#xE9;t&#xE9; examin&#xE9;e et n'a pas &#xE9;t&#xE9; approuv&#xE9;e. Si vous avez des questions, veuillez contacter l'&#xE9;quipe d'administration.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motif</value></data>
 
+  <!-- Guest Dashboard -->
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Envie de participer ?</value></data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Cr&#xE9;ez un profil pour devenir b&#xE9;n&#xE9;vole et acc&#xE9;der &#xE0; l'exp&#xE9;rience compl&#xE8;te Humans &#x2014; cr&#xE9;neaux, &#xE9;quipes, gouvernance et plus encore.</value></data>
+  <data name="Guest_CreateProfile" xml:space="preserve"><value>Cr&#xE9;er un profil</value></data>
+  <data name="Guest_Explore" xml:space="preserve"><value>Explorer</value></data>
+  <data name="Guest_Legal" xml:space="preserve"><value>Mentions l&#xE9;gales</value></data>
+
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
   <!-- ======================== -->

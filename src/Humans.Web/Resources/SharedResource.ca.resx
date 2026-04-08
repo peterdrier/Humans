@@ -167,6 +167,13 @@
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>El teu registre ha estat revisat i no va ser aprovat. Si tens preguntes, contacta amb l'equip d'administració.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motiu</value></data>
 
+  <!-- Guest Dashboard -->
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Vols participar?</value></data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Crea un perfil per ser voluntari i accedir a l'experi&#xE8;ncia completa de Humans &#x2014; torns, equips, governan&#xE7;a i m&#xE9;s.</value></data>
+  <data name="Guest_CreateProfile" xml:space="preserve"><value>Crear perfil</value></data>
+  <data name="Guest_Explore" xml:space="preserve"><value>Explorar</value></data>
+  <data name="Guest_Legal" xml:space="preserve"><value>Legal</value></data>
+
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
   <!-- ======================== -->

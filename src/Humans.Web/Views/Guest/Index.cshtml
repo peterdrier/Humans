@@ -14,13 +14,12 @@
         <div class="card mb-4">
             <div class="card-body text-center py-5">
                 <i class="fa-solid fa-user-plus fa-3x text-primary mb-3"></i>
-                <h3>Want to get involved?</h3>
+                <h3>@Localizer["Guest_GetInvolvedTitle"]</h3>
                 <p class="text-muted mb-3">
-                    Create a profile to become a volunteer and access the full Humans experience &mdash;
-                    shifts, teams, governance, and more.
+                    @Localizer["Guest_GetInvolvedDescription"]
                 </p>
                 <a asp-controller="Profile" asp-action="Edit" class="btn btn-primary btn-lg">
-                    <i class="fa-solid fa-id-card me-2"></i>Create Profile
+                    <i class="fa-solid fa-id-card me-2"></i>@Localizer["Guest_CreateProfile"]
                 </a>
             </div>
         </div>
@@ -29,7 +28,7 @@
     <div class="col-lg-4">
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0"><i class="fa-solid fa-compass me-2"></i>Explore</h5>
+                <h5 class="mb-0"><i class="fa-solid fa-compass me-2"></i>@Localizer["Guest_Explore"]</h5>
             </div>
             <div class="card-body">
                 <ul class="list-unstyled mb-0">
@@ -45,7 +44,7 @@
                     </li>
                     <li class="mb-2">
                         <a asp-controller="Legal" asp-action="Index">
-                            <i class="fa-solid fa-scale-balanced me-2"></i>Legal
+                            <i class="fa-solid fa-scale-balanced me-2"></i>@Localizer["Guest_Legal"]
                         </a>
                     </li>
                 </ul>

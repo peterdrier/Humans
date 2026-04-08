@@ -167,6 +167,13 @@
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Your signup has been reviewed and was not approved. If you have questions, please contact the admin team.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Reason</value></data>
 
+  <!-- Guest Dashboard -->
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Want to get involved?</value></data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Create a profile to become a volunteer and access the full Humans experience — shifts, teams, governance, and more.</value></data>
+  <data name="Guest_CreateProfile" xml:space="preserve"><value>Create Profile</value></data>
+  <data name="Guest_Explore" xml:space="preserve"><value>Explore</value></data>
+  <data name="Guest_Legal" xml:space="preserve"><value>Legal</value></data>
+
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
   <!-- ======================== -->

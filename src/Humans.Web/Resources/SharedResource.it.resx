@@ -167,6 +167,13 @@
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>La Sua registrazione &#xE8; stata esaminata e non &#xE8; stata approvata. Per domande, contatti il team di amministrazione.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motivo</value></data>
 
+  <!-- Guest Dashboard -->
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Vuoi partecipare?</value></data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Crea un profilo per diventare volontario e accedere all'esperienza completa di Humans &#x2014; turni, team, governance e altro.</value></data>
+  <data name="Guest_CreateProfile" xml:space="preserve"><value>Crea profilo</value></data>
+  <data name="Guest_Explore" xml:space="preserve"><value>Esplora</value></data>
+  <data name="Guest_Legal" xml:space="preserve"><value>Legale</value></data>
+
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
   <!-- ======================== -->

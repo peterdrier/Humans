@@ -167,6 +167,13 @@
   <data name="Dashboard_RejectedMessage" xml:space="preserve"><value>Ihre Anmeldung wurde gepr&#xFC;ft und nicht genehmigt. Bei Fragen wenden Sie sich bitte an das Admin-Team.</value></data>
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Grund</value></data>
 
+  <!-- Guest Dashboard -->
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>M&#xF6;chtest du mitmachen?</value></data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Erstelle ein Profil, um Freiwilliger zu werden und das volle Humans-Erlebnis zu nutzen &#x2014; Schichten, Teams, Governance und mehr.</value></data>
+  <data name="Guest_CreateProfile" xml:space="preserve"><value>Profil erstellen</value></data>
+  <data name="Guest_Explore" xml:space="preserve"><value>Entdecken</value></data>
+  <data name="Guest_Legal" xml:space="preserve"><value>Rechtliches</value></data>
+
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
   <!-- ======================== -->
