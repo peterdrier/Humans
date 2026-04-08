@@ -192,7 +192,7 @@
                             _ => "bg-secondary"
                         };
                         <tr>
-                            <td>@grant.User.DisplayName</td>
+                            <td><human-link user-id="@grant.UserId" /></td>
                             <td class="text-muted small">@grant.User.Email</td>
                             <td><code>@grant.Code.Code</code></td>
                             <td>@grant.AssignedAt.ToDisplayDateTime()</td>

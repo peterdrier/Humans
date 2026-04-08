@@ -27,18 +27,14 @@
     <div class="list-group mb-4">
         @foreach (var item in Model.PendingReviews)
         {
-            <a asp-action="Detail" asp-route-userId="@item.UserId" class="list-group-item list-group-item-action">
+            <div class="list-group-item">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
-                        <vc:user-avatar profile-picture-url="@item.ProfilePictureUrl"
-                                        display-name="@item.DisplayName"
-                                        size="40"
-                                        css-class="me-3" />
-                        <div>
-                            <strong>@item.DisplayName</strong>
-                            <br />
+                        <human-link user-id="@item.UserId" display-name="@item.DisplayName"
+                                    mode="AvatarName" size="40"
+                                    profile-picture-url="@item.ProfilePictureUrl">
                             <small class="text-muted">@item.Email</small>
-                        </div>
+                        </human-link>
                     </div>
                     <div class="text-end">
                         @if (item.MembershipTier != MembershipTier.Volunteer)
@@ -53,10 +49,13 @@
                             </span>
                         }
                         <br />
-                                    <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
+                        <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
+                        <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
+                            <i class="fa-solid fa-eye me-1"></i>Review
+                        </a>
                     </div>
                 </div>
-            </a>
+            </div>
         }
     </div>
 }
@@ -71,18 +70,14 @@
     <div class="list-group mb-4">
         @foreach (var item in Model.FlaggedReviews)
         {
-            <a asp-action="Detail" asp-route-userId="@item.UserId" class="list-group-item list-group-item-action list-group-item-danger">
+            <div class="list-group-item list-group-item-danger">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
-                        <vc:user-avatar profile-picture-url="@item.ProfilePictureUrl"
-                                        display-name="@item.DisplayName"
-                                        size="40"
-                                        css-class="me-3" />
-                        <div>
-                            <strong>@item.DisplayName</strong>
-                            <br />
+                        <human-link user-id="@item.UserId" display-name="@item.DisplayName"
+                                    mode="AvatarName" size="40"
+                                    profile-picture-url="@item.ProfilePictureUrl">
                             <small class="text-muted">@item.Email</small>
-                        </div>
+                        </human-link>
                     </div>
                     <div class="text-end">
                         @if (item.MembershipTier != MembershipTier.Volunteer)
@@ -98,10 +93,13 @@
                             </span>
                         }
                         <br />
-                                    <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
+                        <small class="text-muted">@item.ProfileCreatedAt.ToDisplayDate()</small>
+                        <a asp-action="Detail" asp-route-userId="@item.UserId" class="btn btn-sm btn-outline-primary ms-2">
+                            <i class="fa-solid fa-eye me-1"></i>Review
+                        </a>
                     </div>
                 </div>
-            </a>
+            </div>
         }
     </div>
 }

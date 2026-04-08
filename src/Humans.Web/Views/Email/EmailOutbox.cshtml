@@ -124,7 +124,16 @@
                             _ => "bg-secondary"
                         };
                         <tr>
-                            <td>@(msg.User?.DisplayName ?? msg.RecipientName ?? "—")</td>
+                            <td>
+                                @if (msg.UserId.HasValue)
+                                {
+                                    <human-link user-id="@msg.UserId.Value" />
+                                }
+                                else
+                                {
+                                    @(msg.RecipientName ?? "—")
+                                }
+                            </td>
                             <td><code class="small">@msg.TemplateName</code></td>
                             <td class="small">@msg.RecipientEmail</td>
                             <td>

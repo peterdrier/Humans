@@ -39,21 +39,11 @@ else
                             <div class="card mb-2 @(account.IsProfileComplete ? "border-success" : "border-secondary")">
                                 <div class="card-body">
                                     <div class="d-flex align-items-center mb-2">
-                                        @if (!string.IsNullOrEmpty(account.ProfilePictureUrl))
-                                        {
-                                            <img src="@account.ProfilePictureUrl" alt="" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" />
-                                        }
-                                        else
-                                        {
-                                            <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px;">
-                                                <i class="fa-solid fa-user text-white"></i>
-                                            </div>
-                                        }
-                                        <div>
-                                            <strong>@account.DisplayName</strong>
-                                            <br />
+                                        <human-link user-id="@account.UserId" display-name="@account.DisplayName"
+                                                    mode="AvatarName" size="40"
+                                                    profile-picture-url="@account.ProfilePictureUrl" admin="true">
                                             <small class="text-muted">@account.Email</small>
-                                        </div>
+                                        </human-link>
                                     </div>
                                     <table class="table table-sm table-borderless mb-2">
                                         <tbody>

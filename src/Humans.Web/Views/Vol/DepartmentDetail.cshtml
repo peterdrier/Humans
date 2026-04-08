@@ -104,8 +104,9 @@ else
                         {
                             <tr>
                                 <td class="d-flex align-items-center gap-2">
-                                    <vc:user-avatar profile-picture-url="@member.ProfilePictureUrl" display-name="@member.DisplayName" size="28" />
-                                    @member.DisplayName
+                                    <human-link user-id="@member.UserId" display-name="@member.DisplayName"
+                                                mode="AvatarName" size="28"
+                                                profile-picture-url="@member.ProfilePictureUrl" />
                                 </td>
                                 <td>
                                     @foreach (var teamName in member.SourceTeams)

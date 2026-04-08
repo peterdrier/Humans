@@ -96,7 +96,7 @@
                                     _ => "bg-secondary"
                                 };
                                 <tr>
-                                    <td>@v.DisplayName</td>
+                                    <td><human-link user-id="@v.BoardMemberUserId" display-name="@v.DisplayName" /></td>
                                     <td><span class="badge @badgeClass">@v.Vote</span></td>
                                 <td><small>@v.VotedAt.ToDisplayDate()</small></td>
                                     <td><small class="text-muted">@v.Note</small></td>

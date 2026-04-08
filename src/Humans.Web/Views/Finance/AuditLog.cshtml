@@ -55,7 +55,7 @@
                     {
                         <tr>
                             <td class="text-nowrap">@entry.OccurredAt.ToDateTimeUtc().ToString("g")</td>
-                            <td>@(entry.ActorUser?.DisplayName ?? entry.ActorUser?.Email ?? "Unknown")</td>
+                            <td><human-link user-id="@entry.ActorUserId" /></td>
                             <td><span class="badge bg-secondary">@entry.EntityType</span></td>
                             <td>@entry.Description</td>
                             <td>@(entry.FieldName ?? "")</td>

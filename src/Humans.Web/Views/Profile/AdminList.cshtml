@@ -106,16 +106,11 @@
                     {
                         <tr>
                             <td>
-                                <div class="d-flex align-items-center">
-                                    <vc:user-avatar profile-picture-url="@member.ProfilePictureUrl"
-                                                    display-name="@member.DisplayName"
-                                                    size="32"
-                                                    css-class="me-2" />
-                                    <div>
-                                        <div>@member.DisplayName</div>
-                                        <small class="text-muted">@member.Email</small>
-                                    </div>
-                                </div>
+                                <human-link user-id="@member.Id" display-name="@member.DisplayName"
+                                            mode="AvatarName" size="32"
+                                            profile-picture-url="@member.ProfilePictureUrl" admin="true">
+                                    <small class="text-muted">@member.Email</small>
+                                </human-link>
                             </td>
                             <td>@member.CreatedAt.ToDisplayDate()</td>
                             <td>

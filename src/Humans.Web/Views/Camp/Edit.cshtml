@@ -260,7 +260,7 @@
                 @foreach (var lead in Model.Leads)
                 {
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        @lead.DisplayName
+                        <human-link user-id="@lead.UserId" display-name="@lead.DisplayName" />
                         @if (Model.Leads.Count > 1)
                         {
                             <form asp-action="RemoveLead" asp-route-slug="@Model.Slug" asp-route-leadId="@lead.LeadId" method="post" class="d-inline">
