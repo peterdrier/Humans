@@ -1,6 +1,12 @@
 @model Humans.Domain.Entities.Campaign
 @{
     ViewData["Title"] = "Edit Campaign";
+    // On validation failure, prefer submitted form values (ViewBag) over the entity's persisted values
+    var title2 = ViewBag.Title2 as string ?? Model.Title;
+    var description = ViewBag.Description as string ?? Model.Description;
+    var emailSubject = ViewBag.EmailSubject as string ?? Model.EmailSubject;
+    var emailBodyTemplate = ViewBag.EmailBodyTemplate as string ?? Model.EmailBodyTemplate;
+    var replyToAddress = ViewBag.ReplyToAddress as string ?? Model.ReplyToAddress;
 }
 
 <h1>Edit Campaign</h1>
@@ -15,23 +21,23 @@
 
             <div class="mb-3">
                 <label for="title" class="form-label">Title</label>
-                <input type="text" class="form-control" id="title" name="title" value="@Model.Title" required />
+                <input type="text" class="form-control" id="title" name="title" value="@title2" required />
             </div>
 
             <div class="mb-3">
                 <label for="description" class="form-label">Description</label>
-                <textarea class="form-control" id="description" name="description" rows="3">@Model.Description</textarea>
+                <textarea class="form-control" id="description" name="description" rows="3">@description</textarea>
             </div>
 
             <div class="mb-3">
                 <label for="emailSubject" class="form-label">Email Subject</label>
-                <input type="text" class="form-control" id="emailSubject" name="emailSubject" value="@Model.EmailSubject" required />
+                <input type="text" class="form-control" id="emailSubject" name="emailSubject" value="@emailSubject" required />
                 <small class="form-text text-muted">You can use <code>{{Name}}</code> to insert the human's name.</small>
             </div>
 
             <div class="mb-3">
                 <label for="emailBodyTemplate" class="form-label">Email Body Template</label>
-                <textarea class="form-control font-monospace" id="emailBodyTemplate" name="emailBodyTemplate" rows="10" required>@Model.EmailBodyTemplate</textarea>
+                <textarea class="form-control font-monospace" id="emailBodyTemplate" name="emailBodyTemplate" rows="10" required>@emailBodyTemplate</textarea>
                 <div class="form-text">
                     <a href="#" data-bs-toggle="modal" data-bs-target="#markdownHelpModal">
                         <i class="fa-solid fa-circle-info me-1"></i>Markdown formatting is supported
@@ -42,7 +48,7 @@
 
             <div class="mb-3">
                 <label for="replyToAddress" class="form-label">Reply-To Address <span class="text-muted">(optional)</span></label>
-                <input type="email" class="form-control" id="replyToAddress" name="replyToAddress" value="@Model.ReplyToAddress" placeholder="e.g. tickets@nobodies.team">
+                <input type="email" class="form-control" id="replyToAddress" name="replyToAddress" value="@replyToAddress" placeholder="e.g. tickets@nobodies.team">
                 <small class="form-text text-muted">Recipients who reply to the campaign email will reach this address.</small>
             </div>
 

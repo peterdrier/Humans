@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
-using Humans.Infrastructure.Data;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;
@@ -18,18 +16,15 @@ public class CampaignController : HumansControllerBase
 {
     private readonly ICampaignService _campaignService;
     private readonly ITicketVendorService _vendorService;
-    private readonly HumansDbContext _dbContext;
 
     public CampaignController(
         ICampaignService campaignService,
         ITicketVendorService vendorService,
-        HumansDbContext dbContext,
         UserManager<User> userManager)
         : base(userManager)
     {
         _campaignService = campaignService;
         _vendorService = vendorService;
-        _dbContext = dbContext;
     }
 
     [HttpGet("")]
@@ -106,13 +101,12 @@ public class CampaignController : HumansControllerBase
                 return NotFound();
             }
 
-            // Detach so form value mutations aren't accidentally persisted
-            _dbContext.Entry(campaign).State = EntityState.Detached;
-            campaign.Title = title;
-            campaign.Description = description;
-            campaign.EmailSubject = emailSubject;
-            campaign.EmailBodyTemplate = emailBodyTemplate;
-            campaign.ReplyToAddress = replyToAddress;
+            // Pass submitted form values back via ViewBag for re-display
+            ViewBag.Title2 = title;
+            ViewBag.Description = description;
+            ViewBag.EmailSubject = emailSubject;
+            ViewBag.EmailBodyTemplate = emailBodyTemplate;
+            ViewBag.ReplyToAddress = replyToAddress;
             return View(campaign);
         }
 
