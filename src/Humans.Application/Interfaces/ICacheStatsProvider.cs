@@ -10,6 +10,7 @@ public interface ICacheStatsProvider
     void Reset();
     long TotalHits { get; }
     long TotalMisses { get; }
+    int TotalActiveEntries { get; }
 }
 
 /// <summary>

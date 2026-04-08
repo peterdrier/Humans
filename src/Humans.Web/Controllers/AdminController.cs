@@ -243,16 +243,29 @@ public class AdminController : HumansControllerBase
         try
         {
             var snapshot = _cacheStatsProvider.GetSnapshot();
+            var entryCounts = (_cacheStatsProvider as Humans.Infrastructure.Services.TrackingMemoryCache)
+                ?.GetActiveEntryCounts()
+                ?? new Dictionary<string, int>(StringComparer.Ordinal);
+
             var model = new CacheStatsViewModel
             {
                 TotalHits = _cacheStatsProvider.TotalHits,
                 TotalMisses = _cacheStatsProvider.TotalMisses,
-                Entries = snapshot.Select(e => new CacheStatEntryViewModel
+                TotalActiveEntries = _cacheStatsProvider.TotalActiveEntries,
+                Entries = snapshot.Select(e =>
                 {
-                    KeyType = e.KeyType,
-                    Hits = e.Hits,
-                    Misses = e.Misses,
-                    HitRatePercent = e.HitRatePercent
+                    entryCounts.TryGetValue(e.KeyType, out var activeCount);
+                    Application.CacheKeys.Metadata.TryGetValue(e.KeyType, out var meta);
+                    return new CacheStatEntryViewModel
+                    {
+                        KeyType = e.KeyType,
+                        Hits = e.Hits,
+                        Misses = e.Misses,
+                        HitRatePercent = e.HitRatePercent,
+                        ActiveEntries = activeCount,
+                        Ttl = meta?.Ttl ?? "—",
+                        Type = meta?.Type.ToString() ?? "—"
+                    };
                 }).ToList()
             };
             return View(model);

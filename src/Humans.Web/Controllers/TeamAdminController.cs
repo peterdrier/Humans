@@ -704,6 +704,8 @@ public class TeamAdminController : HumansTeamControllerBase
             p => p.UserId,
             p => Url.Action(nameof(ProfileController.Picture), "Profile", new { id = p.ProfileId, v = p.UpdatedAtTicks })!);
 
+        var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
+
         var viewModel = new RoleManagementViewModel
         {
             TeamId = team.Id,
@@ -712,6 +714,7 @@ public class TeamAdminController : HumansTeamControllerBase
             IsSystemTeam = team.IsSystemTeam,
             IsChildTeam = team.ParentTeamId.HasValue,
             CanManage = true,
+            CanToggleManagement = canToggleManagement,
             RoleDefinitions = definitions.Select(TeamRoleDefinitionViewModel.FromEntity).ToList(),
             TeamMembers = members.Select(m => new TeamMemberViewModel
             {
@@ -775,6 +778,18 @@ public class TeamAdminController : HumansTeamControllerBase
 
         try
         {
+            // If user lacks TeamsAdmin/Admin, preserve the existing IsManagement value
+            var canToggleManagement = RoleChecks.IsTeamsAdmin(User) || RoleChecks.IsAdmin(User);
+            if (!canToggleManagement)
+            {
+                var existingRoles = await _teamService.GetRoleDefinitionsAsync(team.Id);
+                var existingRole = existingRoles.FirstOrDefault(r => r.Id == roleId);
+                if (existingRole is not null)
+                {
+                    model.IsManagement = existingRole.IsManagement;
+                }
+            }
+
             var priorities = model.Priorities
                 .Select(p => Enum.Parse<SlotPriority>(p, ignoreCase: true))
                 .ToList();
@@ -830,6 +845,11 @@ public class TeamAdminController : HumansTeamControllerBase
         if (teamError is not null)
         {
             return teamError;
+        }
+
+        if (!RoleChecks.IsTeamsAdmin(User) && !RoleChecks.IsAdmin(User))
+        {
+            return Forbid();
         }
 
         try

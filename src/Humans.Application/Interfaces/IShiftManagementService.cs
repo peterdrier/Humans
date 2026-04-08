@@ -175,6 +175,13 @@ public interface IShiftManagementService
         Guid eventSettingsId, Guid? departmentId = null);
 
     /// <summary>
+    /// Gets per-day staffing hours across all periods, grouped by shift priority.
+    /// Hours = shift duration × MaxVolunteers. All-day shifts count as 8 hours per slot.
+    /// </summary>
+    Task<IReadOnlyList<DailyStaffingHours>> GetStaffingHoursAsync(
+        Guid eventSettingsId, Guid? departmentId = null);
+
+    /// <summary>
     /// Gets shifts summary for a department. Returns null if no rotas.
     /// </summary>
     Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
@@ -262,3 +269,14 @@ public record ShiftsSummaryData(
     int ConfirmedCount,
     int PendingCount,
     int UniqueVolunteerCount);
+
+/// <summary>
+/// Per-day staffing hours grouped by shift priority for volume visualization.
+/// Hours = shift duration × MaxVolunteers. All-day shifts count as 8h per slot.
+/// </summary>
+public record DailyStaffingHours(
+    int DayOffset,
+    string DateLabel,
+    double EssentialHours,
+    double ImportantHours,
+    double NormalHours);

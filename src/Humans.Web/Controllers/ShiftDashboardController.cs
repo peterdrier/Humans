@@ -61,6 +61,7 @@ public class ShiftDashboardController : HumansControllerBase
 
         var shifts = await _shiftMgmt.GetUrgentShiftsAsync(es.Id, limit: null, departmentId, filterDate);
         var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, departmentId);
+        var staffingHours = await _shiftMgmt.GetStaffingHoursAsync(es.Id, departmentId);
 
         var deptTuples = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
         var departments = deptTuples.Select(d => new DepartmentOption
@@ -77,7 +78,8 @@ public class ShiftDashboardController : HumansControllerBase
             SelectedRotaId = rotaId,
             SelectedDate = date,
             EventSettings = es,
-            StaffingData = staffingData.ToList()
+            StaffingData = staffingData.ToList(),
+            StaffingHours = staffingHours.ToList()
         };
 
         return View(model);

@@ -34,4 +34,48 @@ public static class CacheKeys
     // Magic link sentinel keys (rate limiting and replay prevention)
     public static string MagicLinkUsed(string tokenPrefix) => $"magic_link_used:{tokenPrefix}";
     public static string MagicLinkSignupRateLimit(string normalizedEmail) => $"magic_link_signup:{normalizedEmail}";
+
+    /// <summary>
+    /// Cache key type classification for the Admin Cache Stats page.
+    /// </summary>
+    public enum CacheKeyType
+    {
+        Static,
+        PerUser,
+        PerEntity,
+        RateLimit
+    }
+
+    /// <summary>
+    /// Metadata for a cache key prefix: configured TTL and key type.
+    /// </summary>
+    public record CacheKeyMeta(string Ttl, CacheKeyType Type);
+
+    /// <summary>
+    /// Static lookup of known cache key prefixes to their TTL and type classification.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, CacheKeyMeta> Metadata =
+        new Dictionary<string, CacheKeyMeta>(StringComparer.Ordinal)
+        {
+            ["NavBadgeCounts"] = new("2 min", CacheKeyType.Static),
+            ["NotificationBadge"] = new("2 min", CacheKeyType.PerUser),
+            ["NotificationMeters"] = new("2 min", CacheKeyType.Static),
+            ["ApprovedProfiles"] = new("10 min", CacheKeyType.Static),
+            ["ActiveTeams"] = new("10 min", CacheKeyType.Static),
+            ["CampSettings"] = new("5 min", CacheKeyType.Static),
+            ["TicketEventSummary"] = new("15 min", CacheKeyType.PerEntity),
+            ["camps_year"] = new("5 min", CacheKeyType.PerEntity),
+            ["UserProfile"] = new("2 min", CacheKeyType.PerUser),
+            ["UserTicketCount"] = new("5 min", CacheKeyType.PerUser),
+            ["TicketDashboardStats"] = new("5 min", CacheKeyType.Static),
+            ["UserIdsWithTickets"] = new("5 min", CacheKeyType.Static),
+            ["CampContactRateLimit"] = new("10 min", CacheKeyType.RateLimit),
+            ["claims"] = new("60 sec", CacheKeyType.PerUser),
+            ["shift-auth"] = new("60 sec", CacheKeyType.PerUser),
+            ["NavBadge"] = new("2 min", CacheKeyType.PerUser),
+            ["Legal"] = new("1 hour", CacheKeyType.PerEntity),
+            ["magic_link_used"] = new("15 min", CacheKeyType.RateLimit),
+            ["magic_link_signup"] = new("60 sec", CacheKeyType.RateLimit),
+            ["NobodiesTeamEmails_All"] = new("2 min", CacheKeyType.Static),
+        };
 }

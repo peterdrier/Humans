@@ -44,6 +44,9 @@
     @* Staffing chart *@
     @await Html.PartialAsync("_StaffingChart", (Model.StaffingData, "dashboardStaffingChart"))
 
+    @* Staffing hours chart *@
+    @await Html.PartialAsync("_StaffingHoursChart", (Model.StaffingHours, "dashboardStaffingHoursChart"))
+
     @* Urgency table *@
     @if (Model.Shifts.Count == 0)
     {

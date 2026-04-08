@@ -384,6 +384,7 @@ public class CacheStatsViewModel
 {
     public long TotalHits { get; set; }
     public long TotalMisses { get; set; }
+    public int TotalActiveEntries { get; set; }
 
     public double OverallHitRatePercent => TotalHits + TotalMisses > 0
         ? Math.Round(TotalHits * 100.0 / (TotalHits + TotalMisses), 1)
@@ -398,6 +399,9 @@ public class CacheStatEntryViewModel
     public long Hits { get; set; }
     public long Misses { get; set; }
     public double HitRatePercent { get; set; }
+    public int ActiveEntries { get; set; }
+    public string Ttl { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
 }
 
 public class DuplicateAccountListViewModel

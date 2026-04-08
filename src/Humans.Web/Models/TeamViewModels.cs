@@ -435,6 +435,7 @@ public class RoleManagementViewModel
     public bool IsSystemTeam { get; set; }
     public bool IsChildTeam { get; set; }
     public bool CanManage { get; set; }
+    public bool CanToggleManagement { get; set; }
     public List<TeamRoleDefinitionViewModel> RoleDefinitions { get; set; } = [];
     public List<TeamMemberViewModel> TeamMembers { get; set; } = [];
 }
