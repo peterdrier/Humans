@@ -382,11 +382,14 @@ public class FeedbackService : IFeedbackService
     public async Task<IReadOnlyList<(Guid UserId, string DisplayName, int Count)>> GetDistinctReportersAsync(
         CancellationToken cancellationToken = default)
     {
-        return await _dbContext.FeedbackReports
+        var reports = await _dbContext.FeedbackReports
             .Include(f => f.User)
-            .GroupBy(f => new { f.UserId, f.User.DisplayName })
-            .Select(g => ValueTuple.Create(g.Key.UserId, g.Key.DisplayName, g.Count()))
-            .OrderBy(r => r.Item2)
             .ToListAsync(cancellationToken);
+
+        return reports
+            .GroupBy(f => new { f.UserId, f.User.DisplayName })
+            .Select(g => (g.Key.UserId, g.Key.DisplayName, g.Count()))
+            .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 }
