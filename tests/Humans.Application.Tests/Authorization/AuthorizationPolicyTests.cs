@@ -24,8 +24,9 @@ public class AuthorizationPolicyTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        // Register IBudgetService stub required by BudgetAuthorizationHandler
+        // Register service stubs required by resource-based authorization handlers
         services.AddScoped(_ => Substitute.For<IBudgetService>());
+        services.AddScoped(_ => Substitute.For<ICampService>());
         services.AddHumansAuthorizationPolicies();
         _serviceProvider = services.BuildServiceProvider();
         _authorizationService = _serviceProvider.GetRequiredService<IAuthorizationService>();

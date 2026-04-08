@@ -28,10 +28,11 @@ public class CampController : HumansCampControllerBase
         ICampContactService campContactService,
         INotificationService notificationService,
         UserManager<User> userManager,
+        IAuthorizationService authorizationService,
         IClock clock,
         ILogger<CampController> logger,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager, campService)
+        : base(userManager, campService, authorizationService)
     {
         _campService = campService;
         _campContactService = campContactService;
