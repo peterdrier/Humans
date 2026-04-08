@@ -169,4 +169,17 @@ public class CampAdminViewModel
     public int TotalCamps { get; set; }
     public int ActiveCamps { get; set; }
     public Dictionary<int, NodaTime.LocalDate?> NameLockDates { get; set; } = new();
+    public List<CampSummaryRowViewModel> AllCampSummaries { get; set; } = new();
+}
+
+public class CampSummaryRowViewModel
+{
+    public string Name { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
+    public string AcceptingMembers { get; set; } = string.Empty;
+    public int MemberCount { get; set; }
+    public string Zone { get; set; } = string.Empty;
+    public string SpaceRequirement { get; set; } = string.Empty;
+    public int YearsParticipating { get; set; }
+    public List<CampLeadViewModel> Leads { get; set; } = new();
 }

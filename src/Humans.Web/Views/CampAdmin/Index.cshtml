@@ -246,6 +246,56 @@
     </div>
 </div>
 
+@* Camp Summary Table *@
+@if (Model.AllCampSummaries.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fa-solid fa-table me-2"></i>Camp Summary (@Model.PublicYear)
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Camp Name</th>
+                        <th>Accepting</th>
+                        <th class="text-end">Humans</th>
+                        <th>Zone</th>
+                        <th>Space</th>
+                        <th class="text-end">Years</th>
+                        <th>Lead(s)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var camp in Model.AllCampSummaries)
+                    {
+                        <tr>
+                            <td>
+                                <a asp-controller="Camp" asp-action="Details" asp-route-slug="@camp.Slug">@camp.Name</a>
+                            </td>
+                            <td>@camp.AcceptingMembers</td>
+                            <td class="text-end">@camp.MemberCount</td>
+                            <td>@camp.Zone</td>
+                            <td>@camp.SpaceRequirement</td>
+                            <td class="text-end">@camp.YearsParticipating</td>
+                            <td>
+                                @foreach (var lead in camp.Leads)
+                                {
+                                    <human-link user-id="@lead.UserId" display-name="@lead.DisplayName" />
+                                    if (lead != camp.Leads.Last())
+                                    {
+                                        <text>, </text>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
 @* All Camps quick list -- link to public page *@
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">

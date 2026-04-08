@@ -60,6 +60,39 @@ public class CampAdminController : HumansControllerBase
                 }))
             .ToList();
 
+        // Load camps with leads for the summary table
+        var campsWithLeads = await _dbContext.Camps
+            .Include(c => c.Seasons.Where(s => s.Year == settings.PublicYear))
+            .Include(c => c.Leads.Where(l => l.LeftAt == null))
+                .ThenInclude(l => l.User)
+            .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear
+                && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
+            .OrderBy(c => c.Seasons.Where(s => s.Year == settings.PublicYear).Select(s => s.Name).FirstOrDefault())
+            .ToListAsync();
+
+        var summaries = campsWithLeads.Select(c =>
+        {
+            var season = c.Seasons.FirstOrDefault();
+            return new CampSummaryRowViewModel
+            {
+                Name = season?.Name ?? c.Slug,
+                Slug = c.Slug,
+                AcceptingMembers = season?.AcceptingMembers.ToString() ?? "—",
+                MemberCount = season?.MemberCount ?? 0,
+                Zone = season?.SoundZone?.ToString() ?? "—",
+                SpaceRequirement = season?.SpaceRequirement?.ToString() ?? "—",
+                YearsParticipating = c.TimesAtNowhere,
+                Leads = c.Leads
+                    .Where(l => l.IsActive)
+                    .Select(l => new CampLeadViewModel
+                    {
+                        LeadId = l.Id,
+                        UserId = l.UserId,
+                        DisplayName = l.User.DisplayName
+                    }).ToList()
+            };
+        }).ToList();
+
         var vm = new CampAdminViewModel
         {
             PublicYear = settings.PublicYear,
@@ -69,6 +102,7 @@ public class CampAdminController : HumansControllerBase
                 s.Year == settings.PublicYear && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full))),
             WithdrawnCamps = withdrawnSeasons,
             NameLockDates = nameLockDates,
+            AllCampSummaries = summaries,
             PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
             {
                 Id = s.CampId,
