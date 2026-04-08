@@ -633,10 +633,12 @@ public class ProfileService : IProfileService
             .ToListAsync(ct);
 
         // Resolve notification-target emails for display (falls back to OAuth email)
-        var notificationEmails = await _dbContext.UserEmails
+        var notificationEmails = (await _dbContext.UserEmails
             .Where(e => e.IsNotificationTarget && e.IsVerified)
             .Select(e => new { e.UserId, e.Email })
-            .ToDictionaryAsync(e => e.UserId, e => e.Email, ct);
+            .ToListAsync(ct))
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => g.First().Email);
 
         if (!string.IsNullOrWhiteSpace(search))
         {

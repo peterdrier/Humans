@@ -465,10 +465,28 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         }
         catch (Google.GoogleApiException ex) when (ex.Error?.Code == 403)
         {
+            // Distinguish member-level rejection (no Google account) from
+            // service-account permission errors (caller lacks group access).
+            // Permission errors mention "caller" or "service account" in the message.
+            var errorMessage = ex.Error?.Message ?? ex.Message ?? "";
+            var isCallerPermissionError = errorMessage.Contains("caller", StringComparison.OrdinalIgnoreCase)
+                || errorMessage.Contains("service account", StringComparison.OrdinalIgnoreCase)
+                || errorMessage.Contains("does not have permission", StringComparison.OrdinalIgnoreCase);
+
+            if (isCallerPermissionError)
+            {
+                _logger.LogWarning(
+                    "Service account lacks permission to add members to group {GroupName} ({GroupId}) — HTTP 403: {ErrorMessage}",
+                    resource.Name, resource.GoogleId, errorMessage);
+                // Don't mark the user as rejected — this is a group/SA permission issue, not a user email issue
+                return;
+            }
+
             _logger.LogWarning(
                 "Google rejected {UserEmail} for group {GroupName} ({GroupId}) — HTTP 403. " +
-                "This typically means the email address does not have a Google account associated with it",
-                userEmail, resource.Name, resource.GoogleId);
+                "This typically means the email address does not have a Google account associated with it. " +
+                "Error: {ErrorMessage}",
+                userEmail, resource.Name, resource.GoogleId, errorMessage);
 
             // Mark the user's Google email as Rejected so sync stops retrying
             var user = await _dbContext.Users
