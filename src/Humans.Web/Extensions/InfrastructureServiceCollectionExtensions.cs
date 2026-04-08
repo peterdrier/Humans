@@ -152,6 +152,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAccountMergeService, AccountMergeService>();
         services.AddScoped<IDuplicateAccountService, DuplicateAccountService>();
         services.AddScoped<IContactService, ContactService>();
+        services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();
         services.AddScoped<IFeedbackService, FeedbackService>();
         services.AddScoped<IBudgetService, BudgetService>();
