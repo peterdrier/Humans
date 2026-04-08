@@ -122,9 +122,16 @@ public class ProcessAccountDeletionsJob : IRecurringJob
                 catch (Exception ex)
                 {
                     _logger.LogError(ex,
-                        "Failed to process deletion for user {UserId}. Detaching tracked changes",
+                        "Failed to process deletion for user {UserId}. Reverting tracked changes",
                         user.Id);
-                    _dbContext.ChangeTracker.Clear();
+
+                    // Detach only modified/added/deleted entries from the failed user,
+                    // keeping remaining unchanged entities tracked for subsequent iterations
+                    foreach (var entry in _dbContext.ChangeTracker.Entries().ToList())
+                    {
+                        if (entry.State != EntityState.Unchanged)
+                            entry.State = EntityState.Detached;
+                    }
                 }
             }
 

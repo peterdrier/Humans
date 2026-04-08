@@ -360,19 +360,19 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _dbContext.Users.Add(user2);
         await _dbContext.SaveChangesAsync();
 
-        // Default: all audit log calls succeed
+        // Throw for user1's entity ID, succeed for everything else
+        var failEntityId = user1.Id;
         _auditLogService.LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(Task.CompletedTask);
-
-        // Override: throw for first user to simulate failure
-        _auditLogService.LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), user1.Id,
-            Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(Task.FromException(new InvalidOperationException("DB error")));
+            .Returns(callInfo =>
+            {
+                var entityId = callInfo.ArgAt<Guid>(2);
+                if (entityId == failEntityId)
+                    return Task.FromException(new InvalidOperationException("DB error"));
+                return Task.CompletedTask;
+            });
 
         await _job.ExecuteAsync();
 
