@@ -20,11 +20,10 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
 
     /// <summary>
     /// HTTP status codes that indicate a permanent user-level failure (do not retry).
-    /// 400 = bad request (invalid email format), 404 = user not found.
-    /// Note: 403 is excluded because it typically indicates a resource-level permission issue
-    /// (service account lacks access), not a user email problem.
+    /// 400 = bad request (invalid email format), 403 = email domain ineligible for
+    /// Google Groups (e.g., proton.me), 404 = user not found.
     /// </summary>
-    private static readonly HashSet<int> PermanentErrorCodes = [400, 404];
+    private static readonly HashSet<int> PermanentErrorCodes = [400, 403, 404];
 
     private readonly HumansDbContext _dbContext;
     private readonly IGoogleSyncService _googleSyncService;
