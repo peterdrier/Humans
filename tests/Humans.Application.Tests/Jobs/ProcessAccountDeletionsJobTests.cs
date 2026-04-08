@@ -360,18 +360,19 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _dbContext.Users.Add(user2);
         await _dbContext.SaveChangesAsync();
 
-        // Make audit log throw for first user to simulate failure
+        // Default: all audit log calls succeed
+        _auditLogService.LogAsync(
+            Arg.Any<AuditAction>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>())
+            .Returns(Task.CompletedTask);
+
+        // Override: throw for first user to simulate failure
         _auditLogService.LogAsync(
             Arg.Any<AuditAction>(), Arg.Any<string>(), user1.Id,
             Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<Guid?>(), Arg.Any<string?>())
             .Returns(Task.FromException(new InvalidOperationException("DB error")));
-
-        _auditLogService.LogAsync(
-            Arg.Any<AuditAction>(), Arg.Any<string>(), user2Id,
-            Arg.Any<string>(), Arg.Any<string>(),
-            Arg.Any<Guid?>(), Arg.Any<string?>())
-            .Returns(Task.CompletedTask);
 
         await _job.ExecuteAsync();
 
