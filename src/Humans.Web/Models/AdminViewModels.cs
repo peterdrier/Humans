@@ -110,12 +110,27 @@ public class AdminHumanDetailViewModel
     // Workspace email
     public string? NobodiesTeamEmail { get; set; }
 
+    // Email diagnostics (read-only card)
+    public string? OAuthEmail { get; set; }
+    public string? GoogleServiceEmail { get; set; }
+    public GoogleEmailStatus GoogleEmailStatus { get; set; }
+    public List<AdminUserEmailViewModel> UserEmails { get; set; } = [];
+
     // Stats
     public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
     public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public List<AdminRoleAssignmentViewModel> RoleAssignments { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
+}
+
+public class AdminUserEmailViewModel
+{
+    public string Email { get; set; } = string.Empty;
+    public bool IsOAuth { get; set; }
+    public bool IsVerified { get; set; }
+    public bool IsNotificationTarget { get; set; }
+    public ContactFieldVisibility? Visibility { get; set; }
 }
 
 public class AdminHumanApplicationViewModel

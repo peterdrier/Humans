@@ -295,6 +295,77 @@
             </div>
         </div>
 
+        <div class="card mb-4">
+            <div class="card-header"><i class="fa-solid fa-at me-1"></i> Emails</div>
+            <div class="card-body p-0">
+                @if (Model.UserEmails.Count > 0)
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var email in Model.UserEmails)
+                        {
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <code class="text-break">@email.Email</code>
+                                    <div class="d-flex gap-1 flex-shrink-0 ms-2">
+                                        @if (email.IsOAuth)
+                                        {
+                                            <span class="badge bg-info" title="OAuth login email">OAuth</span>
+                                        }
+                                        @if (email.IsVerified)
+                                        {
+                                            <span class="badge bg-success" title="Verified">
+                                                <i class="fa-solid fa-check"></i>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning" title="Unverified">
+                                                <i class="fa-solid fa-clock"></i>
+                                            </span>
+                                        }
+                                        @if (email.IsNotificationTarget)
+                                        {
+                                            <span class="badge bg-primary" title="Notification target">
+                                                <i class="fa-solid fa-bell"></i>
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (email.Visibility.HasValue)
+                                {
+                                    <small class="text-muted">Visibility: @email.Visibility</small>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <div class="card-body">
+                        <span class="text-muted">No email records</span>
+                    </div>
+                }
+            </div>
+            <div class="card-footer small text-muted">
+                <div class="d-flex justify-content-between">
+                    <span>Google service email:</span>
+                    <code>@(Model.GoogleServiceEmail ?? "—")</code>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span>Google email status:</span>
+                    @{
+                        var googleStatusBadge = Model.GoogleEmailStatus switch
+                        {
+                            GoogleEmailStatus.Valid => "bg-success",
+                            GoogleEmailStatus.Rejected => "bg-danger",
+                            _ => "bg-secondary"
+                        };
+                    }
+                    <span class="badge @googleStatusBadge">@Model.GoogleEmailStatus</span>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">@Localizer["TeamDetail_Actions"]</div>
             <div class="card-body">
