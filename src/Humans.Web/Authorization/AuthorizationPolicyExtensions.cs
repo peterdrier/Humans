@@ -21,6 +21,7 @@ public static class AuthorizationPolicyExtensions
         // Resource-based authorization handlers (scoped — they depend on scoped services)
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {

@@ -1,7 +1,8 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Web.Authorization;
+using Humans.Web.Authorization.Requirements;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,11 +11,16 @@ namespace Humans.Web.Controllers;
 public abstract class HumansTeamControllerBase : HumansControllerBase
 {
     private readonly ITeamService _teamService;
+    private readonly IAuthorizationService _authorizationService;
 
-    protected HumansTeamControllerBase(UserManager<User> userManager, ITeamService teamService)
+    protected HumansTeamControllerBase(
+        UserManager<User> userManager,
+        ITeamService teamService,
+        IAuthorizationService authorizationService)
         : base(userManager)
     {
         _teamService = teamService;
+        _authorizationService = authorizationService;
     }
 
     protected async Task<(IActionResult? ErrorResult, User User, Team Team)> ResolveTeamManagementAsync(string slug)
@@ -22,14 +28,11 @@ public abstract class HumansTeamControllerBase : HumansControllerBase
         return await ResolveTeamAccessAsync(
             slug,
             static _ => true,
-            async (team, user) =>
+            async (team, _) =>
             {
-                if (RoleChecks.IsTeamsAdminBoardOrAdmin(User))
-                {
-                    return true;
-                }
-
-                return await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
+                var result = await _authorizationService.AuthorizeAsync(
+                    User, team, TeamOperationRequirement.ManageCoordinators);
+                return result.Succeeded;
             });
     }
 

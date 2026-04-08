@@ -31,9 +31,10 @@ public class ShiftAdminController : HumansTeamControllerBase
         IGeneralAvailabilityService availabilityService,
         IProfileService profileService,
         UserManager<User> userManager,
+        IAuthorizationService authorizationService,
         IClock clock,
         ILogger<ShiftAdminController> logger)
-        : base(userManager, teamService)
+        : base(userManager, teamService, authorizationService)
     {
         _teamService = teamService;
         _shiftMgmt = shiftMgmt;
