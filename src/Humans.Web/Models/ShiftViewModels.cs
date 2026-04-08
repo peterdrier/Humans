@@ -406,6 +406,7 @@ public class ShiftDashboardViewModel
     public string? SelectedDate { get; set; }
     public EventSettings EventSettings { get; set; } = null!;
     public List<DailyStaffingData> StaffingData { get; set; } = [];
+    public List<DailyStaffingHours> StaffingHours { get; set; } = [];
 }
 
 public class VolunteerSearchResult
