@@ -100,10 +100,12 @@ public class AdminController : HumansControllerBase
 
     [HttpGet("Logs")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public IActionResult Logs(int count = 50)
+    public IActionResult Logs(int count = 200)
     {
         count = Math.Clamp(count, 1, 200);
-        var events = Web.Infrastructure.InMemoryLogSink.Instance.GetEvents(count);
+        var sink = Web.Infrastructure.InMemoryLogSink.Instance;
+        var events = sink.GetEvents(count);
+        ViewBag.LifetimeCounts = sink.GetLifetimeCounts();
         return View(events);
     }
 

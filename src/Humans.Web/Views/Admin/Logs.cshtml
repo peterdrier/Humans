@@ -1,12 +1,33 @@
 @model IReadOnlyList<Serilog.Events.LogEvent>
 @{
     ViewData["Title"] = "Application Logs";
+    var lifetimeCounts = ViewBag.LifetimeCounts as IReadOnlyDictionary<Serilog.Events.LogEventLevel, long>
+        ?? new Dictionary<Serilog.Events.LogEventLevel, long>();
 }
 
 <div class="container-fluid px-4">
     <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
         <h1>Application Logs</h1>
-        <span class="text-muted">Last @Model.Count warnings and errors (in-memory buffer)</span>
+        <span class="text-muted">Showing @Model.Count of last 200 (in-memory buffer)</span>
+    </div>
+
+    <div class="d-flex gap-3 mb-3 flex-wrap">
+        @{
+            var levels = new[]
+            {
+                (Serilog.Events.LogEventLevel.Debug, "bg-secondary"),
+                (Serilog.Events.LogEventLevel.Information, "bg-info text-dark"),
+                (Serilog.Events.LogEventLevel.Warning, "bg-warning text-dark"),
+                (Serilog.Events.LogEventLevel.Error, "bg-danger"),
+                (Serilog.Events.LogEventLevel.Fatal, "bg-danger fw-bold"),
+            };
+        }
+        @foreach (var (level, badgeClass) in levels)
+        {
+            var count = lifetimeCounts.TryGetValue(level, out var c) ? c : 0;
+            <span class="badge @badgeClass">@level: @count</span>
+        }
+        <small class="text-muted align-self-center">(lifetime counts since app start)</small>
     </div>
 
     @if (Model.Count == 0)
