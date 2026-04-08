@@ -9,6 +9,8 @@
     </div>
 </div>
 
+<vc:temp-data-alerts />
+
 <div class="row">
     <div class="col-lg-8">
         @* ─── Create Profile CTA ─── *@
@@ -104,9 +106,9 @@
                         You can request deletion of your account and all associated data.
                         If you have tickets for an upcoming event, the deletion will be held until after the event.
                     </p>
-                    <form asp-action="RequestDeletion" method="post" class="d-inline">
-                        <button type="submit" class="btn btn-outline-danger btn-sm"
-                                onclick="return confirm('Are you sure you want to request account deletion? This action can be cancelled before the deletion date.');">
+                    <form asp-action="RequestDeletion" method="post" class="d-inline"
+                          data-confirm="Are you sure you want to request account deletion? This action can be cancelled before the deletion date.">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
                             <i class="fa-solid fa-trash-can me-1"></i>Request Account Deletion
                         </button>
                     </form>
