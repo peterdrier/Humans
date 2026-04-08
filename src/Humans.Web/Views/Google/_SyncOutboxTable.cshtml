@@ -1,8 +1,9 @@
 @using Humans.Web.Extensions
 @model IList<Humans.Domain.Entities.GoogleSyncOutboxEvent>
 @{
-    var userLookup = (Dictionary<Guid, string>)ViewData["UserLookup"]!;
+    var googleEmailLookup = (Dictionary<Guid, string>)ViewData["GoogleEmailLookup"]!;
     var teamLookup = (Dictionary<Guid, string>)ViewData["TeamLookup"]!;
+    var resourceLookup = (Dictionary<Guid, List<string>>)ViewData["ResourceLookup"]!;
     var showError = (bool)ViewData["ShowError"]!;
 }
 
@@ -18,7 +19,9 @@ else
                 <tr>
                     <th>Event Type</th>
                     <th>Human</th>
+                    <th>Google Email</th>
                     <th>Team</th>
+                    <th>Resource</th>
                     <th>Occurred</th>
                     <th>Retries</th>
                     @if (showError)
@@ -30,14 +33,29 @@ else
             <tbody>
                 @foreach (var evt in Model)
                 {
-                    var userEmail = userLookup.GetValueOrDefault(evt.UserId, "unknown");
+                    var googleEmail = googleEmailLookup.GetValueOrDefault(evt.UserId, "unknown");
                     var teamName = teamLookup.GetValueOrDefault(evt.TeamId, evt.TeamId.ToString());
+                    var resources = resourceLookup.GetValueOrDefault(evt.TeamId);
                     <tr>
                         <td><code>@evt.EventType</code></td>
                         <td>
-                            <human-link user-id="@evt.UserId" display-name="@userEmail" admin="true" show-popover="true" />
+                            <human-link user-id="@evt.UserId" admin="true" show-popover="true" />
                         </td>
+                        <td><small class="text-muted">@googleEmail</small></td>
                         <td>@teamName</td>
+                        <td>
+                            @if (resources is { Count: > 0 })
+                            {
+                                @foreach (var resource in resources)
+                                {
+                                    <div><small>@resource</small></div>
+                                }
+                            }
+                            else
+                            {
+                                <small class="text-muted">-</small>
+                            }
+                        </td>
                         <td class="text-nowrap">@evt.OccurredAt.ToDisplayDateTime()</td>
                         <td>
                             @if (evt.RetryCount > 0)

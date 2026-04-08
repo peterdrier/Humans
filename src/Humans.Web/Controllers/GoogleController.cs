@@ -722,18 +722,25 @@ public class GoogleController : HumansControllerBase
             .Take(200)
             .ToListAsync();
 
-        // Resolve user emails and team names for display
+        // Resolve display info for events
         var userIds = events.Select(e => e.UserId).Distinct().ToList();
         var teamIds = events.Select(e => e.TeamId).Distinct().ToList();
-        var userLookup = await dbContext.Users
+        var googleEmailLookup = await dbContext.Users
             .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Email ?? "unknown");
+            .ToDictionaryAsync(u => u.Id, u => u.GetGoogleServiceEmail() ?? "unknown");
         var teamLookup = await dbContext.Teams
             .Where(t => teamIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, t => t.Name);
+        var resourceLookup = await dbContext.GoogleResources
+            .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
+            .GroupBy(r => r.TeamId)
+            .ToDictionaryAsync(
+                g => g.Key,
+                g => g.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
 
-        ViewBag.UserLookup = userLookup;
+        ViewBag.GoogleEmailLookup = googleEmailLookup;
         ViewBag.TeamLookup = teamLookup;
+        ViewBag.ResourceLookup = resourceLookup;
         return View(events);
     }
 
