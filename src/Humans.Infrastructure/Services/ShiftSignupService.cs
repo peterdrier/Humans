@@ -992,7 +992,7 @@ public class ShiftSignupService : IShiftSignupService
                 $"Coverage gap: {shift.Rota.Name} day {shift.DayOffset}",
                 coordinatorIds,
                 body: $"Only {confirmedCount}/{shift.MinVolunteers} volunteers confirmed.",
-                actionUrl: $"/Shifts/Dashboard?departmentId={teamId}",
+                actionUrl: $"/Shifts?departmentId={teamId}",
                 actionLabel: "Find cover \u2192");
         }
         catch (Exception ex)
@@ -1037,7 +1037,7 @@ public class ShiftSignupService : IShiftSignupService
                 $"Shift signup change: {rotaName}",
                 coordinatorIds,
                 body: enrichedDescription,
-                actionUrl: $"/Shifts/Dashboard?departmentId={teamId}&rotaId={rota.Id}",
+                actionUrl: $"/Shifts?departmentId={teamId}",
                 actionLabel: "View \u2192");
         }
         catch (Exception ex)
