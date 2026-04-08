@@ -7,7 +7,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -23,7 +22,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
     private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
     private readonly IMemoryCache _cache;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<ProcessAccountDeletionsJob> _logger;
     private readonly IClock _clock;
 
@@ -34,7 +33,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         IProfileService profileService,
         ITeamService teamService,
         IMemoryCache cache,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<ProcessAccountDeletionsJob> logger,
         IClock clock)
     {

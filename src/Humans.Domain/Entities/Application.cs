@@ -151,14 +151,11 @@ public class Application
             .PermitReentry(ApplicationTrigger.RequestMoreInfo)
             .Permit(ApplicationTrigger.Withdraw, ApplicationStatus.Withdrawn);
 
-        machine.Configure(ApplicationStatus.Approved)
-            .OnEntry(() => ResolvedAt = SystemClock.Instance.GetCurrentInstant());
+        machine.Configure(ApplicationStatus.Approved);
 
-        machine.Configure(ApplicationStatus.Rejected)
-            .OnEntry(() => ResolvedAt = SystemClock.Instance.GetCurrentInstant());
+        machine.Configure(ApplicationStatus.Rejected);
 
-        machine.Configure(ApplicationStatus.Withdrawn)
-            .OnEntry(() => ResolvedAt = SystemClock.Instance.GetCurrentInstant());
+        machine.Configure(ApplicationStatus.Withdrawn);
 
         return machine;
     }
@@ -174,7 +171,9 @@ public class Application
         StateMachine.Fire(ApplicationTrigger.Approve);
         ReviewedByUserId = reviewerUserId;
         ReviewNotes = notes;
-        UpdatedAt = clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
+        UpdatedAt = now;
+        ResolvedAt = now;
         AddStateHistory(ApplicationStatus.Approved, reviewerUserId, clock, notes);
     }
 
@@ -189,7 +188,9 @@ public class Application
         StateMachine.Fire(ApplicationTrigger.Reject);
         ReviewedByUserId = reviewerUserId;
         ReviewNotes = reason;
-        UpdatedAt = clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
+        UpdatedAt = now;
+        ResolvedAt = now;
         AddStateHistory(ApplicationStatus.Rejected, reviewerUserId, clock, reason);
     }
 
@@ -200,7 +201,9 @@ public class Application
     public void Withdraw(IClock clock)
     {
         StateMachine.Fire(ApplicationTrigger.Withdraw);
-        UpdatedAt = clock.GetCurrentInstant();
+        var now = clock.GetCurrentInstant();
+        UpdatedAt = now;
+        ResolvedAt = now;
         AddStateHistory(ApplicationStatus.Withdrawn, UserId, clock);
     }
 

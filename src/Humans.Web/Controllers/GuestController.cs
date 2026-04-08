@@ -130,7 +130,7 @@ public class GuestController : HumansControllerBase
 
             var json = System.Text.Json.JsonSerializer.Serialize(exportData, ExportJsonOptions);
             var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-            var fileName = $"nobodies-data-export-{DateTime.UtcNow.ToIsoDateString()}.json";
+            var fileName = $"nobodies-data-export-{_clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
 
             return File(bytes, "application/json", fileName);
         }
@@ -300,7 +300,7 @@ public class GuestController : HumansControllerBase
             {
                 Category = category,
                 DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {DateTime.UtcNow.Year}"
+                    ? $"Ticketing — {_clock.GetCurrentInstant().InUtc().Year}"
                     : category.ToDisplayName(),
                 Description = category.ToDescription(),
                 EmailEnabled = pref is null || !pref.OptedOut,

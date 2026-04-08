@@ -5,7 +5,6 @@ using NodaTime;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 using Humans.Application.Interfaces;
 
@@ -19,14 +18,14 @@ public class CleanupEmailOutboxJob : IRecurringJob
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
     private readonly EmailSettings _settings;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<CleanupEmailOutboxJob> _logger;
 
     public CleanupEmailOutboxJob(
         HumansDbContext dbContext,
         IClock clock,
         IOptions<EmailSettings> settings,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<CleanupEmailOutboxJob> logger)
     {
         _dbContext = dbContext;

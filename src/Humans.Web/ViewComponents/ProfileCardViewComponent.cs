@@ -5,7 +5,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Humans.Web.Controllers;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
@@ -25,7 +24,7 @@ public class ProfileCardViewComponent : ViewComponent
     private readonly UserManager<User> _userManager;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
-    private readonly VolunteerHistoryService _volunteerHistoryService;
+    private readonly IVolunteerHistoryService _volunteerHistoryService;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IMembershipCalculator _membershipCalculator;
@@ -36,7 +35,7 @@ public class ProfileCardViewComponent : ViewComponent
         UserManager<User> userManager,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
-        VolunteerHistoryService volunteerHistoryService,
+        IVolunteerHistoryService volunteerHistoryService,
         ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
         IMembershipCalculator membershipCalculator,

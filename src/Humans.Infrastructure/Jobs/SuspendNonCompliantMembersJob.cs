@@ -7,7 +7,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -26,7 +25,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
     private readonly IMemoryCache _cache;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
     private readonly IClock _clock;
 
@@ -40,7 +39,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         IProfileService profileService,
         ITeamService teamService,
         IMemoryCache cache,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
     {

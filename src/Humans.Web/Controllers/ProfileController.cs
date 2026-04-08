@@ -32,7 +32,7 @@ public class ProfileController : HumansControllerBase
     private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService;
     private readonly IContactFieldService _contactFieldService;
-    private readonly VolunteerHistoryService _volunteerHistoryService;
+    private readonly IVolunteerHistoryService _volunteerHistoryService;
     private readonly IEmailService _emailService;
     private readonly IUserEmailService _userEmailService;
     private readonly ICommunicationPreferenceService _commPrefService;
@@ -76,7 +76,7 @@ public class ProfileController : HumansControllerBase
         UserManager<User> userManager,
         IProfileService profileService,
         IContactFieldService contactFieldService,
-        VolunteerHistoryService volunteerHistoryService,
+        IVolunteerHistoryService volunteerHistoryService,
         IEmailService emailService,
         IUserEmailService userEmailService,
         ICommunicationPreferenceService commPrefService,
@@ -963,7 +963,7 @@ public class ProfileController : HumansControllerBase
 
         var json = System.Text.Json.JsonSerializer.Serialize(exportData, ExportJsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var fileName = $"nobodies-profiles-export-{DateTime.UtcNow.ToIsoDateString()}.json";
+        var fileName = $"nobodies-profiles-export-{_clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
 
         return File(bytes, "application/json", fileName);
     }
@@ -1664,7 +1664,7 @@ public class ProfileController : HumansControllerBase
             {
                 Category = category,
                 DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {DateTime.UtcNow.Year}"
+                    ? $"Ticketing — {_clock.GetCurrentInstant().InUtc().Year}"
                     : category.ToDisplayName(),
                 Description = category.ToDescription(),
                 EmailEnabled = pref is null || !pref.OptedOut,
