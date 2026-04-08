@@ -93,6 +93,12 @@ public interface IProfileService
     CachedProfile? GetCachedProfile(Guid userId);
 
     /// <summary>
+    /// Gets a cached profile by user ID, warming the cache first if cold.
+    /// Returns null only if the user has no approved profile.
+    /// </summary>
+    Task<CachedProfile?> GetCachedProfileAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Updates a single entry in the approved profiles cache.
     /// Pass null to remove the entry (e.g., on suspension/deletion).
     /// </summary>

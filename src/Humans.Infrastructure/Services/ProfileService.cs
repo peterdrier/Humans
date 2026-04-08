@@ -767,6 +767,12 @@ public class ProfileService : IProfileService
         return null;
     }
 
+    public async Task<CachedProfile?> GetCachedProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        var profiles = await GetCachedProfilesAsync(ct);
+        return profiles.TryGetValue(userId, out var profile) ? profile : null;
+    }
+
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
         => _cache.UpdateApprovedProfile(userId, newValue);
 
