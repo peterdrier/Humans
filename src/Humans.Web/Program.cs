@@ -601,7 +601,42 @@ app.MapHub<CityPlanningHub>("/hubs/city-planning");
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<HumansDbContext>();
-    await dbContext.Database.MigrateAsync();
+    var migrationLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseMigration");
+    var dbName = dbContext.Database.GetDbConnection().Database;
+
+    try
+    {
+        var pending = (await dbContext.Database.GetPendingMigrationsAsync()).ToList();
+        var applied = (await dbContext.Database.GetAppliedMigrationsAsync()).ToList();
+
+        migrationLogger.LogInformation(
+            "Database {Database}: {AppliedCount} applied migrations, {PendingCount} pending",
+            dbName, applied.Count, pending.Count);
+
+        if (pending.Count > 0)
+        {
+            foreach (var migration in pending)
+                migrationLogger.LogInformation("Pending migration: {Migration}", migration);
+
+            await dbContext.Database.MigrateAsync();
+
+            var nowApplied = (await dbContext.Database.GetAppliedMigrationsAsync()).ToList();
+            migrationLogger.LogInformation(
+                "Database {Database}: migrations complete — {AppliedCount} total applied",
+                dbName, nowApplied.Count);
+        }
+        else
+        {
+            migrationLogger.LogInformation("Database {Database}: schema is up to date", dbName);
+        }
+    }
+    catch (Exception ex)
+    {
+        migrationLogger.LogError(ex,
+            "Database migration failed for {Database}. The application may not function correctly",
+            dbName);
+        throw;
+    }
 }
 
 if (!app.Environment.IsEnvironment("Testing"))
