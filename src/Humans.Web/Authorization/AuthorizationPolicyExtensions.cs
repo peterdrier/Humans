@@ -18,6 +18,9 @@ public static class AuthorizationPolicyExtensions
         services.AddSingleton<IAuthorizationHandler, IsActiveMemberHandler>();
         services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
 
+        // Resource-based authorization handlers (scoped — they depend on scoped services)
+        services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
+
         services.AddAuthorization(options =>
         {
             // Simple role-based policies

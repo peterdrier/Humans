@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Authorization;
@@ -22,6 +24,8 @@ public class AuthorizationPolicyTests : IDisposable
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        // Register IBudgetService stub required by BudgetAuthorizationHandler
+        services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddHumansAuthorizationPolicies();
         _serviceProvider = services.BuildServiceProvider();
         _authorizationService = _serviceProvider.GetRequiredService<IAuthorizationService>();

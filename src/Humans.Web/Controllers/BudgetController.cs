@@ -2,6 +2,7 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
+using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -138,7 +139,8 @@ public class BudgetController : HumansControllerBase
             if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
                 return Forbid();
 
-            var canEdit = category.TeamId.HasValue && coordinatorTeamIds.Contains(category.TeamId.Value);
+            // Use resource-based authorization to determine edit access
+            var canEdit = (await _authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)).Succeeded;
 
             var teams = await _dbContext.Teams
                 .Where(t => t.IsActive)
@@ -149,7 +151,7 @@ public class BudgetController : HumansControllerBase
             var model = new CoordinatorCategoryDetailViewModel
             {
                 Category = category,
-                CanEdit = canEdit || isFinanceAdmin,
+                CanEdit = canEdit,
                 IsFinanceAdmin = isFinanceAdmin,
                 Teams = teams
             };
@@ -171,7 +173,7 @@ public class BudgetController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var authResult = await AuthorizeCategoryEditAsync(budgetCategoryId, user.Id);
+        var authResult = await AuthorizeCategoryEditAsync(budgetCategoryId);
         if (authResult is not null) return authResult;
 
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
@@ -200,7 +202,7 @@ public class BudgetController : HumansControllerBase
         var lineItem = await _dbContext.BudgetLineItems.FindAsync(id);
         if (lineItem is null) return NotFound();
 
-        var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId, user.Id);
+        var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
         if (authResult is not null) return authResult;
 
         var nodaDate = expectedDate.HasValue ? LocalDate.FromDateTime(expectedDate.Value) : (LocalDate?)null;
@@ -228,7 +230,7 @@ public class BudgetController : HumansControllerBase
         var lineItem = await _dbContext.BudgetLineItems.FindAsync(id);
         if (lineItem is null) return NotFound();
 
-        var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId, user.Id);
+        var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
         if (authResult is not null) return authResult;
 
         try
@@ -244,26 +246,20 @@ public class BudgetController : HumansControllerBase
         return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
     }
 
-    private async Task<IActionResult?> AuthorizeCategoryEditAsync(Guid categoryId, Guid userId)
+    /// <summary>
+    /// Loads the budget category and evaluates the resource-based BudgetOperationRequirement.Edit
+    /// authorization requirement. Returns an IActionResult to short-circuit the action if denied,
+    /// or null if authorized.
+    /// </summary>
+    private async Task<IActionResult?> AuthorizeCategoryEditAsync(Guid categoryId)
     {
-        if ((await _authService.AuthorizeAsync(User, PolicyNames.FinanceAdminOrAdmin)).Succeeded)
-            return null;
-
         var category = await _budgetService.GetCategoryByIdAsync(categoryId);
         if (category is null) return NotFound();
 
-        if (category.BudgetGroup?.BudgetYear?.IsDeleted == true) return NotFound();
-
-        if (category.BudgetGroup?.IsRestricted == true)
-            return Forbid();
-
-        if (!category.TeamId.HasValue)
-            return Forbid();
-
-        var coordinatorTeamIds = await _budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId);
-        if (!coordinatorTeamIds.Contains(category.TeamId.Value))
+        var result = await _authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit);
+        if (!result.Succeeded)
         {
-            SetError("You can only edit line items in your own department's budget.");
+            SetError("You do not have permission to edit this budget category.");
             return RedirectToAction(nameof(CategoryDetail), new { id = categoryId });
         }
 
