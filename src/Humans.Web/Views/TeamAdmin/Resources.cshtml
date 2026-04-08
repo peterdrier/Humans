@@ -90,7 +90,7 @@
                                             var currentLevel = resource.DrivePermissionLevel.ToString();
                                         }
                                         <select name="level" class="form-select form-select-sm d-inline-block permission-select" style="width: auto; min-width: 140px;" data-original="@currentLevel">
-                                            @foreach (var opt in new[] { ("Viewer", "Viewer"), ("Commenter", "Commenter"), ("Contributor", "Contributor"), ("ContentManager", "Content Manager"), ("Manager", "Manager") })
+                                            @foreach (var opt in new[] { ("Viewer", "Viewer"), ("Commenter", "Commenter"), ("Contributor", "Contributor (add/modify)"), ("ContentManager", "Content Manager (move/delete)"), ("Manager", "Manager") })
                                             {
                                                 if (opt.Item1 == currentLevel)
                                                 {
@@ -196,8 +196,8 @@ else
                 <select class="form-select" id="permissionLevel" name="PermissionLevel" style="max-width: 300px;">
                     <option value="Viewer">Viewer (read-only)</option>
                     <option value="Commenter">Commenter</option>
-                    <option value="Contributor" selected>Contributor (read/write)</option>
-                    <option value="ContentManager">Content Manager</option>
+                    <option value="Contributor" selected>Contributor (add/modify)</option>
+                    <option value="ContentManager">Content Manager (move/delete)</option>
                     <option value="Manager">Manager</option>
                 </select>
                 <div class="form-text">Permission level granted to team humans for this resource.</div>
