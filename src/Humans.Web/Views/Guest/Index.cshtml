@@ -1,16 +1,17 @@
+@model Humans.Web.Models.GuestDashboardViewModel
 @{
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
-    var displayName = ViewData["DisplayName"] as string ?? "";
 }
 
 <div class="row mb-4">
     <div class="col">
-        <h1>@Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(displayName)))</h1>
+        <h1>@Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))</h1>
     </div>
 </div>
 
 <div class="row">
     <div class="col-lg-8">
+        @* ─── Create Profile CTA ─── *@
         <div class="card mb-4">
             <div class="card-body text-center py-5">
                 <i class="fa-solid fa-user-plus fa-3x text-primary mb-3"></i>
@@ -24,9 +25,83 @@
                 </a>
             </div>
         </div>
+
+        @* ─── Ticket Status ─── *@
+        @if (Model.HasTickets)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fa-solid fa-ticket me-2"></i>Your Tickets</h5>
+                </div>
+                <div class="card-body">
+                    @if (Model.TicketOrders.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Purchased</th>
+                                        <th>Buyer</th>
+                                        <th class="text-center">Tickets</th>
+                                        <th class="text-end">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var order in Model.TicketOrders)
+                                    {
+                                        <tr>
+                                            <td>@order.PurchasedAt.ToString("d MMM yyyy")</td>
+                                            <td>@order.BuyerName</td>
+                                            <td class="text-center">@order.AttendeeCount</td>
+                                            <td class="text-end">@order.TotalAmount.ToString("N2") @order.Currency</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="mb-0">
+                            <i class="fa-solid fa-circle-check text-success me-2"></i>
+                            You have a ticket for the event.
+                        </p>
+                    }
+                </div>
+            </div>
+        }
+
+        @* ─── Communication Preferences ─── *@
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fa-solid fa-bell me-2"></i>Communication Preferences</h5>
+                <a asp-action="CommunicationPreferences" class="btn btn-sm btn-outline-primary">
+                    <i class="fa-solid fa-pen me-1"></i>Manage
+                </a>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-0">
+                    Control which communications you receive from Nobodies.
+                </p>
+            </div>
+        </div>
+
+        @* ─── GDPR / Privacy ─── *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fa-solid fa-shield-halved me-2"></i>Privacy &amp; Data</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Download a copy of all data we hold about you.</p>
+                <a asp-action="DownloadData" class="btn btn-outline-secondary btn-sm">
+                    <i class="fa-solid fa-download me-1"></i>Download My Data
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="col-lg-4">
+        @* ─── Explore Links ─── *@
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0"><i class="fa-solid fa-compass me-2"></i>Explore</h5>
@@ -51,5 +126,36 @@
                 </ul>
             </div>
         </div>
+
+        @* ─── Deletion Status (if pending) ─── *@
+        @if (Model.IsDeletionPending)
+        {
+            <div class="card mb-4 border-warning">
+                <div class="card-header bg-warning-subtle">
+                    <h5 class="mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>Deletion Pending</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-1">
+                        You requested account deletion on
+                        <strong>@Model.DeletionRequestedAt?.ToString("d MMM yyyy")</strong>.
+                    </p>
+                    @if (Model.DeletionEligibleAfter.HasValue && Model.DeletionEligibleAfter > Model.DeletionScheduledFor)
+                    {
+                        <p class="mb-0 text-warning-emphasis">
+                            <i class="fa-solid fa-clock me-1"></i>
+                            Your account will be deleted after <strong>@Model.DeletionEligibleAfter?.ToString("d MMM yyyy")</strong>
+                            (held until after the event).
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="mb-0">
+                            Your account will be permanently deleted on
+                            <strong>@Model.DeletionScheduledFor?.ToString("d MMM yyyy")</strong>.
+                        </p>
+                    }
+                </div>
+            </div>
+        }
     </div>
 </div>
