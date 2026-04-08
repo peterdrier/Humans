@@ -177,6 +177,10 @@ Uses ASP.NET Identity's built-in token providers:
 - Adding/removing users from Shared Drive folders
 - Drift detection for membership sync
 
+When `GoogleEmail` differs from the OAuth email (e.g., after linking a @nobodies.team address), `AddUserToTeamResourcesAsync` proactively removes the old OAuth email from Google Groups to prevent duplicate email delivery. This means the cleanup is immediate rather than waiting for the daily reconciliation cycle.
+
+Users with `GoogleEmailStatus == Rejected` are excluded from all sync paths (reconciliation, outbox, direct add). A 403 "Permission denied" from the Groups API for an ineligible email domain (e.g., proton.me) is treated as a permanent rejection.
+
 ### Background Jobs
 These jobs use `GetEffectiveEmail()` to send to the notification target:
 - `SendReConsentReminderJob` - consent reminder emails
