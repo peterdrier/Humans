@@ -112,7 +112,8 @@ public class ProfileCardViewComponent : ViewComponent
             ? await _dbContext.ProfileLanguages
                 .AsNoTracking()
                 .Where(pl => pl.ProfileId == profile.Id)
-                .OrderBy(pl => pl.LanguageCode)
+                .OrderByDescending(pl => pl.Proficiency)
+                .ThenBy(pl => pl.LanguageCode)
                 .ToListAsync()
             : [];
 
