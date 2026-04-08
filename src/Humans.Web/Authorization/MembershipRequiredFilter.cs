@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Humans.Web.Authorization;
@@ -30,6 +32,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "CampApi",          // Public API ([AllowAnonymous])
         "Feedback",         // Feedback submission — accessible to all authenticated users
         "FeedbackApi",      // API key auth, no membership required
+        "Guest",            // Profileless account dashboard
         "Legal",            // Public legal documents ([AllowAnonymous])
         "Notification",     // Notification inbox — accessible to all authenticated users
     };
@@ -46,6 +49,14 @@ public class MembershipRequiredFilter : IAsyncActionFilter
 
         // Admin/Board/Coordinator bypass — they always have access
         if (RoleChecks.BypassesMembershipRequirement(user))
+        {
+            return next();
+        }
+
+        // AllowAnonymous endpoints bypass membership check (e.g. Team/Index, Camp/Index)
+        if (context.ActionDescriptor is ControllerActionDescriptor cad &&
+            (cad.MethodInfo.IsDefined(typeof(AllowAnonymousAttribute), true) ||
+             cad.ControllerTypeInfo.IsDefined(typeof(AllowAnonymousAttribute), true)))
         {
             return next();
         }
@@ -70,8 +81,15 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        // Not an active member — redirect to dashboard which shows onboarding steps
-        context.Result = new RedirectToActionResult("Index", "Home", null);
+        // Not an active member — redirect based on whether they have a profile
+        var hasProfile = user.HasClaim(c =>
+            string.Equals(c.Type, RoleAssignmentClaimsTransformation.HasProfileClaimType, StringComparison.Ordinal) &&
+            string.Equals(c.Value, RoleAssignmentClaimsTransformation.ActiveClaimValue, StringComparison.Ordinal));
+
+        // Profileless accounts go to Guest dashboard; onboarding members go to Home dashboard
+        context.Result = hasProfile
+            ? new RedirectToActionResult("Index", "Home", null)
+            : new RedirectToActionResult("Index", "Guest", null);
         return Task.CompletedTask;
     }
 }

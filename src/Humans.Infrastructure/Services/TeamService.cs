@@ -190,6 +190,16 @@ public class TeamService : ITeamService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Teams
+            .AsNoTracking()
+            .Where(t => t.IsActive)
+            .OrderBy(t => t.Name)
+            .Select(t => new TeamOptionDto(t.Id, t.Name))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
         Guid? userId,
         CancellationToken cancellationToken = default)

@@ -961,6 +961,24 @@
         })();
     </script>
     <script>
+        // Toggle volunteer history section visibility based on "No Prior Burn Experience" checkbox
+        (function() {
+            const checkbox = document.getElementById('noPriorBurnCheckbox');
+            const historyContainer = document.getElementById('volunteerHistoryContainer');
+            const addButton = document.getElementById('addVolunteerHistory');
+            if (!checkbox || !historyContainer || !addButton) return;
+
+            function toggleHistorySection() {
+                const hide = checkbox.checked;
+                historyContainer.style.display = hide ? 'none' : '';
+                addButton.style.display = hide ? 'none' : '';
+            }
+
+            toggleHistorySection();
+            checkbox.addEventListener('change', toggleHistorySection);
+        })();
+    </script>
+    <script>
         // Unsaved-changes guard
         (function () {
             const form = document.querySelector('form[action*="Edit"]');

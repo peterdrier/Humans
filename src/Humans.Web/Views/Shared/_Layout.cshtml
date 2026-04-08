@@ -36,23 +36,35 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    @{
+                        var isAuthenticated = User.Identity?.IsAuthenticated == true;
+                        var hasProfile = User.HasClaim(
+                            Humans.Web.Authorization.RoleAssignmentClaimsTransformation.HasProfileClaimType,
+                            Humans.Web.Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);
+                    }
                     <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">@Localizer["Nav_Home"]</a>
-                        </li>
+                        @if (isAuthenticated && !hasProfile)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Guest" asp-action="Index">@Localizer["Nav_Home"]</a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">@Localizer["Nav_Home"]</a>
+                            </li>
+                        }
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-controller="Team" asp-action="Index">@Localizer["Nav_Teams"]</a>
                         </li>
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                        <li class="nav-item">
+                        <li class="nav-item" authorize-policy="IsActiveMember">
                             <a class="nav-link" asp-area="" asp-controller="CityPlanning" asp-action="Index">@Localizer["Nav_City"]</a>
                         </li>
-                        }
-                        @if (User.Identity?.IsAuthenticated != true)
+                        @if (!isAuthenticated || !hasProfile)
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Legal" asp-action="Index">Legal</a>
@@ -85,12 +97,9 @@
                         <li class="nav-item" authorize-policy="TicketAdminBoardOrAdmin">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Ticket" asp-action="Index">Tickets</a>
                         </li>
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
-                            </li>
-                        }
+                        <li class="nav-item" authorize-policy="IsActiveMember">
+                            <a class="nav-link" asp-area="" asp-controller="Budget" asp-action="Summary">Budget</a>
+                        </li>
                         <li class="nav-item" authorize-policy="FinanceAdminOrAdmin">
                             <a class="nav-link nav-restricted" asp-area="" asp-controller="Finance" asp-action="Index">Finance</a>
                         </li>

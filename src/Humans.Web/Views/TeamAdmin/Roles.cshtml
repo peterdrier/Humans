@@ -109,10 +109,17 @@
                         var hasAssignments = role.Slots.Any(s => s.IsFilled);
                     }
                     <div class="mb-3 form-check">
-                        @if (role.IsManagement && hasAssignments)
+                        @if (!Model.CanToggleManagement || (role.IsManagement && hasAssignments))
                         {
-                            <input type="hidden" name="IsManagement" value="true" />
-                            <input type="checkbox" class="form-check-input" id="isManagement-@role.Id" checked disabled />
+                            <input type="hidden" name="IsManagement" value="@(role.IsManagement ? "true" : "false")" />
+                            @if (role.IsManagement)
+                            {
+                                <input type="checkbox" class="form-check-input" id="isManagement-@role.Id" checked disabled />
+                            }
+                            else
+                            {
+                                <input type="checkbox" class="form-check-input" id="isManagement-@role.Id" disabled />
+                            }
                         }
                         else
                         {
@@ -122,7 +129,11 @@
                         <label class="form-check-label" for="isManagement-@role.Id">
                             @(Model.IsChildTeam ? "Manager role" : "Coordinator role")
                         </label>
-                        @if (role.IsManagement && hasAssignments)
+                        @if (!Model.CanToggleManagement)
+                        {
+                            <div class="form-text text-muted">Only TeamsAdmin or Admin can change this setting.</div>
+                        }
+                        else if (role.IsManagement && hasAssignments)
                         {
                             <div class="form-text text-warning">Unassign all humans before unchecking.</div>
                         }

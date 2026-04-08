@@ -69,7 +69,10 @@ public class TeamController : HumansControllerBase
     public async Task<IActionResult> Index()
     {
         var user = await GetCurrentUserAsync();
-        var directory = await _teamService.GetTeamDirectoryAsync(user?.Id);
+        var hasProfile = User.HasClaim(
+            RoleAssignmentClaimsTransformation.HasProfileClaimType,
+            RoleAssignmentClaimsTransformation.ActiveClaimValue);
+        var directory = await _teamService.GetTeamDirectoryAsync(hasProfile ? user?.Id : null);
 
         ViewBag.CanViewSync = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
 
@@ -106,9 +109,13 @@ public class TeamController : HumansControllerBase
     public async Task<IActionResult> Details(string slug)
     {
         var user = await GetCurrentUserAsync();
+        var hasProfile = User.HasClaim(
+            RoleAssignmentClaimsTransformation.HasProfileClaimType,
+            RoleAssignmentClaimsTransformation.ActiveClaimValue);
+        var effectiveUserId = hasProfile ? user?.Id : null;
         var teamPage = await _teamPageService.GetTeamPageDetailAsync(
             slug,
-            user?.Id,
+            effectiveUserId,
             ShiftRoleChecks.CanManageDepartment(User));
         if (teamPage is null)
         {

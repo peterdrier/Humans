@@ -746,6 +746,76 @@ public class ShiftManagementService : IShiftManagementService
         return results;
     }
 
+    public async Task<IReadOnlyList<DailyStaffingHours>> GetStaffingHoursAsync(
+        Guid eventSettingsId, Guid? departmentId = null)
+    {
+        var es = await _dbContext.EventSettings.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
+        if (es is null) return [];
+
+        var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+
+        var dayOffsets = new List<int>();
+        for (var d = es.BuildStartOffset; d < 0; d++) dayOffsets.Add(d);
+        for (var d = 0; d <= es.EventEndOffset; d++) dayOffsets.Add(d);
+        for (var d = es.EventEndOffset + 1; d <= es.StrikeEndOffset; d++) dayOffsets.Add(d);
+
+        if (dayOffsets.Count == 0) return [];
+
+        var query = _dbContext.Shifts
+            .AsNoTracking()
+            .Include(s => s.Rota)
+            .Where(s => s.Rota.EventSettingsId == eventSettingsId);
+
+        if (departmentId.HasValue)
+            query = query.Where(s => s.Rota.TeamId == departmentId.Value);
+
+        var shifts = await query.ToListAsync();
+        var results = new List<DailyStaffingHours>();
+
+        foreach (var dayOffset in dayOffsets)
+        {
+            var dayDate = es.GateOpeningDate.PlusDays(dayOffset);
+            var dayStart = dayDate.AtStartOfDayInZone(tz).ToInstant();
+            var dayEnd = dayDate.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
+            var dateLabel = dayDate.DayOfWeek.ToString()[..3] + " " + dayDate.ToString("MMM d", null);
+
+            var overlapping = shifts.Where(s =>
+            {
+                var start = s.GetAbsoluteStart(es);
+                var end = s.GetAbsoluteEnd(es);
+                return start < dayEnd && end > dayStart;
+            }).ToList();
+
+            var essentialHours = 0.0;
+            var importantHours = 0.0;
+            var normalHours = 0.0;
+
+            foreach (var shift in overlapping)
+            {
+                var hours = shift.IsAllDay ? 8.0 : shift.Duration.TotalHours;
+                var totalHours = hours * shift.MaxVolunteers;
+
+                switch (shift.Rota.Priority)
+                {
+                    case ShiftPriority.Essential:
+                        essentialHours += totalHours;
+                        break;
+                    case ShiftPriority.Important:
+                        importantHours += totalHours;
+                        break;
+                    default:
+                        normalHours += totalHours;
+                        break;
+                }
+            }
+
+            results.Add(new DailyStaffingHours(dayOffset, dateLabel, essentialHours, importantHours, normalHours));
+        }
+
+        return results;
+    }
+
     public async Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
         Guid eventSettingsId, Guid departmentTeamId)
     {

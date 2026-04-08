@@ -1,3 +1,4 @@
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using NodaTime;
 
@@ -28,13 +29,7 @@ public class CoordinatorCategoryDetailViewModel
     public required BudgetCategory Category { get; init; }
     public bool CanEdit { get; init; }
     public bool IsFinanceAdmin { get; init; }
-    public required IReadOnlyList<TeamOption> Teams { get; init; }
-}
-
-public class TeamOption
-{
-    public Guid Id { get; init; }
-    public string Name { get; init; } = string.Empty;
+    public required IReadOnlyList<TeamOptionDto> Teams { get; init; }
 }
 
 public class BudgetSummaryViewModel

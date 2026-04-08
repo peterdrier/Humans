@@ -1,0 +1,69 @@
+@using Humans.Application.Interfaces
+@model (List<DailyStaffingHours> Data, string ChartId)
+
+@{
+    var hasData = Model.Data.Any(d => d.EssentialHours > 0 || d.ImportantHours > 0 || d.NormalHours > 0);
+}
+
+@if (hasData)
+{
+    var chartKey = Model.ChartId;
+    var jsonOpts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+
+    <script>
+    if (typeof Chart === 'undefined') {
+        var s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+        s.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+        s.crossOrigin = 'anonymous';
+        s.onload = function() { window['render_@(chartKey)'](); };
+        document.head.appendChild(s);
+    } else {
+        document.addEventListener('DOMContentLoaded', function() { window['render_@(chartKey)'](); });
+    }
+
+    window['render_@(chartKey)'] = function() {
+        var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Data, jsonOpts));
+        var labels = data.map(function(d) { return d.dateLabel; });
+        var essential = data.map(function(d) { return Math.round(d.essentialHours * 10) / 10; });
+        var important = data.map(function(d) { return Math.round(d.importantHours * 10) / 10; });
+        var normal = data.map(function(d) { return Math.round(d.normalHours * 10) / 10; });
+
+        var cs = getComputedStyle(document.documentElement);
+        var cv = function(n) { return cs.getPropertyValue(n).trim(); };
+
+        new Chart(document.getElementById('@chartKey'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Essential', data: essential, backgroundColor: cv('--h-chart-danger') },
+                    { label: 'Important', data: important, backgroundColor: cv('--h-chart-warning') },
+                    { label: 'Normal', data: normal, backgroundColor: cv('--h-chart-muted') }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Hours' } }
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return ctx.dataset.label + ': ' + ctx.parsed.y + 'h'; }
+                        }
+                    }
+                }
+            }
+        });
+    };
+    </script>
+
+    <div class="card mb-4">
+        <div class="card-header"><h6 class="mb-0">Staffing Hours by Priority</h6></div>
+        <div class="card-body">
+            <canvas id="@chartKey" height="100"></canvas>
+        </div>
+    </div>
+}

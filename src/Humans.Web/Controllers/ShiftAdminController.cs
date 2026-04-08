@@ -98,6 +98,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         }
 
         var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, team.Id);
+        var staffingHours = await _shiftMgmt.GetStaffingHoursAsync(es.Id, team.Id);
 
         var allDepartments = new List<DepartmentOption>();
         if (RoleChecks.IsVolunteerManager(User))
@@ -127,6 +128,7 @@ public class ShiftAdminController : HumansTeamControllerBase
             VolunteerProfiles = profileDict,
             CanViewMedical = canViewMedical,
             StaffingData = staffingData.ToList(),
+            StaffingHours = staffingHours.ToList(),
             Now = _clock.GetCurrentInstant(),
             AllDepartments = allDepartments,
             AllTags = allTags.ToList()

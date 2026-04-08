@@ -86,6 +86,8 @@ public record TeamRosterSlotSummary(
     Guid? AssignedUserId,
     string? AssignedUserName);
 
+public record TeamOptionDto(Guid Id, string Name);
+
 public record AdminTeamSummary(
     Guid Id,
     string Name,
@@ -330,6 +332,11 @@ public interface ITeamService
     Task<IReadOnlyDictionary<Guid, List<string>>> GetNonSystemTeamNamesByUserIdsAsync(
         IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets active teams as lightweight Id+Name options for dropdown lists.
+    /// </summary>
+    Task<IReadOnlyList<TeamOptionDto>> GetActiveTeamOptionsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets all teams for admin list with active member counts and pending request counts.

@@ -129,6 +129,19 @@ builder.Services.AddDbContext<HumansDbContext>((sp, options) =>
     }
 });
 
+// Register IDbContextFactory for creating short-lived DbContext instances in parallel operations
+// (e.g., GoogleWorkspaceSyncService parallel sync tasks that each need their own DbContext).
+builder.Services.AddDbContextFactory<HumansDbContext>((sp, options) =>
+{
+    options.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), npgsqlOptions =>
+    {
+        npgsqlOptions.UseNodaTime();
+        npgsqlOptions.MigrationsAssembly("Humans.Infrastructure");
+        npgsqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+    });
+    options.ConfigureWarnings(w => w.Ignore(CoreEventId.FirstWithoutOrderByAndFilterWarning));
+}, lifetime: ServiceLifetime.Scoped);
+
 // Persist Data Protection keys to the database so auth cookies survive container restarts
 builder.Services.AddDataProtection()
     .PersistKeysToDbContext<HumansDbContext>()

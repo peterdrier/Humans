@@ -227,6 +227,7 @@ public class ShiftAdminViewModel
     public Dictionary<Guid, VolunteerEventProfile> VolunteerProfiles { get; set; } = new();
     public bool CanViewMedical { get; set; }
     public List<DailyStaffingData> StaffingData { get; set; } = [];
+    public List<DailyStaffingHours> StaffingHours { get; set; } = [];
     public Instant Now { get; set; }
     public List<DepartmentOption> AllDepartments { get; set; } = [];
 
@@ -406,6 +407,7 @@ public class ShiftDashboardViewModel
     public string? SelectedDate { get; set; }
     public EventSettings EventSettings { get; set; } = null!;
     public List<DailyStaffingData> StaffingData { get; set; } = [];
+    public List<DailyStaffingHours> StaffingHours { get; set; } = [];
 }
 
 public class VolunteerSearchResult

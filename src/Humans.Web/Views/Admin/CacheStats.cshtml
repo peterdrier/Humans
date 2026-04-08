@@ -23,7 +23,7 @@
 <vc:temp-data-alerts />
 
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title text-success">@Model.TotalHits.ToString("N0")</h5>
@@ -31,7 +31,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title text-danger">@Model.TotalMisses.ToString("N0")</h5>
@@ -39,11 +39,19 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-center">
             <div class="card-body">
                 <h5 class="card-title">@Model.OverallHitRatePercent.ToString("F1")%</h5>
                 <p class="card-text text-muted mb-0">Overall Hit Rate</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-primary">@Model.TotalActiveEntries.ToString("N0")</h5>
+                <p class="card-text text-muted mb-0">Active Entries</p>
             </div>
         </div>
     </div>
@@ -62,9 +70,12 @@ else
             <thead>
                 <tr>
                     <th style="cursor:pointer;" data-sort-col="0">Key Type <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="1" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
-                    <th style="cursor:pointer;" data-sort-col="3" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="1">Type <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="2" class="text-end">Entries <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="3">TTL <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="4" class="text-end">Hits <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="5" class="text-end">Misses <i class="fa-solid fa-sort fa-xs"></i></th>
+                    <th style="cursor:pointer;" data-sort-col="6" class="text-end">Hit Rate % <i class="fa-solid fa-sort fa-xs"></i></th>
                 </tr>
             </thead>
             <tbody>
@@ -76,8 +87,19 @@ else
                         >= 50 => "",
                         _ => "table-warning"
                     };
+                    var typeBadge = entry.Type switch
+                    {
+                        "Static" => "bg-primary",
+                        "PerUser" => "bg-info",
+                        "PerEntity" => "bg-secondary",
+                        "RateLimit" => "bg-warning text-dark",
+                        _ => "bg-light text-dark"
+                    };
                     <tr class="@rateClass">
                         <td>@entry.KeyType</td>
+                        <td><span class="badge @typeBadge">@entry.Type</span></td>
+                        <td class="text-end">@entry.ActiveEntries.ToString("N0")</td>
+                        <td>@entry.Ttl</td>
                         <td class="text-end">@entry.Hits.ToString("N0")</td>
                         <td class="text-end">@entry.Misses.ToString("N0")</td>
                         <td class="text-end">@entry.HitRatePercent.ToString("F1")%</td>
@@ -92,12 +114,13 @@ else
     <script>
         (function () {
             const sortDir = {};
+            const numericCols = [2, 4, 5, 6];
             document.querySelectorAll('#cacheStatsTable th[data-sort-col]').forEach(th => {
                 th.addEventListener('click', function () {
                     const colIndex = parseInt(this.dataset.sortCol);
                     const tbody = document.querySelector('#cacheStatsTable tbody');
                     const rows = Array.from(tbody.querySelectorAll('tr'));
-                    const isNumeric = colIndex >= 1;
+                    const isNumeric = numericCols.includes(colIndex);
 
                     sortDir[colIndex] = !sortDir[colIndex];
                     const dir = sortDir[colIndex] ? 1 : -1;

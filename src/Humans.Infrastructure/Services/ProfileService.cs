@@ -272,6 +272,7 @@ public class ProfileService : IProfileService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateActiveTeams();
         _cache.InvalidateUserProfile(userId);
+        _cache.InvalidateRoleAssignmentClaims(userId);
 
         // Update profile cache if profile is approved
         if (profile.IsApproved && !profile.IsSuspended && user is not null)
@@ -752,6 +753,18 @@ public class ProfileService : IProfileService
                     p => p.UserId,
                     p => CachedProfile.Create(p, p.User)));
         }) ?? new();
+    }
+
+    public CachedProfile? GetCachedProfile(Guid userId)
+    {
+        if (_cache.TryGetExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(
+                CacheKeys.ApprovedProfiles, out var cached)
+            && cached.TryGetValue(userId, out var profile))
+        {
+            return profile;
+        }
+
+        return null;
     }
 
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)

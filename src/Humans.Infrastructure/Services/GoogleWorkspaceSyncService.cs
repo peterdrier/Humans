@@ -26,11 +26,17 @@ namespace Humans.Infrastructure.Services;
 public class GoogleWorkspaceSyncService : IGoogleSyncService
 {
     private readonly HumansDbContext _dbContext;
+    private readonly IDbContextFactory<HumansDbContext> _dbContextFactory;
     private readonly GoogleWorkspaceSettings _settings;
     private readonly IClock _clock;
     private readonly IAuditLogService _auditLogService;
     private readonly ISyncSettingsService _syncSettingsService;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
+
+    /// <summary>
+    /// Throttles concurrent DB access during parallel sync operations.
+    /// </summary>
+    private static readonly SemaphoreSlim DbSemaphore = new(5);
 
     private CloudIdentityService? _cloudIdentityService;
     private DirectoryService? _directoryService;
@@ -40,6 +46,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
     public GoogleWorkspaceSyncService(
         HumansDbContext dbContext,
+        IDbContextFactory<HumansDbContext> dbContextFactory,
         IOptions<GoogleWorkspaceSettings> settings,
         IClock clock,
         IAuditLogService auditLogService,
@@ -47,6 +54,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         ILogger<GoogleWorkspaceSyncService> logger)
     {
         _dbContext = dbContext;
+        _dbContextFactory = dbContextFactory;
         _settings = settings.Value;
         _clock = clock;
         _auditLogService = auditLogService;
@@ -871,9 +879,20 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             if (resources.Count > 0)
                 await GetCloudIdentityServiceAsync();
 
-            // Groups: one group per team — compute diffs in parallel (Google API reads only)
-            var diffTasks = resources.Select(resource =>
-                SyncGroupResourceAsync(resource, SyncAction.Preview, now, childMembersCache, cancellationToken));
+            // Groups: one group per team — compute diffs in parallel (Google API reads only).
+            // Each task gets its own DbContext via factory; semaphore throttles concurrency.
+            var diffTasks = resources.Select(async resource =>
+            {
+                await DbSemaphore.WaitAsync(cancellationToken);
+                try
+                {
+                    return await SyncGroupResourceAsync(resource, SyncAction.Preview, now, childMembersCache, cancellationToken);
+                }
+                finally
+                {
+                    DbSemaphore.Release();
+                }
+            });
             diffs = (await Task.WhenAll(diffTasks)).ToList();
 
             // Apply mutations sequentially if Execute mode (gateway methods use DbContext)
@@ -891,10 +910,21 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             if (resources.Count > 0)
                 await GetDriveServiceAsync();
 
-            // Drive resources: group by GoogleId since multiple teams can share one resource
+            // Drive resources: group by GoogleId since multiple teams can share one resource.
+            // Each task gets its own DbContext via factory; semaphore throttles concurrency.
             var grouped = resources.GroupBy(r => r.GoogleId, StringComparer.Ordinal).ToList();
-            var diffTasks = grouped.Select(group =>
-                SyncDriveResourceGroupAsync(group.ToList(), SyncAction.Preview, now, childMembersCache, cancellationToken));
+            var diffTasks = grouped.Select(async group =>
+            {
+                await DbSemaphore.WaitAsync(cancellationToken);
+                try
+                {
+                    return await SyncDriveResourceGroupAsync(group.ToList(), SyncAction.Preview, now, childMembersCache, cancellationToken);
+                }
+                finally
+                {
+                    DbSemaphore.Release();
+                }
+            });
             diffs = (await Task.WhenAll(diffTasks)).ToList();
 
             // Apply mutations sequentially if Execute mode (gateway methods use DbContext)
@@ -969,6 +999,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         Dictionary<Guid, List<TeamMember>>? childMembersCache,
         CancellationToken cancellationToken)
     {
+        // When running in parallel (childMembersCache != null), create a short-lived DbContext
+        // via the factory to avoid sharing the scoped DbContext across concurrent tasks.
+        var parallelDbContext = childMembersCache is not null
+            ? await _dbContextFactory.CreateDbContextAsync(cancellationToken)
+            : null;
         try
         {
             // Expected: team's active members (use Google service email preference)
@@ -1064,7 +1099,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 .Where(e => !expectedEmails.Contains(e) &&
                     !string.Equals(e, saEmail, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            var extraIdentities = await ResolveExtraEmailIdentitiesAsync(extraEmails, cancellationToken);
+            var extraIdentities = await ResolveExtraEmailIdentitiesAsync(extraEmails, cancellationToken,
+                parallelDbContext);
 
             foreach (var email in extraEmails)
             {
@@ -1141,6 +1177,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 LinkedTeams = [new TeamLink(resource.Team.Name, resource.Team.Slug)],
                 ErrorMessage = ex.Message
             };
+        }
+        finally
+        {
+            if (parallelDbContext is not null)
+                await parallelDbContext.DisposeAsync();
         }
     }
 
@@ -1271,6 +1312,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         Dictionary<Guid, List<TeamMember>>? childMembersCache,
         CancellationToken cancellationToken)
     {
+        // When running in parallel (childMembersCache != null), create a short-lived DbContext
+        // via the factory to avoid sharing the scoped DbContext across concurrent tasks.
+        var parallelDbContext = childMembersCache is not null
+            ? await _dbContextFactory.CreateDbContextAsync(cancellationToken)
+            : null;
         var primary = resources[0];
         // Build a lookup from team slug to permission level for per-member resolution
         var levelByTeamSlug = new Dictionary<string, DrivePermissionLevel>(StringComparer.Ordinal);
@@ -1400,7 +1446,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 .Where(e => !membersByEmail.ContainsKey(e) &&
                     !string.Equals(e, saEmail, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            var extraIdentities = await ResolveExtraEmailIdentitiesAsync(nonMemberEmails, cancellationToken);
+            var extraIdentities = await ResolveExtraEmailIdentitiesAsync(nonMemberEmails, cancellationToken,
+                parallelDbContext);
 
             foreach (var email in nonMemberEmails)
             {
@@ -1510,6 +1557,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList(),
                 ErrorMessage = ex.Message
             };
+        }
+        finally
+        {
+            if (parallelDbContext is not null)
+                await parallelDbContext.DisposeAsync();
         }
     }
 
@@ -2343,14 +2395,19 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     /// Resolves extra emails against UserEmail records to get display names, user IDs, and profile pictures.
     /// Returns a lookup keyed by email (case-insensitive) with user identity info.
     /// </summary>
+    /// <param name="emails">The emails to resolve.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="dbContext">Optional DbContext for parallel execution (uses scoped _dbContext if null).</param>
     private async Task<Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl)>>
-        ResolveExtraEmailIdentitiesAsync(IEnumerable<string> emails, CancellationToken cancellationToken)
+        ResolveExtraEmailIdentitiesAsync(IEnumerable<string> emails, CancellationToken cancellationToken,
+            HumansDbContext? dbContext = null)
     {
         var emailList = emails.ToList();
         if (emailList.Count == 0)
             return new Dictionary<string, (string, Guid, string?)>(NormalizingEmailComparer.Instance);
 
-        var matches = await _dbContext.UserEmails
+        var ctx = dbContext ?? _dbContext;
+        var matches = await ctx.UserEmails
             .AsNoTracking()
             .Include(ue => ue.User)
             .Where(ue => emailList.Contains(ue.Email))

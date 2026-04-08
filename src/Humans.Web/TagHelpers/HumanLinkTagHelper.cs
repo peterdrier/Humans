@@ -1,4 +1,5 @@
 using System.Text.Encodings.Web;
+using Humans.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -15,10 +16,12 @@ namespace Humans.Web.TagHelpers;
 public class HumanLinkTagHelper : TagHelper
 {
     private readonly IUrlHelperFactory _urlHelperFactory;
+    private readonly IProfileService _profileService;
 
-    public HumanLinkTagHelper(IUrlHelperFactory urlHelperFactory)
+    public HumanLinkTagHelper(IUrlHelperFactory urlHelperFactory, IProfileService profileService)
     {
         _urlHelperFactory = urlHelperFactory;
+        _profileService = profileService;
     }
 
     [HtmlAttributeNotBound]
@@ -68,6 +71,21 @@ public class HumanLinkTagHelper : TagHelper
         // Respect suppression from earlier tag helpers (e.g., AuthorizeViewTagHelper)
         if (output.TagName is null)
             return;
+
+        // Resolve display name and profile picture from cache when not explicitly provided
+        if (string.IsNullOrEmpty(DisplayName) && UserId != Guid.Empty)
+        {
+            var cached = _profileService.GetCachedProfile(UserId);
+            if (cached is not null)
+            {
+                DisplayName = cached.DisplayName;
+                ProfilePictureUrl ??= cached.ProfilePictureUrl;
+            }
+            else
+            {
+                DisplayName = "Unknown";
+            }
+        }
 
         var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
         var href = Admin

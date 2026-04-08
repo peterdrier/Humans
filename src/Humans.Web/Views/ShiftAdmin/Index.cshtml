@@ -32,6 +32,9 @@
     @* Build/Strike Staffing Chart *@
     @await Html.PartialAsync("_StaffingChart", (Model.StaffingData, "deptStaffingChart"))
 
+    @* Staffing Hours by Priority *@
+    @await Html.PartialAsync("_StaffingHoursChart", (Model.StaffingHours, "deptStaffingHoursChart"))
+
     @* Pending Approvals *@
     @if (Model.PendingSignups.Count > 0 && Model.CanApproveSignups)
     {
