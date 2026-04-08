@@ -100,8 +100,10 @@ public class ProcessAccountDeletionsJob : IRecurringJob
                         $"Account anonymized (was {originalName})",
                         nameof(ProcessAccountDeletionsJob));
 
-                    // Cache invalidation must follow the persisted anonymization even if the
-                    // best-effort confirmation email fails afterward.
+                    // Save atomically per user so a failure in one doesn't leave others
+                    // in a partially-persisted state
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+
                     processedUserIds.Add(user.Id);
 
                     // Send confirmation to original email if we have it
@@ -121,13 +123,11 @@ public class ProcessAccountDeletionsJob : IRecurringJob
                 catch (Exception ex)
                 {
                     _logger.LogError(ex,
-                        "Failed to process deletion for user {UserId}",
+                        "Failed to process deletion for user {UserId}. Detaching tracked changes",
                         user.Id);
-                    // Continue processing other users
+                    _dbContext.ChangeTracker.Clear();
                 }
             }
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
 
             foreach (var userId in processedUserIds)
             {

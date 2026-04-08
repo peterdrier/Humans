@@ -541,8 +541,9 @@ public class GoogleAdminService : IGoogleAdminService
                     ErrorMessage: "Human does not have a GoogleEmail set.");
             }
 
-            // Update User.GoogleEmail
+            // Update User.GoogleEmail and reset sync status so reconciliation resumes
             user.GoogleEmail = newEmail;
+            user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
 
             // Update the corresponding UserEmail record if one exists for the old email
             var oldUserEmail = user.UserEmails.FirstOrDefault(ue =>

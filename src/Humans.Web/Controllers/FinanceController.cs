@@ -49,7 +49,7 @@ public class FinanceController : HumansControllerBase
             }
 
             var allYears = await _budgetService.GetAllYearsAsync();
-            var model = BuildFinanceOverview(activeYear, allYears);
+            var model = await BuildFinanceOverviewAsync(activeYear, allYears);
             return View("YearDetail", model);
         }
         catch (Exception ex)
@@ -69,7 +69,7 @@ public class FinanceController : HumansControllerBase
             if (year is null) return NotFound();
 
             var allYears = await _budgetService.GetAllYearsAsync();
-            var model = BuildFinanceOverview(year, allYears);
+            var model = await BuildFinanceOverviewAsync(year, allYears);
             return View(model);
         }
         catch (Exception ex)
@@ -558,7 +558,7 @@ public class FinanceController : HumansControllerBase
     /// so FinanceAdmin sees everything on one page without navigating to /Budget/Summary.
     /// Also computes actual tickets sold for ticketing groups and stores in ViewBag.
     /// </summary>
-    private FinanceOverviewViewModel BuildFinanceOverview(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
+    private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
     {
         // All groups (including restricted) for FinanceAdmin summary, with buffer slices
         var summary = _budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
@@ -570,15 +570,16 @@ public class FinanceController : HumansControllerBase
             var actualSold = _ticketingBudgetService.GetActualTicketsSold(ticketingGroup);
             ViewBag.ActualTicketsSold = actualSold;
 
-            var proj = ticketingGroup.TicketingProjection;
-            if (proj?.StartDate is not null && proj.EventDate is not null)
+            // Use the projection engine to compute remaining tickets consistently
+            var projections = await _ticketingBudgetService.GetProjectionsAsync(ticketingGroup.Id);
+            if (projections.Count > 0)
             {
+                var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
                 var today = SystemClock.Instance.GetCurrentInstant().InUtc().Date;
-                var daysToEvent = Period.Between(today, proj.EventDate.Value, PeriodUnits.Days).Days;
-                var remaining = Math.Max(0, daysToEvent);
-                var projectedRemaining = (int)Math.Round(proj.DailySalesRate * remaining);
+                var proj = ticketingGroup.TicketingProjection!;
+                var daysToEvent = Period.Between(today, proj.EventDate!.Value, PeriodUnits.Days).Days;
 
-                ViewBag.RemainingDays = remaining;
+                ViewBag.RemainingDays = Math.Max(0, daysToEvent);
                 ViewBag.ProjectedRemaining = projectedRemaining;
                 ViewBag.TotalTickets = actualSold + projectedRemaining;
             }

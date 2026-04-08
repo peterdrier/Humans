@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Interfaces;
@@ -59,6 +60,12 @@ public interface IProfileService
     Task<Guid> SaveProfileAsync(Guid userId, string displayName, ProfileSaveRequest request, string language, CancellationToken ct = default);
     Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default);
     Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a post-event hold date if the user has tickets for the active event,
+    /// or null if no hold applies.
+    /// </summary>
+    Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default);
     Task<object> ExportDataAsync(Guid userId, CancellationToken ct = default);
     Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default);

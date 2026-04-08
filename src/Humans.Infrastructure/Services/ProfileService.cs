@@ -393,6 +393,47 @@ public class ProfileService : IProfileService
         return new OnboardingResult(true);
     }
 
+    public async Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default)
+    {
+        var activeEvent = await _dbContext.EventSettings
+            .FirstOrDefaultAsync(e => e.IsActive, ct);
+
+        if (activeEvent is null)
+            return null;
+
+        // Use the sync state's VendorEventId to scope to the current event's tickets
+        var syncState = await _dbContext.Set<TicketSyncState>().FirstOrDefaultAsync(ct);
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return null;
+
+        var vendorEventId = syncState.VendorEventId;
+
+        var hasTickets = await _dbContext.TicketOrders
+            .AnyAsync(o => o.MatchedUserId == userId
+                && o.VendorEventId == vendorEventId, ct);
+
+        if (!hasTickets)
+        {
+            hasTickets = await _dbContext.TicketAttendees
+                .AnyAsync(a => a.MatchedUserId == userId
+                    && a.VendorEventId == vendorEventId, ct);
+        }
+
+        if (!hasTickets)
+            return null;
+
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId)
+                 ?? DateTimeZone.Utc;
+        var postEventDate = activeEvent.GateOpeningDate
+            .PlusDays(activeEvent.StrikeEndOffset + 1);
+        var postEventInstant = postEventDate
+            .AtStartOfDayInZone(tz)
+            .ToInstant();
+
+        var now = _clock.GetCurrentInstant();
+        return postEventInstant > now ? postEventInstant : null;
+    }
+
     public async Task<object> ExportDataAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], ct);

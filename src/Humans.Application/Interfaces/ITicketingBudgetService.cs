@@ -12,12 +12,12 @@ public interface ITicketingBudgetService
     /// Sync completed weeks of ticket sales into budget line items from TicketTailor/Stripe data,
     /// then refresh projections for future weeks.
     /// </summary>
-    Task<int> SyncActualsAsync(Guid budgetYearId);
+    Task<int> SyncActualsAsync(Guid budgetYearId, CancellationToken ct = default);
 
     /// <summary>
     /// Refresh projected line items only (no actuals sync). Called after saving projection parameters.
     /// </summary>
-    Task<int> RefreshProjectionsAsync(Guid budgetYearId);
+    Task<int> RefreshProjectionsAsync(Guid budgetYearId, CancellationToken ct = default);
 
     /// <summary>
     /// Compute projected line items for future weeks based on ticketing projection parameters

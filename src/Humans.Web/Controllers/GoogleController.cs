@@ -497,7 +497,7 @@ public class GoogleController : HumansControllerBase
         return GoogleSyncAuditView(
             $"Google Sync Audit: {user.DisplayName}",
             Url.Action("AdminDetail", "Profile", new { id }),
-            "Back to Member Detail",
+            "Back to Human Detail",
             entries);
     }
 

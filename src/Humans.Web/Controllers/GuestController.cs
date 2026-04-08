@@ -164,7 +164,7 @@ public class GuestController : HumansControllerBase
             var gracePeriod = Duration.FromDays(30);
 
             // Check for upcoming event tickets — if ticket holder, set EligibleAfter to post-event
-            var eventHoldDate = await GetEventHoldDateAsync(user.Id);
+            var eventHoldDate = await _profileService.GetEventHoldDateAsync(user.Id);
 
             user.DeletionRequestedAt = now;
             user.DeletionScheduledFor = now.Plus(gracePeriod);
@@ -278,45 +278,6 @@ public class GuestController : HumansControllerBase
         viewModel.DeletionEligibleAfter = user.DeletionEligibleAfter?.ToDateTimeUtc();
 
         return viewModel;
-    }
-
-    /// <summary>
-    /// If the user has tickets for an upcoming event, returns the post-event date
-    /// (StrikeEndOffset + 1 day after GateOpeningDate). Otherwise returns null.
-    /// </summary>
-    private async Task<Instant?> GetEventHoldDateAsync(Guid userId)
-    {
-        var hasTickets = await _dbContext.TicketOrders
-            .AnyAsync(o => o.MatchedUserId == userId);
-
-        if (!hasTickets)
-        {
-            hasTickets = await _dbContext.TicketAttendees
-                .AnyAsync(a => a.MatchedUserId == userId);
-        }
-
-        if (!hasTickets)
-            return null;
-
-        // Find the active event
-        var activeEvent = await _dbContext.EventSettings
-            .FirstOrDefaultAsync(e => e.IsActive);
-
-        if (activeEvent is null)
-            return null;
-
-        // Compute post-event date: GateOpeningDate + StrikeEndOffset + 1 day
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId)
-                 ?? DateTimeZone.Utc;
-        var postEventDate = activeEvent.GateOpeningDate
-            .PlusDays(activeEvent.StrikeEndOffset + 1);
-        var postEventInstant = postEventDate
-            .AtStartOfDayInZone(tz)
-            .ToInstant();
-
-        // Only apply hold if the event is in the future
-        var now = _clock.GetCurrentInstant();
-        return postEventInstant > now ? postEventInstant : null;
     }
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
