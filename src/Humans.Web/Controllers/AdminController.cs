@@ -163,10 +163,10 @@ public class AdminController : HumansControllerBase
     [HttpGet("DbVersion")]
     [AllowAnonymous]
     [Produces("application/json")]
-    public async Task<IActionResult> DbVersion()
+    public async Task<IActionResult> DbVersion(CancellationToken ct)
     {
-        var applied = (await _dbContext.Database.GetAppliedMigrationsAsync()).ToList();
-        var pending = await _dbContext.Database.GetPendingMigrationsAsync();
+        var applied = (await _dbContext.Database.GetAppliedMigrationsAsync(ct)).ToList();
+        var pending = await _dbContext.Database.GetPendingMigrationsAsync(ct);
 
         return Ok(new
         {

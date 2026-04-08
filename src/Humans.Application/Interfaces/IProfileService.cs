@@ -78,10 +78,10 @@ public interface IProfileService
     Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
         Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<(Guid UserId, string DisplayName, string? ProfilePictureUrl, bool HasCustomPicture, Guid ProfileId, int Day, int Month)>>
+    Task<IReadOnlyList<DTOs.BirthdayProfileInfo>>
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default);
 
-    Task<IReadOnlyList<(Guid UserId, string DisplayName, string? ProfilePictureUrl, double Latitude, double Longitude, string? City, string? CountryCode)>>
+    Task<IReadOnlyList<DTOs.LocationProfileInfo>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<DTOs.AdminHumanRow>> GetFilteredHumansAsync(
