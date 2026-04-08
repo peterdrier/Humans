@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
 using Humans.Application.Interfaces;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Infrastructure.Data;
 
@@ -12,17 +14,20 @@ public class UnsubscribeController : Controller
     private readonly HumansDbContext _db;
     private readonly ICommunicationPreferenceService _preferenceService;
     private readonly IDataProtectionProvider _dataProtection;
+    private readonly SignInManager<User> _signInManager;
     private readonly ILogger<UnsubscribeController> _logger;
 
     public UnsubscribeController(
         HumansDbContext db,
         ICommunicationPreferenceService preferenceService,
         IDataProtectionProvider dataProtection,
+        SignInManager<User> signInManager,
         ILogger<UnsubscribeController> logger)
     {
         _db = db;
         _preferenceService = preferenceService;
         _dataProtection = dataProtection;
+        _signInManager = signInManager;
         _logger = logger;
     }
 
@@ -38,9 +43,13 @@ public class UnsubscribeController : Controller
             if (user is null)
                 return NotFound();
 
-            ViewData["DisplayName"] = user.DisplayName;
-            ViewData["CategoryName"] = category.ToDisplayName();
-            return View();
+            // Sign in the user and redirect to communication preferences
+            await _signInManager.SignInAsync(user, isPersistent: false);
+            _logger.LogInformation(
+                "User {UserId} authenticated via unsubscribe link for {Category}",
+                userId, category);
+
+            return RedirectToCommunicationPreferences(user);
         }
 
         // Fall back to legacy campaign-only token
@@ -62,8 +71,13 @@ public class UnsubscribeController : Controller
 
             await _preferenceService.UpdatePreferenceAsync(userId, category, optedOut: true, source: "MagicLink");
 
-            ViewData["CategoryName"] = category.ToDisplayName();
-            return View("Done");
+            // Sign in and redirect to communication preferences
+            await _signInManager.SignInAsync(user, isPersistent: false);
+            _logger.LogInformation(
+                "User {UserId} unsubscribed from {Category} and authenticated via unsubscribe link",
+                userId, category);
+
+            return RedirectToCommunicationPreferences(user);
         }
 
         // Fall back to legacy campaign-only token
@@ -102,6 +116,18 @@ public class UnsubscribeController : Controller
         }
     }
 
+    /// <summary>
+    /// Redirects to the appropriate communication preferences page based on whether the user has a profile.
+    /// Profileless users go to Guest/CommunicationPreferences; users with profiles go to Profile/CommunicationPreferences.
+    /// </summary>
+    private IActionResult RedirectToCommunicationPreferences(User user)
+    {
+        var hasProfile = _db.Profiles.Any(p => p.UserId == user.Id);
+        return hasProfile
+            ? RedirectToAction(nameof(ProfileController.CommunicationPreferences), "Profile")
+            : RedirectToAction(nameof(GuestController.CommunicationPreferences), "Guest");
+    }
+
     private async Task<IActionResult> TryLegacyToken(string token)
     {
         var protector = _dataProtection
@@ -126,9 +152,13 @@ public class UnsubscribeController : Controller
         if (user is null)
             return NotFound();
 
-        ViewData["DisplayName"] = user.DisplayName;
-        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
-        return View();
+        // Sign in the user and redirect to communication preferences
+        await _signInManager.SignInAsync(user, isPersistent: false);
+        _logger.LogInformation(
+            "User {UserId} authenticated via legacy unsubscribe link",
+            userId);
+
+        return RedirectToCommunicationPreferences(user);
     }
 
     private async Task<IActionResult> TryLegacyConfirm(string token)
@@ -158,7 +188,12 @@ public class UnsubscribeController : Controller
         // Use the new preference service for legacy tokens too
         await _preferenceService.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true, source: "MagicLink");
 
-        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
-        return View("Done");
+        // Sign in and redirect to communication preferences
+        await _signInManager.SignInAsync(user, isPersistent: false);
+        _logger.LogInformation(
+            "User {UserId} unsubscribed from Marketing and authenticated via legacy unsubscribe link",
+            userId);
+
+        return RedirectToCommunicationPreferences(user);
     }
 }
