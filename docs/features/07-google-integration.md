@@ -515,11 +515,11 @@ When system teams are synced, Google permissions are also updated:
 
 The `ProcessGoogleSyncOutboxJob` classifies Google API errors into two categories:
 
-**Permanent failures (HTTP 400, 404):** User-level errors — invalid email format or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user. The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships.
+**Permanent failures (HTTP 400, 403, 404):** User-level errors — invalid email format, no Google account for that address, or user not found. The outbox event is marked `FailedPermanently = true` and the user's `GoogleEmailStatus` is set to `Rejected`. While rejected, no new sync events are enqueued for that user and the user is excluded from all sync paths (reconciliation, outbox, direct add). The user must update their Google email (Profile → Emails), which resets `GoogleEmailStatus` to `Unknown` and triggers re-sync for all current team memberships.
 
-**Transient failures (all other errors including 403, 429, 5xx):** Retried up to 10 times. HTTP 403 is treated as transient because it typically indicates a resource-level permission issue (service account lacks access to a Group or Drive), not a user email problem.
+**Transient failures (all other errors including 429, 5xx):** Retried up to 10 times with exponential backoff.
 
-`GoogleEmailStatus` is set to `Valid` only after a successful `AddUserToTeamResources` event where the team has linked Google resources — ensuring the email was actually accepted by a Google API call.
+`GoogleEmailStatus` is set to `Valid` only after a successful `AddUserToTeamResources` event where the team has linked Google resources — ensuring the email was actually accepted by a Google API call. A `Rejected` status is never overwritten with `Valid`; the user must change their email to reset it.
 
 ### Resource-Level Retry Strategy
 ```
@@ -536,7 +536,7 @@ On Google API error (resource provisioning):
 | Rate limit exceeded (429) | Transient — retry with backoff |
 | User not found (404) | Permanent — mark user email rejected |
 | Invalid email (400) | Permanent — mark user email rejected |
-| Permission denied (403) | Transient — resource-level issue, retry |
+| Permission denied (403) | Permanent — no Google account for address, mark rejected |
 | Folder not found | Re-provision |
 | Inherited permission delete | Skip (cannot remove inherited Shared Drive permissions) |
 

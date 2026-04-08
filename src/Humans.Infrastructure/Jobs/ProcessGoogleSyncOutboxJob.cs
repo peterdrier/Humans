@@ -203,6 +203,10 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
         var user = await _dbContext.Users.FindAsync([userId], cancellationToken);
         if (user is not null)
         {
+            // Never overwrite Rejected with Valid — Rejected is terminal until the user changes their email
+            if (status == GoogleEmailStatus.Valid && user.GoogleEmailStatus == GoogleEmailStatus.Rejected)
+                return;
+
             user.GoogleEmailStatus = status;
         }
     }
