@@ -605,12 +605,22 @@ public class OnboardingService : IOnboardingService
             })
             .FirstOrDefaultAsync(ct);
 
+        var languageDistribution = (await _dbContext.Users
+            .Where(u => u.Profile != null && u.Profile.IsApproved && !u.Profile.IsSuspended)
+            .GroupBy(u => u.PreferredLanguage)
+            .Select(g => new { Language = g.Key, Count = g.Count() })
+            .OrderByDescending(g => g.Count)
+            .ToListAsync(ct))
+            .Select(g => new Application.DTOs.LanguageCount(g.Language, g.Count))
+            .ToList();
+
         return new Application.DTOs.AdminDashboardData(
             totalMembers, partition.IncompleteSignup.Count, partition.PendingApproval.Count,
             partition.Active.Count, partition.MissingConsents.Count,
             partition.Suspended.Count, partition.PendingDeletion.Count, pendingApplications,
             appStats?.Total ?? 0, appStats?.Approved ?? 0, appStats?.Rejected ?? 0,
-            appStats?.Colaborador ?? 0, appStats?.Asociado ?? 0);
+            appStats?.Colaborador ?? 0, appStats?.Asociado ?? 0,
+            languageDistribution);
     }
 
     public async Task<OnboardingResult> PurgeHumanAsync(Guid userId, CancellationToken ct = default)
