@@ -472,8 +472,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             // Mark the user's Google email as Rejected so sync stops retrying
             var user = await _dbContext.Users
-                .FirstOrDefaultAsync(u => string.Equals(u.Email, userEmail) ||
-                    string.Equals(u.GoogleEmail, userEmail), cancellationToken);
+                .FirstOrDefaultAsync(u => EF.Functions.ILike(u.Email!, userEmail) ||
+                    (u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, userEmail)), cancellationToken);
             if (user is not null && user.GoogleEmailStatus != GoogleEmailStatus.Rejected)
             {
                 user.GoogleEmailStatus = GoogleEmailStatus.Rejected;
