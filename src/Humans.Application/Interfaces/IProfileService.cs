@@ -87,6 +87,12 @@ public interface IProfileService
     Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default);
 
     /// <summary>
+    /// Gets a cached profile by user ID from the in-memory cache.
+    /// Returns null on cache miss (no DB query).
+    /// </summary>
+    CachedProfile? GetCachedProfile(Guid userId);
+
+    /// <summary>
     /// Updates a single entry in the approved profiles cache.
     /// Pass null to remove the entry (e.g., on suspension/deletion).
     /// </summary>

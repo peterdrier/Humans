@@ -754,6 +754,18 @@ public class ProfileService : IProfileService
         }) ?? new();
     }
 
+    public CachedProfile? GetCachedProfile(Guid userId)
+    {
+        if (_cache.TryGetExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(
+                CacheKeys.ApprovedProfiles, out var cached)
+            && cached.TryGetValue(userId, out var profile))
+        {
+            return profile;
+        }
+
+        return null;
+    }
+
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
         => _cache.UpdateApprovedProfile(userId, newValue);
 
