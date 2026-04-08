@@ -408,15 +408,18 @@ public class ProfileService : IProfileService
 
         var vendorEventId = syncState.VendorEventId;
 
+        // Only hold for paid orders with valid/checked-in attendees
         var hasTickets = await _dbContext.TicketOrders
             .AnyAsync(o => o.MatchedUserId == userId
-                && o.VendorEventId == vendorEventId, ct);
+                && o.VendorEventId == vendorEventId
+                && o.PaymentStatus == TicketPaymentStatus.Paid, ct);
 
         if (!hasTickets)
         {
             hasTickets = await _dbContext.TicketAttendees
                 .AnyAsync(a => a.MatchedUserId == userId
-                    && a.VendorEventId == vendorEventId, ct);
+                    && a.VendorEventId == vendorEventId
+                    && (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn), ct);
         }
 
         if (!hasTickets)
