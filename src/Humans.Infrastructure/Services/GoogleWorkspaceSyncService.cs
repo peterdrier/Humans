@@ -467,7 +467,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             _logger.LogWarning(
                 "Google rejected {UserEmail} for group {GroupName} ({GroupId}) — HTTP 403. " +
-                "This typically means the email domain is ineligible for Google Groups membership",
+                "This typically means the email address does not have a Google account associated with it",
                 userEmail, resource.Name, resource.GoogleId);
 
             // Mark the user's Google email as Rejected so sync stops retrying
@@ -482,7 +482,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             await _auditLogService.LogGoogleSyncAsync(
                 AuditAction.GoogleResourceAccessGranted, groupResourceId,
-                $"Google rejected {userEmail} for group {resource.Name} — email domain ineligible (HTTP 403)",
+                $"Google rejected {userEmail} for group {resource.Name} — no Google account for this address (HTTP 403)",
                 nameof(GoogleWorkspaceSyncService),
                 userEmail, "MEMBER", GoogleSyncSource.ManualSync, success: false);
         }
@@ -1056,7 +1056,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             // Expected: team's active members (use Google service email preference)
             // Skip users with Rejected GoogleEmailStatus — their email was permanently
-            // rejected by Google (e.g., ineligible domain like proton.me)
+            // rejected by Google (no Google account associated with the address)
             var expectedMembers = resource.Team.Members
                 .Where(tm => tm.User.GetGoogleServiceEmail() is not null
                     && tm.User.GoogleEmailStatus != GoogleEmailStatus.Rejected)
