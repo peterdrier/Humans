@@ -30,6 +30,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "CampApi",          // Public API ([AllowAnonymous])
         "Feedback",         // Feedback submission — accessible to all authenticated users
         "FeedbackApi",      // API key auth, no membership required
+        "Guest",            // Profileless account dashboard
         "Legal",            // Public legal documents ([AllowAnonymous])
         "Notification",     // Notification inbox — accessible to all authenticated users
     };
@@ -70,8 +71,15 @@ public class MembershipRequiredFilter : IAsyncActionFilter
             return next();
         }
 
-        // Not an active member — redirect to dashboard which shows onboarding steps
-        context.Result = new RedirectToActionResult("Index", "Home", null);
+        // Not an active member — redirect based on whether they have a profile
+        var hasProfile = user.HasClaim(c =>
+            string.Equals(c.Type, RoleAssignmentClaimsTransformation.HasProfileClaimType, StringComparison.Ordinal) &&
+            string.Equals(c.Value, RoleAssignmentClaimsTransformation.ActiveClaimValue, StringComparison.Ordinal));
+
+        // Profileless accounts go to Guest dashboard; onboarding members go to Home dashboard
+        context.Result = hasProfile
+            ? new RedirectToActionResult("Index", "Home", null)
+            : new RedirectToActionResult("Index", "Guest", null);
         return Task.CompletedTask;
     }
 }

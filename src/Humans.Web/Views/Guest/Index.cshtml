@@ -1,0 +1,55 @@
+@{
+    ViewData["Title"] = Localizer["Dashboard_Title"].Value;
+    var displayName = ViewData["DisplayName"] as string ?? "";
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h1>@Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(displayName)))</h1>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body text-center py-5">
+                <i class="fa-solid fa-user-plus fa-3x text-primary mb-3"></i>
+                <h3>Want to get involved?</h3>
+                <p class="text-muted mb-3">
+                    Create a profile to become a volunteer and access the full Humans experience &mdash;
+                    shifts, teams, governance, and more.
+                </p>
+                <a asp-controller="Profile" asp-action="Edit" class="btn btn-primary btn-lg">
+                    <i class="fa-solid fa-id-card me-2"></i>Create Profile
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fa-solid fa-compass me-2"></i>Explore</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <a asp-controller="Camp" asp-action="Index">
+                            <i class="fa-solid fa-campground me-2"></i>@Localizer["Camp_Plural"]
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a asp-controller="Team" asp-action="Index">
+                            <i class="fa-solid fa-people-group me-2"></i>@Localizer["Nav_Teams"]
+                        </a>
+                    </li>
+                    <li class="mb-2">
+                        <a asp-controller="Legal" asp-action="Index">
+                            <i class="fa-solid fa-scale-balanced me-2"></i>Legal
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

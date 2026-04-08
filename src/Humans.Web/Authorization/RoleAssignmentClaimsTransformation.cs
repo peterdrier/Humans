@@ -20,6 +20,13 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
     /// Claim type indicating the user is an active member of the Volunteers team.
     /// </summary>
     public const string ActiveMemberClaimType = "ActiveMember";
+
+    /// <summary>
+    /// Claim type indicating the user has a profile record.
+    /// Used by MembershipRequiredFilter to distinguish profileless accounts from onboarding members.
+    /// </summary>
+    public const string HasProfileClaimType = "HasProfile";
+
     public const string ActiveClaimValue = "true";
     public const string ClaimsAddedMarkerType = "RoleAssignmentClaimsAdded";
 
@@ -108,6 +115,15 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         if (isVolunteerMember)
         {
             claims.Add(new Claim(ActiveMemberClaimType, ActiveClaimValue));
+        }
+
+        var hasProfile = await dbContext.Profiles
+            .AsNoTracking()
+            .AnyAsync(p => p.UserId == userId);
+
+        if (hasProfile)
+        {
+            claims.Add(new Claim(HasProfileClaimType, ActiveClaimValue));
         }
 
         return claims;

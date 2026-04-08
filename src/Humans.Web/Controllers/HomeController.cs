@@ -67,6 +67,15 @@ public class HomeController : HumansControllerBase
             return View();
         }
 
+        // Profileless accounts go to Guest dashboard
+        var hasProfile = User.HasClaim(
+            Authorization.RoleAssignmentClaimsTransformation.HasProfileClaimType,
+            Authorization.RoleAssignmentClaimsTransformation.ActiveClaimValue);
+        if (!hasProfile)
+        {
+            return RedirectToAction(nameof(Index), "Guest");
+        }
+
         var profile = await _profileService.GetProfileAsync(user.Id);
 
         var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(user.Id);
