@@ -520,7 +520,7 @@ public class ShiftManagementService : IShiftManagementService
 
         if (date.HasValue)
         {
-            var dayOffset = Period.Between(es.GateOpeningDate, date.Value).Days;
+            var dayOffset = Period.Between(es.GateOpeningDate, date.Value, PeriodUnits.Days).Days;
             query = query.Where(s => s.DayOffset == dayOffset);
         }
 
@@ -587,13 +587,13 @@ public class ShiftManagementService : IShiftManagementService
 
         if (fromDate.HasValue)
         {
-            var fromOffset = Period.Between(es.GateOpeningDate, fromDate.Value).Days;
+            var fromOffset = Period.Between(es.GateOpeningDate, fromDate.Value, PeriodUnits.Days).Days;
             query = query.Where(s => s.DayOffset >= fromOffset);
         }
 
         if (toDate.HasValue)
         {
-            var toOffset = Period.Between(es.GateOpeningDate, toDate.Value).Days;
+            var toOffset = Period.Between(es.GateOpeningDate, toDate.Value, PeriodUnits.Days).Days;
             query = query.Where(s => s.DayOffset <= toOffset);
         }
 
