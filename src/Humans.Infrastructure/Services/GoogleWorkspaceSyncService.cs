@@ -748,6 +748,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
+        // When GoogleEmail differs from the OAuth email, the old email should be removed
+        // from Groups to prevent duplicate delivery (e.g., user got @nobodies.team address)
+        var previousEmail = !string.Equals(googleEmail, user.Email, StringComparison.OrdinalIgnoreCase)
+            ? user.Email
+            : null;
+
         var resources = await _dbContext.GoogleResources
             .Where(r => r.TeamId == teamId && r.IsActive)
             .ToListAsync(cancellationToken);
@@ -757,6 +763,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             if (resource.ResourceType == GoogleResourceType.Group)
             {
                 await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
+
+                // Remove the old OAuth email from the group to avoid duplicate delivery
+                if (previousEmail is not null)
+                {
+                    await RemoveUserFromGroupAsync(resource.Id, previousEmail, cancellationToken);
+                }
             }
             else
             {
@@ -781,6 +793,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 if (resource.ResourceType == GoogleResourceType.Group)
                 {
                     await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
+
+                    // Remove the old OAuth email from the parent group too
+                    if (previousEmail is not null)
+                    {
+                        await RemoveUserFromGroupAsync(resource.Id, previousEmail, cancellationToken);
+                    }
                 }
                 else
                 {
