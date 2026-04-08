@@ -178,6 +178,11 @@
                 {
                     var proj = group.TicketingProjection;
                     var projCollapseId = $"proj-{groupId}";
+                    var actualTicketsSold = (int)(ViewBag.ActualTicketsSold ?? 0);
+                    var hasDates = proj.StartDate.HasValue && proj.EventDate.HasValue;
+                    var remainingDays = (int)(ViewBag.RemainingDays ?? 0);
+                    var projectedRemaining = (int)(ViewBag.ProjectedRemaining ?? 0);
+                    var totalTickets = (int)(ViewBag.TotalTickets ?? 0);
                     <div class="p-3 bg-light border-bottom">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <strong role="button" data-bs-toggle="collapse" data-bs-target="#@projCollapseId">
@@ -197,12 +202,12 @@
                                 <div class="row g-2 mb-2">
                                     <div class="col-md-3">
                                         <label class="form-label form-label-sm">Start Date</label>
-                                        <input type="date" name="startDate" class="form-control form-control-sm"
+                                        <input type="date" name="startDate" id="proj-startDate" class="form-control form-control-sm"
                                                value="@(proj.StartDate?.ToString("yyyy-MM-dd", null))" />
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label form-label-sm">Event Date</label>
-                                        <input type="date" name="eventDate" class="form-control form-control-sm"
+                                        <input type="date" name="eventDate" id="proj-eventDate" class="form-control form-control-sm"
                                                value="@(proj.EventDate?.ToString("yyyy-MM-dd", null))" />
                                     </div>
                                     <div class="col-md-3">
@@ -212,18 +217,33 @@
                                     </div>
                                     <div class="col-md-3">
                                         <label class="form-label form-label-sm">Daily Sales Rate</label>
-                                        <input type="number" name="dailySalesRate" class="form-control form-control-sm"
+                                        <input type="number" name="dailySalesRate" id="proj-dailySalesRate" class="form-control form-control-sm"
                                                step="0.1" value="@proj.DailySalesRate" />
                                     </div>
                                 </div>
                                 <div class="row g-2 mb-2">
                                     <div class="col-md-3">
+                                        <label class="form-label form-label-sm">Total Ticket Count (target)</label>
+                                        <input type="number" id="proj-totalTickets" class="form-control form-control-sm"
+                                               value="@totalTickets" />
+                                        <div class="small text-muted mt-1" id="proj-ticketBreakdown">
+                                            @if (hasDates)
+                                            {
+                                                <text>Sold so far: <strong>@actualTicketsSold</strong> &middot; Projected remaining: <strong>@projectedRemaining</strong> (at @proj.DailySalesRate/day &times; @remainingDays days)</text>
+                                            }
+                                            else
+                                            {
+                                                <text>Set Start Date and Event Date to enable projection</text>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
                                         <label class="form-label form-label-sm">Avg Ticket Price (&euro;)</label>
                                         <input type="number" name="averageTicketPrice" class="form-control form-control-sm"
                                                step="0.01" value="@proj.AverageTicketPrice" />
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label form-label-sm">VAT Rate (%)</label>
+                                    <div class="col-md-1">
+                                        <label class="form-label form-label-sm">VAT (%)</label>
                                         <input type="number" name="vatRate" class="form-control form-control-sm"
                                                min="0" max="21" value="@proj.VatRate" />
                                     </div>
@@ -232,8 +252,8 @@
                                         <input type="number" name="stripeFeePercent" class="form-control form-control-sm"
                                                step="0.01" value="@proj.StripeFeePercent" />
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label form-label-sm">Stripe Fixed (&euro;)</label>
+                                    <div class="col-md-1">
+                                        <label class="form-label form-label-sm">Stripe Fixed</label>
                                         <input type="number" name="stripeFeeFixed" class="form-control form-control-sm"
                                                step="0.01" value="@proj.StripeFeeFixed" />
                                     </div>
@@ -247,6 +267,82 @@
                                     </div>
                                 </div>
                             </form>
+                            <script>
+                            (function() {
+                                var actualSold = @actualTicketsSold;
+                                var dailyRateInput = document.getElementById('proj-dailySalesRate');
+                                var totalInput = document.getElementById('proj-totalTickets');
+                                var startDateInput = document.getElementById('proj-startDate');
+                                var eventDateInput = document.getElementById('proj-eventDate');
+                                var breakdownEl = document.getElementById('proj-ticketBreakdown');
+
+                                function getRemainingDays() {
+                                    var eventDate = eventDateInput.value;
+                                    if (!eventDate) return 0;
+                                    var today = new Date();
+                                    today.setHours(0, 0, 0, 0);
+                                    var event_ = new Date(eventDate + 'T00:00:00');
+                                    var diff = Math.floor((event_ - today) / (1000 * 60 * 60 * 24));
+                                    return Math.max(0, diff);
+                                }
+
+                                function hasDates() {
+                                    return startDateInput.value && eventDateInput.value;
+                                }
+
+                                function updateBreakdown(dailyRate) {
+                                    if (!hasDates()) {
+                                        breakdownEl.innerHTML = 'Set Start Date and Event Date to enable projection';
+                                        return;
+                                    }
+                                    var days = getRemainingDays();
+                                    var projected = Math.round(dailyRate * days);
+                                    breakdownEl.innerHTML = 'Sold so far: <strong>' + actualSold +
+                                        '</strong> &middot; Projected remaining: <strong>' + projected +
+                                        '</strong> (at ' + dailyRate.toFixed(1) + '/day &times; ' + days + ' days)';
+                                }
+
+                                // When Daily Sales Rate changes, recalculate Total
+                                dailyRateInput.addEventListener('input', function() {
+                                    if (!hasDates()) return;
+                                    var rate = parseFloat(this.value) || 0;
+                                    var days = getRemainingDays();
+                                    var projected = Math.round(rate * days);
+                                    totalInput.value = actualSold + projected;
+                                    updateBreakdown(rate);
+                                });
+
+                                // When Total Tickets changes, recalculate Daily Sales Rate
+                                totalInput.addEventListener('input', function() {
+                                    if (!hasDates()) return;
+                                    var target = parseInt(this.value) || 0;
+                                    var days = getRemainingDays();
+                                    if (days > 0) {
+                                        var newRate = Math.round(((target - actualSold) / days) * 10) / 10;
+                                        if (newRate < 0) newRate = 0;
+                                        dailyRateInput.value = newRate.toFixed(1);
+                                        updateBreakdown(newRate);
+                                    }
+                                });
+
+                                // When dates change, recalculate
+                                startDateInput.addEventListener('change', function() {
+                                    var rate = parseFloat(dailyRateInput.value) || 0;
+                                    var days = getRemainingDays();
+                                    var projected = Math.round(rate * days);
+                                    totalInput.value = actualSold + projected;
+                                    updateBreakdown(rate);
+                                });
+
+                                eventDateInput.addEventListener('change', function() {
+                                    var rate = parseFloat(dailyRateInput.value) || 0;
+                                    var days = getRemainingDays();
+                                    var projected = Math.round(rate * days);
+                                    totalInput.value = actualSold + projected;
+                                    updateBreakdown(rate);
+                                });
+                            })();
+                            </script>
                         </div>
                     </div>
                 }

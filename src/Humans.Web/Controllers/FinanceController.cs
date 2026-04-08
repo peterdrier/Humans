@@ -556,11 +556,33 @@ public class FinanceController : HumansControllerBase
     /// <summary>
     /// Builds the FinanceOverviewViewModel using the shared summary computation
     /// so FinanceAdmin sees everything on one page without navigating to /Budget/Summary.
+    /// Also computes actual tickets sold for ticketing groups and stores in ViewBag.
     /// </summary>
     private FinanceOverviewViewModel BuildFinanceOverview(BudgetYear year, IReadOnlyList<BudgetYear> allYears)
     {
         // All groups (including restricted) for FinanceAdmin summary, with buffer slices
         var summary = _budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
+
+        // Compute actual tickets sold and projection breakdown for ticketing group
+        var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
+        if (ticketingGroup is not null)
+        {
+            var actualSold = _ticketingBudgetService.GetActualTicketsSold(ticketingGroup);
+            ViewBag.ActualTicketsSold = actualSold;
+
+            var proj = ticketingGroup.TicketingProjection;
+            if (proj?.StartDate is not null && proj.EventDate is not null)
+            {
+                var today = SystemClock.Instance.GetCurrentInstant().InUtc().Date;
+                var daysToEvent = Period.Between(today, proj.EventDate.Value, PeriodUnits.Days).Days;
+                var remaining = Math.Max(0, daysToEvent);
+                var projectedRemaining = (int)Math.Round(proj.DailySalesRate * remaining);
+
+                ViewBag.RemainingDays = remaining;
+                ViewBag.ProjectedRemaining = projectedRemaining;
+                ViewBag.TotalTickets = actualSold + projectedRemaining;
+            }
+        }
 
         return new FinanceOverviewViewModel
         {

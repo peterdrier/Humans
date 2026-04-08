@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using Humans.Domain.Entities;
 
 namespace Humans.Application.Interfaces;
 
@@ -23,4 +24,11 @@ public interface ITicketingBudgetService
     /// and the latest actuals. Returns virtual (non-persisted) entries for display.
     /// </summary>
     Task<IReadOnlyList<TicketingWeekProjection>> GetProjectionsAsync(Guid budgetGroupId);
+
+    /// <summary>
+    /// Returns the total number of tickets sold through completed weeks, derived from synced
+    /// revenue line item notes (e.g. "187 tickets"). Consistent with existing sync logic
+    /// that only includes completed ISO weeks.
+    /// </summary>
+    int GetActualTicketsSold(BudgetGroup ticketingGroup);
 }
