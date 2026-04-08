@@ -98,6 +98,12 @@ public class User : IdentityUser<Guid>
     public Instant? DeletionScheduledFor { get; set; }
 
     /// <summary>
+    /// Earliest date the deletion can be processed (event hold for ticket holders).
+    /// When set, ProcessAccountDeletionsJob will not process until this date has passed.
+    /// </summary>
+    public Instant? DeletionEligibleAfter { get; set; }
+
+    /// <summary>
     /// Whether a deletion request is pending.
     /// </summary>
     public bool IsDeletionPending => DeletionRequestedAt.HasValue;

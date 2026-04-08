@@ -61,13 +61,15 @@ public class ProcessAccountDeletionsJob : IRecurringJob
 
         try
         {
-            // Find accounts where deletion is scheduled and the time has passed
+            // Find accounts where deletion is scheduled and both the grace period
+            // and any event hold (DeletionEligibleAfter) have passed
             var usersToDelete = await _dbContext.Users
                 .Include(u => u.Profile)
                 .Include(u => u.UserEmails)
                 .Include(u => u.TeamMemberships)
                 .Include(u => u.RoleAssignments)
-                .Where(u => u.DeletionScheduledFor != null && u.DeletionScheduledFor <= now)
+                .Where(u => u.DeletionScheduledFor != null && u.DeletionScheduledFor <= now
+                    && (u.DeletionEligibleAfter == null || u.DeletionEligibleAfter <= now))
                 .ToListAsync(cancellationToken);
 
             if (usersToDelete.Count == 0)
@@ -172,6 +174,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         // Clear deletion request fields (deletion is now complete)
         user.DeletionRequestedAt = null;
         user.DeletionScheduledFor = null;
+        user.DeletionEligibleAfter = null;
 
         // Disable login
         user.LockoutEnabled = true;

@@ -93,9 +93,24 @@
             </div>
             <div class="card-body">
                 <p class="text-muted">Download a copy of all data we hold about you.</p>
-                <a asp-action="DownloadData" class="btn btn-outline-secondary btn-sm">
+                <a asp-action="DownloadData" class="btn btn-outline-secondary btn-sm me-2">
                     <i class="fa-solid fa-download me-1"></i>Download My Data
                 </a>
+
+                @if (!Model.IsDeletionPending)
+                {
+                    <hr />
+                    <p class="text-muted mb-2">
+                        You can request deletion of your account and all associated data.
+                        If you have tickets for an upcoming event, the deletion will be held until after the event.
+                    </p>
+                    <form asp-action="RequestDeletion" method="post" class="d-inline">
+                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                onclick="return confirm('Are you sure you want to request account deletion? This action can be cancelled before the deletion date.');">
+                            <i class="fa-solid fa-trash-can me-1"></i>Request Account Deletion
+                        </button>
+                    </form>
+                }
             </div>
         </div>
     </div>
@@ -141,7 +156,7 @@
                     </p>
                     @if (Model.DeletionEligibleAfter.HasValue && Model.DeletionEligibleAfter > Model.DeletionScheduledFor)
                     {
-                        <p class="mb-0 text-warning-emphasis">
+                        <p class="mb-2 text-warning-emphasis">
                             <i class="fa-solid fa-clock me-1"></i>
                             Your account will be deleted after <strong>@Model.DeletionEligibleAfter?.ToString("d MMM yyyy")</strong>
                             (held until after the event).
@@ -149,11 +164,16 @@
                     }
                     else
                     {
-                        <p class="mb-0">
+                        <p class="mb-2">
                             Your account will be permanently deleted on
                             <strong>@Model.DeletionScheduledFor?.ToString("d MMM yyyy")</strong>.
                         </p>
                     }
+                    <form asp-action="CancelDeletion" method="post">
+                        <button type="submit" class="btn btn-sm btn-outline-success">
+                            <i class="fa-solid fa-rotate-left me-1"></i>Cancel Deletion
+                        </button>
+                    </form>
                 </div>
             </div>
         }

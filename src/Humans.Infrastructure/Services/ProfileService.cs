@@ -375,6 +375,7 @@ public class ProfileService : IProfileService
 
         user.DeletionRequestedAt = null;
         user.DeletionScheduledFor = null;
+        user.DeletionEligibleAfter = null;
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateUserProfile(userId);
 

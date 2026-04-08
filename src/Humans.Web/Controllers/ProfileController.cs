@@ -431,6 +431,18 @@ public class ProfileController : HumansControllerBase
             user.Id, model.BurnerName, saveRequest,
             CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
 
+        // Cancel any pending deletion request when creating a profile
+        if (isInitialSetup && user.IsDeletionPending)
+        {
+            user.DeletionRequestedAt = null;
+            user.DeletionScheduledFor = null;
+            user.DeletionEligibleAfter = null;
+            await UserManager.UpdateAsync(user);
+            _logger.LogInformation(
+                "Cancelled pending deletion request for user {UserId} on profile creation",
+                user.Id);
+        }
+
         // Save contact fields
         var contactFieldDtos = model.EditableContactFields
             .Where(cf => !string.IsNullOrWhiteSpace(cf.Value))

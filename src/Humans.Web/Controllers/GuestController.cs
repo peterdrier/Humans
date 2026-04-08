@@ -142,6 +142,98 @@ public class GuestController : HumansControllerBase
         }
     }
 
+    // ─── GDPR Deletion Request ─────────────────────────────────────
+
+    [HttpPost("Guest/RequestDeletion")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequestDeletion()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Challenge();
+
+        try
+        {
+            if (user.IsDeletionPending)
+            {
+                SetError("A deletion request is already pending.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var now = _clock.GetCurrentInstant();
+            var gracePeriod = Duration.FromDays(30);
+
+            // Check for upcoming event tickets — if ticket holder, set EligibleAfter to post-event
+            var eventHoldDate = await GetEventHoldDateAsync(user.Id);
+
+            user.DeletionRequestedAt = now;
+            user.DeletionScheduledFor = now.Plus(gracePeriod);
+            user.DeletionEligibleAfter = eventHoldDate;
+
+            await UpdateCurrentUserAsync(user);
+
+            if (eventHoldDate.HasValue)
+            {
+                SetSuccess(
+                    $"Deletion request recorded. Because you have tickets for an upcoming event, " +
+                    $"your account will be deleted after {eventHoldDate.Value.ToDateTimeUtc():d MMM yyyy}.");
+            }
+            else
+            {
+                SetSuccess(
+                    $"Deletion request recorded. Your account will be permanently deleted on " +
+                    $"{user.DeletionScheduledFor.Value.ToDateTimeUtc():d MMM yyyy}.");
+            }
+
+            _logger.LogWarning(
+                "Profileless user {UserId} requested account deletion. Scheduled: {ScheduledFor}, EligibleAfter: {EligibleAfter}",
+                user.Id, user.DeletionScheduledFor, eventHoldDate);
+
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process deletion request for user {UserId}", user.Id);
+            SetError("Failed to process deletion request. Please try again.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("Guest/CancelDeletion")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelDeletion()
+    {
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+            return Challenge();
+
+        try
+        {
+            if (!user.IsDeletionPending)
+            {
+                SetError("No deletion request is pending.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            user.DeletionRequestedAt = null;
+            user.DeletionScheduledFor = null;
+            user.DeletionEligibleAfter = null;
+
+            await UpdateCurrentUserAsync(user);
+
+            SetSuccess("Deletion request cancelled.");
+            _logger.LogInformation("Profileless user {UserId} cancelled deletion request", user.Id);
+
+            return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cancel deletion request for user {UserId}", user.Id);
+            SetError("Failed to cancel deletion request. Please try again.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
     // ─── Private Helpers ─────────────────────────────────────────────
 
     private async Task<GuestDashboardViewModel> BuildDashboardViewModelAsync(User user)
@@ -183,8 +275,48 @@ public class GuestController : HumansControllerBase
         viewModel.IsDeletionPending = user.IsDeletionPending;
         viewModel.DeletionRequestedAt = user.DeletionRequestedAt?.ToDateTimeUtc();
         viewModel.DeletionScheduledFor = user.DeletionScheduledFor?.ToDateTimeUtc();
+        viewModel.DeletionEligibleAfter = user.DeletionEligibleAfter?.ToDateTimeUtc();
 
         return viewModel;
+    }
+
+    /// <summary>
+    /// If the user has tickets for an upcoming event, returns the post-event date
+    /// (StrikeEndOffset + 1 day after GateOpeningDate). Otherwise returns null.
+    /// </summary>
+    private async Task<Instant?> GetEventHoldDateAsync(Guid userId)
+    {
+        var hasTickets = await _dbContext.TicketOrders
+            .AnyAsync(o => o.MatchedUserId == userId);
+
+        if (!hasTickets)
+        {
+            hasTickets = await _dbContext.TicketAttendees
+                .AnyAsync(a => a.MatchedUserId == userId);
+        }
+
+        if (!hasTickets)
+            return null;
+
+        // Find the active event
+        var activeEvent = await _dbContext.EventSettings
+            .FirstOrDefaultAsync(e => e.IsActive);
+
+        if (activeEvent is null)
+            return null;
+
+        // Compute post-event date: GateOpeningDate + StrikeEndOffset + 1 day
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId)
+                 ?? DateTimeZone.Utc;
+        var postEventDate = activeEvent.GateOpeningDate
+            .PlusDays(activeEvent.StrikeEndOffset + 1);
+        var postEventInstant = postEventDate
+            .AtStartOfDayInZone(tz)
+            .ToInstant();
+
+        // Only apply hold if the event is in the future
+        var now = _clock.GetCurrentInstant();
+        return postEventInstant > now ? postEventInstant : null;
     }
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
