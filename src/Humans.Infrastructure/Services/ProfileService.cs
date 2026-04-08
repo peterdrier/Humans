@@ -393,6 +393,50 @@ public class ProfileService : IProfileService
         return new OnboardingResult(true);
     }
 
+    public async Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default)
+    {
+        var activeEvent = await _dbContext.EventSettings
+            .FirstOrDefaultAsync(e => e.IsActive, ct);
+
+        if (activeEvent is null)
+            return null;
+
+        // Use the sync state's VendorEventId to scope to the current event's tickets
+        var syncState = await _dbContext.Set<TicketSyncState>().FirstOrDefaultAsync(ct);
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return null;
+
+        var vendorEventId = syncState.VendorEventId;
+
+        // Only hold for paid orders with valid/checked-in attendees
+        var hasTickets = await _dbContext.TicketOrders
+            .AnyAsync(o => o.MatchedUserId == userId
+                && o.VendorEventId == vendorEventId
+                && o.PaymentStatus == TicketPaymentStatus.Paid, ct);
+
+        if (!hasTickets)
+        {
+            hasTickets = await _dbContext.TicketAttendees
+                .AnyAsync(a => a.MatchedUserId == userId
+                    && a.VendorEventId == vendorEventId
+                    && (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn), ct);
+        }
+
+        if (!hasTickets)
+            return null;
+
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId)
+                 ?? DateTimeZone.Utc;
+        var postEventDate = activeEvent.GateOpeningDate
+            .PlusDays(activeEvent.StrikeEndOffset + 1);
+        var postEventInstant = postEventDate
+            .AtStartOfDayInZone(tz)
+            .ToInstant();
+
+        var now = _clock.GetCurrentInstant();
+        return postEventInstant > now ? postEventInstant : null;
+    }
+
     public async Task<object> ExportDataAsync(Guid userId, CancellationToken ct = default)
     {
         var user = await _dbContext.Users.FindAsync([userId], ct);
@@ -592,10 +636,12 @@ public class ProfileService : IProfileService
             .ToListAsync(ct);
 
         // Resolve notification-target emails for display (falls back to OAuth email)
-        var notificationEmails = await _dbContext.UserEmails
+        var notificationEmails = (await _dbContext.UserEmails
             .Where(e => e.IsNotificationTarget && e.IsVerified)
             .Select(e => new { e.UserId, e.Email })
-            .ToDictionaryAsync(e => e.UserId, e => e.Email, ct);
+            .ToListAsync(ct))
+            .GroupBy(e => e.UserId)
+            .ToDictionary(g => g.Key, g => g.First().Email);
 
         if (!string.IsNullOrWhiteSpace(search))
         {

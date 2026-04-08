@@ -280,7 +280,7 @@ Same diff logic as full sync, but read-only — no writes to Google APIs.
 
 ## Sync Mode Settings
 
-Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `sync_service_settings` table and managed via the Admin Sync Settings page at `/Admin/SyncSettings`.
+Per-service sync modes control what automated jobs and manual sync actions do. Stored in the `sync_service_settings` table and managed via the Admin Sync Settings page at `/Google/SyncSettings`.
 
 ### SyncServiceSettings Entity
 ```
@@ -306,7 +306,7 @@ AddOnly       = 1  // Only add missing members
 AddAndRemove  = 2  // Add missing + remove extra members
 ```
 
-All services default to `SyncMode.None` (seed data). An Admin must explicitly enable sync from the `/Admin/SyncSettings` page before automated jobs or manual sync will modify Google resources.
+All services default to `SyncMode.None` (seed data). An Admin must explicitly enable sync from the `/Google/SyncSettings` page before automated jobs or manual sync will modify Google resources.
 
 ### ISyncSettingsService
 ```csharp
@@ -345,7 +345,7 @@ Settings applied at group creation can drift if someone changes them manually in
 
 **Nightly check + auto-remediation:** Runs as part of `GoogleResourceReconciliationJob` (daily at 03:00). When drift is detected, settings are automatically reapplied via `RemediateGroupSettingsAsync`. Each remediation is audit-logged (`GoogleResourceSettingsRemediated`). Failures are logged but don't stop the reconciliation.
 
-**Manual trigger:** Admin page at `/Admin` has a "Check Group Settings" button. Results show at `/Admin/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
+**Manual trigger:** The Google admin page at `/Google` has a "Check Group Settings" button. Results show at `/Google/GroupSettingsResults` with per-group cards listing each drifted setting (expected vs actual) and links to the group in Google.
 
 **SyncSettings respected:** If GoogleGroups sync mode is set to None, both the check and auto-remediation are skipped entirely.
 
@@ -462,7 +462,7 @@ Drifted resources shown first, then in-sync.
 ### Sync Settings Page
 
 #### Route: `/Google/SyncSettings`
-Admin-only page for configuring per-service sync modes. Formerly at `/Admin/SyncSettings`.
+Admin-only page for configuring per-service sync modes. Formerly at `/Google/SyncSettings`.
 
 | Route | Method | Action |
 |-------|--------|--------|
@@ -483,7 +483,7 @@ Stub vs. real implementation is selected automatically based on whether `GoogleW
 
 ### GoogleResourceReconciliationJob
 ```
-Schedule: 3:00 AM daily (CURRENTLY DISABLED — manual sync only via /Teams/Sync)
+Schedule: 3:00 AM daily (mode-gated via SyncSettings)
 Purpose: Full reconciliation of all Google resources with DB state
 Process: Reads SyncMode per service from sync_service_settings, then calls
          SyncResourcesByTypeAsync with the appropriate SyncAction
@@ -496,11 +496,11 @@ Process: Reads SyncMode per service from sync_service_settings, then calls
 
 **Drive folder path updates:** After permission sync, the job calls `UpdateDriveFolderPathsAsync` to fetch the current folder name and parent chain for each active Drive resource via the Drive API (`files.get` with `fields=name,parents`). If a folder has been renamed or moved, `GoogleResource.Name` is updated to reflect the full logical path (e.g. "Shared Drive / Department / Subfolder"). This keeps the `/Teams/Sync` page accurate without requiring manual intervention.
 
-> **Currently disabled:** All jobs that modify Google permissions are disabled until the system is validated. Use the manual "Sync Now" button at `/Teams/Sync` or change sync modes at `/Admin/SyncSettings` instead.
+> Jobs are active but mode-gated: each service must have its sync mode set to AddOnly or AddAndRemove at `/Google/SyncSettings` before the job will modify Google resources.
 
 ### SystemTeamSyncJob
 ```
-Schedule: Hourly (CURRENTLY DISABLED — modifies Google permissions)
+Schedule: Hourly (mode-gated via SyncSettings)
 Purpose: Sync system team membership and Google resource permissions
 ```
 
