@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -424,5 +425,155 @@ public class GoogleAdminService : IGoogleAdminService
             .OrderBy(t => t.Name)
             .Select(t => new TeamSummary(t.Id, t.Name))
             .ToListAsync(ct);
+    }
+
+    public async Task<EmailRenameDetectionResult> DetectEmailRenamesAsync(
+        CancellationToken ct = default)
+    {
+        try
+        {
+            // Load all users with a @nobodies.team GoogleEmail
+            var usersWithGoogleEmail = await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => u.GoogleEmail != null)
+                .Select(u => new { u.Id, u.DisplayName, u.GoogleEmail })
+                .ToListAsync(ct);
+
+            var nobodiesUsers = usersWithGoogleEmail
+                .Where(u => u.GoogleEmail!.EndsWith($"@{NobodiesTeamDomain}", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            // Load resource counts per team for affected resource calculation
+            var teamResourceCounts = await _dbContext.GoogleResources
+                .Where(r => r.IsActive)
+                .GroupBy(r => r.TeamId)
+                .Select(g => new { TeamId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.TeamId, x => x.Count, ct);
+
+            // Load active team memberships per user
+            var userTeamIds = await _dbContext.TeamMembers
+                .Where(tm => tm.LeftAt == null)
+                .Where(tm => nobodiesUsers.Select(u => u.Id).Contains(tm.UserId))
+                .Select(tm => new { tm.UserId, tm.TeamId })
+                .ToListAsync(ct);
+
+            var userTeamLookup = userTeamIds
+                .GroupBy(x => x.UserId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.TeamId).ToList());
+
+            var renames = new List<EmailRenameInfo>();
+
+            foreach (var user in nobodiesUsers)
+            {
+                try
+                {
+                    var account = await _workspaceUserService.GetAccountAsync(user.GoogleEmail!, ct);
+
+                    if (account is null)
+                    {
+                        // Account not found — skip (could be deleted or suspended)
+                        continue;
+                    }
+
+                    if (!string.Equals(account.PrimaryEmail, user.GoogleEmail, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Email was renamed
+                        var affectedResources = 0;
+                        if (userTeamLookup.TryGetValue(user.Id, out var teamIds))
+                        {
+                            affectedResources = teamIds.Sum(tid =>
+                                teamResourceCounts.TryGetValue(tid, out var count) ? count : 0);
+                        }
+
+                        renames.Add(new EmailRenameInfo
+                        {
+                            UserId = user.Id,
+                            DisplayName = user.DisplayName ?? "Unknown",
+                            OldEmail = user.GoogleEmail!,
+                            NewEmail = account.PrimaryEmail,
+                            AffectedResourceCount = affectedResources
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to check email rename for user {UserId} ({Email})",
+                        user.Id, user.GoogleEmail);
+                }
+            }
+
+            return new EmailRenameDetectionResult
+            {
+                Renames = renames,
+                TotalUsersChecked = nobodiesUsers.Count
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to detect email renames");
+            return new EmailRenameDetectionResult
+            {
+                ErrorMessage = "Failed to detect email renames. Check the logs for details."
+            };
+        }
+    }
+
+    public async Task<EmailRenameFixResult> FixEmailRenameAsync(
+        Guid userId, string newEmail, Guid actorUserId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var user = await _dbContext.Users
+                .Include(u => u.UserEmails)
+                .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+            if (user is null)
+            {
+                return new EmailRenameFixResult(false, ErrorMessage: "Human not found.");
+            }
+
+            var oldEmail = user.GoogleEmail;
+            if (string.IsNullOrEmpty(oldEmail))
+            {
+                return new EmailRenameFixResult(false,
+                    ErrorMessage: "Human does not have a GoogleEmail set.");
+            }
+
+            // Update User.GoogleEmail
+            user.GoogleEmail = newEmail;
+
+            // Update the corresponding UserEmail record if one exists for the old email
+            var oldUserEmail = user.UserEmails.FirstOrDefault(ue =>
+                string.Equals(ue.Email, oldEmail, StringComparison.OrdinalIgnoreCase));
+
+            if (oldUserEmail is not null)
+            {
+                oldUserEmail.Email = newEmail;
+                oldUserEmail.UpdatedAt = _clock.GetCurrentInstant();
+            }
+
+            _logger.LogInformation(
+                "Admin {AdminId} fixing email rename for user {UserId}: '{OldEmail}' -> '{NewEmail}'",
+                actorUserId, userId, oldEmail, newEmail);
+
+            await _auditLogService.LogAsync(
+                AuditAction.GoogleEmailRenamed,
+                "User", userId,
+                $"Fixed email rename: {oldEmail} -> {newEmail}",
+                actorUserId);
+
+            await _dbContext.SaveChangesAsync(ct);
+
+            return new EmailRenameFixResult(true,
+                Message: $"Updated email for {user.DisplayName}: {oldEmail} -> {newEmail}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fix email rename for user {UserId}", userId);
+            return new EmailRenameFixResult(false,
+                ErrorMessage: $"Failed to fix email rename: {ex.Message}");
+        }
     }
 }

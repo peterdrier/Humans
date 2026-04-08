@@ -74,4 +74,5 @@ public enum AuditAction
     RotaMovedToTeam,
     GoogleResourceInheritanceDriftCorrected,
     FeedbackAssignmentChanged,
+    GoogleEmailRenamed,
 }

@@ -79,6 +79,22 @@
                 </a>
             </div>
         </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Email Rename Detection</div>
+            <div class="card-body">
+                <form asp-action="CheckEmailRenames" method="post">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="fa-solid fa-right-left me-1"></i>Check Email Renames
+                    </button>
+                    <small class="text-muted d-block mt-1">Detects @@nobodies.team emails that were renamed in Google Workspace. Shows old vs new email and affected resource count.</small>
+                </form>
+                <a asp-action="EmailRenames" class="btn btn-outline-secondary btn-sm mt-3">
+                    <i class="fa-solid fa-list-check me-1"></i>View Last Results
+                </a>
+            </div>
+        </div>
     </div>
 
     <div class="col-md-6">

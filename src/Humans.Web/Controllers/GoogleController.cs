@@ -737,6 +737,81 @@ public class GoogleController : HumansControllerBase
         return View(events);
     }
 
+    // --- Email Rename Detection ---
+
+    [HttpPost("CheckEmailRenames")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckEmailRenames()
+    {
+        try
+        {
+            var result = await _googleAdminService.DetectEmailRenamesAsync();
+            TempData["EmailRenameResult"] = System.Text.Json.JsonSerializer.Serialize(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check email renames");
+            SetError($"Email rename check failed: {ex.Message}");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return RedirectToAction(nameof(EmailRenames));
+    }
+
+    [HttpGet("EmailRenames")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public IActionResult EmailRenames()
+    {
+        EmailRenameDetectionResult? result = null;
+        if (TempData["EmailRenameResult"] is string json)
+        {
+            result = System.Text.Json.JsonSerializer.Deserialize<EmailRenameDetectionResult>(json);
+        }
+
+        if (result is null)
+        {
+            SetInfo("No email rename results to display. Run the check first.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(result);
+    }
+
+    [HttpPost("FixEmailRename")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> FixEmailRename(
+        [FromForm] Guid userId, [FromForm] string newEmail)
+    {
+        if (userId == Guid.Empty || string.IsNullOrWhiteSpace(newEmail))
+        {
+            SetError("Invalid request.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var currentUser = await GetCurrentUserAsync();
+        if (currentUser is null) return Unauthorized();
+
+        try
+        {
+            var result = await _googleAdminService.FixEmailRenameAsync(
+                userId, newEmail, currentUser.Id);
+
+            if (result.Success)
+                SetSuccess(result.Message!);
+            else
+                SetError(result.ErrorMessage!);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fix email rename for user {UserId}", userId);
+            SetError($"Failed to fix email rename: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
     // --- Index ---
 
     [HttpGet("")]

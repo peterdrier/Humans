@@ -1,0 +1,93 @@
+@model Humans.Application.DTOs.EmailRenameDetectionResult
+@{
+    ViewData["Title"] = "Email Rename Detection";
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+        <h1>Email Rename Detection</h1>
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Google
+        </a>
+    </div>
+
+    <vc:temp-data-alerts />
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i>Error: @Model.ErrorMessage
+        </div>
+    }
+    else if (Model.Renames.Count == 0)
+    {
+        <div class="alert alert-success">
+            <i class="fa-solid fa-check-circle me-1"></i>All @Model.TotalUsersChecked @@nobodies.team email(s) match Google Directory. No renames detected.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i>
+            Found <strong>@Model.Renames.Count</strong> renamed email(s) out of <strong>@Model.TotalUsersChecked</strong> @@nobodies.team users checked.
+            Review each rename and click <strong>Fix</strong> to update the stored email.
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-right-left me-1"></i>Detected Renames
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Human</th>
+                            <th>Old Email</th>
+                            <th></th>
+                            <th>New Email</th>
+                            <th>Affected Resources</th>
+                            <th style="width: 100px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var rename in Model.Renames)
+                        {
+                            <tr>
+                                <td>@rename.DisplayName</td>
+                                <td><code class="text-danger">@rename.OldEmail</code></td>
+                                <td><i class="fa-solid fa-arrow-right text-muted"></i></td>
+                                <td><code class="text-success">@rename.NewEmail</code></td>
+                                <td>
+                                    @if (rename.AffectedResourceCount > 0)
+                                    {
+                                        <span class="badge bg-warning text-dark">@rename.AffectedResourceCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">0</span>
+                                    }
+                                </td>
+                                <td>
+                                    <form asp-action="FixEmailRename" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="userId" value="@rename.UserId" />
+                                        <input type="hidden" name="newEmail" value="@rename.NewEmail" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary"
+                                                data-confirm="Update email for @rename.DisplayName from @rename.OldEmail to @rename.NewEmail?">
+                                            <i class="fa-solid fa-wrench me-1"></i>Fix
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="text-muted small">
+            <i class="fa-solid fa-info-circle me-1"></i>
+            After fixing a rename, the next sync cycle will automatically resolve any Missing/Extra drift for that human's resources.
+        </div>
+    }
+</div>

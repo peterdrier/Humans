@@ -1,3 +1,5 @@
+using Humans.Application.DTOs;
+
 namespace Humans.Application.Interfaces;
 
 /// <summary>
@@ -70,6 +72,21 @@ public interface IGoogleAdminService
     /// </summary>
     Task<IReadOnlyList<TeamSummary>> GetActiveTeamsAsync(
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Detects @nobodies.team email renames by comparing stored GoogleEmail
+    /// against current primaryEmail from Google Directory API.
+    /// </summary>
+    Task<EmailRenameDetectionResult> DetectEmailRenamesAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Fixes a detected email rename by updating User.GoogleEmail and the
+    /// corresponding UserEmail record to the new primary email.
+    /// </summary>
+    Task<EmailRenameFixResult> FixEmailRenameAsync(
+        Guid userId, string newEmail, Guid actorUserId,
+        CancellationToken ct = default);
 }
 
 /// <summary>
@@ -128,3 +145,11 @@ public record GroupLinkActionResult(
 /// Minimal team info for dropdowns/selectors.
 /// </summary>
 public record TeamSummary(Guid Id, string Name);
+
+/// <summary>
+/// Result of fixing a single email rename.
+/// </summary>
+public record EmailRenameFixResult(
+    bool Success,
+    string? Message = null,
+    string? ErrorMessage = null);
