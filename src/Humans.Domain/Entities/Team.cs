@@ -165,6 +165,19 @@ public class Team
     public ICollection<TeamRoleDefinition> RoleDefinitions { get; } = new List<TeamRoleDefinition>();
 
     /// <summary>
+    /// Whether this subteam is promoted to appear on the Teams directory page.
+    /// Only meaningful for subteams (ParentTeamId != null). Top-level teams always appear.
+    /// </summary>
+    public bool IsPromotedToDirectory { get; set; }
+
+    /// <summary>
+    /// Whether this team should appear in the Teams directory.
+    /// Top-level teams always appear; subteams only if promoted.
+    /// Not mapped to DB — use inline expression for EF queries.
+    /// </summary>
+    public bool IsInDirectory => ParentTeamId == null || IsPromotedToDirectory;
+
+    /// <summary>
     /// Whether this is a system-managed team.
     /// </summary>
     public bool IsSystemTeam => SystemTeamType != SystemTeamType.None;

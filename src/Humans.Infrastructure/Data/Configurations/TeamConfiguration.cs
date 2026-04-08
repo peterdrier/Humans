@@ -76,6 +76,9 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
         builder.Property(t => t.IsSensitive)
             .IsRequired();
 
+        builder.Property(t => t.IsPromotedToDirectory)
+            .IsRequired();
+
         builder.Property(t => t.PageContent)
             .HasMaxLength(50000);
 
@@ -135,6 +138,7 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
 
         // Ignore computed properties
         builder.Ignore(t => t.IsSystemTeam);
+        builder.Ignore(t => t.IsInDirectory);
         builder.Ignore(t => t.GoogleGroupEmail);
         builder.Ignore(t => t.DisplayName);
 
@@ -162,7 +166,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
                 IsHidden = false,
-                IsSensitive = false
+                IsSensitive = false,
+                IsPromotedToDirectory = false
             },
             new
             {
@@ -186,7 +191,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
                 IsHidden = false,
-                IsSensitive = false
+                IsSensitive = false,
+                IsPromotedToDirectory = false
             },
             new
             {
@@ -210,7 +216,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
                 IsHidden = false,
-                IsSensitive = false
+                IsSensitive = false,
+                IsPromotedToDirectory = false
             },
             new
             {
@@ -234,7 +241,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
                 IsHidden = false,
-                IsSensitive = false
+                IsSensitive = false,
+                IsPromotedToDirectory = false
             },
             new
             {
@@ -258,7 +266,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
                 IsHidden = false,
-                IsSensitive = false
+                IsSensitive = false,
+                IsPromotedToDirectory = false
             },
             new
             {
@@ -282,7 +291,8 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
                 ShowCoordinatorsOnPublicPage = true,
                 HasBudget = false,
                 IsHidden = false,
-                IsSensitive = false
+                IsSensitive = false,
+                IsPromotedToDirectory = false
             });
     }
 }

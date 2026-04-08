@@ -760,6 +760,7 @@ public class TeamController : HumansControllerBase
             HasBudget = team.HasBudget,
             IsHidden = team.IsHidden,
             IsSensitive = team.IsSensitive,
+            IsPromotedToDirectory = team.IsPromotedToDirectory,
             ParentTeamId = team.ParentTeamId,
             EligibleParents = await GetEligibleParentTeamsAsync(excludeTeamId: id, cancellationToken)
         };
@@ -785,7 +786,7 @@ public class TeamController : HumansControllerBase
 
         try
         {
-            await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive);
+            await _teamService.UpdateTeamAsync(id, model.Name, model.Description, model.RequiresApproval, model.IsActive, model.ParentTeamId, model.GoogleGroupPrefix, model.CustomSlug, model.HasBudget, model.IsHidden, model.IsSensitive, model.IsPromotedToDirectory);
             var currentUser = await GetCurrentUserAsync();
             _logger.LogInformation("Admin {AdminId} updated team {TeamId}", currentUser?.Id, id);
 

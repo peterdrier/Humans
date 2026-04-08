@@ -223,6 +223,7 @@ public class EditTeamViewModel : TeamFormViewModelBase
     public bool IsSystemTeam { get; set; }
     public bool HasBudget { get; set; }
     public bool IsSensitive { get; set; }
+    public bool IsPromotedToDirectory { get; set; }
 }
 
 public class EditTeamPageViewModel

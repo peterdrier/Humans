@@ -136,6 +136,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - Shows team name, description snippet, and "Learn More" link
 - No My Teams section, no admin buttons, no system teams shown
 - Authenticated users see the full existing layout unchanged
+- Subteams only appear if `IsPromotedToDirectory` is true; top-level teams always appear
 
 ## Data Model
 
@@ -158,7 +159,9 @@ Team
 ├── PageContentUpdatedAt: Instant? [last edit timestamp]
 ├── PageContentUpdatedByUserId: Guid? [FK → User, who last edited]
 ├── CallsToAction: List<CallToAction> [JSONB, max 3 items]
+├── IsPromotedToDirectory: bool [default false, promotes subteam to directory]
 ├── Computed: IsSystemTeam (SystemTeamType != None)
+├── Computed: IsInDirectory (ParentTeamId == null || IsPromotedToDirectory)
 ├── Computed: GoogleGroupEmail (prefix + "@nobodies.team", or null)
 └── Navigation: Members, JoinRequests, GoogleResources, ChildTeams, ParentTeam
 ```

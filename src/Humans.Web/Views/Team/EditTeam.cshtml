@@ -69,6 +69,15 @@
                         </div>
                     }
 
+                    @if (Model.ParentTeamId.HasValue)
+                    {
+                        <div class="mb-3 form-check">
+                            <input asp-for="IsPromotedToDirectory" type="checkbox" class="form-check-input" />
+                            <label asp-for="IsPromotedToDirectory" class="form-check-label">Show on Teams page</label>
+                            <div class="form-text">When enabled, this sub-team also appears on the main Teams directory page.</div>
+                        </div>
+                    }
+
                     <div class="mb-3 form-check" authorize-policy="AdminOnly">
                         <input asp-for="IsSensitive" type="checkbox" class="form-check-input" />
                         <label asp-for="IsSensitive" class="form-check-label">Sensitive team <i class="fa-solid fa-lock auth-lock-icon"></i></label>

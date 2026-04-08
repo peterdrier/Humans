@@ -8,7 +8,7 @@ namespace Humans.Application.Interfaces;
 public record CachedTeam(
     Guid Id, string Name, string? Description, string Slug,
     bool IsSystemTeam, SystemTeamType SystemTeamType, bool RequiresApproval,
-    bool IsPublicPage, bool IsHidden, Instant CreatedAt, List<CachedTeamMember> Members,
+    bool IsPublicPage, bool IsHidden, bool IsPromotedToDirectory, Instant CreatedAt, List<CachedTeamMember> Members,
     Guid? ParentTeamId = null);
 
 public record CachedTeamMember(
@@ -186,6 +186,7 @@ public interface ITeamService
         bool? hasBudget = null,
         bool? isHidden = null,
         bool? isSensitive = null,
+        bool? isPromotedToDirectory = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
