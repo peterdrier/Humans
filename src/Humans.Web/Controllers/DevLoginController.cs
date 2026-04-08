@@ -188,6 +188,14 @@ public class DevLoginController : Controller
 
         var now = _clock.GetCurrentInstant();
         var displayName = $"Dev {info.DisplayName}";
+
+        // Guest persona: bare user with no profile, teams, or roles
+        if (string.Equals(info.Slug, "guest", StringComparison.OrdinalIgnoreCase))
+        {
+            await SeedProfilelessUserAsync(id, email, displayName, now);
+            return;
+        }
+
         var nameParts = info.DisplayName.Split(' ', 2);
         var firstName = nameParts[0];
         var lastName = nameParts.Length > 1 ? nameParts[1] : info.DisplayName;
@@ -568,6 +576,49 @@ public class DevLoginController : Controller
         }
     }
 
+    /// <summary>
+    /// Seeds a profileless user — just User + UserEmail, no Profile, no teams, no roles.
+    /// Used for testing the Guest dashboard and profileless account flows.
+    /// </summary>
+    private async Task SeedProfilelessUserAsync(Guid id, string email, string displayName, Instant now)
+    {
+        var user = new User
+        {
+            Id = id,
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true,
+            DisplayName = displayName,
+            CreatedAt = now,
+            LastLoginAt = now
+        };
+
+        var result = await _userManager.CreateAsync(user);
+        if (!result.Succeeded)
+        {
+            _logger.LogError("Failed to create dev guest persona {Email}: {Errors}",
+                email, string.Join(", ", result.Errors.Select(e => e.Description)));
+            return;
+        }
+
+        _db.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = id,
+            Email = email,
+            IsOAuth = true,
+            IsVerified = true,
+            IsNotificationTarget = true,
+            Visibility = ContactFieldVisibility.BoardOnly,
+            DisplayOrder = 0,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("DEV: seeded profileless guest persona {Email} ({Id})", email, id);
+    }
+
     // ============================================================
     // Static helpers
     // ============================================================
@@ -576,6 +627,7 @@ public class DevLoginController : Controller
     {
         var list = new List<DevPersonaInfo>
         {
+            new("guest", "Guest (No Profile)"),
             new("volunteer", "Volunteer"),
             new("barrio-1-lead", "Barrio 1 Lead"),
             new("barrio-2-lead", "Barrio 2 Lead"),
