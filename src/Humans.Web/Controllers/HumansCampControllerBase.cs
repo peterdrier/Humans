@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
-using Humans.Web.Authorization;
+using Humans.Web.Authorization.Requirements;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,11 +10,16 @@ namespace Humans.Web.Controllers;
 public abstract class HumansCampControllerBase : HumansControllerBase
 {
     private readonly ICampService _campService;
+    private readonly IAuthorizationService _authorizationService;
 
-    protected HumansCampControllerBase(UserManager<User> userManager, ICampService campService)
+    protected HumansCampControllerBase(
+        UserManager<User> userManager,
+        ICampService campService,
+        IAuthorizationService authorizationService)
         : base(userManager)
     {
         _campService = campService;
+        _authorizationService = authorizationService;
     }
 
     protected Task<Camp?> GetCampBySlugAsync(string slug)
@@ -23,15 +29,23 @@ public abstract class HumansCampControllerBase : HumansControllerBase
 
     protected async Task<(bool IsLead, bool IsCampAdmin)> ResolveCampViewerStateAsync(Camp camp)
     {
+        var canManage = (await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage)).Succeeded;
+        if (!canManage)
+        {
+            return (false, false);
+        }
+
+        // Determine whether access is via lead or admin role for view-level distinctions
         var user = await GetCurrentUserAsync();
         if (user is null)
         {
             return (false, false);
         }
 
-        return (
-            await _campService.IsUserCampLeadAsync(user.Id, camp.Id),
-            RoleChecks.IsCampAdmin(User));
+        var isLead = await _campService.IsUserCampLeadAsync(user.Id, camp.Id);
+        var isCampAdmin = Authorization.RoleChecks.IsCampAdmin(User);
+
+        return (isLead, isCampAdmin);
     }
 
     protected async Task<(IActionResult? ErrorResult, User User, Camp Camp)> ResolveCampManagementAsync(string slug)
@@ -48,7 +62,8 @@ public abstract class HumansCampControllerBase : HumansControllerBase
             return (currentUserError, null!, camp);
         }
 
-        if (RoleChecks.IsCampAdmin(User) || await _campService.IsUserCampLeadAsync(user.Id, camp.Id))
+        var result = await _authorizationService.AuthorizeAsync(User, camp, CampOperationRequirement.Manage);
+        if (result.Succeeded)
         {
             return (null, user, camp);
         }
