@@ -33,6 +33,7 @@ public class MembershipRequiredFilter : IAsyncActionFilter
         "Guest",            // Profileless account dashboard
         "Legal",            // Public legal documents ([AllowAnonymous])
         "Notification",     // Notification inbox — accessible to all authenticated users
+        "Team",             // Public team directory + detail ([AllowAnonymous] on Index/Details)
     };
 
     public Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
