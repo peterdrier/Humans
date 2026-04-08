@@ -590,11 +590,18 @@ public class ProfileService : IProfileService
             })
             .ToListAsync(ct);
 
+        // Resolve notification-target emails for display (falls back to OAuth email)
+        var notificationEmails = await _dbContext.UserEmails
+            .Where(e => e.IsNotificationTarget && e.IsVerified)
+            .Select(e => new { e.UserId, e.Email })
+            .ToDictionaryAsync(e => e.UserId, e => e.Email, ct);
+
         if (!string.IsNullOrWhiteSpace(search))
         {
             users = users
                 .Where(u =>
                     u.Email.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                    (notificationEmails.TryGetValue(u.Id, out var ne) && ne.Contains(search, StringComparison.OrdinalIgnoreCase)) ||
                     u.DisplayName.Contains(search, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
@@ -621,7 +628,7 @@ public class ProfileService : IProfileService
 
         return rows.Select(r => new Application.DTOs.AdminHumanRow(
             r.Id,
-            r.Email,
+            notificationEmails.TryGetValue(r.Id, out var primaryEmail) ? primaryEmail : r.Email,
             r.DisplayName,
             r.ProfilePictureUrl,
             r.CreatedAt,
@@ -644,6 +651,7 @@ public class ProfileService : IProfileService
             .Include(u => u.Profile)
             .Include(u => u.Applications)
             .Include(u => u.ConsentRecords)
+            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
         if (user is null)

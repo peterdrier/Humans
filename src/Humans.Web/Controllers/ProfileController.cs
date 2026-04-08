@@ -1290,7 +1290,7 @@ public class ProfileController : HumansControllerBase
         var viewModel = new AdminHumanDetailViewModel
         {
             UserId = data.User.Id,
-            Email = data.User.Email ?? string.Empty,
+            Email = data.User.GetEffectiveEmail() ?? string.Empty,
             DisplayName = data.User.DisplayName,
             ProfilePictureUrl = data.User.ProfilePictureUrl,
             CreatedAt = data.User.CreatedAt.ToDateTimeUtc(),
