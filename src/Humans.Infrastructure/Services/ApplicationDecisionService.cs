@@ -280,6 +280,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             SubmittedAt = now,
             UpdatedAt = now
         };
+        application.ValidateTier();
 
         _dbContext.Applications.Add(application);
         await _dbContext.SaveChangesAsync(ct);

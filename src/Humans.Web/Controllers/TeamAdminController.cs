@@ -1000,7 +1000,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 user.Id);
 
             SetSuccess(_localizer["EditTeamPage_Saved"].Value);
-            return RedirectToAction("Details", "Team", new { slug });
+            return RedirectToAction(nameof(TeamController.Details), "Team", new { slug });
         }
         catch (InvalidOperationException ex)
         {

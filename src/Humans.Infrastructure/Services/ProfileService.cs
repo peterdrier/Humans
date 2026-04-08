@@ -255,6 +255,7 @@ public class ProfileService : IProfileService
                         SubmittedAt = now,
                         UpdatedAt = now
                     };
+                    application.ValidateTier();
                     _dbContext.Applications.Add(application);
                 }
             }

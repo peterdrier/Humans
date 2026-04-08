@@ -134,6 +134,20 @@ public class Application
     public ICollection<BoardVote> BoardVotes { get; } = new List<BoardVote>();
 
     /// <summary>
+    /// Validates that the membership tier is appropriate for an application
+    /// (Colaborador or Asociado only, never Volunteer).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when tier is Volunteer.</exception>
+    public void ValidateTier()
+    {
+        if (MembershipTier == MembershipTier.Volunteer)
+        {
+            throw new InvalidOperationException(
+                "Applications are for Colaborador or Asociado tiers only. Volunteer access does not require an application.");
+        }
+    }
+
+    /// <summary>
     /// Gets the state machine for this application.
     /// </summary>
     public StateMachine<ApplicationStatus, ApplicationTrigger> StateMachine =>
