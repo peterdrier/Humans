@@ -16,12 +16,14 @@ namespace Humans.Web.Controllers;
 public class BudgetController : HumansControllerBase
 {
     private readonly IBudgetService _budgetService;
+    private readonly ITeamService _teamService;
     private readonly HumansDbContext _dbContext;
     private readonly IAuthorizationService _authService;
     private readonly ILogger<BudgetController> _logger;
 
     public BudgetController(
         IBudgetService budgetService,
+        ITeamService teamService,
         HumansDbContext dbContext,
         IAuthorizationService authService,
         UserManager<User> userManager,
@@ -29,6 +31,7 @@ public class BudgetController : HumansControllerBase
         : base(userManager)
     {
         _budgetService = budgetService;
+        _teamService = teamService;
         _dbContext = dbContext;
         _authService = authService;
         _logger = logger;
@@ -140,11 +143,7 @@ public class BudgetController : HumansControllerBase
 
             var canEdit = category.TeamId.HasValue && coordinatorTeamIds.Contains(category.TeamId.Value);
 
-            var teams = await _dbContext.Teams
-                .Where(t => t.IsActive)
-                .OrderBy(t => t.Name)
-                .Select(t => new TeamOption { Id = t.Id, Name = t.Name })
-                .ToListAsync();
+            var teams = await _teamService.GetActiveTeamOptionsAsync();
 
             var model = new CoordinatorCategoryDetailViewModel
             {

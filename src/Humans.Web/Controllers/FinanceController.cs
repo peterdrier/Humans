@@ -1,13 +1,11 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Web.Controllers;
@@ -17,24 +15,24 @@ namespace Humans.Web.Controllers;
 public class FinanceController : HumansControllerBase
 {
     private readonly IBudgetService _budgetService;
+    private readonly ITeamService _teamService;
     private readonly ITicketingBudgetService _ticketingBudgetService;
     private readonly ITicketQueryService _ticketQueryService;
-    private readonly HumansDbContext _dbContext;
     private readonly ILogger<FinanceController> _logger;
 
     public FinanceController(
         IBudgetService budgetService,
+        ITeamService teamService,
         ITicketingBudgetService ticketingBudgetService,
         ITicketQueryService ticketQueryService,
-        HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<FinanceController> logger)
         : base(userManager)
     {
         _budgetService = budgetService;
+        _teamService = teamService;
         _ticketingBudgetService = ticketingBudgetService;
         _ticketQueryService = ticketQueryService;
-        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -90,11 +88,7 @@ public class FinanceController : HumansControllerBase
             var category = await _budgetService.GetCategoryByIdAsync(id);
             if (category is null) return NotFound();
 
-            ViewBag.Teams = await _dbContext.Teams
-                .Where(t => t.IsActive)
-                .OrderBy(t => t.Name)
-                .Select(t => new { t.Id, t.Name })
-                .ToListAsync();
+            ViewBag.Teams = await _teamService.GetActiveTeamOptionsAsync();
 
             return View(category);
         }

@@ -55,16 +55,11 @@ public class FeedbackController : HumansControllerBase
             unassignedOnly: isAdmin && unassigned ? true : null);
 
         var assigneeOptions = new List<AssigneeOption>();
-        var teamOptions = new List<TeamOption>();
+        var teamOptions = new List<TeamOptionDto>();
 
         if (isAdmin)
         {
-            var allTeams = await _teamService.GetAllTeamsAsync();
-            teamOptions = allTeams
-                .Where(t => t.IsActive)
-                .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-                .Select(t => new TeamOption { Id = t.Id, Name = t.Name })
-                .ToList();
+            teamOptions = (await _teamService.GetActiveTeamOptionsAsync()).ToList();
 
             var humans = await _profileService.GetFilteredHumansAsync(null, "Active");
             assigneeOptions = humans
@@ -348,22 +343,17 @@ public class FeedbackController : HumansControllerBase
 
     private async Task PopulateAssignmentOptionsAsync(FeedbackDetailViewModel viewModel)
     {
-        var allTeams = await _teamService.GetAllTeamsAsync();
-        viewModel.TeamOptions = allTeams
-            .Where(t => t.IsActive)
-            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(t => new TeamOption { Id = t.Id, Name = t.Name })
-            .ToList();
+        viewModel.TeamOptions = (await _teamService.GetActiveTeamOptionsAsync()).ToList();
 
         // Include currently assigned team even if inactive, to prevent silent clearing
         if (viewModel.AssignedToTeamId.HasValue &&
             viewModel.TeamOptions.All(t => t.Id != viewModel.AssignedToTeamId.Value))
         {
-            var inactiveTeam = allTeams.FirstOrDefault(t => t.Id == viewModel.AssignedToTeamId.Value);
+            var inactiveTeam = await _teamService.GetTeamByIdAsync(viewModel.AssignedToTeamId.Value);
             if (inactiveTeam is not null)
             {
                 viewModel.TeamOptions.Insert(0,
-                    new TeamOption { Id = inactiveTeam.Id, Name = $"{inactiveTeam.Name} (inactive)" });
+                    new TeamOptionDto(inactiveTeam.Id, $"{inactiveTeam.Name} (inactive)"));
             }
         }
 

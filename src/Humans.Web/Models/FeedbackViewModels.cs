@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 
 namespace Humans.Web.Models;
@@ -36,7 +37,7 @@ public class FeedbackPageViewModel
     public Guid? SelectedReportId { get; set; }
     public Guid CurrentUserId { get; set; }
     public List<AssigneeOption> AssigneeOptions { get; set; } = new();
-    public List<TeamOption> TeamOptions { get; set; } = new();
+    public List<TeamOptionDto> TeamOptions { get; set; } = new();
 }
 
 public class AssigneeOption
@@ -95,7 +96,7 @@ public class FeedbackDetailViewModel
     public Guid? AssignedToTeamId { get; set; }
     public string? AssignedToTeamName { get; set; }
     public List<AssigneeOption> AssigneeOptions { get; set; } = new();
-    public List<TeamOption> TeamOptions { get; set; } = new();
+    public List<TeamOptionDto> TeamOptions { get; set; } = new();
     public List<FeedbackMessageViewModel> Messages { get; set; } = new();
 }
 
