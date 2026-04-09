@@ -22,12 +22,14 @@ public class TicketQueryService : ITicketQueryService
     private readonly HumansDbContext _dbContext;
     private readonly IMemoryCache _cache;
     private readonly IBudgetService _budgetService;
+    private readonly IClock _clock;
 
-    public TicketQueryService(HumansDbContext dbContext, IMemoryCache cache, IBudgetService budgetService)
+    public TicketQueryService(HumansDbContext dbContext, IMemoryCache cache, IBudgetService budgetService, IClock clock)
     {
         _dbContext = dbContext;
         _cache = cache;
         _budgetService = budgetService;
+        _clock = clock;
     }
 
     public async Task<int> GetUserTicketCountAsync(Guid userId)
@@ -125,12 +127,12 @@ public class TicketQueryService : ITicketQueryService
         var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
         if (syncState is { SyncStatus: TicketSyncStatus.Running, StatusChangedAt: not null })
         {
-            var elapsed = SystemClock.Instance.GetCurrentInstant() - syncState.StatusChangedAt.Value;
+            var elapsed = _clock.GetCurrentInstant() - syncState.StatusChangedAt.Value;
             if (elapsed > Duration.FromMinutes(30))
             {
                 syncState.SyncStatus = TicketSyncStatus.Error;
                 syncState.LastError = "Sync state was stuck in Running for >30 minutes (likely crash). Auto-reset.";
-                syncState.StatusChangedAt = SystemClock.Instance.GetCurrentInstant();
+                syncState.StatusChangedAt = _clock.GetCurrentInstant();
                 await _dbContext.SaveChangesAsync();
             }
         }

@@ -18,6 +18,7 @@ public class FinanceController : HumansControllerBase
     private readonly ITeamService _teamService;
     private readonly ITicketingBudgetService _ticketingBudgetService;
     private readonly ITicketQueryService _ticketQueryService;
+    private readonly IClock _clock;
     private readonly ILogger<FinanceController> _logger;
 
     public FinanceController(
@@ -25,6 +26,7 @@ public class FinanceController : HumansControllerBase
         ITeamService teamService,
         ITicketingBudgetService ticketingBudgetService,
         ITicketQueryService ticketQueryService,
+        IClock clock,
         UserManager<User> userManager,
         ILogger<FinanceController> logger)
         : base(userManager)
@@ -33,6 +35,7 @@ public class FinanceController : HumansControllerBase
         _teamService = teamService;
         _ticketingBudgetService = ticketingBudgetService;
         _ticketQueryService = ticketQueryService;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -575,7 +578,7 @@ public class FinanceController : HumansControllerBase
             if (projections.Count > 0)
             {
                 var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
-                var today = SystemClock.Instance.GetCurrentInstant().InUtc().Date;
+                var today = _clock.GetCurrentInstant().InUtc().Date;
                 var proj = ticketingGroup.TicketingProjection!;
                 var daysToEvent = Period.Between(today, proj.EventDate!.Value, PeriodUnits.Days).Days;
 
