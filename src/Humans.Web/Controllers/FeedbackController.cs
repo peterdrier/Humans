@@ -183,7 +183,7 @@ public class FeedbackController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogDebug(ex, "Feedback submission failed for user {UserId}", user.Id);
+            _logger.LogWarning(ex, "Feedback submission failed for user {UserId}", user.Id);
             var errorMsg = _localizer["Feedback_Error"].Value;
             if (isAjax) return Json(new { success = false, message = errorMsg });
             SetError(errorMsg);
