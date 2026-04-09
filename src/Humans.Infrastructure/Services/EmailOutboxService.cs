@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -72,17 +73,17 @@ public class EmailOutboxService : IEmailOutboxService
     public async Task<bool> IsEmailPausedAsync(CancellationToken cancellationToken = default)
     {
         var setting = await _dbContext.SystemSettings
-            .FirstOrDefaultAsync(s => s.Key == "IsEmailSendingPaused", cancellationToken);
+            .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused, cancellationToken);
         return string.Equals(setting?.Value, "true", StringComparison.OrdinalIgnoreCase);
     }
 
     public async Task SetEmailPausedAsync(bool paused, CancellationToken cancellationToken = default)
     {
         var setting = await _dbContext.SystemSettings
-            .FirstOrDefaultAsync(s => s.Key == "IsEmailSendingPaused", cancellationToken);
+            .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused, cancellationToken);
         if (setting is null)
         {
-            setting = new SystemSetting { Key = "IsEmailSendingPaused", Value = paused ? "true" : "false" };
+            setting = new SystemSetting { Key = SystemSettingKeys.IsEmailSendingPaused, Value = paused ? "true" : "false" };
             _dbContext.SystemSettings.Add(setting);
         }
         else
