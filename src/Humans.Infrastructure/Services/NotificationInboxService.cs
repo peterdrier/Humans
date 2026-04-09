@@ -369,6 +369,25 @@ public class NotificationInboxService : INotificationInboxService
         InvalidateBadgeCaches([userId]);
     }
 
+    /// <inheritdoc />
+    public async Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var actionableCount = await _dbContext.NotificationRecipients
+            .CountAsync(nr => nr.UserId == userId &&
+                              nr.ReadAt == null &&
+                              nr.Notification.ResolvedAt == null &&
+                              nr.Notification.Class == NotificationClass.Actionable, ct);
+
+        var informationalCount = await _dbContext.NotificationRecipients
+            .CountAsync(nr => nr.UserId == userId &&
+                              nr.ReadAt == null &&
+                              nr.Notification.ResolvedAt == null &&
+                              nr.Notification.Class == NotificationClass.Informational, ct);
+
+        return (actionableCount, informationalCount);
+    }
+
     private static NotificationRowDto MapToRow(NotificationRecipient nr)
     {
         var n = nr.Notification;
