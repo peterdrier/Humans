@@ -48,9 +48,10 @@ public static class AccessMatrixDefinitions
             [
                 Feature("View teams & join", "Volunteer", A, "Coordinator", A, "Board", A, "TeamsAdmin", A),
                 Feature("View team details", "Volunteer", A, "Coordinator", A, "Board", A, "TeamsAdmin", A),
-                Feature("Manage members", "Volunteer", D, "Coordinator", A, "Board", D, "TeamsAdmin", A),
-                Feature("Manage roles", "Volunteer", D, "Coordinator", A, "Board", D, "TeamsAdmin", A),
-                Feature("Create/delete teams", "Volunteer", D, "Coordinator", D, "Board", A, "TeamsAdmin", A),
+                Feature("Manage members", "Volunteer", D, "Coordinator", A, "Board", A, "TeamsAdmin", A),
+                Feature("Manage roles", "Volunteer", D, "Coordinator", A, "Board", A, "TeamsAdmin", A),
+                Feature("Create teams", "Volunteer", D, "Coordinator", D, "Board", A, "TeamsAdmin", A),
+                Feature("Delete teams", "Volunteer", D, "Coordinator", D, "Board", A, "TeamsAdmin", D),
                 Feature("Google resource sync", "Volunteer", D, "Coordinator", D, "Board", D, "TeamsAdmin", L),
             ]
         },
@@ -115,21 +116,21 @@ public static class AccessMatrixDefinitions
             [
                 Feature("View tickets & orders", "Board", A, "TicketAdmin", A),
                 Feature("Sync operations", "Board", D, "TicketAdmin", A),
-                Feature("Discount codes", "Board", D, "TicketAdmin", A),
+                Feature("Discount codes", "Board", A, "TicketAdmin", A),
             ]
         },
 
         ["Profile"] = new AccessMatrixData
         {
             SectionName = "Profile",
-            Roles = ["Volunteer", "Coordinator", "Board", "Admin"],
+            Roles = ["Volunteer", "Coordinator", "Board", "HumanAdmin", "Admin"],
             Features =
             [
-                Feature("View own profile", "Volunteer", A, "Coordinator", A, "Board", A, "Admin", A),
-                Feature("Edit own profile", "Volunteer", A, "Coordinator", A, "Board", A, "Admin", A),
-                Feature("View other profiles", "Volunteer", L, "Coordinator", A, "Board", A, "Admin", A),
-                Feature("View contact fields", "Volunteer", L, "Coordinator", L, "Board", A, "Admin", A),
-                Feature("Admin view of profile", "Volunteer", D, "Coordinator", D, "Board", A, "Admin", A),
+                Feature("View own profile", "Volunteer", A, "Coordinator", A, "Board", A, "HumanAdmin", A, "Admin", A),
+                Feature("Edit own profile", "Volunteer", A, "Coordinator", A, "Board", A, "HumanAdmin", A, "Admin", A),
+                Feature("View other profiles", "Volunteer", L, "Coordinator", A, "Board", A, "HumanAdmin", A, "Admin", A),
+                Feature("View contact fields", "Volunteer", L, "Coordinator", L, "Board", A, "HumanAdmin", A, "Admin", A),
+                Feature("Admin view of profile", "Volunteer", D, "Coordinator", D, "Board", A, "HumanAdmin", A, "Admin", A),
             ]
         },
 
