@@ -2,7 +2,7 @@
 @using NodaTime
 
 @{
-    ViewData["Title"] = "Shifts";
+    ViewData["Title"] = Localizer["Shifts_Title"].Value;
     var es = Model.EventSettings;
     var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
 
@@ -26,9 +26,9 @@
     {
         return shift.GetShiftPeriod(es) switch
         {
-            ShiftPeriod.Build => "Set-up",
-            ShiftPeriod.Event => "Event",
-            ShiftPeriod.Strike => "Strike",
+            ShiftPeriod.Build => Localizer["Shifts_SetUp"].Value,
+            ShiftPeriod.Event => Localizer["Shifts_Event"].Value,
+            ShiftPeriod.Strike => Localizer["Shifts_Strike"].Value,
             _ => ""
         };
     }
@@ -47,12 +47,12 @@
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Browse Volunteer Options</h2>
+        <h2>@Localizer["Shifts_BrowseTitle"]</h2>
         <div class="d-flex gap-2">
             <vc:access-matrix section="Shifts" />
             <a asp-controller="ShiftDashboard" asp-action="Index" class="btn btn-outline-warning" authorize-policy="ShiftDepartmentManager"><i class="fa-solid fa-gauge-high me-1"></i>Dashboard <i class="fa-solid fa-lock auth-lock-icon"></i></a>
             <a asp-action="Settings" class="btn btn-outline-secondary" authorize-policy="AdminOnly"><i class="fa-solid fa-gear me-1"></i>Settings <i class="fa-solid fa-lock auth-lock-icon"></i></a>
-            <a asp-action="Mine" class="btn btn-outline-primary">My Shifts</a>
+            <a asp-action="Mine" class="btn btn-outline-primary">@Localizer["Shifts_MyShiftsTitle"]</a>
         </div>
     </div>
 
@@ -60,9 +60,9 @@
 
     <form method="get" class="row g-2 mb-4 align-items-end">
         <div class="col-auto">
-            <label class="form-label mb-1">Department</label>
+            <label class="form-label mb-1">@Localizer["Shifts_Department"]</label>
             <select name="departmentId" class="form-select form-select-sm">
-                <option value="">All Departments</option>
+                <option value="">@Localizer["Shifts_AllDepartments"]</option>
                 @foreach (var dept in Model.AllDepartments)
                 {
                     <option value="@dept.TeamId" selected="@(Model.FilterDepartmentId == dept.TeamId ? "selected" : null)">@dept.Name</option>
@@ -70,13 +70,13 @@
             </select>
         </div>
         <div class="col-auto">
-            <label class="form-label mb-1">From</label>
+            <label class="form-label mb-1">@Localizer["Shifts_From"]</label>
             <input type="date" name="fromDate" class="form-control form-control-sm" value="@Model.FilterFromDate"
                    min="@pickerMin.ToString("yyyy-MM-dd", null)"
                    max="@pickerMax.ToString("yyyy-MM-dd", null)" />
         </div>
         <div class="col-auto">
-            <label class="form-label mb-1">To</label>
+            <label class="form-label mb-1">@Localizer["Shifts_To"]</label>
             <input type="date" name="toDate" class="form-control form-control-sm" value="@Model.FilterToDate"
                    min="@pickerMin.ToString("yyyy-MM-dd", null)"
                    max="@pickerMax.ToString("yyyy-MM-dd", null)" />
@@ -84,7 +84,7 @@
         @if (Model.FilterDepartmentId.HasValue || !string.IsNullOrEmpty(Model.FilterFromDate) || !string.IsNullOrEmpty(Model.FilterToDate) || !string.IsNullOrEmpty(Model.FilterPeriod) || Model.FilterTagIds.Count > 0)
         {
             <div class="col-auto">
-                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear Filters</a>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_ClearFilters"]</a>
             </div>
         }
         <input type="hidden" name="period" value="@Model.FilterPeriod" />
@@ -98,20 +98,20 @@
     }
     <div class="btn-group mb-3" role="group" aria-label="Period filter">
         <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, fromDate = Model.FilterFromDate, toDate = Model.FilterToDate })"
-           class="btn btn-sm @(string.IsNullOrEmpty(activePeriod) ? "btn-primary" : "btn-outline-primary")">All</a>
+           class="btn btn-sm @(string.IsNullOrEmpty(activePeriod) ? "btn-primary" : "btn-outline-primary")">@Localizer["Shifts_All"]</a>
         <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Build" })"
-           class="btn btn-sm @(activePeriod == "Build" ? "btn-info" : "btn-outline-info")">Set-up</a>
+           class="btn btn-sm @(activePeriod == "Build" ? "btn-info" : "btn-outline-info")">@Localizer["Shifts_SetUp"]</a>
         <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Event" })"
-           class="btn btn-sm @(activePeriod == "Event" ? "btn-success" : "btn-outline-success")">Event</a>
+           class="btn btn-sm @(activePeriod == "Event" ? "btn-success" : "btn-outline-success")">@Localizer["Shifts_Event"]</a>
         <a href="@Url.Action("Index", new { departmentId = Model.FilterDepartmentId, period = "Strike" })"
-           class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">Strike</a>
+           class="btn btn-sm @(activePeriod == "Strike" ? "btn-secondary" : "btn-outline-secondary")">@Localizer["Shifts_Strike"]</a>
     </div>
 
     @if (Model.AllTags.Count > 0)
     {
         <div class="mb-3">
             <div class="d-flex flex-wrap gap-1 align-items-center">
-                <small class="text-muted me-1"><i class="fa-solid fa-tags me-1"></i>Filter by tag:</small>
+                <small class="text-muted me-1"><i class="fa-solid fa-tags me-1"></i>@Localizer["Shifts_FilterByTag"]</small>
                 @foreach (var tag in Model.AllTags)
                 {
                     var isActive = Model.FilterTagIds.Contains(tag.Id);
@@ -150,7 +150,7 @@
     {
         <div class="mb-3">
             <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#tag-preferences-panel">
-                <i class="fa-solid fa-sliders me-1"></i>Set your preferences
+                <i class="fa-solid fa-sliders me-1"></i>@Localizer["Shifts_SetPreferences"]
                 @if (Model.UserPreferredTagIds.Count > 0)
                 {
                     <span class="badge bg-primary ms-1">@Model.UserPreferredTagIds.Count</span>
@@ -158,7 +158,7 @@
             </button>
             <div class="collapse @(Model.UserPreferredTagIds.Count == 0 ? "" : "")" id="tag-preferences-panel">
                 <div class="card card-body mt-2">
-                    <p class="small text-muted mb-2">Select tags that match the kind of work you enjoy. Matching shifts will be highlighted with a <i class="fa-solid fa-star text-warning"></i>.</p>
+                    <p class="small text-muted mb-2">@Localizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
                     <form asp-action="SaveTagPreferences" method="post">
                         @Html.AntiForgeryToken()
                         <div class="d-flex flex-wrap gap-2 mb-2">
@@ -172,7 +172,7 @@
                                 </div>
                             }
                         </div>
-                        <button type="submit" class="btn btn-sm btn-primary">Save Preferences</button>
+                        <button type="submit" class="btn btn-sm btn-primary">@Localizer["Shifts_SavePreferences"]</button>
                     </form>
                 </div>
             </div>
@@ -194,12 +194,12 @@
 
     @if (!Model.EventSettings.IsShiftBrowsingOpen)
     {
-        <div class="alert alert-danger">Shifts aren't open yet. Only coordinators and admins can see this page.</div>
+        <div class="alert alert-danger">@Localizer["Shifts_NotOpenYet"]</div>
     }
 
     @if (Model.Departments.Count == 0)
     {
-        <div class="alert alert-info">No shifts available yet.</div>
+        <div class="alert alert-info">@Localizer["Shifts_NoShiftsAvailable"]</div>
     }
     else
     {
@@ -218,9 +218,9 @@
                     }
                     @foreach (var periodGroup in rotasByPeriod)
                     {
-                        var periodName = periodGroup.Key == RotaPeriod.Build ? "Set-up"
-                            : periodGroup.Key == RotaPeriod.Strike ? "Strike"
-                            : "Event";
+                        var periodName = periodGroup.Key == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value
+                            : periodGroup.Key == RotaPeriod.Strike ? Localizer["Shifts_Strike"].Value
+                            : Localizer["Shifts_Event"].Value;
                         <h5 class="mt-4 mb-2 border-bottom pb-1">
                             <span class="badge @(periodGroup.Key == RotaPeriod.Build ? "bg-info" : periodGroup.Key == RotaPeriod.Strike ? "bg-secondary" : "bg-success") me-1">@periodName</span>
                             @periodName
@@ -228,7 +228,7 @@
                         var hasAvailable = periodGroup.Any(r => r.Shifts.Any(s => s.RemainingSlots > 0));
                         @if (!hasAvailable)
                         {
-                            <p class="text-muted fst-italic">All @periodName.ToLowerInvariant() shifts are full.</p>
+                            <p class="text-muted fst-italic">@string.Format(Localizer["Shifts_AllShiftsFull"].Value, periodName.ToLowerInvariant())</p>
                         }
                     @foreach (var rotaGroup in periodGroup)
                     {
@@ -240,21 +240,21 @@
                         <h6 class="mt-3">
                             @if (rotaMatchesPreference)
                             {
-                                <i class="fa-solid fa-star text-warning me-1" title="Matches your preferences"></i>
+                                <i class="fa-solid fa-star text-warning me-1" title="@Localizer["Shifts_MatchesPrefs"].Value"></i>
                             }
                             @rotaGroup.Rota.Name
                             @if (rotaGroup.Rota.Priority == ShiftPriority.Essential)
                             {
-                                <span class="badge bg-danger ms-1">Essential</span>
+                                <span class="badge bg-danger ms-1">@Localizer["Shifts_Essential"]</span>
                             }
                             else if (rotaGroup.Rota.Priority == ShiftPriority.Important)
                             {
-                                <span class="badge bg-warning text-dark ms-1">Important</span>
+                                <span class="badge bg-warning text-dark ms-1">@Localizer["Shifts_Important"]</span>
                             }
-                            <span class="badge @(rotaGroup.Rota.Period switch { RotaPeriod.Build => "bg-info", RotaPeriod.Strike => "bg-secondary", RotaPeriod.All => "bg-primary", _ => "bg-success" }) ms-1">@(rotaGroup.Rota.Period switch { RotaPeriod.Build => "Set-up", RotaPeriod.All => "All Phases", _ => rotaGroup.Rota.Period.ToString() })</span>
+                            <span class="badge @(rotaGroup.Rota.Period switch { RotaPeriod.Build => "bg-info", RotaPeriod.Strike => "bg-secondary", RotaPeriod.All => "bg-primary", _ => "bg-success" }) ms-1">@(rotaGroup.Rota.Period switch { RotaPeriod.Build => Localizer["Shifts_SetUp"].Value, RotaPeriod.All => Localizer["Shifts_AllPhases"].Value, _ => rotaGroup.Rota.Period.ToString() })</span>
                             @if (!rotaGroup.Rota.IsVisibleToVolunteers)
                             {
-                                <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>Hidden</span>
+                                <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-eye-slash me-1"></i>@Localizer["Shifts_HiddenBadge"]</span>
                             }
                             @foreach (var tag in rotaGroup.Rota.Tags.OrderBy(t => t.Name, StringComparer.Ordinal))
                             {
@@ -286,7 +286,7 @@
                                     @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
                                     @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
                                     <div class="col-auto">
-                                        <label class="form-label form-label-sm">Start</label>
+                                        <label class="form-label form-label-sm">@Localizer["Shifts_Start"]</label>
                                         <select name="startDayOffset" class="form-select form-select-sm">
                                             @foreach (var s in availableShifts)
                                             {
@@ -295,7 +295,7 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
-                                        <label class="form-label form-label-sm">End</label>
+                                        <label class="form-label form-label-sm">@Localizer["Shifts_End"]</label>
                                         <select name="endDayOffset" class="form-select form-select-sm">
                                             @foreach (var s in availableShifts)
                                             {
@@ -304,7 +304,7 @@
                                         </select>
                                     </div>
                                     <div class="col-auto">
-                                        <button type="submit" class="btn btn-sm btn-success">Sign up for @(rotaGroup.Rota.Period == RotaPeriod.Build ? "set-up" : "strike") dates</button>
+                                        <button type="submit" class="btn btn-sm btn-success">@string.Format(Localizer["Shifts_SignUpForDates"].Value, rotaGroup.Rota.Period == RotaPeriod.Build ? Localizer["Shifts_SetUp"].Value.ToLowerInvariant() : Localizer["Shifts_Strike"].Value.ToLowerInvariant())</button>
                                     </div>
                                 </form>
                             }
@@ -325,7 +325,7 @@
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
-                                        <tr><th>Date</th><th>Filled</th><th>Status</th>@if (Model.ShowSignups) {<th>@Localizer["Shifts_SignedUp"]</th>}</tr>
+                                        <tr><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Filled"]</th><th>@Localizer["Common_Status"]</th>@if (Model.ShowSignups) {<th>@Localizer["Shifts_SignedUp"]</th>}</tr>
                                     </thead>
                                     <tbody>
                                         @foreach (var range in dateRanges)
@@ -345,33 +345,33 @@
                                                     <td>
                                                         <i class="fa-solid fa-chevron-right fa-xs me-1 range-icon"></i>
                                                         @rangeStart.ToDisplayShiftDate()–@rangeEnd.ToDisplayShiftDate()
-                                                        <small class="text-muted">(@range.Count days)</small>
+                                                        <small class="text-muted">(@range.Count @Localizer["Shifts_Days"])</small>
                                                     </td>
                                                     <td>
                                                         <span class="@(anyUnderstaffed ? "text-danger fw-bold" : "")">@totalConfirmed</span>
-                                                        <small class="text-muted">/ @totalMax total</small>
+                                                        <small class="text-muted">/ @totalMax @Localizer["Shifts_Total"]</small>
                                                     </td>
                                                     <td>
                                                         @if (userSignedUpDays == range.Count)
                                                         {
-                                                            <span class="badge bg-info">Signed up (all @range.Count days)</span>
+                                                            <span class="badge bg-info">@string.Format(Localizer["Shifts_SignedUpAllDays"].Value, range.Count)</span>
                                                         }
                                                         else if (userSignedUpDays > 0)
                                                         {
-                                                            <span class="badge bg-info">Signed up (@userSignedUpDays of @range.Count)</span>
+                                                            <span class="badge bg-info">@string.Format(Localizer["Shifts_SignedUpPartial"].Value, userSignedUpDays, range.Count)</span>
                                                         }
                                                         else if (allRangeFull)
                                                         {
-                                                            <span class="badge bg-secondary">Full</span>
+                                                            <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
                                                         }
                                                         else if (daysNeedingHelp > 0)
                                                         {
-                                                            <span class="badge bg-warning text-dark">@daysNeedingHelp @(daysNeedingHelp == 1 ? "day needs" : "days need") help</span>
+                                                            <span class="badge bg-warning text-dark">@string.Format((daysNeedingHelp == 1 ? Localizer["Shifts_DayNeedsHelp"] : Localizer["Shifts_DaysNeedHelp"]).Value, daysNeedingHelp)</span>
                                                         }
                                                     </td>
                                                     @if (Model.ShowSignups)
                                                     {
-                                                        <td><small class="text-muted fst-italic">click to expand</small></td>
+                                                        <td><small class="text-muted fst-italic">@Localizer["Shifts_ClickToExpand"]</small></td>
                                                     }
                                                 </tr>
                                                 @foreach (var item in range)
@@ -387,15 +387,15 @@
                                                         <td>
                                                             @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))
                                                             {
-                                                                <span class="badge bg-info">Signed up</span>
+                                                                <span class="badge bg-info">@Localizer["Shifts_SignedUp"]</span>
                                                             }
                                                             else if (isFull)
                                                             {
-                                                                <span class="badge bg-secondary">Full</span>
+                                                                <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
                                                             }
                                                             else if (understaffed)
                                                             {
-                                                                <span class="badge bg-warning text-dark">Needs help</span>
+                                                                <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
                                                             }
                                                         </td>
                                                         @if (Model.ShowSignups)
@@ -438,15 +438,15 @@
                                                     <td>
                                                         @if (Model.UserSignupShiftIds.Contains(item.Shift.Id))
                                                         {
-                                                            <span class="badge bg-info">Signed up</span>
+                                                            <span class="badge bg-info">@Localizer["Shifts_SignedUp"]</span>
                                                         }
                                                         else if (isFull)
                                                         {
-                                                            <span class="badge bg-secondary">Full</span>
+                                                            <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
                                                         }
                                                         else if (understaffed)
                                                         {
-                                                            <span class="badge bg-warning text-dark">Needs help</span>
+                                                            <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
                                                         }
                                                     </td>
                                                     @if (Model.ShowSignups)
@@ -488,12 +488,12 @@
                                 <table class="table table-sm">
                                     <thead>
                                         <tr>
-                                            <th>Shift</th>
-                                            <th>Phase</th>
-                                            <th>Date</th>
-                                            <th>Time</th>
-                                            <th>Duration</th>
-                                            <th>Filled</th>
+                                            <th>@Localizer["Shifts_Shift"]</th>
+                                            <th>@Localizer["Shifts_Phase"]</th>
+                                            <th>@Localizer["Shifts_Date"]</th>
+                                            <th>@Localizer["Shifts_Time"]</th>
+                                            <th>@Localizer["Shifts_Duration"]</th>
+                                            <th>@Localizer["Shifts_Filled"]</th>
                                             @if (Model.ShowSignups)
                                             {
                                                 <th>@Localizer["Shifts_SignedUp"]</th>
@@ -508,17 +508,17 @@
                                             var isFull = item.RemainingSlots <= 0;
                                             var understaffed = item.ConfirmedCount < shift.MinVolunteers;
                                             <tr class="@(isFull ? "table-secondary" : "")">
-                                                <td>@(shift.IsAllDay ? "All day" : $"{shift.StartTime.ToDisplayTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToDisplayTime()}")</td>
+                                                <td>@(shift.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{shift.StartTime.ToDisplayTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToDisplayTime()}")</td>
                                                 <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
                                                 <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
                                                 <td>@item.AbsoluteStart.ToDisplayTime(tz)</td>
-                                                <td>@(shift.IsAllDay ? "Full day" : $"{shift.Duration.TotalHours}h")</td>
+                                                <td>@(shift.IsAllDay ? Localizer["Shifts_FullDay"].Value : $"{shift.Duration.TotalHours}h")</td>
                                                 <td>
                                                     <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
                                                     <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
                                                     @if (understaffed)
                                                     {
-                                                        <span class="badge bg-warning text-dark">Needs help</span>
+                                                        <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
                                                     }
                                                 </td>
                                                 @if (Model.ShowSignups)
@@ -542,7 +542,7 @@
                                                     }
                                                     else if (isFull)
                                                     {
-                                                        <span class="badge bg-secondary">Full</span>
+                                                        <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
                                                     }
                                                     else
                                                     {
@@ -554,7 +554,7 @@
                                                             @if (!string.IsNullOrEmpty(Model.FilterToDate)) { <input type="hidden" name="toDate" value="@Model.FilterToDate" /> }
                                                             @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
                                                             @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
-                                                            <button type="submit" class="btn btn-sm btn-success">Sign Up</button>
+                                                            <button type="submit" class="btn btn-sm btn-success">@Localizer["Shifts_SignUpButton"]</button>
                                                         </form>
                                                     }
                                                 </td>

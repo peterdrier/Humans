@@ -21,10 +21,10 @@
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th>Email</th>
-                                <th>Status</th>
-                                <th>Notifications</th>
-                                <th>Profile Visibility</th>
+                                <th>@Localizer["Emails_Header_Email"]</th>
+                                <th>@Localizer["Emails_Header_Status"]</th>
+                                <th>@Localizer["Emails_Header_Notifications"]</th>
+                                <th>@Localizer["Emails_Header_Visibility"]</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -36,38 +36,38 @@
                                         <code>@email.Email</code>
                                         @if (email.IsOAuth)
                                         {
-                                            <span class="badge bg-secondary ms-1">Sign-in</span>
+                                            <span class="badge bg-secondary ms-1">@Localizer["Emails_SignIn"]</span>
                                         }
                                     </td>
                                     <td>
                                         @if (email.IsMergePending)
                                         {
                                             <span class="badge bg-info text-dark">
-                                                <i class="fa-solid fa-code-merge me-1"></i>Merge pending
+                                                <i class="fa-solid fa-code-merge me-1"></i>@Localizer["Emails_MergePending"]
                                             </span>
                                         }
                                         else if (email.IsVerified)
                                         {
                                             <span class="badge bg-success">
-                                                <i class="fa-solid fa-check me-1"></i>Verified
+                                                <i class="fa-solid fa-check me-1"></i>@Localizer["Emails_Verified"]
                                             </span>
                                         }
                                         else if (email.IsPendingVerification)
                                         {
                                             <span class="badge bg-warning text-dark">
-                                                <i class="fa-solid fa-clock me-1"></i>Pending
+                                                <i class="fa-solid fa-clock me-1"></i>@Localizer["Emails_StatusPending"]
                                             </span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary">Unverified</span>
+                                            <span class="badge bg-secondary">@Localizer["Emails_Unverified"]</span>
                                         }
                                     </td>
                                     <td>
                                         @if (email.IsNotificationTarget)
                                         {
                                             <span class="badge bg-primary">
-                                                <i class="fa-solid fa-bell me-1"></i>Active
+                                                <i class="fa-solid fa-bell me-1"></i>@Localizer["Emails_NotifActive"]
                                             </span>
                                         }
                                         else if (email.IsVerified)
@@ -76,13 +76,13 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="emailId" value="@email.Id" />
                                                 <button type="submit" class="btn btn-outline-primary btn-sm">
-                                                    Set as target
+                                                    @Localizer["Emails_SetAsTarget"]
                                                 </button>
                                             </form>
                                         }
                                         else
                                         {
-                                            <span class="text-muted small">Verify first</span>
+                                            <span class="text-muted small">@Localizer["Emails_VerifyFirst"]</span>
                                         }
                                     </td>
                                     <td>
@@ -92,11 +92,11 @@
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="emailId" value="@email.Id" />
                                                 <select name="visibility" class="form-select form-select-sm js-auto-submit" style="width: auto; display: inline-block;">
-                                                    <option value="" selected="@(email.Visibility == null ? "selected" : null)">Hidden</option>
-                                                    <option value="AllActiveProfiles" selected="@(email.Visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">All humans</option>
-                                                    <option value="MyTeams" selected="@(email.Visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">My teams</option>
-                                                    <option value="CoordinatorsAndBoard" selected="@(email.Visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">Coordinators + Board</option>
-                                                    <option value="BoardOnly" selected="@(email.Visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">Board only</option>
+                                                    <option value="" selected="@(email.Visibility == null ? "selected" : null)">@Localizer["Emails_Visibility_Hidden"]</option>
+                                                    <option value="AllActiveProfiles" selected="@(email.Visibility == ContactFieldVisibility.AllActiveProfiles ? "selected" : null)">@Localizer["Emails_Visibility_AllHumans"]</option>
+                                                    <option value="MyTeams" selected="@(email.Visibility == ContactFieldVisibility.MyTeams ? "selected" : null)">@Localizer["Emails_Visibility_MyTeams"]</option>
+                                                    <option value="CoordinatorsAndBoard" selected="@(email.Visibility == ContactFieldVisibility.CoordinatorsAndBoard ? "selected" : null)">@Localizer["Emails_Visibility_CoordinatorsBoard"]</option>
+                                                    <option value="BoardOnly" selected="@(email.Visibility == ContactFieldVisibility.BoardOnly ? "selected" : null)">@Localizer["Emails_Visibility_BoardOnly"]</option>
                                                 </select>
                                             </form>
                                         }
@@ -109,7 +109,7 @@
                                         @if (!email.IsOAuth)
                                         {
                                             <form asp-action="DeleteEmail" method="post" class="d-inline"
-                                                  data-confirm="Are you sure you want to remove this email?">
+                                                  data-confirm="@Localizer["Emails_ConfirmRemove"].Value">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="emailId" value="@email.Id" />
                                                 <button type="submit" class="btn btn-outline-danger btn-sm">
@@ -128,29 +128,28 @@
 
         <div class="card mb-4">
             <div class="card-header">
-                <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>Google Services Email</h5>
+                <h5 class="mb-0"><i class="fa-brands fa-google me-2"></i>@Localizer["Emails_GoogleTitle"]</h5>
             </div>
             <div class="card-body">
                 <p class="text-muted small mb-3">
-                    This email is used for Google Groups and Shared Drive access.
+                    @Localizer["Emails_GoogleDescription"]
                     @if (Model.HasNobodiesTeamEmail)
                     {
-                        <text>Your @@nobodies.team email is automatically used.</text>
+                        <text>@Localizer["Emails_GoogleAutoNobodies"]</text>
                     }
                 </p>
                 @if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Rejected)
                 {
                     <div class="alert alert-danger mb-3">
                         <i class="fa-solid fa-triangle-exclamation me-1"></i>
-                        <strong>Google sync failed.</strong> The current email was rejected by Google.
-                        Select a different email below to retry sync.
+                        @Localizer["Emails_GoogleRejected"]
                     </div>
                 }
                 else if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Valid)
                 {
                     <div class="alert alert-success mb-3 py-2">
                         <i class="fa-solid fa-circle-check me-1"></i>
-                        Google sync is working with the current email.
+                        @Localizer["Emails_GoogleValid"]
                     </div>
                 }
                 @foreach (var email in Model.Emails.Where(e => e.IsVerified))
@@ -159,16 +158,16 @@
                         @if (email.IsGoogleServiceEmail)
                         {
                             <span class="badge bg-primary me-2">
-                                <i class="fa-solid fa-check me-1"></i>Active
+                                <i class="fa-solid fa-check me-1"></i>@Localizer["Emails_NotifActive"]
                             </span>
                             <code>@email.Email</code>
                             @if (email.IsNobodiesTeamDomain)
                             {
-                                <span class="badge bg-info text-dark ms-2">Auto-selected</span>
+                                <span class="badge bg-info text-dark ms-2">@Localizer["Emails_AutoSelected"]</span>
                             }
                             @if (Model.GoogleEmailStatus == Humans.Domain.Enums.GoogleEmailStatus.Rejected && !Model.HasNobodiesTeamEmail)
                             {
-                                <span class="badge bg-danger ms-2">Rejected</span>
+                                <span class="badge bg-danger ms-2">@Localizer["Emails_GoogleRejectedBadge"]</span>
                             }
                         }
                         else if (!Model.HasNobodiesTeamEmail)
@@ -176,7 +175,7 @@
                             <form asp-action="SetGoogleServiceEmail" method="post" class="d-inline me-2">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="emailId" value="@email.Id" />
-                                <button type="submit" class="btn btn-outline-primary btn-sm">Use this</button>
+                                <button type="submit" class="btn btn-outline-primary btn-sm">@Localizer["Emails_UseThis"]</button>
                             </form>
                             <code>@email.Email</code>
                         }

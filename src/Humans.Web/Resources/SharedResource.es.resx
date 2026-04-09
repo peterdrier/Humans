@@ -1319,44 +1319,44 @@
   <data name="Todo_ShiftInfo_Action" xml:space="preserve"><value>Completar info de turno</value></data>
 
   <!-- Notification Inbox -->
-  <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Notification_Popup_AriaLabel" xml:space="preserve"><value>Notification popup</value></data>
-  <data name="Notification_Popup_Title" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Notification_Popup_NeedAction" xml:space="preserve"><value>need action</value></data>
-  <data name="Notification_Popup_Close" xml:space="preserve"><value>Close notifications</value></data>
-  <data name="Notification_Popup_CaughtUp" xml:space="preserve"><value>You're all caught up.</value></data>
-  <data name="Notification_Popup_NoUnread" xml:space="preserve"><value>No unread notifications.</value></data>
-  <data name="Notification_Section_NeedsAttention" xml:space="preserve"><value>Needs your attention</value></data>
-  <data name="Notification_Section_Recent" xml:space="preserve"><value>Recent</value></data>
-  <data name="Notification_Section_Informational" xml:space="preserve"><value>Informational</value></data>
-  <data name="Notification_Section_Resolved" xml:space="preserve"><value>Resolved</value></data>
-  <data name="Notification_Section_WorkQueues" xml:space="preserve"><value>Work queues</value></data>
-  <data name="Notification_MarkAllRead" xml:space="preserve"><value>Mark all as read</value></data>
-  <data name="Notification_SeeAll" xml:space="preserve"><value>See all notifications</value></data>
-  <data name="Notification_PageTitle" xml:space="preserve"><value>All notifications</value></data>
-  <data name="Notification_SearchPlaceholder" xml:space="preserve"><value>Search notifications...</value></data>
-  <data name="Notification_Filter_All" xml:space="preserve"><value>All</value></data>
-  <data name="Notification_Filter_NeedsAction" xml:space="preserve"><value>Needs action</value></data>
-  <data name="Notification_Filter_Shifts" xml:space="preserve"><value>Shifts</value></data>
-  <data name="Notification_Filter_Approvals" xml:space="preserve"><value>Approvals</value></data>
-  <data name="Notification_Filter_Resolved" xml:space="preserve"><value>Resolved</value></data>
-  <data name="Notification_Tab_Unread" xml:space="preserve"><value>Unread</value></data>
-  <data name="Notification_Tab_All" xml:space="preserve"><value>All</value></data>
-  <data name="Notification_Inbox_Title" xml:space="preserve"><value>Notifications</value></data>
-  <data name="Notification_Tag_Urgent" xml:space="preserve"><value>Urgent</value></data>
-  <data name="Notification_Tag_Action" xml:space="preserve"><value>Action</value></data>
+  <data name="Notification_Bell_AriaLabel" xml:space="preserve"><value>Notificaciones</value></data>
+  <data name="Notification_Popup_AriaLabel" xml:space="preserve"><value>Ventana de notificaciones</value></data>
+  <data name="Notification_Popup_Title" xml:space="preserve"><value>Notificaciones</value></data>
+  <data name="Notification_Popup_NeedAction" xml:space="preserve"><value>requieren acción</value></data>
+  <data name="Notification_Popup_Close" xml:space="preserve"><value>Cerrar notificaciones</value></data>
+  <data name="Notification_Popup_CaughtUp" xml:space="preserve"><value>Estás al día.</value></data>
+  <data name="Notification_Popup_NoUnread" xml:space="preserve"><value>No hay notificaciones sin leer.</value></data>
+  <data name="Notification_Section_NeedsAttention" xml:space="preserve"><value>Requiere tu atención</value></data>
+  <data name="Notification_Section_Recent" xml:space="preserve"><value>Recientes</value></data>
+  <data name="Notification_Section_Informational" xml:space="preserve"><value>Informativos</value></data>
+  <data name="Notification_Section_Resolved" xml:space="preserve"><value>Resueltos</value></data>
+  <data name="Notification_Section_WorkQueues" xml:space="preserve"><value>Colas de trabajo</value></data>
+  <data name="Notification_MarkAllRead" xml:space="preserve"><value>Marcar todo como leído</value></data>
+  <data name="Notification_SeeAll" xml:space="preserve"><value>Ver todas las notificaciones</value></data>
+  <data name="Notification_PageTitle" xml:space="preserve"><value>Todas las notificaciones</value></data>
+  <data name="Notification_SearchPlaceholder" xml:space="preserve"><value>Buscar notificaciones...</value></data>
+  <data name="Notification_Filter_All" xml:space="preserve"><value>Todas</value></data>
+  <data name="Notification_Filter_NeedsAction" xml:space="preserve"><value>Requiere acción</value></data>
+  <data name="Notification_Filter_Shifts" xml:space="preserve"><value>Turnos</value></data>
+  <data name="Notification_Filter_Approvals" xml:space="preserve"><value>Aprobaciones</value></data>
+  <data name="Notification_Filter_Resolved" xml:space="preserve"><value>Resueltos</value></data>
+  <data name="Notification_Tab_Unread" xml:space="preserve"><value>Sin leer</value></data>
+  <data name="Notification_Tab_All" xml:space="preserve"><value>Todas</value></data>
+  <data name="Notification_Inbox_Title" xml:space="preserve"><value>Notificaciones</value></data>
+  <data name="Notification_Tag_Urgent" xml:space="preserve"><value>Urgente</value></data>
+  <data name="Notification_Tag_Action" xml:space="preserve"><value>Acción</value></data>
   <data name="Notification_Tag_Info" xml:space="preserve"><value>Info</value></data>
-  <data name="Notification_Dismiss" xml:space="preserve"><value>Dismiss</value></data>
-  <data name="Notification_HandledBy" xml:space="preserve"><value>Handled by {0}, {1}</value></data>
-  <data name="Notification_Pref_InboxEnabled" xml:space="preserve"><value>In-app notifications</value></data>
-  <data name="Notification_DefaultActionLabel" xml:space="preserve"><value>View →</value></data>
-  <data name="Notification_TimeAgo_JustNow" xml:space="preserve"><value>just now</value></data>
-  <data name="Notification_TimeAgo_Minutes" xml:space="preserve"><value>{0}m ago</value></data>
-  <data name="Notification_TimeAgo_Hours" xml:space="preserve"><value>{0}h ago</value></data>
-  <data name="Notification_TimeAgo_Days" xml:space="preserve"><value>{0}d ago</value></data>
-  <data name="Notification_Bulk_Selected" xml:space="preserve"><value>{0} selected</value></data>
-  <data name="Notification_Bulk_Resolve" xml:space="preserve"><value>Resolve selected</value></data>
-  <data name="Notification_Bulk_Dismiss" xml:space="preserve"><value>Dismiss selected</value></data>
+  <data name="Notification_Dismiss" xml:space="preserve"><value>Descartar</value></data>
+  <data name="Notification_HandledBy" xml:space="preserve"><value>Gestionado por {0}, {1}</value></data>
+  <data name="Notification_Pref_InboxEnabled" xml:space="preserve"><value>Notificaciones en la aplicación</value></data>
+  <data name="Notification_DefaultActionLabel" xml:space="preserve"><value>Ver →</value></data>
+  <data name="Notification_TimeAgo_JustNow" xml:space="preserve"><value>ahora mismo</value></data>
+  <data name="Notification_TimeAgo_Minutes" xml:space="preserve"><value>hace {0}m</value></data>
+  <data name="Notification_TimeAgo_Hours" xml:space="preserve"><value>hace {0}h</value></data>
+  <data name="Notification_TimeAgo_Days" xml:space="preserve"><value>hace {0}d</value></data>
+  <data name="Notification_Bulk_Selected" xml:space="preserve"><value>{0} seleccionados</value></data>
+  <data name="Notification_Bulk_Resolve" xml:space="preserve"><value>Resolver seleccionados</value></data>
+  <data name="Notification_Bulk_Dismiss" xml:space="preserve"><value>Descartar seleccionados</value></data>
 
   <!-- Get Involved card (Dashboard) -->
   <data name="GetInvolved_Title" xml:space="preserve"><value>Participa</value></data>
@@ -1435,5 +1435,257 @@
   <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>
   <data name="CityPlanning_Help_ColorsTitle" xml:space="preserve"><value>Colores y zonas de sonido</value></data>
   <data name="CityPlanning_Help_ColorsBody" xml:space="preserve"><value>Cada barrio está coloreado según su zona de sonido preferida (editable desde la página de tu barrio).</value></data>
+
+
+  <!-- ======================== -->
+  <!-- User-Facing Views        -->
+  <!-- ======================== -->
+  <data name="Feedback_PageTitle" xml:space="preserve"><value>Comentarios</value></data>
+  <data name="Feedback_AllStatuses" xml:space="preserve"><value>Todos los estados</value></data>
+  <data name="Feedback_AllCategories" xml:space="preserve"><value>Todas las categorías</value></data>
+  <data name="Feedback_AllReporters" xml:space="preserve"><value>Todos los informantes</value></data>
+  <data name="Feedback_AllAssignees" xml:space="preserve"><value>Todos los asignados</value></data>
+  <data name="Feedback_AssignedToMe" xml:space="preserve"><value>Asignado a mí</value></data>
+  <data name="Feedback_AllTeams" xml:space="preserve"><value>Todos los equipos</value></data>
+  <data name="Feedback_UnassignedOnly" xml:space="preserve"><value>Solo sin asignar</value></data>
+  <data name="Feedback_Clear" xml:space="preserve"><value>Limpiar</value></data>
+  <data name="Feedback_NoReports" xml:space="preserve"><value>No se encontraron informes de comentarios.</value></data>
+  <data name="Feedback_Unassigned" xml:space="preserve"><value>Sin asignar</value></data>
+  <data name="Feedback_NeedsReply" xml:space="preserve"><value>necesita respuesta</value></data>
+  <data name="Feedback_SelectReport" xml:space="preserve"><value>Selecciona un informe para ver detalles</value></data>
+  <data name="Feedback_Conversation" xml:space="preserve"><value>Conversación</value></data>
+  <data name="Feedback_NoMessages" xml:space="preserve"><value>Aún no hay mensajes.</value></data>
+  <data name="Feedback_MessagePlaceholder" xml:space="preserve"><value>Escribe un mensaje...</value></data>
+  <data name="Feedback_Send" xml:space="preserve"><value>Enviar</value></data>
+  <data name="Feedback_ResolvedAt" xml:space="preserve"><value>Resuelto {0}</value><comment>{0} = date/time</comment></data>
+  <data name="Feedback_ResolvedBy" xml:space="preserve"><value>por {0}</value><comment>{0} = name</comment></data>
+  <data name="Feedback_NoTeam" xml:space="preserve"><value>Sin equipo</value></data>
+  <data name="Feedback_ScreenshotLink" xml:space="preserve"><value>Captura de pantalla</value></data>
+
+  <data name="Unsub_Title" xml:space="preserve"><value>Darse de baja de correos</value></data>
+  <data name="Unsub_Heading" xml:space="preserve"><value>¿Darse de baja de correos de {0}?</value><comment>{0} = category name</comment></data>
+  <data name="Unsub_Greeting" xml:space="preserve"><value>Hola {0},</value><comment>{0} = display name</comment></data>
+  <data name="Unsub_ConfirmMessage" xml:space="preserve"><value>Si confirmas, dejarás de recibir correos de {0} de Humans.</value><comment>{0} = category name</comment></data>
+  <data name="Unsub_ConfirmButton" xml:space="preserve"><value>Confirmar baja</value></data>
+  <data name="Unsub_DoneTitle" xml:space="preserve"><value>Te has dado de baja</value></data>
+  <data name="Unsub_DoneMessage" xml:space="preserve"><value>Ya no recibirás correos de {0} de Humans.</value><comment>{0} = category name</comment></data>
+  <data name="Unsub_DoneManage" xml:space="preserve"><value>Puedes gestionar tus preferencias de comunicación desde tus</value></data>
+  <data name="Unsub_DoneManageLink" xml:space="preserve"><value>preferencias de comunicación</value></data>
+  <data name="Unsub_BackHome" xml:space="preserve"><value>Volver al inicio</value></data>
+  <data name="Unsub_ExpiredTitle" xml:space="preserve"><value>Enlace de baja caducado</value></data>
+  <data name="Unsub_ExpiredHeading" xml:space="preserve"><value>Este enlace de baja ha caducado</value></data>
+  <data name="Unsub_ExpiredMessage" xml:space="preserve"><value>Usa el enlace de un correo más reciente, o</value></data>
+  <data name="Unsub_ExpiredSignIn" xml:space="preserve"><value>inicia sesión para gestionar tus preferencias de comunicación</value></data>
+
+  <data name="CommPrefs_Title" xml:space="preserve"><value>Preferencias de comunicación</value></data>
+  <data name="CommPrefs_Description" xml:space="preserve"><value>Elige qué comunicaciones recibes y cómo.</value></data>
+  <data name="CommPrefs_Category" xml:space="preserve"><value>Categoría</value></data>
+  <data name="CommPrefs_Email" xml:space="preserve"><value>Correo</value></data>
+  <data name="CommPrefs_Alert" xml:space="preserve"><value>Alerta</value></data>
+  <data name="CommPrefs_BackToProfile" xml:space="preserve"><value>Volver al perfil</value></data>
+  <data name="CommPrefs_BackToDashboard" xml:space="preserve"><value>Volver al panel</value></data>
+
+  <data name="Emails_Header_Email" xml:space="preserve"><value>Correo</value></data>
+  <data name="Emails_Header_Status" xml:space="preserve"><value>Estado</value></data>
+  <data name="Emails_Header_Notifications" xml:space="preserve"><value>Notificaciones</value></data>
+  <data name="Emails_Header_Visibility" xml:space="preserve"><value>Visibilidad del perfil</value></data>
+  <data name="Emails_SignIn" xml:space="preserve"><value>Inicio de sesión</value></data>
+  <data name="Emails_MergePending" xml:space="preserve"><value>Fusión pendiente</value></data>
+  <data name="Emails_Verified" xml:space="preserve"><value>Verificado</value></data>
+  <data name="Emails_StatusPending" xml:space="preserve"><value>Pendiente</value></data>
+  <data name="Emails_Unverified" xml:space="preserve"><value>No verificado</value></data>
+  <data name="Emails_NotifActive" xml:space="preserve"><value>Activo</value></data>
+  <data name="Emails_SetAsTarget" xml:space="preserve"><value>Establecer como destino</value></data>
+  <data name="Emails_VerifyFirst" xml:space="preserve"><value>Verifica primero</value></data>
+  <data name="Emails_Visibility_Hidden" xml:space="preserve"><value>Oculto</value></data>
+  <data name="Emails_Visibility_AllHumans" xml:space="preserve"><value>Todos los humans</value></data>
+  <data name="Emails_Visibility_MyTeams" xml:space="preserve"><value>Mis equipos</value></data>
+  <data name="Emails_Visibility_CoordinatorsBoard" xml:space="preserve"><value>Coordinadores + Junta</value></data>
+  <data name="Emails_Visibility_BoardOnly" xml:space="preserve"><value>Solo junta</value></data>
+  <data name="Emails_ConfirmRemove" xml:space="preserve"><value>¿Seguro que quieres eliminar este correo?</value></data>
+  <data name="Emails_GoogleTitle" xml:space="preserve"><value>Correo de servicios de Google</value></data>
+  <data name="Emails_GoogleDescription" xml:space="preserve"><value>Este correo se usa para acceder a Grupos de Google y unidades compartidas.</value></data>
+  <data name="Emails_GoogleAutoNobodies" xml:space="preserve"><value>Tu correo @nobodies.team se usa automáticamente.</value></data>
+  <data name="Emails_GoogleRejected" xml:space="preserve"><value>La sincronización de Google falló. El correo actual fue rechazado por Google. Selecciona otro correo para reintentar.</value></data>
+  <data name="Emails_GoogleValid" xml:space="preserve"><value>La sincronización de Google funciona con el correo actual.</value></data>
+  <data name="Emails_AutoSelected" xml:space="preserve"><value>Seleccionado automáticamente</value></data>
+  <data name="Emails_GoogleRejectedBadge" xml:space="preserve"><value>Rechazado</value></data>
+  <data name="Emails_UseThis" xml:space="preserve"><value>Usar este</value></data>
+
+  <data name="ShiftInfo_Title" xml:space="preserve"><value>Preferencias de turnos</value></data>
+  <data name="ShiftInfo_StepOf" xml:space="preserve"><value>Paso {0} de {1}</value><comment>{0} = current step, {1} = total steps</comment></data>
+  <data name="ShiftInfo_SkillsTitle" xml:space="preserve"><value>¿En qué eres bueno/a?</value></data>
+  <data name="ShiftInfo_SkillsSubtitle" xml:space="preserve"><value>Selecciona las habilidades que te gustaría usar. Puedes cambiarlas en cualquier momento.</value></data>
+  <data name="ShiftInfo_WorkStyleTitle" xml:space="preserve"><value>¿Cómo te gusta trabajar?</value></data>
+  <data name="ShiftInfo_WorkStyleSubtitle" xml:space="preserve"><value>Ayuda a los coordinadores a asignarte turnos que se adapten a tu estilo y disponibilidad.</value></data>
+  <data name="ShiftInfo_LanguagesTitle" xml:space="preserve"><value>¿Qué idiomas hablas?</value></data>
+  <data name="ShiftInfo_LanguagesSubtitle" xml:space="preserve"><value>Esto nos ayuda a ubicarte en equipos donde puedas comunicarte bien.</value></data>
+  <data name="ShiftInfo_OtherSkills" xml:space="preserve"><value>¿Qué otras habilidades tienes?</value></data>
+  <data name="ShiftInfo_WorkTime" xml:space="preserve"><value>¿Cuándo prefieres trabajar?</value></data>
+  <data name="ShiftInfo_OtherPrefs" xml:space="preserve"><value>Otras preferencias</value></data>
+  <data name="ShiftInfo_OtherLanguages" xml:space="preserve"><value>¿Qué otros idiomas hablas?</value></data>
+  <data name="ShiftInfo_Continue" xml:space="preserve"><value>Continuar</value></data>
+
+  <data name="Shifts_Title" xml:space="preserve"><value>Turnos</value></data>
+  <data name="Shifts_BrowseTitle" xml:space="preserve"><value>Explorar opciones de voluntariado</value></data>
+  <data name="Shifts_Department" xml:space="preserve"><value>Departamento</value></data>
+  <data name="Shifts_AllDepartments" xml:space="preserve"><value>Todos los departamentos</value></data>
+  <data name="Shifts_From" xml:space="preserve"><value>Desde</value></data>
+  <data name="Shifts_To" xml:space="preserve"><value>Hasta</value></data>
+  <data name="Shifts_ClearFilters" xml:space="preserve"><value>Limpiar filtros</value></data>
+  <data name="Shifts_All" xml:space="preserve"><value>Todos</value></data>
+  <data name="Shifts_SetUp" xml:space="preserve"><value>Montaje</value></data>
+  <data name="Shifts_Event" xml:space="preserve"><value>Evento</value></data>
+  <data name="Shifts_Strike" xml:space="preserve"><value>Desmontaje</value></data>
+  <data name="Shifts_FilterByTag" xml:space="preserve"><value>Filtrar por etiqueta:</value></data>
+  <data name="Shifts_SetPreferences" xml:space="preserve"><value>Configura tus preferencias</value></data>
+  <data name="Shifts_PreferencesHelp" xml:space="preserve"><value>Selecciona etiquetas que coincidan con el trabajo que te gusta. Los turnos coincidentes se resaltarán con una estrella.</value></data>
+  <data name="Shifts_SavePreferences" xml:space="preserve"><value>Guardar preferencias</value></data>
+  <data name="Shifts_NotOpenYet" xml:space="preserve"><value>Los turnos aún no están abiertos. Solo coordinadores y administradores pueden ver esta página.</value></data>
+  <data name="Shifts_NoShiftsAvailable" xml:space="preserve"><value>Aún no hay turnos disponibles.</value></data>
+  <data name="Shifts_AllShiftsFull" xml:space="preserve"><value>Todos los turnos de {0} están completos.</value><comment>{0} = period name</comment></data>
+  <data name="Shifts_Start" xml:space="preserve"><value>Inicio</value></data>
+  <data name="Shifts_End" xml:space="preserve"><value>Fin</value></data>
+  <data name="Shifts_SignUpForDates" xml:space="preserve"><value>Inscribirse en fechas de {0}</value><comment>{0} = period name (e.g. set-up, strike)</comment></data>
+  <data name="Shifts_Date" xml:space="preserve"><value>Fecha</value></data>
+  <data name="Shifts_Filled" xml:space="preserve"><value>Ocupados</value></data>
+  <data name="Shifts_Days" xml:space="preserve"><value>días</value></data>
+  <data name="Shifts_Total" xml:space="preserve"><value>total</value></data>
+    <data name="Shifts_SignedUpAllDays" xml:space="preserve"><value>Inscrito (los {0} días)</value><comment>{0} = count</comment></data>
+    <data name="Shifts_SignedUpPartial" xml:space="preserve"><value>Inscrito ({0} de {1})</value><comment>{0} = count</comment></data>
+  <data name="Shifts_Full" xml:space="preserve"><value>Completo</value></data>
+  <data name="Shifts_NeedsHelp" xml:space="preserve"><value>Necesita ayuda</value></data>
+  <data name="Shifts_DayNeedsHelp" xml:space="preserve"><value>{0} día necesita ayuda</value><comment>{0} = number of days</comment></data>
+  <data name="Shifts_DaysNeedHelp" xml:space="preserve"><value>{0} días necesitan ayuda</value><comment>{0} = number of days</comment></data>
+  <data name="Shifts_ClickToExpand" xml:space="preserve"><value>clic para expandir</value></data>
+  <data name="Shifts_Shift" xml:space="preserve"><value>Turno</value></data>
+  <data name="Shifts_Phase" xml:space="preserve"><value>Fase</value></data>
+  <data name="Shifts_Time" xml:space="preserve"><value>Hora</value></data>
+  <data name="Shifts_Duration" xml:space="preserve"><value>Duración</value></data>
+  <data name="Shifts_AllDay" xml:space="preserve"><value>Todo el día</value></data>
+  <data name="Shifts_FullDay" xml:space="preserve"><value>Día completo</value></data>
+  <data name="Shifts_Essential" xml:space="preserve"><value>Esencial</value></data>
+  <data name="Shifts_Important" xml:space="preserve"><value>Importante</value></data>
+  <data name="Shifts_AllPhases" xml:space="preserve"><value>Todas las fases</value></data>
+  <data name="Shifts_HiddenBadge" xml:space="preserve"><value>Oculto</value></data>
+  <data name="Shifts_MatchesPrefs" xml:space="preserve"><value>Coincide con tus preferencias</value></data>
+  <data name="Shifts_SignUpButton" xml:space="preserve"><value>Inscribirse</value></data>
+  <data name="Shifts_BrowsingClosed" xml:space="preserve"><value>La exploración de turnos aún no está abierta. ¡Vuelve más tarde!</value></data>
+  <data name="Shifts_NoActiveEvent" xml:space="preserve"><value>No hay ningún evento activo configurado. Un administrador debe configurar los ajustes del evento primero.</value></data>
+  <data name="Shifts_ConfigureEvent" xml:space="preserve"><value>Configurar ajustes del evento</value></data>
+  <data name="Shifts_MyShiftsTitle" xml:space="preserve"><value>Mis turnos</value></data>
+  <data name="Shifts_UpcomingShifts" xml:space="preserve"><value>Próximos turnos</value></data>
+  <data name="Shifts_PendingApproval" xml:space="preserve"><value>Pendiente de aprobación</value></data>
+  <data name="Shifts_Past" xml:space="preserve"><value>Pasados</value></data>
+  <data name="Shifts_Bail" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Shifts_BailConfirm" xml:space="preserve"><value>¿Seguro que quieres cancelar?</value></data>
+  <data name="Shifts_BailRangeConfirm" xml:space="preserve"><value>¿Cancelar todos los {0} días?</value><comment>{0} = number of days</comment></data>
+  <data name="Shifts_WithdrawButton" xml:space="preserve"><value>Retirar</value></data>
+  <data name="Shifts_NoSignups" xml:space="preserve"><value>Aún no te has inscrito en ningún turno.</value></data>
+  <data name="Shifts_BrowseAvailable" xml:space="preserve"><value>Explorar turnos disponibles</value></data>
+  <data name="Shifts_NoActiveEventConfigured" xml:space="preserve"><value>No hay evento activo configurado.</value></data>
+  <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>Disponibilidad general</value></data>
+  <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Marca los días que estás disponible para ayudar. Los coordinadores pueden ver quién está disponible al asignar turnos.</value></data>
+  <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Guardar disponibilidad</value></data>
+
+  <data name="ShiftDash_Title" xml:space="preserve"><value>Panel de turnos</value></data>
+  <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} turnos</value><comment>{0} = count</comment></data>
+  <data name="ShiftDash_Date" xml:space="preserve"><value>Fecha</value></data>
+  <data name="ShiftDash_Department" xml:space="preserve"><value>Departamento</value></data>
+  <data name="ShiftDash_AllDepartments" xml:space="preserve"><value>Todos los departamentos</value></data>
+  <data name="ShiftDash_Filter" xml:space="preserve"><value>Filtrar</value></data>
+  <data name="ShiftDash_Clear" xml:space="preserve"><value>Limpiar</value></data>
+  <data name="ShiftDash_NoShiftsMatch" xml:space="preserve"><value>Ningún turno coincide con los filtros actuales.</value></data>
+  <data name="ShiftDash_Shift" xml:space="preserve"><value>Turno</value></data>
+  <data name="ShiftDash_DateTime" xml:space="preserve"><value>Fecha / Hora</value></data>
+  <data name="ShiftDash_Slots" xml:space="preserve"><value>Plazas</value></data>
+  <data name="ShiftDash_Priority" xml:space="preserve"><value>Prioridad</value></data>
+  <data name="ShiftDash_Voluntell" xml:space="preserve"><value>Voluntell</value></data>
+  <data name="ShiftDash_SearchHumans" xml:space="preserve"><value>Buscar humans para: {0}</value><comment>{0} = shift/rota name</comment></data>
+  <data name="ShiftDash_SearchPlaceholder" xml:space="preserve"><value>Escribe un nombre (mín. 2 caracteres)...</value></data>
+  <data name="ShiftDash_NoHumansFound" xml:space="preserve"><value>No se encontraron humans.</value></data>
+  <data name="ShiftDash_SearchFailed" xml:space="preserve"><value>La búsqueda falló.</value></data>
+  <data name="ShiftDash_ScheduleConflict" xml:space="preserve"><value>Conflicto de horario</value></data>
+
+  <data name="Nav_Legal" xml:space="preserve"><value>Legal</value></data>
+  <data name="Nav_Staff" xml:space="preserve"><value>Equipo</value></data>
+
+  <data name="ProfileCard_Suspended" xml:space="preserve"><value>Suspendido</value></data>
+  <data name="ProfileCard_PendingBadge" xml:space="preserve"><value>Pendiente</value></data>
+  <data name="ProfileCard_Teams" xml:space="preserve"><value>Equipos:</value></data>
+  <data name="ProfileCard_Joined" xml:space="preserve"><value>Se unió en {0}</value><comment>{0} = date</comment></data>
+  <data name="ProfileCard_LastLogin" xml:space="preserve"><value>Último acceso {0}</value><comment>{0} = date</comment></data>
+
+  <data name="ShiftsSummary_Title" xml:space="preserve"><value>Turnos</value></data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve"><value>{0} / {1} plazas ocupadas</value><comment>{0} = filled, {1} = total</comment></data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve"><value>{0} humans inscritos</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve"><value>{0} pendientes</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve"><value>Aún no hay turnos configurados.</value></data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve"><value>Incluye turnos de {0} subequipo(s)</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve"><value>Gestionar turnos</value></data>
+
+  <data name="Medical_Badge" xml:space="preserve"><value>Médico</value></data>
+
+  <data name="Privacy_Lead" xml:space="preserve"><value>Humans gestiona la membresía de Nobodies Collective y procesa datos personales conforme al RGPD y la ley española de protección de datos (LOPDGDD).</value></data>
+  <data name="Privacy_DataControllerTitle" xml:space="preserve"><value>Responsable del tratamiento</value></data>
+  <data name="Privacy_DataControllerBody" xml:space="preserve"><value>Una asociación sin ánimo de lucro española registrada en Andalucía.</value></data>
+  <data name="Privacy_DataControllerDPO" xml:space="preserve"><value>Para consultas sobre protección de datos, contacta con nuestro Delegado de Protección de Datos en:</value></data>
+  <data name="Privacy_DataWeCollectTitle" xml:space="preserve"><value>Datos que recopilamos</value></data>
+  <data name="Privacy_DataWeCollectIntro" xml:space="preserve"><value>Recopilamos y procesamos las siguientes categorías de datos personales:</value></data>
+  <data name="Privacy_Collect_Identity" xml:space="preserve"><value>Nombre, correo electrónico (de la autenticación de Google), nombre para mostrar</value></data>
+  <data name="Privacy_Collect_Contact" xml:space="preserve"><value>Teléfono, ciudad, país (opcional)</value></data>
+  <data name="Privacy_Collect_Profile" xml:space="preserve"><value>Biografía, pertenencia a equipos, asignaciones de roles</value></data>
+  <data name="Privacy_Collect_Technical" xml:space="preserve"><value>Dirección IP y agente de usuario (para registros de consentimiento)</value></data>
+  <data name="Privacy_Collect_Application" xml:space="preserve"><value>Solicitudes de membresía y declaraciones de motivación</value></data>
+  <data name="Privacy_Collect_Consent" xml:space="preserve"><value>Registros de tu aceptación de documentos legales</value></data>
+  <data name="Privacy_LegalBasisTitle" xml:space="preserve"><value>Base legal del tratamiento</value></data>
+  <data name="Privacy_LegalBasisIntro" xml:space="preserve"><value>Procesamos tus datos en base a:</value></data>
+  <data name="Privacy_Legal_Contract" xml:space="preserve"><value>Tratamiento necesario para la gestión de membresía</value></data>
+  <data name="Privacy_Legal_LegitimateInterest" xml:space="preserve"><value>Mantenimiento de registros organizativos y comunicación</value></data>
+  <data name="Privacy_Legal_LegalObligation" xml:space="preserve"><value>Cumplimiento de la normativa española sobre asociaciones</value></data>
+  <data name="Privacy_Legal_Consent" xml:space="preserve"><value>Para datos opcionales que elijas proporcionar</value></data>
+  <data name="Privacy_HowWeUseTitle" xml:space="preserve"><value>Cómo usamos tus datos</value></data>
+  <data name="Privacy_Use_Membership" xml:space="preserve"><value>Para gestionar tu membresía y participación en equipos</value></data>
+  <data name="Privacy_Use_Communicate" xml:space="preserve"><value>Para comunicarnos contigo sobre actividades de la organización</value></data>
+  <data name="Privacy_Use_LegalCompliance" xml:space="preserve"><value>Para mantener registros de cumplimiento legal</value></data>
+  <data name="Privacy_Use_Connections" xml:space="preserve"><value>Para facilitar conexiones entre humans (según tu configuración de visibilidad)</value></data>
+  <data name="Privacy_DataRetentionTitle" xml:space="preserve"><value>Retención de datos</value></data>
+  <data name="Privacy_DataRetentionIntro" xml:space="preserve"><value>Conservamos tus datos según las siguientes políticas:</value></data>
+  <data name="Privacy_Retention_Active" xml:space="preserve"><value>Datos conservados mientras tu cuenta esté activa</value></data>
+  <data name="Privacy_Retention_Inactive" xml:space="preserve"><value>Datos conservados hasta 7 años por cumplimiento legal</value></data>
+  <data name="Privacy_Retention_Consent" xml:space="preserve"><value>Conservados indefinidamente según lo requiere el RGPD</value></data>
+  <data name="Privacy_Retention_Deleted" xml:space="preserve"><value>Anonimizados después de un periodo de gracia de 30 días</value></data>
+  <data name="Privacy_YourRightsTitle" xml:space="preserve"><value>Tus derechos</value></data>
+  <data name="Privacy_YourRightsIntro" xml:space="preserve"><value>Según el RGPD, tienes los siguientes derechos:</value></data>
+  <data name="Privacy_Rights_Access" xml:space="preserve"><value>Solicitar una copia de tus datos personales</value></data>
+  <data name="Privacy_Rights_Rectification" xml:space="preserve"><value>Solicitar la corrección de datos inexactos</value></data>
+  <data name="Privacy_Rights_Erasure" xml:space="preserve"><value>Solicitar la eliminación de tus datos (&quot;derecho al olvido&quot;)</value></data>
+  <data name="Privacy_Rights_Portability" xml:space="preserve"><value>Recibir tus datos en formato legible por máquina</value></data>
+  <data name="Privacy_Rights_Restriction" xml:space="preserve"><value>Solicitar la limitación del tratamiento</value></data>
+  <data name="Privacy_Rights_Objection" xml:space="preserve"><value>Oponerte a ciertos tipos de tratamiento</value></data>
+  <data name="Privacy_YourRightsExercise" xml:space="preserve"><value>Para ejercer estos derechos, visita tu configuración de {0} o contáctanos en {1}.</value><comment>{0} = Privacy &amp; Data link, {1} = DPO email</comment></data>
+  <data name="Privacy_PrivacyAndData" xml:space="preserve"><value>Privacidad y datos</value></data>
+  <data name="Privacy_CookiesTitle" xml:space="preserve"><value>Cookies</value></data>
+  <data name="Privacy_CookiesIntro" xml:space="preserve"><value>Este sitio solo usa cookies esenciales necesarias para:</value></data>
+  <data name="Privacy_Cookies_Auth" xml:space="preserve"><value>Autenticación de usuario y gestión de sesiones</value></data>
+  <data name="Privacy_Cookies_Antiforgery" xml:space="preserve"><value>Tokens anti-falsificación para seguridad de formularios</value></data>
+  <data name="Privacy_Cookies_Consent" xml:space="preserve"><value>Preferencia de consentimiento de cookies</value></data>
+  <data name="Privacy_CookiesNoTracking" xml:space="preserve"><value>No usamos cookies de análisis, publicidad ni seguimiento de terceros.</value></data>
+  <data name="Privacy_DataSecurityTitle" xml:space="preserve"><value>Seguridad de datos</value></data>
+  <data name="Privacy_DataSecurityIntro" xml:space="preserve"><value>Implementamos medidas técnicas y organizativas apropiadas para proteger tus datos, incluyendo:</value></data>
+  <data name="Privacy_Security_Encryption" xml:space="preserve"><value>Cifrado en tránsito (HTTPS)</value></data>
+  <data name="Privacy_Security_OAuth" xml:space="preserve"><value>Autenticación segura vía Google OAuth</value></data>
+  <data name="Privacy_Security_AccessControls" xml:space="preserve"><value>Controles de acceso y registro de auditoría</value></data>
+  <data name="Privacy_Security_Reviews" xml:space="preserve"><value>Revisiones de seguridad periódicas</value></data>
+  <data name="Privacy_ThirdPartyTitle" xml:space="preserve"><value>Servicios de terceros</value></data>
+  <data name="Privacy_ThirdPartyIntro" xml:space="preserve"><value>Usamos los siguientes servicios de terceros:</value></data>
+  <data name="Privacy_ThirdParty_GoogleOAuth" xml:space="preserve"><value>Para autenticación segura</value></data>
+  <data name="Privacy_ThirdParty_GoogleWorkspace" xml:space="preserve"><value>Para provisión de recursos de equipo (unidades compartidas, grupos)</value></data>
+  <data name="Privacy_ChangesTitle" xml:space="preserve"><value>Cambios a esta política</value></data>
+  <data name="Privacy_ChangesBody" xml:space="preserve"><value>Podemos actualizar esta política de privacidad periódicamente. Notificaremos a los humans activos sobre cambios significativos por correo.</value></data>
+  <data name="Privacy_ContactTitle" xml:space="preserve"><value>Contacto y reclamaciones</value></data>
+  <data name="Privacy_ContactBody" xml:space="preserve"><value>Para preguntas o dudas sobre esta política, contacta con nuestro Delegado de Protección de Datos en {0}.</value><comment>{0} = DPO email</comment></data>
+  <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estás satisfecho con nuestra respuesta, tienes derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD) en {0}.</value><comment>{0} = AEPD URL</comment></data>
+
 
 </root>

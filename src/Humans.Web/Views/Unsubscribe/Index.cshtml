@@ -1,20 +1,20 @@
 @{
-    ViewData["Title"] = "Unsubscribe from Emails";
+    ViewData["Title"] = Localizer["Unsub_Title"].Value;
     var displayName = ViewData["DisplayName"] as string;
     var categoryName = ViewData["CategoryName"] as string ?? "these";
 }
 
-<h1>Unsubscribe from @categoryName emails?</h1>
+<h1>@Html.Raw(string.Format(Localizer["Unsub_Heading"].Value, Html.Encode(categoryName)))</h1>
 
 @if (!string.IsNullOrEmpty(displayName))
 {
-    <p>Hi <strong>@displayName</strong>,</p>
+    <p>@Html.Raw(string.Format(Localizer["Unsub_Greeting"].Value, "<strong>" + Html.Encode(displayName) + "</strong>"))</p>
 }
 
-<p>If you confirm, you will no longer receive @categoryName emails from Humans.</p>
+<p>@Html.Raw(string.Format(Localizer["Unsub_ConfirmMessage"].Value, Html.Encode(categoryName)))</p>
 
 <form method="post">
     @Html.AntiForgeryToken()
-    <button type="submit" class="btn btn-danger">Confirm Unsubscribe</button>
-    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary ms-2">Cancel</a>
+    <button type="submit" class="btn btn-danger">@Localizer["Unsub_ConfirmButton"]</button>
+    <a asp-controller="Home" asp-action="Index" class="btn btn-secondary ms-2">@Localizer["Common_Cancel"]</a>
 </form>

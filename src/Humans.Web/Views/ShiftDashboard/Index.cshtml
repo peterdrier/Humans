@@ -2,15 +2,15 @@
 @using Humans.Web.Controllers
 
 @{
-    ViewData["Title"] = "Shift Dashboard";
+    ViewData["Title"] = Localizer["ShiftDash_Title"].Value;
     var searchUrl = Url.Action(nameof(ShiftDashboardController.SearchVolunteers), "ShiftDashboard");
     var voluntellUrl = Url.Action(nameof(ShiftDashboardController.Voluntell), "ShiftDashboard");
 }
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Shift Dashboard</h2>
-        <span class="badge bg-secondary fs-6">@Model.Shifts.Count shifts</span>
+        <h2>@Localizer["ShiftDash_Title"]</h2>
+        <span class="badge bg-secondary fs-6">@string.Format(Localizer["ShiftDash_ShiftsCount"].Value, Model.Shifts.Count)</span>
     </div>
 
     <vc:temp-data-alerts />
@@ -20,13 +20,13 @@
         <div class="card-body">
             <form method="get" class="row g-2 align-items-end">
                 <div class="col-md-3">
-                    <label class="form-label">Date</label>
+                    <label class="form-label">@Localizer["ShiftDash_Date"]</label>
                     <input type="date" name="date" value="@Model.SelectedDate" class="form-control" />
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Department</label>
+                    <label class="form-label">@Localizer["ShiftDash_Department"]</label>
                     <select name="departmentId" class="form-select">
-                        <option value="">All departments</option>
+                        <option value="">@Localizer["ShiftDash_AllDepartments"]</option>
                         @foreach (var dept in Model.Departments)
                         {
                             <option value="@dept.TeamId" selected="@(Model.SelectedDepartmentId == dept.TeamId ? "selected" : null)">@dept.Name</option>
@@ -34,8 +34,8 @@
                     </select>
                 </div>
                 <div class="col-md-auto">
-                    <button type="submit" class="btn btn-primary">Filter</button>
-                    <a asp-action="Index" class="btn btn-outline-secondary ms-1">Clear</a>
+                    <button type="submit" class="btn btn-primary">@Localizer["ShiftDash_Filter"]</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary ms-1">@Localizer["ShiftDash_Clear"]</a>
                 </div>
             </form>
         </div>
@@ -50,7 +50,7 @@
     @* Urgency table *@
     @if (Model.Shifts.Count == 0)
     {
-        <div class="alert alert-info">No shifts match the current filters.</div>
+        <div class="alert alert-info">@Localizer["ShiftDash_NoShiftsMatch"]</div>
     }
     else
     {
@@ -58,11 +58,11 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Shift</th>
-                        <th>Department</th>
-                        <th>Date / Time</th>
-                        <th>Slots</th>
-                        <th>Priority</th>
+                        <th>@Localizer["ShiftDash_Shift"]</th>
+                        <th>@Localizer["ShiftDash_Department"]</th>
+                        <th>@Localizer["ShiftDash_DateTime"]</th>
+                        <th>@Localizer["ShiftDash_Slots"]</th>
+                        <th>@Localizer["ShiftDash_Priority"]</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -82,9 +82,9 @@
                         };
                         var periodLabel = period switch
                         {
-                            ShiftPeriod.Build => "Set-up",
-                            ShiftPeriod.Event => "Event",
-                            ShiftPeriod.Strike => "Strike",
+                            ShiftPeriod.Build => Localizer["Shifts_SetUp"].Value,
+                            ShiftPeriod.Event => Localizer["Shifts_Event"].Value,
+                            ShiftPeriod.Strike => Localizer["Shifts_Strike"].Value,
                             _ => ""
                         };
                         var priorityBadge = shift.Rota.Priority switch
@@ -120,17 +120,17 @@
                                         data-bs-toggle="collapse"
                                         data-bs-target="#@collapseId"
                                         data-shift-id="@shift.Id">
-                                    Voluntell
+                                    @Localizer["ShiftDash_Voluntell"]
                                 </button>
                             </td>
                         </tr>
                         <tr class="collapse" id="@collapseId">
                             <td colspan="6">
                                 <div class="p-3 bg-light rounded border">
-                                    <label class="form-label fw-semibold">Search humans for: @shift.Rota.Name</label>
+                                    <label class="form-label fw-semibold">@string.Format(Localizer["ShiftDash_SearchHumans"].Value, shift.Rota.Name)</label>
                                     <input type="text"
                                            class="form-control mb-2 volunteer-search-input"
-                                           placeholder="Type a name (min 2 chars)..."
+                                           placeholder="@Localizer["ShiftDash_SearchPlaceholder"].Value"
                                            data-shift-id="@shift.Id"
                                            autocomplete="off" />
                                     <div class="volunteer-results" data-shift-id="@shift.Id"></div>
@@ -152,9 +152,9 @@
     ["SearchUrl"] = searchUrl,
     ["VoluntellUrl"] = voluntellUrl,
     ["AssignButtonClass"] = "btn-success",
-    ["NoResultsText"] = "No humans found.",
-    ["ErrorText"] = "Search failed.",
-    ["OverlapLabel"] = "Schedule conflict",
+    ["NoResultsText"] = Localizer["ShiftDash_NoHumansFound"].Value,
+    ["ErrorText"] = Localizer["ShiftDash_SearchFailed"].Value,
+    ["OverlapLabel"] = Localizer["ShiftDash_ScheduleConflict"].Value,
     ["DietaryPreferenceStyle"] = "muted",
     ["ShowPoolBadge"] = false
 })

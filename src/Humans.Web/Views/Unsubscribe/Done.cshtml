@@ -1,14 +1,15 @@
 @{
-    ViewData["Title"] = "You've been unsubscribed";
+    ViewData["Title"] = Localizer["Unsub_DoneTitle"].Value;
     var categoryName = ViewData["CategoryName"] as string ?? "these";
 }
 
-<h1>You've been unsubscribed</h1>
+<h1>@Localizer["Unsub_DoneTitle"]</h1>
 
-<p>You will no longer receive @categoryName emails from Humans.</p>
+<p>@Html.Raw(string.Format(Localizer["Unsub_DoneMessage"].Value, Html.Encode(categoryName)))</p>
 
 <p>
-    <a asp-controller="Account" asp-action="Login">Sign in to manage your communication preferences</a>.
+    @Localizer["Unsub_DoneManage"]
+    <a asp-controller="Account" asp-action="Login">@Localizer["Unsub_DoneManageLink"]</a>.
 </p>
 
-<p><a asp-controller="Home" asp-action="Index">Back to home</a></p>
+<p><a asp-controller="Home" asp-action="Index">@Localizer["Unsub_BackHome"]</a></p>

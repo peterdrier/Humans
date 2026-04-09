@@ -2,7 +2,7 @@
 @using NodaTime
 
 @{
-    ViewData["Title"] = "My Shifts";
+    ViewData["Title"] = Localizer["Shifts_MyShiftsTitle"].Value;
     var tz = Model.EventSettings != null ? DateTimeZoneProviders.Tzdb[Model.EventSettings.TimeZoneId] : null;
 }
 
@@ -12,9 +12,9 @@
         var period = shift.GetShiftPeriod(es);
         return period switch
         {
-            ShiftPeriod.Build => "Set-up",
-            ShiftPeriod.Event => "Event",
-            ShiftPeriod.Strike => "Strike",
+            ShiftPeriod.Build => Localizer["Shifts_SetUp"].Value,
+            ShiftPeriod.Event => Localizer["Shifts_Event"].Value,
+            ShiftPeriod.Strike => Localizer["Shifts_Strike"].Value,
             _ => ""
         };
     }
@@ -34,15 +34,15 @@
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>My Shifts</h2>
-        <a asp-action="Index" class="btn btn-outline-primary">Browse Volunteer Options</a>
+        <h2>@Localizer["Shifts_MyShiftsTitle"]</h2>
+        <a asp-action="Index" class="btn btn-outline-primary">@Localizer["Shifts_BrowseTitle"]</a>
     </div>
 
     <vc:temp-data-alerts />
 
     @if (Model.EventSettings == null)
     {
-        <div class="alert alert-info">No active event configured.</div>
+        <div class="alert alert-info">@Localizer["Shifts_NoActiveEventConfigured"]</div>
     }
     else
     {
@@ -51,7 +51,7 @@
         @if (Model.Upcoming.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">Upcoming Shifts</h5></div>
+                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_UpcomingShifts"]</h5></div>
                 <div class="card-body">
                     @{
                         // Group build/strike range signups by SignupBlockId, show individual signups separately
@@ -83,7 +83,7 @@
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="signupBlockId" value="@block.Key" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger"
-                                            data-confirm="Bail from all @block.Count() days?">Bail</button>
+                                            data-confirm="@string.Format(Localizer["Shifts_BailRangeConfirm"].Value, block.Count())">@Localizer["Shifts_Bail"]</button>
                                 </form>
                             </div>
                         }
@@ -94,7 +94,7 @@
                         <div class="table-responsive">
                             <table class="table table-sm">
                                 <thead>
-                                    <tr><th>Department</th><th>Shift</th><th>Phase</th><th>Date</th><th>Time</th><th>Duration</th><th></th></tr>
+                                    <tr><th>@Localizer["Shifts_Department"]</th><th>@Localizer["Shifts_Shift"]</th><th>@Localizer["Shifts_Phase"]</th><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Time"]</th><th>@Localizer["Shifts_Duration"]</th><th></th></tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var item in individualItems)
@@ -112,7 +112,7 @@
                                                     @Html.AntiForgeryToken()
                                                     <input type="hidden" name="signupId" value="@item.Signup.Id" />
                                                     <button type="submit" class="btn btn-sm btn-outline-danger"
-                                                            data-confirm="Are you sure you want to bail?">Bail</button>
+                                                            data-confirm="@Localizer["Shifts_BailConfirm"].Value">@Localizer["Shifts_Bail"]</button>
                                                 </form>
                                             </td>
                                         </tr>
@@ -128,12 +128,12 @@
         @if (Model.Pending.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">Pending Approval</h5></div>
+                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_PendingApproval"]</h5></div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-sm">
                             <thead>
-                                <tr><th>Department</th><th>Shift</th><th>Phase</th><th>Date</th><th>Time</th><th>Duration</th><th></th></tr>
+                                <tr><th>@Localizer["Shifts_Department"]</th><th>@Localizer["Shifts_Shift"]</th><th>@Localizer["Shifts_Phase"]</th><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Time"]</th><th>@Localizer["Shifts_Duration"]</th><th></th></tr>
                             </thead>
                             <tbody>
                                 @foreach (var item in Model.Pending)
@@ -150,7 +150,7 @@
                                             <form asp-action="Bail" method="post" class="d-inline">
                                                 @Html.AntiForgeryToken()
                                                 <input type="hidden" name="signupId" value="@item.Signup.Id" />
-                                                <button type="submit" class="btn btn-sm btn-outline-secondary">Withdraw</button>
+                                                <button type="submit" class="btn btn-sm btn-outline-secondary">@Localizer["Shifts_WithdrawButton"]</button>
                                             </form>
                                         </td>
                                     </tr>
@@ -165,12 +165,12 @@
         @if (Model.Past.Count > 0)
         {
             <div class="card mb-4">
-                <div class="card-header"><h5 class="mb-0">Past</h5></div>
+                <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_Past"]</h5></div>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table table-sm">
                             <thead>
-                                <tr><th>Department</th><th>Shift</th><th>Phase</th><th>Date</th><th>Time</th><th>Duration</th><th>Status</th></tr>
+                                <tr><th>@Localizer["Shifts_Department"]</th><th>@Localizer["Shifts_Shift"]</th><th>@Localizer["Shifts_Phase"]</th><th>@Localizer["Shifts_Date"]</th><th>@Localizer["Shifts_Time"]</th><th>@Localizer["Shifts_Duration"]</th><th>@Localizer["Common_Status"]</th></tr>
                             </thead>
                             <tbody>
                                 @foreach (var item in Model.Past)
@@ -195,14 +195,14 @@
 
         @if (Model.Upcoming.Count == 0 && Model.Pending.Count == 0 && Model.Past.Count == 0)
         {
-            <div class="alert alert-info">No shift signups yet. <a asp-action="Index">Browse available shifts</a>.</div>
+            <div class="alert alert-info">@Localizer["Shifts_NoSignups"] <a asp-action="Index">@Localizer["Shifts_BrowseAvailable"]</a>.</div>
         }
 
         @* General Availability *@
         <div class="card mb-4">
-            <div class="card-header"><h5 class="mb-0">General Availability</h5></div>
+            <div class="card-header"><h5 class="mb-0">@Localizer["Shifts_GeneralAvailability"]</h5></div>
             <div class="card-body">
-                <p class="text-muted small">Mark which days you're available to help. Coordinators can see who's in the pool when assigning shifts.</p>
+                <p class="text-muted small">@Localizer["Shifts_AvailabilityHelp"]</p>
                 <form asp-action="SaveAvailability" method="post">
                     @Html.AntiForgeryToken()
                     <div class="row row-cols-auto g-2 mb-3">
@@ -220,7 +220,7 @@
                             </div>
                         }
                     </div>
-                    <button type="submit" class="btn btn-sm btn-primary">Save Availability</button>
+                    <button type="submit" class="btn btn-sm btn-primary">@Localizer["Shifts_SaveAvailability"]</button>
                 </form>
             </div>
         </div>
