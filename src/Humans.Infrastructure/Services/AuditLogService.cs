@@ -186,6 +186,49 @@ public class AuditLogService : IAuditLogService
     }
 
     /// <inheritdoc />
+    public async Task<AuditLogPageResult> GetAuditLogPageAsync(
+        string? actionFilter, int page, int pageSize, CancellationToken ct = default)
+    {
+        var (items, totalCount, anomalyCount) = await GetFilteredAsync(actionFilter, page, pageSize, ct);
+
+        // Collect all user IDs that might appear as actors or subjects
+        var userIds = new HashSet<Guid>();
+        var teamIds = new HashSet<Guid>();
+
+        foreach (var e in items)
+        {
+            if (e.ActorUserId.HasValue)
+                userIds.Add(e.ActorUserId.Value);
+
+            // Subject user ID: User/Profile/WorkspaceAccount entity types, or related User
+            if (e.EntityType is "User" or "Profile" or "WorkspaceAccount")
+                userIds.Add(e.EntityId);
+            else if (string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal) && e.RelatedEntityId.HasValue)
+                userIds.Add(e.RelatedEntityId.Value);
+
+            // Target team ID
+            if (string.Equals(e.EntityType, "Team", StringComparison.Ordinal))
+                teamIds.Add(e.EntityId);
+            else if (string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) && e.RelatedEntityId.HasValue)
+                teamIds.Add(e.RelatedEntityId.Value);
+        }
+
+        var userDisplayNames = userIds.Count > 0
+            ? (IReadOnlyDictionary<Guid, string>)await _dbContext.Users.AsNoTracking()
+                .Where(u => userIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct)
+            : new Dictionary<Guid, string>();
+
+        var teamNames = teamIds.Count > 0
+            ? (IReadOnlyDictionary<Guid, (string Name, string Slug)>)await _dbContext.Teams.AsNoTracking()
+                .Where(t => teamIds.Contains(t.Id))
+                .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug), ct)
+            : new Dictionary<Guid, (string Name, string Slug)>();
+
+        return new AuditLogPageResult(items, totalCount, anomalyCount, userDisplayNames, teamNames);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,

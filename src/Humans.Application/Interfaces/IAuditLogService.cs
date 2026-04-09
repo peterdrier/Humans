@@ -70,4 +70,21 @@ public interface IAuditLogService
         IReadOnlyList<AuditAction>? actions = null,
         int limit = 20,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets a full audit log page with display name lookups for users and teams.
+    /// Used by Board/Admin audit log views to avoid direct DbContext access in controllers.
+    /// </summary>
+    Task<AuditLogPageResult> GetAuditLogPageAsync(
+        string? actionFilter, int page, int pageSize, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Full audit log page with display name dictionaries for rendering.
+/// </summary>
+public record AuditLogPageResult(
+    IReadOnlyList<AuditLogEntry> Items,
+    int TotalCount,
+    int AnomalyCount,
+    IReadOnlyDictionary<Guid, string> UserDisplayNames,
+    IReadOnlyDictionary<Guid, (string Name, string Slug)> TeamNames);

@@ -55,6 +55,13 @@ file sealed class StubAuditLogService : IAuditLogService
         int limit = 20,
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+
+    public Task<AuditLogPageResult> GetAuditLogPageAsync(
+        string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
+        Task.FromResult(new AuditLogPageResult(
+            Array.Empty<AuditLogEntry>(), 0, 0,
+            new Dictionary<Guid, string>(),
+            new Dictionary<Guid, (string Name, string Slug)>()));
 }
 
 public class CommunicationPreferenceServiceTests : IDisposable
