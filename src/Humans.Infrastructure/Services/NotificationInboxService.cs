@@ -427,6 +427,24 @@ public class NotificationInboxService : INotificationInboxService
             : parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
     }
 
+    public async Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var actionable = await _dbContext.NotificationRecipients
+            .CountAsync(nr => nr.UserId == userId &&
+                              nr.ReadAt == null &&
+                              nr.Notification.ResolvedAt == null &&
+                              nr.Notification.Class == NotificationClass.Actionable, ct);
+
+        var informational = await _dbContext.NotificationRecipients
+            .CountAsync(nr => nr.UserId == userId &&
+                              nr.ReadAt == null &&
+                              nr.Notification.ResolvedAt == null &&
+                              nr.Notification.Class == NotificationClass.Informational, ct);
+
+        return (actionable, informational);
+    }
+
     private void InvalidateBadgeCaches(IEnumerable<Guid> userIds)
     {
         foreach (var userId in userIds)
