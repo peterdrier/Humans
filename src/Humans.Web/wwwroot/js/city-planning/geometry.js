@@ -12,7 +12,7 @@ export function parseLimitZoneGeom(geoJson) {
     const lz = JSON.parse(geoJson);
     if (lz.type === 'FeatureCollection') {
         return lz.features.length > 0
-            ? lz.features.reduce((acc, f) => acc ? turf.union(turf.featureCollection([acc, f])) : f)
+            ? turf.union(lz)
             : null;
     }
     return lz;
