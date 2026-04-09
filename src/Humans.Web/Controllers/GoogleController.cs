@@ -729,6 +729,9 @@ public class GoogleController : HumansControllerBase
         var googleEmailLookup = await dbContext.Users
             .Where(u => userIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.GetGoogleServiceEmail() ?? "unknown");
+        var displayNameLookup = await dbContext.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.DisplayName);
         var teamLookup = await dbContext.Teams
             .Where(t => teamIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, t => t.Name);
@@ -740,6 +743,7 @@ public class GoogleController : HumansControllerBase
                 g => g.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
 
         ViewBag.GoogleEmailLookup = googleEmailLookup;
+        ViewBag.DisplayNameLookup = displayNameLookup;
         ViewBag.TeamLookup = teamLookup;
         ViewBag.ResourceLookup = resourceLookup;
         return View(events);
