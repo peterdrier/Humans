@@ -552,7 +552,7 @@
                                             @if (!string.IsNullOrEmpty(shift.Description))
                                             {
                                                 <tr class="@(isFull ? "table-secondary" : "")">
-                                                    <td colspan="8" class="text-muted small pt-0 pb-1 border-0">
+                                                    <td colspan="@(Model.ShowSignups ? 8 : 7)" class="text-muted small pt-0 pb-1 border-0">
                                                         @Html.SanitizedMarkdown(shift.Description)
                                                     </td>
                                                 </tr>
