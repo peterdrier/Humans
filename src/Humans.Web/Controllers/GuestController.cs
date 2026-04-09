@@ -70,6 +70,9 @@ public class GuestController : HumansControllerBase
 
     // ─── Communication Preferences ───────────────────────────────────
 
+    // WARNING: [AllowAnonymous] — accepts unauthenticated requests with a valid unsubscribe
+    // token (utoken). The token scopes access to THIS page only. Do not add links to other
+    // authenticated pages from the token-mode view. See EndpointAuthorizationTests allowlist.
     [HttpGet("Guest/CommunicationPreferences")]
     [AllowAnonymous]
     public async Task<IActionResult> CommunicationPreferences(string? utoken)
@@ -92,6 +95,8 @@ public class GuestController : HumansControllerBase
         }
     }
 
+    // WARNING: [AllowAnonymous] — paired with CommunicationPreferences GET above.
+    // See EndpointAuthorizationTests allowlist.
     [HttpPost("Guest/CommunicationPreferences/Update")]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
