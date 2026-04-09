@@ -5,6 +5,7 @@ using Humans.Domain.Enums;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Humans.Infrastructure.Data;
 
 namespace Humans.Web.Controllers;
@@ -49,7 +50,7 @@ public class UnsubscribeController : Controller
                 "User {UserId} authenticated via unsubscribe link for {Category}",
                 userId, category);
 
-            return RedirectToCommunicationPreferences(user);
+            return await RedirectToCommunicationPreferencesAsync(user);
         }
 
         // Fall back to legacy campaign-only token
@@ -77,7 +78,7 @@ public class UnsubscribeController : Controller
                 "User {UserId} unsubscribed from {Category} and authenticated via unsubscribe link",
                 userId, category);
 
-            return RedirectToCommunicationPreferences(user);
+            return await RedirectToCommunicationPreferencesAsync(user);
         }
 
         // Fall back to legacy campaign-only token
@@ -120,9 +121,9 @@ public class UnsubscribeController : Controller
     /// Redirects to the appropriate communication preferences page based on whether the user has a profile.
     /// Profileless users go to Guest/CommunicationPreferences; users with profiles go to Profile/CommunicationPreferences.
     /// </summary>
-    private IActionResult RedirectToCommunicationPreferences(User user)
+    private async Task<IActionResult> RedirectToCommunicationPreferencesAsync(User user)
     {
-        var hasProfile = _db.Profiles.Any(p => p.UserId == user.Id);
+        var hasProfile = await _db.Profiles.AnyAsync(p => p.UserId == user.Id);
         return hasProfile
             ? RedirectToAction(nameof(ProfileController.CommunicationPreferences), "Profile")
             : RedirectToAction(nameof(GuestController.CommunicationPreferences), "Guest");
@@ -158,7 +159,7 @@ public class UnsubscribeController : Controller
             "User {UserId} authenticated via legacy unsubscribe link",
             userId);
 
-        return RedirectToCommunicationPreferences(user);
+        return await RedirectToCommunicationPreferencesAsync(user);
     }
 
     private async Task<IActionResult> TryLegacyConfirm(string token)
@@ -194,6 +195,6 @@ public class UnsubscribeController : Controller
             "User {UserId} unsubscribed from Marketing and authenticated via legacy unsubscribe link",
             userId);
 
-        return RedirectToCommunicationPreferences(user);
+        return await RedirectToCommunicationPreferencesAsync(user);
     }
 }
