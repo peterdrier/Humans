@@ -3,6 +3,13 @@
     ViewData["Title"] = Localizer["ProfilePrivacy_Title"].Value;
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["ProfilePrivacy_Title"]</li>
+    </ol>
+</nav>
+
 <h1>@Localizer["ProfilePrivacy_Title"]</h1>
 
 <p class="lead">@Localizer["ProfilePrivacy_Lead"]</p>

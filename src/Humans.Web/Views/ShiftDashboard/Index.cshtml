@@ -8,6 +8,13 @@
 }
 
 <div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-controller="Shifts" asp-action="Index">Shifts</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Shift Dashboard</li>
+        </ol>
+    </nav>
+
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Shift Dashboard</h2>
         <span class="badge bg-secondary fs-6">@Model.Shifts.Count shifts</span>

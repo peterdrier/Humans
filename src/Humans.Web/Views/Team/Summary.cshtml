@@ -6,6 +6,13 @@
     ViewData["Title"] = "Teams Summary";
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Teams Summary</li>
+    </ol>
+</nav>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Teams Summary</h1>
     <a asp-action="CreateTeam" class="btn btn-primary" authorize-policy="BoardOrAdmin">@Localizer["Teams_CreateTeam"]</a>

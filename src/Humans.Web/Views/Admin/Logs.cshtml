@@ -6,7 +6,14 @@
 }
 
 <div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+    <nav aria-label="breadcrumb" class="mt-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Admin</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Application Logs</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>Application Logs</h1>
         <span class="text-muted">Showing @Model.Count of last 200 (in-memory buffer)</span>
     </div>
