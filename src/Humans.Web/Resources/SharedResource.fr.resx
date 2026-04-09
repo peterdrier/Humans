@@ -1397,8 +1397,8 @@
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>La surface en m² est affichée au centre et se met à jour lors de l'édition</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Enregistrer &amp; modifier plus tard</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Content du résultat ? Clique sur Save. Ensuite, clique sur ton barrio sur la carte pour voir sa surface, puis Edit pour revenir en mode édition. Chaque sauvegarde crée une entrée dans l'historique — utilise le bouton History pour parcourir et restaurer une version précédente. Pas de stress, tu ne peux rien casser !</value></data>
-  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Reste dans les zones blanches</value></data>
-  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Les zones blanches en pointillés délimitent les zones de camping sécurisées, protégées par des paratonnerres. Camper en dehors est interdit, garde donc ton barrio à l'intérieur de ces limites.</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Reste dans les zones en pointillés</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Les zones en pointillés délimitent les zones de camping sécurisées, protégées par des paratonnerres. La couleur des pointillés indique le niveau sonore de la zone — du bleu (plus calme) au rouge (plus bruyant). Camper en dehors est interdit, garde donc ton barrio à l'intérieur de ces limites.</value></data>
   <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>Chevauchements ? Parlez-en !</value></data>
   <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>Si ton barrio chevauche un autre, contacte-nous sur {0} et réglez ça ensemble. Si des conflits ne sont pas résolus en fin de phase, l'équipe city planning s'en chargera.</value></data>
   <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>

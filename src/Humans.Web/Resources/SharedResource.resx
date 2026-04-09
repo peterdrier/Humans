@@ -1417,8 +1417,8 @@
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>The area in m² is shown in the centre and updates as you edit</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Saving &amp; editing later</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Happy with it? Hit Save. Afterwards, click your barrio on the map to see its size, then Edit to jump back into edit mode. Every save creates a history entry — use the History button to browse and restore any previous version: hit the preview button to show the version, and then save the one you want to restore. No stress, you can't break anything!</value></data>
-  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Stay inside the white zones</value></data>
-  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>The dashed white areas mark the safe camping zones, protected by lightning poles. Camping outside them is not allowed, so keep your barrio inside those boundaries.</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Stay inside the dashed zones</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>The dashed areas mark the safe camping zones, protected by lightning poles. The colour of the dashes indicates the zone's sound level — from blue (quieter) to red (louder). Camping outside them is not allowed, so keep your barrio inside those boundaries.</value></data>
   <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>Overlaps? Talk it out!</value></data>
   <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>If your barrio overlaps with another, reach out on {0} and work it out together. If there are unresolved conflicts at the end of the phase, the city planning team will sort them out.</value><comment>{0} = Discord channel link</comment></data>
   <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>

@@ -1397,8 +1397,8 @@
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>Die Fläche in m² wird in der Mitte angezeigt und aktualisiert sich beim Bearbeiten</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Speichern &amp; später bearbeiten</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Zufrieden? Klicke auf Save. Danach klicke auf dein Barrio auf der Karte, um die Größe zu sehen, dann Edit, um in den Bearbeitungsmodus zurückzukehren. Jedes Speichern erstellt einen Verlaufseintrag — nutze die Schaltfläche History, um frühere Versionen zu durchsuchen und wiederherzustellen. Kein Stress, du kannst nichts kaputtmachen!</value></data>
-  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Bleib innerhalb der weißen Zonen</value></data>
-  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Die gestrichelten weißen Bereiche markieren die sicheren Campingzonen, geschützt durch Blitzableiter. Campen außerhalb ist nicht erlaubt, halte dein Barrio also innerhalb dieser Grenzen.</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Bleib innerhalb der gestrichelten Zonen</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Die gestrichelten Bereiche markieren die sicheren Campingzonen, geschützt durch Blitzableiter. Die Farbe der Striche zeigt den Lärmpegel der Zone an — von blau (ruhiger) bis rot (lauter). Campen außerhalb ist nicht erlaubt, halte dein Barrio also innerhalb dieser Grenzen.</value></data>
   <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>Überschneidungen? Sprich darüber!</value></data>
   <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>Wenn sich dein Barrio mit einem anderen überschneidet, melde dich auf {0} und klärt es gemeinsam. Wenn am Ende der Phase noch Konflikte bestehen, kümmert sich das City-Planning-Team darum.</value></data>
   <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>

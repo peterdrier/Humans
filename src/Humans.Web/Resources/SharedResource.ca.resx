@@ -1398,8 +1398,8 @@
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>La superfície en m² es mostra al centre i s'actualitza en editar</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Desar &amp; editar més tard</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Satisfet? Prem Save. Després, fes clic al teu barrio al mapa per veure la mida, i Edit per tornar al mode d'edició. Cada desat crea una entrada a l'historial — usa el botó History per navegar i restaurar versions anteriors. Sense estrès, no pots trencar res!</value></data>
-  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Queda't dins les zones blanques</value></data>
-  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Les àrees blanques discontínues marquen les zones d'acampada segures, protegides per parallamps. Acampar fora no està permès, mantén el teu barrio dins d'aquests límits.</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Queda't dins les zones discontínues</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Les àrees discontínues marquen les zones d'acampada segures, protegides per parallamps. El color de les línies discontinues indica el nivell sonor de la zona — del blau (més tranquil) al vermell (més sorollós). Acampar fora no està permès, mantén el teu barrio dins d'aquests límits.</value></data>
   <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>Solapaments? Parla-ho!</value></data>
   <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>Si el teu barrio se solapa amb un altre, contacta'ns a {0} i resoleu-ho junts. Si hi ha conflictes sense resoldre al final de la fase, l'equip de city planning s'encarregarà.</value></data>
   <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>

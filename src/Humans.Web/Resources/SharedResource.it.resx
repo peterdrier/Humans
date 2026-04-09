@@ -1397,8 +1397,8 @@
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>La superficie in m² è mostrata al centro e si aggiorna durante la modifica</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Salvare &amp; modificare in seguito</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Soddisfatto? Clicca Save. Poi clicca sul tuo barrio sulla mappa per vederne la dimensione, poi Edit per tornare in modalità modifica. Ogni salvataggio crea una voce nella cronologia — usa il pulsante History per sfogliare e ripristinare versioni precedenti. Nessuno stress, non puoi rompere nulla!</value></data>
-  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Rimani nelle zone bianche</value></data>
-  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Le aree bianche tratteggiate delimitano le zone di campeggio sicure, protette da parafulmine. Campeggiare fuori non è consentito, tieni il tuo barrio dentro questi confini.</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Rimani nelle zone tratteggiate</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Le aree tratteggiate delimitano le zone di campeggio sicure, protette da parafulmine. Il colore dei tratteggi indica il livello sonoro della zona — dal blu (più tranquillo) al rosso (più rumoroso). Campeggiare fuori non è consentito, tieni il tuo barrio dentro questi confini.</value></data>
   <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>Sovrapposizioni? Parlatene!</value></data>
   <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>Se il tuo barrio si sovrappone a un altro, contattaci su {0} e risolvete insieme. Se ci sono conflitti irrisolti alla fine della fase, il team di city planning li sistemerà.</value></data>
   <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>
