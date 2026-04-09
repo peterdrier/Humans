@@ -5,7 +5,6 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -19,7 +18,7 @@ public class SendReConsentReminderJob : IRecurringJob
     private readonly ILegalDocumentSyncService _legalDocService;
     private readonly IEmailService _emailService;
     private readonly EmailSettings _emailSettings;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<SendReConsentReminderJob> _logger;
     private readonly IClock _clock;
 
@@ -29,7 +28,7 @@ public class SendReConsentReminderJob : IRecurringJob
         ILegalDocumentSyncService legalDocService,
         IEmailService emailService,
         IOptions<EmailSettings> emailSettings,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<SendReConsentReminderJob> logger,
         IClock clock)
     {

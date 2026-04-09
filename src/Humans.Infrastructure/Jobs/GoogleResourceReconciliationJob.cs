@@ -3,7 +3,6 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -15,14 +14,14 @@ public class GoogleResourceReconciliationJob : IRecurringJob
 {
     private readonly IGoogleSyncService _googleSyncService;
     private readonly INotificationService _notificationService;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<GoogleResourceReconciliationJob> _logger;
     private readonly IClock _clock;
 
     public GoogleResourceReconciliationJob(
         IGoogleSyncService googleSyncService,
         INotificationService notificationService,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<GoogleResourceReconciliationJob> logger,
         IClock clock)
     {

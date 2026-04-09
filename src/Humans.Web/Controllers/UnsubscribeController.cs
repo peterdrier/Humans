@@ -33,14 +33,15 @@ public class UnsubscribeController : Controller
         var result = _preferenceService.ValidateUnsubscribeToken(token);
         if (result is not null)
         {
-            var (userId, category) = result.Value;
+            var (userId, _) = result.Value;
             var user = await _db.Users.FindAsync(userId);
             if (user is null)
                 return NotFound();
 
-            ViewData["DisplayName"] = user.DisplayName;
-            ViewData["CategoryName"] = category.ToDisplayName();
-            return View();
+            // Redirect to comms preferences with token — no session created
+            return RedirectToAction(
+                nameof(GuestController.CommunicationPreferences), "Guest",
+                new { utoken = token });
         }
 
         // Fall back to legacy campaign-only token
@@ -62,8 +63,10 @@ public class UnsubscribeController : Controller
 
             await _preferenceService.UpdatePreferenceAsync(userId, category, optedOut: true, source: "MagicLink");
 
-            ViewData["CategoryName"] = category.ToDisplayName();
-            return View("Done");
+            // Redirect to comms preferences with token — no session created
+            return RedirectToAction(
+                nameof(GuestController.CommunicationPreferences), "Guest",
+                new { utoken = token });
         }
 
         // Fall back to legacy campaign-only token

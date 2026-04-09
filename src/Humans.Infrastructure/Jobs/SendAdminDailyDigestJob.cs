@@ -7,7 +7,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -19,7 +18,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
     private readonly IMembershipCalculator _membershipCalculator;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<SendAdminDailyDigestJob> _logger;
     private readonly IClock _clock;
 
@@ -27,7 +26,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
         HumansDbContext dbContext,
         IEmailService emailService,
         IMembershipCalculator membershipCalculator,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<SendAdminDailyDigestJob> logger,
         IClock clock)
     {

@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -15,7 +14,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
     private readonly ILegalDocumentSyncService _syncService;
     private readonly IEmailService _emailService;
     private readonly HumansDbContext _dbContext;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
     private readonly IClock _clock;
 
@@ -23,7 +22,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
         ILegalDocumentSyncService syncService,
         IEmailService emailService,
         HumansDbContext dbContext,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<SyncLegalDocumentsJob> logger,
         IClock clock)
     {

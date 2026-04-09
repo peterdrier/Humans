@@ -9,14 +9,9 @@ public record OnboardingResult(bool Success, string? ErrorKey = null);
 public interface IOnboardingService
 {
     // --- Queries ---
-    Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds,
-          Dictionary<Guid, (int Signed, int Required)> ConsentProgress)>
-        GetReviewQueueAsync(CancellationToken ct = default);
-    Task<(Profile? Profile, int ConsentCount, int RequiredConsentCount,
-          MemberApplication? PendingApplication)>
-        GetReviewDetailAsync(Guid userId, CancellationToken ct = default);
-    Task<(List<MemberApplication> Applications, List<(Guid UserId, string DisplayName)> BoardMembers)>
-        GetBoardVotingDashboardAsync(CancellationToken ct = default);
+    Task<DTOs.ReviewQueueData> GetReviewQueueAsync(CancellationToken ct = default);
+    Task<DTOs.ReviewDetailData> GetReviewDetailAsync(Guid userId, CancellationToken ct = default);
+    Task<DTOs.BoardVotingDashboardData> GetBoardVotingDashboardAsync(CancellationToken ct = default);
     Task<MemberApplication?> GetBoardVotingDetailAsync(Guid applicationId, CancellationToken ct = default);
 
     // --- Consent check mutations ---

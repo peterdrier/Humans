@@ -168,11 +168,40 @@
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motif</value></data>
 
   <!-- Guest Dashboard -->
-  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Envie de participer ?</value></data>
-  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Cr&#xE9;ez un profil pour devenir b&#xE9;n&#xE9;vole et acc&#xE9;der &#xE0; l'exp&#xE9;rience compl&#xE8;te Humans &#x2014; cr&#xE9;neaux, &#xE9;quipes, gouvernance et plus encore.</value></data>
-  <data name="Guest_CreateProfile" xml:space="preserve"><value>Cr&#xE9;er un profil</value></data>
-  <data name="Guest_Explore" xml:space="preserve"><value>Explorer</value></data>
+  <data name="Guest_Greeting" xml:space="preserve"><value>Salut, {0}.</value></data>
+  <data name="Guest_Subtitle" xml:space="preserve"><value>Bienvenue sur Humans &#x2014; o&#xF9; Nobodies Collective g&#xE8;re tout pour Elsewhere.</value></data>
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Pr&#xEA;t&#xB7;e &#xE0; arr&#xEA;ter d'&#xEA;tre un fant&#xF4;me ?</value></data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Tu existes… mais personne ne te voit. Cr&#xE9;e ton profil et soudain :</value></data>
+  <data name="Guest_GetInvolvedBullet1" xml:space="preserve"><value>Tu peux rejoindre des &#xE9;quipes</value></data>
+  <data name="Guest_GetInvolvedBullet2" xml:space="preserve"><value>Tu peux prendre des cr&#xE9;neaux</value></data>
+  <data name="Guest_GetInvolvedBullet3" xml:space="preserve"><value>Les gens savent qui tu es</value></data>
+  <data name="Guest_GetInvolvedHint" xml:space="preserve"><value>~2 minutes.</value></data>
+  <data name="Guest_CreateProfile" xml:space="preserve"><value>Cr&#xE9;er mon profil</value></data>
+  <data name="Guest_Explore" xml:space="preserve"><value>Jette un &#x153;il</value></data>
+  <data name="Guest_ExploreSubtitle" xml:space="preserve"><value>Pas besoin de profil. Juste de la curiosit&#xE9;.</value></data>
+  <data name="Guest_BarriosDescription" xml:space="preserve"><value>Les quartiers que les gens construisent et habitent pendant l'&#xE9;v&#xE9;nement</value></data>
+  <data name="Guest_TeamsDescription" xml:space="preserve"><value>Les &#xE9;quipes qui font tourner la machine &#x2014; son, s&#xE9;curit&#xE9;, construction, tout</value></data>
   <data name="Guest_Legal" xml:space="preserve"><value>Mentions l&#xE9;gales</value></data>
+  <data name="Guest_LegalDescription" xml:space="preserve"><value>Confidentialit&#xE9;, conditions, consentements &#x2014; ennuyeux mais important</value></data>
+  <data name="Guest_AccountTitle" xml:space="preserve"><value>Tes affaires</value></data>
+  <data name="Guest_AccountSubtitle" xml:space="preserve"><value>M&#xEA;me sans profil, tu peux g&#xE9;rer ton compte et tes donn&#xE9;es.</value></data>
+  <data name="Guest_CommsTitle" xml:space="preserve"><value>Communications</value></data>
+  <data name="Guest_CommsDescription" xml:space="preserve"><value>Choisis quels emails et notifications tu re&#xE7;ois de notre part</value></data>
+  <data name="Guest_DataTitle" xml:space="preserve"><value>Tes donn&#xE9;es</value></data>
+  <data name="Guest_DataDescription" xml:space="preserve"><value>T&#xE9;l&#xE9;charge tout ce qu'on a sur toi &#x2014; c'est &#xE0; toi</value></data>
+  <data name="Guest_DeleteTitle" xml:space="preserve"><value>Dispara&#xEE;tre</value></data>
+  <data name="Guest_DeleteDescription" xml:space="preserve"><value>Demande la suppression de ton compte &#x2014; 30 jours pour changer d'avis</value></data>
+  <data name="Guest_TicketsTitle" xml:space="preserve"><value>Tes billets</value></data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve"><value>Achet&#xE9;</value></data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve"><value>Acheteur</value></data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve"><value>Billets</value></data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve"><value>Montant</value></data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve"><value>Tu as un billet pour l'&#xE9;v&#xE9;nement.</value></data>
+  <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>Tu es sur le d&#xE9;part</value></data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve"><value>Demand&#xE9; le {0}.</value></data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve"><value>On supprimera tout apr&#xE8;s le {0} &#x2014; on attend la fin de l'&#xE9;v&#xE9;nement.</value></data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve"><value>Tout dispara&#xEE;t le {0}. Pour de vrai.</value></data>
+  <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>J'ai chang&#xE9; d'avis</value></data>
 
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
@@ -1397,8 +1426,8 @@
   <data name="CityPlanning_Help_Adjusting_Area" xml:space="preserve"><value>La surface en m² est affichée au centre et se met à jour lors de l'édition</value></data>
   <data name="CityPlanning_Help_SavingTitle" xml:space="preserve"><value>Enregistrer &amp; modifier plus tard</value></data>
   <data name="CityPlanning_Help_SavingBody" xml:space="preserve"><value>Content du résultat ? Clique sur Save. Ensuite, clique sur ton barrio sur la carte pour voir sa surface, puis Edit pour revenir en mode édition. Chaque sauvegarde crée une entrée dans l'historique — utilise le bouton History pour parcourir et restaurer une version précédente. Pas de stress, tu ne peux rien casser !</value></data>
-  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Reste dans les zones blanches</value></data>
-  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Les zones blanches en pointillés délimitent les zones de camping sécurisées, protégées par des paratonnerres. Camper en dehors est interdit, garde donc ton barrio à l'intérieur de ces limites.</value></data>
+  <data name="CityPlanning_Help_ZonesTitle" xml:space="preserve"><value>Reste dans les zones en pointillés</value></data>
+  <data name="CityPlanning_Help_ZonesBody" xml:space="preserve"><value>Les zones en pointillés délimitent les zones de camping sécurisées, protégées par des paratonnerres. La couleur des pointillés indique le niveau sonore de la zone — du bleu (plus calme) au rouge (plus bruyant). Camper en dehors est interdit, garde donc ton barrio à l'intérieur de ces limites.</value></data>
   <data name="CityPlanning_Help_OverlapsTitle" xml:space="preserve"><value>Chevauchements ? Parlez-en !</value></data>
   <data name="CityPlanning_Help_OverlapsBody" xml:space="preserve"><value>Si ton barrio chevauche un autre, contacte-nous sur {0} et réglez ça ensemble. Si des conflits ne sont pas résolus en fin de phase, l'équipe city planning s'en chargera.</value></data>
   <data name="CityPlanning_Help_OverlapsDiscordChannel" xml:space="preserve"><value>Discord #city-planning</value></data>

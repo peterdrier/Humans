@@ -27,6 +27,7 @@ public class AuthorizationPolicyTests : IDisposable
         // Register service stubs required by resource-based authorization handlers
         services.AddScoped(_ => Substitute.For<IBudgetService>());
         services.AddScoped(_ => Substitute.For<ICampService>());
+        services.AddScoped(_ => Substitute.For<ITeamService>());
         services.AddHumansAuthorizationPolicies();
         _serviceProvider = services.BuildServiceProvider();
         _authorizationService = _serviceProvider.GetRequiredService<IAuthorizationService>();

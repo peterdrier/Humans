@@ -5,7 +5,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -28,7 +27,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
     private readonly HumansDbContext _dbContext;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly INotificationService _notificationService;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly ILogger<ProcessGoogleSyncOutboxJob> _logger;
 
@@ -36,7 +35,7 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
         HumansDbContext dbContext,
         IGoogleSyncService googleSyncService,
         INotificationService notificationService,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         IClock clock,
         ILogger<ProcessGoogleSyncOutboxJob> logger)
     {

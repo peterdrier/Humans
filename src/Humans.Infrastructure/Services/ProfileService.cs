@@ -255,6 +255,7 @@ public class ProfileService : IProfileService
                         SubmittedAt = now,
                         UpdatedAt = now
                     };
+                    application.ValidateTier();
                     _dbContext.Applications.Add(application);
                 }
             }
@@ -597,24 +598,24 @@ public class ProfileService : IProfileService
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<(Guid UserId, string DisplayName, string? ProfilePictureUrl, bool HasCustomPicture, Guid ProfileId, int Day, int Month)>>
+    public async Task<IReadOnlyList<Application.DTOs.BirthdayProfileInfo>>
         GetBirthdayProfilesAsync(int month, CancellationToken ct = default)
     {
         var cached = await GetCachedProfilesAsync(ct);
         return cached.Values
             .Where(p => p.BirthdayMonth == month && p.BirthdayDay.HasValue)
             .OrderBy(p => p.BirthdayDay)
-            .Select(p => (p.UserId, p.DisplayName, p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.BirthdayDay!.Value, p.BirthdayMonth!.Value))
+            .Select(p => new Application.DTOs.BirthdayProfileInfo(p.UserId, p.DisplayName, p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.BirthdayDay!.Value, p.BirthdayMonth!.Value))
             .ToList();
     }
 
-    public async Task<IReadOnlyList<(Guid UserId, string DisplayName, string? ProfilePictureUrl, double Latitude, double Longitude, string? City, string? CountryCode)>>
+    public async Task<IReadOnlyList<Application.DTOs.LocationProfileInfo>>
         GetApprovedProfilesWithLocationAsync(CancellationToken ct = default)
     {
         var cached = await GetCachedProfilesAsync(ct);
         return cached.Values
             .Where(p => p.Latitude.HasValue && p.Longitude.HasValue)
-            .Select(p => (p.UserId, p.DisplayName, p.ProfilePictureUrl, p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
+            .Select(p => new Application.DTOs.LocationProfileInfo(p.UserId, p.DisplayName, p.ProfilePictureUrl, p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
             .ToList();
     }
 
@@ -658,14 +659,14 @@ public class ProfileService : IProfileService
         var partition = await _membershipCalculator.PartitionUsersAsync(allIds, ct);
 
         // Apply filter using partition buckets
-        HashSet<Guid>? filteredIds = statusFilter?.ToLowerInvariant() switch
+        HashSet<Guid>? filteredIds = statusFilter switch
         {
-            "active" => partition.Active,
-            "missingconsents" => partition.MissingConsents,
-            "pending" => partition.PendingApproval,
-            "suspended" => partition.Suspended,
-            "incomplete" => partition.IncompleteSignup,
-            "deleting" => partition.PendingDeletion,
+            _ when string.Equals(statusFilter, "active", StringComparison.OrdinalIgnoreCase) => partition.Active,
+            _ when string.Equals(statusFilter, "missingconsents", StringComparison.OrdinalIgnoreCase) => partition.MissingConsents,
+            _ when string.Equals(statusFilter, "pending", StringComparison.OrdinalIgnoreCase) => partition.PendingApproval,
+            _ when string.Equals(statusFilter, "suspended", StringComparison.OrdinalIgnoreCase) => partition.Suspended,
+            _ when string.Equals(statusFilter, "incomplete", StringComparison.OrdinalIgnoreCase) => partition.IncompleteSignup,
+            _ when string.Equals(statusFilter, "deleting", StringComparison.OrdinalIgnoreCase) => partition.PendingDeletion,
             _ => null
         };
 

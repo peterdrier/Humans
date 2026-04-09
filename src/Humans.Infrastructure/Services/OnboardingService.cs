@@ -52,8 +52,7 @@ public class OnboardingService : IOnboardingService
         _logger = logger;
     }
 
-    public async Task<(List<Profile> Pending, List<Profile> Flagged, HashSet<Guid> PendingAppUserIds,
-        Dictionary<Guid, (int Signed, int Required)> ConsentProgress)>
+    public async Task<Application.DTOs.ReviewQueueData>
         GetReviewQueueAsync(CancellationToken ct = default)
     {
         var reviewableProfiles = await _dbContext.Profiles
@@ -69,11 +68,13 @@ public class OnboardingService : IOnboardingService
             .Select(a => a.UserId)
             .ToHashSetAsync(ct);
 
-        var consentProgress = new Dictionary<Guid, (int Signed, int Required)>();
+        var consentProgress = new Dictionary<Guid, Application.DTOs.ConsentProgressInfo>();
         foreach (var userId in allUserIds)
         {
             var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
-            consentProgress[userId] = (snapshot.RequiredConsentCount - snapshot.PendingConsentCount, snapshot.RequiredConsentCount);
+            consentProgress[userId] = new Application.DTOs.ConsentProgressInfo(
+                snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
+                snapshot.RequiredConsentCount);
         }
 
         var flagged = reviewableProfiles
@@ -81,11 +82,10 @@ public class OnboardingService : IOnboardingService
             .ToList();
         var pending = reviewableProfiles.Except(flagged).ToList();
 
-        return (pending, flagged, pendingAppUserIds, consentProgress);
+        return new Application.DTOs.ReviewQueueData(pending, flagged, pendingAppUserIds, consentProgress);
     }
 
-    public async Task<(Profile? Profile, int ConsentCount, int RequiredConsentCount,
-        MemberApplication? PendingApplication)>
+    public async Task<Application.DTOs.ReviewDetailData>
         GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
@@ -93,7 +93,7 @@ public class OnboardingService : IOnboardingService
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
         if (profile is null)
-            return (null, 0, 0, null);
+            return new Application.DTOs.ReviewDetailData(null, 0, 0, null);
 
         var snapshot = await _membershipCalculator.GetMembershipSnapshotAsync(userId, ct);
 
@@ -101,7 +101,7 @@ public class OnboardingService : IOnboardingService
             .Where(a => a.UserId == userId && a.Status == ApplicationStatus.Submitted)
             .FirstOrDefaultAsync(ct);
 
-        return (
+        return new Application.DTOs.ReviewDetailData(
             profile,
             snapshot.RequiredConsentCount - snapshot.PendingConsentCount,
             snapshot.RequiredConsentCount,
@@ -109,7 +109,7 @@ public class OnboardingService : IOnboardingService
         );
     }
 
-    public async Task<(List<MemberApplication> Applications, List<(Guid UserId, string DisplayName)> BoardMembers)>
+    public async Task<Application.DTOs.BoardVotingDashboardData>
         GetBoardVotingDashboardAsync(CancellationToken ct = default)
     {
         var applications = await _dbContext.Applications
@@ -138,11 +138,11 @@ public class OnboardingService : IOnboardingService
             .ToListAsync(ct);
 
         var boardMembers = boardUsers
-            .Select(u => (u.Id, u.DisplayName))
+            .Select(u => new Application.DTOs.BoardMemberInfo(u.Id, u.DisplayName))
             .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return (applications, boardMembers);
+        return new Application.DTOs.BoardVotingDashboardData(applications, boardMembers);
     }
 
     public async Task<MemberApplication?> GetBoardVotingDetailAsync(Guid applicationId, CancellationToken ct = default)
@@ -605,12 +605,22 @@ public class OnboardingService : IOnboardingService
             })
             .FirstOrDefaultAsync(ct);
 
+        var languageDistribution = (await _dbContext.Users
+            .Where(u => u.Profile != null && u.Profile.IsApproved && !u.Profile.IsSuspended)
+            .GroupBy(u => u.PreferredLanguage)
+            .Select(g => new { Language = g.Key, Count = g.Count() })
+            .OrderByDescending(g => g.Count)
+            .ToListAsync(ct))
+            .Select(g => new Application.DTOs.LanguageCount(g.Language, g.Count))
+            .ToList();
+
         return new Application.DTOs.AdminDashboardData(
             totalMembers, partition.IncompleteSignup.Count, partition.PendingApproval.Count,
             partition.Active.Count, partition.MissingConsents.Count,
             partition.Suspended.Count, partition.PendingDeletion.Count, pendingApplications,
             appStats?.Total ?? 0, appStats?.Approved ?? 0, appStats?.Rejected ?? 0,
-            appStats?.Colaborador ?? 0, appStats?.Asociado ?? 0);
+            appStats?.Colaborador ?? 0, appStats?.Asociado ?? 0,
+            languageDistribution);
     }
 
     public async Task<OnboardingResult> PurgeHumanAsync(Guid userId, CancellationToken ct = default)

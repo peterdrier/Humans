@@ -31,9 +31,10 @@ public class ShiftAdminController : HumansTeamControllerBase
         IGeneralAvailabilityService availabilityService,
         IProfileService profileService,
         UserManager<User> userManager,
+        IAuthorizationService authorizationService,
         IClock clock,
         ILogger<ShiftAdminController> logger)
-        : base(userManager, teamService)
+        : base(userManager, teamService, authorizationService)
     {
         _teamService = teamService;
         _shiftMgmt = shiftMgmt;
@@ -61,7 +62,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         if (es is null)
         {
             SetError("No active event settings configured.");
-            return RedirectToAction("Details", "Team", new { slug });
+            return RedirectToAction(nameof(TeamController.Details), "Team", new { slug });
         }
 
         var rotas = await _shiftMgmt.GetRotasByDepartmentAsync(team.Id, es.Id);

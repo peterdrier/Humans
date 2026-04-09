@@ -120,7 +120,7 @@ public class DevLoginController : Controller
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
 
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction(nameof(HomeController.Index), "Home");
     }
 
     /// <summary>
@@ -158,7 +158,7 @@ public class DevLoginController : Controller
         await _signInManager.SignInAsync(user, isPersistent: false);
         _logger.LogWarning("DEV LOGIN: signed in as {Email} ({Id})", user.Email, user.Id);
 
-        return RedirectToAction("Index", "Home");
+        return RedirectToAction(nameof(HomeController.Index), "Home");
     }
 
     private bool IsDevAuthEnabled()

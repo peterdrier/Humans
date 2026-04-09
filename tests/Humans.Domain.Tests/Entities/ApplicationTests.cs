@@ -161,6 +161,29 @@ public class ApplicationTests
         application.BoardVotes.Should().BeEmpty();
     }
 
+    [Fact]
+    public void ValidateTier_RejectsVolunteer()
+    {
+        var application = CreateSubmittedApplication();
+        application.MembershipTier = MembershipTier.Volunteer;
+
+        var act = () => application.ValidateTier();
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Volunteer*");
+    }
+
+    [Theory]
+    [InlineData(MembershipTier.Colaborador)]
+    [InlineData(MembershipTier.Asociado)]
+    public void ValidateTier_AcceptsValidTiers(MembershipTier tier)
+    {
+        var application = CreateSubmittedApplication();
+        application.MembershipTier = tier;
+
+        var act = () => application.ValidateTier();
+        act.Should().NotThrow();
+    }
+
     private Application CreateSubmittedApplication()
     {
         return new Application

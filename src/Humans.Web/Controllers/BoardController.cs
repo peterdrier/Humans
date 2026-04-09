@@ -37,13 +37,6 @@ public class BoardController : HumansControllerBase
         var dashboardData = await _onboardingService.GetAdminDashboardAsync();
         var recentEntries = await _auditLogService.GetRecentAsync(15);
 
-        var languageDistribution = await _dbContext.Users
-            .Where(u => u.Profile != null && u.Profile.IsApproved && !u.Profile.IsSuspended)
-            .GroupBy(u => u.PreferredLanguage)
-            .Select(g => new { Language = g.Key, Count = g.Count() })
-            .OrderByDescending(g => g.Count)
-            .ToListAsync();
-
         var viewModel = new AdminDashboardViewModel
         {
             TotalMembers = dashboardData.TotalMembers,
@@ -65,7 +58,7 @@ public class BoardController : HumansControllerBase
             RejectedApplications = dashboardData.RejectedApplications,
             ColaboradorApplied = dashboardData.ColaboradorApplied,
             AsociadoApplied = dashboardData.AsociadoApplied,
-            LanguageDistribution = languageDistribution
+            LanguageDistribution = dashboardData.LanguageDistribution
                 .Select(l => new LanguageCountViewModel { Language = l.Language, Count = l.Count })
                 .ToList()
         };

@@ -1,0 +1,171 @@
+@model Humans.Web.Models.AudienceSegmentationViewModel
+@{
+    ViewData["Title"] = "Audience Segmentation";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="mb-0">Audience Segmentation</h1>
+</div>
+
+<vc:temp-data-alerts />
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <label class="form-label mb-0 me-2 text-nowrap">Filter by ticket year:</label>
+            <select name="year" class="form-select form-select-sm" style="width: auto;" id="yearFilter">
+                <option value="">All time</option>
+                @foreach (var y in Model.AvailableYears)
+                {
+                    if (Model.SelectedYear == y)
+                    {
+                        <option value="@y" selected>@y</option>
+                    }
+                    else
+                    {
+                        <option value="@y">@y</option>
+                    }
+                }
+            </select>
+            @if (Model.SelectedYear.HasValue)
+            {
+                <a asp-action="AudienceSegmentation" class="btn btn-sm btn-outline-secondary">Clear</a>
+            }
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 fw-bold text-primary">@Model.TotalAccounts</div>
+                <div class="text-muted">Total Accounts</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 fw-bold text-success">@Model.WithProfile</div>
+                <div class="text-muted">With Profile</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 fw-bold text-info">@Model.WithTicket</div>
+                <div class="text-muted">With Ticket@(Model.SelectedYear.HasValue ? $" ({Model.SelectedYear})" : "")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 fw-bold text-warning">@Model.WithBoth</div>
+                <div class="text-muted">Both</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg">
+        <div class="card text-center h-100">
+            <div class="card-body">
+                <div class="display-4 fw-bold text-secondary">@Model.WithNeither</div>
+                <div class="text-muted">Neither</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.TotalAccounts > 0)
+{
+    var profileOnly = Model.WithProfile - Model.WithBoth;
+    var ticketOnly = Model.WithTicket - Model.WithBoth;
+    var profileOnlyPct = Math.Round(profileOnly * 100.0 / Model.TotalAccounts, 1);
+    var ticketOnlyPct = Math.Round(ticketOnly * 100.0 / Model.TotalAccounts, 1);
+    var bothPct = Math.Round(Model.WithBoth * 100.0 / Model.TotalAccounts, 1);
+    var neitherPct = Math.Round(Model.WithNeither * 100.0 / Model.TotalAccounts, 1);
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Breakdown</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Profile only (no ticket)</span>
+                    <span class="text-muted">@profileOnly</span>
+                </div>
+                <div class="progress" style="height: 24px;">
+                    <div class="progress-bar bg-success" style="width: @profileOnlyPct%"></div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Ticket only (no profile)</span>
+                    <span class="text-muted">@ticketOnly</span>
+                </div>
+                <div class="progress" style="height: 24px;">
+                    <div class="progress-bar bg-info" style="width: @ticketOnlyPct%"></div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Both (profile + ticket)</span>
+                    <span class="text-muted">@Model.WithBoth</span>
+                </div>
+                <div class="progress" style="height: 24px;">
+                    <div class="progress-bar bg-warning" style="width: @bothPct%"></div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Neither (account only)</span>
+                    <span class="text-muted">@Model.WithNeither</span>
+                </div>
+                <div class="progress" style="height: 24px;">
+                    <div class="progress-bar bg-secondary" style="width: @neitherPct%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (Model.SelectedYear.HasValue)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Targeting Insights</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fa-solid fa-bullseye text-info me-2"></i>
+                        <strong>@ticketOnly</strong> humans had a @Model.SelectedYear ticket but no profile
+                        <span class="text-muted">&mdash; potential recruitment targets</span>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fa-solid fa-check-double text-success me-2"></i>
+                        <strong>@Model.WithBoth</strong> humans had a @Model.SelectedYear ticket and a profile
+                        <span class="text-muted">&mdash; already engaged</span>
+                    </li>
+                    <li>
+                        <i class="fa-solid fa-user-slash text-secondary me-2"></i>
+                        <strong>@Model.WithNeither</strong> humans have neither a @Model.SelectedYear ticket nor a profile
+                        <span class="text-muted">&mdash; may need outreach</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    }
+}
+
+<a asp-action="Index" class="btn btn-outline-secondary">Back to Admin</a>
+
+@section Scripts {
+<script>
+    document.getElementById('yearFilter').addEventListener('change', function () {
+        this.form.submit();
+    });
+</script>
+}

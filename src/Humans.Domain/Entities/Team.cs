@@ -1,5 +1,6 @@
 using NodaTime;
 using Humans.Domain.Attributes;
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
 
@@ -54,7 +55,7 @@ public class Team
     /// Full Google Group email address, or null if no prefix is set.
     /// </summary>
     public string? GoogleGroupEmail => GoogleGroupPrefix is not null
-        ? $"{GoogleGroupPrefix}@nobodies.team"
+        ? $"{GoogleGroupPrefix}@{DomainConstants.GoogleGroupDomain}"
         : null;
 
     /// <summary>

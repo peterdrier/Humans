@@ -456,3 +456,22 @@ public class DuplicateAccountDetailViewModel
     public List<string> Account1EmailSources { get; set; } = [];
     public List<string> Account2EmailSources { get; set; } = [];
 }
+
+/// <summary>
+/// Audience segmentation gauges for admin view.
+/// Shows total accounts, accounts with tickets, with profiles, both, or neither.
+/// </summary>
+public class AudienceSegmentationViewModel
+{
+    public int TotalAccounts { get; set; }
+    public int WithTicket { get; set; }
+    public int WithProfile { get; set; }
+    public int WithBoth { get; set; }
+    public int WithNeither { get; set; }
+
+    /// <summary>Available event years for filtering (e.g. 2025, 2026).</summary>
+    public List<int> AvailableYears { get; set; } = [];
+
+    /// <summary>Currently selected event year filter, or null for all time.</summary>
+    public int? SelectedYear { get; set; }
+}

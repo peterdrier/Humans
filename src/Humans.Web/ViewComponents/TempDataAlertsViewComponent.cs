@@ -1,3 +1,4 @@
+using Humans.Web.Constants;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Web.ViewComponents;
@@ -8,13 +9,13 @@ public class TempDataAlertsViewComponent : ViewComponent
     {
         var alerts = new List<TempDataAlert>();
 
-        if (TempData["SuccessMessage"] is string success)
+        if (TempData[TempDataKeys.SuccessMessage] is string success)
             alerts.Add(new TempDataAlert("success", success));
 
-        if (TempData["ErrorMessage"] is string error)
+        if (TempData[TempDataKeys.ErrorMessage] is string error)
             alerts.Add(new TempDataAlert("danger", error));
 
-        if (TempData["InfoMessage"] is string info)
+        if (TempData[TempDataKeys.InfoMessage] is string info)
             alerts.Add(new TempDataAlert("info", info));
 
         return View(alerts);

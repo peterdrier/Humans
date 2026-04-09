@@ -37,11 +37,12 @@ public class TeamAdminController : HumansTeamControllerBase
         IEmailProvisioningService emailProvisioningService,
         INotificationService notificationService,
         UserManager<User> userManager,
+        IAuthorizationService authorizationService,
         ISystemTeamSync systemTeamSyncJob,
         IMemoryCache cache,
         ILogger<TeamAdminController> logger,
         IStringLocalizer<SharedResource> localizer)
-        : base(userManager, teamService)
+        : base(userManager, teamService, authorizationService)
     {
         _teamService = teamService;
         _teamResourceService = teamResourceService;
@@ -938,18 +939,9 @@ public class TeamAdminController : HumansTeamControllerBase
     [HttpGet("EditPage")]
     public async Task<IActionResult> EditPage(string slug)
     {
-        var user = await GetCurrentUserAsync();
-        if (user is null)
-            return NotFound();
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team is null)
-            return NotFound();
-
-        var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
-        var canManage = isCoordinator || RoleChecks.IsTeamsAdminBoardOrAdmin(User);
-        if (!canManage)
-            return Forbid();
+        var (teamError, _, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+            return teamError;
 
         var canBePublic = !team.IsSystemTeam && !team.ParentTeamId.HasValue;
 
@@ -979,18 +971,9 @@ public class TeamAdminController : HumansTeamControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EditPage(string slug, EditTeamPageViewModel model)
     {
-        var user = await GetCurrentUserAsync();
-        if (user is null)
-            return NotFound();
-
-        var team = await _teamService.GetTeamBySlugAsync(slug);
-        if (team is null)
-            return NotFound();
-
-        var isCoordinator = await _teamService.IsUserCoordinatorOfTeamAsync(team.Id, user.Id);
-        var canManage = isCoordinator || RoleChecks.IsTeamsAdminBoardOrAdmin(User);
-        if (!canManage)
-            return Forbid();
+        var (teamError, user, team) = await ResolveTeamManagementAsync(slug);
+        if (teamError is not null)
+            return teamError;
 
         if (!ModelState.IsValid)
         {
@@ -1017,7 +1000,7 @@ public class TeamAdminController : HumansTeamControllerBase
                 user.Id);
 
             SetSuccess(_localizer["EditTeamPage_Saved"].Value);
-            return RedirectToAction("Details", "Team", new { slug });
+            return RedirectToAction(nameof(TeamController.Details), "Team", new { slug });
         }
         catch (InvalidOperationException ex)
         {

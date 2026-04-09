@@ -96,30 +96,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         _dbContext.BoardVotes.RemoveRange(application.BoardVotes);
 
         // Save (must complete before team sync)
-        try
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            foreach (var entry in ex.Entries)
-            {
-                _logger.LogWarning(
-                    "Concurrency conflict on entity {EntityType} (State={State}). " +
-                    "Original values: {Original}, Current values: {Current}",
-                    entry.Metadata.Name, entry.State,
-                    string.Join(", ", entry.Properties
-                        .Where(p => p.IsModified || p.Metadata.IsConcurrencyToken)
-                        .Select(p => $"{p.Metadata.Name}={p.OriginalValue}→{p.CurrentValue}")),
-                    string.Join(", ", entry.Properties
-                        .Where(p => p.Metadata.IsConcurrencyToken)
-                        .Select(p => $"{p.Metadata.Name}: db={p.OriginalValue}")));
-            }
-            _logger.LogWarning(ex,
-                "Concurrency conflict while approving application {ApplicationId} by {UserId}",
-                application.Id, reviewerUserId);
-            return new ApplicationDecisionResult(false, "ConcurrencyConflict");
-        }
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
@@ -209,27 +186,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
         _dbContext.BoardVotes.RemoveRange(application.BoardVotes);
 
         // Save
-        try
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            foreach (var entry in ex.Entries)
-            {
-                _logger.LogWarning(
-                    "Concurrency conflict on entity {EntityType} (State={State}). " +
-                    "Modified/token props: {Props}",
-                    entry.Metadata.Name, entry.State,
-                    string.Join(", ", entry.Properties
-                        .Where(p => p.IsModified || p.Metadata.IsConcurrencyToken)
-                        .Select(p => $"{p.Metadata.Name}={p.OriginalValue}→{p.CurrentValue}")));
-            }
-            _logger.LogWarning(ex,
-                "Concurrency conflict while rejecting application {ApplicationId} by {UserId}",
-                application.Id, reviewerUserId);
-            return new ApplicationDecisionResult(false, "ConcurrencyConflict");
-        }
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
@@ -323,6 +280,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
             SubmittedAt = now,
             UpdatedAt = now
         };
+        application.ValidateTier();
 
         _dbContext.Applications.Add(application);
         await _dbContext.SaveChangesAsync(ct);

@@ -3,17 +3,17 @@ import { appState } from './state.js';
 import { CONFIG } from './config.js';
 
 export function isOutsideZone(feature) {
-    if (!appState.limitZoneGeom) return false;
-    try { return !turf.booleanWithin(feature, appState.limitZoneGeom); } catch { return false; }
+  if (!appState.limitZoneGeom) return false;
+  try { return !!turf.difference(turf.featureCollection([feature, appState.limitZoneGeom])); } catch { return false; }
 }
 
 export function parseLimitZoneGeom(geoJson) {
     if (!geoJson) return null;
     const lz = JSON.parse(geoJson);
     if (lz.type === 'FeatureCollection') {
-        return lz.features.length > 0
-            ? lz.features.reduce((acc, f) => acc ? turf.union(turf.featureCollection([acc, f])) : f)
-            : null;
+        if (lz.features.length === 0) return null;
+        if (lz.features.length === 1) return lz.features[0];
+        return turf.union(lz);
     }
     return lz;
 }

@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Web.Constants;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -53,7 +54,7 @@ public abstract class HumansControllerBase : Controller
 
     protected void SetSuccess(string message)
     {
-        TempData["SuccessMessage"] = message;
+        TempData[TempDataKeys.SuccessMessage] = message;
     }
 
     protected void SetError(string message)
@@ -61,12 +62,12 @@ public abstract class HumansControllerBase : Controller
         var logger = HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
             .CreateLogger(GetType());
         logger.LogDebug("Error toast: {Message} (Action: {Action})", message, ControllerContext.ActionDescriptor.ActionName);
-        TempData["ErrorMessage"] = message;
+        TempData[TempDataKeys.ErrorMessage] = message;
     }
 
     protected void SetInfo(string message)
     {
-        TempData["InfoMessage"] = message;
+        TempData[TempDataKeys.InfoMessage] = message;
     }
 
     protected Task<IdentityResult> UpdateCurrentUserAsync(User user)
