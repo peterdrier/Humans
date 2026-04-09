@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
@@ -9,10 +8,8 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
-using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Models;
-using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -20,16 +17,16 @@ namespace Humans.Web.Controllers;
 [Route("Email")]
 public class EmailController : HumansControllerBase
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IEmailOutboxService _outboxService;
     private readonly ILogger<EmailController> _logger;
 
     public EmailController(
         UserManager<User> userManager,
-        HumansDbContext dbContext,
+        IEmailOutboxService outboxService,
         ILogger<EmailController> logger)
         : base(userManager)
     {
-        _dbContext = dbContext;
+        _outboxService = outboxService;
         _logger = logger;
     }
 
@@ -40,37 +37,18 @@ public class EmailController : HumansControllerBase
     }
 
     [HttpGet("EmailOutbox")]
-    public async Task<IActionResult> EmailOutbox([FromServices] IClock clock)
+    public async Task<IActionResult> EmailOutbox()
     {
-        var now = clock.GetCurrentInstant();
-        var cutoff24h = now - Duration.FromHours(24);
-
-        var totalCount = await _dbContext.EmailOutboxMessages.CountAsync();
-        var queuedCount = await _dbContext.EmailOutboxMessages
-            .CountAsync(m => m.Status == EmailOutboxStatus.Queued);
-        var sentLast24H = await _dbContext.EmailOutboxMessages
-            .CountAsync(m => m.Status == EmailOutboxStatus.Sent && m.SentAt > cutoff24h);
-        var failedCount = await _dbContext.EmailOutboxMessages
-            .CountAsync(m => m.Status == EmailOutboxStatus.Failed);
-
-        var pausedSetting = await _dbContext.SystemSettings
-            .FirstOrDefaultAsync(s => s.Key == "IsEmailSendingPaused");
-        var isPaused = string.Equals(pausedSetting?.Value, "true", StringComparison.OrdinalIgnoreCase);
-
-        var messages = await _dbContext.EmailOutboxMessages
-            .Include(m => m.User)
-            .OrderByDescending(m => m.CreatedAt)
-            .Take(50)
-            .ToListAsync();
+        var stats = await _outboxService.GetOutboxStatsAsync();
 
         var viewModel = new EmailOutboxViewModel
         {
-            TotalMessageCount = totalCount,
-            QueuedCount = queuedCount,
-            SentLast24HoursCount = sentLast24H,
-            FailedCount = failedCount,
-            IsPaused = isPaused,
-            Messages = messages,
+            TotalMessageCount = stats.TotalCount,
+            QueuedCount = stats.QueuedCount,
+            SentLast24HoursCount = stats.SentLast24HoursCount,
+            FailedCount = stats.FailedCount,
+            IsPaused = stats.IsPaused,
+            Messages = stats.RecentMessages.ToList(),
         };
 
         return View(viewModel);
@@ -80,7 +58,7 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> PauseEmailSending()
     {
-        await SetEmailPausedAsync(true);
+        await _outboxService.SetEmailPausedAsync(true);
         _logger.LogInformation("Admin {AdminId} paused email sending", User.Identity?.Name);
         SetSuccess("Email sending paused.");
         return RedirectToAction(nameof(EmailOutbox));
@@ -90,7 +68,7 @@ public class EmailController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResumeEmailSending()
     {
-        await SetEmailPausedAsync(false);
+        await _outboxService.SetEmailPausedAsync(false);
         _logger.LogInformation("Admin {AdminId} resumed email sending", User.Identity?.Name);
         SetSuccess("Email sending resumed.");
         return RedirectToAction(nameof(EmailOutbox));
@@ -98,9 +76,9 @@ public class EmailController : HumansControllerBase
 
     [HttpPost("EmailOutbox/Retry/{id:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RetryEmailOutboxMessage(Guid id, [FromServices] IEmailOutboxService outboxService)
+    public async Task<IActionResult> RetryEmailOutboxMessage(Guid id)
     {
-        var recipient = await outboxService.RetryMessageAsync(id);
+        var recipient = await _outboxService.RetryMessageAsync(id);
         if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} queued for retry.");
@@ -109,9 +87,9 @@ public class EmailController : HumansControllerBase
 
     [HttpPost("EmailOutbox/Discard/{id:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DiscardEmailOutboxMessage(Guid id, [FromServices] IEmailOutboxService outboxService)
+    public async Task<IActionResult> DiscardEmailOutboxMessage(Guid id)
     {
-        var recipient = await outboxService.DiscardMessageAsync(id);
+        var recipient = await _outboxService.DiscardMessageAsync(id);
         if (recipient is null) return NotFound();
 
         SetSuccess($"Message to {recipient} discarded.");
@@ -225,19 +203,4 @@ public class EmailController : HumansControllerBase
         return View(new EmailPreviewViewModel { Previews = previews, FromAddress = settings.FromAddress });
     }
 
-    private async Task SetEmailPausedAsync(bool paused)
-    {
-        var setting = await _dbContext.SystemSettings
-            .FirstOrDefaultAsync(s => s.Key == "IsEmailSendingPaused");
-        if (setting is null)
-        {
-            setting = new SystemSetting { Key = "IsEmailSendingPaused", Value = paused ? "true" : "false" };
-            _dbContext.SystemSettings.Add(setting);
-        }
-        else
-        {
-            setting.Value = paused ? "true" : "false";
-        }
-        await _dbContext.SaveChangesAsync();
-    }
 }
