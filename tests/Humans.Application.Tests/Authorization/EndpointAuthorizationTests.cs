@@ -175,6 +175,55 @@ public class EndpointAuthorizationTests
             "Unprotected: " + string.Join(", ", violations));
     }
 
+    // --- AllowAnonymous scope guardrail ---
+
+    /// <summary>
+    /// Guards against accidental scope creep of [AllowAnonymous] on controllers that
+    /// have [Authorize] at class level. Any new anonymous endpoint on an authorized
+    /// controller must be explicitly added to this allowlist with a justification.
+    /// </summary>
+    [Fact]
+    public void AllowAnonymousOnAuthorizedControllers_IsExplicitlyAllowlisted()
+    {
+        // Allowlist: controller.action → why it's anonymous
+        // When adding a new entry, include a comment explaining why it needs anonymous access.
+        var allowlist = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "GuestController.CommunicationPreferences",  // unsubscribe token passthrough (no session created)
+            "GuestController.UpdatePreference",           // AJAX updates from token-scoped comms prefs page
+            "TeamController.Index",                       // public team directory
+            "TeamController.Details",                     // public team detail page
+            "AdminController.DbVersion",                  // health check endpoint
+            "ProfileController.VerifyEmail",              // email verification link from email
+        };
+
+        // Also include any actions we discover that are already [AllowAnonymous] in ProfileController etc.
+        var controllerTypes = typeof(HumansControllerBase).Assembly.GetTypes()
+            .Where(t => typeof(Controller).IsAssignableFrom(t) && !t.IsAbstract)
+            .Where(t => t.GetCustomAttribute<AuthorizeAttribute>() != null);
+
+        var violations = new List<string>();
+
+        foreach (var controller in controllerTypes)
+        {
+            var actions = controller.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+                .Where(m => m.GetCustomAttribute<AllowAnonymousAttribute>() != null);
+
+            foreach (var action in actions)
+            {
+                var key = $"{controller.Name}.{action.Name}";
+                if (!allowlist.Contains(key))
+                {
+                    violations.Add(key);
+                }
+            }
+        }
+
+        violations.Should().BeEmpty(
+            "[AllowAnonymous] on an [Authorize] controller must be explicitly allowlisted in this test. " +
+            "New anonymous endpoints: " + string.Join(", ", violations));
+    }
+
     // --- Helpers ---
 
     private static void AssertHasPolicy(Type controllerType, string? actionName, string expectedPolicy)

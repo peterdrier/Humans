@@ -5,6 +5,12 @@ namespace Humans.Web.Models;
 public class CommunicationPreferencesViewModel
 {
     public List<CategoryPreferenceItem> Categories { get; set; } = [];
+
+    /// <summary>
+    /// When set, the page is accessed via an unsubscribe token instead of a full session.
+    /// The token must be included in AJAX update calls for authorization.
+    /// </summary>
+    public string? UnsubscribeToken { get; set; }
 }
 
 public class CategoryPreferenceItem

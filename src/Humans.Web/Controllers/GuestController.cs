@@ -70,16 +70,22 @@ public class GuestController : HumansControllerBase
 
     // ─── Communication Preferences ───────────────────────────────────
 
+    // WARNING: [AllowAnonymous] — accepts unauthenticated requests with a valid unsubscribe
+    // token (utoken). The token scopes access to THIS page only. Do not add links to other
+    // authenticated pages from the token-mode view. See EndpointAuthorizationTests allowlist.
     [HttpGet("Guest/CommunicationPreferences")]
-    public async Task<IActionResult> CommunicationPreferences()
+    [AllowAnonymous]
+    public async Task<IActionResult> CommunicationPreferences(string? utoken)
     {
         try
         {
-            var user = await GetCurrentUserAsync();
-            if (user is null)
+            var userId = await ResolveUserIdOrTokenAsync(utoken);
+            if (userId is null)
                 return Challenge();
 
-            return View(await BuildCommunicationPreferencesViewModelAsync(user.Id));
+            var model = await BuildCommunicationPreferencesViewModelAsync(userId.Value);
+            model.UnsubscribeToken = utoken;
+            return View(model);
         }
         catch (Exception ex)
         {
@@ -89,21 +95,24 @@ public class GuestController : HumansControllerBase
         }
     }
 
+    // WARNING: [AllowAnonymous] — paired with CommunicationPreferences GET above.
+    // See EndpointAuthorizationTests allowlist.
     [HttpPost("Guest/CommunicationPreferences/Update")]
+    [AllowAnonymous]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdatePreference(MessageCategory category, bool emailEnabled, bool alertEnabled)
+    public async Task<IActionResult> UpdatePreference(MessageCategory category, bool emailEnabled, bool alertEnabled, string? utoken)
     {
         try
         {
-            var user = await GetCurrentUserAsync();
-            if (user is null)
+            var userId = await ResolveUserIdOrTokenAsync(utoken);
+            if (userId is null)
                 return Unauthorized();
 
             if (category.IsAlwaysOn())
                 return BadRequest("Cannot change always-on categories.");
 
             await _commPrefService.UpdatePreferenceAsync(
-                user.Id, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Guest");
+                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, "Guest");
 
             return Ok();
         }
@@ -278,6 +287,32 @@ public class GuestController : HumansControllerBase
         viewModel.DeletionEligibleAfter = user.DeletionEligibleAfter?.ToDateTimeUtc();
 
         return viewModel;
+    }
+
+    /// <summary>
+    /// Resolves the user ID from the current session, or falls back to an unsubscribe token.
+    /// Returns null if neither is available.
+    /// </summary>
+    private async Task<Guid?> ResolveUserIdOrTokenAsync(string? utoken)
+    {
+        // Prefer authenticated session
+        var user = await GetCurrentUserAsync();
+        if (user is not null)
+            return user.Id;
+
+        // Fall back to unsubscribe token
+        if (string.IsNullOrEmpty(utoken))
+            return null;
+
+        var result = _commPrefService.ValidateUnsubscribeToken(utoken);
+        if (result is null)
+            return null;
+
+        var (userId, _) = result.Value;
+
+        // Verify user still exists
+        var exists = await _dbContext.Users.AnyAsync(u => u.Id == userId);
+        return exists ? userId : null;
     }
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
