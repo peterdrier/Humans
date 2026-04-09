@@ -134,7 +134,7 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label asp-for="AcceptingMembers" class="form-label">Accepting New Members?</label>
+                            <label asp-for="AcceptingMembers" class="form-label">Accepting New Humans?</label>
                             <select asp-for="AcceptingMembers" class="form-select"
                                     asp-items="@(new SelectList(Enum.GetValues<YesNoMaybe>()))"></select>
                         </div>
@@ -163,7 +163,7 @@
                                     asp-items="@(new SelectList(Enum.GetValues<AdultPlayspacePolicy>()))"></select>
                         </div>
                         <div class="col-md-4">
-                            <label asp-for="MemberCount" class="form-label">Expected Members</label>
+                            <label asp-for="MemberCount" class="form-label">Expected Humans</label>
                             <input asp-for="MemberCount" class="form-control" type="number" min="1" />
                         </div>
                     </div>
