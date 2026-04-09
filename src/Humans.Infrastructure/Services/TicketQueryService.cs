@@ -872,6 +872,32 @@ public class TicketQueryService : ITicketQueryService
         return filteredHumans.ToList();
     }
 
+    /// <inheritdoc />
+    public async Task<bool> HasAnyTicketAssociationAsync(Guid userId)
+    {
+        var hasOrder = await _dbContext.TicketOrders
+            .AnyAsync(o => o.MatchedUserId == userId);
+        if (hasOrder) return true;
+
+        return await _dbContext.TicketAttendees
+            .AnyAsync(a => a.MatchedUserId == userId);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
+    {
+        return await _dbContext.TicketOrders
+            .Where(o => o.MatchedUserId == userId)
+            .OrderByDescending(o => o.PurchasedAt)
+            .Select(o => new UserTicketOrderSummary(
+                o.BuyerName,
+                o.PurchasedAt.ToDateTimeUtc(),
+                o.Attendees.Count,
+                o.TotalAmount,
+                o.Currency))
+            .ToListAsync();
+    }
+
     private static bool HasSearchTerm([NotNullWhen(true)] string? value, int minLength = 2) =>
         !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= minLength;
 

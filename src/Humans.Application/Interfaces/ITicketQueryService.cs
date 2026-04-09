@@ -104,4 +104,25 @@ public interface ITicketQueryService
     /// Get all orders for CSV export, ordered by purchase date descending.
     /// </summary>
     Task<List<OrderExportRow>> GetOrderExportDataAsync();
+
+    /// <summary>
+    /// Checks whether a user has any ticket association (order or attendee match).
+    /// Used for guest dashboard and communication preferences.
+    /// </summary>
+    Task<bool> HasAnyTicketAssociationAsync(Guid userId);
+
+    /// <summary>
+    /// Gets ticket order summaries for a specific user (as buyer), ordered by most recent first.
+    /// </summary>
+    Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId);
 }
+
+/// <summary>
+/// Summary of a ticket order for display on user-facing pages.
+/// </summary>
+public record UserTicketOrderSummary(
+    string BuyerName,
+    DateTime PurchasedAt,
+    int AttendeeCount,
+    decimal TotalAmount,
+    string Currency);
