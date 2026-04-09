@@ -1,24 +1,23 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Web.ViewComponents;
 
 public class MyGoogleResourcesViewComponent : ViewComponent
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly ITeamService _teamService;
     private readonly UserManager<User> _userManager;
     private readonly ILogger<MyGoogleResourcesViewComponent> _logger;
 
     public MyGoogleResourcesViewComponent(
-        HumansDbContext dbContext,
+        ITeamService teamService,
         UserManager<User> userManager,
         ILogger<MyGoogleResourcesViewComponent> logger)
     {
-        _dbContext = dbContext;
+        _teamService = teamService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -31,45 +30,25 @@ public class MyGoogleResourcesViewComponent : ViewComponent
             if (user is null)
                 return Content(string.Empty);
 
-            // Get the user's active team memberships with their Google resources
-            var teamResources = await _dbContext.TeamMembers
-                .AsNoTracking()
-                .Where(tm => tm.UserId == user.Id && tm.LeftAt == null)
-                .Select(tm => new
-                {
-                    TeamName = tm.Team.Name,
-                    TeamSlug = tm.Team.Slug,
-                    Resources = tm.Team.GoogleResources
-                        .Where(r => r.IsActive)
-                        .Select(r => new MyGoogleResourceItem
-                        {
-                            Name = r.Name,
-                            ResourceType = r.ResourceType,
-                            Url = r.Url
-                        })
-                        .ToList()
-                })
-                .Where(t => t.Resources.Count > 0)
-                .OrderBy(t => t.TeamName)
-                .ToListAsync();
+            var resources = await _teamService.GetUserTeamGoogleResourcesAsync(user.Id);
 
-            if (teamResources.Count == 0)
+            if (resources.Count == 0)
                 return Content(string.Empty);
 
-            var model = new MyGoogleResourcesViewModel();
-
-            foreach (var team in teamResources)
+            var model = new MyGoogleResourcesViewModel
             {
-                foreach (var resource in team.Resources)
+                Resources = resources.Select(r => new MyGoogleResourceWithTeam
                 {
-                    model.Resources.Add(new MyGoogleResourceWithTeam
+                    TeamName = r.TeamName,
+                    TeamSlug = r.TeamSlug,
+                    Resource = new MyGoogleResourceItem
                     {
-                        TeamName = team.TeamName,
-                        TeamSlug = team.TeamSlug,
-                        Resource = resource
-                    });
-                }
-            }
+                        Name = r.ResourceName,
+                        ResourceType = r.ResourceType,
+                        Url = r.Url
+                    }
+                }).ToList()
+            };
 
             return View(model);
         }
