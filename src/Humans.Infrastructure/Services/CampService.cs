@@ -319,6 +319,25 @@ public class CampService : ICampService
             .ToList();
     }
 
+    /// <inheritdoc />
+    public async Task<List<Camp>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.Camps
+            .Include(c => c.Seasons.Where(s => s.Year == year))
+            .Include(c => c.Leads.Where(l => l.LeftAt == null))
+                .ThenInclude(l => l.User)
+            .Where(c => c.Seasons.Any(s => s.Year == year));
+
+        if (statusFilter is { Count: > 0 })
+        {
+            query = query.Where(c => c.Seasons.Any(s => s.Year == year && statusFilter.Contains(s.Status)));
+        }
+
+        return await query
+            .OrderBy(c => c.Seasons.Where(s => s.Year == year).Select(s => s.Name).FirstOrDefault())
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Camps

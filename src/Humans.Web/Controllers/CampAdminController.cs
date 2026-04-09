@@ -3,14 +3,12 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.Controllers;
 
@@ -20,18 +18,15 @@ namespace Humans.Web.Controllers;
 public class CampAdminController : HumansControllerBase
 {
     private readonly ICampService _campService;
-    private readonly HumansDbContext _dbContext;
     private readonly ILogger<CampAdminController> _logger;
 
     public CampAdminController(
         ICampService campService,
-        HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<CampAdminController> logger)
         : base(userManager)
     {
         _campService = campService;
-        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -63,14 +58,8 @@ public class CampAdminController : HumansControllerBase
                 .ToList();
 
             // Load camps with leads for the summary table
-            var campsWithLeads = await _dbContext.Camps
-                .Include(c => c.Seasons.Where(s => s.Year == settings.PublicYear))
-                .Include(c => c.Leads.Where(l => l.LeftAt == null))
-                    .ThenInclude(l => l.User)
-                .Where(c => c.Seasons.Any(s => s.Year == settings.PublicYear
-                    && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full)))
-                .OrderBy(c => c.Seasons.Where(s => s.Year == settings.PublicYear).Select(s => s.Name).FirstOrDefault())
-                .ToListAsync();
+            var activeStatuses = new[] { CampSeasonStatus.Active, CampSeasonStatus.Full };
+            var campsWithLeads = await _campService.GetCampsWithLeadsForYearAsync(settings.PublicYear, activeStatuses);
 
             var summaries = campsWithLeads.Select(c =>
             {
@@ -277,13 +266,7 @@ public class CampAdminController : HumansControllerBase
             var settings = await _campService.GetSettingsAsync();
             var year = settings.PublicYear;
 
-            var camps = await _dbContext.Camps
-                .Include(c => c.Seasons.Where(s => s.Year == year))
-                .Include(c => c.Leads.Where(l => l.LeftAt == null))
-                    .ThenInclude(l => l.User)
-                .Where(c => c.Seasons.Any(s => s.Year == year))
-                .OrderBy(c => c.Seasons.Where(s => s.Year == year).Select(s => s.Name).FirstOrDefault())
-                .ToListAsync();
+            var camps = await _campService.GetCampsWithLeadsForYearAsync(year);
 
             var csv = new StringBuilder();
             csv.AppendCsvRow(
