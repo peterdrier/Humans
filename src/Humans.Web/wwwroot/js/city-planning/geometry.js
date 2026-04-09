@@ -11,9 +11,9 @@ export function parseLimitZoneGeom(geoJson) {
     if (!geoJson) return null;
     const lz = JSON.parse(geoJson);
     if (lz.type === 'FeatureCollection') {
-        return lz.features.length > 0
-            ? turf.union(lz)
-            : null;
+        if (lz.features.length === 0) return null;
+        if (lz.features.length === 1) return lz.features[0];
+        return turf.union(lz);
     }
     return lz;
 }
