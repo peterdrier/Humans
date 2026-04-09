@@ -95,6 +95,9 @@ public static class MemoryCacheExtensions
     public static void InvalidateUserProfile(this IMemoryCache cache, Guid userId) =>
         cache.Remove(CacheKeys.UserProfile(userId));
 
+    public static void InvalidateNobodiesTeamEmails(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.NobodiesTeamEmails);
+
     public static void InvalidateCampContactRateLimit(this IMemoryCache cache, Guid userId, Guid campId) =>
         cache.Remove(CacheKeys.CampContactRateLimit(userId, campId));
 

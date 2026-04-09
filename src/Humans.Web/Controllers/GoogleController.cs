@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -529,7 +530,7 @@ public class GoogleController : HumansControllerBase
         else
         {
             // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
 
             if (result.RecoveryEmail is not null)
             {
@@ -701,7 +702,7 @@ public class GoogleController : HumansControllerBase
 
         if (result.Success)
         {
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(result.Message!);
         }
         else

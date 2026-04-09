@@ -30,6 +30,7 @@ public static class CacheKeys
     public static string VotingBadge(Guid userId) => $"NavBadge:Voting:{userId:N}";
 
     public static string LegalDocument(string slug) => $"Legal:{slug}";
+    public const string NobodiesTeamEmails = "NobodiesTeamEmails_All";
 
     // Magic link sentinel keys (rate limiting and replay prevention)
     public static string MagicLinkUsed(string tokenPrefix) => $"magic_link_used:{tokenPrefix}";
@@ -76,6 +77,6 @@ public static class CacheKeys
             ["Legal"] = new("1 hour", CacheKeyType.PerEntity),
             ["magic_link_used"] = new("15 min", CacheKeyType.RateLimit),
             ["magic_link_signup"] = new("60 sec", CacheKeyType.RateLimit),
-            ["NobodiesTeamEmails_All"] = new("2 min", CacheKeyType.Static),
+            [NobodiesTeamEmails] = new("2 min", CacheKeyType.Static),
         };
 }

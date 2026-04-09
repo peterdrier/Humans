@@ -111,7 +111,7 @@ public class CampAdminController : HumansControllerBase
         {
             _logger.LogError(ex, "Failed to load Barrios admin page");
             SetError("Failed to load Barrios admin page.");
-            return RedirectToAction("Index", "Admin");
+            return RedirectToAction(nameof(AdminController.Index), "Admin");
         }
     }
 

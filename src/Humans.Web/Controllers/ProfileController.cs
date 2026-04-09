@@ -179,12 +179,8 @@ public class ProfileController : HumansControllerBase
 
         // Get profile languages for editing
         var languages = profile is not null
-            ? await _dbContext.ProfileLanguages
-                .AsNoTracking()
-                .Where(pl => pl.ProfileId == profile.Id)
-                .OrderBy(pl => pl.LanguageCode)
-                .ToListAsync(ct)
-            : [];
+            ? await _profileService.GetProfileLanguagesAsync(profile.Id, ct)
+            : (IReadOnlyList<ProfileLanguage>)[];
 
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
 
@@ -592,7 +588,7 @@ public class ProfileController : HumansControllerBase
         {
             var decodedToken = HttpUtility.UrlDecode(token);
             var result = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
 
             if (result.MergeRequestCreated)
             {
@@ -643,7 +639,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetNotificationTargetAsync(user.Id, emailId);
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -694,7 +690,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.DeleteEmailAsync(user.Id, emailId);
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["Profile_EmailDeleted"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -1291,12 +1287,8 @@ public class ProfileController : HumansControllerBase
         ViewBag.OutboxCount = outboxCount;
 
         var profileLanguages = data.Profile is not null
-            ? await _dbContext.ProfileLanguages
-                .AsNoTracking()
-                .Where(pl => pl.ProfileId == data.Profile.Id)
-                .OrderBy(pl => pl.LanguageCode)
-                .ToListAsync(ct)
-            : [];
+            ? await _profileService.GetProfileLanguagesAsync(data.Profile.Id, ct)
+            : (IReadOnlyList<ProfileLanguage>)[];
 
         var now = _clock.GetCurrentInstant();
 

@@ -1194,6 +1194,16 @@ public class ProfileService : IProfileService
         return profile;
     }
 
+    public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
+        Guid profileId, CancellationToken ct = default)
+    {
+        return await _dbContext.ProfileLanguages
+            .AsNoTracking()
+            .Where(pl => pl.ProfileId == profileId)
+            .OrderBy(pl => pl.LanguageCode)
+            .ToListAsync(ct);
+    }
+
     private static string GetSnippet(string text, string query, int contextChars = 60)
     {
         var index = text.IndexOf(query, StringComparison.OrdinalIgnoreCase);
