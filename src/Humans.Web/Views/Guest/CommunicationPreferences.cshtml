@@ -5,12 +5,15 @@
 
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-action="Index">Dashboard</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Communication Preferences</li>
-            </ol>
-        </nav>
+        @if (string.IsNullOrEmpty(Model.UnsubscribeToken))
+        {
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-action="Index">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Communication Preferences</li>
+                </ol>
+            </nav>
+        }
 
         <h1>Communication Preferences</h1>
         <p class="text-muted">Choose which communications you receive and how.</p>
@@ -84,7 +87,10 @@
             </div>
         </div>
 
-        <a asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>
+        @if (string.IsNullOrEmpty(Model.UnsubscribeToken))
+        {
+            <a asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>
+        }
     </div>
 </div>
 
@@ -105,6 +111,10 @@
             body.append('alertEnabled', alertCb ? alertCb.checked : true);
             body.append('__RequestVerificationToken',
                 document.querySelector('input[name="__RequestVerificationToken"]').value);
+            @if (!string.IsNullOrEmpty(Model.UnsubscribeToken))
+            {
+                @:body.append('utoken', '@Html.Raw(Html.Encode(Model.UnsubscribeToken))');
+            }
 
             this.disabled = true;
             var self = this;
