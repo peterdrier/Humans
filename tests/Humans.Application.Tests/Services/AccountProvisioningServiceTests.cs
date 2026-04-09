@@ -61,6 +61,12 @@ file sealed class StubAuditLog : IAuditLogService
             Array.Empty<AuditLogEntry>(), 0, 0,
             new Dictionary<Guid, string>(),
             new Dictionary<Guid, (string Name, string Slug)>()));
+
+    public Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
+        Task.FromResult(new Dictionary<Guid, string>());
+
+    public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
+        Task.FromResult(new Dictionary<Guid, (string Name, string Slug)>());
 }
 
 public class AccountProvisioningServiceTests : IDisposable

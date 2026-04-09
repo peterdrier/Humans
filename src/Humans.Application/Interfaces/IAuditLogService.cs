@@ -77,6 +77,16 @@ public interface IAuditLogService
     /// </summary>
     Task<AuditLogPageResult> GetAuditLogPageAsync(
         string? actionFilter, int page, int pageSize, CancellationToken ct = default);
+
+    /// <summary>
+    /// Batch-loads user display names for a set of user IDs.
+    /// </summary>
+    Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Batch-loads team names and slugs for a set of team IDs.
+    /// </summary>
+    Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default);
 }
 
 /// <summary>

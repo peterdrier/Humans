@@ -213,19 +213,10 @@ public class AuditLogService : IAuditLogService
                 teamIds.Add(e.RelatedEntityId.Value);
         }
 
-        var userDisplayNames = userIds.Count > 0
-            ? (IReadOnlyDictionary<Guid, string>)await _dbContext.Users.AsNoTracking()
-                .Where(u => userIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct)
-            : new Dictionary<Guid, string>();
+        var userDisplayNames = await GetUserDisplayNamesAsync(userIds.ToList(), ct);
+        var teamNameLookup = await GetTeamNamesAsync(teamIds.ToList(), ct);
 
-        var teamNames = teamIds.Count > 0
-            ? (IReadOnlyDictionary<Guid, (string Name, string Slug)>)await _dbContext.Teams.AsNoTracking()
-                .Where(t => teamIds.Contains(t.Id))
-                .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug), ct)
-            : new Dictionary<Guid, (string Name, string Slug)>();
-
-        return new AuditLogPageResult(items, totalCount, anomalyCount, userDisplayNames, teamNames);
+        return new AuditLogPageResult(items, totalCount, anomalyCount, userDisplayNames, teamNameLookup);
     }
 
     /// <inheritdoc />
@@ -258,5 +249,27 @@ public class AuditLogService : IAuditLogService
             .OrderByDescending(e => e.OccurredAt)
             .Take(limit)
             .ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        return await _dbContext.Users.AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default)
+    {
+        if (teamIds.Count == 0)
+            return new Dictionary<Guid, (string Name, string Slug)>();
+
+        return await _dbContext.Teams.AsNoTracking()
+            .Where(t => teamIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug), ct);
     }
 }

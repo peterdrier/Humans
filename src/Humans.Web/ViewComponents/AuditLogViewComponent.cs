@@ -1,24 +1,19 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Humans.Web.ViewComponents;
 
 public class AuditLogViewComponent : ViewComponent
 {
     private readonly IAuditLogService _auditLogService;
-    private readonly HumansDbContext _dbContext;
     private readonly ILogger<AuditLogViewComponent> _logger;
 
     public AuditLogViewComponent(
         IAuditLogService auditLogService,
-        HumansDbContext dbContext,
         ILogger<AuditLogViewComponent> logger)
     {
         _auditLogService = auditLogService;
-        _dbContext = dbContext;
         _logger = logger;
     }
 
@@ -54,7 +49,6 @@ public class AuditLogViewComponent : ViewComponent
                 entityType, entityId, userId, actionList, limit);
 
             // Batch-load display names for all referenced user IDs
-            // (actors, subjects via EntityId for User/Profile types, and RelatedEntityId for User types)
             var userIds = model.Entries
                 .SelectMany(e => new Guid?[]
                 {
@@ -67,13 +61,7 @@ public class AuditLogViewComponent : ViewComponent
                 .Distinct()
                 .ToList();
 
-            if (userIds.Count > 0)
-            {
-                model.UserDisplayNames = await _dbContext.Users
-                    .AsNoTracking()
-                    .Where(u => userIds.Contains(u.Id))
-                    .ToDictionaryAsync(u => u.Id, u => u.DisplayName);
-            }
+            model.UserDisplayNames = await _auditLogService.GetUserDisplayNamesAsync(userIds);
 
             // Batch-load team names for entries that reference teams
             var teamIds = model.Entries
@@ -87,13 +75,7 @@ public class AuditLogViewComponent : ViewComponent
                 .Distinct()
                 .ToList();
 
-            if (teamIds.Count > 0)
-            {
-                model.TeamNames = await _dbContext.Teams
-                    .AsNoTracking()
-                    .Where(t => teamIds.Contains(t.Id))
-                    .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug));
-            }
+            model.TeamNames = await _auditLogService.GetTeamNamesAsync(teamIds);
         }
         catch (Exception ex)
         {
