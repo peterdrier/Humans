@@ -280,6 +280,11 @@
                                 <form asp-action="SignUpRange" method="post" class="row g-2 align-items-end mb-3">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="rotaId" value="@rotaGroup.Rota.Id" />
+                                    @if (Model.FilterDepartmentId.HasValue) { <input type="hidden" name="departmentId" value="@Model.FilterDepartmentId" /> }
+                                    @if (!string.IsNullOrEmpty(Model.FilterFromDate)) { <input type="hidden" name="fromDate" value="@Model.FilterFromDate" /> }
+                                    @if (!string.IsNullOrEmpty(Model.FilterToDate)) { <input type="hidden" name="toDate" value="@Model.FilterToDate" /> }
+                                    @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
+                                    @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
                                     <div class="col-auto">
                                         <label class="form-label form-label-sm">Start</label>
                                         <select name="startDayOffset" class="form-select form-select-sm">
@@ -544,6 +549,11 @@
                                                         <form asp-action="SignUp" method="post" class="d-inline">
                                                             @Html.AntiForgeryToken()
                                                             <input type="hidden" name="shiftId" value="@shift.Id" />
+                                                            @if (Model.FilterDepartmentId.HasValue) { <input type="hidden" name="departmentId" value="@Model.FilterDepartmentId" /> }
+                                                            @if (!string.IsNullOrEmpty(Model.FilterFromDate)) { <input type="hidden" name="fromDate" value="@Model.FilterFromDate" /> }
+                                                            @if (!string.IsNullOrEmpty(Model.FilterToDate)) { <input type="hidden" name="toDate" value="@Model.FilterToDate" /> }
+                                                            @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
+                                                            @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
                                                             <button type="submit" class="btn btn-sm btn-success">Sign Up</button>
                                                         </form>
                                                     }
