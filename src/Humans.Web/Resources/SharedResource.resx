@@ -191,7 +191,16 @@
   <data name="Guest_DataDescription" xml:space="preserve"><value>Download everything we have on you — it's yours</value></data>
   <data name="Guest_DeleteTitle" xml:space="preserve"><value>Disappear</value></data>
   <data name="Guest_DeleteDescription" xml:space="preserve"><value>Request full account deletion — 30 days to change your mind</value></data>
+  <data name="Guest_TicketsTitle" xml:space="preserve"><value>Your Tickets</value></data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve"><value>Purchased</value></data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve"><value>Buyer</value></data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve"><value>Amount</value></data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve"><value>You have a ticket for the event.</value></data>
   <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>You're on your way out</value></data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve"><value>Requested on {0}.</value></data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve"><value>We'll delete everything after {0} — waiting until after the event.</value></data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve"><value>Everything goes on {0}. For real.</value></data>
   <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>Changed my mind</value></data>
 
   <!-- ======================== -->

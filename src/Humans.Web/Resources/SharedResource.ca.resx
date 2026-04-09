@@ -191,7 +191,16 @@
   <data name="Guest_DataDescription" xml:space="preserve"><value>Descarrega tot el que tenim sobre tu &#x2014; &#xE9;s teu</value></data>
   <data name="Guest_DeleteTitle" xml:space="preserve"><value>Desapar&#xE8;ixer</value></data>
   <data name="Guest_DeleteDescription" xml:space="preserve"><value>Sol&#xB7;licita l'eliminaci&#xF3; del teu compte &#x2014; 30 dies per canviar d'opini&#xF3;</value></data>
+  <data name="Guest_TicketsTitle" xml:space="preserve"><value>Les teves entrades</value></data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve"><value>Comprat</value></data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve"><value>Comprador</value></data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve"><value>Entrades</value></data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve"><value>Import</value></data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve"><value>Tens entrada per a l'event.</value></data>
   <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>Vas de sortida</value></data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve"><value>Sol&#xB7;licitat el {0}.</value></data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve"><value>Ho esborrarem tot despr&#xE9;s del {0} &#x2014; esperant que acabi l'event.</value></data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve"><value>Tot desapareix el {0}. De deb&#xF2;.</value></data>
   <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>He canviat d'opini&#xF3;</value></data>
 
   <!-- ======================== -->

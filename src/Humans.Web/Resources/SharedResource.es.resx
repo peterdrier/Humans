@@ -191,7 +191,16 @@
   <data name="Guest_DataDescription" xml:space="preserve"><value>Descarga todo lo que tenemos sobre ti &#x2014; es tuyo</value></data>
   <data name="Guest_DeleteTitle" xml:space="preserve"><value>Desaparecer</value></data>
   <data name="Guest_DeleteDescription" xml:space="preserve"><value>Solicita la eliminaci&#xF3;n de tu cuenta &#x2014; 30 d&#xED;as para cambiar de opini&#xF3;n</value></data>
+  <data name="Guest_TicketsTitle" xml:space="preserve"><value>Tus entradas</value></data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve"><value>Comprado</value></data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve"><value>Comprador</value></data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve"><value>Entradas</value></data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve"><value>Importe</value></data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve"><value>Tienes entrada para el evento.</value></data>
   <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>Vas de salida</value></data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve"><value>Solicitado el {0}.</value></data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve"><value>Lo borraremos todo despu&#xE9;s del {0} &#x2014; esperando a que termine el evento.</value></data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve"><value>Todo desaparece el {0}. En serio.</value></data>
   <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>He cambiado de opini&#xF3;n</value></data>
 
   <!-- ======================== -->

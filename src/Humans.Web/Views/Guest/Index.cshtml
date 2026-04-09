@@ -49,7 +49,7 @@
                              style="width: 40px; height: 40px; background: var(--h-alert-success-bg); color: var(--h-sage-dark); flex-shrink: 0;">
                             <i class="fa-solid fa-ticket"></i>
                         </div>
-                        <h5 class="mb-0">Your Tickets</h5>
+                        <h5 class="mb-0">@Localizer["Guest_TicketsTitle"]</h5>
                     </div>
                     @if (Model.TicketOrders.Count > 0)
                     {
@@ -57,17 +57,17 @@
                             <table class="table table-sm mb-0">
                                 <thead>
                                     <tr>
-                                        <th>Purchased</th>
-                                        <th>Buyer</th>
-                                        <th class="text-center">Tickets</th>
-                                        <th class="text-end">Amount</th>
+                                        <th>@Localizer["Guest_TicketsHeader_Purchased"]</th>
+                                        <th>@Localizer["Guest_TicketsHeader_Buyer"]</th>
+                                        <th class="text-center">@Localizer["Guest_TicketsHeader_Tickets"]</th>
+                                        <th class="text-end">@Localizer["Guest_TicketsHeader_Amount"]</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var order in Model.TicketOrders)
                                     {
                                         <tr>
-                                            <td>@order.PurchasedAt.ToString("d MMM yyyy")</td>
+                                            <td>@order.PurchasedAt.ToDisplayDate()</td>
                                             <td>@order.BuyerName</td>
                                             <td class="text-center">@order.AttendeeCount</td>
                                             <td class="text-end">@order.TotalAmount.ToString("N2") @order.Currency</td>
@@ -81,7 +81,7 @@
                     {
                         <p class="mb-0">
                             <i class="fa-solid fa-circle-check text-success me-2"></i>
-                            You have a ticket for the event.
+                            @Localizer["Guest_TicketsConfirmed"]
                         </p>
                     }
                 </div>
@@ -209,20 +209,18 @@
                     <div class="flex-grow-1">
                         <h6 class="mb-1">@Localizer["Guest_DeletionPendingTitle"]</h6>
                         <p class="mb-1 small text-muted">
-                            Requested on <strong>@Model.DeletionRequestedAt?.ToString("d MMM yyyy")</strong>.
+                            @Html.Raw(string.Format(Localizer["Guest_DeletionRequestedOn"].Value, "<strong>" + Html.Encode(Model.DeletionRequestedAt?.ToDisplayDate()) + "</strong>"))
                         </p>
                         @if (Model.DeletionEligibleAfter.HasValue && Model.DeletionEligibleAfter > Model.DeletionScheduledFor)
                         {
                             <p class="mb-2 small text-muted">
-                                We'll delete everything after <strong>@Model.DeletionEligibleAfter?.ToString("d MMM yyyy")</strong>
-                                &mdash; waiting until after the event.
+                                @Html.Raw(string.Format(Localizer["Guest_DeletionHeldUntil"].Value, "<strong>" + Html.Encode(Model.DeletionEligibleAfter?.ToDisplayDate()) + "</strong>"))
                             </p>
                         }
                         else
                         {
                             <p class="mb-2 small text-muted">
-                                Everything goes on
-                                <strong>@Model.DeletionScheduledFor?.ToString("d MMM yyyy")</strong>. For real.
+                                @Html.Raw(string.Format(Localizer["Guest_DeletionScheduledFor"].Value, "<strong>" + Html.Encode(Model.DeletionScheduledFor?.ToDisplayDate()) + "</strong>"))
                             </p>
                         }
                         <form asp-action="CancelDeletion" method="post" class="d-inline">
@@ -236,16 +234,3 @@
         </div>
     </div>
 }
-
-<style>
-    .guest-explore-card {
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .guest-explore-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--h-shadow-lg) !important;
-    }
-    .guest-section-sub {
-        line-height: 1.3;
-    }
-</style>

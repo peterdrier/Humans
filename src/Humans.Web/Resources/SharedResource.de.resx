@@ -191,7 +191,16 @@
   <data name="Guest_DataDescription" xml:space="preserve"><value>Lade alles herunter, was wir &#xFC;ber dich haben &#x2014; es geh&#xF6;rt dir</value></data>
   <data name="Guest_DeleteTitle" xml:space="preserve"><value>Verschwinden</value></data>
   <data name="Guest_DeleteDescription" xml:space="preserve"><value>Kontol&#xF6;schung beantragen &#x2014; 30 Tage, um es dir anders zu &#xFC;berlegen</value></data>
+  <data name="Guest_TicketsTitle" xml:space="preserve"><value>Deine Tickets</value></data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve"><value>Gekauft</value></data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve"><value>K&#xE4;ufer</value></data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve"><value>Betrag</value></data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve"><value>Du hast ein Ticket f&#xFC;r das Event.</value></data>
   <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>Du bist auf dem Weg raus</value></data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve"><value>Angefragt am {0}.</value></data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve"><value>Wir l&#xF6;schen alles nach dem {0} &#x2014; warten bis nach dem Event.</value></data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve"><value>Alles weg am {0}. Wirklich.</value></data>
   <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>Hab's mir anders &#xFC;berlegt</value></data>
 
   <!-- ======================== -->

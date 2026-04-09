@@ -1484,3 +1484,18 @@ tr[data-href] {
         margin-top: 0.25rem;
     }
 }
+
+/* ─── Guest Dashboard ─── */
+
+.guest-explore-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.guest-explore-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--h-shadow-lg) !important;
+}
+
+.guest-section-sub {
+    line-height: 1.3;
+}

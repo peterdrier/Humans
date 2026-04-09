@@ -191,7 +191,16 @@
   <data name="Guest_DataDescription" xml:space="preserve"><value>T&#xE9;l&#xE9;charge tout ce qu'on a sur toi &#x2014; c'est &#xE0; toi</value></data>
   <data name="Guest_DeleteTitle" xml:space="preserve"><value>Dispara&#xEE;tre</value></data>
   <data name="Guest_DeleteDescription" xml:space="preserve"><value>Demande la suppression de ton compte &#x2014; 30 jours pour changer d'avis</value></data>
+  <data name="Guest_TicketsTitle" xml:space="preserve"><value>Tes billets</value></data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve"><value>Achet&#xE9;</value></data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve"><value>Acheteur</value></data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve"><value>Billets</value></data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve"><value>Montant</value></data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve"><value>Tu as un billet pour l'&#xE9;v&#xE9;nement.</value></data>
   <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>Tu es sur le d&#xE9;part</value></data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve"><value>Demand&#xE9; le {0}.</value></data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve"><value>On supprimera tout apr&#xE8;s le {0} &#x2014; on attend la fin de l'&#xE9;v&#xE9;nement.</value></data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve"><value>Tout dispara&#xEE;t le {0}. Pour de vrai.</value></data>
   <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>J'ai chang&#xE9; d'avis</value></data>
 
   <!-- ======================== -->
