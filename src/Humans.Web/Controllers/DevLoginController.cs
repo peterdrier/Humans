@@ -413,10 +413,10 @@ public class DevLoginController : Controller
         var deptExists = await _db.Teams.AnyAsync(t => t.Id == deptId);
         if (deptExists)
         {
-            // Ensure the coordinator membership on department exists
-            var hasDeptMembership = await _db.TeamMembers
-                .AnyAsync(tm => tm.TeamId == deptId && tm.UserId == coordinatorUserId);
-            if (!hasDeptMembership)
+            // Ensure the coordinator membership on department exists and is active
+            var deptMembership = await _db.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == deptId && tm.UserId == coordinatorUserId);
+            if (deptMembership is null)
             {
                 _db.TeamMembers.Add(new TeamMember
                 {
@@ -426,6 +426,11 @@ public class DevLoginController : Controller
                     Role = TeamMemberRole.Coordinator,
                     JoinedAt = now
                 });
+            }
+            else if (deptMembership.LeftAt is not null)
+            {
+                deptMembership.LeftAt = null;
+                deptMembership.Role = TeamMemberRole.Coordinator;
             }
 
             // Ensure sub-team exists (may have been deleted manually in preview env)
@@ -447,10 +452,10 @@ public class DevLoginController : Controller
                 });
             }
 
-            // Ensure coordinator membership on sub-team exists
-            var hasSubTeamMembership = await _db.TeamMembers
-                .AnyAsync(tm => tm.TeamId == subTeamId && tm.UserId == coordinatorUserId);
-            if (!hasSubTeamMembership)
+            // Ensure coordinator membership on sub-team exists and is active
+            var subTeamMembership = await _db.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == subTeamId && tm.UserId == coordinatorUserId);
+            if (subTeamMembership is null)
             {
                 _db.TeamMembers.Add(new TeamMember
                 {
@@ -460,6 +465,11 @@ public class DevLoginController : Controller
                     Role = TeamMemberRole.Member,
                     JoinedAt = now
                 });
+            }
+            else if (subTeamMembership.LeftAt is not null)
+            {
+                subTeamMembership.LeftAt = null;
+                subTeamMembership.Role = TeamMemberRole.Member;
             }
 
             return;
@@ -554,8 +564,8 @@ public class DevLoginController : Controller
             _logger.LogInformation("DEV: seeded city planning team {Slug}", teamSlug);
         }
 
-        var hasMembership = await _db.TeamMembers.AnyAsync(tm => tm.TeamId == team.Id && tm.UserId == userId);
-        if (!hasMembership)
+        var membership = await _db.TeamMembers.FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == userId);
+        if (membership is null)
         {
             _db.TeamMembers.Add(new TeamMember
             {
@@ -565,6 +575,12 @@ public class DevLoginController : Controller
                 Role = TeamMemberRole.Coordinator,
                 JoinedAt = now
             });
+            changed = true;
+        }
+        else if (membership.LeftAt is not null)
+        {
+            membership.LeftAt = null;
+            membership.Role = TeamMemberRole.Coordinator;
             changed = true;
         }
 
