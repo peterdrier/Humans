@@ -168,11 +168,40 @@
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motiu</value></data>
 
   <!-- Guest Dashboard -->
-  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Vols participar?</value></data>
-  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Crea un perfil per ser voluntari i accedir a l'experi&#xE8;ncia completa de Humans &#x2014; torns, equips, governan&#xE7;a i m&#xE9;s.</value></data>
-  <data name="Guest_CreateProfile" xml:space="preserve"><value>Crear perfil</value></data>
-  <data name="Guest_Explore" xml:space="preserve"><value>Explorar</value></data>
+  <data name="Guest_Greeting" xml:space="preserve"><value>Hola, {0}.</value></data>
+  <data name="Guest_Subtitle" xml:space="preserve"><value>Benvingut/da a Humans &#x2014; on Nobodies Collective gestiona tot per a Elsewhere.</value></data>
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Preparat/da per deixar de ser un fantasma?</value></data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Ara mateix existeixes… per&#xF2; ning&#xFA; et veu. Crea el teu perfil i de sobte:</value></data>
+  <data name="Guest_GetInvolvedBullet1" xml:space="preserve"><value>Pots unir-te a equips</value></data>
+  <data name="Guest_GetInvolvedBullet2" xml:space="preserve"><value>Pots agafar torns</value></data>
+  <data name="Guest_GetInvolvedBullet3" xml:space="preserve"><value>La gent sap qui ets</value></data>
+  <data name="Guest_GetInvolvedHint" xml:space="preserve"><value>S&#xF3;n ~2 minuts.</value></data>
+  <data name="Guest_CreateProfile" xml:space="preserve"><value>Crear el meu perfil</value></data>
+  <data name="Guest_Explore" xml:space="preserve"><value>Fes un cop d'ull</value></data>
+  <data name="Guest_ExploreSubtitle" xml:space="preserve"><value>No cal perfil. Nom&#xE9;s curiositat.</value></data>
+  <data name="Guest_BarriosDescription" xml:space="preserve"><value>Els barris que la gent construeix i on viu durant l'event</value></data>
+  <data name="Guest_TeamsDescription" xml:space="preserve"><value>Els equips que fan que tot funcioni &#x2014; so, seguretat, construcci&#xF3;, tot</value></data>
   <data name="Guest_Legal" xml:space="preserve"><value>Legal</value></data>
+  <data name="Guest_LegalDescription" xml:space="preserve"><value>Pol&#xED;tica de privacitat, termes, consentiments &#x2014; l'avorrit per&#xF2; important</value></data>
+  <data name="Guest_AccountTitle" xml:space="preserve"><value>Les teves coses</value></data>
+  <data name="Guest_AccountSubtitle" xml:space="preserve"><value>Encara que no tinguis perfil, pots gestionar el teu compte i les teves dades.</value></data>
+  <data name="Guest_CommsTitle" xml:space="preserve"><value>Comunicacions</value></data>
+  <data name="Guest_CommsDescription" xml:space="preserve"><value>Tria quins emails i notificacions vols rebre</value></data>
+  <data name="Guest_DataTitle" xml:space="preserve"><value>Les teves dades</value></data>
+  <data name="Guest_DataDescription" xml:space="preserve"><value>Descarrega tot el que tenim sobre tu &#x2014; &#xE9;s teu</value></data>
+  <data name="Guest_DeleteTitle" xml:space="preserve"><value>Desapar&#xE8;ixer</value></data>
+  <data name="Guest_DeleteDescription" xml:space="preserve"><value>Sol&#xB7;licita l'eliminaci&#xF3; del teu compte &#x2014; 30 dies per canviar d'opini&#xF3;</value></data>
+  <data name="Guest_TicketsTitle" xml:space="preserve"><value>Les teves entrades</value></data>
+  <data name="Guest_TicketsHeader_Purchased" xml:space="preserve"><value>Comprat</value></data>
+  <data name="Guest_TicketsHeader_Buyer" xml:space="preserve"><value>Comprador</value></data>
+  <data name="Guest_TicketsHeader_Tickets" xml:space="preserve"><value>Entrades</value></data>
+  <data name="Guest_TicketsHeader_Amount" xml:space="preserve"><value>Import</value></data>
+  <data name="Guest_TicketsConfirmed" xml:space="preserve"><value>Tens entrada per a l'event.</value></data>
+  <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>Vas de sortida</value></data>
+  <data name="Guest_DeletionRequestedOn" xml:space="preserve"><value>Sol&#xB7;licitat el {0}.</value></data>
+  <data name="Guest_DeletionHeldUntil" xml:space="preserve"><value>Ho esborrarem tot despr&#xE9;s del {0} &#x2014; esperant que acabi l'event.</value></data>
+  <data name="Guest_DeletionScheduledFor" xml:space="preserve"><value>Tot desapareix el {0}. De deb&#xF2;.</value></data>
+  <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>He canviat d'opini&#xF3;</value></data>
 
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
