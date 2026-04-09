@@ -461,7 +461,7 @@ public class ProfileService : IProfileService
         var teamMemberships = await _dbContext.TeamMembers
             .AsNoTracking()
             .Include(tm => tm.Team)
-            .Include(tm => tm.TeamRoleAssignments)
+            .Include(tm => tm.RoleAssignments)
                 .ThenInclude(tra => tra.TeamRoleDefinition)
             .Where(tm => tm.UserId == userId)
             .OrderByDescending(tm => tm.JoinedAt)
@@ -715,7 +715,7 @@ public class ProfileService : IProfileService
                 tm.Role,
                 JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
                 LeftAt = tm.LeftAt.ToInvariantInstantString(),
-                TeamRoles = tm.TeamRoleAssignments.Select(tra => new
+                TeamRoles = tm.RoleAssignments.Select(tra => new
                 {
                     RoleName = tra.TeamRoleDefinition.Name,
                     AssignedAt = tra.AssignedAt.ToInvariantInstantString()
@@ -845,7 +845,7 @@ public class ProfileService : IProfileService
             }),
             CampLeadAssignments = campLeadAssignments.Select(cl => new
             {
-                CampName = cl.Camp.Name,
+                CampSlug = cl.Camp.Slug,
                 cl.Role,
                 JoinedAt = cl.JoinedAt.ToInvariantInstantString(),
                 LeftAt = cl.LeftAt.ToInvariantInstantString()
