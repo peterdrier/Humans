@@ -33,6 +33,13 @@
 }
 
 <div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Shifts</a></li>
+            <li class="breadcrumb-item active" aria-current="page">My Shifts</li>
+        </ol>
+    </nav>
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>My Shifts</h2>
         <a asp-action="Index" class="btn btn-outline-primary">Browse Volunteer Options</a>
