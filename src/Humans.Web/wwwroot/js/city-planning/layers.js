@@ -82,7 +82,8 @@ export function generateRainbowPattern() {
 export function renderMap(onCampPolygonClick) {
   const { map } = appState;
 
-  ['limit-zone-line', 'limit-zone-line-dual-a', 'limit-zone-line-dual-b', 'limit-zone-fill', 'official-zones-fill', 'official-zones-line', 'official-zones-labels', 'camp-polygons-fill-warning', 'camp-polygons-fill-overlap', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
+  map.getStyle().layers.filter(l => l.id.startsWith('limit-zone-line')).forEach(l => map.removeLayer(l.id));
+  ['limit-zone-fill', 'official-zones-fill', 'official-zones-line', 'official-zones-labels', 'camp-polygons-fill-warning', 'camp-polygons-fill-overlap', 'camp-polygons-outline', 'camp-polygons-fill-surprise', 'camp-polygons-fill', 'camp-polygons-labels'].forEach(id => {
     if (map.getLayer(id)) map.removeLayer(id);
   });
   ['limit-zone', 'official-zones', 'camp-polygons'].forEach(id => {
@@ -90,40 +91,36 @@ export function renderMap(onCampPolygonClick) {
   });
 
   if (appState.campMap.limitZoneGeoJson) {
-    map.addSource('limit-zone', { type: 'geojson', data: JSON.parse(appState.campMap.limitZoneGeoJson) });
+    const limitZoneData = JSON.parse(appState.campMap.limitZoneGeoJson);
+    map.addSource('limit-zone', { type: 'geojson', data: limitZoneData });
     map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 } });
+
+    const ZONE_COLORS = { blue: '#2266cc', green: '#229944', yellow: '#cc9900', orange: '#cc6600', red: '#cc1111' };
+    const soundZones = [...new Set((limitZoneData.features || []).map(f => f.properties?.sound_zone).filter(Boolean))];
+
+    for (const zone of soundZones) {
+      const colors = zone.split('_').map(c => ZONE_COLORS[c]).filter(Boolean);
+      if (colors.length === 0) colors.push('#ffffff');
+      const n = colors.length;
+      // Each color occupies a 6px step (4 dash + 2 gap); period = n * 6.
+      colors.forEach((color, i) => {
+        const dashArray = i === 0
+          ? [4, (n - 1) * 6 + 2]
+          : [0.001, i * 6 - 0.001, 4, (n - i - 1) * 6 + 2];
+        map.addLayer({
+          id: `limit-zone-line-${zone}-${i}`,
+          type: 'line', source: 'limit-zone',
+          filter: ['==', ['get', 'sound_zone'], zone],
+          paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': dashArray },
+        });
+      });
+    }
+
+    // Fallback: features with no sound_zone property
     map.addLayer({
-      id: 'limit-zone-line', type: 'line', source: 'limit-zone',
-      filter: ['!', ['any', ['==', ['get', 'sound_zone'], 'orange_red'], ['==', ['get', 'sound_zone'], 'orange_yellow']]],
-      paint: {
-        'line-color': ['match', ['get', 'sound_zone'],
-          'blue', '#2266cc',
-          'green', '#229944',
-          'yellow', '#cc9900',
-          'orange', '#cc6600',
-          'red', '#cc1111',
-          '#ffffff'
-        ],
-        'line-width': 2,
-        'line-dasharray': [4, 2],
-      },
-    });
-    // Dual-color zones: two interleaved dash layers (orange + secondary color)
-    const dualFilter = ['any', ['==', ['get', 'sound_zone'], 'orange_red'], ['==', ['get', 'sound_zone'], 'orange_yellow']];
-    // Each layer draws every other dash (period 12 = 4 dash + 2 gap + 4 dash + 2 gap), offset by 6.
-    map.addLayer({
-      id: 'limit-zone-line-dual-a', type: 'line', source: 'limit-zone',
-      filter: dualFilter,
-      paint: { 'line-color': '#cc6600', 'line-width': 2, 'line-dasharray': [4, 8] },
-    });
-    map.addLayer({
-      id: 'limit-zone-line-dual-b', type: 'line', source: 'limit-zone',
-      filter: dualFilter,
-      paint: {
-        'line-color': ['match', ['get', 'sound_zone'], 'orange_red', '#cc1111', '#cc9900'],
-        'line-width': 2,
-        'line-dasharray': [0.00001, 6, 4, 5.99999],
-      },
+      id: 'limit-zone-line-fallback', type: 'line', source: 'limit-zone',
+      filter: ['!', ['has', 'sound_zone']],
+      paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 2] },
     });
   }
 
