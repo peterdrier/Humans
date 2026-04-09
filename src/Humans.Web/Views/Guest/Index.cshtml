@@ -3,38 +3,54 @@
     ViewData["Title"] = Localizer["Dashboard_Title"].Value;
 }
 
-<div class="row mb-4">
-    <div class="col">
-        <h1>@Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))</h1>
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8 text-center">
+        <h1 class="mb-1">@Html.Raw(string.Format(Localizer["Guest_Greeting"].Value, Html.Encode(Model.DisplayName)))</h1>
+        <p class="text-muted">@Localizer["Guest_Subtitle"]</p>
     </div>
 </div>
 
 <vc:temp-data-alerts />
 
-<div class="row">
+@* ─── Primary CTA: Create Profile ─── *@
+<div class="row justify-content-center mb-5">
     <div class="col-lg-8">
-        @* ─── Create Profile CTA ─── *@
-        <div class="card mb-4">
-            <div class="card-body text-center py-5">
-                <i class="fa-solid fa-user-plus fa-3x text-primary mb-3"></i>
-                <h3>@Localizer["Guest_GetInvolvedTitle"]</h3>
-                <p class="text-muted mb-3">
+        <div class="card border-0 shadow" style="background: var(--h-aged-ink); color: var(--h-parchment-light);">
+            <div class="card-body text-center py-5 px-4">
+                <h2 class="display-5 fw-bold mb-3" style="color: var(--h-parchment-light);">@Localizer["Guest_GetInvolvedTitle"]</h2>
+                <p class="mb-2" style="max-width: 520px; margin: 0 auto; line-height: 1.3; color: var(--h-parchment-light);">
                     @Localizer["Guest_GetInvolvedDescription"]
                 </p>
-                <a asp-controller="Profile" asp-action="Edit" class="btn btn-primary btn-lg">
-                    <i class="fa-solid fa-id-card me-2"></i>@Localizer["Guest_CreateProfile"]
+                <ul class="list-unstyled mb-2" style="color: var(--h-parchment-light); line-height: 1.3;">
+                    <li>@Localizer["Guest_GetInvolvedBullet1"]</li>
+                    <li>@Localizer["Guest_GetInvolvedBullet2"]</li>
+                    <li>@Localizer["Guest_GetInvolvedBullet3"]</li>
+                </ul>
+                <p class="mb-3" style="color: var(--h-parchment-dark); line-height: 1.3;">
+                    <small>@Localizer["Guest_GetInvolvedHint"]</small>
+                </p>
+                <a asp-controller="Profile" asp-action="Edit" class="btn btn-lg px-5" style="background: var(--h-gold); color: var(--h-aged-ink); font-weight: 600;">
+                    <i class="fa-solid fa-arrow-right me-2"></i>@Localizer["Guest_CreateProfile"]
                 </a>
             </div>
         </div>
+    </div>
+</div>
 
-        @* ─── Ticket Status ─── *@
-        @if (Model.HasTickets)
-        {
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-ticket me-2"></i>Your Tickets</h5>
-                </div>
+@* ─── Ticket Status ─── *@
+@if (Model.HasTickets)
+{
+    <div class="row justify-content-center mb-5">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body">
+                    <div class="d-flex align-items-center mb-1">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
+                             style="width: 40px; height: 40px; background: var(--h-alert-success-bg); color: var(--h-sage-dark); flex-shrink: 0;">
+                            <i class="fa-solid fa-ticket"></i>
+                        </div>
+                        <h5 class="mb-0">Your Tickets</h5>
+                    </div>
                     @if (Model.TicketOrders.Count > 0)
                     {
                         <div class="table-responsive">
@@ -70,113 +86,166 @@
                     }
                 </div>
             </div>
-        }
-
-        @* ─── Communication Preferences ─── *@
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fa-solid fa-bell me-2"></i>Communication Preferences</h5>
-                <a asp-action="CommunicationPreferences" class="btn btn-sm btn-outline-primary">
-                    <i class="fa-solid fa-pen me-1"></i>Manage
-                </a>
-            </div>
-            <div class="card-body">
-                <p class="text-muted mb-0">
-                    Control which communications you receive from Nobodies.
-                </p>
-            </div>
-        </div>
-
-        @* ─── GDPR / Privacy ─── *@
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fa-solid fa-shield-halved me-2"></i>Privacy &amp; Data</h5>
-            </div>
-            <div class="card-body">
-                <p class="text-muted">Download a copy of all data we hold about you.</p>
-                <a asp-action="DownloadData" class="btn btn-outline-secondary btn-sm me-2">
-                    <i class="fa-solid fa-download me-1"></i>Download My Data
-                </a>
-
-                @if (!Model.IsDeletionPending)
-                {
-                    <hr />
-                    <p class="text-muted mb-2">
-                        You can request deletion of your account and all associated data.
-                        If you have tickets for an upcoming event, the deletion will be held until after the event.
-                    </p>
-                    <form asp-action="RequestDeletion" method="post" class="d-inline"
-                          data-confirm="Are you sure you want to request account deletion? This action can be cancelled before the deletion date.">
-                        <button type="submit" class="btn btn-outline-danger btn-sm">
-                            <i class="fa-solid fa-trash-can me-1"></i>Request Account Deletion
-                        </button>
-                    </form>
-                }
-            </div>
         </div>
     </div>
+}
 
-    <div class="col-lg-4">
-        @* ─── Explore Links ─── *@
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="fa-solid fa-compass me-2"></i>@Localizer["Guest_Explore"]</h5>
+@* ─── Explore ─── *@
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-8">
+        <h5 class="text-muted mb-1">@Localizer["Guest_Explore"]</h5>
+        <p class="text-muted small mb-3 guest-section-sub">@Localizer["Guest_ExploreSubtitle"]</p>
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <a asp-controller="Camp" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
+                    <div class="card-body text-center py-4">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
+                             style="width: 48px; height: 48px; background: var(--h-parchment); color: var(--h-aged-ink);">
+                            <i class="fa-solid fa-campground fa-lg"></i>
+                        </div>
+                        <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Camp_Plural"]</div>
+                        <small class="text-muted d-block mt-1" style="line-height: 1.3;">@Localizer["Guest_BarriosDescription"]</small>
+                    </div>
+                </a>
             </div>
-            <div class="card-body">
-                <ul class="list-unstyled mb-0">
-                    <li class="mb-2">
-                        <a asp-controller="Camp" asp-action="Index">
-                            <i class="fa-solid fa-campground me-2"></i>@Localizer["Camp_Plural"]
-                        </a>
-                    </li>
-                    <li class="mb-2">
-                        <a asp-controller="Team" asp-action="Index">
-                            <i class="fa-solid fa-people-group me-2"></i>@Localizer["Nav_Teams"]
-                        </a>
-                    </li>
-                    <li class="mb-2">
-                        <a asp-controller="Legal" asp-action="Index">
-                            <i class="fa-solid fa-scale-balanced me-2"></i>@Localizer["Guest_Legal"]
-                        </a>
-                    </li>
-                </ul>
+            <div class="col-sm-4">
+                <a asp-controller="Team" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
+                    <div class="card-body text-center py-4">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
+                             style="width: 48px; height: 48px; background: var(--h-parchment); color: var(--h-aged-ink);">
+                            <i class="fa-solid fa-people-group fa-lg"></i>
+                        </div>
+                        <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Nav_Teams"]</div>
+                        <small class="text-muted d-block mt-1" style="line-height: 1.3;">@Localizer["Guest_TeamsDescription"]</small>
+                    </div>
+                </a>
+            </div>
+            <div class="col-sm-4">
+                <a asp-controller="Legal" asp-action="Index" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
+                    <div class="card-body text-center py-4">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2"
+                             style="width: 48px; height: 48px; background: var(--h-parchment); color: var(--h-aged-ink);">
+                            <i class="fa-solid fa-scale-balanced fa-lg"></i>
+                        </div>
+                        <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Guest_Legal"]</div>
+                        <small class="text-muted d-block mt-1" style="line-height: 1.3;">@Localizer["Guest_LegalDescription"]</small>
+                    </div>
+                </a>
             </div>
         </div>
-
-        @* ─── Deletion Status (if pending) ─── *@
-        @if (Model.IsDeletionPending)
-        {
-            <div class="card mb-4 border-warning">
-                <div class="card-header bg-warning-subtle">
-                    <h5 class="mb-0"><i class="fa-solid fa-triangle-exclamation me-2"></i>Deletion Pending</h5>
-                </div>
-                <div class="card-body">
-                    <p class="mb-1">
-                        You requested account deletion on
-                        <strong>@Model.DeletionRequestedAt?.ToString("d MMM yyyy")</strong>.
-                    </p>
-                    @if (Model.DeletionEligibleAfter.HasValue && Model.DeletionEligibleAfter > Model.DeletionScheduledFor)
-                    {
-                        <p class="mb-2 text-warning-emphasis">
-                            <i class="fa-solid fa-clock me-1"></i>
-                            Your account will be deleted after <strong>@Model.DeletionEligibleAfter?.ToString("d MMM yyyy")</strong>
-                            (held until after the event).
-                        </p>
-                    }
-                    else
-                    {
-                        <p class="mb-2">
-                            Your account will be permanently deleted on
-                            <strong>@Model.DeletionScheduledFor?.ToString("d MMM yyyy")</strong>.
-                        </p>
-                    }
-                    <form asp-action="CancelDeletion" method="post">
-                        <button type="submit" class="btn btn-sm btn-outline-success">
-                            <i class="fa-solid fa-rotate-left me-1"></i>Cancel Deletion
-                        </button>
-                    </form>
-                </div>
-            </div>
-        }
     </div>
 </div>
+
+@* ─── Secondary Actions ─── *@
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-8">
+        <h5 class="text-muted mb-1">@Localizer["Guest_AccountTitle"]</h5>
+        <p class="text-muted small mb-3 guest-section-sub">@Localizer["Guest_AccountSubtitle"]</p>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <a asp-action="CommunicationPreferences" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
+                    <div class="card-body d-flex align-items-center py-3">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
+                             style="width: 40px; height: 40px; background: var(--h-alert-info-bg); color: var(--h-blue-muted); flex-shrink: 0;">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Guest_CommsTitle"]</div>
+                            <small class="text-muted d-block" style="line-height: 1.3;">@Localizer["Guest_CommsDescription"]</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a asp-action="DownloadData" class="card border-0 shadow-sm text-decoration-none h-100 guest-explore-card">
+                    <div class="card-body d-flex align-items-center py-3">
+                        <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
+                             style="width: 40px; height: 40px; background: var(--h-alert-info-bg); color: var(--h-blue-muted); flex-shrink: 0;">
+                            <i class="fa-solid fa-download"></i>
+                        </div>
+                        <div>
+                            <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Guest_DataTitle"]</div>
+                            <small class="text-muted d-block" style="line-height: 1.3;">@Localizer["Guest_DataDescription"]</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            @if (!Model.IsDeletionPending)
+            {
+                <div class="col-md-4">
+                    <form asp-action="RequestDeletion" method="post"
+                          data-confirm="Are you sure you want to request account deletion? This action can be cancelled before the deletion date."
+                          class="h-100">
+                        <button type="submit" class="card border-0 shadow-sm text-decoration-none h-100 w-100 text-start guest-explore-card" style="background: var(--h-bg-elevated); cursor: pointer;">
+                            <div class="card-body d-flex align-items-center py-3">
+                                <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3"
+                                     style="width: 40px; height: 40px; background: var(--h-alert-danger-bg); color: var(--h-rust); flex-shrink: 0;">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold" style="color: var(--h-text);">@Localizer["Guest_DeleteTitle"]</div>
+                                    <small class="text-muted d-block" style="line-height: 1.3;">@Localizer["Guest_DeleteDescription"]</small>
+                                </div>
+                            </div>
+                        </button>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@* ─── Deletion Status (if pending) ─── *@
+@if (Model.IsDeletionPending)
+{
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-8">
+            <div class="card border-warning shadow-sm">
+                <div class="card-body d-flex align-items-start py-3">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center me-3 mt-1"
+                         style="width: 40px; height: 40px; background: var(--h-alert-warning-bg); color: var(--h-amber-dark); flex-shrink: 0;">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">@Localizer["Guest_DeletionPendingTitle"]</h6>
+                        <p class="mb-1 small text-muted">
+                            Requested on <strong>@Model.DeletionRequestedAt?.ToString("d MMM yyyy")</strong>.
+                        </p>
+                        @if (Model.DeletionEligibleAfter.HasValue && Model.DeletionEligibleAfter > Model.DeletionScheduledFor)
+                        {
+                            <p class="mb-2 small text-muted">
+                                We'll delete everything after <strong>@Model.DeletionEligibleAfter?.ToString("d MMM yyyy")</strong>
+                                &mdash; waiting until after the event.
+                            </p>
+                        }
+                        else
+                        {
+                            <p class="mb-2 small text-muted">
+                                Everything goes on
+                                <strong>@Model.DeletionScheduledFor?.ToString("d MMM yyyy")</strong>. For real.
+                            </p>
+                        }
+                        <form asp-action="CancelDeletion" method="post" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                <i class="fa-solid fa-rotate-left me-1"></i>@Localizer["Guest_DeletionCancelButton"]
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .guest-explore-card {
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .guest-explore-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--h-shadow-lg) !important;
+    }
+    .guest-section-sub {
+        line-height: 1.3;
+    }
+</style>

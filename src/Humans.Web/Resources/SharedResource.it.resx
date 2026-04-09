@@ -168,11 +168,31 @@
   <data name="Dashboard_RejectionReason" xml:space="preserve"><value>Motivo</value></data>
 
   <!-- Guest Dashboard -->
-  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Vuoi partecipare?</value></data>
-  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Crea un profilo per diventare volontario e accedere all'esperienza completa di Humans &#x2014; turni, team, governance e altro.</value></data>
-  <data name="Guest_CreateProfile" xml:space="preserve"><value>Crea profilo</value></data>
-  <data name="Guest_Explore" xml:space="preserve"><value>Esplora</value></data>
+  <data name="Guest_Greeting" xml:space="preserve"><value>Ciao, {0}.</value></data>
+  <data name="Guest_Subtitle" xml:space="preserve"><value>Benvenuto/a su Humans &#x2014; dove Nobodies Collective gestisce tutto per Elsewhere.</value></data>
+  <data name="Guest_GetInvolvedTitle" xml:space="preserve"><value>Pronto/a a smettere di essere un fantasma?</value></data>
+  <data name="Guest_GetInvolvedDescription" xml:space="preserve"><value>Ora esisti… ma nessuno ti vede. Crea il tuo profilo e improvvisamente:</value></data>
+  <data name="Guest_GetInvolvedBullet1" xml:space="preserve"><value>Puoi unirti ai team</value></data>
+  <data name="Guest_GetInvolvedBullet2" xml:space="preserve"><value>Puoi prendere turni</value></data>
+  <data name="Guest_GetInvolvedBullet3" xml:space="preserve"><value>La gente sa chi sei</value></data>
+  <data name="Guest_GetInvolvedHint" xml:space="preserve"><value>~2 minuti.</value></data>
+  <data name="Guest_CreateProfile" xml:space="preserve"><value>Crea il mio profilo</value></data>
+  <data name="Guest_Explore" xml:space="preserve"><value>Dai un'occhiata</value></data>
+  <data name="Guest_ExploreSubtitle" xml:space="preserve"><value>Non serve un profilo. Solo curiosit&#xE0;.</value></data>
+  <data name="Guest_BarriosDescription" xml:space="preserve"><value>I quartieri che la gente costruisce e abita durante l'evento</value></data>
+  <data name="Guest_TeamsDescription" xml:space="preserve"><value>I team che fanno funzionare tutto &#x2014; audio, sicurezza, costruzioni, tutto</value></data>
   <data name="Guest_Legal" xml:space="preserve"><value>Legale</value></data>
+  <data name="Guest_LegalDescription" xml:space="preserve"><value>Privacy, termini, consensi &#x2014; noioso ma importante</value></data>
+  <data name="Guest_AccountTitle" xml:space="preserve"><value>Le tue cose</value></data>
+  <data name="Guest_AccountSubtitle" xml:space="preserve"><value>Anche senza profilo, puoi gestire il tuo account e i tuoi dati.</value></data>
+  <data name="Guest_CommsTitle" xml:space="preserve"><value>Comunicazioni</value></data>
+  <data name="Guest_CommsDescription" xml:space="preserve"><value>Scegli quali email e notifiche ricevere da noi</value></data>
+  <data name="Guest_DataTitle" xml:space="preserve"><value>I tuoi dati</value></data>
+  <data name="Guest_DataDescription" xml:space="preserve"><value>Scarica tutto quello che abbiamo su di te &#x2014; &#xE8; tuo</value></data>
+  <data name="Guest_DeleteTitle" xml:space="preserve"><value>Sparire</value></data>
+  <data name="Guest_DeleteDescription" xml:space="preserve"><value>Richiedi la cancellazione dell'account &#x2014; 30 giorni per cambiare idea</value></data>
+  <data name="Guest_DeletionPendingTitle" xml:space="preserve"><value>Stai uscendo</value></data>
+  <data name="Guest_DeletionCancelButton" xml:space="preserve"><value>Ho cambiato idea</value></data>
 
   <!-- ======================== -->
   <!-- Privacy Policy Page      -->
