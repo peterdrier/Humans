@@ -91,7 +91,10 @@ export function renderMap(onCampPolygonClick) {
   });
 
   if (appState.campMap.limitZoneGeoJson) {
-    const limitZoneData = JSON.parse(appState.campMap.limitZoneGeoJson);
+    let limitZoneData = JSON.parse(appState.campMap.limitZoneGeoJson);
+    if (limitZoneData.type === 'Feature') {
+      limitZoneData = { type: 'FeatureCollection', features: [limitZoneData] };
+    }
     map.addSource('limit-zone', { type: 'geojson', data: limitZoneData });
     map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 } });
 
