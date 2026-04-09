@@ -66,13 +66,13 @@ public class TeamController : HumansControllerBase
 
     [AllowAnonymous]
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         var hasProfile = User.HasClaim(
             RoleAssignmentClaimsTransformation.HasProfileClaimType,
             RoleAssignmentClaimsTransformation.ActiveClaimValue);
-        var directory = await _teamService.GetTeamDirectoryAsync(hasProfile ? user?.Id : null);
+        var directory = await _teamService.GetTeamDirectoryAsync(hasProfile ? user?.Id : null, ct);
 
         ViewBag.CanViewSync = RoleChecks.IsTeamsAdminBoardOrAdmin(User);
 
@@ -106,7 +106,7 @@ public class TeamController : HumansControllerBase
 
     [AllowAnonymous]
     [HttpGet("{slug}")]
-    public async Task<IActionResult> Details(string slug)
+    public async Task<IActionResult> Details(string slug, CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         var hasProfile = User.HasClaim(
@@ -116,7 +116,8 @@ public class TeamController : HumansControllerBase
         var teamPage = await _teamPageService.GetTeamPageDetailAsync(
             slug,
             effectiveUserId,
-            ShiftRoleChecks.CanManageDepartment(User));
+            ShiftRoleChecks.CanManageDepartment(User),
+            ct);
         if (teamPage is null)
         {
             return NotFound();
@@ -310,7 +311,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("Birthdays")]
-    public async Task<IActionResult> Birthdays(int? month)
+    public async Task<IActionResult> Birthdays(int? month, CancellationToken ct)
     {
         var (currentUserError, _) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (currentUserError is not null)
@@ -324,11 +325,11 @@ public class TeamController : HumansControllerBase
             currentMonth = _clock.GetCurrentInstant().InZone(currentZone).Month;
 
         // Load all active profiles that have a date of birth
-        var profilesWithBirthdays = await _profileService.GetBirthdayProfilesAsync(currentMonth);
+        var profilesWithBirthdays = await _profileService.GetBirthdayProfilesAsync(currentMonth, ct);
 
         // Load team memberships for these users
         var userIds = profilesWithBirthdays.Select(p => p.UserId).ToList();
-        var teamsByUser = await _teamService.GetNonSystemTeamNamesByUserIdsAsync(userIds);
+        var teamsByUser = await _teamService.GetNonSystemTeamNamesByUserIdsAsync(userIds, ct);
 
         var monthName = new DateTime(2000, currentMonth, 1).ToString("MMMM", CultureInfo.CurrentCulture);
 
@@ -356,9 +357,9 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("Roster")]
-    public async Task<IActionResult> Roster(string? priority, string? status, string? period)
+    public async Task<IActionResult> Roster(string? priority, string? status, string? period, CancellationToken ct = default)
     {
-        var roster = await _teamService.GetRosterAsync(priority, status, period);
+        var roster = await _teamService.GetRosterAsync(priority, status, period, ct);
 
         var slots = roster.Select(slot => new RosterSlotViewModel
         {
@@ -380,9 +381,9 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("Map")]
-    public async Task<IActionResult> Map()
+    public async Task<IActionResult> Map(CancellationToken ct)
     {
-        var profiles = await _profileService.GetApprovedProfilesWithLocationAsync();
+        var profiles = await _profileService.GetApprovedProfilesWithLocationAsync(ct);
 
         var effectiveUrls = await Helpers.ProfilePictureUrlHelper.BuildEffectiveUrlsAsync(
             _profileService, Url,
@@ -406,7 +407,7 @@ public class TeamController : HumansControllerBase
     }
 
     [HttpGet("My")]
-    public async Task<IActionResult> MyTeams()
+    public async Task<IActionResult> MyTeams(CancellationToken ct)
     {
         var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
         if (currentUserError is not null)
@@ -414,7 +415,7 @@ public class TeamController : HumansControllerBase
             return currentUserError;
         }
 
-        var membershipVMs = (await _teamService.GetMyTeamMembershipsAsync(user.Id))
+        var membershipVMs = (await _teamService.GetMyTeamMembershipsAsync(user.Id, ct))
             .Select(m => new MyTeamMembershipViewModel
             {
                 TeamId = m.TeamId,
@@ -652,9 +653,9 @@ public class TeamController : HumansControllerBase
 
     [HttpGet("Summary")]
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
-    public async Task<IActionResult> Summary()
+    public async Task<IActionResult> Summary(CancellationToken ct)
     {
-        var result = await _teamService.GetAdminTeamListAsync(1, 500);
+        var result = await _teamService.GetAdminTeamListAsync(1, 500, ct);
 
         var viewModel = new AdminTeamListViewModel
         {

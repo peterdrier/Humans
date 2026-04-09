@@ -9,6 +9,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
+using Humans.Web.Constants;
 using Humans.Web.Models;
 
 namespace Humans.Web.Controllers;
@@ -95,7 +96,7 @@ public class GoogleController : HumansControllerBase
         try
         {
             var report = await systemTeamSyncJob.ExecuteAsync();
-            TempData["SyncReport"] = System.Text.Json.JsonSerializer.Serialize(report);
+            TempData[TempDataKeys.SyncReport] = System.Text.Json.JsonSerializer.Serialize(report);
         }
         catch (Exception ex)
         {
@@ -112,7 +113,7 @@ public class GoogleController : HumansControllerBase
     public IActionResult SyncResults()
     {
         SyncReport? report = null;
-        if (TempData["SyncReport"] is string json)
+        if (TempData[TempDataKeys.SyncReport] is string json)
         {
             report = System.Text.Json.JsonSerializer.Deserialize<SyncReport>(json);
         }
@@ -136,7 +137,7 @@ public class GoogleController : HumansControllerBase
         try
         {
             var result = await _googleSyncService.CheckGroupSettingsAsync();
-            TempData["GroupSettingsResult"] = System.Text.Json.JsonSerializer.Serialize(result);
+            TempData[TempDataKeys.GroupSettingsResult] = System.Text.Json.JsonSerializer.Serialize(result);
         }
         catch (Exception ex)
         {
@@ -153,7 +154,7 @@ public class GoogleController : HumansControllerBase
     public IActionResult GroupSettingsResults()
     {
         GroupSettingsDriftResult? result = null;
-        if (TempData["GroupSettingsResult"] is string json)
+        if (TempData[TempDataKeys.GroupSettingsResult] is string json)
         {
             result = System.Text.Json.JsonSerializer.Deserialize<GroupSettingsDriftResult>(json);
         }
@@ -294,7 +295,7 @@ public class GoogleController : HumansControllerBase
         try
         {
             var result = await _googleSyncService.GetEmailMismatchesAsync();
-            TempData["EmailBackfillResult"] = System.Text.Json.JsonSerializer.Serialize(result);
+            TempData[TempDataKeys.EmailBackfillResult] = System.Text.Json.JsonSerializer.Serialize(result);
         }
         catch (Exception ex)
         {
@@ -311,7 +312,7 @@ public class GoogleController : HumansControllerBase
     public IActionResult EmailBackfillReview()
     {
         EmailBackfillResult? result = null;
-        if (TempData["EmailBackfillResult"] is string json)
+        if (TempData[TempDataKeys.EmailBackfillResult] is string json)
         {
             result = System.Text.Json.JsonSerializer.Deserialize<EmailBackfillResult>(json);
         }
@@ -458,7 +459,7 @@ public class GoogleController : HumansControllerBase
             SetError("Drive activity check failed. Check logs for details.");
         }
 
-        return RedirectToAction("AuditLog", "Board", new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
+        return RedirectToAction(nameof(BoardController.AuditLog), "Board", new { filter = nameof(AuditAction.AnomalousPermissionDetected) });
     }
 
     // --- Sync Audit Views (from BoardController and HumanController) ---
@@ -511,7 +512,7 @@ public class GoogleController : HumansControllerBase
         if (string.IsNullOrWhiteSpace(emailPrefix))
         {
             SetError("Email prefix is required.");
-            return RedirectToAction("AdminDetail", "Profile", new { id });
+            return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
         }
 
         var currentUser = await GetCurrentUserAsync();
@@ -540,7 +541,7 @@ public class GoogleController : HumansControllerBase
             }
         }
 
-        return RedirectToAction("AdminDetail", "Profile", new { id });
+        return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
     }
 
     // --- Workspace Accounts (from AdminEmailController) ---
@@ -754,7 +755,7 @@ public class GoogleController : HumansControllerBase
         try
         {
             var result = await _googleAdminService.DetectEmailRenamesAsync();
-            TempData["EmailRenameResult"] = System.Text.Json.JsonSerializer.Serialize(result);
+            TempData[TempDataKeys.EmailRenameResult] = System.Text.Json.JsonSerializer.Serialize(result);
         }
         catch (Exception ex)
         {
@@ -771,7 +772,7 @@ public class GoogleController : HumansControllerBase
     public IActionResult EmailRenames()
     {
         EmailRenameDetectionResult? result = null;
-        if (TempData["EmailRenameResult"] is string json)
+        if (TempData[TempDataKeys.EmailRenameResult] is string json)
         {
             result = System.Text.Json.JsonSerializer.Deserialize<EmailRenameDetectionResult>(json);
         }

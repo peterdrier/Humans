@@ -207,51 +207,6 @@ public class Profile
     public Guid? RejectedByUserId { get; set; }
 
     /// <summary>
-    /// Computes the current membership status based on role assignments and consent records.
-    /// </summary>
-    /// <param name="currentRoleAssignments">Active role assignments for this user.</param>
-    /// <param name="requiredDocumentVersionIds">IDs of document versions that require consent.</param>
-    /// <param name="consentedDocumentVersionIds">IDs of document versions the user has consented to.</param>
-    /// <returns>The computed membership status.</returns>
-    public MembershipStatus ComputeMembershipStatus(
-        IEnumerable<RoleAssignment> currentRoleAssignments,
-        IEnumerable<Guid> requiredDocumentVersionIds,
-        IEnumerable<Guid> consentedDocumentVersionIds)
-    {
-        if (IsSuspended)
-        {
-            return MembershipStatus.Suspended;
-        }
-
-        if (!IsApproved)
-        {
-            return MembershipStatus.Pending;
-        }
-
-        var activeRoles = currentRoleAssignments
-            .Where(ra => ra.IsActive(SystemClock.Instance.GetCurrentInstant()))
-            .ToList();
-
-        if (activeRoles.Count == 0)
-        {
-            return MembershipStatus.None;
-        }
-
-        var requiredIds = requiredDocumentVersionIds.ToHashSet();
-        var consentedIds = consentedDocumentVersionIds.ToHashSet();
-
-        // Check if all required documents have valid consent
-        var missingConsent = requiredIds.Except(consentedIds).Any();
-
-        if (missingConsent)
-        {
-            return MembershipStatus.Inactive;
-        }
-
-        return MembershipStatus.Active;
-    }
-
-    /// <summary>
     /// Gets the full name of the member.
     /// </summary>
     public string FullName => $"{FirstName} {LastName}".Trim();

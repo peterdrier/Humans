@@ -5,7 +5,6 @@ using NodaTime;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -14,7 +13,7 @@ public class TermRenewalReminderJob : IRecurringJob
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<TermRenewalReminderJob> _logger;
     private readonly IClock _clock;
 
@@ -24,7 +23,7 @@ public class TermRenewalReminderJob : IRecurringJob
         HumansDbContext dbContext,
         IEmailService emailService,
         INotificationService notificationService,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<TermRenewalReminderJob> logger,
         IClock clock)
     {

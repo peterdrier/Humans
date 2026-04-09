@@ -72,7 +72,7 @@ public class AdminController : HumansControllerBase
         if (user.Id == currentUser?.Id)
         {
             SetError("You cannot purge your own account.");
-            return RedirectToAction("AdminDetail", "Profile", new { id });
+            return RedirectToAction(nameof(ProfileController.AdminDetail), "Profile", new { id });
         }
 
         var displayName = user.DisplayName;
@@ -95,7 +95,7 @@ public class AdminController : HumansControllerBase
         }
 
         SetSuccess($"Purged {displayName}. They will get a fresh account on next login.");
-        return RedirectToAction("AdminList", "Profile");
+        return RedirectToAction(nameof(ProfileController.AdminList), "Profile");
     }
 
     [HttpGet("Logs")]
@@ -163,10 +163,10 @@ public class AdminController : HumansControllerBase
     [HttpGet("DbVersion")]
     [AllowAnonymous]
     [Produces("application/json")]
-    public async Task<IActionResult> DbVersion()
+    public async Task<IActionResult> DbVersion(CancellationToken ct)
     {
-        var applied = (await _dbContext.Database.GetAppliedMigrationsAsync()).ToList();
-        var pending = await _dbContext.Database.GetPendingMigrationsAsync();
+        var applied = (await _dbContext.Database.GetAppliedMigrationsAsync(ct)).ToList();
+        var pending = await _dbContext.Database.GetPendingMigrationsAsync(ct);
 
         return Ok(new
         {

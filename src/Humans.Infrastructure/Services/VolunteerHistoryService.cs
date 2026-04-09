@@ -10,7 +10,7 @@ namespace Humans.Infrastructure.Services;
 /// <summary>
 /// Service for managing volunteer history entries.
 /// </summary>
-public class VolunteerHistoryService
+public class VolunteerHistoryService : IVolunteerHistoryService
 {
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;

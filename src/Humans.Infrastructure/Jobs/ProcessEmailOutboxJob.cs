@@ -7,7 +7,6 @@ using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -19,7 +18,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailTransport _transport;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly IClock _clock;
     private readonly EmailSettings _settings;
     private readonly ILogger<ProcessEmailOutboxJob> _logger;
@@ -27,7 +26,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
     public ProcessEmailOutboxJob(
         HumansDbContext dbContext,
         IEmailTransport transport,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         IClock clock,
         IOptions<EmailSettings> settings,
         ILogger<ProcessEmailOutboxJob> logger)

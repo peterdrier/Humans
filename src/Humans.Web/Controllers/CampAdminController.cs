@@ -265,7 +265,7 @@ public class CampAdminController : HumansControllerBase
         }
 
         if (!string.IsNullOrEmpty(returnSlug))
-            return RedirectToAction("Details", "Camp", new { slug = returnSlug });
+            return RedirectToAction(nameof(CampController.Details), "Camp", new { slug = returnSlug });
         return RedirectToAction(nameof(Index));
     }
 

@@ -64,7 +64,7 @@ public class DevSeedController : HumansControllerBase
             SetError("Budget seeding failed. Check logs for details.");
         }
 
-        return RedirectToAction("Index", "Admin");
+        return RedirectToAction(nameof(AdminController.Index), "Admin");
     }
 
     private bool IsDevSeedEnabled()

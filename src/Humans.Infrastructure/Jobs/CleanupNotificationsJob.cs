@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -21,13 +20,13 @@ public class CleanupNotificationsJob : IRecurringJob
 
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<CleanupNotificationsJob> _logger;
 
     public CleanupNotificationsJob(
         HumansDbContext dbContext,
         IClock clock,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<CleanupNotificationsJob> logger)
     {
         _dbContext = dbContext;

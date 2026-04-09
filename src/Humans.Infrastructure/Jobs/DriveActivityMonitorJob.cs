@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -12,13 +11,13 @@ namespace Humans.Infrastructure.Jobs;
 public class DriveActivityMonitorJob : IRecurringJob
 {
     private readonly IDriveActivityMonitorService _monitorService;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<DriveActivityMonitorJob> _logger;
     private readonly IClock _clock;
 
     public DriveActivityMonitorJob(
         IDriveActivityMonitorService monitorService,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<DriveActivityMonitorJob> logger,
         IClock clock)
     {

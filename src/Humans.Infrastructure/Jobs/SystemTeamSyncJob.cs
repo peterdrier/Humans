@@ -9,7 +9,6 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Application.DTOs;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -24,7 +23,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly IMemoryCache _cache;
-    private readonly HumansMetricsService _metrics;
+    private readonly IHumansMetrics _metrics;
     private readonly ILogger<SystemTeamSyncJob> _logger;
     private readonly IClock _clock;
 
@@ -35,7 +34,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         IAuditLogService auditLogService,
         IEmailService emailService,
         IMemoryCache cache,
-        HumansMetricsService metrics,
+        IHumansMetrics metrics,
         ILogger<SystemTeamSyncJob> logger,
         IClock clock)
     {

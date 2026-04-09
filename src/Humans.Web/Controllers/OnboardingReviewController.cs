@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -40,24 +41,25 @@ public class OnboardingReviewController : HumansControllerBase
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var (pending, flagged, pendingAppUserIds, consentProgress) = await _onboardingService.GetReviewQueueAsync();
+        var data = await _onboardingService.GetReviewQueueAsync(ct);
 
         var viewModel = new OnboardingReviewIndexViewModel
         {
-            PendingReviews = pending.Select(p => MapToItem(p, pendingAppUserIds, consentProgress)).ToList(),
-            FlaggedReviews = flagged.Select(p => MapToItem(p, pendingAppUserIds, consentProgress)).ToList()
+            PendingReviews = data.Pending.Select(p => MapToItem(p, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
+            FlaggedReviews = data.Flagged.Select(p => MapToItem(p, data.PendingAppUserIds, data.ConsentProgress)).ToList()
         };
 
         return View(viewModel);
     }
 
     [HttpGet("{userId:guid}")]
-    public async Task<IActionResult> Detail(Guid userId)
+    public async Task<IActionResult> Detail(Guid userId, CancellationToken ct)
     {
+        var detail = await _onboardingService.GetReviewDetailAsync(userId, ct);
         var (profile, consentCount, requiredConsentCount, pendingApp) =
-            await _onboardingService.GetReviewDetailAsync(userId);
+            (detail.Profile, detail.ConsentCount, detail.RequiredConsentCount, detail.PendingApplication);
 
         if (profile is null)
             return NotFound();
@@ -183,9 +185,9 @@ public class OnboardingReviewController : HumansControllerBase
 
     [HttpGet("BoardVoting")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> BoardVoting()
+    public async Task<IActionResult> BoardVoting(CancellationToken ct)
     {
-        var (applications, boardMembers) = await _onboardingService.GetBoardVotingDashboardAsync();
+        var (applications, boardMembers) = await _onboardingService.GetBoardVotingDashboardAsync(ct);
 
         var viewModel = new BoardVotingDashboardViewModel
         {
@@ -226,9 +228,9 @@ public class OnboardingReviewController : HumansControllerBase
 
     [HttpGet("BoardVoting/{applicationId:guid}")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> BoardVotingDetail(Guid applicationId)
+    public async Task<IActionResult> BoardVotingDetail(Guid applicationId, CancellationToken ct)
     {
-        var application = await _onboardingService.GetBoardVotingDetailAsync(applicationId);
+        var application = await _onboardingService.GetBoardVotingDetailAsync(applicationId, ct);
         if (application is null)
             return NotFound();
 
@@ -387,9 +389,9 @@ public class OnboardingReviewController : HumansControllerBase
 
     private static OnboardingReviewItemViewModel MapToItem(
         Profile profile, HashSet<Guid> pendingAppUserIds,
-        Dictionary<Guid, (int Signed, int Required)> consentProgress)
+        Dictionary<Guid, ConsentProgressInfo> consentProgress)
     {
-        var (signed, required) = consentProgress.GetValueOrDefault(profile.UserId);
+        var progress = consentProgress.GetValueOrDefault(profile.UserId);
         return new OnboardingReviewItemViewModel
         {
             UserId = profile.UserId,
@@ -400,8 +402,8 @@ public class OnboardingReviewController : HumansControllerBase
             MembershipTier = profile.MembershipTier,
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),
             HasPendingApplication = pendingAppUserIds.Contains(profile.UserId),
-            ConsentCount = signed,
-            RequiredConsentCount = required
+            ConsentCount = progress?.Signed ?? 0,
+            RequiredConsentCount = progress?.Required ?? 0
         };
     }
 }

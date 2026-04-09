@@ -32,7 +32,7 @@ public class ProfileController : HumansControllerBase
     private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService;
     private readonly IContactFieldService _contactFieldService;
-    private readonly VolunteerHistoryService _volunteerHistoryService;
+    private readonly IVolunteerHistoryService _volunteerHistoryService;
     private readonly IEmailService _emailService;
     private readonly IUserEmailService _userEmailService;
     private readonly ICommunicationPreferenceService _commPrefService;
@@ -76,7 +76,7 @@ public class ProfileController : HumansControllerBase
         UserManager<User> userManager,
         IProfileService profileService,
         IContactFieldService contactFieldService,
-        VolunteerHistoryService volunteerHistoryService,
+        IVolunteerHistoryService volunteerHistoryService,
         IEmailService emailService,
         IUserEmailService userEmailService,
         ICommunicationPreferenceService commPrefService,
@@ -121,15 +121,15 @@ public class ProfileController : HumansControllerBase
     public IActionResult Index() => RedirectToAction(nameof(Me));
 
     [HttpGet("Me")]
-    public async Task<IActionResult> Me()
+    public async Task<IActionResult> Me(CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
             return NotFound();
 
         var (profile, latestApplication, pendingConsentCount) =
-            await _profileService.GetProfileIndexDataAsync(user.Id);
-        var campaignGrants = await _profileService.GetActiveOrCompletedCampaignGrantsAsync(user.Id);
+            await _profileService.GetProfileIndexDataAsync(user.Id, ct);
+        var campaignGrants = await _profileService.GetActiveOrCompletedCampaignGrantsAsync(user.Id, ct);
 
         var viewModel = new ProfileViewModel
         {
@@ -155,23 +155,23 @@ public class ProfileController : HumansControllerBase
     }
 
     [HttpGet("Me/Edit")]
-    public async Task<IActionResult> Edit([FromQuery] bool preview = false)
+    public async Task<IActionResult> Edit([FromQuery] bool preview = false, CancellationToken ct = default)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
             return NotFound();
 
         var (profile, isTierLocked, pendingApplication) =
-            await _profileService.GetProfileEditDataAsync(user.Id);
+            await _profileService.GetProfileEditDataAsync(user.Id, ct);
 
         // Get all contact fields for editing
         var contactFields = profile is not null
-            ? await _contactFieldService.GetAllContactFieldsAsync(profile.Id)
+            ? await _contactFieldService.GetAllContactFieldsAsync(profile.Id, ct)
             : [];
 
         // Get all volunteer history entries for editing
         var volunteerHistory = profile is not null
-            ? await _volunteerHistoryService.GetAllAsync(profile.Id)
+            ? await _volunteerHistoryService.GetAllAsync(profile.Id, ct)
             : [];
 
         // Get profile languages for editing
@@ -180,7 +180,7 @@ public class ProfileController : HumansControllerBase
                 .AsNoTracking()
                 .Where(pl => pl.ProfileId == profile.Id)
                 .OrderBy(pl => pl.LanguageCode)
-                .ToListAsync()
+                .ToListAsync(ct)
             : [];
 
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
@@ -804,8 +804,6 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(Privacy));
         }
 
-        // Reload user to get updated deletion date
-        await GetCurrentUserAsync();
         var deletionDate = user.DeletionScheduledFor?.ToDateTimeUtc();
         SetSuccess(string.Format(CultureInfo.CurrentCulture,
             _localizer["Profile_DeletionRequested"].Value,
@@ -963,7 +961,7 @@ public class ProfileController : HumansControllerBase
 
         var json = System.Text.Json.JsonSerializer.Serialize(exportData, ExportJsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-        var fileName = $"nobodies-profiles-export-{DateTime.UtcNow.ToIsoDateString()}.json";
+        var fileName = $"nobodies-profiles-export-{_clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
 
         return File(bytes, "application/json", fileName);
     }
@@ -972,9 +970,9 @@ public class ProfileController : HumansControllerBase
 
     [HttpGet("Picture")]
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
-    public async Task<IActionResult> Picture(Guid id)
+    public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
-        var (data, contentType) = await _profileService.GetProfilePictureAsync(id);
+        var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
 
         if (data is null || string.IsNullOrEmpty(contentType))
             return NotFound();
@@ -985,9 +983,9 @@ public class ProfileController : HumansControllerBase
     // ─── View Another Profile ────────────────────────────────────────
 
     [HttpGet("{id:guid}")]
-    public async Task<IActionResult> ViewProfile(Guid id)
+    public async Task<IActionResult> ViewProfile(Guid id, CancellationToken ct)
     {
-        var profile = await _profileService.GetProfileAsync(id);
+        var profile = await _profileService.GetProfileAsync(id, ct);
 
         if (profile is null || profile.IsSuspended)
         {
@@ -1048,9 +1046,9 @@ public class ProfileController : HumansControllerBase
     }
 
     [HttpGet("{id:guid}/Popover")]
-    public async Task<IActionResult> Popover(Guid id)
+    public async Task<IActionResult> Popover(Guid id, CancellationToken ct)
     {
-        var profile = await _profileService.GetProfileAsync(id);
+        var profile = await _profileService.GetProfileAsync(id, ct);
         if (profile is null || profile.IsSuspended) return NotFound();
 
         var teams = await _dbContext.TeamMembers
@@ -1058,7 +1056,7 @@ public class ProfileController : HumansControllerBase
                 && tm.Team.SystemTeamType != SystemTeamType.Volunteers)
             .Select(tm => tm.Team.Name)
             .OrderBy(n => n)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         var effectivePictureUrl = profile.HasCustomProfilePicture
             ? Url.Action(nameof(Picture), "Profile",
@@ -1188,7 +1186,7 @@ public class ProfileController : HumansControllerBase
     // ─── Search ──────────────────────────────────────────────────────
 
     [HttpGet("Search")]
-    public async Task<IActionResult> Search(string? q)
+    public async Task<IActionResult> Search(string? q, CancellationToken ct)
     {
         var viewModel = new HumanSearchViewModel { Query = q };
 
@@ -1197,7 +1195,7 @@ public class ProfileController : HumansControllerBase
             return View(viewModel);
         }
 
-        var results = await _profileService.SearchHumansAsync(q);
+        var results = await _profileService.SearchHumansAsync(q, ct);
 
         viewModel.Results = results
             .Select(r => r.ToHumanSearchViewModel(Url))
@@ -1210,10 +1208,10 @@ public class ProfileController : HumansControllerBase
 
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     [HttpGet("Admin")]
-    public async Task<IActionResult> AdminList(string? search, string? filter, string sort = "name", string dir = "asc", int page = 1)
+    public async Task<IActionResult> AdminList(string? search, string? filter, string sort = "name", string dir = "asc", int page = 1, CancellationToken ct = default)
     {
         var pageSize = 20;
-        var allRows = await _profileService.GetFilteredHumansAsync(search, filter);
+        var allRows = await _profileService.GetFilteredHumansAsync(search, filter, ct);
         var totalCount = allRows.Count;
 
         // Materialize for flexible sorting (fine at ~500 users)
@@ -1269,9 +1267,9 @@ public class ProfileController : HumansControllerBase
 
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     [HttpGet("{id:guid}/Admin")]
-    public async Task<IActionResult> AdminDetail(Guid id)
+    public async Task<IActionResult> AdminDetail(Guid id, CancellationToken ct)
     {
-        var data = await _profileService.GetAdminHumanDetailAsync(id);
+        var data = await _profileService.GetAdminHumanDetailAsync(id, ct);
         if (data is null)
         {
             return NotFound();
@@ -1282,11 +1280,11 @@ public class ProfileController : HumansControllerBase
             .Include(g => g.Code)
             .Where(g => g.UserId == id)
             .OrderByDescending(g => g.AssignedAt)
-            .ToListAsync();
+            .ToListAsync(ct);
         ViewBag.CampaignGrants = campaignGrants;
 
         var outboxCount = await _dbContext.EmailOutboxMessages
-            .CountAsync(m => m.UserId == id);
+            .CountAsync(m => m.UserId == id, ct);
         ViewBag.OutboxCount = outboxCount;
 
         var profileLanguages = data.Profile is not null
@@ -1294,7 +1292,7 @@ public class ProfileController : HumansControllerBase
                 .AsNoTracking()
                 .Where(pl => pl.ProfileId == data.Profile.Id)
                 .OrderBy(pl => pl.LanguageCode)
-                .ToListAsync()
+                .ToListAsync(ct)
             : [];
 
         var now = _clock.GetCurrentInstant();
@@ -1368,12 +1366,12 @@ public class ProfileController : HumansControllerBase
 
     [Authorize(Policy = PolicyNames.HumanAdminBoardOrAdmin)]
     [HttpGet("{id:guid}/Admin/Outbox")]
-    public async Task<IActionResult> AdminOutbox(Guid id)
+    public async Task<IActionResult> AdminOutbox(Guid id, CancellationToken ct)
     {
         var messages = await _dbContext.EmailOutboxMessages
             .Where(m => m.UserId == id)
             .OrderByDescending(m => m.CreatedAt)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         ViewBag.HumanId = id;
         return View("Outbox", messages);
@@ -1664,7 +1662,7 @@ public class ProfileController : HumansControllerBase
             {
                 Category = category,
                 DisplayName = category == MessageCategory.Ticketing
-                    ? $"Ticketing — {DateTime.UtcNow.Year}"
+                    ? $"Ticketing — {_clock.GetCurrentInstant().InUtc().Year}"
                     : category.ToDisplayName(),
                 Description = category.ToDescription(),
                 EmailEnabled = pref is null || !pref.OptedOut,
