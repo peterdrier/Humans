@@ -41,6 +41,7 @@ public interface IBudgetService
     Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
 
     // Budget Line Items
+    Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id);
     Task<BudgetLineItem> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
