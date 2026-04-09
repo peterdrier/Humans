@@ -3,8 +3,8 @@ import { appState } from './state.js';
 import { CONFIG } from './config.js';
 
 export function isOutsideZone(feature) {
-    if (!appState.limitZoneGeom) return false;
-    try { return !turf.booleanWithin(feature, appState.limitZoneGeom); } catch { return false; }
+  if (!appState.limitZoneGeom) return false;
+  try { return !!turf.difference(turf.featureCollection([feature, appState.limitZoneGeom])); } catch { return false; }
 }
 
 export function parseLimitZoneGeom(geoJson) {
