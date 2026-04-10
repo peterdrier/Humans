@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Humans.Application.Interfaces;
 using Humans.Infrastructure.Data;
 using Humans.Web.Filters;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -12,6 +13,7 @@ namespace Humans.Web.Controllers;
 
 [ApiController]
 [Route("api/notifications")]
+[AllowAnonymous]
 [ServiceFilter(typeof(NotificationApiKeyAuthFilter))]
 public class NotificationApiController : ControllerBase
 {
