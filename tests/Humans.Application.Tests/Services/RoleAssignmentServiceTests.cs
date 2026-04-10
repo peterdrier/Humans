@@ -1,10 +1,13 @@
+using System.Security.Claims;
 using AwesomeAssertions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using Humans.Application;
+using Humans.Application.Authorization;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
 using Humans.Domain.Entities;
@@ -20,6 +23,7 @@ public class RoleAssignmentServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly RoleAssignmentService _service;
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
 
     public RoleAssignmentServiceTests()
     {
@@ -29,12 +33,19 @@ public class RoleAssignmentServiceTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 15, 30));
-        // These tests only exercise HasOverlappingAssignmentAsync which uses only _dbContext
+
+        // Default: authorize succeeds (tests for authorization denial are separate)
+        _authorizationService.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Success());
+
         _service = new RoleAssignmentService(
             _dbContext,
             Substitute.For<Humans.Application.Interfaces.IAuditLogService>(),
             Substitute.For<Humans.Application.Interfaces.INotificationService>(),
             Substitute.For<Humans.Application.Interfaces.ISystemTeamSync>(),
+            _authorizationService,
             _clock,
             _cache,
             NullLogger<RoleAssignmentService>.Instance);
@@ -126,7 +137,8 @@ public class RoleAssignmentServiceTests : IDisposable
         await SeedUserAsync(assignerId, "Admin User");
         _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
 
-        var result = await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, null);
+        var result = await _service.AssignRoleAsync(
+            userId, RoleNames.Board, assignerId, null, SystemPrincipal.Instance);
 
         result.Success.Should().BeTrue();
         _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
@@ -146,10 +158,78 @@ public class RoleAssignmentServiceTests : IDisposable
             null);
         _cache.Set(CacheKeys.RoleAssignmentClaims(userId), new[] { "stale-claim" });
 
-        var result = await _service.EndRoleAsync(assignment.Id, enderId, null);
+        var result = await _service.EndRoleAsync(
+            assignment.Id, enderId, null, SystemPrincipal.Instance);
 
         result.Success.Should().BeTrue();
         _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AssignRoleAsync_DeniedWhenAuthorizationFails()
+    {
+        var userId = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target User");
+        await SeedUserAsync(assignerId, "Regular User");
+
+        _authorizationService.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
+
+        var result = await _service.AssignRoleAsync(
+            userId, RoleNames.Admin, assignerId, null, principal);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("Unauthorized");
+    }
+
+    [Fact]
+    public async Task EndRoleAsync_DeniedWhenAuthorizationFails()
+    {
+        var userId = Guid.NewGuid();
+        var enderId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target User");
+        await SeedUserAsync(enderId, "Regular User");
+        var assignment = await AddAssignmentAsync(
+            userId,
+            RoleNames.Admin,
+            _clock.GetCurrentInstant() - Duration.FromDays(1),
+            null);
+
+        _authorizationService.AuthorizeAsync(
+                Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
+                Arg.Any<IEnumerable<IAuthorizationRequirement>>())
+            .Returns(AuthorizationResult.Failed());
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity());
+
+        var result = await _service.EndRoleAsync(
+            assignment.Id, enderId, null, principal);
+
+        result.Success.Should().BeFalse();
+        result.ErrorKey.Should().Be("Unauthorized");
+    }
+
+    [Fact]
+    public async Task AssignRoleAsync_SystemPrincipalPassedToAuthorizationService()
+    {
+        var userId = Guid.NewGuid();
+        var assignerId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Target User");
+        await SeedUserAsync(assignerId, "System");
+
+        var result = await _service.AssignRoleAsync(
+            userId, RoleNames.Board, assignerId, null, SystemPrincipal.Instance);
+
+        result.Success.Should().BeTrue();
+        await _authorizationService.Received(1).AuthorizeAsync(
+            SystemPrincipal.Instance,
+            RoleNames.Board,
+            Arg.Any<IEnumerable<IAuthorizationRequirement>>());
     }
 
     private async Task<User> SeedUserAsync(Guid userId, string displayName)

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Humans.Domain.Entities;
 using NodaTime;
 
@@ -29,11 +30,13 @@ public interface IRoleAssignmentService
 
     Task<OnboardingResult> AssignRoleAsync(
         Guid userId, string roleName, Guid assignerId,
-        string? notes, CancellationToken ct = default);
+        string? notes, ClaimsPrincipal principal,
+        CancellationToken ct = default);
 
     Task<OnboardingResult> EndRoleAsync(
         Guid assignmentId, Guid enderId,
-        string? notes, CancellationToken ct = default);
+        string? notes, ClaimsPrincipal principal,
+        CancellationToken ct = default);
 
     /// <summary>
     /// Checks if a user has an active Admin role assignment.

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -36,6 +37,7 @@ public class TeamServiceTests : IDisposable
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationService>(),
             Substitute.For<ISystemTeamSync>(),
+            Substitute.For<IAuthorizationService>(),
             _clock,
             _cache,
             NullLogger<RoleAssignmentService>.Instance);

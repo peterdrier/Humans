@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -33,6 +34,7 @@ public class TeamRoleServiceTests : IDisposable
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationService>(),
             Substitute.For<ISystemTeamSync>(),
+            Substitute.For<IAuthorizationService>(),
             _clock,
             cache,
             NullLogger<RoleAssignmentService>.Instance);

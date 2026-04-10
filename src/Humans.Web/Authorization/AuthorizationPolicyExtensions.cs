@@ -23,6 +23,9 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
 
+        // Service-layer enforcement handlers (singleton — no scoped dependencies)
+        services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
+
         services.AddAuthorization(options =>
         {
             // Simple role-based policies
