@@ -19,6 +19,10 @@ namespace Humans.Infrastructure.Migrations
                 nullable: false,
                 defaultValue: 0);
 
+            // Backfill Year from GateOpeningDate so the feature isn't inert after deploy
+            migrationBuilder.Sql(
+                @"UPDATE event_settings SET ""Year"" = EXTRACT(YEAR FROM ""GateOpeningDate"")::integer WHERE ""GateOpeningDate"" IS NOT NULL;");
+
             migrationBuilder.CreateTable(
                 name: "event_participations",
                 columns: table => new
