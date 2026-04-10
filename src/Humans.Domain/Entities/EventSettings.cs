@@ -19,6 +19,11 @@ public class EventSettings
     public string EventName { get; set; } = string.Empty;
 
     /// <summary>
+    /// The year of this event (e.g., 2026).
+    /// </summary>
+    public int Year { get; set; }
+
+    /// <summary>
     /// IANA timezone ID (e.g., "Europe/Madrid").
     /// </summary>
     public string TimeZoneId { get; set; } = string.Empty;

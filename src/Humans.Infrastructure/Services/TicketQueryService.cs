@@ -578,6 +578,23 @@ public class TicketQueryService : ITicketQueryService
                 u.TeamMemberships.Any(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null))
             .ToList();
 
+        // Exclude humans who declared not attending this year
+        var activeEvent = await _dbContext.EventSettings
+            .FirstOrDefaultAsync(e => e.IsActive);
+        if (activeEvent is not null && activeEvent.Year > 0)
+        {
+            var notAttendingUserIds = await _dbContext.EventParticipations
+                .Where(ep => ep.Year == activeEvent.Year
+                    && ep.Status == ParticipationStatus.NotAttending)
+                .Select(ep => ep.UserId)
+                .ToListAsync();
+
+            var notAttendingSet = new HashSet<Guid>(notAttendingUserIds);
+            activeHumans = activeHumans
+                .Where(u => !notAttendingSet.Contains(u.Id))
+                .ToList();
+        }
+
         var filteredHumans = FilterWhoHasntBoughtHumans(
             activeHumans,
             matchedUserIds,

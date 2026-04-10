@@ -23,6 +23,7 @@ public class TicketSyncService : ITicketSyncService
     private readonly IClock _clock;
     private readonly TicketVendorSettings _settings;
     private readonly IMemoryCache _cache;
+    private readonly IUserService _userService;
     private readonly ILogger<TicketSyncService> _logger;
 
     public TicketSyncService(
@@ -32,7 +33,8 @@ public class TicketSyncService : ITicketSyncService
         IClock clock,
         IOptions<TicketVendorSettings> settings,
         ILogger<TicketSyncService> logger,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        IUserService userService)
     {
         _dbContext = dbContext;
         _vendorService = vendorService;
@@ -40,6 +42,7 @@ public class TicketSyncService : ITicketSyncService
         _clock = clock;
         _settings = settings.Value;
         _cache = cache;
+        _userService = userService;
         _logger = logger;
     }
 
@@ -111,6 +114,9 @@ public class TicketSyncService : ITicketSyncService
 
             // Match discount codes to campaign grants
             var codesRedeemed = await MatchDiscountCodesAsync(ct);
+
+            // Sync event participation records
+            await SyncEventParticipationsAsync(ct);
 
             // Update sync state
             syncState.SyncStatus = TicketSyncStatus.Idle;
@@ -450,6 +456,74 @@ public class TicketSyncService : ITicketSyncService
             syncState.LastSyncAt = null;
             await _dbContext.SaveChangesAsync();
         }
+    }
+
+    /// <summary>
+    /// Derive EventParticipation records from current ticket data.
+    /// For each matched user: 1+ valid tickets → Ticketed, any checked-in → Attended.
+    /// If user had Ticketed from TicketSync but now has 0 valid tickets → remove record.
+    /// </summary>
+    private async Task SyncEventParticipationsAsync(CancellationToken ct)
+    {
+        // Determine the event year from EventSettings
+        var activeEvent = await _dbContext.EventSettings
+            .FirstOrDefaultAsync(e => e.IsActive, ct);
+
+        if (activeEvent is null || activeEvent.Year == 0)
+            return;
+
+        var year = activeEvent.Year;
+
+        // Get all attendees matched to users
+        var matchedAttendees = await _dbContext.TicketAttendees
+            .Where(a => a.MatchedUserId != null)
+            .Select(a => new { a.MatchedUserId, a.Status })
+            .ToListAsync(ct);
+
+        // Group by user
+        var userTicketStatuses = matchedAttendees
+            .GroupBy(a => a.MatchedUserId!.Value)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(a => a.Status).ToList());
+
+        // Process users with tickets
+        foreach (var (userId, statuses) in userTicketStatuses)
+        {
+            var hasCheckedIn = statuses.Any(s => s == TicketAttendeeStatus.CheckedIn);
+            var hasValidTicket = statuses.Any(s =>
+                s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn);
+
+            if (hasCheckedIn)
+            {
+                await _userService.SetParticipationFromTicketSyncAsync(
+                    userId, year, ParticipationStatus.Attended);
+            }
+            else if (hasValidTicket)
+            {
+                await _userService.SetParticipationFromTicketSyncAsync(
+                    userId, year, ParticipationStatus.Ticketed);
+            }
+        }
+
+        // Handle users who previously had tickets but no longer do
+        var existingTicketSyncParticipations = await _dbContext.EventParticipations
+            .Where(ep => ep.Year == year
+                && ep.Source == ParticipationSource.TicketSync
+                && ep.Status == ParticipationStatus.Ticketed)
+            .ToListAsync(ct);
+
+        foreach (var ep in existingTicketSyncParticipations)
+        {
+            if (!userTicketStatuses.ContainsKey(ep.UserId) ||
+                !userTicketStatuses[ep.UserId].Any(s =>
+                    s == TicketAttendeeStatus.Valid || s == TicketAttendeeStatus.CheckedIn))
+            {
+                await _userService.RemoveTicketSyncParticipationAsync(ep.UserId, year);
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
     }
 
     private static Guid? LookupUserId(Dictionary<string, Guid> lookup, string? email) =>

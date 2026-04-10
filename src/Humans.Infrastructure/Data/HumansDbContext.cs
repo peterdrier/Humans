@@ -78,6 +78,7 @@ public class HumansDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<ProfileLanguage> ProfileLanguages => Set<ProfileLanguage>();
+    public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

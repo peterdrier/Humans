@@ -161,6 +161,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IOnboardingService, OnboardingService>();
         services.AddScoped<IConsentService, ConsentService>();
         services.AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<IUserService, UserService>();
         services.AddScoped<SystemTeamSyncJob>();
         services.AddScoped<ISystemTeamSync>(sp => sp.GetRequiredService<SystemTeamSyncJob>());
         services.AddScoped<SyncLegalDocumentsJob>();

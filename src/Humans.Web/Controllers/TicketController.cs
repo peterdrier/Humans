@@ -2,6 +2,7 @@ using Hangfire;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
+using Humans.Domain.Enums;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
@@ -22,6 +23,8 @@ public class TicketController : HumansControllerBase
     private readonly TicketVendorSettings _settings;
     private readonly ITicketQueryService _ticketQueryService;
     private readonly ITicketSyncService _ticketSyncService;
+    private readonly IUserService _userService;
+    private readonly IShiftManagementService _shiftMgmt;
     private readonly ILogger<TicketController> _logger;
 
     public TicketController(
@@ -29,6 +32,8 @@ public class TicketController : HumansControllerBase
         IOptions<TicketVendorSettings> settings,
         ITicketQueryService ticketQueryService,
         ITicketSyncService ticketSyncService,
+        IUserService userService,
+        IShiftManagementService shiftMgmt,
         UserManager<User> userManager,
         ILogger<TicketController> logger)
         : base(userManager)
@@ -37,6 +42,8 @@ public class TicketController : HumansControllerBase
         _settings = settings.Value;
         _ticketQueryService = ticketQueryService;
         _ticketSyncService = ticketSyncService;
+        _userService = userService;
+        _shiftMgmt = shiftMgmt;
         _logger = logger;
     }
 
@@ -112,6 +119,31 @@ public class TicketController : HumansControllerBase
             VolunteersWithTickets = stats.VolunteersWithTickets,
             VolunteerCoveragePercent = stats.VolunteerCoveragePercent,
         };
+
+        // Participation breakdown for donut chart
+        try
+        {
+            var activeEvent = await _shiftMgmt.GetActiveAsync();
+            if (activeEvent is not null && activeEvent.Year > 0)
+            {
+                var participations = await _userService.GetAllParticipationsForYearAsync(activeEvent.Year);
+                var notAttendingCount = participations.Count(p => p.Status == ParticipationStatus.NotAttending);
+                var hasTicketCount = participations.Count(p =>
+                    p.Status == ParticipationStatus.Ticketed ||
+                    p.Status == ParticipationStatus.Attended);
+
+                // "No Ticket" = total active volunteers minus those with tickets minus those who declared not attending
+                var noTicketCount = Math.Max(0, stats.TotalActiveVolunteers - hasTicketCount - notAttendingCount);
+
+                model.ParticipationNotAttending = notAttendingCount;
+                model.ParticipationHasTicket = hasTicketCount;
+                model.ParticipationNoTicket = noTicketCount;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load participation breakdown for ticket dashboard");
+        }
 
         return View(model);
     }
@@ -351,6 +383,67 @@ public class TicketController : HumansControllerBase
 
         BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
         SetSuccess("Full re-sync triggered. All orders will be re-fetched.");
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpGet("Participation/Backfill")]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> ParticipationBackfill()
+    {
+        var activeEvent = await _shiftMgmt.GetActiveAsync();
+        var model = new ParticipationBackfillViewModel
+        {
+            Year = activeEvent?.Year ?? DateTime.UtcNow.Year,
+        };
+        return View(model);
+    }
+
+    [HttpPost("Participation/Backfill")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
+    public async Task<IActionResult> ParticipationBackfill(ParticipationBackfillViewModel model)
+    {
+        if (!ModelState.IsValid || string.IsNullOrWhiteSpace(model.CsvData))
+        {
+            SetError("Please provide CSV data with UserId and Status columns.");
+            return View(model);
+        }
+
+        try
+        {
+            var entries = new List<(Guid UserId, ParticipationStatus Status)>();
+            var lines = model.CsvData.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var line in lines)
+            {
+                var parts = line.Split(',', StringSplitOptions.TrimEntries);
+                if (parts.Length < 2) continue;
+
+                // Skip header row
+                if (string.Equals(parts[0], "UserId", StringComparison.OrdinalIgnoreCase)) continue;
+
+                if (!Guid.TryParse(parts[0], out var userId)) continue;
+                if (!Enum.TryParse<ParticipationStatus>(parts[1], ignoreCase: true, out var status)) continue;
+
+                entries.Add((userId, status));
+            }
+
+            if (entries.Count == 0)
+            {
+                SetError("No valid entries found in the CSV data.");
+                return View(model);
+            }
+
+            var count = await _userService.BackfillParticipationsAsync(model.Year, entries);
+            SetSuccess($"Successfully backfilled {count} participation records for {model.Year}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to backfill participation data for year {Year}", model.Year);
+            SetError("Failed to process backfill data. Check the format and try again.");
+            return View(model);
+        }
+
         return RedirectToAction(nameof(Index));
     }
 

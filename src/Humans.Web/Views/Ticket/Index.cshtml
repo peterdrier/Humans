@@ -128,6 +128,45 @@
         </div>
     }
 
+    <!-- Participation Breakdown -->
+    @{
+        var participationTotal = Model.ParticipationNotAttending + Model.ParticipationNoTicket + Model.ParticipationHasTicket;
+    }
+    @if (participationTotal > 0)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-chart-pie"></i> Participation Breakdown
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <canvas id="participationChart" height="200"></canvas>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <span class="badge bg-success">&nbsp;&nbsp;</span>
+                                <strong>Has Ticket:</strong> @Model.ParticipationHasTicket
+                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationHasTicket / participationTotal * 100) : 0)%)
+                            </li>
+                            <li class="mb-2">
+                                <span class="badge bg-warning">&nbsp;&nbsp;</span>
+                                <strong>No Ticket:</strong> @Model.ParticipationNoTicket
+                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationNoTicket / participationTotal * 100) : 0)%)
+                            </li>
+                            <li class="mb-2">
+                                <span class="badge bg-secondary">&nbsp;&nbsp;</span>
+                                <strong>Not Coming:</strong> @Model.ParticipationNotAttending
+                                (@(participationTotal > 0 ? Math.Round((decimal)Model.ParticipationNotAttending / participationTotal * 100) : 0)%)
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
     <!-- Daily Sales Chart -->
     @if (Model.DailySales.Count > 0)
     {
@@ -312,46 +351,74 @@
     </div>
 </div>
 
-@if (Model.DailySales.Count > 0)
+@if (Model.DailySales.Count > 0 || participationTotal > 0)
 {
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
             integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
             crossorigin="anonymous"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var data = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
-            var ctx = document.getElementById('dailySalesChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: data.map(d => d.date),
-                    datasets: [
-                        {
-                            label: 'Tickets Sold',
-                            data: data.map(d => d.ticketsSold),
-                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                            order: 2
-                        },
-                        {
-                            label: '7-day Avg',
-                            data: data.map(d => d.rollingAverage),
-                            type: 'line',
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 2,
-                            fill: false,
-                            pointRadius: 0,
-                            order: 1
+            @if (Model.DailySales.Count > 0)
+            {
+                <text>
+                var salesData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySales, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+                var salesCtx = document.getElementById('dailySalesChart').getContext('2d');
+                new Chart(salesCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: salesData.map(d => d.date),
+                        datasets: [
+                            {
+                                label: 'Tickets Sold',
+                                data: salesData.map(d => d.ticketsSold),
+                                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                                order: 2
+                            },
+                            {
+                                label: '7-day Avg',
+                                data: salesData.map(d => d.rollingAverage),
+                                type: 'line',
+                                borderColor: 'rgba(255, 99, 132, 1)',
+                                borderWidth: 2,
+                                fill: false,
+                                pointRadius: 0,
+                                order: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { display: true },
+                            y: { beginAtZero: true, title: { display: true, text: 'Tickets' } }
                         }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { display: true },
-                        y: { beginAtZero: true, title: { display: true, text: 'Tickets' } }
                     }
-                }
-            });
+                });
+                </text>
+            }
+
+            @if (participationTotal > 0)
+            {
+                <text>
+                var partCtx = document.getElementById('participationChart').getContext('2d');
+                new Chart(partCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Has Ticket', 'No Ticket', 'Not Coming'],
+                        datasets: [{
+                            data: [@Model.ParticipationHasTicket, @Model.ParticipationNoTicket, @Model.ParticipationNotAttending],
+                            backgroundColor: ['#198754', '#ffc107', '#6c757d']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        }
+                    }
+                });
+                </text>
+            }
         });
     </script>
 }

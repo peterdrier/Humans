@@ -1,0 +1,44 @@
+@model Humans.Web.Models.ParticipationBackfillViewModel
+@{
+    ViewData["Title"] = "Backfill Participation Data";
+}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
+        <h1 class="mb-0">Backfill Participation Data</h1>
+    </div>
+
+    <partial name="_TicketNav" />
+
+    <vc:temp-data-alerts />
+
+    <div class="card">
+        <div class="card-body">
+            <p class="text-muted">
+                Paste CSV data with <code>UserId,Status</code> columns to bulk-import historical participation records.
+                Valid statuses: <code>NotAttending</code>, <code>Ticketed</code>, <code>Attended</code>, <code>NoShow</code>.
+                Existing Attended records will not be overwritten (permanent).
+            </p>
+
+            <form asp-action="ParticipationBackfill" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="mb-3">
+                    <label asp-for="Year" class="form-label">Year</label>
+                    <input asp-for="Year" class="form-control" style="max-width: 200px;" />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="CsvData" class="form-label">CSV Data</label>
+                    <textarea asp-for="CsvData" class="form-control font-monospace" rows="10"
+                              placeholder="UserId,Status&#10;3fa85f64-5717-4562-b3fc-2c963f66afa6,Attended&#10;..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa-solid fa-upload me-1"></i> Import
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
