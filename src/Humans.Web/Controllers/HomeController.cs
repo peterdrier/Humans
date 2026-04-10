@@ -290,19 +290,26 @@ public class HomeController : HumansControllerBase
     [HttpPost]
     [Authorize]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeclareNotAttending(int year)
+    public async Task<IActionResult> DeclareNotAttending()
     {
         var (errorResult, user) = await ResolveCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
         try
         {
-            await _userService.DeclareNotAttendingAsync(user.Id, year);
+            var activeEvent = await _shiftMgmt.GetActiveAsync();
+            if (activeEvent is null || activeEvent.Year <= 0)
+            {
+                SetError("No active event configured.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            await _userService.DeclareNotAttendingAsync(user.Id, activeEvent.Year);
             SetSuccess("You've been marked as not attending this year.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to declare not attending for user {UserId} year {Year}", user.Id, year);
+            _logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
             SetError("Something went wrong. Please try again.");
         }
 
@@ -312,14 +319,21 @@ public class HomeController : HumansControllerBase
     [HttpPost]
     [Authorize]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UndoNotAttending(int year)
+    public async Task<IActionResult> UndoNotAttending()
     {
         var (errorResult, user) = await ResolveCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
         try
         {
-            var undone = await _userService.UndoNotAttendingAsync(user.Id, year);
+            var activeEvent = await _shiftMgmt.GetActiveAsync();
+            if (activeEvent is null || activeEvent.Year <= 0)
+            {
+                SetError("No active event configured.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var undone = await _userService.UndoNotAttendingAsync(user.Id, activeEvent.Year);
             if (undone)
             {
                 SetSuccess("Your declaration has been removed.");
@@ -331,7 +345,7 @@ public class HomeController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to undo not attending for user {UserId} year {Year}", user.Id, year);
+            _logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
             SetError("Something went wrong. Please try again.");
         }
 
