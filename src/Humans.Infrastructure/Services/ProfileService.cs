@@ -551,7 +551,6 @@ public class ProfileService : IProfileService
 
         var ticketOrders = await _dbContext.TicketOrders
             .AsNoTracking()
-            .Include(to => to.Attendees)
             .Where(to => to.MatchedUserId == userId)
             .OrderByDescending(to => to.PurchasedAt)
             .ToListAsync(ct);
@@ -691,8 +690,6 @@ public class ProfileService : IProfileService
                 ResolvedAt = a.ResolvedAt.ToInvariantInstantString(),
                 TermExpiresAt = a.TermExpiresAt.ToIsoDateString(),
                 BoardMeetingDate = a.BoardMeetingDate.ToIsoDateString(),
-                a.DecisionNote,
-                a.ReviewNotes,
                 StateHistory = a.StateHistory.OrderBy(sh => sh.ChangedAt).Select(sh => new
                 {
                     sh.Status,
@@ -727,8 +724,7 @@ public class ProfileService : IProfileService
                 tjr.Status,
                 tjr.Message,
                 RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
-                ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString(),
-                tjr.ReviewNotes
+                ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
             }),
             RoleAssignments = roleAssignments.Select(ra => new
             {
@@ -815,18 +811,9 @@ public class ProfileService : IProfileService
                 to.Currency,
                 to.PaymentStatus,
                 to.DiscountCode,
-                PurchasedAt = to.PurchasedAt.ToInvariantInstantString(),
-                Attendees = to.Attendees.Select(ta => new
-                {
-                    ta.AttendeeName,
-                    ta.AttendeeEmail,
-                    ta.TicketTypeName,
-                    ta.Price,
-                    ta.Status
-                })
+                PurchasedAt = to.PurchasedAt.ToInvariantInstantString()
             }),
             TicketAttendeeMatches = ticketAttendees
-                .Where(ta => !ticketOrders.Any(to => to.Attendees.Any(a => a.Id == ta.Id)))
                 .Select(ta => new
                 {
                     ta.AttendeeName,
@@ -852,7 +839,6 @@ public class ProfileService : IProfileService
             }),
             AccountMergeRequests = accountMergeRequests.Select(amr => new
             {
-                amr.Email,
                 amr.Status,
                 Role = amr.TargetUserId == userId ? "Target" : "Source",
                 CreatedAt = amr.CreatedAt.ToInvariantInstantString(),
@@ -862,7 +848,6 @@ public class ProfileService : IProfileService
             {
                 a.Action,
                 a.EntityType,
-                a.Description,
                 OccurredAt = a.OccurredAt.ToInvariantInstantString(),
                 Role = a.ActorUserId == userId ? "Actor" : "Subject"
             }),
