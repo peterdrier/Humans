@@ -263,7 +263,7 @@ public class GuestController : HumansControllerBase
                 .Select(s => new GuestTicketOrderSummary
                 {
                     BuyerName = s.BuyerName,
-                    PurchasedAt = s.PurchasedAt,
+                    PurchasedAt = s.PurchasedAt.ToDateTimeUtc(),
                     AttendeeCount = s.AttendeeCount,
                     TotalAmount = s.TotalAmount,
                     Currency = s.Currency,

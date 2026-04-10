@@ -891,7 +891,7 @@ public class TicketQueryService : ITicketQueryService
             .OrderByDescending(o => o.PurchasedAt)
             .Select(o => new UserTicketOrderSummary(
                 o.BuyerName,
-                o.PurchasedAt.ToDateTimeUtc(),
+                o.PurchasedAt,
                 o.Attendees.Count,
                 o.TotalAmount,
                 o.Currency))

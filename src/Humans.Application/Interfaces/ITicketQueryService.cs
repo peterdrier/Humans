@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using NodaTime;
 
 namespace Humans.Application.Interfaces;
 
@@ -122,7 +123,7 @@ public interface ITicketQueryService
 /// </summary>
 public record UserTicketOrderSummary(
     string BuyerName,
-    DateTime PurchasedAt,
+    Instant PurchasedAt,
     int AttendeeCount,
     decimal TotalAmount,
     string Currency);
