@@ -100,13 +100,10 @@ public class ProfileCardViewComponent : ViewComponent
             ? await _volunteerHistoryService.GetAllAsync(profile.Id)
             : [];
 
-        // Get profile languages (service returns sorted by language code; re-sort for display)
+        // Get profile languages (service returns sorted by proficiency desc, then language code)
         var profileLanguages = profile is not null
-            ? (await _profileService.GetProfileLanguagesAsync(profile.Id))
-                .OrderByDescending(pl => pl.Proficiency)
-                .ThenBy(pl => pl.LanguageCode, StringComparer.Ordinal)
-                .ToList()
-            : new List<ProfileLanguage>();
+            ? await _profileService.GetProfileLanguagesAsync(profile.Id)
+            : (IReadOnlyList<ProfileLanguage>)[];
 
         // Get user's teams (excluding Volunteers system team)
         var userTeams = await _teamService.GetUserTeamsAsync(userId);

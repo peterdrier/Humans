@@ -1200,7 +1200,8 @@ public class ProfileService : IProfileService
         return await _dbContext.ProfileLanguages
             .AsNoTracking()
             .Where(pl => pl.ProfileId == profileId)
-            .OrderBy(pl => pl.LanguageCode)
+            .OrderByDescending(pl => pl.Proficiency)
+            .ThenBy(pl => pl.LanguageCode)
             .ToListAsync(ct);
     }
 
