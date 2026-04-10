@@ -5,7 +5,8 @@ export const appState = {
     connection:        null,
     campMap:           null,   // fetched from /api/city-planning/state
     limitZoneGeom:     null,   // parsed turf geometry for isOutsideZone checks
-    activeCampSeasonId: null,  // non-null while a polygon is being edited
+    activeCampSeasonId:  null,  // non-null while a polygon is being edited
+    previewCampSeasonId: null,  // non-null while previewing a historical version
     remoteCursors:     {},
     currentPopup:      null,
 };

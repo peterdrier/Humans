@@ -43,6 +43,7 @@ export function onCampPolygonClick(e) {
 export function startEditing(campSeasonId) {
     if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
 
+    appState.previewCampSeasonId = null;
     appState.activeCampSeasonId = campSeasonId;
     setActivePolygonDim(campSeasonId);
     appState.draw.deleteAll();
@@ -201,6 +202,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
 
         list.querySelectorAll('.preview-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                appState.previewCampSeasonId = id;
                 appState.draw.deleteAll();
                 appState.draw.add(JSON.parse(decodeURIComponent(btn.dataset.geojson)));
             });
@@ -210,7 +212,12 @@ export async function loadHistory(campSeasonId, canEdit = false) {
         });
     }
 
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
+    const panel = document.getElementById('history-panel');
+    panel.addEventListener('hidden.bs.offcanvas', () => {
+        appState.previewCampSeasonId = null;
+        if (!appState.activeCampSeasonId) appState.draw.deleteAll();
+    }, { once: true });
+    bootstrap.Offcanvas.getOrCreateInstance(panel).show();
 }
 
 export async function restoreVersion(historyId, campSeasonId) {

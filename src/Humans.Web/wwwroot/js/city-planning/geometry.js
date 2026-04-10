@@ -48,8 +48,9 @@ export function buildCampPolygonFeatures(campPolygons) {
 }
 
 export function overlapsOtherCamps(feature) {
+    const excludeId = appState.activeCampSeasonId ?? appState.previewCampSeasonId;
     return appState.campMap.campPolygons
-        .filter(p => p.campSeasonId !== appState.activeCampSeasonId)
+        .filter(p => p.campSeasonId !== excludeId)
         .some(p => {
             try { return !!turf.intersect(turf.featureCollection([feature, JSON.parse(p.geoJson)])); }
             catch { return false; }
