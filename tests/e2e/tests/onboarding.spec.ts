@@ -23,10 +23,7 @@ test.describe('Onboarding (16-onboarding-pipeline + 17-coordinator-roles)', () =
       const flagButton = page.getByRole('button', { name: /Flag/i }).first();
       const clearVisible = await clearButton.isVisible({ timeout: 5000 }).catch(() => false);
       const flagVisible = await flagButton.isVisible({ timeout: 5000 }).catch(() => false);
-      // Skip gracefully if first human in queue was already cleared/flagged (no action buttons)
-      if (clearVisible || flagVisible) {
-        expect(true).toBe(true);
-      }
+      expect(clearVisible || flagVisible).toBe(true);
     }
     // Skip gracefully if queue is empty
   });
