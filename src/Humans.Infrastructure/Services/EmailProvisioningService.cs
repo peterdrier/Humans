@@ -163,7 +163,8 @@ public class EmailProvisioningService : IEmailProvisioningService
     /// <summary>
     /// Transliterates an email prefix to ASCII by applying German-specific mappings
     /// (ü→ue, ö→oe, ä→ae, ß→ss) first, then stripping remaining diacritics via
-    /// Unicode NFD decomposition. Returns null if the result still contains non-ASCII.
+    /// Unicode NFD decomposition. Returns null if the result contains non-ASCII or
+    /// invalid email local-part characters; returns empty string if input was blank.
     /// </summary>
     internal static string? SanitizeEmailPrefix(string prefix)
     {
@@ -202,10 +203,10 @@ public class EmailProvisioningService : IEmailProvisioningService
 
         var ascii = result.ToString().ToLowerInvariant();
 
-        // Validate result is ASCII-only (printable, no whitespace except what's valid in email local part)
+        // Validate result contains only valid ASCII email local-part characters
         foreach (var ch in ascii)
         {
-            if (ch > 127)
+            if (ch > 127 || ch <= ' ' || ch == 0x7F)
                 return null;
         }
 

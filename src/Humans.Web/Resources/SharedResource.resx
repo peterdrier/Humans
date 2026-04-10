@@ -1605,6 +1605,7 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>General Availability</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Mark which days you're available to help. Coordinators can see who's in the pool when assigning shifts.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Save Availability</value></data>
+  <data name="Shifts_SlotsFull" xml:space="preserve"><value>Some days still need help but all available slots are currently full. Check back later in case spots open up.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Shift Dashboard</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} shifts</value><comment>{0} = count</comment></data>
