@@ -157,6 +157,9 @@ public static class RoleChecks
             return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.HumanAdmin, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.CampAdmin, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.TicketAdmin, StringComparison.Ordinal) ||
+                   string.Equals(roleName, RoleNames.NoInfoAdmin, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal) ||
                    string.Equals(roleName, RoleNames.FeedbackAdmin, StringComparison.Ordinal) ||

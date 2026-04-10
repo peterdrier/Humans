@@ -1,8 +1,7 @@
-using Humans.Application.Authorization;
 using Humans.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 
-namespace Humans.Web.Authorization.Requirements;
+namespace Humans.Application.Authorization;
 
 /// <summary>
 /// Resource-based authorization handler for role assignment operations.
@@ -18,12 +17,30 @@ namespace Humans.Web.Authorization.Requirements;
 /// </summary>
 public class RoleAssignmentAuthorizationHandler : AuthorizationHandler<RoleAssignmentOperationRequirement, string>
 {
+    /// <summary>
+    /// Roles that Board and HumanAdmin are permitted to manage.
+    /// Must match BoardAssignableRoles in the Web layer's RoleChecks.
+    /// </summary>
+    private static readonly HashSet<string> BoardManageableRoles = new(StringComparer.Ordinal)
+    {
+        RoleNames.Board,
+        RoleNames.HumanAdmin,
+        RoleNames.TeamsAdmin,
+        RoleNames.CampAdmin,
+        RoleNames.TicketAdmin,
+        RoleNames.NoInfoAdmin,
+        RoleNames.FeedbackAdmin,
+        RoleNames.FinanceAdmin,
+        RoleNames.ConsentCoordinator,
+        RoleNames.VolunteerCoordinator
+    };
+
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         RoleAssignmentOperationRequirement requirement,
         string roleName)
     {
-        if (RoleChecks.IsAdmin(context.User))
+        if (context.User.IsInRole(RoleNames.Admin))
         {
             context.Succeed(requirement);
             return Task.CompletedTask;
@@ -35,9 +52,9 @@ public class RoleAssignmentAuthorizationHandler : AuthorizationHandler<RoleAssig
             return Task.CompletedTask;
         }
 
-        if (RoleChecks.IsBoard(context.User) || RoleChecks.IsHumanAdmin(context.User))
+        if (context.User.IsInRole(RoleNames.Board) || context.User.IsInRole(RoleNames.HumanAdmin))
         {
-            if (RoleChecks.CanManageRole(context.User, roleName))
+            if (BoardManageableRoles.Contains(roleName))
             {
                 context.Succeed(requirement);
             }

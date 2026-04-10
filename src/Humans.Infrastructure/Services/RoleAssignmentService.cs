@@ -138,8 +138,8 @@ public class RoleAssignmentService : IRoleAssignmentService
         if (!authResult.Succeeded)
         {
             _logger.LogWarning(
-                "Authorization denied for role assignment: user attempted to assign role {Role} to user {UserId}",
-                roleName, userId);
+                "Authorization denied for role assignment: principal {Principal} attempted to assign role {Role} to user {UserId}",
+                principal.Identity?.Name, roleName, userId);
             return new OnboardingResult(false, "Unauthorized");
         }
 
@@ -219,9 +219,9 @@ public class RoleAssignmentService : IRoleAssignmentService
         if (!authResult.Succeeded)
         {
             _logger.LogWarning(
-                "Authorization denied for ending role: user attempted to end role {Role} for user {UserId}",
-                roleAssignment.RoleName, roleAssignment.UserId);
-            return new OnboardingResult(false, "Unauthorized");
+                "Authorization denied for ending role: principal {Principal} attempted to end role {Role} for user {UserId}",
+                principal.Identity?.Name, roleAssignment.RoleName, roleAssignment.UserId);
+            return new OnboardingResult(false, "NotFound");
         }
 
         var now = _clock.GetCurrentInstant();

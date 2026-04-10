@@ -2,7 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Application.Authorization;
 using Humans.Domain.Constants;
-using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
 using Xunit;
 
@@ -57,6 +56,9 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.HumanAdmin)]
     [InlineData(RoleNames.TeamsAdmin)]
+    [InlineData(RoleNames.CampAdmin)]
+    [InlineData(RoleNames.TicketAdmin)]
+    [InlineData(RoleNames.NoInfoAdmin)]
     [InlineData(RoleNames.ConsentCoordinator)]
     [InlineData(RoleNames.VolunteerCoordinator)]
     [InlineData(RoleNames.FeedbackAdmin)]
@@ -82,6 +84,9 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
     [InlineData(RoleNames.Board)]
     [InlineData(RoleNames.HumanAdmin)]
     [InlineData(RoleNames.TeamsAdmin)]
+    [InlineData(RoleNames.CampAdmin)]
+    [InlineData(RoleNames.TicketAdmin)]
+    [InlineData(RoleNames.NoInfoAdmin)]
     [InlineData(RoleNames.ConsentCoordinator)]
     [InlineData(RoleNames.VolunteerCoordinator)]
     [InlineData(RoleNames.FeedbackAdmin)]

@@ -211,7 +211,7 @@ public class RoleAssignmentServiceTests : IDisposable
             assignment.Id, enderId, null, principal);
 
         result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("Unauthorized");
+        result.ErrorKey.Should().Be("NotFound");
     }
 
     [Fact]
