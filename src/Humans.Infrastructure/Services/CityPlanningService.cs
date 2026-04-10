@@ -81,21 +81,21 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(int year, CancellationToken cancellationToken = default)
     {
-        // Get all camp seasons for the year from camp service
-        var allSeasons = await _campService.GetCampSeasonBriefsForYearAsync(year, cancellationToken);
-        var seasonIdsForYear = allSeasons.Select(s => s.CampSeasonId).ToList();
+        // Get display data for the year from camp service (keyed by campSeasonId)
+        var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var seasonIds = displayData.Keys.ToList();
 
         // Get camp season IDs that already have polygons, filtered in SQL to this year's seasons only
         var polygonSeasonIds = await _dbContext.CampPolygons
-            .Where(p => seasonIdsForYear.Contains(p.CampSeasonId))
+            .Where(p => seasonIds.Contains(p.CampSeasonId))
             .Select(p => p.CampSeasonId)
             .ToListAsync(cancellationToken);
 
         var polygonSeasonIdSet = new HashSet<Guid>(polygonSeasonIds);
 
-        return allSeasons
-            .Where(s => !polygonSeasonIdSet.Contains(s.CampSeasonId))
-            .Select(s => new CampSeasonSummaryDto(s.CampSeasonId, s.Name, s.CampSlug, SpaceSizeToSqm(s.SpaceRequirement)))
+        return displayData
+            .Where(kvp => !polygonSeasonIdSet.Contains(kvp.Key))
+            .Select(kvp => new CampSeasonSummaryDto(kvp.Key, kvp.Value.Name, kvp.Value.CampSlug, SpaceSizeToSqm(kvp.Value.SpaceRequirement), kvp.Value.SoundZone))
             .ToList();
     }
 

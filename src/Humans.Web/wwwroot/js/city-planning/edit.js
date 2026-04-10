@@ -1,8 +1,16 @@
 // Editing mode: toolbar state, draw label updates, popup, button handlers.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
-import { isOutsideZone, overlapsOtherCamps } from './geometry.js';
+import { isOutsideZone, overlapsOtherCamps, getSoundZoneOutOfRange } from './geometry.js';
 import { setActivePolygonDim } from './layers.js';
+
+function getCampSoundZone(campSeasonId) {
+    if (!campSeasonId) return -1;
+    const poly = appState.campMap?.campPolygons?.find(p => p.campSeasonId === campSeasonId);
+    if (poly !== undefined) return poly.soundZone ?? -1;
+    const season = appState.campMap?.campSeasonsWithoutPolygon?.find(s => s.campSeasonId === campSeasonId);
+    return season?.soundZone ?? -1;
+}
 
 function getSpaceRequirementSqm(campSeasonId) {
     if (!campSeasonId) return null;
@@ -37,12 +45,13 @@ export function onCampPolygonClick(e) {
         if (ratio < 0.5) return `<div class="text-warning small">⚠️ Area much smaller than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
         return '';
     })();
+    const soundZoneWarn = props.soundZoneOutOfRange ? `<div class="text-warning small">⚠️ Sound zone doesn't match this area</div>` : '';
     const editBtn      = canEdit ? `<button class="btn btn-primary btn-sm js-edit-barrio-btn">Edit</button>` : '';
     const historyBtn   = `<button class="btn btn-outline-secondary btn-sm js-history-barrio-btn"><i class="fa fa-history me-1"></i>History</button>`;
 
     if (appState.currentPopup) appState.currentPopup.remove();
     appState.currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
-        .setHTML(`<div><strong>${escHtml(props.campName || 'Camp')}</strong></div>${area}${warning}${overlapWarn}${sizeWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
+        .setHTML(`<div><strong>${escHtml(props.campName || 'Camp')}</strong></div>${area}${warning}${overlapWarn}${sizeWarn}${soundZoneWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
         .addTo(appState.map);
 
     if (canEdit) {
@@ -166,7 +175,8 @@ export function updateSaveButton() {
             ? { type: 'FeatureCollection', features: [poly] }
             : { type: 'FeatureCollection', features: [] });
 
-        const spaceReqSqm = getSpaceRequirementSqm(appState.activeCampSeasonId ?? appState.previewCampSeasonId);
+        const editId = appState.activeCampSeasonId ?? appState.previewCampSeasonId;
+        const spaceReqSqm = getSpaceRequirementSqm(editId);
         const sizeWarning = (() => {
             if (!spaceReqSqm) return '';
             const ratio = area / spaceReqSqm;
@@ -174,10 +184,12 @@ export function updateSaveButton() {
             if (ratio < 0.5) return `\n⚠️ Area smaller than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
             return '';
         })();
+        const soundZoneMismatch = getSoundZoneOutOfRange(poly, getCampSoundZone(editId));
         const warnings = [
-            ...(outside      ? ['\n⚠️ Outside limits'] : []),
-            ...(overlap       ? ['\n⚠️ Overlaps with another barrio'] : []),
-            ...(sizeWarning   ? [sizeWarning] : []),
+            ...(outside           ? ['\n⚠️ Outside limits'] : []),
+            ...(overlap            ? ['\n⚠️ Overlaps with another barrio'] : []),
+            ...(sizeWarning        ? [sizeWarning] : []),
+            ...(soundZoneMismatch  ? ['\n⚠️ Sound zone doesn\'t match this area'] : []),
         ];
         centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' + warnings.join('') };
         map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [centroid] });
