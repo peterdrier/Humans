@@ -508,26 +508,26 @@ public class VolController : HumansControllerBase
     [HttpPost("Approve")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Approve(Guid signupId, string? returnUrl) =>
-        ExecuteSignupActionAsync(signupId, returnUrl,
+        ExecuteSignupActionAsync(signupId, returnUrl, "approve",
             (id, userId) => _signupService.ApproveAsync(id, userId),
             "Signup approved.", "Approval failed.");
 
     [HttpPost("Refuse")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Refuse(Guid signupId, string? reason, string? returnUrl) =>
-        ExecuteSignupActionAsync(signupId, returnUrl,
+        ExecuteSignupActionAsync(signupId, returnUrl, "refuse",
             (id, userId) => _signupService.RefuseAsync(id, userId, reason),
             "Signup refused.", "Refusal failed.");
 
     [HttpPost("NoShow")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> NoShow(Guid signupId, string? returnUrl) =>
-        ExecuteSignupActionAsync(signupId, returnUrl,
+        ExecuteSignupActionAsync(signupId, returnUrl, "no-show",
             (id, userId) => _signupService.MarkNoShowAsync(id, userId),
             "Marked as no-show.", "No-show marking failed.");
 
     private async Task<IActionResult> ExecuteSignupActionAsync(
-        Guid signupId, string? returnUrl,
+        Guid signupId, string? returnUrl, string actionName,
         Func<Guid, Guid, Task<SignupResult>> action,
         string successMessage, string failureMessage)
     {
@@ -555,7 +555,7 @@ public class VolController : HumansControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error performing signup action for {SignupId}", signupId);
+            _logger.LogError(ex, "Error performing {Action} for signup {SignupId}", actionName, signupId);
             SetError(failureMessage);
         }
         return RedirectToLocalOrAction(returnUrl, nameof(MyShifts));

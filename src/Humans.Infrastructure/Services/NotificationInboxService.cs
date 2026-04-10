@@ -430,17 +430,13 @@ public class NotificationInboxService : INotificationInboxService
     public async Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        var actionable = await _dbContext.NotificationRecipients
-            .CountAsync(nr => nr.UserId == userId &&
-                              nr.ReadAt == null &&
-                              nr.Notification.ResolvedAt == null &&
-                              nr.Notification.Class == NotificationClass.Actionable, ct);
-
-        var informational = await _dbContext.NotificationRecipients
-            .CountAsync(nr => nr.UserId == userId &&
-                              nr.ReadAt == null &&
-                              nr.Notification.ResolvedAt == null &&
-                              nr.Notification.Class == NotificationClass.Informational, ct);
+        var counts = await _dbContext.NotificationRecipients
+            .Where(nr => nr.UserId == userId && nr.ReadAt == null && nr.Notification.ResolvedAt == null)
+            .GroupBy(nr => nr.Notification.Class)
+            .Select(g => new { Class = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var actionable = counts.FirstOrDefault(c => c.Class == NotificationClass.Actionable)?.Count ?? 0;
+        var informational = counts.FirstOrDefault(c => c.Class == NotificationClass.Informational)?.Count ?? 0;
 
         return (actionable, informational);
     }
