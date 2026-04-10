@@ -54,7 +54,7 @@ public class ProfileCardViewComponent : ViewComponent
     {
         // Single cached call replaces two separate DB queries for User and Profile
         var profile = await _profileService.GetProfileAsync(userId);
-        var user = profile?.User;
+        var user = profile?.User ?? await _userManager.FindByIdAsync(userId.ToString());
 
         if (user is null)
         {

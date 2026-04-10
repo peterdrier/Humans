@@ -292,7 +292,7 @@ public class HomeController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeclareNotAttending()
     {
-        var (errorResult, user) = await ResolveCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
         try
@@ -321,7 +321,7 @@ public class HomeController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UndoNotAttending()
     {
-        var (errorResult, user) = await ResolveCurrentUserAsync();
+        var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
         try
