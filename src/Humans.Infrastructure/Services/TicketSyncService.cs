@@ -474,9 +474,9 @@ public class TicketSyncService : ITicketSyncService
 
         var year = activeEvent.Year;
 
-        // Get all attendees matched to users
+        // Get attendees matched to users for the active vendor event only
         var matchedAttendees = await _dbContext.TicketAttendees
-            .Where(a => a.MatchedUserId != null)
+            .Where(a => a.MatchedUserId != null && a.VendorEventId == _settings.EventId)
             .Select(a => new { a.MatchedUserId, a.Status })
             .ToListAsync(ct);
 
