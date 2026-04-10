@@ -216,7 +216,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
 export async function restoreVersion(historyId, campSeasonId) {
     const id = campSeasonId ?? appState.activeCampSeasonId;
     if (!id) return;
-    if (!confirm('Restore this polygon version? The current version will be saved to history first.')) return;
+    if (!confirm('Restore this version?')) return;
 
     const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
     const resp = await fetch(`/api/city-planning/camp-polygons/${id}/restore/${historyId}`, {
