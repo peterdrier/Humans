@@ -118,15 +118,36 @@ These are standalone services, not embedded in section services. Any service or 
 
 ## 6. Authorization Pattern
 
-Authorization checks live in controllers, not in services.
+Authorization uses **ASP.NET Core resource-based authorization** — one pattern, everywhere.
 
-| Check Type | Where | How |
-|------------|-------|-----|
-| **Global roles** (Admin, Board, TeamsAdmin, etc.) | Controller | `User.IsInRole()`, `RoleChecks.*`, `[Authorize(Roles = ...)]` |
-| **Team-specific roles** (coordinator of team X) | Controller calls service | `await _teamService.IsUserCoordinatorAsync(userId, teamId)` |
-| **Business logic gating** (what data to show) | Service receives `isPrivileged` param | Service never checks roles — it trusts the controller's decision |
+### How it works
 
-Services are **role-agnostic**. They receive boolean flags like `isPrivileged`, `isAdmin`, or `canSeeAll` from the controller. Services never inject `IHttpContextAccessor` or check `User.IsInRole()`.
+Controllers call `IAuthorizationService.AuthorizeAsync(User, resource, requirement)`. Authorization handlers contain the logic. Services are auth-free — they trust the caller.
+
+```csharp
+// Controller — authorize, then call service
+var authResult = await _authorizationService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit);
+if (!authResult.Succeeded) return Forbid();
+await _budgetService.DeleteLineItemAsync(id);
+```
+
+### Existing handlers
+
+| Handler | Requirement | Resource | Purpose |
+|---------|-------------|----------|---------|
+| `TeamAuthorizationHandler` | `TeamOperationRequirement` | `Team` | Coordinator/manager/admin checks |
+| `BudgetAuthorizationHandler` | `BudgetOperationRequirement` | `BudgetCategory` | Finance role + coordinator checks |
+| `CampAuthorizationHandler` | `CampOperationRequirement` | `Camp` | Lead/CampAdmin checks |
+| `RoleAssignmentAuthorizationHandler` | `RoleAssignmentOperationRequirement` | `string` (role name) | Who can assign which roles |
+| `IsActiveMemberHandler` | `IsActiveMemberRequirement` | — | Membership gate |
+| `HumanAdminOnlyHandler` | `HumanAdminOnlyRequirement` | — | Admin profile operations |
+
+### Rules
+
+- **No `isPrivileged` booleans.** Don't pass auth decisions as parameters to services. If the controller maps it wrong, the service silently does the wrong thing.
+- **No inline `IsInRole` chains in controllers** for resource-scoped checks. Use the handler. `[Authorize(Roles = ...)]` is still fine for simple route-level role gates.
+- **Services are auth-free.** They don't check roles, don't inject `IHttpContextAccessor`, don't receive boolean privilege flags. Authorization happens before the service is called.
+- **New sections need a handler.** When adding a new section with resource-scoped auth, add a `*OperationRequirement` + `*AuthorizationHandler` pair. Don't invent a new pattern.
 
 ## 7. Immutable Entity Rules
 

@@ -13,7 +13,7 @@ Manage the full membership lifecycle for Nobodies Collective: volunteer applicat
 - **Table ownership is strict** — each service owns specific tables, no cross-service DB access
 - **Cache ownership follows data ownership** — only the owning service manages its cache
 - **Cross-service calls via interfaces** — need a profile? Call `IProfileService`, don't query the table
-- **Authorization in controllers, not services** — services receive `isPrivileged`, never check roles
+- **Authorization via resource-based handlers** — services are auth-free, controllers call `IAuthorizationService.AuthorizeAsync`, no `isPrivileged` booleans
 
 ## Critical: Coding Rules
 
