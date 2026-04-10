@@ -181,6 +181,8 @@ export async function loadHistory(campSeasonId, canEdit = false) {
     const resp = await fetch(`/api/city-planning/camp-polygons/${id}/history`);
     const history = await resp.json();
 
+    if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
+
     const campName = appState.campMap.campPolygons.find(p => p.campSeasonId === id)?.campName;
     const titleEl = document.getElementById('history-panel-title');
     if (titleEl && campName) titleEl.textContent = `History of ${campName}`;
