@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -57,7 +59,11 @@ public class EmailProvisioningService : IEmailProvisioningService
         if (user is null)
             return new EmailProvisioningResult(false, ErrorMessage: "User not found.");
 
-        var fullEmail = $"{emailPrefix.Trim().ToLowerInvariant()}@nobodies.team";
+        var sanitizedPrefix = SanitizeEmailPrefix(emailPrefix);
+        if (string.IsNullOrEmpty(sanitizedPrefix))
+            return new EmailProvisioningResult(false, ErrorMessage: "Email prefix contains characters that cannot be transliterated to ASCII. Please choose a different prefix.");
+
+        var fullEmail = $"{sanitizedPrefix}@nobodies.team";
 
         try
         {
@@ -152,5 +158,58 @@ public class EmailProvisioningService : IEmailProvisioningService
             _logger.LogError(ex, "Failed to provision @nobodies.team account {Email} for user {UserId}", fullEmail, userId);
             return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Failed to provision {fullEmail}. Check logs for details.");
         }
+    }
+
+    /// <summary>
+    /// Transliterates an email prefix to ASCII by applying German-specific mappings
+    /// (ü→ue, ö→oe, ä→ae, ß→ss) first, then stripping remaining diacritics via
+    /// Unicode NFD decomposition. Returns null if the result contains non-ASCII or
+    /// invalid email local-part characters; returns empty string if input was blank.
+    /// </summary>
+    internal static string? SanitizeEmailPrefix(string prefix)
+    {
+        var trimmed = prefix.Trim();
+
+        // German-specific mappings (must be applied before NFD stripping)
+        var sb = new StringBuilder(trimmed.Length);
+        foreach (var ch in trimmed)
+        {
+            var mapped = ch switch
+            {
+                'ü' => "ue",
+                'Ü' => "ue",
+                'ö' => "oe",
+                'Ö' => "oe",
+                'ä' => "ae",
+                'Ä' => "ae",
+                'ß' => "ss",
+                _ => null
+            };
+
+            if (mapped is not null)
+                sb.Append(mapped);
+            else
+                sb.Append(ch);
+        }
+
+        // NFD decomposition: split base characters from combining marks, then strip marks
+        var normalized = sb.ToString().Normalize(NormalizationForm.FormD);
+        var result = new StringBuilder(normalized.Length);
+        foreach (var ch in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+                result.Append(ch);
+        }
+
+        var ascii = result.ToString().ToLowerInvariant();
+
+        // Validate result contains only valid ASCII email local-part characters
+        foreach (var ch in ascii)
+        {
+            if (ch > 127 || ch <= ' ' || ch == 0x7F)
+                return null;
+        }
+
+        return ascii;
     }
 }

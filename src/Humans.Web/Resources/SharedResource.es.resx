@@ -1587,6 +1587,7 @@
   <data name="Shifts_GeneralAvailability" xml:space="preserve"><value>Disponibilidad general</value></data>
   <data name="Shifts_AvailabilityHelp" xml:space="preserve"><value>Marca los días que estás disponible para ayudar. Los coordinadores pueden ver quién está disponible al asignar turnos.</value></data>
   <data name="Shifts_SaveAvailability" xml:space="preserve"><value>Guardar disponibilidad</value></data>
+  <data name="Shifts_SlotsFull" xml:space="preserve"><value>Algunos días aún necesitan ayuda, pero todos los turnos disponibles están completos. Vuelve más tarde por si se abren plazas.</value></data>
 
   <data name="ShiftDash_Title" xml:space="preserve"><value>Panel de turnos</value></data>
   <data name="ShiftDash_ShiftsCount" xml:space="preserve"><value>{0} turnos</value><comment>{0} = count</comment></data>
