@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Application.Tests.Services;
@@ -18,6 +20,7 @@ public class NotificationServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly IMemoryCache _cache;
     private readonly NotificationService _service;
+    private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
 
     public NotificationServiceTests()
     {
@@ -28,7 +31,22 @@ public class NotificationServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
         _cache = new MemoryCache(new MemoryCacheOptions());
-        _service = new NotificationService(_dbContext, _clock, _cache, NullLogger<NotificationService>.Instance);
+
+        // Delegate to in-memory DB so seeded preferences are respected
+        _preferenceService.GetUsersWithInboxDisabledAsync(
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<MessageCategory>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var userIds = callInfo.Arg<IReadOnlyList<Guid>>();
+                var category = callInfo.Arg<MessageCategory>();
+                var disabledIds = _dbContext.CommunicationPreferences
+                    .Where(cp => userIds.Contains(cp.UserId) && cp.Category == category && !cp.InboxEnabled)
+                    .Select(cp => cp.UserId)
+                    .ToHashSet();
+                return Task.FromResult<IReadOnlySet<Guid>>(disabledIds);
+            });
+
+        _service = new NotificationService(_dbContext, _preferenceService, _clock, _cache, NullLogger<NotificationService>.Instance);
     }
 
     public void Dispose()

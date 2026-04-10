@@ -15,17 +15,20 @@ namespace Humans.Web.Controllers;
 public class ContactsController : HumansControllerBase
 {
     private readonly IContactService _contactService;
+    private readonly ICommunicationPreferenceService _preferenceService;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ContactsController> _logger;
 
     public ContactsController(
         UserManager<User> userManager,
         IContactService contactService,
+        ICommunicationPreferenceService preferenceService,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ContactsController> logger)
         : base(userManager)
     {
         _contactService = contactService;
+        _preferenceService = preferenceService;
         _localizer = localizer;
         _logger = logger;
     }
@@ -72,6 +75,8 @@ public class ContactsController : HumansControllerBase
             if (contact is null)
                 return NotFound();
 
+            var preferences = await _preferenceService.GetPreferencesAsync(contact.Id);
+
             var viewModel = new AdminContactDetailViewModel
             {
                 UserId = contact.Id,
@@ -80,7 +85,7 @@ public class ContactsController : HumansControllerBase
                 ContactSource = contact.ContactSource,
                 ExternalSourceId = contact.ExternalSourceId,
                 CreatedAt = contact.CreatedAt,
-                CommunicationPreferences = contact.CommunicationPreferences.ToList()
+                CommunicationPreferences = preferences.ToList()
             };
 
             return View(viewModel);

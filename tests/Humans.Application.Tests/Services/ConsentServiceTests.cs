@@ -34,8 +34,12 @@ public class ConsentServiceTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(IMembershipCalculator)).Returns(_membershipCalculator);
+
         _service = new ConsentService(
-            _dbContext, _onboardingService, _membershipCalculator,
+            _dbContext, _onboardingService, serviceProvider,
             _notificationInboxService, _syncJob, _metrics, _clock,
             NullLogger<ConsentService>.Instance);
     }

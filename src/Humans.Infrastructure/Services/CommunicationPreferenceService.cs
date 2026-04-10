@@ -257,6 +257,30 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         return !await IsOptedOutAsync(userId, MessageCategory.FacilitatedMessages, cancellationToken);
     }
 
+    public async Task<IReadOnlySet<Guid>> GetUsersWithInboxDisabledAsync(
+        IReadOnlyList<Guid> userIds, MessageCategory category,
+        CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return new HashSet<Guid>();
+        }
+
+        var disabledUserIds = await _db.CommunicationPreferences
+            .Where(cp => userIds.Contains(cp.UserId) && cp.Category == category && !cp.InboxEnabled)
+            .Select(cp => cp.UserId)
+            .ToListAsync(cancellationToken);
+
+        return disabledUserIds.ToHashSet();
+    }
+
+    public async Task<bool> HasAnyPreferencesAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _db.CommunicationPreferences
+            .AnyAsync(cp => cp.UserId == userId, cancellationToken);
+    }
+
     public Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category)
     {
         var token = GenerateUnsubscribeToken(userId, category);

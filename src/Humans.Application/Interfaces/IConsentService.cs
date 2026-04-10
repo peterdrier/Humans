@@ -16,4 +16,30 @@ public interface IConsentService
     Task<ConsentSubmitResult> SubmitConsentAsync(
         Guid userId, Guid documentVersionId, bool explicitConsent,
         string ipAddress, string userAgent, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets all consent records for a user, ordered by most recent first,
+    /// with DocumentVersion and LegalDocument navigation properties loaded.
+    /// </summary>
+    Task<IReadOnlyList<ConsentRecord>> GetUserConsentRecordsAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the count of consent records for a user.
+    /// </summary>
+    Task<int> GetConsentRecordCountAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the set of document version IDs that a user has explicitly consented to.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets a map of user ID → consented document version IDs for a batch of users.
+    /// Every input user ID appears in the result (with an empty set if no consents).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken ct = default);
 }

@@ -19,6 +19,7 @@ public class ContactService : IContactService
 {
     private readonly HumansDbContext _dbContext;
     private readonly UserManager<User> _userManager;
+    private readonly ICommunicationPreferenceService _preferenceService;
     private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
     private readonly ILogger<ContactService> _logger;
@@ -26,12 +27,14 @@ public class ContactService : IContactService
     public ContactService(
         HumansDbContext dbContext,
         UserManager<User> userManager,
+        ICommunicationPreferenceService preferenceService,
         IAuditLogService auditLogService,
         IClock clock,
         ILogger<ContactService> logger)
     {
         _dbContext = dbContext;
         _userManager = userManager;
+        _preferenceService = preferenceService;
         _auditLogService = auditLogService;
         _clock = clock;
         _logger = logger;
@@ -181,23 +184,34 @@ public class ContactService : IContactService
                 (u.Email != null && EF.Functions.ILike(u.Email, pattern)));
         }
 
-        return await query
+        var contacts = await query
             .OrderByDescending(u => u.CreatedAt)
-            .Select(u => new AdminContactRow(
+            .Select(u => new
+            {
                 u.Id,
-                u.Email ?? string.Empty,
+                Email = u.Email ?? string.Empty,
                 u.DisplayName,
                 u.ContactSource,
                 u.ExternalSourceId,
                 u.CreatedAt,
-                u.CommunicationPreferences.Any()))
+            })
             .ToListAsync(ct);
+
+        var results = new List<AdminContactRow>(contacts.Count);
+        foreach (var c in contacts)
+        {
+            var hasPref = await _preferenceService.HasAnyPreferencesAsync(c.Id, ct);
+            results.Add(new AdminContactRow(
+                c.Id, c.Email, c.DisplayName, c.ContactSource,
+                c.ExternalSourceId, c.CreatedAt, hasPref));
+        }
+
+        return results;
     }
 
     public async Task<User?> GetContactDetailAsync(Guid userId, CancellationToken ct = default)
     {
         return await _dbContext.Users
-            .Include(u => u.CommunicationPreferences)
             .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u =>
                 u.Id == userId &&

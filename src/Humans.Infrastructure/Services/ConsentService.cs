@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
@@ -14,7 +15,7 @@ public class ConsentService : IConsentService
 {
     private readonly HumansDbContext _dbContext;
     private readonly IOnboardingService _onboardingService;
-    private readonly IMembershipCalculator _membershipCalculator;
+    private readonly IServiceProvider _serviceProvider;
     private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IHumansMetrics _metrics;
@@ -24,7 +25,7 @@ public class ConsentService : IConsentService
     public ConsentService(
         HumansDbContext dbContext,
         IOnboardingService onboardingService,
-        IMembershipCalculator membershipCalculator,
+        IServiceProvider serviceProvider,
         INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
         IHumansMetrics metrics,
@@ -33,7 +34,7 @@ public class ConsentService : IConsentService
     {
         _dbContext = dbContext;
         _onboardingService = onboardingService;
-        _membershipCalculator = membershipCalculator;
+        _serviceProvider = serviceProvider;
         _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
         _metrics = metrics;
@@ -47,7 +48,8 @@ public class ConsentService : IConsentService
     {
         var now = _clock.GetCurrentInstant();
 
-        var userTeamIds = await _membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
+        var membershipCalculator = _serviceProvider.GetRequiredService<IMembershipCalculator>();
+        var userTeamIds = await membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
 
         var documents = await _dbContext.LegalDocuments
             .Where(d => d.IsActive && d.IsRequired && userTeamIds.Contains(d.TeamId))
@@ -158,7 +160,8 @@ public class ConsentService : IConsentService
         // Auto-resolve AccessSuspended notifications only once ALL required consents are complete
         try
         {
-            if (await _membershipCalculator.HasAllRequiredConsentsAsync(userId, ct))
+            var membershipCalc = _serviceProvider.GetRequiredService<IMembershipCalculator>();
+            if (await membershipCalc.HasAllRequiredConsentsAsync(userId, ct))
             {
                 await _notificationInboxService.ResolveBySourceAsync(userId, NotificationSource.AccessSuspended, ct);
             }
@@ -169,6 +172,63 @@ public class ConsentService : IConsentService
         }
 
         return new ConsentSubmitResult(true, DocumentName: version.LegalDocument.Name);
+    }
+
+    public async Task<IReadOnlyList<ConsentRecord>> GetUserConsentRecordsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        return await _dbContext.ConsentRecords
+            .AsNoTracking()
+            .Include(c => c.DocumentVersion)
+                .ThenInclude(v => v.LegalDocument)
+            .Where(c => c.UserId == userId)
+            .OrderByDescending(c => c.ConsentedAt)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> GetConsentRecordCountAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        return await _dbContext.ConsentRecords
+            .CountAsync(cr => cr.UserId == userId, ct);
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var ids = await _dbContext.ConsentRecords
+            .AsNoTracking()
+            .Where(cr => cr.UserId == userId && cr.ExplicitConsent)
+            .Select(cr => cr.DocumentVersionId)
+            .ToListAsync(ct);
+
+        return ids.ToHashSet();
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, IReadOnlySet<Guid>>();
+        }
+
+        var consents = await _dbContext.ConsentRecords
+            .AsNoTracking()
+            .Where(cr => userIds.Contains(cr.UserId) && cr.ExplicitConsent)
+            .Select(cr => new { cr.UserId, cr.DocumentVersionId })
+            .ToListAsync(ct);
+
+        var result = userIds.ToDictionary(
+            id => id,
+            _ => (IReadOnlySet<Guid>)new HashSet<Guid>());
+
+        foreach (var consent in consents)
+        {
+            ((HashSet<Guid>)result[consent.UserId]).Add(consent.DocumentVersionId);
+        }
+
+        return result;
     }
 
     private static string ComputeContentHash(string content)

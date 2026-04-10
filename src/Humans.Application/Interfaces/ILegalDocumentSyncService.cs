@@ -50,4 +50,12 @@ public interface ILegalDocumentSyncService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The document version if found.</returns>
     Task<DocumentVersion?> GetVersionByIdAsync(Guid versionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current required document versions for a specific team.
+    /// Returns the latest effective version per required+active document scoped to the team.
+    /// Each returned DocumentVersion has its LegalDocument navigation loaded.
+    /// </summary>
+    Task<IReadOnlyList<DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(
+        Guid teamId, CancellationToken cancellationToken = default);
 }
