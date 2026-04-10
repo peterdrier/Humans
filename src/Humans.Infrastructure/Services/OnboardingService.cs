@@ -187,9 +187,9 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateUserProfile(userId);
 
-        // Add to profile cache (profile is now approved and not suspended)
+        // Update profile cache (profile is now approved)
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateApprovedProfile(userId, CachedProfile.Create(profile, profile.User));
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, profile.User));
 
         // Sync Volunteers team membership (adds to team if consents are also complete)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
@@ -242,8 +242,10 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateUserProfile(userId);
 
-        // Remove from profile cache (no longer approved)
-        _cache.UpdateApprovedProfile(userId, null);
+        // Update profile cache with current state
+        await _dbContext.Entry(profile).Reference(p => p.User).LoadAsync(ct);
+        await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, profile.User));
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
@@ -334,8 +336,9 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateUserProfile(userId);
 
-        // Remove from profile cache (no longer approved)
-        _cache.UpdateApprovedProfile(userId, null);
+        // Update profile cache with current state
+        await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, profile.User));
 
         // FIX: Both Admin and OnboardingReview paths now deprovision
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
@@ -406,9 +409,9 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateNotificationMeters();
         _cache.InvalidateUserProfile(userId);
 
-        // Add to profile cache (profile is now approved)
+        // Update profile cache
         await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateApprovedProfile(userId, CachedProfile.Create(user.Profile, user));
+        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
 
         // Sync Volunteers team membership (adds user if they also have all required consents)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
@@ -459,8 +462,9 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
 
-        // Remove from profile cache (suspended)
-        _cache.UpdateApprovedProfile(userId, null);
+        // Update profile cache with suspended state
+        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
+        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
         _cache.InvalidateUserProfile(userId);
 
         // In-app notification to the suspended user (best-effort)
@@ -511,12 +515,9 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateUserProfile(userId);
 
-        // Re-add to profile cache if approved
-        if (user.Profile.IsApproved)
-        {
-            await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-            _cache.UpdateApprovedProfile(userId, CachedProfile.Create(user.Profile, user));
-        }
+        // Update profile cache with unsuspended state
+        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
+        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
 
         // Auto-resolve any outstanding AccessSuspended notifications (best-effort)
         try
@@ -649,7 +650,7 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateActiveTeams();
-        _cache.InvalidateApprovedProfiles();
+        _cache.InvalidateProfiles();
         _cache.InvalidateUserProfile(userId);
 
         _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);

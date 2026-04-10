@@ -23,6 +23,7 @@ public record CachedProfile(
     string? ContributionInterests,
     string? City, string? CountryCode, double? Latitude, double? Longitude,
     int? BirthdayDay, int? BirthdayMonth,
+    bool IsApproved, bool IsSuspended,
     IReadOnlyList<CachedVolunteerEntry> VolunteerHistory)
 {
     public static CachedProfile Create(Profile profile, User user) => new(
@@ -42,6 +43,8 @@ public record CachedProfile(
         Longitude: profile.Longitude,
         BirthdayDay: profile.DateOfBirth?.Day,
         BirthdayMonth: profile.DateOfBirth?.Month,
+        IsApproved: profile.IsApproved,
+        IsSuspended: profile.IsSuspended,
         VolunteerHistory: profile.VolunteerHistory
             .Select(v => new CachedVolunteerEntry(v.EventName, v.Description))
             .ToList());
@@ -101,13 +104,13 @@ public interface IProfileService
 
     /// <summary>
     /// Gets a cached profile by user ID, warming the cache first if cold.
-    /// Returns null only if the user has no approved profile.
+    /// Returns null only if the user has no profile.
     /// </summary>
     Task<CachedProfile?> GetCachedProfileAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Updates a single entry in the approved profiles cache.
-    /// Pass null to remove the entry (e.g., on suspension/deletion).
+    /// Updates a single entry in the profiles cache.
+    /// Pass null to remove the entry (e.g., on deletion).
     /// </summary>
     void UpdateProfileCache(Guid userId, CachedProfile? newValue);
 
