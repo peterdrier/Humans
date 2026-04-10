@@ -314,18 +314,27 @@ public class CampaignService : ICampaignService
 
         var alreadyGrantedSet = alreadyGrantedUserIds.ToHashSet();
 
-        var eligible = activeTeamUserIds
+        var notGranted = activeTeamUserIds
             .Where(id => !alreadyGrantedSet.Contains(id))
             .ToList();
 
+        // Count users who have opted out of Marketing
+        var optedOutCount = 0;
+        foreach (var userId in notGranted)
+        {
+            if (await _commPrefService.IsOptedOutAsync(userId, MessageCategory.Marketing, ct))
+                optedOutCount++;
+        }
+
+        var eligibleCount = notGranted.Count - optedOutCount;
         var availableCodes = await CountAvailableCodesAsync(campaignId, ct);
 
         return new WaveSendPreview(
-            EligibleCount: eligible.Count,
+            EligibleCount: eligibleCount,
             AlreadyGrantedExcluded: activeTeamUserIds.Count(id => alreadyGrantedSet.Contains(id)),
-            UnsubscribedExcluded: 0,
+            UnsubscribedExcluded: optedOutCount,
             CodesAvailable: availableCodes,
-            CodesRemainingAfterSend: availableCodes - eligible.Count);
+            CodesRemainingAfterSend: availableCodes - eligibleCount);
     }
 
     public async Task<int> SendWaveAsync(Guid campaignId, Guid teamId, CancellationToken ct = default)
@@ -348,11 +357,19 @@ public class CampaignService : ICampaignService
             .ToListAsync(ct);
         var alreadyGrantedSet = alreadyGrantedUserIds.ToHashSet();
 
-        var eligibleUsers = await _dbContext.Users
+        var candidateUsers = await _dbContext.Users
             .Include(u => u.UserEmails)
             .Where(u => activeTeamUserIds.Contains(u.Id)
                         && !alreadyGrantedSet.Contains(u.Id))
             .ToListAsync(ct);
+
+        // Filter out users who have opted out of Marketing emails
+        var eligibleUsers = new List<User>(candidateUsers.Count);
+        foreach (var user in candidateUsers)
+        {
+            if (!await _commPrefService.IsOptedOutAsync(user.Id, MessageCategory.Marketing, ct))
+                eligibleUsers.Add(user);
+        }
 
         if (eligibleUsers.Count == 0)
             return 0;
@@ -516,14 +533,12 @@ public class CampaignService : ICampaignService
 
         // Generate unsubscribe headers and footer link for Marketing category
         var unsubHeaders = _commPrefService.GenerateUnsubscribeHeaders(user.Id, MessageCategory.Marketing);
-        string? unsubscribeUrl = null;
         string? extraHeadersJson = null;
         if (unsubHeaders is not null)
         {
-            if (unsubHeaders.TryGetValue("List-Unsubscribe", out var listUnsub))
-                unsubscribeUrl = listUnsub.Trim('<', '>');
             extraHeadersJson = JsonSerializer.Serialize(unsubHeaders);
         }
+        var unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(user.Id, MessageCategory.Marketing);
 
         // Wrap in email template
         var (wrappedHtml, plainText) = EmailBodyComposer.Compose(

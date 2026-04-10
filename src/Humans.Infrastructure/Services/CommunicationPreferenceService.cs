@@ -227,27 +227,35 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         return _protector.Protect(payload, TokenLifetime);
     }
 
-    public (Guid UserId, MessageCategory Category)? ValidateUnsubscribeToken(string token)
+    public (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token)
     {
         try
         {
             var payload = _protector.Unprotect(token);
             var parts = payload.Split('|');
             if (parts.Length != 2)
-                return null;
+                return (TokenValidationStatus.Invalid, default, default);
 
             if (!Guid.TryParse(parts[0], out var userId))
-                return null;
+                return (TokenValidationStatus.Invalid, default, default);
 
             if (!Enum.TryParse<MessageCategory>(parts[1], out var category))
-                return null;
+                return (TokenValidationStatus.Invalid, default, default);
 
-            return (userId, category);
+            return (TokenValidationStatus.Valid, userId, category);
         }
         catch (CryptographicException ex)
         {
+            // DataProtection throws CryptographicException for both expired and tampered tokens.
+            // Expired tokens include "expired" in the message; tampered tokens do not.
+            if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(ex, "Expired unsubscribe token");
+                return (TokenValidationStatus.Expired, default, default);
+            }
+
             _logger.LogWarning(ex, "Failed to validate unsubscribe token");
-            return null;
+            return (TokenValidationStatus.Invalid, default, default);
         }
     }
 
@@ -309,5 +317,11 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
             ["List-Unsubscribe"] = $"<{oneClickUrl}>, <{browserUrl}>",
             ["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click",
         };
+    }
+
+    public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category)
+    {
+        var token = GenerateUnsubscribeToken(userId, category);
+        return $"{_baseUrl}/Unsubscribe/{token}";
     }
 }

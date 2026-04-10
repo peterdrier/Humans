@@ -30,17 +30,20 @@ public class UnsubscribeService : IUnsubscribeService
     {
         // Try new category-aware token first
         var result = _preferenceService.ValidateUnsubscribeToken(token);
-        if (result is not null)
+        if (result.Status == TokenValidationStatus.Valid)
         {
-            var (userId, category) = result.Value;
-            var user = await _db.Users.FindAsync(new object[] { userId }, ct);
+            var user = await _db.Users.FindAsync(new object[] { result.UserId }, ct);
             if (user is null)
                 return UnsubscribeTokenResult.Invalid();
 
-            return UnsubscribeTokenResult.Valid(userId, user.DisplayName, category);
+            return UnsubscribeTokenResult.Valid(result.UserId, user.DisplayName, result.Category);
         }
 
-        // Fall back to legacy campaign-only token
+        // Expired new-format token — don't fall through to legacy
+        if (result.Status == TokenValidationStatus.Expired)
+            return UnsubscribeTokenResult.Expired();
+
+        // Not a new-format token at all — fall back to legacy campaign-only token
         return await ValidateLegacyTokenAsync(token, ct);
     }
 

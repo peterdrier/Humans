@@ -348,10 +348,7 @@ public class OutboxEmailService : IEmailService
         {
             var headers = _commPrefService.GenerateUnsubscribeHeaders(userId.Value, category.Value);
             extraHeadersJson = System.Text.Json.JsonSerializer.Serialize(headers);
-
-            // Extract URL for footer link (strip angle brackets from List-Unsubscribe header)
-            if (headers.TryGetValue("List-Unsubscribe", out var listUnsub))
-                unsubscribeUrl = listUnsub.Trim('<', '>');
+            unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(userId.Value, category.Value);
         }
 
         var (wrappedHtml, plainText) = EmailBodyComposer.Compose(

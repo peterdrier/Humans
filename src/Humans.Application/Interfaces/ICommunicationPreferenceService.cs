@@ -4,6 +4,23 @@ using Humans.Domain.Enums;
 namespace Humans.Application.Interfaces;
 
 /// <summary>
+/// Status of a CommunicationPreference token validation attempt.
+/// Distinct from <see cref="UnsubscribeTokenResult"/> which is the high-level
+/// result returned by <see cref="IUnsubscribeService"/>.
+/// </summary>
+public enum TokenValidationStatus
+{
+    /// <summary>Token is valid and decoded successfully.</summary>
+    Valid,
+
+    /// <summary>Token was a valid new-format token but has expired.</summary>
+    Expired,
+
+    /// <summary>Token is not a valid new-format token (tampered, corrupted, or different format).</summary>
+    Invalid,
+}
+
+/// <summary>
 /// Manages per-user communication preferences and unsubscribe tokens.
 /// </summary>
 public interface ICommunicationPreferenceService
@@ -51,9 +68,9 @@ public interface ICommunicationPreferenceService
 
     /// <summary>
     /// Validates and decodes an unsubscribe token.
-    /// Returns null if the token is invalid or expired.
+    /// Returns status (Valid/Expired/Invalid) with decoded UserId and Category when valid.
     /// </summary>
-    (Guid UserId, MessageCategory Category)? ValidateUnsubscribeToken(string token);
+    (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token);
 
     /// <summary>
     /// Generates RFC 8058 List-Unsubscribe headers for a given user and category.
@@ -80,4 +97,11 @@ public interface ICommunicationPreferenceService
     /// </summary>
     Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
         IReadOnlyList<Guid> userIds, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Generates a browser-friendly unsubscribe URL for use in email footers.
+    /// Unlike <see cref="GenerateUnsubscribeHeaders"/>, this returns a plain URL string
+    /// suitable for direct use in anchor tags.
+    /// </summary>
+    string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category);
 }
