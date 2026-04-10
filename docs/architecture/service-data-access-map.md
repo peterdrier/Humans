@@ -785,6 +785,240 @@ The cache is populated by a view component and invalidated by a controller. No s
 
 ---
 
+## Table Ownership Map
+
+The principle: **each table has one owning service, and all other access goes through that service's API.**
+Read access through the owning service lets it serve from cache. Write access through the owning service lets it invalidate correctly.
+
+### Proposed Ownership
+
+| Table(s) | Owner | Current Violations (services accessing directly) |
+|----------|-------|--------------------------------------------------|
+| **Profiles**, ContactFields, VolunteerHistoryEntries, ProfileLanguages, VolunteerEventProfiles | ProfileService | ApplicationDecisionService (writes MembershipTier), OnboardingService (R/W approval/suspension), AccountMergeService (R/W anonymize), DuplicateAccountService (R/W anonymize), NotificationMeterProvider (R counts), CityPlanningService (R display name), HumansMetricsService (R counts) |
+| **Users** | (Identity — UserManager) | Touched by nearly every section. Most reads are for display names or email. Google services write GoogleEmail/GoogleEmailStatus. |
+| **UserEmails** | UserEmailService | AccountMergeService (R/W), AccountProvisioningService (R/W), GoogleAdminService (R/W), OnboardingService (R/W purge), TicketSyncService (R match), MagicLinkService (R), OutboxEmailService (R) |
+| **Teams**, TeamMembers, TeamJoinRequests, TeamRoleDefinitions, TeamRoleAssignments | TeamService | Read by 11 sections for auth/membership checks. SystemTeamSyncJob writes TeamMembers and TeamRoleAssignments directly. BudgetService reads TeamRoleAssignments for auth. |
+| **Applications**, BoardVotes | OnboardingService / ApplicationDecisionService | ProfileService (R/W — creates applications on profile save), NotificationMeterProvider (R), HumansMetricsService (R) |
+| **RoleAssignments** | RoleAssignmentService | MembershipCalculator (R), NotificationService (R), ShiftManagementService (R), AccountMergeService (R/W end roles), HumansMetricsService (R) |
+| **GoogleResources** | TeamResourceService | GoogleWorkspaceSyncService (R/W provision), GoogleAdminService (R), DriveActivityMonitorService (R), NotificationMeterProvider (R), HumansMetricsService (R) |
+| **GoogleSyncOutboxEvents** | GoogleWorkspaceSyncService | NotificationMeterProvider (R), HumansMetricsService (R) |
+| **SyncServiceSettings** | SyncSettingsService | Clean — no violations |
+| **LegalDocuments**, DocumentVersions | LegalDocumentSyncService / AdminLegalDocumentService | MembershipCalculator (R), ConsentService (R) |
+| **ConsentRecords** | ConsentService | MembershipCalculator (R) |
+| **Notifications**, NotificationRecipients | NotificationService / NotificationInboxService | Clean — no violations |
+| **CommunicationPreferences** | CommunicationPreferenceService | NotificationService (R), ContactService (R) |
+| **Camps**, CampSeasons, CampLeads, CampHistoricalNames, CampImages, CampSettings | CampService | CityPlanningService (R/W CampSeasons, R others) |
+| **CampPolygons**, CampPolygonHistories, CityPlanningSettings | CityPlanningService | Clean — no violations |
+| **EventSettings**, Rotas, Shifts, ShiftSignups, ShiftTags, VolunteerTagPreferences | ShiftManagementService / ShiftSignupService | Clean internally (ShiftSignup reads Shifts/Rotas but they're same section) |
+| **GeneralAvailability** | GeneralAvailabilityService | Clean — no violations |
+| **TicketOrders**, TicketAttendees, TicketSyncStates | TicketSyncService / TicketQueryService | ProfileService (R for hold dates), TicketingBudgetService (R orders for actuals) |
+| **BudgetYears**, BudgetGroups, BudgetCategories, BudgetLineItems, BudgetAuditLogs, TicketingProjections | BudgetService | TicketingBudgetService (R/W line items and projections) |
+| **Campaigns**, CampaignGrants, CampaignCodes | CampaignService | TicketSyncService (R/W CampaignGrants — marks redemption), ProfileService (R CampaignGrants) |
+| **FeedbackReports**, FeedbackMessages | FeedbackService | Clean — no violations |
+| **EmailOutboxMessages** | OutboxEmailService / EmailOutboxService | CampaignService (R/W — creates outbox entries) |
+| **AuditLogEntries** | AuditLogService | Clean — write-only, always called through the service |
+| **AccountMergeRequests** | AccountMergeService | UserEmailService (R/W — creates merge requests on email conflict) |
+| **SystemSettings** | (no owner — shared key-value store) | DriveActivityMonitorService (R/W), ProcessEmailOutboxJob (R/W), EmailController (R/W) |
+
+### Violations Summary
+
+**Write violations (most critical — break cache invalidation):**
+
+| Violator | Table Written | Owner |
+|----------|--------------|-------|
+| ApplicationDecisionService | Profiles (MembershipTier) | ProfileService |
+| OnboardingService | Profiles (approval/suspension fields) | ProfileService |
+| AccountMergeService | Profiles, ContactFields, VolunteerHistoryEntries | ProfileService |
+| DuplicateAccountService | Profiles, ContactFields, VolunteerHistoryEntries | ProfileService |
+| ProfileService | Applications | OnboardingService |
+| SystemTeamSyncJob | TeamMembers, TeamRoleAssignments | TeamService |
+| ProcessAccountDeletionsJob | TeamRoleAssignments, ContactFields, VolunteerHistoryEntries | TeamService, ProfileService |
+| TicketSyncService | CampaignGrants | CampaignService |
+| TicketingBudgetService | BudgetLineItems, TicketingProjections | BudgetService |
+| CityPlanningService | CampSeasons | CampService |
+| CampaignService | EmailOutboxMessages | OutboxEmailService |
+| AccountMergeService | RoleAssignments | RoleAssignmentService |
+| GoogleWorkspaceSyncService | Users (GoogleEmailStatus) | Identity/UserManager |
+
+**Read violations (less critical but prevent caching):**
+
+Too many to list individually. The pattern is: services query tables they don't own to get display names, check membership, count records, or verify authorization. The most common reads across boundaries are:
+- TeamMembers (11 sections check membership)
+- Users (display names, email)
+- Profiles (status checks, counts)
+- RoleAssignments (authorization checks)
+
+---
+
+## Prioritized Fix Plan
+
+Strategy: start from the **least-intertwined services** (island sections) and work toward the heavily cross-cut core. Each phase makes the next one easier because it reduces the number of cross-boundary accesses.
+
+### Phase 1 — Island Services (no inbound violations)
+
+These services own their tables cleanly and no other service writes to them. The work is purely moving the *read* queries from other services into these services' APIs, then calling the service instead.
+
+**1a. FeedbackService**
+- Currently reads Users (display name) and Teams (name) directly
+- Add lookup methods or accept display names from callers
+- Effort: trivial
+
+**1b. GeneralAvailabilityService**
+- Reads Users for display names
+- Same pattern as above
+- Effort: trivial
+
+**1c. CommunicationPreferenceService**
+- NotificationService and ContactService read CommunicationPreferences directly
+- Add `GetPreferencesForUserAsync(userId)` / `IsOptedOutAsync(userId, category)` if not already present
+- Effort: small
+
+**1d. SyncSettingsService**
+- Already clean. No work needed.
+
+**1e. ConsentService**
+- MembershipCalculator reads ConsentRecords directly
+- Add a method like `GetConsentedVersionIdsAsync(userId)` or `GetConsentMapForUsersAsync(userIds)`
+- Effort: small
+
+### Phase 2 — Self-Contained Sections with Minor Boundary Reads
+
+**2a. Legal (LegalDocumentSyncService / AdminLegalDocumentService)**
+- MembershipCalculator reads LegalDocuments/DocumentVersions for required doc lists
+- Add `GetRequiredDocumentVersionsAsync(teamId?)` to the legal service
+- Effort: small
+
+**2b. CampService ← CityPlanningService**
+- CityPlanningService reads AND writes CampSeasons
+- CityPlanningService should call CampService methods for season data and mutations (e.g., `GetSeasonAsync`, `UpdateSeasonPlacementDatesAsync`)
+- Effort: moderate — CityPlanning has several CampSeason write paths
+
+**2c. Shifts (ShiftManagementService / ShiftSignupService)**
+- Reads Teams/TeamMembers for authorization
+- Reads RoleAssignments for coordinator checks
+- Wire through TeamService and RoleAssignmentService APIs instead of direct queries
+- Effort: moderate (shift-auth cache already helps, but the underlying queries still bypass)
+
+### Phase 3 — Ticket/Budget/Campaign Triangle
+
+These three sections have write violations across each other.
+
+**3a. TicketSyncService → CampaignService**
+- TicketSyncService writes CampaignGrants (marks RedeemedAt)
+- Add `MarkGrantRedeemedAsync(code, redeemedAt)` to CampaignService
+- Effort: small
+
+**3b. TicketingBudgetService → BudgetService**
+- Writes BudgetLineItems and TicketingProjections directly
+- Add methods to BudgetService: `UpsertAutoLineItemsAsync(categoryId, items)`, `UpdateProjectionAsync(groupId, actuals)`
+- Effort: moderate — the weekly line-item upsert logic is non-trivial
+
+**3c. CampaignService → OutboxEmailService**
+- Creates EmailOutboxMessages directly
+- Should call OutboxEmailService to enqueue
+- Effort: small
+
+**3d. ProfileService → TicketQueryService**
+- ProfileService reads TicketOrders/TicketAttendees/TicketSyncStates for hold date
+- Add `GetEventHoldStatusAsync(userId)` to TicketQueryService
+- Effort: small
+
+### Phase 4 — Google Integration
+
+**4a. GoogleWorkspaceSyncService**
+- Reads TeamMembers, Teams directly → call TeamService
+- Writes Users.GoogleEmailStatus → call a method on an identity/account service
+- Effort: moderate — sync service is complex and uses IDbContextFactory for parallelism
+
+**4b. GoogleAdminService**
+- Reads/writes UserEmails → call UserEmailService
+- Reads TeamMembers → call TeamService
+- Effort: moderate
+
+### Phase 5 — Governance and Onboarding
+
+**5a. ApplicationDecisionService → ProfileService**
+- Writes `profile.MembershipTier` directly on approval
+- ProfileService should expose `UpdateMembershipTierAsync(userId, tier)`
+- Effort: small code change but important for cache correctness
+
+**5b. ProfileService → OnboardingService**
+- ProfileService creates/updates Applications on profile save
+- This is a write violation in the wrong direction (Profiles writing to Governance)
+- Move application creation to ApplicationDecisionService, call it from ProfileService
+- Effort: moderate — tangled in the profile save flow
+
+**5c. OnboardingService → ProfileService**
+- Writes approval/suspension/consent-check fields on Profiles directly
+- Should call ProfileService methods for these mutations
+- This is the single biggest source of cache-busting for ApprovedProfiles
+- Effort: moderate-large — OnboardingService has many paths that mutate profile state
+
+### Phase 6 — Core Cross-Cutting (TeamMembers, Users, Profiles)
+
+**6a. TeamMembers read access**
+- 11 sections read TeamMembers for authorization checks
+- TeamService already has `ActiveTeams` cache with member lists
+- Add/expose `IsUserMemberOfTeamAsync`, `GetUserTeamIdsAsync`, `GetTeamMemberUserIdsAsync` methods that serve from cache
+- Many callers can switch to these without touching the DB
+- Effort: moderate — many call sites to update, but each one is mechanical
+
+**6b. Users read access (display names, email)**
+- Nearly universal. Many services just need `DisplayName` or `Email`
+- Consider a lightweight `IUserLookupService` (or methods on an existing service) that serves from a cached dictionary
+- Effort: moderate — mechanical but widespread
+
+**6c. Profiles read access**
+- ProfileService's `ApprovedProfiles` cache already holds what most callers need
+- Expose read methods that serve from cache: `GetApprovedProfileAsync(userId)`, `GetProfileCountsAsync()`
+- Redirect NotificationMeterProvider, HumansMetricsService, etc. to use ProfileService instead of querying the table
+- Effort: moderate
+
+### Phase 7 — Jobs and Account Operations
+
+**7a. SystemTeamSyncJob → TeamService**
+- Writes TeamMembers and TeamRoleAssignments directly
+- Needs `AddMemberToTeamAsync` / `RemoveMemberFromTeamAsync` methods on TeamService
+- Effort: large — this is the most complex job in the system
+
+**7b. ProcessAccountDeletionsJob → ProfileService, TeamService**
+- Anonymizes profiles, removes contact fields, volunteer history, role assignments directly
+- Should orchestrate through the owning services
+- Effort: large — touches many tables across sections
+
+**7c. AccountMergeService / DuplicateAccountService → ProfileService, RoleAssignmentService**
+- Write to Profiles (anonymize), RoleAssignments (end), ContactFields, VolunteerHistoryEntries
+- Should call owning services for each mutation
+- Effort: moderate-large
+
+### Phase 8 — View Components and Controllers
+
+After services own their data properly, move the view component DB queries and cache population into the owning services:
+
+- NavBadgesViewComponent → new method on a service (or NotificationMeterProvider)
+- NotificationBellViewComponent → NotificationInboxService
+- NobodiesEmailBadgeViewComponent → a Google/Email service
+- ProfileCardViewComponent → ProfileService
+- AuditLogViewComponent → AuditLogService
+- MyGoogleResourcesViewComponent → TeamResourceService
+
+Controller DB access should follow the same pattern — each controller call goes through a service.
+
+### Summary
+
+| Phase | Scope | Effort | Impact |
+|-------|-------|--------|--------|
+| 1 | Island services (Feedback, GA, CommPrefs, Consent) | Small | Low risk, establishes pattern |
+| 2 | Self-contained sections (Legal, Camps←CityPlanning, Shifts) | Small-Moderate | Removes first write violations |
+| 3 | Ticket/Budget/Campaign triangle | Moderate | Fixes cross-section writes |
+| 4 | Google integration | Moderate | Reduces sync complexity |
+| 5 | Governance/Onboarding ↔ Profiles | Moderate-Large | Fixes ApprovedProfiles cache reliability |
+| 6 | Core cross-cutting (TeamMembers, Users, Profiles reads) | Moderate | Enables proper caching everywhere |
+| 7 | Jobs and account operations | Large | Removes last direct DB mutations |
+| 8 | View components and controllers | Moderate | Completes the service layer boundary |
+
+---
+
 ## Appendix A: Out-of-Service Database Access
 
 Controllers and view components that inject `HumansDbContext` or `IMemoryCache` directly, bypassing the service layer.
