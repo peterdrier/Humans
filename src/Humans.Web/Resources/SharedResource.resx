@@ -1128,7 +1128,7 @@
 &lt;p&gt;Dear {0},&lt;/p&gt;
 &lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account.&lt;/p&gt;
 &lt;p&gt;Please click the link below to verify this email address:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}"&gt;Verify Email Address&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verify Email Address&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
 &lt;p&gt;If you did not request this change, you can safely ignore this email.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
@@ -1138,7 +1138,7 @@
 &lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account. This email address is currently linked to another account.&lt;/p&gt;
 &lt;p&gt;If you verify this email, a merge request will be submitted for admin review. Once approved, data from the other account will be merged into yours and the duplicate account will be archived.&lt;/p&gt;
 &lt;p&gt;Please click the link below to verify and request the merge:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}"&gt;Verify and Request Merge&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verify and Request Merge&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
 &lt;p&gt;If you did not request this, you can safely ignore this email. No changes will be made.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>

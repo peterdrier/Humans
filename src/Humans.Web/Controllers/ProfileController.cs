@@ -610,14 +610,14 @@ public class ProfileController : HumansControllerBase
             ViewData["Message"] = string.Format(_localizer["Profile_EmailVerified"].Value, result.Email);
             return View("VerifyEmailResult");
         }
-        catch (InvalidOperationException)
+        catch (InvalidOperationException ex)
         {
-            _logger.LogInformation("Email verification failed for user {UserId}", userId);
+            _logger.LogInformation("Email verification failed for user {UserId}: {Message}", userId, ex.Message);
             return VerifyEmailError(_localizer["Profile_InvalidVerificationLink"].Value);
         }
         catch (ValidationException ex)
         {
-            _logger.LogInformation("Email verification validation failed for user {UserId}", userId);
+            _logger.LogInformation("Email verification validation failed for user {UserId}: {Message}", userId, ex.Message);
             return VerifyEmailError(ex.Message);
         }
     }
