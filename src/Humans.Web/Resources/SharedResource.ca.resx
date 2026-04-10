@@ -1400,10 +1400,12 @@
   <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Zona límit pujada</value></data>
   <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>Eliminar la zona límit?</value></data>
   <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>Encara no s'ha pujat cap zona límit.</value></data>
+  <data name="CityPlanning_Admin_LimitZoneHint" xml:space="preserve"><value>Les entitats poden incloure una propietat SoundZone opcional. Valors vàlids: blue, green, yellow, orange, red, o dos combinats amb un guió baix (p. ex. yellow_orange).</value></data>
   <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Zones oficials</value></data>
   <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Zones oficials pujades</value></data>
   <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>Eliminar les zones oficials?</value></data>
   <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>Encara no s'han pujat zones oficials.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesHint" xml:space="preserve"><value>L'etiqueta de cada entitat es llegeix de la propietat Name, si és present.</value></data>
   <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>Pujar arxiu GeoJSON</value></data>
   <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Pujar</value></data>
   <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Descarregar</value></data>

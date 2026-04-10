@@ -1400,10 +1400,12 @@
   <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Zona límite subida</value></data>
   <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>¿Eliminar la zona límite?</value></data>
   <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>Aún no se ha subido ninguna zona límite.</value></data>
+  <data name="CityPlanning_Admin_LimitZoneHint" xml:space="preserve"><value>Las entidades pueden incluir una propiedad SoundZone opcional. Valores válidos: blue, green, yellow, orange, red, o dos combinados con guión bajo (p. ej. yellow_orange).</value></data>
   <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Zonas Oficiales</value></data>
   <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Zonas oficiales subidas</value></data>
   <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>¿Eliminar las zonas oficiales?</value></data>
   <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>Aún no se han subido zonas oficiales.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesHint" xml:space="preserve"><value>La etiqueta de cada entidad se lee de la propiedad Name, si está presente.</value></data>
   <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>Subir archivo GeoJSON</value></data>
   <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Subir</value></data>
   <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Descargar</value></data>

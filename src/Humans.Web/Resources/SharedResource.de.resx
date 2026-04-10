@@ -1398,10 +1398,12 @@
   <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Grenzzone hochgeladen</value></data>
   <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>Grenzzone löschen?</value></data>
   <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>Noch keine Grenzzone hochgeladen.</value></data>
+  <data name="CityPlanning_Admin_LimitZoneHint" xml:space="preserve"><value>Features können eine optionale SoundZone-Eigenschaft enthalten. Gültige Werte: blue, green, yellow, orange, red, oder zwei kombiniert mit Unterstrich (z. B. yellow_orange).</value></data>
   <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Offizielle Zonen</value></data>
   <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Offizielle Zonen hochgeladen</value></data>
   <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>Offizielle Zonen löschen?</value></data>
   <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>Noch keine offiziellen Zonen hochgeladen.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesHint" xml:space="preserve"><value>Das Label jedes Features wird aus der Eigenschaft Name gelesen, falls vorhanden.</value></data>
   <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>GeoJSON-Datei hochladen</value></data>
   <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Hochladen</value></data>
   <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Herunterladen</value></data>

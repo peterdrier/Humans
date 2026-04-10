@@ -1398,10 +1398,12 @@
   <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Zona limite caricata</value></data>
   <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>Eliminare la zona limite?</value></data>
   <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>Nessuna zona limite ancora caricata.</value></data>
+  <data name="CityPlanning_Admin_LimitZoneHint" xml:space="preserve"><value>Le feature possono includere una proprietà SoundZone opzionale. Valori validi: blue, green, yellow, orange, red, o due combinati con un underscore (es. yellow_orange).</value></data>
   <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Zone ufficiali</value></data>
   <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Zone ufficiali caricate</value></data>
   <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>Eliminare le zone ufficiali?</value></data>
   <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>Nessuna zona ufficiale ancora caricata.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesHint" xml:space="preserve"><value>L'etichetta di ogni feature viene letta dalla proprietà Name, se presente.</value></data>
   <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>Carica file GeoJSON</value></data>
   <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Carica</value></data>
   <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Scarica</value></data>
