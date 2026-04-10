@@ -309,6 +309,11 @@ builder.Services.AddRateLimiter(options =>
         if (context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
             return RateLimitPartition.GetNoLimiter(string.Empty);
 
+        // Exclude local network — e2e tests and internal tooling run from 192.168.*
+        var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+        if (remoteIp is not null && remoteIp.StartsWith("192.168.", StringComparison.Ordinal))
+            return RateLimitPartition.GetNoLimiter(string.Empty);
+
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
             factory: _ => new FixedWindowRateLimiterOptions

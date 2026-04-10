@@ -365,17 +365,16 @@ public class TeamService : ITeamService
     /// <inheritdoc />
     public async Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamGoogleResourcesAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var teamResources = await _dbContext.TeamMembers
+        var teamResources = await _dbContext.GoogleResources
             .AsNoTracking()
-            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
-            .SelectMany(tm => tm.Team.GoogleResources
-                .Where(r => r.IsActive)
-                .Select(r => new UserTeamGoogleResource(
-                    tm.Team.Name,
-                    tm.Team.Slug,
-                    r.Name,
-                    r.ResourceType,
-                    r.Url)))
+            .Where(r => r.IsActive)
+            .Where(r => r.Team.Members.Any(tm => tm.UserId == userId && tm.LeftAt == null))
+            .Select(r => new UserTeamGoogleResource(
+                r.Team.Name,
+                r.Team.Slug,
+                r.Name,
+                r.ResourceType,
+                r.Url))
             .OrderBy(r => r.TeamName)
             .ThenBy(r => r.ResourceName)
             .ToListAsync(cancellationToken);
