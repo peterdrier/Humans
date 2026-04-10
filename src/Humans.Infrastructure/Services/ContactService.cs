@@ -197,13 +197,15 @@ public class ContactService : IContactService
             })
             .ToListAsync(ct);
 
+        var contactIds = contacts.Select(c => c.Id).ToList();
+        var usersWithPrefs = await _preferenceService.GetUsersWithAnyPreferencesAsync(contactIds, ct);
+
         var results = new List<AdminContactRow>(contacts.Count);
         foreach (var c in contacts)
         {
-            var hasPref = await _preferenceService.HasAnyPreferencesAsync(c.Id, ct);
             results.Add(new AdminContactRow(
                 c.Id, c.Email, c.DisplayName, c.ContactSource,
-                c.ExternalSourceId, c.CreatedAt, hasPref));
+                c.ExternalSourceId, c.CreatedAt, usersWithPrefs.Contains(c.Id)));
         }
 
         return results;

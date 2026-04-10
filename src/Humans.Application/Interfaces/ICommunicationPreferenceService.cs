@@ -74,4 +74,10 @@ public interface ICommunicationPreferenceService
     /// </summary>
     Task<bool> HasAnyPreferencesAsync(
         Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the set of user IDs (from the input list) that have any communication preferences.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken cancellationToken = default);
 }

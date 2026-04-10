@@ -46,28 +46,14 @@ public class UnsubscribeService : IUnsubscribeService
 
     public async Task<UnsubscribeTokenResult> ConfirmUnsubscribeAsync(string token, string source, CancellationToken ct = default)
     {
-        // Try new category-aware token first
-        var result = _preferenceService.ValidateUnsubscribeToken(token);
-        if (result is not null)
-        {
-            var (userId, category) = result.Value;
-            var user = await _db.Users.FindAsync(new object[] { userId }, ct);
-            if (user is null)
-                return UnsubscribeTokenResult.Invalid();
+        var result = await ValidateTokenAsync(token, ct);
+        if (!result.IsValid || !result.UserId.HasValue || !result.Category.HasValue)
+            return result;
 
-            await _preferenceService.UpdatePreferenceAsync(userId, category, optedOut: true, source: source);
-            return UnsubscribeTokenResult.Valid(userId, user.DisplayName, category);
-        }
+        await _preferenceService.UpdatePreferenceAsync(
+            result.UserId.Value, result.Category.Value, optedOut: true, source: source);
 
-        // Fall back to legacy campaign-only token
-        var legacyResult = await ValidateLegacyTokenAsync(token, ct);
-        if (legacyResult.IsValid && legacyResult.UserId.HasValue)
-        {
-            await _preferenceService.UpdatePreferenceAsync(
-                legacyResult.UserId.Value, MessageCategory.Marketing, optedOut: true, source: source);
-        }
-
-        return legacyResult;
+        return result;
     }
 
     private async Task<UnsubscribeTokenResult> ValidateLegacyTokenAsync(string token, CancellationToken ct)

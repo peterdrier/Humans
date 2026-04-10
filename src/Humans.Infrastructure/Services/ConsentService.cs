@@ -16,6 +16,7 @@ public class ConsentService : IConsentService
     private readonly HumansDbContext _dbContext;
     private readonly IOnboardingService _onboardingService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ILegalDocumentSyncService _legalDocumentSyncService;
     private readonly INotificationInboxService _notificationInboxService;
     private readonly ISystemTeamSync _syncJob;
     private readonly IHumansMetrics _metrics;
@@ -26,6 +27,7 @@ public class ConsentService : IConsentService
         HumansDbContext dbContext,
         IOnboardingService onboardingService,
         IServiceProvider serviceProvider,
+        ILegalDocumentSyncService legalDocumentSyncService,
         INotificationInboxService notificationInboxService,
         ISystemTeamSync syncJob,
         IHumansMetrics metrics,
@@ -35,6 +37,7 @@ public class ConsentService : IConsentService
         _dbContext = dbContext;
         _onboardingService = onboardingService;
         _serviceProvider = serviceProvider;
+        _legalDocumentSyncService = legalDocumentSyncService;
         _notificationInboxService = notificationInboxService;
         _syncJob = syncJob;
         _metrics = metrics;
@@ -94,9 +97,7 @@ public class ConsentService : IConsentService
     public async Task<(DocumentVersion? Version, ConsentRecord? ExistingConsent, string? UserFullName)>
         GetConsentReviewDetailAsync(Guid documentVersionId, Guid userId, CancellationToken ct = default)
     {
-        var version = await _dbContext.DocumentVersions
-            .Include(v => v.LegalDocument)
-            .FirstOrDefaultAsync(v => v.Id == documentVersionId, ct);
+        var version = await _legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
 
         if (version is null)
             return (null, null, null);
@@ -115,9 +116,7 @@ public class ConsentService : IConsentService
         Guid userId, Guid documentVersionId, bool explicitConsent,
         string ipAddress, string userAgent, CancellationToken ct = default)
     {
-        var version = await _dbContext.DocumentVersions
-            .Include(v => v.LegalDocument)
-            .FirstOrDefaultAsync(v => v.Id == documentVersionId, ct);
+        var version = await _legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
 
         if (version is null)
             return new ConsentSubmitResult(false, ErrorKey: "NotFound");

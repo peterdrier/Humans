@@ -324,8 +324,8 @@ public class FeedbackService : IFeedbackService
             string newName = "Unassigned";
             if (assignedToUserId.HasValue)
             {
-                var user = await _dbContext.Users.FindAsync(new object[] { assignedToUserId.Value }, cancellationToken);
-                newName = user?.DisplayName ?? assignedToUserId.Value.ToString();
+                await _dbContext.Entry(report).Reference(r => r.AssignedToUser!).LoadAsync(cancellationToken);
+                newName = report.AssignedToUser?.DisplayName ?? assignedToUserId.Value.ToString();
             }
             changes.Add($"Assignee: {oldName} → {newName}");
         }
@@ -339,8 +339,8 @@ public class FeedbackService : IFeedbackService
             string newTeamName = "Unassigned";
             if (assignedToTeamId.HasValue)
             {
-                var team = await _dbContext.Teams.FindAsync(new object[] { assignedToTeamId.Value }, cancellationToken);
-                newTeamName = team?.Name ?? assignedToTeamId.Value.ToString();
+                await _dbContext.Entry(report).Reference(r => r.AssignedToTeam!).LoadAsync(cancellationToken);
+                newTeamName = report.AssignedToTeam?.Name ?? assignedToTeamId.Value.ToString();
             }
             changes.Add($"Team: {oldTeamName} → {newTeamName}");
         }
