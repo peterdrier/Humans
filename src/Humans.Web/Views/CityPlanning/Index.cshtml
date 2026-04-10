@@ -65,6 +65,22 @@
     </div>
     }
 
+    <!-- Admin panel link -->
+    @if (isMapAdmin)
+    {
+    <div class="position-absolute top-0 end-0 m-3">
+        <div class="card shadow-sm">
+            <div class="card-body d-flex flex-column align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm shadow-sm">
+                        <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    }
+
     <!-- Toolbars -->
     <div class="position-absolute bottom-0 start-50 translate-middle-x mb-3 d-flex flex-row gap-2">
         @if (isPlacementOpen || isMapAdmin)
@@ -95,16 +111,6 @@
             <button id="cancel-btn" class="btn btn-outline-secondary btn-sm" style="display:none">
                 <i class="fa fa-times me-1"></i> @Localizer["Common_Cancel"]
             </button>
-            </div>
-        </div>
-        }
-        @if (isMapAdmin)
-        {
-        <div class="card">
-            <div class="card-body">
-                <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm">
-                    <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
-                </a>
             </div>
         </div>
         }
