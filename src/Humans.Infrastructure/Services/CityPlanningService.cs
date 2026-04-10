@@ -82,7 +82,7 @@ public class CityPlanningService : ICityPlanningService
 
         return rows.Select(h => new CampPolygonHistoryEntryDto(
             h.Id,
-            h.ModifiedByUser.UserName ?? h.ModifiedByUserId.ToString(),
+            h.ModifiedByUser.DisplayName ?? h.ModifiedByUserId.ToString(),
             h.ModifiedAt.InZone(DateTimeZone.Utc).ToDateTimeUnspecified()
                 .ToString("d MMM yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture),
             h.AreaSqm,
