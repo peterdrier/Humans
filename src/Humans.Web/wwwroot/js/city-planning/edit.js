@@ -179,7 +179,6 @@ export async function loadHistory(campSeasonId, canEdit = false) {
     if (!id) return;
 
     const resp = await fetch(`/api/city-planning/camp-polygons/${id}/history`);
-    const history = await resp.json();
 
     if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
 
@@ -188,6 +187,14 @@ export async function loadHistory(campSeasonId, canEdit = false) {
     if (titleEl && campName) titleEl.textContent = `History of ${campName}`;
 
     const list = document.getElementById('history-list');
+
+    if (!resp.ok) {
+        list.innerHTML = '<p class="text-danger text-center py-4">Failed to load history.</p>';
+        bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
+        return;
+    }
+
+    const history = await resp.json();
     if (!history.length) {
         list.innerHTML = '<p class="text-muted text-center py-4">No history yet.</p>';
     } else {
