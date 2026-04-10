@@ -121,10 +121,10 @@ export function updateAddMyBarrioVisibility() {
 
 export function clearDrawLabel() {
     const { map } = appState;
-    map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [] });
-    map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: [] });
-    map.getSource('draw-warning-error').setData({ type: 'FeatureCollection', features: [] });
-    map.getSource('draw-warning-overlap').setData({ type: 'FeatureCollection', features: [] });
+    map.getSource('draw-label')?.setData({ type: 'FeatureCollection', features: [] });
+    map.getSource('draw-edge-labels')?.setData({ type: 'FeatureCollection', features: [] });
+    map.getSource('draw-warning-error')?.setData({ type: 'FeatureCollection', features: [] });
+    map.getSource('draw-warning-overlap')?.setData({ type: 'FeatureCollection', features: [] });
 }
 
 export function updateSaveButton() {
@@ -180,6 +180,11 @@ export async function loadHistory(campSeasonId, canEdit = false) {
 
     const resp = await fetch(`/api/city-planning/camp-polygons/${id}/history`);
     const history = await resp.json();
+
+    const campName = appState.campMap.campPolygons.find(p => p.campSeasonId === id)?.campName;
+    const titleEl = document.getElementById('history-panel-title');
+    if (titleEl && campName) titleEl.textContent = `History of ${campName}`;
+
     const list = document.getElementById('history-list');
     if (!history.length) {
         list.innerHTML = '<p class="text-muted text-center py-4">No history yet.</p>';
