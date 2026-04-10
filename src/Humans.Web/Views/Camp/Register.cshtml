@@ -16,6 +16,126 @@
 
 <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
+@* Barrio Information Accordion *@
+<div class="card mb-4 border-info">
+    <div class="card-header bg-info bg-opacity-10">
+        <i class="fa-solid fa-circle-info me-1"></i> What You Need to Know Before Registering Your @Localizer["Camp_Singular"]
+    </div>
+    <div class="card-body p-0">
+        <div class="accordion accordion-flush" id="barrio-info-accordion">
+            @* Benefits *@
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#barrio-benefits">
+                        <i class="fa-solid fa-gift me-2 text-success"></i>
+                        What Your @Localizer["Camp_Singular"] Gets
+                    </button>
+                </h2>
+                <div id="barrio-benefits" class="accordion-collapse collapse"
+                     data-bs-parent="#barrio-info-accordion">
+                    <div class="accordion-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <i class="fa-solid fa-bolt text-warning me-2"></i>
+                                <strong>Power access</strong> — connection to the electrical grid based on your selected tier
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-droplet text-primary me-2"></i>
+                                <strong>Water supply</strong> — access to the shared water infrastructure on site
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-map-pin text-danger me-2"></i>
+                                <strong>Placement on the city map</strong> — your @Localizer["Camp_Singular"] will be placed in a zone matching your sound and space preferences
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-bullhorn text-info me-2"></i>
+                                <strong>Listing and publicity</strong> — your @Localizer["Camp_Singular"] appears in the official directory and event guide, visible to all attendees
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-handshake-angle text-success me-2"></i>
+                                <strong>@Localizer["Camp_Singular"] support resources</strong> — access to shared infrastructure, community channels, and coordination support from the city planning team
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            @* Obligations *@
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#barrio-obligations">
+                        <i class="fa-solid fa-clipboard-check me-2 text-warning"></i>
+                        Your Obligations as a @Localizer["Camp_Singular"]
+                    </button>
+                </h2>
+                <div id="barrio-obligations" class="accordion-collapse collapse"
+                     data-bs-parent="#barrio-info-accordion">
+                    <div class="accordion-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <i class="fa-solid fa-user-check text-primary me-2"></i>
+                                <strong>Designate a contact person</strong> — at least one human must be reachable for coordination before and during the event
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-calendar-check text-success me-2"></i>
+                                <strong>Meet registration deadlines</strong> — complete your registration and provide all required information by the deadline set for the current season
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-people-carry-box text-warning me-2"></i>
+                                <strong>Participate in community shifts</strong> — contribute to shared duties such as gate shifts, setup, and teardown
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-broom text-info me-2"></i>
+                                <strong>Leave No Trace</strong> — clean up your area completely at the end of the event, leaving the land as you found it
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-handshake text-danger me-2"></i>
+                                <strong>Follow community guidelines</strong> — respect noise zones, fire safety rules, and the principles of the event
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            @* Resources *@
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#barrio-resources">
+                        <i class="fa-solid fa-toolbox me-2 text-primary"></i>
+                        Useful Resources and Tips
+                    </button>
+                </h2>
+                <div id="barrio-resources" class="accordion-collapse collapse"
+                     data-bs-parent="#barrio-info-accordion">
+                    <div class="accordion-body">
+                        <ul class="list-unstyled mb-0">
+                            <li class="mb-2">
+                                <i class="fa-solid fa-box text-warning me-2"></i>
+                                <strong>Containers</strong> — shipping containers can be arranged for storage and structure; note your needs in the Placement section below
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-tags text-success me-2"></i>
+                                <strong>Official pricing</strong> — pricing for power, water, and container rental will be shared with registered @Localizer["Camp_Plural"] before the season begins
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-truck text-info me-2"></i>
+                                <strong>Recommended vendors</strong> — a list of recommended local suppliers for shade structures, generators, and other equipment will be shared after registration
+                            </li>
+                            <li class="mb-2">
+                                <i class="fa-solid fa-lightbulb text-primary me-2"></i>
+                                <strong>Best practices</strong> — first-time @Localizer["Camp_Singular"] leads are encouraged to connect with experienced leads through the community channels for advice on layout, logistics, and community building
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <form asp-action="Register" method="post">
     @Html.AntiForgeryToken()
 
