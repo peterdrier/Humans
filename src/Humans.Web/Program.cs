@@ -45,7 +45,7 @@ var logConfig = new LoggerConfiguration()
     .Enrich.WithProperty("Application", "Humans.Web")
     .Enrich.With<PiiRedactionEnricher>()
     .WriteTo.Console()
-    .WriteTo.Sink(InMemoryLogSink.Instance, LogEventLevel.Warning);
+    .WriteTo.Sink(InMemoryLogSink.Instance, LogEventLevel.Information);
 
 if (Debugger.IsAttached)
 {

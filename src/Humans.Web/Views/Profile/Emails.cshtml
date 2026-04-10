@@ -12,6 +12,16 @@
 
         <vc:temp-data-alerts />
 
+        @if (Model.Emails.Any(e => e.IsPendingVerification))
+        {
+            <div class="alert alert-warning d-flex align-items-center mb-3">
+                <i class="fa-solid fa-envelope-circle-check me-2 fs-4"></i>
+                <div>
+                    <strong>Email verification pending</strong> — Check your inbox for the verification email and click the link to confirm your address.
+                </div>
+            </div>
+        }
+
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="mb-0">@Localizer["Emails_YourEmails"]</h5>
