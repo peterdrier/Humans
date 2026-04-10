@@ -46,3 +46,12 @@ public class ApiKeyAuthFilter(IOptions<FeedbackApiSettings> settings)
 
 public class LogApiKeyAuthFilter(IOptions<LogApiSettings> settings)
     : ApiKeyAuthFilterBase(settings.Value.ApiKey);
+
+public class NotificationApiSettings
+{
+    public string ApiKey { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+}
+
+public class NotificationApiKeyAuthFilter(IOptions<NotificationApiSettings> settings)
+    : ApiKeyAuthFilterBase(settings.Value.ApiKey);

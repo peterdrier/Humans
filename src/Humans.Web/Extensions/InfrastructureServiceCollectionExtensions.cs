@@ -204,6 +204,14 @@ public static class InfrastructureServiceCollectionExtensions
         });
         services.AddScoped<LogApiKeyAuthFilter>();
 
+        // Notification API key + user mapping
+        services.Configure<NotificationApiSettings>(opts =>
+        {
+            opts.ApiKey = Environment.GetEnvironmentVariable("NOTIFICATION_API_KEY") ?? string.Empty;
+            opts.UserId = Environment.GetEnvironmentVariable("NOTIFICATION_API_USER_ID") ?? string.Empty;
+        });
+        services.AddScoped<NotificationApiKeyAuthFilter>();
+
         // Ticket vendor integration
         var ticketVendorApiKey = Environment.GetEnvironmentVariable("TICKET_VENDOR_API_KEY") ?? string.Empty;
 
