@@ -503,6 +503,7 @@ public class ShiftsController : HumansControllerBase
             existing.EventName = model.EventName;
             existing.TimeZoneId = model.TimeZoneId;
             existing.GateOpeningDate = parsedDate.Value;
+            existing.Year = parsedDate.Value.Year;
             existing.BuildStartOffset = model.BuildStartOffset;
             existing.EventEndOffset = model.EventEndOffset;
             existing.StrikeEndOffset = model.StrikeEndOffset;
@@ -534,6 +535,7 @@ public class ShiftsController : HumansControllerBase
                 GlobalVolunteerCap = model.GlobalVolunteerCap,
                 ReminderLeadTimeHours = model.ReminderLeadTimeHours,
                 IsActive = model.IsActive,
+                Year = parsedDate.Value.Year,
                 CreatedAt = _clock.GetCurrentInstant()
             };
 

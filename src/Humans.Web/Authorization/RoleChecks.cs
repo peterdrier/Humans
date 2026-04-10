@@ -154,16 +154,7 @@ public static class RoleChecks
 
         if (IsBoard(user) || IsHumanAdmin(user))
         {
-            return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.HumanAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.CampAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.TicketAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.NoInfoAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.FeedbackAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.FinanceAdmin, StringComparison.Ordinal);
+            return RoleNames.BoardManageableRoles.Contains(roleName);
         }
 
         return false;

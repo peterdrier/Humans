@@ -9,31 +9,13 @@ namespace Humans.Application.Authorization;
 ///
 /// Authorization logic:
 /// - Admin: can manage any role
-/// - Board or HumanAdmin: can manage Board, HumanAdmin, TeamsAdmin, CampAdmin,
-///   TicketAdmin, NoInfoAdmin, FeedbackAdmin, FinanceAdmin, ConsentCoordinator,
-///   and VolunteerCoordinator
+/// - Board or HumanAdmin: can manage roles in RoleNames.BoardManageableRoles
 /// - System principal: can manage any role (for background jobs)
 /// - Everyone else: deny
 /// </summary>
 public class RoleAssignmentAuthorizationHandler : AuthorizationHandler<RoleAssignmentOperationRequirement, string>
 {
-    /// <summary>
-    /// Roles that Board and HumanAdmin are permitted to manage.
-    /// Must match BoardAssignableRoles in the Web layer's RoleChecks.
-    /// </summary>
-    private static readonly HashSet<string> BoardManageableRoles = new(StringComparer.Ordinal)
-    {
-        RoleNames.Board,
-        RoleNames.HumanAdmin,
-        RoleNames.TeamsAdmin,
-        RoleNames.CampAdmin,
-        RoleNames.TicketAdmin,
-        RoleNames.NoInfoAdmin,
-        RoleNames.FeedbackAdmin,
-        RoleNames.FinanceAdmin,
-        RoleNames.ConsentCoordinator,
-        RoleNames.VolunteerCoordinator
-    };
+    private static IReadOnlySet<string> BoardManageableRoles => RoleNames.BoardManageableRoles;
 
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,

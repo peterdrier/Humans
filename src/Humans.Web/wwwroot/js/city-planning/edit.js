@@ -208,7 +208,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
                     </div>
                     <div class="d-flex gap-1 flex-shrink-0">
                         <button class="btn btn-outline-secondary btn-sm py-0 preview-btn" data-id="${h.id}" data-geojson="${encodeURIComponent(h.geoJson)}">Preview</button>
-                        ${canEdit ? `<button class="btn btn-outline-warning btn-sm py-0 restore-btn" data-id="${h.id}">Restore</button>` : ''}
+                        ${CONFIG.IS_MAP_ADMIN ? `<button class="btn btn-outline-warning btn-sm py-0 restore-btn" data-id="${h.id}">Restore</button>` : ''}
                     </div>
                 </div>
             </div>
