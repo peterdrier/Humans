@@ -46,6 +46,7 @@ public class ProfileController : HumansControllerBase
     private readonly ILogger<ProfileController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
 
@@ -90,6 +91,7 @@ public class ProfileController : HumansControllerBase
         ILogger<ProfileController> logger,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext,
+        ITicketQueryService ticketQueryService,
         IMemoryCache cache,
         IClock clock)
         : base(userManager)
@@ -111,6 +113,7 @@ public class ProfileController : HumansControllerBase
         _logger = logger;
         _localizer = localizer;
         _dbContext = dbContext;
+        _ticketQueryService = ticketQueryService;
         _cache = cache;
         _clock = clock;
     }
@@ -1646,9 +1649,8 @@ public class ProfileController : HumansControllerBase
         var prefs = await _commPrefService.GetPreferencesAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        // Check if user has a matched ticket order (locks ticketing preference)
-        var hasTicketOrder = await _dbContext.TicketOrders
-            .AnyAsync(o => o.MatchedUserId == userId);
+        // Check if user is a matched ticket attendee (locks ticketing preference)
+        var hasTicketOrder = await _ticketQueryService.HasTicketAttendeeMatchAsync(userId);
 
         var categories = new List<CategoryPreferenceItem>();
 
@@ -1669,7 +1671,7 @@ public class ProfileController : HumansControllerBase
                 AlertEnabled = pref?.InboxEnabled ?? true,
                 EmailEditable = !isAlwaysOn && !isTicketingLocked,
                 AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                Note = isTicketingLocked ? "Locked — you have a ticket order for this year" : null,
+                Note = isTicketingLocked ? "Locked — you have a ticket for this year" : null,
             });
         }
 

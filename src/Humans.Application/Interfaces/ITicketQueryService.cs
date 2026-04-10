@@ -107,10 +107,10 @@ public interface ITicketQueryService
     Task<List<OrderExportRow>> GetOrderExportDataAsync();
 
     /// <summary>
-    /// Checks whether a user has any ticket association (order or attendee match).
-    /// Used for guest dashboard and communication preferences.
+    /// Checks whether a user has a matched ticket attendee record.
+    /// Used for guest dashboard and communication preferences ticketing lock.
     /// </summary>
-    Task<bool> HasAnyTicketAssociationAsync(Guid userId);
+    Task<bool> HasTicketAttendeeMatchAsync(Guid userId);
 
     /// <summary>
     /// Gets ticket order summaries for a specific user (as buyer), ordered by most recent first.

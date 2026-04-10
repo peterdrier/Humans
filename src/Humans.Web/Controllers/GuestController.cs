@@ -251,7 +251,7 @@ public class GuestController : HumansControllerBase
         };
 
         // Ticket status: check for matched ticket orders and attendees
-        var hasTickets = await _ticketQueryService.HasAnyTicketAssociationAsync(user.Id);
+        var hasTickets = await _ticketQueryService.HasTicketAttendeeMatchAsync(user.Id);
 
         if (hasTickets)
         {
@@ -311,7 +311,7 @@ public class GuestController : HumansControllerBase
         var prefs = await _commPrefService.GetPreferencesAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        var hasTicketOrder = await _ticketQueryService.HasAnyTicketAssociationAsync(userId);
+        var hasTicketOrder = await _ticketQueryService.HasTicketAttendeeMatchAsync(userId);
 
         var categories = new List<CategoryPreferenceItem>();
 
@@ -332,7 +332,7 @@ public class GuestController : HumansControllerBase
                 AlertEnabled = pref?.InboxEnabled ?? true,
                 EmailEditable = !isAlwaysOn && !isTicketingLocked,
                 AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                Note = isTicketingLocked ? "Locked — you have a ticket order for this year" : null,
+                Note = isTicketingLocked ? "Locked — you have a ticket for this year" : null,
             });
         }
 

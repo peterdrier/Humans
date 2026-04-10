@@ -873,12 +873,8 @@ public class TicketQueryService : ITicketQueryService
     }
 
     /// <inheritdoc />
-    public async Task<bool> HasAnyTicketAssociationAsync(Guid userId)
+    public async Task<bool> HasTicketAttendeeMatchAsync(Guid userId)
     {
-        var hasOrder = await _dbContext.TicketOrders
-            .AnyAsync(o => o.MatchedUserId == userId);
-        if (hasOrder) return true;
-
         return await _dbContext.TicketAttendees
             .AnyAsync(a => a.MatchedUserId == userId);
     }

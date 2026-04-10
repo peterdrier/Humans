@@ -88,8 +88,8 @@ public class BoardController : HumansControllerBase
             TotalCount = result.TotalCount,
             PageNumber = page,
             PageSize = pageSize,
-            UserDisplayNames = result.UserDisplayNames.ToDictionary(kv => kv.Key, kv => kv.Value),
-            TeamNames = result.TeamNames.ToDictionary(kv => kv.Key, kv => kv.Value)
+            UserDisplayNames = result.UserDisplayNames,
+            TeamNames = result.TeamNames
         };
 
         return View("~/Views/Shared/AuditLog.cshtml", viewModel);

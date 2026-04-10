@@ -177,7 +177,6 @@ public interface ITeamService
     /// </summary>
     Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamGoogleResourcesAsync(Guid userId, CancellationToken cancellationToken = default);
 
-
     /// <summary>
     /// Gets the current user's team memberships with viewer-specific pending-request counts.
     /// </summary>

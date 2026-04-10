@@ -96,5 +96,5 @@ public record AuditLogPageResult(
     IReadOnlyList<AuditLogEntry> Items,
     int TotalCount,
     int AnomalyCount,
-    IReadOnlyDictionary<Guid, string> UserDisplayNames,
-    IReadOnlyDictionary<Guid, (string Name, string Slug)> TeamNames);
+    Dictionary<Guid, string> UserDisplayNames,
+    Dictionary<Guid, (string Name, string Slug)> TeamNames);
