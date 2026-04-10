@@ -25,17 +25,19 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<List<CampPolygonDto>> GetCampPolygonsAsync(int year, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampPolygons
+        var polygons = await _dbContext.CampPolygons
             .Include(p => p.CampSeason).ThenInclude(s => s.Camp)
             .Where(p => p.CampSeason.Year == year)
-            .Select(p => new CampPolygonDto(
-                p.CampSeasonId,
-                p.CampSeason.Name,
-                p.CampSeason.Camp.Slug,
-                p.GeoJson,
-                p.AreaSqm,
-                p.CampSeason.SoundZone))
             .ToListAsync(cancellationToken);
+
+        return polygons.Select(p => new CampPolygonDto(
+            p.CampSeasonId,
+            p.CampSeason.Name,
+            p.CampSeason.Camp.Slug,
+            p.GeoJson,
+            p.AreaSqm,
+            p.CampSeason.SoundZone,
+            SpaceSizeToSqm(p.CampSeason.SpaceRequirement))).ToList();
     }
 
     public async Task<SoundZone?> GetCampSeasonSoundZoneAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
@@ -64,13 +66,30 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(int year, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampSeasons
+        var seasons = await _dbContext.CampSeasons
             .Include(s => s.Camp)
             .Where(s => s.Year == year
                 && !_dbContext.CampPolygons.Any(p => p.CampSeasonId == s.Id))
-            .Select(s => new CampSeasonSummaryDto(s.Id, s.Name, s.Camp.Slug))
             .ToListAsync(cancellationToken);
+
+        return seasons.Select(s => new CampSeasonSummaryDto(s.Id, s.Name, s.Camp.Slug, SpaceSizeToSqm(s.SpaceRequirement))).ToList();
     }
+
+    private static double? SpaceSizeToSqm(SpaceSize? size) => size switch
+    {
+        SpaceSize.Sqm150  => 150,
+        SpaceSize.Sqm300  => 300,
+        SpaceSize.Sqm450  => 450,
+        SpaceSize.Sqm600  => 600,
+        SpaceSize.Sqm800  => 800,
+        SpaceSize.Sqm1000 => 1000,
+        SpaceSize.Sqm1200 => 1200,
+        SpaceSize.Sqm1500 => 1500,
+        SpaceSize.Sqm1800 => 1800,
+        SpaceSize.Sqm2200 => 2200,
+        SpaceSize.Sqm2800 => 2800,
+        _                 => null
+    };
 
     public async Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
     {

@@ -21,14 +21,20 @@ export function parseLimitZoneGeom(geoJson) {
 export function buildCampPolygonFeatures(campPolygons) {
     const features = campPolygons.map(p => {
         const f = JSON.parse(p.geoJson);
+        const spaceReq = p.spaceRequirementSqm ?? null;
+        const spaceOutOfRange = spaceReq && p.areaSqm
+            ? (p.areaSqm > spaceReq * 1.5 || p.areaSqm < spaceReq * 0.5)
+            : false;
         f.properties = Object.assign(f.properties || {}, {
-            campSeasonId: p.campSeasonId,
-            campName:     p.campName,
-            areaSqm:      p.areaSqm,
-            isOwn:        p.campSeasonId === CONFIG.USER_CAMP_SEASON_ID,
-            soundZone:    (p.soundZone !== undefined && p.soundZone !== null) ? p.soundZone : -1,
-            outsideZone:  isOutsideZone(f),
-            overlaps:     false,
+            campSeasonId:       p.campSeasonId,
+            campName:           p.campName,
+            areaSqm:            p.areaSqm,
+            isOwn:              p.campSeasonId === CONFIG.USER_CAMP_SEASON_ID,
+            soundZone:          (p.soundZone !== undefined && p.soundZone !== null) ? p.soundZone : -1,
+            outsideZone:        isOutsideZone(f),
+            overlaps:           false,
+            spaceRequirementSqm: spaceReq,
+            spaceOutOfRange:    spaceOutOfRange,
         });
         return f;
     });

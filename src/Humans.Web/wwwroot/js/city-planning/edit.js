@@ -4,6 +4,14 @@ import { CONFIG } from './config.js';
 import { isOutsideZone, overlapsOtherCamps } from './geometry.js';
 import { setActivePolygonDim } from './layers.js';
 
+function getSpaceRequirementSqm(campSeasonId) {
+    if (!campSeasonId) return null;
+    const poly = appState.campMap?.campPolygons?.find(p => p.campSeasonId === campSeasonId);
+    if (poly) return poly.spaceRequirementSqm ?? null;
+    const season = appState.campMap?.campSeasonsWithoutPolygon?.find(s => s.campSeasonId === campSeasonId);
+    return season?.spaceRequirementSqm ?? null;
+}
+
 function escHtml(s) {
     const d = document.createElement('div');
     d.textContent = s;
@@ -22,12 +30,19 @@ export function onCampPolygonClick(e) {
     const area         = props.areaSqm   ? `<div class="text-muted small">${Math.round(props.areaSqm).toLocaleString()} m²</div>` : '';
     const warning      = props.outsideZone ? `<div class="text-danger small">⚠️ Outside limits</div>` : '';
     const overlapWarn  = props.overlaps    ? `<div class="text-warning small">⚠️ Overlaps with another barrio</div>` : '';
+    const sizeWarn     = (() => {
+        if (!props.spaceRequirementSqm || !props.areaSqm) return '';
+        const ratio = props.areaSqm / props.spaceRequirementSqm;
+        if (ratio > 1.5) return `<div class="text-warning small">⚠️ Area much larger than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
+        if (ratio < 0.5) return `<div class="text-warning small">⚠️ Area much smaller than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
+        return '';
+    })();
     const editBtn      = canEdit ? `<button class="btn btn-primary btn-sm js-edit-barrio-btn">Edit</button>` : '';
     const historyBtn   = `<button class="btn btn-outline-secondary btn-sm js-history-barrio-btn"><i class="fa fa-history me-1"></i>History</button>`;
 
     if (appState.currentPopup) appState.currentPopup.remove();
     appState.currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
-        .setHTML(`<div><strong>${escHtml(props.campName || 'Camp')}</strong></div>${area}${warning}${overlapWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
+        .setHTML(`<div><strong>${escHtml(props.campName || 'Camp')}</strong></div>${area}${warning}${overlapWarn}${sizeWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
         .addTo(appState.map);
 
     if (canEdit) {
@@ -151,9 +166,18 @@ export function updateSaveButton() {
             ? { type: 'FeatureCollection', features: [poly] }
             : { type: 'FeatureCollection', features: [] });
 
+        const spaceReqSqm = getSpaceRequirementSqm(appState.activeCampSeasonId ?? appState.previewCampSeasonId);
+        const sizeWarning = (() => {
+            if (!spaceReqSqm) return '';
+            const ratio = area / spaceReqSqm;
+            if (ratio > 1.5) return `\n⚠️ Area larger than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
+            if (ratio < 0.5) return `\n⚠️ Area smaller than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
+            return '';
+        })();
         const warnings = [
-            ...(outside  ? ['\n⚠️ Outside limits'] : []),
-            ...(overlap   ? ['\n⚠️ Overlaps with another barrio'] : []),
+            ...(outside      ? ['\n⚠️ Outside limits'] : []),
+            ...(overlap       ? ['\n⚠️ Overlaps with another barrio'] : []),
+            ...(sizeWarning   ? [sizeWarning] : []),
         ];
         centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' + warnings.join('') };
         map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [centroid] });

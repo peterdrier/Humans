@@ -187,7 +187,11 @@ export function renderMap(onCampPolygonClick) {
     id: 'camp-polygons-labels', type: 'symbol', source: 'camp-polygons',
     layout: {
       'text-field': ['case',
-        ['any', ['boolean', ['get', 'outsideZone'], false], ['boolean', ['get', 'overlaps'], false]],
+        ['any',
+          ['boolean', ['get', 'outsideZone'], false],
+          ['boolean', ['get', 'overlaps'], false],
+          ['boolean', ['get', 'spaceOutOfRange'], false],
+        ],
         ['concat', '⚠️ ', ['get', 'campName']],
         ['get', 'campName'],
       ],
