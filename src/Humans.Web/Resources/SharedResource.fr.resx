@@ -1398,10 +1398,12 @@
   <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Zone limite importée</value></data>
   <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>Supprimer la zone limite ?</value></data>
   <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>Aucune zone limite importée.</value></data>
+  <data name="CityPlanning_Admin_LimitZoneHint" xml:space="preserve"><value>Les entités peuvent inclure une propriété SoundZone optionnelle. Valeurs valides : blue, green, yellow, orange, red, ou deux combinées avec un tiret bas (ex. yellow_orange).</value></data>
   <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Zones officielles</value></data>
   <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Zones officielles importées</value></data>
   <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>Supprimer les zones officielles ?</value></data>
   <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>Aucune zone officielle importée.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesHint" xml:space="preserve"><value>Le libellé de chaque entité est lu depuis la propriété Name, si elle est présente.</value></data>
   <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>Importer un fichier GeoJSON</value></data>
   <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Importer</value></data>
   <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Télécharger</value></data>

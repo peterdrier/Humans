@@ -1416,10 +1416,12 @@
   <data name="CityPlanning_Admin_LimitZoneUploaded" xml:space="preserve"><value>Limit zone uploaded</value></data>
   <data name="CityPlanning_Admin_LimitZoneDeleteConfirm" xml:space="preserve"><value>Delete the limit zone?</value></data>
   <data name="CityPlanning_Admin_LimitZoneEmpty" xml:space="preserve"><value>No limit zone uploaded yet.</value></data>
+  <data name="CityPlanning_Admin_LimitZoneHint" xml:space="preserve"><value>Features may include an optional SoundZone property. Valid values: blue, green, yellow, orange, red, or two combined with an underscore (e.g. yellow_orange).</value></data>
   <data name="CityPlanning_Admin_OfficialZonesCard" xml:space="preserve"><value>Official Zones</value></data>
   <data name="CityPlanning_Admin_OfficialZonesUploaded" xml:space="preserve"><value>Official zones uploaded</value></data>
   <data name="CityPlanning_Admin_OfficialZonesDeleteConfirm" xml:space="preserve"><value>Delete the official zones?</value></data>
   <data name="CityPlanning_Admin_OfficialZonesEmpty" xml:space="preserve"><value>No official zones uploaded yet.</value></data>
+  <data name="CityPlanning_Admin_OfficialZonesHint" xml:space="preserve"><value>Each feature's label is read from the Name property, if present.</value></data>
   <data name="CityPlanning_Admin_UploadGeoJson" xml:space="preserve"><value>Upload GeoJSON file</value></data>
   <data name="CityPlanning_Admin_Upload" xml:space="preserve"><value>Upload</value></data>
   <data name="CityPlanning_Admin_Download" xml:space="preserve"><value>Download</value></data>
