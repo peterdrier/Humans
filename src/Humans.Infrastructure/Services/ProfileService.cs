@@ -770,7 +770,7 @@ public class ProfileService : IProfileService
         var cached = await GetCachedProfilesAsync(ct);
         var results = new List<HumanSearchResult>();
 
-        foreach (var p in cached.Values)
+        foreach (var p in cached.Values.Where(p => p.IsApproved && !p.IsSuspended))
         {
             var (matchField, matchSnippet) = DetermineMatchFromCache(p, query);
             if (matchField is null) continue;

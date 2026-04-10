@@ -1121,7 +1121,7 @@ public class ProfileServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SearchHumansAsync_IncludesSuspended()
+    public async Task SearchHumansAsync_ExcludesSuspended()
     {
         var u1 = Guid.NewGuid();
         var u2 = Guid.NewGuid();
@@ -1136,7 +1136,28 @@ public class ProfileServiceTests : IDisposable
 
         var results = await _service.SearchHumansAsync("Madrid");
 
-        results.Should().HaveCount(2);
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(u2);
+    }
+
+    [Fact]
+    public async Task SearchHumansAsync_ExcludesUnapproved()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        await SeedUserAsync(u1);
+        await SeedUserAsync(u2);
+        var p1 = MakeProfile(u1, isApproved: false);
+        p1.City = "Madrid";
+        var p2 = MakeProfile(u2, isApproved: true);
+        p2.City = "Madrid";
+        await _dbContext.Profiles.AddRangeAsync(p1, p2);
+        await _dbContext.SaveChangesAsync();
+
+        var results = await _service.SearchHumansAsync("Madrid");
+
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(u2);
     }
 
     [Fact]

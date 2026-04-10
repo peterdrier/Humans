@@ -110,7 +110,8 @@ public interface IProfileService
 
     /// <summary>
     /// Updates a single entry in the profiles cache.
-    /// Pass null to remove the entry (e.g., on deletion).
+    /// Pass null to remove the entry (e.g., on account deletion).
+    /// For status changes like suspension, pass an updated <see cref="CachedProfile"/> instead.
     /// </summary>
     void UpdateProfileCache(Guid userId, CachedProfile? newValue);
 
