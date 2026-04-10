@@ -100,6 +100,7 @@ public class ApplicationDecisionService : IApplicationDecisionService
 
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
+        _cache.InvalidateUserProfile(application.UserId);
         foreach (var id in voterIds)
             _cache.InvalidateVotingBadge(id);
         _metrics.RecordApplicationProcessed("approved");

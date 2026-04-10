@@ -1349,7 +1349,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 {
                     var permToRemove = permissions.FirstOrDefault(p =>
                         IsDirectManagedPermission(p) &&
-                        string.Equals(p.EmailAddress, member.Email, StringComparison.OrdinalIgnoreCase));
+                        NormalizingEmailComparer.Instance.Equals(p.EmailAddress, member.Email));
 
                     if (permToRemove is null)
                     {
@@ -1565,7 +1565,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         // Find the direct managed permission for this user
                         var permToRemove = permissions.FirstOrDefault(p =>
                             IsDirectManagedPermission(p) &&
-                            string.Equals(p.EmailAddress, member.Email, StringComparison.OrdinalIgnoreCase));
+                            NormalizingEmailComparer.Instance.Equals(p.EmailAddress, member.Email));
 
                         if (permToRemove is null)
                         {

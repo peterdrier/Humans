@@ -1,19 +1,19 @@
 @model Humans.Web.Models.CommunicationPreferencesViewModel
 @{
-    ViewData["Title"] = "Communication Preferences";
+    ViewData["Title"] = Localizer["CommPrefs_Title"].Value;
 }
 
 <div class="row">
     <div class="col-12" style="max-width: 900px;">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a asp-action="Index">Profile</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Communication Preferences</li>
+                <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Nav_MyProfile"]</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@Localizer["CommPrefs_Title"]</li>
             </ol>
         </nav>
 
-        <h1>Communication Preferences</h1>
-        <p class="text-muted">Choose which communications you receive and how.</p>
+        <h1>@Localizer["CommPrefs_Title"]</h1>
+        <p class="text-muted">@Localizer["CommPrefs_Description"]</p>
 
         <vc:temp-data-alerts />
 
@@ -22,9 +22,9 @@
                 <table class="table table-hover mb-0 align-middle">
                     <thead>
                         <tr>
-                            <th style="min-width: 250px;">Category</th>
-                            <th class="text-center" style="width: 100px;">Email</th>
-                            <th class="text-center" style="width: 100px;">Alert</th>
+                            <th style="min-width: 250px;">@Localizer["CommPrefs_Category"]</th>
+                            <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Email"]</th>
+                            <th class="text-center" style="width: 100px;">@Localizer["CommPrefs_Alert"]</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -84,7 +84,7 @@
             </div>
         </div>
 
-        <a asp-action="Index" class="btn btn-outline-secondary">Back to Profile</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">@Localizer["CommPrefs_BackToProfile"]</a>
     </div>
 </div>
 

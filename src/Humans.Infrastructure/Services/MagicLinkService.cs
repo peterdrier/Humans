@@ -104,7 +104,7 @@ public class MagicLinkService : IMagicLinkService
         }
         catch (CryptographicException)
         {
-            _logger.LogWarning("Magic link login: invalid or expired token for user {UserId}", userId);
+            _logger.LogInformation("Magic link login: invalid or expired token for user {UserId}", userId);
             return null;
         }
 
@@ -117,7 +117,7 @@ public class MagicLinkService : IMagicLinkService
         // Mark token as consumed (cache for token lifetime to prevent replay)
         if (!await _memoryCache.TryReserveAsync(cacheKey, TokenLifetime))
         {
-            _logger.LogWarning("Magic link login: token already used for user {UserId}", userId);
+            _logger.LogInformation("Magic link login: token already used for user {UserId}", userId);
             return null;
         }
 
@@ -132,7 +132,7 @@ public class MagicLinkService : IMagicLinkService
         }
         catch (CryptographicException)
         {
-            _logger.LogWarning("Magic link signup: invalid or expired token for email {Email}",
+            _logger.LogInformation("Magic link signup: invalid or expired token for email {Email}",
                 expectedEmail ?? "unknown");
             return null;
         }

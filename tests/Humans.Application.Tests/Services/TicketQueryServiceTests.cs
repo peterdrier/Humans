@@ -25,7 +25,7 @@ public class TicketQueryServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
-        _service = new TicketQueryService(_dbContext, new MemoryCache(new MemoryCacheOptions()), Substitute.For<IBudgetService>());
+        _service = new TicketQueryService(_dbContext, new MemoryCache(new MemoryCacheOptions()), Substitute.For<IBudgetService>(), SystemClock.Instance);
     }
 
     public void Dispose()

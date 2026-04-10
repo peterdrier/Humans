@@ -49,146 +49,156 @@ public class ProcessGoogleSyncOutboxJob : IRecurringJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var pendingEvents = await _dbContext.GoogleSyncOutboxEvents
-            .Where(e => e.ProcessedAt == null && !e.FailedPermanently && e.RetryCount < MaxRetryCount)
-            .OrderBy(e => e.OccurredAt)
-            .Take(BatchSize)
-            .ToListAsync(cancellationToken);
-
-        if (pendingEvents.Count == 0)
+        try
         {
-            return;
-        }
+            var pendingEvents = await _dbContext.GoogleSyncOutboxEvents
+                .Where(e => e.ProcessedAt == null && !e.FailedPermanently && e.RetryCount < MaxRetryCount)
+                .OrderBy(e => e.OccurredAt)
+                .Take(BatchSize)
+                .ToListAsync(cancellationToken);
 
-        // Pre-load contextual info for richer error messages
-        var userIds = pendingEvents.Select(e => e.UserId).Distinct().ToList();
-        var teamIds = pendingEvents.Select(e => e.TeamId).Distinct().ToList();
-        var userEmailLookup = await _dbContext.Users
-            .Where(u => userIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Email ?? "unknown", cancellationToken);
-        var teamNameLookup = await _dbContext.Teams
-            .Where(t => teamIds.Contains(t.Id))
-            .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
-
-        foreach (var outboxEvent in pendingEvents)
-        {
-            try
+            if (pendingEvents.Count == 0)
             {
-                switch (outboxEvent.EventType)
+                return;
+            }
+
+            // Pre-load contextual info for richer error messages
+            var userIds = pendingEvents.Select(e => e.UserId).Distinct().ToList();
+            var teamIds = pendingEvents.Select(e => e.TeamId).Distinct().ToList();
+            var userEmailLookup = await _dbContext.Users
+                .Where(u => userIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.Email ?? "unknown", cancellationToken);
+            var teamNameLookup = await _dbContext.Teams
+                .Where(t => teamIds.Contains(t.Id))
+                .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
+
+            foreach (var outboxEvent in pendingEvents)
+            {
+                try
                 {
-                    case GoogleSyncOutboxEventTypes.AddUserToTeamResources:
-                        await _googleSyncService.AddUserToTeamResourcesAsync(
-                            outboxEvent.TeamId,
-                            outboxEvent.UserId,
-                            cancellationToken);
-                        break;
-
-                    case GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources:
-                        await _googleSyncService.RemoveUserFromTeamResourcesAsync(
-                            outboxEvent.TeamId,
-                            outboxEvent.UserId,
-                            cancellationToken);
-                        break;
-
-                    default:
-                        throw new InvalidOperationException($"Unknown outbox event type '{outboxEvent.EventType}'.");
-                }
-
-                outboxEvent.ProcessedAt = _clock.GetCurrentInstant();
-                outboxEvent.LastError = null;
-                _metrics.RecordSyncOperation("success");
-
-                // Only mark user as Valid when the event actually touched Google APIs
-                // (AddUserToTeamResources with linked resources). RemoveUserFromTeamResources
-                // is a no-op, and Add with zero resources doesn't validate the email.
-                if (string.Equals(outboxEvent.EventType, GoogleSyncOutboxEventTypes.AddUserToTeamResources, StringComparison.Ordinal))
-                {
-                    var hasResources = await _dbContext.GoogleResources
-                        .AnyAsync(r => r.TeamId == outboxEvent.TeamId && r.IsActive, cancellationToken);
-                    if (hasResources)
+                    switch (outboxEvent.EventType)
                     {
-                        await MarkUserGoogleEmailStatusAsync(outboxEvent.UserId, GoogleEmailStatus.Valid, cancellationToken);
+                        case GoogleSyncOutboxEventTypes.AddUserToTeamResources:
+                            await _googleSyncService.AddUserToTeamResourcesAsync(
+                                outboxEvent.TeamId,
+                                outboxEvent.UserId,
+                                cancellationToken);
+                            break;
+
+                        case GoogleSyncOutboxEventTypes.RemoveUserFromTeamResources:
+                            await _googleSyncService.RemoveUserFromTeamResourcesAsync(
+                                outboxEvent.TeamId,
+                                outboxEvent.UserId,
+                                cancellationToken);
+                            break;
+
+                        default:
+                            throw new InvalidOperationException($"Unknown outbox event type '{outboxEvent.EventType}'.");
                     }
+
+                    outboxEvent.ProcessedAt = _clock.GetCurrentInstant();
+                    outboxEvent.LastError = null;
+                    _metrics.RecordSyncOperation("success");
+
+                    // Only mark user as Valid when the event actually touched Google APIs
+                    // (AddUserToTeamResources with linked resources). RemoveUserFromTeamResources
+                    // is a no-op, and Add with zero resources doesn't validate the email.
+                    if (string.Equals(outboxEvent.EventType, GoogleSyncOutboxEventTypes.AddUserToTeamResources, StringComparison.Ordinal))
+                    {
+                        var hasResources = await _dbContext.GoogleResources
+                            .AnyAsync(r => r.TeamId == outboxEvent.TeamId && r.IsActive, cancellationToken);
+                        if (hasResources)
+                        {
+                            await MarkUserGoogleEmailStatusAsync(outboxEvent.UserId, GoogleEmailStatus.Valid, cancellationToken);
+                        }
+                    }
+
+                    await _dbContext.SaveChangesAsync(cancellationToken);
                 }
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-            catch (Google.GoogleApiException ex) when (IsPermanentError(ex))
-            {
-                _metrics.RecordSyncOperation("permanent_failure");
-                outboxEvent.FailedPermanently = true;
-                outboxEvent.ProcessedAt = _clock.GetCurrentInstant();
-                outboxEvent.LastError = ex.Message.Length > 4000
-                    ? ex.Message[..4000]
-                    : ex.Message;
-
-                _logger.LogWarning(
-                    ex,
-                    "Permanent failure processing Google sync outbox event {OutboxId} ({EventType}) for user {UserEmail} in team {TeamName} — HTTP {StatusCode}, not retrying",
-                    outboxEvent.Id,
-                    outboxEvent.EventType,
-                    userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown"),
-                    teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString()),
-                    ex.Error?.Code);
-
-                // Mark user's Google email as Rejected
-                await MarkUserGoogleEmailStatusAsync(outboxEvent.UserId, GoogleEmailStatus.Rejected, cancellationToken);
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _metrics.RecordSyncOperation("failure");
-                outboxEvent.RetryCount += 1;
-                outboxEvent.LastError = ex.Message.Length > 4000
-                    ? ex.Message[..4000]
-                    : ex.Message;
-
-                _logger.LogError(
-                    ex,
-                    "Failed processing Google sync outbox event {OutboxId} ({EventType}) for user {UserEmail} in team {TeamName} — attempt {Attempt}/{MaxRetries}",
-                    outboxEvent.Id,
-                    outboxEvent.EventType,
-                    userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown"),
-                    teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString()),
-                    outboxEvent.RetryCount,
-                    MaxRetryCount);
-
-                // Mark as permanently failed when retries are exhausted
-                if (outboxEvent.RetryCount >= MaxRetryCount)
+                catch (Google.GoogleApiException ex) when (IsPermanentError(ex))
                 {
+                    _metrics.RecordSyncOperation("permanent_failure");
                     outboxEvent.FailedPermanently = true;
                     outboxEvent.ProcessedAt = _clock.GetCurrentInstant();
+                    outboxEvent.LastError = ex.Message.Length > 4000
+                        ? ex.Message[..4000]
+                        : ex.Message;
+
+                    _logger.LogWarning(
+                        ex,
+                        "Permanent failure processing Google sync outbox event {OutboxId} ({EventType}) for user {UserEmail} in team {TeamName} — HTTP {StatusCode}, not retrying",
+                        outboxEvent.Id,
+                        outboxEvent.EventType,
+                        userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown"),
+                        teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString()),
+                        ex.Error?.Code);
+
+                    // Mark user's Google email as Rejected
+                    await MarkUserGoogleEmailStatusAsync(outboxEvent.UserId, GoogleEmailStatus.Rejected, cancellationToken);
+
+                    await _dbContext.SaveChangesAsync(cancellationToken);
                 }
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
-
-                // Notify admins on final failure (exhausted retries)
-                if (outboxEvent.RetryCount >= MaxRetryCount)
+                catch (Exception ex)
                 {
-                    try
+                    _metrics.RecordSyncOperation("failure");
+                    outboxEvent.RetryCount += 1;
+                    outboxEvent.LastError = ex.Message.Length > 4000
+                        ? ex.Message[..4000]
+                        : ex.Message;
+
+                    _logger.LogError(
+                        ex,
+                        "Failed processing Google sync outbox event {OutboxId} ({EventType}) for user {UserEmail} in team {TeamName} — attempt {Attempt}/{MaxRetries}",
+                        outboxEvent.Id,
+                        outboxEvent.EventType,
+                        userEmailLookup.GetValueOrDefault(outboxEvent.UserId, "unknown"),
+                        teamNameLookup.GetValueOrDefault(outboxEvent.TeamId, outboxEvent.TeamId.ToString()),
+                        outboxEvent.RetryCount,
+                        MaxRetryCount);
+
+                    // Mark as permanently failed when retries are exhausted
+                    if (outboxEvent.RetryCount >= MaxRetryCount)
                     {
-                        await _notificationService.SendToRoleAsync(
-                            NotificationSource.SyncError,
-                            NotificationClass.Actionable,
-                            NotificationPriority.High,
-                            "Google sync event failed after all retries",
-                            RoleNames.Admin,
-                            body: $"Event {outboxEvent.EventType} for team {outboxEvent.TeamId} failed: {outboxEvent.LastError?[..Math.Min(200, outboxEvent.LastError.Length)]}",
-                            actionUrl: "/Google/SyncOutbox",
-                            actionLabel: "View \u2192",
-                            cancellationToken: cancellationToken);
+                        outboxEvent.FailedPermanently = true;
+                        outboxEvent.ProcessedAt = _clock.GetCurrentInstant();
                     }
-                    catch (Exception notifEx)
+
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+
+                    // Notify admins on final failure (exhausted retries)
+                    if (outboxEvent.RetryCount >= MaxRetryCount)
                     {
-                        _logger.LogError(notifEx,
-                            "Failed to dispatch SyncError notification for outbox event {OutboxId}",
-                            outboxEvent.Id);
+                        try
+                        {
+                            await _notificationService.SendToRoleAsync(
+                                NotificationSource.SyncError,
+                                NotificationClass.Actionable,
+                                NotificationPriority.High,
+                                "Google sync event failed after all retries",
+                                RoleNames.Admin,
+                                body: $"Event {outboxEvent.EventType} for team {outboxEvent.TeamId} failed: {outboxEvent.LastError?[..Math.Min(200, outboxEvent.LastError.Length)]}",
+                                actionUrl: "/Google/SyncOutbox",
+                                actionLabel: "View \u2192",
+                                cancellationToken: cancellationToken);
+                        }
+                        catch (Exception notifEx)
+                        {
+                            _logger.LogError(notifEx,
+                                "Failed to dispatch SyncError notification for outbox event {OutboxId}",
+                                outboxEvent.Id);
+                        }
                     }
                 }
             }
+
+            _metrics.RecordJobRun("process_google_sync_outbox", "success");
         }
-        _metrics.RecordJobRun("process_google_sync_outbox", "success");
+        catch (Exception ex)
+        {
+            _metrics.RecordJobRun("process_google_sync_outbox", "failure");
+            _logger.LogError(ex, "Error processing Google sync outbox");
+            throw;
+        }
     }
 
     private static bool IsPermanentError(Google.GoogleApiException ex)

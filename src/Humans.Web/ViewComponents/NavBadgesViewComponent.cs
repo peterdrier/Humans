@@ -1,25 +1,22 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application;
 using Humans.Application.Interfaces;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Web.ViewComponents;
 
 public class NavBadgesViewComponent : ViewComponent
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly IOnboardingService _onboardingService;
     private readonly IFeedbackService _feedbackService;
     private readonly IMemoryCache _cache;
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 
-    public NavBadgesViewComponent(HumansDbContext dbContext, IFeedbackService feedbackService, IMemoryCache cache)
+    public NavBadgesViewComponent(IOnboardingService onboardingService, IFeedbackService feedbackService, IMemoryCache cache)
     {
-        _dbContext = dbContext;
+        _onboardingService = onboardingService;
         _feedbackService = feedbackService;
         _cache = cache;
     }
@@ -30,9 +27,7 @@ public class NavBadgesViewComponent : ViewComponent
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            var reviewCount = await _dbContext.Profiles
-                .CountAsync(p => !p.IsApproved && p.RejectedAt == null);
-
+            var reviewCount = await _onboardingService.GetPendingReviewCountAsync();
             var feedbackCount = await _feedbackService.GetActionableCountAsync();
 
             return (Review: reviewCount, Feedback: feedbackCount);
@@ -66,9 +61,7 @@ public class NavBadgesViewComponent : ViewComponent
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            return await _dbContext.Applications
-                .CountAsync(a => a.Status == ApplicationStatus.Submitted
-                    && !a.BoardVotes.Any(v => v.BoardMemberUserId == currentUserId));
+            return await _onboardingService.GetUnvotedApplicationCountAsync(currentUserId);
         });
     }
 }

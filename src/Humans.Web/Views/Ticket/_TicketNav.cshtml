@@ -23,4 +23,7 @@
     <li class="nav-item">
         <a class="nav-link @(controller == "GateList" ? "active" : "")" asp-action="GateList">Gate List</a>
     </li>
+    <li class="nav-item" authorize-policy="AdminOnly">
+        <a class="nav-link @(controller == "ParticipationBackfill" ? "active" : "")" asp-action="ParticipationBackfill">Backfill</a>
+    </li>
 </ul>

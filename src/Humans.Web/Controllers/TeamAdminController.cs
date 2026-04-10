@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Localization;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Web.Authorization;
 using Humans.Domain.Entities;
@@ -361,7 +362,7 @@ public class TeamAdminController : HumansTeamControllerBase
         else
         {
             // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
 
             if (result.RecoveryEmail is not null)
             {
@@ -758,7 +759,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogDebug(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
+            _logger.LogWarning(ex, "Failed to create role '{RoleName}' for team {TeamId} by user {UserId}", model.Name, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -806,7 +807,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogDebug(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            _logger.LogWarning(ex, "Failed to update role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
             if (isAjax) return Json(new { success = false, message = ex.Message });
             SetError(ex.Message);
         }
@@ -831,7 +832,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogDebug(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            _logger.LogWarning(ex, "Failed to delete role {RoleId} for team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -869,7 +870,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogDebug(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
+            _logger.LogWarning(ex, "Failed to toggle management flag for role {RoleId} in team {TeamId} by user {UserId}", roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -894,7 +895,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogDebug(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
+            _logger.LogWarning(ex, "Failed to assign member {MemberUserId} to role {RoleId} in team {TeamId} by user {UserId}", model.UserId, roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 
@@ -929,7 +930,7 @@ public class TeamAdminController : HumansTeamControllerBase
         }
         catch (Exception ex) when (ex is InvalidOperationException or DbUpdateException or ArgumentException)
         {
-            _logger.LogDebug(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
+            _logger.LogWarning(ex, "Failed to unassign member {MemberId} from role {RoleId} in team {TeamId} by user {UserId}", memberId, roleId, team.Id, user.Id);
             SetError(ex.Message);
         }
 

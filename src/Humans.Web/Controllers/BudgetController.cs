@@ -1,13 +1,11 @@
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
-using Humans.Infrastructure.Data;
 using Humans.Web.Authorization;
 using Humans.Web.Authorization.Requirements;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Humans.Web.Controllers;
@@ -18,14 +16,12 @@ public class BudgetController : HumansControllerBase
 {
     private readonly IBudgetService _budgetService;
     private readonly ITeamService _teamService;
-    private readonly HumansDbContext _dbContext;
     private readonly IAuthorizationService _authService;
     private readonly ILogger<BudgetController> _logger;
 
     public BudgetController(
         IBudgetService budgetService,
         ITeamService teamService,
-        HumansDbContext dbContext,
         IAuthorizationService authService,
         UserManager<User> userManager,
         ILogger<BudgetController> logger)
@@ -33,7 +29,6 @@ public class BudgetController : HumansControllerBase
     {
         _budgetService = budgetService;
         _teamService = teamService;
-        _dbContext = dbContext;
         _authService = authService;
         _logger = logger;
     }
@@ -198,7 +193,7 @@ public class BudgetController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var lineItem = await _dbContext.BudgetLineItems.FindAsync(id);
+        var lineItem = await _budgetService.GetLineItemByIdAsync(id);
         if (lineItem is null) return NotFound();
 
         var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
@@ -226,7 +221,7 @@ public class BudgetController : HumansControllerBase
         var (errorResult, user) = await RequireCurrentUserAsync();
         if (errorResult is not null) return errorResult;
 
-        var lineItem = await _dbContext.BudgetLineItems.FindAsync(id);
+        var lineItem = await _budgetService.GetLineItemByIdAsync(id);
         if (lineItem is null) return NotFound();
 
         var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);

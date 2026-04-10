@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Web.Controllers;
 using Humans.Web.Helpers;
 using Humans.Web.Models;
@@ -20,8 +18,8 @@ public enum ProfileCardViewMode
 
 public class ProfileCardViewComponent : ViewComponent
 {
-    private readonly HumansDbContext _dbContext;
     private readonly UserManager<User> _userManager;
+    private readonly IProfileService _profileService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
     private readonly IVolunteerHistoryService _volunteerHistoryService;
@@ -31,8 +29,8 @@ public class ProfileCardViewComponent : ViewComponent
     private readonly ICommunicationPreferenceService _commPrefService;
 
     public ProfileCardViewComponent(
-        HumansDbContext dbContext,
         UserManager<User> userManager,
+        IProfileService profileService,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
         IVolunteerHistoryService volunteerHistoryService,
@@ -41,8 +39,8 @@ public class ProfileCardViewComponent : ViewComponent
         IMembershipCalculator membershipCalculator,
         ICommunicationPreferenceService commPrefService)
     {
-        _dbContext = dbContext;
         _userManager = userManager;
+        _profileService = profileService;
         _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
         _volunteerHistoryService = volunteerHistoryService;
@@ -54,18 +52,14 @@ public class ProfileCardViewComponent : ViewComponent
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
-        var user = await _dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId);
+        // Single cached call replaces two separate DB queries for User and Profile
+        var profile = await _profileService.GetProfileAsync(userId);
+        var user = profile?.User ?? await _userManager.FindByIdAsync(userId.ToString());
 
         if (user is null)
         {
             return Content(string.Empty);
         }
-
-        var profile = await _dbContext.Profiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId);
 
         var isOwnProfile = viewMode == ProfileCardViewMode.Self;
         var canViewLegalName = viewMode != ProfileCardViewMode.Public;
@@ -106,15 +100,10 @@ public class ProfileCardViewComponent : ViewComponent
             ? await _volunteerHistoryService.GetAllAsync(profile.Id)
             : [];
 
-        // Get profile languages
+        // Get profile languages (service returns sorted by proficiency desc, then language code)
         var profileLanguages = profile is not null
-            ? await _dbContext.ProfileLanguages
-                .AsNoTracking()
-                .Where(pl => pl.ProfileId == profile.Id)
-                .OrderByDescending(pl => pl.Proficiency)
-                .ThenBy(pl => pl.LanguageCode)
-                .ToListAsync()
-            : [];
+            ? await _profileService.GetProfileLanguagesAsync(profile.Id)
+            : (IReadOnlyList<ProfileLanguage>)[];
 
         // Get user's teams (excluding Volunteers system team)
         var userTeams = await _teamService.GetUserTeamsAsync(userId);

@@ -33,9 +33,14 @@
 
 - When ticket sync runs, new orders and attendees are imported and existing ones are updated.
 - Auto-matching runs during sync: orders and attendees are matched to humans by email.
+- Ticket sync derives EventParticipation records: valid ticket -> Ticketed, checked-in -> Attended (permanent).
+- When a user's last valid ticket is voided/transferred, their TicketSync-sourced participation record is removed.
+- Ticket purchase overrides a NotAttending declaration.
+- "Who Hasn't Bought" excludes humans who declared not attending.
 
 ## Cross-Section Dependencies
 
 - **Campaigns**: TicketAdmin can generate discount codes for campaigns via the ticket vendor integration.
 - **Profiles**: Ticket orders and attendees are auto-matched against human email addresses.
 - **Admin**: Sync configuration and manual vendor operations are Admin-only.
+- **Event Participation**: Ticket sync auto-creates/updates EventParticipation records. Admin can backfill historical data via Tickets > Backfill.

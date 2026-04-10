@@ -114,7 +114,7 @@ public class AdminMergeController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Accept(Guid id, string? notes)
     {
-        var (error, user) = await ResolveCurrentUserAsync();
+        var (error, user) = await RequireCurrentUserAsync();
         if (error is not null) return error;
 
         try
@@ -135,7 +135,7 @@ public class AdminMergeController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Reject(Guid id, string? notes)
     {
-        var (error, user) = await ResolveCurrentUserAsync();
+        var (error, user) = await RequireCurrentUserAsync();
         if (error is not null) return error;
 
         try

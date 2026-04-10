@@ -54,7 +54,14 @@
 </style>
 
 <div class="container-fluid px-4">
-    <div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+    <nav aria-label="breadcrumb" class="mt-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-action="Index">Google</a></li>
+            <li class="breadcrumb-item active" aria-current="page">All Domain Groups</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>All Domain Groups</h1>
         <div class="d-flex gap-2">
             @if (driftedGroups.Count > 0)

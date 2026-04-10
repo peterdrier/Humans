@@ -3,6 +3,13 @@
     ViewData["Title"] = Localizer["MyTeams_Title"].Value;
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["MyTeams_Title"]</li>
+    </ol>
+</nav>
+
 <h1>@Localizer["MyTeams_Title"]</h1>
 
 <vc:temp-data-alerts />

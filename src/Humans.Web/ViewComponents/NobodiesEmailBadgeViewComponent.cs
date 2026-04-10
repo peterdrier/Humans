@@ -1,3 +1,4 @@
+using Humans.Application;
 using Humans.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -20,7 +21,6 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
     private readonly IUserEmailService _userEmailService;
     private readonly IMemoryCache _cache;
 
-    public const string CacheKey = "NobodiesTeamEmails_All";
     private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(2);
 
     public NobodiesEmailBadgeViewComponent(
@@ -61,7 +61,7 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
 
     private async Task<Dictionary<Guid, (string Email, bool IsPrimary)>> GetCachedStatusesAsync()
     {
-        if (_cache.TryGetValue(CacheKey, out Dictionary<Guid, (string Email, bool IsPrimary)>? cached) && cached is not null)
+        if (_cache.TryGetValue(CacheKeys.NobodiesTeamEmails, out Dictionary<Guid, (string Email, bool IsPrimary)>? cached) && cached is not null)
             return cached;
 
         // Load all nobodies.team email statuses at once — fine at ~500 users
@@ -82,7 +82,7 @@ public class NobodiesEmailBadgeViewComponent : ViewComponent
             }
         }
 
-        _cache.Set(CacheKey, result, CacheTtl);
+        _cache.Set(CacheKeys.NobodiesTeamEmails, result, CacheTtl);
         return result;
     }
 }

@@ -22,12 +22,14 @@ public class TicketQueryService : ITicketQueryService
     private readonly HumansDbContext _dbContext;
     private readonly IMemoryCache _cache;
     private readonly IBudgetService _budgetService;
+    private readonly IClock _clock;
 
-    public TicketQueryService(HumansDbContext dbContext, IMemoryCache cache, IBudgetService budgetService)
+    public TicketQueryService(HumansDbContext dbContext, IMemoryCache cache, IBudgetService budgetService, IClock clock)
     {
         _dbContext = dbContext;
         _cache = cache;
         _budgetService = budgetService;
+        _clock = clock;
     }
 
     public async Task<int> GetUserTicketCountAsync(Guid userId)
@@ -125,12 +127,12 @@ public class TicketQueryService : ITicketQueryService
         var syncState = await _dbContext.TicketSyncStates.FindAsync(1);
         if (syncState is { SyncStatus: TicketSyncStatus.Running, StatusChangedAt: not null })
         {
-            var elapsed = SystemClock.Instance.GetCurrentInstant() - syncState.StatusChangedAt.Value;
+            var elapsed = _clock.GetCurrentInstant() - syncState.StatusChangedAt.Value;
             if (elapsed > Duration.FromMinutes(30))
             {
                 syncState.SyncStatus = TicketSyncStatus.Error;
                 syncState.LastError = "Sync state was stuck in Running for >30 minutes (likely crash). Auto-reset.";
-                syncState.StatusChangedAt = SystemClock.Instance.GetCurrentInstant();
+                syncState.StatusChangedAt = _clock.GetCurrentInstant();
                 await _dbContext.SaveChangesAsync();
             }
         }
@@ -578,6 +580,23 @@ public class TicketQueryService : ITicketQueryService
                 u.TeamMemberships.Any(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null))
             .ToList();
 
+        // Exclude humans who declared not attending this year
+        var activeEvent = await _dbContext.EventSettings
+            .FirstOrDefaultAsync(e => e.IsActive);
+        if (activeEvent is not null && activeEvent.Year > 0)
+        {
+            var notAttendingUserIds = await _dbContext.EventParticipations
+                .Where(ep => ep.Year == activeEvent.Year
+                    && ep.Status == ParticipationStatus.NotAttending)
+                .Select(ep => ep.UserId)
+                .ToListAsync();
+
+            var notAttendingSet = new HashSet<Guid>(notAttendingUserIds);
+            activeHumans = activeHumans
+                .Where(u => !notAttendingSet.Contains(u.Id))
+                .ToList();
+        }
+
         var filteredHumans = FilterWhoHasntBoughtHumans(
             activeHumans,
             matchedUserIds,
@@ -851,6 +870,28 @@ public class TicketQueryService : ITicketQueryService
         }
 
         return filteredHumans.ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> HasTicketAttendeeMatchAsync(Guid userId)
+    {
+        return await _dbContext.TicketAttendees
+            .AnyAsync(a => a.MatchedUserId == userId);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId)
+    {
+        return await _dbContext.TicketOrders
+            .Where(o => o.MatchedUserId == userId)
+            .OrderByDescending(o => o.PurchasedAt)
+            .Select(o => new UserTicketOrderSummary(
+                o.BuyerName,
+                o.PurchasedAt,
+                o.Attendees.Count,
+                o.TotalAmount,
+                o.Currency))
+            .ToListAsync();
     }
 
     private static bool HasSearchTerm([NotNullWhen(true)] string? value, int minLength = 2) =>

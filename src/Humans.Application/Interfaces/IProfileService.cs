@@ -112,6 +112,12 @@ public interface IProfileService
     void UpdateProfileCache(Guid userId, CachedProfile? newValue);
 
     /// <summary>
+    /// Gets the languages associated with a profile, ordered by proficiency (descending) then language code.
+    /// Returns an empty list if the profile does not exist.
+    /// </summary>
+    Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(Guid profileId, CancellationToken ct = default);
+
+    /// <summary>
     /// Gets or creates the user's shift profile (1:1 with User).
     /// </summary>
     Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId);

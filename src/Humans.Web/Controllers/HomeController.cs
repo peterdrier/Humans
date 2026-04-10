@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -23,6 +24,7 @@ public class HomeController : HumansControllerBase
     private readonly IClock _clock;
     private readonly TicketVendorSettings _ticketSettings;
     private readonly ITicketQueryService _ticketQueryService;
+    private readonly IUserService _userService;
     private readonly ILogger<HomeController> _logger;
 
     public HomeController(
@@ -37,6 +39,7 @@ public class HomeController : HumansControllerBase
         IClock clock,
         IOptions<TicketVendorSettings> ticketSettings,
         ITicketQueryService ticketQueryService,
+        IUserService userService,
         ILogger<HomeController> logger)
         : base(userManager)
     {
@@ -50,6 +53,7 @@ public class HomeController : HumansControllerBase
         _clock = clock;
         _ticketSettings = ticketSettings.Value;
         _ticketQueryService = ticketQueryService;
+        _userService = userService;
         _logger = logger;
     }
 
@@ -138,10 +142,20 @@ public class HomeController : HumansControllerBase
             LastLogin = user.LastLoginAt?.ToDateTimeUtc()
         };
 
+        // Load active event once — used by shift cards, ticket widget, and participation
+        EventSettings? activeEvent = null;
+        try
+        {
+            activeEvent = await _shiftMgmt.GetActiveAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load active event for dashboard");
+        }
+
         // Shift cards — fully guarded, failures must never crash the homepage
         try
         {
-            var activeEvent = await _shiftMgmt.GetActiveAsync();
             if (activeEvent is not null)
             {
                 viewModel.EventName = activeEvent.EventName;
@@ -255,7 +269,87 @@ public class HomeController : HumansControllerBase
             _logger.LogError(ex, "Failed to load ticket status for user {UserId}", user.Id);
         }
 
+        // Event participation status
+        try
+        {
+            if (activeEvent is not null && activeEvent.Year > 0)
+            {
+                viewModel.EventYear = activeEvent.Year;
+                var participation = await _userService.GetParticipationAsync(user.Id, activeEvent.Year);
+                viewModel.ParticipationStatus = participation?.Status;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load participation status for user {UserId}", user.Id);
+        }
+
         return View("Dashboard", viewModel);
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeclareNotAttending()
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var activeEvent = await _shiftMgmt.GetActiveAsync();
+            if (activeEvent is null || activeEvent.Year <= 0)
+            {
+                SetError("No active event configured.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            await _userService.DeclareNotAttendingAsync(user.Id, activeEvent.Year);
+            SetSuccess("You've been marked as not attending this year.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to declare not attending for user {UserId}", user.Id);
+            SetError("Something went wrong. Please try again.");
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UndoNotAttending()
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync();
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            var activeEvent = await _shiftMgmt.GetActiveAsync();
+            if (activeEvent is null || activeEvent.Year <= 0)
+            {
+                SetError("No active event configured.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var undone = await _userService.UndoNotAttendingAsync(user.Id, activeEvent.Year);
+            if (undone)
+            {
+                SetSuccess("Your declaration has been removed.");
+            }
+            else
+            {
+                SetError("Could not undo — your status may have been updated by ticket sync.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to undo not attending for user {UserId}", user.Id);
+            SetError("Something went wrong. Please try again.");
+        }
+
+        return RedirectToAction(nameof(Index));
     }
 
     public IActionResult Privacy()

@@ -1,4 +1,5 @@
 using Humans.Application.DTOs;
+using NodaTime;
 
 namespace Humans.Application.Interfaces;
 
@@ -104,4 +105,25 @@ public interface ITicketQueryService
     /// Get all orders for CSV export, ordered by purchase date descending.
     /// </summary>
     Task<List<OrderExportRow>> GetOrderExportDataAsync();
+
+    /// <summary>
+    /// Checks whether a user has a matched ticket attendee record.
+    /// Used for guest dashboard and communication preferences ticketing lock.
+    /// </summary>
+    Task<bool> HasTicketAttendeeMatchAsync(Guid userId);
+
+    /// <summary>
+    /// Gets ticket order summaries for a specific user (as buyer), ordered by most recent first.
+    /// </summary>
+    Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId);
 }
+
+/// <summary>
+/// Summary of a ticket order for display on user-facing pages.
+/// </summary>
+public record UserTicketOrderSummary(
+    string BuyerName,
+    Instant PurchasedAt,
+    int AttendeeCount,
+    decimal TotalAmount,
+    string Currency);

@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 using Humans.Web.Models;
 using NodaTime;
 
@@ -21,7 +19,7 @@ public class GuestController : HumansControllerBase
 {
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly IProfileService _profileService;
-    private readonly HumansDbContext _dbContext;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly IClock _clock;
     private readonly ILogger<GuestController> _logger;
 
@@ -36,14 +34,14 @@ public class GuestController : HumansControllerBase
         UserManager<User> userManager,
         ICommunicationPreferenceService commPrefService,
         IProfileService profileService,
-        HumansDbContext dbContext,
+        ITicketQueryService ticketQueryService,
         IClock clock,
         ILogger<GuestController> logger)
         : base(userManager)
     {
         _commPrefService = commPrefService;
         _profileService = profileService;
-        _dbContext = dbContext;
+        _ticketQueryService = ticketQueryService;
         _clock = clock;
         _logger = logger;
     }
@@ -253,31 +251,24 @@ public class GuestController : HumansControllerBase
         };
 
         // Ticket status: check for matched ticket orders and attendees
-        var hasTicketOrder = await _dbContext.TicketOrders
-            .AnyAsync(o => o.MatchedUserId == user.Id);
+        var hasTickets = await _ticketQueryService.HasTicketAttendeeMatchAsync(user.Id);
 
-        var hasTicketAttendee = await _dbContext.TicketAttendees
-            .AnyAsync(a => a.MatchedUserId == user.Id);
-
-        if (hasTicketOrder || hasTicketAttendee)
+        if (hasTickets)
         {
             viewModel.HasTickets = true;
 
             // Get ticket details for display
-            var ticketOrders = await _dbContext.TicketOrders
-                .Where(o => o.MatchedUserId == user.Id)
-                .OrderByDescending(o => o.PurchasedAt)
-                .Select(o => new GuestTicketOrderSummary
+            var orderSummaries = await _ticketQueryService.GetUserTicketOrderSummariesAsync(user.Id);
+            viewModel.TicketOrders = orderSummaries
+                .Select(s => new GuestTicketOrderSummary
                 {
-                    BuyerName = o.BuyerName,
-                    PurchasedAt = o.PurchasedAt.ToDateTimeUtc(),
-                    AttendeeCount = o.Attendees.Count,
-                    TotalAmount = o.TotalAmount,
-                    Currency = o.Currency,
+                    BuyerName = s.BuyerName,
+                    PurchasedAt = s.PurchasedAt.ToDateTimeUtc(),
+                    AttendeeCount = s.AttendeeCount,
+                    TotalAmount = s.TotalAmount,
+                    Currency = s.Currency,
                 })
-                .ToListAsync();
-
-            viewModel.TicketOrders = ticketOrders;
+                .ToList();
         }
 
         // Deletion request status
@@ -311,8 +302,8 @@ public class GuestController : HumansControllerBase
         var (userId, _) = result.Value;
 
         // Verify user still exists
-        var exists = await _dbContext.Users.AnyAsync(u => u.Id == userId);
-        return exists ? userId : null;
+        var exists = await FindUserByIdAsync(userId);
+        return exists is not null ? userId : null;
     }
 
     private async Task<CommunicationPreferencesViewModel> BuildCommunicationPreferencesViewModelAsync(Guid userId)
@@ -320,8 +311,7 @@ public class GuestController : HumansControllerBase
         var prefs = await _commPrefService.GetPreferencesAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        var hasTicketOrder = await _dbContext.TicketOrders
-            .AnyAsync(o => o.MatchedUserId == userId);
+        var hasTicketOrder = await _ticketQueryService.HasTicketAttendeeMatchAsync(userId);
 
         var categories = new List<CategoryPreferenceItem>();
 
@@ -342,7 +332,7 @@ public class GuestController : HumansControllerBase
                 AlertEnabled = pref?.InboxEnabled ?? true,
                 EmailEditable = !isAlwaysOn && !isTicketingLocked,
                 AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                Note = isTicketingLocked ? "Locked — you have a ticket order for this year" : null,
+                Note = isTicketingLocked ? "Locked — you have a ticket for this year" : null,
             });
         }
 

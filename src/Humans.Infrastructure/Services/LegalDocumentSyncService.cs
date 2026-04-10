@@ -187,6 +187,23 @@ public class LegalDocumentSyncService : ILegalDocumentSyncService
             .FirstOrDefaultAsync(v => v.Id == versionId, cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(
+        Guid teamId, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+
+        return await _dbContext.LegalDocuments
+            .AsNoTracking()
+            .Where(d => d.IsRequired && d.IsActive && d.TeamId == teamId)
+            .SelectMany(d => d.Versions)
+            .Where(v => v.EffectiveFrom <= now)
+            .Include(v => v.LegalDocument)
+            .GroupBy(v => v.LegalDocumentId)
+            .Select(g => g.OrderByDescending(v => v.EffectiveFrom).First())
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>
     /// Syncs a single document from GitHub using folder-based discovery.
     /// </summary>

@@ -1,0 +1,51 @@
+name: Label PRs with EF migrations
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  check-migrations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for migration files in PR diff
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100
+            });
+
+            const hasMigration = files.some(f =>
+              f.filename.startsWith('src/Humans.Infrastructure/Migrations/') &&
+              f.status !== 'removed'
+            );
+
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const hasLabel = labels.includes('db');
+
+            if (hasMigration && !hasLabel) {
+              core.info('Migration files found — adding db label');
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                labels: ['db']
+              });
+            } else if (!hasMigration && hasLabel) {
+              core.info('No migration files — removing db label');
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                name: 'db'
+              });
+            } else {
+              core.info(`No change needed (migrations: ${hasMigration}, label: ${hasLabel})`);
+            }

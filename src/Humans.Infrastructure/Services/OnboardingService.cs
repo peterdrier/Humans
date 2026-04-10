@@ -581,6 +581,21 @@ public class OnboardingService : IOnboardingService
         await _syncJob.SyncAsociadosMembershipForUserAsync(userId, CancellationToken.None);
     }
 
+    /// <inheritdoc />
+    public async Task<int> GetPendingReviewCountAsync(CancellationToken ct = default)
+    {
+        return await _dbContext.Profiles
+            .CountAsync(p => !p.IsApproved && p.RejectedAt == null, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> GetUnvotedApplicationCountAsync(Guid boardMemberUserId, CancellationToken ct = default)
+    {
+        return await _dbContext.Applications
+            .CountAsync(a => a.Status == ApplicationStatus.Submitted
+                && !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId), ct);
+    }
+
     public async Task<Application.DTOs.AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default)
     {
         var allUserIds = await _dbContext.Users.Select(u => u.Id).ToListAsync(ct);

@@ -2,6 +2,7 @@
 @model IList<Humans.Domain.Entities.GoogleSyncOutboxEvent>
 @{
     var googleEmailLookup = (Dictionary<Guid, string>)ViewData["GoogleEmailLookup"]!;
+    var displayNameLookup = (Dictionary<Guid, string>)ViewData["DisplayNameLookup"]!;
     var teamLookup = (Dictionary<Guid, string>)ViewData["TeamLookup"]!;
     var resourceLookup = (Dictionary<Guid, List<string>>)ViewData["ResourceLookup"]!;
     var showError = (bool)ViewData["ShowError"]!;
@@ -39,7 +40,8 @@ else
                     <tr>
                         <td><code>@evt.EventType</code></td>
                         <td>
-                            <human-link user-id="@evt.UserId" admin="true" show-popover="true" />
+                            <human-link user-id="@evt.UserId" admin="true" show-popover="true"
+                                        display-name="@displayNameLookup.GetValueOrDefault(evt.UserId, "Unknown")" />
                         </td>
                         <td><small class="text-muted">@googleEmail</small></td>
                         <td>@teamName</td>

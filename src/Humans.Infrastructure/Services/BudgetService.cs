@@ -654,6 +654,11 @@ public class BudgetService : IBudgetService
 
     // ───────────────────────── Budget Line Items ─────────────────────────
 
+    public async Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id)
+    {
+        return await _dbContext.BudgetLineItems.FindAsync(id);
+    }
+
     public async Task<BudgetLineItem> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,

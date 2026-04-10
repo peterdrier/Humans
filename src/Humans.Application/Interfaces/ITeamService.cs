@@ -72,6 +72,13 @@ public record MyTeamMembershipSummary(
     bool CanLeave,
     int PendingRequestCount);
 
+public record UserTeamGoogleResource(
+    string TeamName,
+    string TeamSlug,
+    string ResourceName,
+    GoogleResourceType ResourceType,
+    string? Url);
+
 public record TeamRosterSlotSummary(
     string TeamName,
     string TeamSlug,
@@ -163,6 +170,12 @@ public interface ITeamService
     /// Gets all teams the user is a member of.
     /// </summary>
     Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets active Google resources grouped by team for a user's active team memberships.
+    /// Used by the MyGoogleResources view component on the dashboard.
+    /// </summary>
+    Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamGoogleResourcesAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the current user's team memberships with viewer-specific pending-request counts.

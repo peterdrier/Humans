@@ -3,6 +3,13 @@
     ViewData["Title"] = "Contacts";
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Profile" asp-action="AdminList">Humans</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Contacts</li>
+    </ol>
+</nav>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>Contacts</h1>
     <div class="d-flex align-items-center gap-3">

@@ -177,6 +177,8 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 {
                     _profileService.UpdateProfileCache(userId, null);
                     _cache.InvalidateUserProfile(userId);
+                    _cache.InvalidateRoleAssignmentClaims(userId);
+                    _cache.InvalidateShiftAuthorization(userId);
                     _teamService.RemoveMemberFromAllTeamsCache(userId);
                 }
             }

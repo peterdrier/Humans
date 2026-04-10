@@ -60,4 +60,24 @@ public interface ICommunicationPreferenceService
     /// Returns a dictionary of header name → value pairs.
     /// </summary>
     Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category);
+
+    /// <summary>
+    /// Returns a set of user IDs (from the input list) whose inbox is disabled
+    /// for the given category. Users with no preference row are considered inbox-enabled.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetUsersWithInboxDisabledAsync(
+        IReadOnlyList<Guid> userIds, MessageCategory category,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns whether any communication preferences exist for the given user.
+    /// </summary>
+    Task<bool> HasAnyPreferencesAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the set of user IDs (from the input list) that have any communication preferences.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken cancellationToken = default);
 }

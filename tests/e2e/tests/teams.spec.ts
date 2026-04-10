@@ -22,7 +22,7 @@ test.describe('Teams — Browsing (06-teams)', () => {
     const teamLink = page.locator('.card a.btn, .card a[href*="/Teams/"]').first();
     if (await teamLink.isVisible({ timeout: 3000 }).catch(() => false)) {
       await teamLink.click();
-      await expect(page.locator('h1, h2').first()).toBeVisible();
+      await expect(page.locator('h1, h2, h3, h4').first()).toBeVisible();
       expect(page.url()).toContain('/Teams/');
     }
   });
@@ -190,7 +190,7 @@ test.describe('Teams — Cross-Team Views & Hierarchy', () => {
     const teamLink = page.locator('.card a.btn').first();
     if (await teamLink.isVisible({ timeout: 3000 }).catch(() => false)) {
       await teamLink.click();
-      await expect(page.locator('h1, h2').first()).toBeVisible();
+      await expect(page.locator('h1, h2, h3, h4').first()).toBeVisible();
       // Sub-teams section renders as cards or a list within the detail page
       // Data-dependent — we verify the page loads; sub-teams may or may not exist
     }

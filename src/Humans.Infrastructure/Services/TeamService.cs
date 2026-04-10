@@ -362,6 +362,27 @@ public class TeamService : ITeamService
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamGoogleResourcesAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var teamResources = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
+            .SelectMany(tm => tm.Team.GoogleResources
+                .Where(r => r.IsActive)
+                .Select(r => new UserTeamGoogleResource(
+                    tm.Team.Name,
+                    tm.Team.Slug,
+                    r.Name,
+                    r.ResourceType,
+                    r.Url)))
+            .OrderBy(r => r.TeamName)
+            .ThenBy(r => r.ResourceName)
+            .ToListAsync(cancellationToken);
+
+        return teamResources;
+    }
+
     public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
