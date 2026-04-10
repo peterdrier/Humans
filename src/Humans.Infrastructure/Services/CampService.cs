@@ -976,7 +976,7 @@ public class CampService : ICampService, IUserDataContributor
             .Where(s => s.Year == year)
             .ToDictionaryAsync(
                 s => s.Id,
-                s => new CampSeasonDisplayData(s.Name, s.Camp.Slug, s.SoundZone),
+                s => new CampSeasonDisplayData(s.Name, s.Camp.Slug, s.SoundZone, s.SpaceRequirement),
                 cancellationToken);
     }
 
@@ -986,7 +986,7 @@ public class CampService : ICampService, IUserDataContributor
         return await _dbContext.CampSeasons
             .Include(s => s.Camp)
             .Where(s => s.Year == year)
-            .Select(s => new CampSeasonBrief(s.Id, s.Name, s.Camp.Slug))
+            .Select(s => new CampSeasonBrief(s.Id, s.Name, s.Camp.Slug, s.SpaceRequirement))
             .ToListAsync(cancellationToken);
     }
 

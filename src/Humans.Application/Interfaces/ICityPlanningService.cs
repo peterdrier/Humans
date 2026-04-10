@@ -50,12 +50,14 @@ public record CampPolygonDto(
     string CampSlug,
     string GeoJson,
     double AreaSqm,
-    SoundZone? SoundZone);
+    SoundZone? SoundZone,
+    double? SpaceRequirementSqm);
 
 public record CampSeasonSummaryDto(
     Guid CampSeasonId,
     string CampName,
-    string CampSlug);
+    string CampSlug,
+    double? SpaceRequirementSqm = null);
 
 public record CampPolygonHistoryEntryDto(
     Guid Id,

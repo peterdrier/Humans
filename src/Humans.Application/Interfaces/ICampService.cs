@@ -270,9 +270,9 @@ public record CampSeasonInfo(Guid CampSeasonId, Guid CampId, int Year);
 /// Display data for camp seasons: name, camp slug, and sound zone.
 /// Used by CityPlanningService for polygon display/export.
 /// </summary>
-public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone);
+public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone, SpaceSize? SpaceRequirement);
 
 /// <summary>
 /// Lightweight camp season summary (ID, name, camp slug) for listing.
 /// </summary>
-public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug);
+public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug, SpaceSize? SpaceRequirement);
