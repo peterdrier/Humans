@@ -60,7 +60,7 @@ public class EmailProvisioningService : IEmailProvisioningService
             return new EmailProvisioningResult(false, ErrorMessage: "User not found.");
 
         var sanitizedPrefix = SanitizeEmailPrefix(emailPrefix);
-        if (sanitizedPrefix is null)
+        if (string.IsNullOrEmpty(sanitizedPrefix))
             return new EmailProvisioningResult(false, ErrorMessage: "Email prefix contains characters that cannot be transliterated to ASCII. Please choose a different prefix.");
 
         var fullEmail = $"{sanitizedPrefix}@nobodies.team";
