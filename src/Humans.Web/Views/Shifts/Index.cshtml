@@ -308,6 +308,13 @@
                                     </div>
                                 </form>
                             }
+                            else if (allDayShifts.Any(s => s.ConfirmedCount < s.Shift.MinVolunteers))
+                            {
+                                <div class="alert alert-info py-2 mb-3">
+                                    <i class="fa-solid fa-circle-info me-1"></i>
+                                    Some days still need help but all available slots are currently full. Check back later in case spots open up.
+                                </div>
+                            }
                             var dateRanges = new List<List<Humans.Web.Models.ShiftDisplayItem>>();
                             List<Humans.Web.Models.ShiftDisplayItem>? currentRange = null;
                             foreach (var s in allDayShifts)
