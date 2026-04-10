@@ -72,7 +72,7 @@ public class CityPlanningService : ICityPlanningService
                 && !_dbContext.CampPolygons.Any(p => p.CampSeasonId == s.Id))
             .ToListAsync(cancellationToken);
 
-        return seasons.Select(s => new CampSeasonSummaryDto(s.Id, s.Name, s.Camp.Slug, SpaceSizeToSqm(s.SpaceRequirement))).ToList();
+        return seasons.Select(s => new CampSeasonSummaryDto(s.Id, s.Name, s.Camp.Slug, SpaceSizeToSqm(s.SpaceRequirement), s.SoundZone)).ToList();
     }
 
     private static double? SpaceSizeToSqm(SpaceSize? size) => size switch

@@ -55,7 +55,8 @@ public record CampSeasonSummaryDto(
     Guid CampSeasonId,
     string CampName,
     string CampSlug,
-    double? SpaceRequirementSqm = null);
+    double? SpaceRequirementSqm = null,
+    SoundZone? SoundZone = null);
 
 public record CampPolygonHistoryEntryDto(
     Guid Id,

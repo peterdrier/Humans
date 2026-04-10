@@ -191,6 +191,7 @@ export function renderMap(onCampPolygonClick) {
           ['boolean', ['get', 'outsideZone'], false],
           ['boolean', ['get', 'overlaps'], false],
           ['boolean', ['get', 'spaceOutOfRange'], false],
+          ['boolean', ['get', 'soundZoneOutOfRange'], false],
         ],
         ['concat', '⚠️ ', ['get', 'campName']],
         ['get', 'campName'],
