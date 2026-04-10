@@ -21,6 +21,7 @@ public class ProfileService : IProfileService
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IMembershipCalculator _membershipCalculator;
+    private readonly IConsentService _consentService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ProfileService> _logger;
@@ -31,6 +32,7 @@ public class ProfileService : IProfileService
         IEmailService emailService,
         IAuditLogService auditLogService,
         IMembershipCalculator membershipCalculator,
+        IConsentService consentService,
         IClock clock,
         IMemoryCache cache,
         ILogger<ProfileService> logger)
@@ -40,6 +42,7 @@ public class ProfileService : IProfileService
         _emailService = emailService;
         _auditLogService = auditLogService;
         _membershipCalculator = membershipCalculator;
+        _consentService = consentService;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -452,13 +455,7 @@ public class ProfileService : IProfileService
             .OrderByDescending(a => a.SubmittedAt)
             .ToListAsync(ct);
 
-        var consents = await _dbContext.ConsentRecords
-            .AsNoTracking()
-            .Include(c => c.DocumentVersion)
-                .ThenInclude(v => v.LegalDocument)
-            .Where(c => c.UserId == userId)
-            .OrderByDescending(c => c.ConsentedAt)
-            .ToListAsync(ct);
+        var consents = await _consentService.GetUserConsentRecordsAsync(userId, ct);
 
         var teamMemberships = await _dbContext.TeamMembers
             .AsNoTracking()
@@ -698,12 +695,13 @@ public class ProfileService : IProfileService
         var user = await _dbContext.Users
             .Include(u => u.Profile)
             .Include(u => u.Applications)
-            .Include(u => u.ConsentRecords)
             .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
         if (user is null)
             return null;
+
+        var consentCount = await _consentService.GetConsentRecordCountAsync(userId, ct);
 
         var roleAssignments = await _dbContext.RoleAssignments
             .AsNoTracking()
@@ -725,7 +723,7 @@ public class ProfileService : IProfileService
             user,
             user.Profile,
             user.Applications.OrderByDescending(a => a.SubmittedAt).ToList(),
-            user.ConsentRecords.Count,
+            consentCount,
             roleAssignments,
             rejectedByName);
     }

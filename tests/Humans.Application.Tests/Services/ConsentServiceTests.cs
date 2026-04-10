@@ -22,6 +22,7 @@ public class ConsentServiceTests : IDisposable
     private readonly ConsentService _service;
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
+    private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
     private readonly INotificationInboxService _notificationInboxService = Substitute.For<INotificationInboxService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
@@ -34,8 +35,19 @@ public class ConsentServiceTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(IMembershipCalculator)).Returns(_membershipCalculator);
+
+        _legalDocumentSyncService
+            .GetVersionByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => _dbContext.DocumentVersions
+                .Include(v => v.LegalDocument)
+                .FirstOrDefaultAsync(v => v.Id == callInfo.ArgAt<Guid>(0)));
+
         _service = new ConsentService(
-            _dbContext, _onboardingService, _membershipCalculator,
+            _dbContext, _onboardingService, serviceProvider,
+            _legalDocumentSyncService,
             _notificationInboxService, _syncJob, _metrics, _clock,
             NullLogger<ConsentService>.Instance);
     }

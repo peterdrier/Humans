@@ -2,6 +2,8 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
+using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -16,6 +18,8 @@ public class MembershipCalculatorTests : IDisposable
     private readonly HumansDbContext _dbContext;
     private readonly FakeClock _clock;
     private readonly MembershipCalculator _service;
+    private readonly IConsentService _consentService = Substitute.For<IConsentService>();
+    private readonly ILegalDocumentSyncService _legalDocumentSyncService = Substitute.For<ILegalDocumentSyncService>();
 
     public MembershipCalculatorTests()
     {
@@ -25,7 +29,61 @@ public class MembershipCalculatorTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 2, 15, 16, 0));
-        _service = new MembershipCalculator(_dbContext, _clock);
+
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(IConsentService)).Returns(_consentService);
+
+        _service = new MembershipCalculator(_dbContext, serviceProvider, _legalDocumentSyncService, _clock);
+
+        // Delegate to in-memory DB so seeded data is returned
+        _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var teamId = callInfo.Arg<Guid>();
+                var now = _clock.GetCurrentInstant();
+                var versions = _dbContext.LegalDocuments
+                    .Where(d => d.IsRequired && d.IsActive && d.TeamId == teamId)
+                    .SelectMany(d => d.Versions)
+                    .Where(v => v.EffectiveFrom <= now)
+                    .Include(v => v.LegalDocument)
+                    .ToList()
+                    .GroupBy(v => v.LegalDocumentId)
+                    .Select(g => g.OrderByDescending(v => v.EffectiveFrom).First())
+                    .ToList();
+                return Task.FromResult<IReadOnlyList<DocumentVersion>>(versions);
+            });
+
+        _consentService.GetConsentedVersionIdsAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var userId = callInfo.Arg<Guid>();
+                var ids = _dbContext.ConsentRecords
+                    .Where(cr => cr.UserId == userId && cr.ExplicitConsent)
+                    .Select(cr => cr.DocumentVersionId)
+                    .ToHashSet();
+                return Task.FromResult<IReadOnlySet<Guid>>(ids);
+            });
+
+        _consentService.GetConsentMapForUsersAsync(
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var userIds = callInfo.Arg<IReadOnlyList<Guid>>();
+                var consents = _dbContext.ConsentRecords
+                    .Where(cr => userIds.Contains(cr.UserId) && cr.ExplicitConsent)
+                    .Select(cr => new { cr.UserId, cr.DocumentVersionId })
+                    .ToList();
+                var result = userIds.ToDictionary(
+                    id => id,
+                    _ => (IReadOnlySet<Guid>)new HashSet<Guid>());
+                foreach (var c in consents)
+                {
+                    ((HashSet<Guid>)result[c.UserId]).Add(c.DocumentVersionId);
+                }
+                return Task.FromResult<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>>(result);
+            });
     }
 
     public void Dispose()
