@@ -93,17 +93,18 @@ public class DevLoginController : Controller
             return NotFound();
 
         var id = PersonaGuid(info.Slug);
+        Guid resolvedUserId;
 
         await SeedLock.WaitAsync();
         try
         {
-            await EnsurePersonaAsync(info, id);
+            resolvedUserId = await EnsurePersonaAsync(info, id);
             if (string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase))
-                await EnsureCoordinatorTeamsAsync(id);
+                await EnsureCoordinatorTeamsAsync(resolvedUserId);
             if (IsBarrioLeadSlug(info.Slug))
-                await EnsureBarrioCampAsync(info.Slug, id);
+                await EnsureBarrioCampAsync(info.Slug, resolvedUserId);
             if (IsCityPlanningSlug(info.Slug))
-                await EnsureCityPlanningTeamAsync(id);
+                await EnsureCityPlanningTeamAsync(resolvedUserId);
         }
         finally
         {
@@ -111,11 +112,11 @@ public class DevLoginController : Controller
         }
 
         var email = $"dev-{info.Slug}@localhost";
-        var user = await _userManager.FindByIdAsync(id.ToString())
+        var user = await _userManager.FindByIdAsync(resolvedUserId.ToString())
                    ?? await _userManager.FindByEmailAsync(email);
         if (user is null)
         {
-            _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, id);
+            _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
             return StatusCode(500, "Dev persona seeding failed");
         }
 
@@ -172,11 +173,11 @@ public class DevLoginController : Controller
             _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
-    private async Task EnsurePersonaAsync(DevPersonaInfo info, Guid id)
+    private async Task<Guid> EnsurePersonaAsync(DevPersonaInfo info, Guid id)
     {
         var existing = await _userManager.FindByIdAsync(id.ToString());
         if (existing is not null)
-            return;
+            return existing.Id;
 
         var email = $"dev-{info.Slug}@localhost";
 
@@ -185,7 +186,7 @@ public class DevLoginController : Controller
         if (byEmail is not null)
         {
             _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmail.Id);
-            return;
+            return byEmail.Id;
         }
 
         var now = _clock.GetCurrentInstant();
@@ -195,7 +196,7 @@ public class DevLoginController : Controller
         if (string.Equals(info.Slug, "guest", StringComparison.OrdinalIgnoreCase))
         {
             await SeedProfilelessUserAsync(id, email, displayName, now);
-            return;
+            return id;
         }
 
         var nameParts = info.DisplayName.Split(' ', 2);
@@ -230,7 +231,7 @@ public class DevLoginController : Controller
         {
             _logger.LogError("Failed to create dev persona {Email}: {Errors}",
                 email, string.Join(", ", result.Errors.Select(e => e.Description)));
-            return;
+            return id;
         }
 
         _db.UserEmails.Add(new UserEmail
@@ -323,6 +324,8 @@ public class DevLoginController : Controller
 
         _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
             email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
+
+        return id;
     }
 
     /// <summary>
