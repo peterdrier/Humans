@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using NodaTime;
 
 namespace Humans.Web.Controllers;
 
@@ -25,6 +26,7 @@ public class TicketController : HumansControllerBase
     private readonly ITicketSyncService _ticketSyncService;
     private readonly IUserService _userService;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IClock _clock;
     private readonly ILogger<TicketController> _logger;
 
     public TicketController(
@@ -34,6 +36,7 @@ public class TicketController : HumansControllerBase
         ITicketSyncService ticketSyncService,
         IUserService userService,
         IShiftManagementService shiftMgmt,
+        IClock clock,
         UserManager<User> userManager,
         ILogger<TicketController> logger)
         : base(userManager)
@@ -44,6 +47,7 @@ public class TicketController : HumansControllerBase
         _ticketSyncService = ticketSyncService;
         _userService = userService;
         _shiftMgmt = shiftMgmt;
+        _clock = clock;
         _logger = logger;
     }
 
@@ -393,7 +397,7 @@ public class TicketController : HumansControllerBase
         var activeEvent = await _shiftMgmt.GetActiveAsync();
         var model = new ParticipationBackfillViewModel
         {
-            Year = activeEvent?.Year ?? DateTime.UtcNow.Year,
+            Year = activeEvent?.Year ?? _clock.GetCurrentInstant().InUtc().Year,
         };
         return View(model);
     }
