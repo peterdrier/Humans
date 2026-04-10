@@ -4,7 +4,11 @@
     <vc:user-avatar profile-picture-url="@Model.ProfilePictureUrl" display-name="@Model.DisplayName" size="72" css-class="me-2" />
     <div>
         <div class="fw-semibold">@Model.DisplayName</div>
-        @if (!string.IsNullOrEmpty(Model.MembershipTier)
+        @if (Model.IsSuspended)
+        {
+            <span class="badge bg-danger" style="font-size: 0.7rem;">Suspended</span>
+        }
+        else if (!string.IsNullOrEmpty(Model.MembershipTier)
             && !string.Equals(Model.MembershipTier, "Volunteer", StringComparison.OrdinalIgnoreCase))
         {
             <span class="badge bg-success" style="font-size: 0.7rem;">@Model.MembershipTier</span>

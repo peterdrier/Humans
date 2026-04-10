@@ -1047,7 +1047,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Popover(Guid id, CancellationToken ct)
     {
         var profile = await _profileService.GetProfileAsync(id, ct);
-        if (profile is null || profile.IsSuspended) return NotFound();
+        if (profile is null) return NotFound();
 
         var teams = await _dbContext.TeamMembers
             .Where(tm => tm.UserId == id && tm.LeftAt == null
@@ -1072,6 +1072,7 @@ public class ProfileController : HumansControllerBase
                 : profile.IsApproved ? "Active" : "Pending",
             City = profile.City,
             CountryCode = profile.CountryCode,
+            IsSuspended = profile.IsSuspended,
             Teams = teams
         };
 

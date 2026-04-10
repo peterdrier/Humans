@@ -1142,6 +1142,26 @@ public class ProfileServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SearchHumansAsync_ExcludesUnapproved()
+    {
+        var u1 = Guid.NewGuid();
+        var u2 = Guid.NewGuid();
+        await SeedUserAsync(u1);
+        await SeedUserAsync(u2);
+        var p1 = MakeProfile(u1, isApproved: false);
+        p1.City = "Madrid";
+        var p2 = MakeProfile(u2, isApproved: true);
+        p2.City = "Madrid";
+        await _dbContext.Profiles.AddRangeAsync(p1, p2);
+        await _dbContext.SaveChangesAsync();
+
+        var results = await _service.SearchHumansAsync("Madrid");
+
+        results.Should().HaveCount(1);
+        results[0].UserId.Should().Be(u2);
+    }
+
+    [Fact]
     public async Task SearchHumansAsync_CaseInsensitive()
     {
         var userId = Guid.NewGuid();
@@ -1210,7 +1230,7 @@ public class ProfileServiceTests : IDisposable
         var userId = Guid.NewGuid();
         var cached = new CachedProfile(
             userId, "Test", null, false, Guid.NewGuid(), 123,
-            null, null, null, null, null, null, null, null, null, null, []);
+            null, null, null, null, null, null, null, null, null, null, true, false, []);
 
         // Cache not loaded yet — should not throw
         _service.UpdateProfileCache(userId, cached);
@@ -1285,6 +1305,40 @@ public class ProfileServiceTests : IDisposable
         _cache.TryGetValue(CacheKeys.ActiveTeams, out _).Should().BeFalse();
         _cache.TryGetValue(CacheKeys.RoleAssignmentClaims(userId), out _).Should().BeFalse();
         _cache.TryGetValue(CacheKeys.ShiftAuthorization(userId), out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetCachedProfileAsync_ReturnsSuspendedUser()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var profile = MakeProfile(userId, isApproved: true, isSuspended: true);
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+
+        var cached = await _service.GetCachedProfileAsync(userId);
+
+        cached.Should().NotBeNull();
+        cached!.UserId.Should().Be(userId);
+        cached.IsApproved.Should().BeTrue();
+        cached.IsSuspended.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetCachedProfileAsync_ReturnsPendingUser()
+    {
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId);
+        var profile = MakeProfile(userId, isApproved: false);
+        _dbContext.Profiles.Add(profile);
+        await _dbContext.SaveChangesAsync();
+
+        var cached = await _service.GetCachedProfileAsync(userId);
+
+        cached.Should().NotBeNull();
+        cached!.UserId.Should().Be(userId);
+        cached.IsApproved.Should().BeFalse();
+        cached.IsSuspended.Should().BeFalse();
     }
 
     // --- Helpers ---

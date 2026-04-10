@@ -278,8 +278,8 @@ public class ProfileService : IProfileService
         _cache.InvalidateUserProfile(userId);
         _cache.InvalidateRoleAssignmentClaims(userId);
 
-        // Update profile cache if profile is approved
-        if (profile.IsApproved && !profile.IsSuspended && user is not null)
+        // Update profile cache
+        if (user is not null)
         {
             await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
             UpdateProfileCache(userId, CachedProfile.Create(profile, user));
@@ -383,11 +383,11 @@ public class ProfileService : IProfileService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateUserProfile(userId);
 
-        // Re-add to profile cache if approved
+        // Re-add to profile cache
         var profile = await _dbContext.Profiles
             .Include(p => p.VolunteerHistory)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        if (profile is { IsApproved: true, IsSuspended: false })
+        if (profile is not null)
         {
             UpdateProfileCache(userId, CachedProfile.Create(profile, user));
         }
@@ -892,7 +892,7 @@ public class ProfileService : IProfileService
     {
         var cached = await GetCachedProfilesAsync(ct);
         return cached.Values
-            .Where(p => p.BirthdayMonth == month && p.BirthdayDay.HasValue)
+            .Where(p => p.IsApproved && !p.IsSuspended && p.BirthdayMonth == month && p.BirthdayDay.HasValue)
             .OrderBy(p => p.BirthdayDay)
             .Select(p => new Application.DTOs.BirthdayProfileInfo(p.UserId, p.DisplayName, p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.BirthdayDay!.Value, p.BirthdayMonth!.Value))
             .ToList();
@@ -903,7 +903,7 @@ public class ProfileService : IProfileService
     {
         var cached = await GetCachedProfilesAsync(ct);
         return cached.Values
-            .Where(p => p.Latitude.HasValue && p.Longitude.HasValue)
+            .Where(p => p.IsApproved && !p.IsSuspended && p.Latitude.HasValue && p.Longitude.HasValue)
             .Select(p => new Application.DTOs.LocationProfileInfo(p.UserId, p.DisplayName, p.ProfilePictureUrl, p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
             .ToList();
     }
@@ -1060,7 +1060,7 @@ public class ProfileService : IProfileService
         var cached = await GetCachedProfilesAsync(ct);
         var results = new List<HumanSearchResult>();
 
-        foreach (var p in cached.Values)
+        foreach (var p in cached.Values.Where(p => p.IsApproved && !p.IsSuspended))
         {
             var (matchField, matchSnippet) = DetermineMatchFromCache(p, query);
             if (matchField is null) continue;
@@ -1083,7 +1083,7 @@ public class ProfileService : IProfileService
 
     private async Task<ConcurrentDictionary<Guid, CachedProfile>> GetCachedProfilesAsync(CancellationToken ct = default)
     {
-        return await _cache.GetOrCreateAsync(CacheKeys.ApprovedProfiles, async entry =>
+        return await _cache.GetOrCreateAsync(CacheKeys.Profiles, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
 
@@ -1091,7 +1091,6 @@ public class ProfileService : IProfileService
                 .AsNoTracking()
                 .Include(p => p.User)
                 .Include(p => p.VolunteerHistory)
-                .Where(p => p.IsApproved && !p.IsSuspended)
                 .ToListAsync(ct);
 
             return new ConcurrentDictionary<Guid, CachedProfile>(
@@ -1104,7 +1103,7 @@ public class ProfileService : IProfileService
     public CachedProfile? GetCachedProfile(Guid userId)
     {
         if (_cache.TryGetExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(
-                CacheKeys.ApprovedProfiles, out var cached)
+                CacheKeys.Profiles, out var cached)
             && cached.TryGetValue(userId, out var profile))
         {
             return profile;
@@ -1120,7 +1119,7 @@ public class ProfileService : IProfileService
     }
 
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
-        => _cache.UpdateApprovedProfile(userId, newValue);
+        => _cache.UpdateProfile(userId, newValue);
 
     private static (string? Field, string? Snippet) DetermineMatchFromCache(CachedProfile p, string query)
     {

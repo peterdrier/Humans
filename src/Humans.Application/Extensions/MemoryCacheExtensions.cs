@@ -59,8 +59,8 @@ public static class MemoryCacheExtensions
     public static void InvalidateNotificationMeters(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NotificationMeters);
 
-    public static void InvalidateApprovedProfiles(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.ApprovedProfiles);
+    public static void InvalidateProfiles(this IMemoryCache cache) =>
+        cache.Remove(CacheKeys.Profiles);
 
     public static void InvalidateActiveTeams(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.ActiveTeams);
@@ -117,22 +117,22 @@ public static class MemoryCacheExtensions
         cache.InvalidateShiftAuthorization(userId);
     }
 
-    public static void SetApprovedProfile(this IMemoryCache cache, Guid userId, CachedProfile profile) =>
-        cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, cached =>
+    public static void SetProfile(this IMemoryCache cache, Guid userId, CachedProfile profile) =>
+        cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.Profiles, cached =>
             cached[userId] = profile);
 
-    public static void RemoveApprovedProfile(this IMemoryCache cache, Guid userId) =>
-        cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.ApprovedProfiles, cached =>
+    public static void RemoveProfile(this IMemoryCache cache, Guid userId) =>
+        cache.TryUpdateExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(CacheKeys.Profiles, cached =>
             cached.TryRemove(userId, out _));
 
-    public static void UpdateApprovedProfile(this IMemoryCache cache, Guid userId, CachedProfile? profile)
+    public static void UpdateProfile(this IMemoryCache cache, Guid userId, CachedProfile? profile)
     {
         if (profile is not null)
         {
-            cache.SetApprovedProfile(userId, profile);
+            cache.SetProfile(userId, profile);
             return;
         }
 
-        cache.RemoveApprovedProfile(userId);
+        cache.RemoveProfile(userId);
     }
 }
