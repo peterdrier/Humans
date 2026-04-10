@@ -20,17 +20,20 @@ namespace Humans.Web.Controllers;
 public class CampAdminController : HumansControllerBase
 {
     private readonly ICampService _campService;
+    private readonly ICityPlanningService _cityPlanningService;
     private readonly HumansDbContext _dbContext;
     private readonly ILogger<CampAdminController> _logger;
 
     public CampAdminController(
         ICampService campService,
+        ICityPlanningService cityPlanningService,
         HumansDbContext dbContext,
         UserManager<User> userManager,
         ILogger<CampAdminController> logger)
         : base(userManager)
     {
         _campService = campService;
+        _cityPlanningService = cityPlanningService;
         _dbContext = dbContext;
         _logger = logger;
     }
@@ -41,6 +44,7 @@ public class CampAdminController : HumansControllerBase
         try
         {
             var settings = await _campService.GetSettingsAsync();
+            var cityPlanningSettings = await _cityPlanningService.GetSettingsAsync();
             var allCamps = await _campService.GetAllCampsForYearAsync(settings.PublicYear);
             var pendingSeasons = await _campService.GetPendingSeasonsAsync();
 
@@ -105,6 +109,7 @@ public class CampAdminController : HumansControllerBase
                 WithdrawnCamps = withdrawnSeasons,
                 NameLockDates = nameLockDates,
                 AllCampSummaries = summaries,
+                RegistrationInfo = cityPlanningSettings.RegistrationInfo,
                 PendingCamps = pendingSeasons.Select(s => new CampCardViewModel
                 {
                     Id = s.CampId,
@@ -336,6 +341,23 @@ public class CampAdminController : HumansControllerBase
             SetError("Failed to export barrios.");
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    [HttpPost("UpdateRegistrationInfo")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateRegistrationInfo([FromForm] string? registrationInfo)
+    {
+        try
+        {
+            await _cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo);
+            SetSuccess("Registration info updated.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update registration info");
+            SetError("Failed to update registration info.");
+        }
+        return RedirectToAction(nameof(Index));
     }
 
     [HttpPost("Delete")]

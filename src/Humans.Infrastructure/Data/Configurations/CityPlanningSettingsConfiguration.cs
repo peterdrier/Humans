@@ -12,6 +12,7 @@ public class CityPlanningSettingsConfiguration : IEntityTypeConfiguration<CityPl
 
         builder.HasIndex(s => s.Year).IsUnique();
 
+        builder.Property(s => s.RegistrationInfo).HasColumnType("text");
         builder.Property(s => s.LimitZoneGeoJson).HasColumnType("text");
         builder.Property(s => s.OfficialZonesGeoJson).HasColumnType("text");
     }

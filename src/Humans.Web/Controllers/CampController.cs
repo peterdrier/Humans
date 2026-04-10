@@ -18,6 +18,7 @@ public class CampController : HumansCampControllerBase
 {
     private readonly ICampService _campService;
     private readonly ICampContactService _campContactService;
+    private readonly ICityPlanningService _cityPlanningService;
     private readonly INotificationService _notificationService;
     private readonly IClock _clock;
     private readonly ILogger<CampController> _logger;
@@ -26,6 +27,7 @@ public class CampController : HumansCampControllerBase
     public CampController(
         ICampService campService,
         ICampContactService campContactService,
+        ICityPlanningService cityPlanningService,
         INotificationService notificationService,
         UserManager<User> userManager,
         IAuthorizationService authorizationService,
@@ -36,6 +38,7 @@ public class CampController : HumansCampControllerBase
     {
         _campService = campService;
         _campContactService = campContactService;
+        _cityPlanningService = cityPlanningService;
         _notificationService = notificationService;
         _clock = clock;
         _logger = logger;
@@ -93,6 +96,12 @@ public class CampController : HumansCampControllerBase
     {
         var settings = await _campService.GetSettingsAsync();
         ViewData["SeasonYear"] = settings.OpenSeasons.OrderByDescending(y => y).FirstOrDefault();
+    }
+
+    private async Task PopulateRegistrationInfoAsync()
+    {
+        var cityPlanningSettings = await _cityPlanningService.GetSettingsAsync();
+        ViewData["RegistrationInfo"] = cityPlanningSettings.RegistrationInfo;
     }
 
     [AllowAnonymous]
@@ -246,6 +255,7 @@ public class CampController : HumansCampControllerBase
             return RedirectToAction(nameof(Index));
         }
 
+        await PopulateRegistrationInfoAsync();
         return View(new CampRegisterViewModel());
     }
 
@@ -259,6 +269,7 @@ public class CampController : HumansCampControllerBase
         if (!ModelState.IsValid)
         {
             await PopulateRegisterSeasonYearAsync();
+            await PopulateRegistrationInfoAsync();
             return View(model);
         }
 
@@ -307,6 +318,7 @@ public class CampController : HumansCampControllerBase
             _logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, ex.Message);
             await PopulateRegisterSeasonYearAsync();
+            await PopulateRegistrationInfoAsync();
             return View(model);
         }
     }

@@ -37,6 +37,7 @@ public interface ICityPlanningService
     Task UpdateOfficialZonesAsync(string geoJson, Guid userId, CancellationToken cancellationToken = default);
     Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default);
     Task UpdatePlacementDatesAsync(LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default);
+    Task UpdateRegistrationInfoAsync(string? registrationInfo, CancellationToken cancellationToken = default);
 
     // Export
     Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default);

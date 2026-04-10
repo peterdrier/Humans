@@ -268,6 +268,14 @@ public class CityPlanningService : ICityPlanningService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task UpdateRegistrationInfoAsync(string? registrationInfo, CancellationToken cancellationToken = default)
+    {
+        var settings = await GetSettingsAsync(cancellationToken);
+        settings.RegistrationInfo = string.IsNullOrWhiteSpace(registrationInfo) ? null : registrationInfo.Trim();
+        settings.UpdatedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {
         var polygons = await _dbContext.CampPolygons
