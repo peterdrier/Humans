@@ -15,6 +15,12 @@
             "command": "jq -r '.tool_input.command // \"\"' | grep -qE 'dotnet ef migrations' && jq -r '.tool_input.command // \"\"' | grep -qE '(output-dir|Data/Migrations)' && echo 'BLOCKED: Do NOT use --output-dir with dotnet ef migrations. The default output directory (Migrations/) is correct. Using Data/Migrations/ has caused production issues. Remove the --output-dir flag and re-run.' && exit 1 || true",
             "timeout": 5,
             "statusMessage": "Checking EF migration command..."
+          },
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.command // \"\"' | grep -qE '^git commit' && git diff --cached --name-only 2>/dev/null | grep -qE '\\.cshtml$' && bash .claude/razor-lint.sh --staged --hook || true",
+            "timeout": 15,
+            "statusMessage": "Linting staged Razor views..."
           }
         ]
       }
