@@ -2089,6 +2089,51 @@ public class TeamService : ITeamService
     }
 
     // ==========================================================================
+    // Coordinator Queries
+    // ==========================================================================
+
+    public async Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        // Check via IsManagement role assignment (departments and sub-teams)
+        var byRoleAssignment = await _dbContext.TeamRoleAssignments
+            .AsNoTracking()
+            .Where(tra =>
+                tra.TeamMember.UserId == userId &&
+                tra.TeamMember.LeftAt == null &&
+                tra.TeamRoleDefinition.IsManagement &&
+                tra.TeamRoleDefinition.Team.SystemTeamType == SystemTeamType.None)
+            .Select(tra => tra.TeamRoleDefinition.TeamId)
+            .ToListAsync(cancellationToken);
+
+        // Also check via TeamMember.Role == Coordinator (may be out of sync with IsManagement)
+        var byMemberRole = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm =>
+                tm.UserId == userId &&
+                tm.LeftAt == null &&
+                tm.Role == TeamMemberRole.Coordinator &&
+                tm.Team.SystemTeamType == SystemTeamType.None)
+            .Select(tm => tm.TeamId)
+            .ToListAsync(cancellationToken);
+
+        return byRoleAssignment.Union(byMemberRole).Distinct().ToList();
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.TeamMembers
+            .Where(tm => tm.TeamId == teamId
+                && tm.LeftAt == null
+                && tm.Role == TeamMemberRole.Coordinator)
+            .Select(tm => tm.UserId)
+            .ToListAsync(cancellationToken);
+    }
+
+    // ==========================================================================
     // Team Cache
     // ==========================================================================
 

@@ -467,6 +467,26 @@ public interface ITeamService
         CancellationToken cancellationToken = default);
 
     // ==========================================================================
+    // Coordinator Queries
+    // ==========================================================================
+
+    /// <summary>
+    /// Gets all non-system team IDs where the user is a coordinator or has a management role.
+    /// Used by shift services for authorization — avoids cross-service team table queries.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the user IDs of all active coordinators for a team (Coordinator member role).
+    /// Used by shift services for notification dispatch.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
+        Guid teamId,
+        CancellationToken cancellationToken = default);
+
+    // ==========================================================================
     // Cache Helpers
     // ==========================================================================
 

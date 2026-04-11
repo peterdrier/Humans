@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -41,9 +42,13 @@ public class TeamServiceTests : IDisposable
             _clock,
             _cache,
             NullLogger<RoleAssignmentService>.Instance);
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
         var shiftManagementService = new ShiftManagementService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
+            _roleAssignmentService,
+            serviceProvider,
             _cache,
             _clock,
             NullLogger<ShiftManagementService>.Instance);

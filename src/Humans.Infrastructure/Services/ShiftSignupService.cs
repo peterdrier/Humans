@@ -3,6 +3,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -17,14 +18,19 @@ public class ShiftSignupService : IShiftSignupService
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IAuditLogService _auditLogService;
     private readonly INotificationService _notificationService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
     private readonly ILogger<ShiftSignupService> _logger;
+
+    // Lazy-resolved to avoid adding a direct ITeamService dependency (used only for notifications)
+    private ITeamService TeamService => _serviceProvider.GetRequiredService<ITeamService>();
 
     public ShiftSignupService(
         HumansDbContext dbContext,
         IShiftManagementService shiftMgmt,
         IAuditLogService auditLogService,
         INotificationService notificationService,
+        IServiceProvider serviceProvider,
         IClock clock,
         ILogger<ShiftSignupService> logger)
     {
@@ -32,6 +38,7 @@ public class ShiftSignupService : IShiftSignupService
         _shiftMgmt = shiftMgmt;
         _auditLogService = auditLogService;
         _notificationService = notificationService;
+        _serviceProvider = serviceProvider;
         _clock = clock;
         _logger = logger;
     }
@@ -975,12 +982,7 @@ public class ShiftSignupService : IShiftSignupService
                 return;
 
             var teamId = shift.Rota.TeamId;
-            var coordinatorIds = await _dbContext.TeamMembers
-                .Where(tm => tm.TeamId == teamId
-                    && tm.LeftAt == null
-                    && tm.Role == TeamMemberRole.Coordinator)
-                .Select(tm => tm.UserId)
-                .ToListAsync();
+            var coordinatorIds = await TeamService.GetCoordinatorUserIdsAsync(teamId);
 
             if (coordinatorIds.Count == 0)
                 return;
@@ -1020,12 +1022,7 @@ public class ShiftSignupService : IShiftSignupService
             var enrichedDescription = $"{changeDescription} ({rotaName}, {FormatShiftDate(shiftDate)})";
 
             // Find coordinators for this department team
-            var coordinatorIds = await _dbContext.TeamMembers
-                .Where(tm => tm.TeamId == teamId
-                    && tm.LeftAt == null
-                    && tm.Role == TeamMemberRole.Coordinator)
-                .Select(tm => tm.UserId)
-                .ToListAsync();
+            var coordinatorIds = await TeamService.GetCoordinatorUserIdsAsync(teamId);
 
             if (coordinatorIds.Count == 0)
                 return;

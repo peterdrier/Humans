@@ -937,6 +937,73 @@ public class CampService : ICampService
     }
 
     // ==========================================================================
+    // Cross-service queries (used by CityPlanningService)
+    // ==========================================================================
+
+    public async Task<SoundZone?> GetCampSeasonSoundZoneAsync(Guid campSeasonId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.CampSeasons
+            .Where(s => s.Id == campSeasonId)
+            .Select(s => s.SoundZone)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<string?> GetCampSeasonNameAsync(Guid campSeasonId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.CampSeasons
+            .Where(s => s.Id == campSeasonId)
+            .Select(s => s.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<CampSeasonInfo?> GetCampSeasonInfoAsync(Guid campSeasonId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.CampSeasons
+            .Where(s => s.Id == campSeasonId)
+            .Select(s => new CampSeasonInfo(s.Id, s.CampId, s.Year))
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(
+        int year, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.CampSeasons
+            .Include(s => s.Camp)
+            .Where(s => s.Year == year)
+            .ToDictionaryAsync(
+                s => s.Id,
+                s => new CampSeasonDisplayData(s.Name, s.Camp.Slug, s.SoundZone),
+                cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<CampSeasonBrief>> GetCampSeasonBriefsForYearAsync(
+        int year, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.CampSeasons
+            .Include(s => s.Camp)
+            .Where(s => s.Year == year)
+            .Select(s => new CampSeasonBrief(s.Id, s.Name, s.Camp.Slug))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.CampLeads
+            .Where(l => l.UserId == userId && l.LeftAt == null)
+            .Join(_dbContext.CampSeasons,
+                l => l.CampId,
+                s => s.CampId,
+                (l, s) => s)
+            .Where(s => s.Year == year)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    // ==========================================================================
     // Authorization checks
     // ==========================================================================
 

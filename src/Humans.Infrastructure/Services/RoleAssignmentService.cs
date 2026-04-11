@@ -309,4 +309,16 @@ public class RoleAssignmentService : IRoleAssignmentService
                 (ra.ValidTo == null || ra.ValidTo > now),
                 cancellationToken);
     }
+
+    public async Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+        return await _dbContext.RoleAssignments
+            .AnyAsync(ra =>
+                ra.UserId == userId &&
+                ra.RoleName == roleName &&
+                ra.ValidFrom <= now &&
+                (ra.ValidTo == null || ra.ValidTo > now),
+                cancellationToken);
+    }
 }

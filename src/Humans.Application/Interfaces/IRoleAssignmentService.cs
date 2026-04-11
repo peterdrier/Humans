@@ -52,4 +52,10 @@ public interface IRoleAssignmentService
     /// Checks if a user has an active TeamsAdmin role assignment.
     /// </summary>
     Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Checks if a user has an active assignment for the specified role.
+    /// Generic version — prefer the specific Is*Async methods when available.
+    /// </summary>
+    Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
 }
