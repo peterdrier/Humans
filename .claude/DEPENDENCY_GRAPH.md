@@ -157,10 +157,13 @@ graph LR
     Team -. "(target)" .-> User
     TPage -. "(target)" .-> User
 
-    CityPlan -. "(target)" .-> Camp
+    CityPlan --> Camp
+    CityPlan --> Team
+    CityPlan --> Prof
 
-    ShiftMgmt -. "(target)" .-> Role
-    ShiftSign -. "(target)" .-> Team
+    ShiftMgmt --> Role
+    ShiftMgmt --> Team
+    ShiftSign --> Team
 
     Consent -. "(target)" .-> Prof
 
@@ -186,7 +189,7 @@ Based on the target state:
 
 2. **ProfileService <-> ConsentService**: ProfileService calls ConsentService, ConsentService needs profile data `(target)`. Same pattern — may need interface extraction.
 
-3. **TeamService <-> ShiftManagementService**: TeamService already calls ShiftManagementService, and ShiftManagementService currently queries TeamMembers `(target: calls TeamService)`. Will create a cycle. Resolve by extracting a shared query interface or having ShiftManagementService take team IDs as parameters instead of looking them up.
+3. **TeamService <-> ShiftManagementService**: TeamService calls ShiftManagementService, and ShiftManagementService now calls TeamService. Circular dependency resolved via `IServiceProvider` lazy resolution in ShiftManagementService (same pattern as ConsentService and MembershipCalculator).
 
 ## Fan-in hotspots (most depended-on services)
 
@@ -195,8 +198,8 @@ Based on the target state:
 | `AuditLogService` | 12 | 0 |
 | `NotificationService` | 7 | 0 |
 | `EmailService` | 7 | 0 |
-| `RoleAssignmentService` | 3 | +2 (Shifts, Profiles) |
-| `TeamService` | 5 | +4 (Campaigns, Shifts, Google x2) |
+| `RoleAssignmentService` | 4 | +1 (Profiles) |
+| `TeamService` | 8 | +2 (Campaigns, Google x2) |
 | `UserService` | 1 | +5 (Teams x2, Campaigns, Google x2, Tickets) |
 | `ProfileService` | 4 | +1 (Consent) |
 | `CampService` | 0 | +2 (CityPlanning, Profiles) |

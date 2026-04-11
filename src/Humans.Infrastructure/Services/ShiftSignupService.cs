@@ -22,7 +22,7 @@ public class ShiftSignupService : IShiftSignupService
     private readonly IClock _clock;
     private readonly ILogger<ShiftSignupService> _logger;
 
-    // Lazy-resolved to avoid adding a direct ITeamService dependency (used only for notifications)
+    // Lazy-resolved for consistency with ShiftManagementService pattern (used only for notification coordinator lookups)
     private ITeamService TeamService => _serviceProvider.GetRequiredService<ITeamService>();
 
     public ShiftSignupService(
