@@ -376,6 +376,7 @@ public class GoogleAdminService : IGoogleAdminService
 
     public async Task<GroupLinkActionResult> LinkGroupToTeamAsync(
         Guid teamId, string groupPrefix,
+        System.Security.Claims.ClaimsPrincipal principal,
         CancellationToken ct = default)
     {
         try
@@ -390,7 +391,7 @@ public class GoogleAdminService : IGoogleAdminService
             var previousPrefix = team.GoogleGroupPrefix;
             team.GoogleGroupPrefix = normalizedPrefix;
 
-            var linkResult = await _googleSyncService.EnsureTeamGroupAsync(teamId);
+            var linkResult = await _googleSyncService.EnsureTeamGroupAsync(teamId, principal, cancellationToken: ct);
             if (linkResult.RequiresConfirmation)
             {
                 await _dbContext.SaveChangesAsync(ct);

@@ -69,6 +69,12 @@ public interface ITeamResourceService
     /// <summary>
     /// Sets the RestrictInheritedAccess flag on a Drive folder resource and immediately
     /// enforces the corresponding inheritedPermissionsDisabled setting on Google Drive.
+    /// The <paramref name="principal"/> is forwarded to the Google sync service so
+    /// service-layer authorization is enforced before the Google Drive API call.
     /// </summary>
-    Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default);
+    Task SetRestrictInheritedAccessAsync(
+        Guid resourceId,
+        bool restrict,
+        System.Security.Claims.ClaimsPrincipal principal,
+        CancellationToken ct = default);
 }

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Authorization;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -38,25 +39,26 @@ public class GoogleResourceReconciliationJob : IRecurringJob
 
         try
         {
-            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
-            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, cancellationToken);
+            var system = SystemPrincipal.Instance;
+            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, system, cancellationToken);
+            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, system, cancellationToken);
 
             // Update Drive folder paths (detects renames and moves)
-            var pathUpdates = await _googleSyncService.UpdateDriveFolderPathsAsync(cancellationToken);
+            var pathUpdates = await _googleSyncService.UpdateDriveFolderPathsAsync(system, cancellationToken);
             if (pathUpdates > 0)
             {
                 _logger.LogInformation("Updated {Count} Drive folder path(s) during reconciliation", pathUpdates);
             }
 
             // Enforce inherited access restrictions on Drive folders
-            var inheritanceCorrected = await _googleSyncService.EnforceInheritedAccessRestrictionsAsync(cancellationToken);
+            var inheritanceCorrected = await _googleSyncService.EnforceInheritedAccessRestrictionsAsync(system, cancellationToken);
             if (inheritanceCorrected > 0)
             {
                 _logger.LogWarning("Corrected inherited access drift on {Count} Drive folder(s)", inheritanceCorrected);
             }
 
             // Check Google Group settings for drift and auto-remediate
-            var settingsResult = await _googleSyncService.CheckGroupSettingsAsync(cancellationToken);
+            var settingsResult = await _googleSyncService.CheckGroupSettingsAsync(system, cancellationToken);
             if (!settingsResult.Skipped && settingsResult.DriftCount > 0)
             {
                 _logger.LogWarning("Google Group settings drift detected: {DriftCount} group(s) with settings drift out of {Total}",
@@ -66,7 +68,7 @@ public class GoogleResourceReconciliationJob : IRecurringJob
                 {
                     try
                     {
-                        await _googleSyncService.RemediateGroupSettingsAsync(report.GroupEmail, cancellationToken);
+                        await _googleSyncService.RemediateGroupSettingsAsync(report.GroupEmail, system, cancellationToken);
                         _logger.LogInformation("Auto-remediated settings drift for group '{GroupEmail}'", report.GroupEmail);
                     }
                     catch (Exception ex)

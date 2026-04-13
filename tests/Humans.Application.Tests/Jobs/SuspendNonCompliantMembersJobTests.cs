@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Authorization;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -203,7 +205,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         await _job.ExecuteAsync();
 
         await _googleSyncService.Received(1).RemoveUserFromTeamResourcesAsync(
-            team.Id, user.Id, Arg.Any<CancellationToken>());
+            team.Id, user.Id, SystemPrincipal.Instance, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -266,7 +268,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(new List<Guid> { user.Id });
 
         _googleSyncService.RemoveUserFromTeamResourcesAsync(
-            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("Google API error")));
 
         // Should not throw — Google sync failures are caught and logged

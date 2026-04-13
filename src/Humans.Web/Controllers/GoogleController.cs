@@ -77,7 +77,7 @@ public class GoogleController : HumansControllerBase
         var currentUser = await GetCurrentUserAsync();
         if (currentUser is null) return Unauthorized();
 
-        await syncSettingsService.UpdateModeAsync(serviceType, mode, currentUser.Id);
+        await syncSettingsService.UpdateModeAsync(serviceType, mode, currentUser.Id, User);
 
         _logger.LogInformation("Admin {AdminId} changed {ServiceType} sync mode to {Mode}",
             currentUser.Id, serviceType, mode);
@@ -137,7 +137,7 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.CheckGroupSettingsAsync();
+            var result = await _googleSyncService.CheckGroupSettingsAsync(User);
             TempData[TempDataKeys.GroupSettingsResult] = System.Text.Json.JsonSerializer.Serialize(result);
         }
         catch (Exception ex)
@@ -177,7 +177,7 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var success = await _googleSyncService.RemediateGroupSettingsAsync(groupEmail);
+            var success = await _googleSyncService.RemediateGroupSettingsAsync(groupEmail, User);
             if (success) SetSuccess($"Settings remediated for {groupEmail}.");
             else SetError($"Remediation skipped for {groupEmail} — sync may be disabled.");
         }
@@ -196,7 +196,7 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.GetAllDomainGroupsAsync();
+            var result = await _googleSyncService.GetAllDomainGroupsAsync(User);
             if (result.ErrorMessage is not null)
             {
                 SetError($"Failed to enumerate groups: {result.ErrorMessage}");
@@ -217,7 +217,7 @@ public class GoogleController : HumansControllerBase
             {
                 try
                 {
-                    var success = await _googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail);
+                    var success = await _googleSyncService.RemediateGroupSettingsAsync(group.GroupEmail, User);
                     if (success) fixed_++;
                     else errors.Add($"{group.GroupEmail}: sync disabled");
                 }
@@ -249,7 +249,7 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.GetAllDomainGroupsAsync();
+            var result = await _googleSyncService.GetAllDomainGroupsAsync(User);
             var teams = await _googleAdminService.GetActiveTeamsAsync();
             ViewBag.Teams = teams;
             return View(result);
@@ -274,7 +274,7 @@ public class GoogleController : HumansControllerBase
             return RedirectToAction(nameof(AllGroups));
         }
 
-        var result = await _googleAdminService.LinkGroupToTeamAsync(teamId, groupPrefix);
+        var result = await _googleAdminService.LinkGroupToTeamAsync(teamId, groupPrefix, User);
 
         if (result.ErrorMessage is not null)
             SetError(result.ErrorMessage);
@@ -295,7 +295,7 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.GetEmailMismatchesAsync();
+            var result = await _googleSyncService.GetEmailMismatchesAsync(User);
             TempData[TempDataKeys.EmailBackfillResult] = System.Text.Json.JsonSerializer.Serialize(result);
         }
         catch (Exception ex)
@@ -371,7 +371,7 @@ public class GoogleController : HumansControllerBase
     [Authorize(Policy = PolicyNames.TeamsAdminBoardOrAdmin)]
     public async Task<IActionResult> SyncPreview(GoogleResourceType resourceType)
     {
-        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview);
+        var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview, User);
 
         // Sort resources alphabetically
         result.Diffs.Sort((a, b) =>
@@ -407,7 +407,7 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute);
+            var result = await _googleSyncService.SyncSingleResourceAsync(resourceId, SyncAction.Execute, User);
             return Json(result);
         }
         catch (Exception ex)
@@ -424,7 +424,7 @@ public class GoogleController : HumansControllerBase
     {
         try
         {
-            var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute);
+            var result = await _googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute, User);
             return Json(result);
         }
         catch (Exception ex)

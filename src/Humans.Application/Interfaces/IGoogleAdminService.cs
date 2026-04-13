@@ -61,10 +61,13 @@ public interface IGoogleAdminService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Links a Google Group prefix to a team.
+    /// Links a Google Group prefix to a team. The <paramref name="principal"/> is
+    /// forwarded to the Google sync service so service-layer authorization is enforced
+    /// before any Google Workspace API call.
     /// </summary>
     Task<GroupLinkActionResult> LinkGroupToTeamAsync(
         Guid teamId, string groupPrefix,
+        System.Security.Claims.ClaimsPrincipal principal,
         CancellationToken ct = default);
 
     /// <summary>

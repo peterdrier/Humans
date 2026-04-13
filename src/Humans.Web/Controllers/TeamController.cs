@@ -697,7 +697,7 @@ public class TeamController : HumansControllerBase
             {
                 try
                 {
-                    await _googleSyncService.EnsureTeamGroupAsync(team.Id);
+                    await _googleSyncService.EnsureTeamGroupAsync(team.Id, User);
                 }
                 catch (Exception ex)
                 {
@@ -792,7 +792,7 @@ public class TeamController : HumansControllerBase
             // Handles prefix set, changed, or cleared (deactivates old resource if needed)
             try
             {
-                var groupResult = await _googleSyncService.EnsureTeamGroupAsync(id);
+                var groupResult = await _googleSyncService.EnsureTeamGroupAsync(id, User);
                 if (!groupResult.Success)
                 {
                     if (groupResult.RequiresConfirmation)

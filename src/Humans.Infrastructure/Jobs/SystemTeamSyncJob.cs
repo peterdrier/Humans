@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Authorization;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -605,7 +606,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
                 nameof(SystemTeamSyncJob),
                 relatedEntityId: userId, relatedEntityType: nameof(User));
 
-            await _googleSyncService.AddUserToTeamResourcesAsync(team.Id, userId, cancellationToken);
+            await _googleSyncService.AddUserToTeamResourcesAsync(team.Id, userId, SystemPrincipal.Instance, cancellationToken);
         }
 
         // Remove members who are no longer eligible
@@ -630,7 +631,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
                     nameof(SystemTeamSyncJob),
                     relatedEntityId: userId, relatedEntityType: nameof(User));
 
-                await _googleSyncService.RemoveUserFromTeamResourcesAsync(team.Id, userId, cancellationToken);
+                await _googleSyncService.RemoveUserFromTeamResourcesAsync(team.Id, userId, SystemPrincipal.Instance, cancellationToken);
             }
         }
 

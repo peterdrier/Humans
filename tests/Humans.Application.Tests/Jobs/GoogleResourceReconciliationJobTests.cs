@@ -1,9 +1,11 @@
+using System.Security.Claims;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Application.Authorization;
 using Humans.Application.Interfaces;
 using Humans.Application.DTOs;
 using Humans.Domain.Enums;
@@ -45,14 +47,15 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     [Fact]
     public async Task ExecuteAsync_SyncsBothResourceTypes()
     {
-        _googleSyncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())
+        _googleSyncService.CheckGroupSettingsAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
             .Returns(new GroupSettingsDriftResult());
 
         await _job.ExecuteAsync();
 
+        // Background jobs must pass the system principal so service-layer auth passes.
         await _googleSyncService.Received(1)
-            .SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, Arg.Any<CancellationToken>());
+            .SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, SystemPrincipal.Instance, Arg.Any<CancellationToken>());
         await _googleSyncService.Received(1)
-            .SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, Arg.Any<CancellationToken>());
+            .SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, SystemPrincipal.Instance, Arg.Any<CancellationToken>());
     }
 }

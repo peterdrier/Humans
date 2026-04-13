@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
@@ -22,8 +23,10 @@ public class StubGoogleSyncService : IGoogleSyncService
     public Task<GoogleResource> ProvisionTeamFolderAsync(
         Guid teamId,
         string folderName,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would provision Google Drive folder '{FolderName}' for team {TeamId}", folderName, teamId);
 
         // Return a stub resource
@@ -47,14 +50,16 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult<GoogleResource?>(null);
     }
 
-    public Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
+    public Task AddUserToTeamResourcesAsync(Guid teamId, Guid userId, ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would add user {UserId} to team {TeamId} Google resources", userId, teamId);
         return Task.CompletedTask;
     }
 
-    public Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken cancellationToken = default)
+    public Task RemoveUserFromTeamResourcesAsync(Guid teamId, Guid userId, ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would remove user {UserId} from team {TeamId} Google resources", userId, teamId);
         return Task.CompletedTask;
     }
@@ -63,8 +68,10 @@ public class StubGoogleSyncService : IGoogleSyncService
         Guid teamId,
         string groupEmail,
         string groupName,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would provision Google Group '{GroupEmail}' ({GroupName}) for team {TeamId}", groupEmail, groupName, teamId);
 
         var resource = new GoogleResource
@@ -82,62 +89,72 @@ public class StubGoogleSyncService : IGoogleSyncService
         return Task.FromResult(resource);
     }
 
-    public Task AddUserToGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default)
+    public Task AddUserToGroupAsync(Guid groupResourceId, string userEmail, ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would add {UserEmail} to group {GroupResourceId}", userEmail, groupResourceId);
         return Task.CompletedTask;
     }
 
-    public Task RemoveUserFromGroupAsync(Guid groupResourceId, string userEmail, CancellationToken cancellationToken = default)
+    public Task RemoveUserFromGroupAsync(Guid groupResourceId, string userEmail, ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would remove {UserEmail} from group {GroupResourceId}", userEmail, groupResourceId);
         return Task.CompletedTask;
     }
 
-    public Task SyncTeamGroupMembersAsync(Guid teamId, CancellationToken cancellationToken = default)
+    public Task SyncTeamGroupMembersAsync(Guid teamId, ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would sync all members for team {TeamId} Google Group", teamId);
         return Task.CompletedTask;
     }
 
-    public Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
+    public Task RestoreUserToAllTeamsAsync(Guid userId, ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would restore user {UserId} to all team Google resources", userId);
         return Task.CompletedTask;
     }
 
-    public Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default)
+    public Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, ClaimsPrincipal principal, bool confirmReactivation = false, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would ensure Google Group exists for team {TeamId}", teamId);
         return Task.FromResult(GroupLinkResult.Ok());
     }
 
-    public Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default)
+    public Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would check Google Group settings for drift");
         return Task.FromResult(new GroupSettingsDriftResult());
     }
 
-    public Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
+    public Task<EmailBackfillResult> GetEmailMismatchesAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would check email mismatches against Admin SDK");
         return Task.FromResult(new EmailBackfillResult());
     }
 
-    public Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
+    public Task<bool> RemediateGroupSettingsAsync(string groupEmail, ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would remediate settings for Google Group {GroupEmail}", groupEmail);
         return Task.FromResult(true);
     }
 
-    public Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
+    public Task<AllGroupsResult> GetAllDomainGroupsAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would enumerate all domain groups");
         return Task.FromResult(new AllGroupsResult());
     }
 
-    public Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
+    public Task<int> UpdateDriveFolderPathsAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would update Drive folder paths");
         return Task.FromResult(0);
     }
@@ -145,8 +162,10 @@ public class StubGoogleSyncService : IGoogleSyncService
     public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would sync resources of type {ResourceType} with action {Action}", resourceType, action);
         return Task.FromResult(new SyncPreviewResult());
     }
@@ -154,20 +173,24 @@ public class StubGoogleSyncService : IGoogleSyncService
     public Task<ResourceSyncDiff> SyncSingleResourceAsync(
         Guid resourceId,
         SyncAction action,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would sync single resource {ResourceId} with action {Action}", resourceId, action);
         return Task.FromResult(new ResourceSyncDiff { ResourceId = resourceId });
     }
 
-    public Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken cancellationToken = default)
+    public Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would set inheritedPermissionsDisabled={Restrict} on Drive file {GoogleFileId}", restrict, googleFileId);
         return Task.CompletedTask;
     }
 
-    public Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default)
+    public Task<int> EnforceInheritedAccessRestrictionsAsync(ClaimsPrincipal principal, CancellationToken cancellationToken = default)
     {
+        _ = principal;
         _logger.LogInformation("[STUB] Would enforce inherited access restrictions on Drive folders");
         return Task.FromResult(0);
     }

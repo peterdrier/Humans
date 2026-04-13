@@ -203,8 +203,13 @@ public class StubTeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public async Task SetRestrictInheritedAccessAsync(Guid resourceId, bool restrict, CancellationToken ct = default)
+    public async Task SetRestrictInheritedAccessAsync(
+        Guid resourceId,
+        bool restrict,
+        System.Security.Claims.ClaimsPrincipal principal,
+        CancellationToken ct = default)
     {
+        _ = principal;
         var resource = await _dbContext.GoogleResources.FindAsync([resourceId], ct);
         if (resource is null) return;
 

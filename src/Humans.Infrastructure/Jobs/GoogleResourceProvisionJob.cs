@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Humans.Application.Authorization;
 using Humans.Application.Interfaces;
 
 namespace Humans.Infrastructure.Jobs;
@@ -36,7 +37,7 @@ public class GoogleResourceProvisionJob
 
         try
         {
-            var resource = await _googleService.ProvisionTeamFolderAsync(teamId, folderName, cancellationToken);
+            var resource = await _googleService.ProvisionTeamFolderAsync(teamId, folderName, SystemPrincipal.Instance, cancellationToken);
             _metrics.RecordJobRun("google_resource_provision", "success");
             _logger.LogInformation(
                 "Successfully provisioned folder with Google ID {GoogleId}",

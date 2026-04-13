@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Google.Apis.Admin.Directory.directory_v1;
 using Google.Apis.CloudIdentity.v1;
@@ -6,10 +7,12 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
 using Google.Apis.Groupssettings.v1;
 using Google.Apis.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
+using Humans.Application.Authorization;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -31,6 +34,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly IClock _clock;
     private readonly IAuditLogService _auditLogService;
     private readonly ISyncSettingsService _syncSettingsService;
+    private readonly IAuthorizationService _authorizationService;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
     /// <summary>
@@ -51,6 +55,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         IClock clock,
         IAuditLogService auditLogService,
         ISyncSettingsService syncSettingsService,
+        IAuthorizationService authorizationService,
         ILogger<GoogleWorkspaceSyncService> logger)
     {
         _dbContext = dbContext;
@@ -59,7 +64,33 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _clock = clock;
         _auditLogService = auditLogService;
         _syncSettingsService = syncSettingsService;
+        _authorizationService = authorizationService;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Enforces authorization for a Google sync operation before any external API call.
+    /// Throws <see cref="UnauthorizedAccessException"/> if the principal is not authorized.
+    /// Background jobs must pass <see cref="SystemPrincipal.Instance"/>.
+    /// </summary>
+    private async Task EnsureAuthorizedAsync(
+        ClaimsPrincipal principal,
+        GoogleSyncOperationRequirement requirement,
+        string operation)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        var authResult = await _authorizationService.AuthorizeAsync(
+            principal, operation, requirement);
+
+        if (!authResult.Succeeded)
+        {
+            _logger.LogWarning(
+                "Authorization denied for Google sync operation {Operation}: principal {Principal}",
+                operation, principal.Identity?.Name ?? "(anonymous)");
+            throw new UnauthorizedAccessException(
+                $"Principal is not authorized for Google sync operation '{operation}'.");
+        }
     }
 
     private async Task<CloudIdentityService> GetCloudIdentityServiceAsync()
@@ -278,8 +309,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task<GoogleResource> ProvisionTeamFolderAsync(
         Guid teamId,
         string folderName,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(ProvisionTeamFolderAsync));
+
         // Check for existing active folder — return it if found (idempotent)
         var existing = await _dbContext.GoogleResources
             .FirstOrDefaultAsync(r => r.TeamId == teamId
@@ -344,8 +378,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         Guid teamId,
         string groupEmail,
         string groupName,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(ProvisionTeamGroupAsync));
+
         _logger.LogInformation("Provisioning Google Group '{GroupEmail}' for team {TeamId}", groupEmail, teamId);
 
         var cloudIdentity = await GetCloudIdentityServiceAsync();
@@ -421,8 +458,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task AddUserToGroupAsync(
         Guid groupResourceId,
         string userEmail,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(AddUserToGroupAsync));
+
         var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
         if (mode == SyncMode.None)
         {
@@ -515,8 +555,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task RemoveUserFromGroupAsync(
         Guid groupResourceId,
         string userEmail,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(RemoveUserFromGroupAsync));
+
         var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
         if (mode != SyncMode.AddAndRemove)
         {
@@ -657,8 +700,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task SyncTeamGroupMembersAsync(Guid teamId, CancellationToken cancellationToken = default)
+    public async Task SyncTeamGroupMembersAsync(
+        Guid teamId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(SyncTeamGroupMembersAsync));
+
         _logger.LogInformation("Syncing group members for team {TeamId}", teamId);
 
         var groupResource = await _dbContext.GoogleResources
@@ -724,7 +772,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (!currentGroupMembers.Contains(email!))
             {
-                await AddUserToGroupAsync(groupResource.Id, email!, cancellationToken);
+                await AddUserToGroupAsync(groupResource.Id, email!, principal, cancellationToken);
             }
         }
 
@@ -750,8 +798,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task AddUserToTeamResourcesAsync(
         Guid teamId,
         Guid userId,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(AddUserToTeamResourcesAsync));
+
         var user = await _dbContext.Users.FindAsync([userId], cancellationToken);
         var googleEmail = user?.GetGoogleServiceEmail();
         if (googleEmail is null)
@@ -780,12 +831,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             if (resource.ResourceType == GoogleResourceType.Group)
             {
-                await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
+                await AddUserToGroupAsync(resource.Id, googleEmail, principal, cancellationToken);
 
                 // Remove the old OAuth email from the group to avoid duplicate delivery
                 if (previousEmail is not null)
                 {
-                    await RemoveUserFromGroupAsync(resource.Id, previousEmail, cancellationToken);
+                    await RemoveUserFromGroupAsync(resource.Id, previousEmail, principal, cancellationToken);
                 }
             }
             else
@@ -810,12 +861,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 if (resource.ResourceType == GoogleResourceType.Group)
                 {
-                    await AddUserToGroupAsync(resource.Id, googleEmail, cancellationToken);
+                    await AddUserToGroupAsync(resource.Id, googleEmail, principal, cancellationToken);
 
                     // Remove the old OAuth email from the parent group too
                     if (previousEmail is not null)
                     {
-                        await RemoveUserFromGroupAsync(resource.Id, previousEmail, cancellationToken);
+                        await RemoveUserFromGroupAsync(resource.Id, previousEmail, principal, cancellationToken);
                     }
                 }
                 else
@@ -831,16 +882,20 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public Task RemoveUserFromTeamResourcesAsync(
+    public async Task RemoveUserFromTeamResourcesAsync(
         Guid teamId,
         Guid userId,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        // Even though the per-user removal is currently a no-op, enforce authorization
+        // up front so callers can't reach this gateway without privilege.
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(RemoveUserFromTeamResourcesAsync));
+
         // Individual user removal is a no-op — removals are handled by the
         // reconciliation job via RemoveUserFromGroupAsync/RemoveUserFromDriveAsync.
         _logger.LogDebug("Per-user removal deferred to reconciliation for user {UserId} team {TeamId}",
             userId, teamId);
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -918,8 +973,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
         SyncAction action,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        // Preview reads Google API; Execute mutates. Pick requirement by action.
+        var requirement = action == SyncAction.Execute
+            ? GoogleSyncOperationRequirement.Execute
+            : GoogleSyncOperationRequirement.Preview;
+        await EnsureAuthorizedAsync(principal, requirement, nameof(SyncResourcesByTypeAsync));
+
         _logger.LogInformation("SyncResourcesByType: type={ResourceType}, action={Action}", resourceType, action);
 
         var resources = await _dbContext.GoogleResources
@@ -952,7 +1014,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 await DbSemaphore.WaitAsync(cancellationToken);
                 try
                 {
-                    return await SyncGroupResourceAsync(resource, SyncAction.Preview, now, childMembersCache, cancellationToken);
+                    return await SyncGroupResourceAsync(resource, SyncAction.Preview, now, childMembersCache, principal, cancellationToken);
                 }
                 finally
                 {
@@ -966,7 +1028,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             {
                 foreach (var (resource, diff) in resources.Zip(diffs))
                 {
-                    await ExecuteGroupSyncActionsAsync(resource, diff, now, cancellationToken);
+                    await ExecuteGroupSyncActionsAsync(resource, diff, now, principal, cancellationToken);
                 }
             }
         }
@@ -1013,8 +1075,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task<ResourceSyncDiff> SyncSingleResourceAsync(
         Guid resourceId,
         SyncAction action,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
+        // Preview reads Google API; Execute mutates. Pick requirement by action.
+        var requirement = action == SyncAction.Execute
+            ? GoogleSyncOperationRequirement.Execute
+            : GoogleSyncOperationRequirement.Preview;
+        await EnsureAuthorizedAsync(principal, requirement, nameof(SyncSingleResourceAsync));
+
         _logger.LogInformation("SyncSingleResource: resourceId={ResourceId}, action={Action}", resourceId, action);
 
         var resource = await _dbContext.GoogleResources
@@ -1037,7 +1106,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         if (resource.ResourceType == GoogleResourceType.Group)
         {
-            diff = await SyncGroupResourceAsync(resource, action, now, childMembersCache: null, cancellationToken);
+            diff = await SyncGroupResourceAsync(resource, action, now, childMembersCache: null, principal, cancellationToken);
         }
         else
         {
@@ -1063,6 +1132,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         SyncAction action,
         Instant now,
         Dictionary<Guid, List<TeamMember>>? childMembersCache,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
         // When running in parallel (childMembersCache != null), create a short-lived DbContext
@@ -1193,7 +1263,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 {
                     try
                     {
-                        await AddUserToGroupAsync(resource.Id, member.Email, cancellationToken);
+                        await AddUserToGroupAsync(resource.Id, member.Email, principal, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -1206,7 +1276,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 {
                     try
                     {
-                        await RemoveUserFromGroupAsync(resource.Id, member.Email, cancellationToken);
+                        await RemoveUserFromGroupAsync(resource.Id, member.Email, principal, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -1264,6 +1334,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         GoogleResource resource,
         ResourceSyncDiff diff,
         Instant now,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
         if (diff.ErrorMessage is not null)
@@ -1276,7 +1347,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             try
             {
-                await AddUserToGroupAsync(resource.Id, member.Email, cancellationToken);
+                await AddUserToGroupAsync(resource.Id, member.Email, principal, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -1289,7 +1360,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             try
             {
-                await RemoveUserFromGroupAsync(resource.Id, member.Email, cancellationToken);
+                await RemoveUserFromGroupAsync(resource.Id, member.Email, principal, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -1639,8 +1710,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default)
+    public async Task<GroupLinkResult> EnsureTeamGroupAsync(
+        Guid teamId,
+        ClaimsPrincipal principal,
+        bool confirmReactivation = false,
+        CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(EnsureTeamGroupAsync));
+
         var team = await _dbContext.Teams
             .Include(t => t.GoogleResources)
             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
@@ -1789,15 +1866,20 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             // issue, ProvisionTeamGroupAsync will also fail.
             _logger.LogInformation("Google Group '{Email}' not found (HTTP {Code}), creating for team {TeamId}",
                 email, ex.Error.Code, teamId);
-            await ProvisionTeamGroupAsync(teamId, email, team.Name, cancellationToken);
+            await ProvisionTeamGroupAsync(teamId, email, team.Name, principal, cancellationToken);
         }
 
         return GroupLinkResult.Ok();
     }
 
     /// <inheritdoc />
-    public async Task RestoreUserToAllTeamsAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task RestoreUserToAllTeamsAsync(
+        Guid userId,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(RestoreUserToAllTeamsAsync));
+
         _logger.LogInformation("Restoring Google resource access for user {UserId}", userId);
 
         var user = await _dbContext.Users
@@ -1814,7 +1896,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             try
             {
-                await AddUserToTeamResourcesAsync(membership.TeamId, userId, cancellationToken);
+                await AddUserToTeamResourcesAsync(membership.TeamId, userId, principal, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -1825,8 +1907,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default)
+    public async Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        // Read-only against Google API but still external — require Preview privilege.
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Preview, nameof(CheckGroupSettingsAsync));
+
         var mode = await _syncSettingsService.GetModeAsync(SyncServiceType.GoogleGroups, cancellationToken);
         if (mode == SyncMode.None)
         {
@@ -1996,8 +2083,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task<bool> RemediateGroupSettingsAsync(string groupEmail, CancellationToken cancellationToken = default)
+    public async Task<bool> RemediateGroupSettingsAsync(
+        string groupEmail,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(RemediateGroupSettingsAsync));
+
         // Settings remediation is always allowed — it doesn't add/remove members,
         // so it's not gated by the sync mode (which controls membership changes).
         try
@@ -2024,8 +2116,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task<EmailBackfillResult> GetEmailMismatchesAsync(CancellationToken cancellationToken = default)
+    public async Task<EmailBackfillResult> GetEmailMismatchesAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Preview, nameof(GetEmailMismatchesAsync));
+
         try
         {
             var directory = await GetDirectoryServiceAsync();
@@ -2109,8 +2205,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task<AllGroupsResult> GetAllDomainGroupsAsync(CancellationToken cancellationToken = default)
+    public async Task<AllGroupsResult> GetAllDomainGroupsAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Preview, nameof(GetAllDomainGroupsAsync));
+
         try
         {
             var directory = await GetDirectoryServiceAsync();
@@ -2291,8 +2391,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
+    public async Task<int> UpdateDriveFolderPathsAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        // Drive folder path sync touches Google Drive API — execute-class operation.
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(UpdateDriveFolderPathsAsync));
+
         var driveResources = await _dbContext.GoogleResources
             .Where(r => r.ResourceType == GoogleResourceType.DriveFolder && r.IsActive)
             .ToListAsync(cancellationToken);
@@ -2388,8 +2493,14 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task SetInheritedPermissionsDisabledAsync(string googleFileId, bool restrict, CancellationToken cancellationToken = default)
+    public async Task SetInheritedPermissionsDisabledAsync(
+        string googleFileId,
+        bool restrict,
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(SetInheritedPermissionsDisabledAsync));
+
         var drive = await GetDriveServiceAsync();
         var fileMetadata = new Google.Apis.Drive.v3.Data.File
         {
@@ -2402,8 +2513,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     }
 
     /// <inheritdoc />
-    public async Task<int> EnforceInheritedAccessRestrictionsAsync(CancellationToken cancellationToken = default)
+    public async Task<int> EnforceInheritedAccessRestrictionsAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
     {
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(EnforceInheritedAccessRestrictionsAsync));
+
         var restrictedResources = await _dbContext.GoogleResources
             .Where(r => r.RestrictInheritedAccess
                 && r.ResourceType == GoogleResourceType.DriveFolder
@@ -2432,7 +2547,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                         "inheritedPermissionsDisabled is {Actual}, expected true. Correcting.",
                         resource.Id, resource.GoogleId, file.InheritedPermissionsDisabled);
 
-                    await SetInheritedPermissionsDisabledAsync(resource.GoogleId, true, cancellationToken);
+                    await SetInheritedPermissionsDisabledAsync(resource.GoogleId, true, principal, cancellationToken);
 
                     await _auditLogService.LogAsync(
                         AuditAction.GoogleResourceInheritanceDriftCorrected,

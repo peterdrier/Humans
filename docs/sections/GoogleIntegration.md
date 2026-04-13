@@ -44,6 +44,8 @@ Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminCont
 - Permanent Google API errors (HTTP 400, 403, 404) mark outbox events as `FailedPermanently` and stop retrying immediately. Transient errors (5xx, 429, etc.) continue retrying up to the configured limit.
 - The system authenticates to Google APIs as a service account — no domain-wide delegation or user impersonation.
 - There are exactly four gateway operations that can modify Google access, and all enforce the current sync mode before executing.
+- **Service-layer authorization is enforced at the `IGoogleSyncService` boundary.** Every method with external Google API side effects (provision, sync, group membership, settings remediation, inherited-access enforcement) accepts a `ClaimsPrincipal` and verifies authorization via `IAuthorizationService` + `GoogleSyncOperationRequirement` BEFORE the first Google API call. Unauthorized callers raise `UnauthorizedAccessException`. Background jobs must pass `SystemPrincipal.Instance`. `ISyncSettingsService.UpdateModeAsync` is similarly guarded since it gates all downstream sync behavior.
+- **Controllers still authorize before calling the service** (defense in depth). `[Authorize(Policy = PolicyNames.AdminOnly)]` (and analogous policies) remain the first line of defense; the service-layer guard is a second, independent check.
 
 ## Negative Access Rules
 

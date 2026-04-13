@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Authorization;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -147,6 +148,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                         await _googleSyncService.RemoveUserFromTeamResourcesAsync(
                             membership.TeamId,
                             user.Id,
+                            SystemPrincipal.Instance,
                             cancellationToken);
                     }
                     catch (Exception ex)
