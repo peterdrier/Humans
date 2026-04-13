@@ -6,8 +6,7 @@
 <div class="row mb-4">
     <div class="col">
         <div class="d-flex align-items-center">
-            <vc:user-avatar profile-picture-url="@Model.ProfilePictureUrl"
-                            display-name="@Model.DisplayName"
+            <vc:user-avatar user-id="@Model.UserId"
                             size="64"
                             css-class="me-3" />
             <div>
@@ -72,7 +71,7 @@
                 </div>
             }
         }
-        else if (Model.IsShiftBrowsingOpen)
+        else if (Model.IsShiftBrowsingOpen && Model.IsVolunteerMember)
         {
             @* Guided shift discovery — shown when user has no upcoming shifts *@
             <div class="card mb-4 border-primary">

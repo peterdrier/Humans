@@ -13,12 +13,10 @@
                 data-bs-toggle="dropdown"
                 data-bs-display="static"
                 aria-expanded="false">
-            @await Component.InvokeAsync("UserAvatar", new {
-                profilePictureUrl = currentUser?.ProfilePictureUrl,
-                displayName = displayName,
-                size = 32,
-                bgColor = "bg-secondary"
-            })
+            @if (currentUser is not null)
+            {
+                <vc:user-avatar user-id="@currentUser.Id" size="32" bg-color="bg-secondary" />
+            }
             <span class="d-none d-md-inline profile-dropdown-name">@displayName</span>
         </button>
         <ul class="dropdown-menu dropdown-menu-end profile-dropdown-menu">

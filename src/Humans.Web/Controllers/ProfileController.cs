@@ -190,6 +190,7 @@ public class ProfileController : HumansControllerBase
         var viewModel = new ProfileViewModel
         {
             Id = profile?.Id ?? Guid.Empty,
+            UserId = user.Id,
             Email = user.Email ?? string.Empty,
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,

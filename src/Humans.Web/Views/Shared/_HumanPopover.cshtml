@@ -1,7 +1,7 @@
 @model Humans.Web.Models.ProfileSummaryViewModel
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
-    <vc:user-avatar profile-picture-url="@Model.ProfilePictureUrl" display-name="@Model.DisplayName" size="72" css-class="me-2" />
+    <vc:user-avatar user-id="@Model.UserId" size="72" css-class="me-2" />
     <div>
         <div class="fw-semibold">@Model.DisplayName</div>
         @if (Model.IsSuspended)

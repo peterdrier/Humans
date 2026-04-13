@@ -38,8 +38,7 @@
                     <h6>@Localizer["Profile_ProfilePicture"]</h6>
                     <div class="mb-3">
                         <div class="d-flex align-items-center gap-3 mb-2">
-                            <vc:user-avatar profile-picture-url="@Model.EffectiveProfilePictureUrl"
-                                            display-name="@Model.BurnerName"
+                            <vc:user-avatar user-id="@Model.UserId"
                                             size="80" />
                             @if (!Model.HasCustomProfilePicture && !string.IsNullOrEmpty(Model.ProfilePictureUrl))
                             {

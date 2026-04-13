@@ -1,33 +1,57 @@
+using System.Security.Claims;
 using Humans.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace Humans.Web.ViewComponents;
 
+/// <summary>
+/// Renders a user's avatar by looking up all display data from the cached profile
+/// given only a user ID. Resolution precedence:
+/// 1. Custom uploaded picture (served via <c>/Profile/{profileId}/Picture</c>)
+/// 2. Google OAuth <c>User.ProfilePictureUrl</c>
+/// 3. Initial-letter fallback from the display name
+/// </summary>
 public class UserAvatarViewComponent : ViewComponent
 {
     private readonly IProfileService _profileService;
+    private readonly IUrlHelperFactory _urlHelperFactory;
 
-    public UserAvatarViewComponent(IProfileService profileService)
+    public UserAvatarViewComponent(
+        IProfileService profileService,
+        IUrlHelperFactory urlHelperFactory)
     {
         _profileService = profileService;
+        _urlHelperFactory = urlHelperFactory;
     }
 
-    public IViewComponentResult Invoke(
-        string? profilePictureUrl = null,
-        string? displayName = null,
+    public async Task<IViewComponentResult> InvokeAsync(
+        Guid userId,
         int size = 40,
         string? cssClass = null,
-        string bgColor = "bg-secondary",
-        Guid? userId = null)
+        string bgColor = "bg-secondary")
     {
-        // Resolve from cache when userId is provided and displayName/profilePictureUrl are not
-        if (userId.HasValue && userId.Value != Guid.Empty && string.IsNullOrEmpty(displayName))
+        string? profilePictureUrl = null;
+        string? displayName = null;
+
+        if (userId != Guid.Empty)
         {
-            var cached = _profileService.GetCachedProfile(userId.Value);
+            // Warm the cache if cold — GetCachedProfile is a pure cache hit.
+            var cached = _profileService.GetCachedProfile(userId)
+                ?? await _profileService.GetCachedProfileAsync(userId);
+
             if (cached is not null)
             {
                 displayName = cached.DisplayName;
-                profilePictureUrl ??= cached.ProfilePictureUrl;
+                profilePictureUrl = ResolveAvatarUrl(cached);
+            }
+            else if (IsCurrentUser(userId))
+            {
+                // Onboarding/guest users have no Profile row yet. Fall back to the Google
+                // claims on the signed-in principal so their own avatar still renders in
+                // the nav and dashboard until a Profile is created.
+                displayName = UserClaimsPrincipal.FindFirstValue(ClaimTypes.Name);
+                profilePictureUrl = UserClaimsPrincipal.FindFirstValue("urn:google:picture");
             }
         }
 
@@ -45,5 +69,25 @@ public class UserAvatarViewComponent : ViewComponent
         ViewBag.FontRem = fontRem;
 
         return View();
+    }
+
+    private string? ResolveAvatarUrl(CachedProfile cached)
+    {
+        if (cached.HasCustomPicture && cached.ProfileId != Guid.Empty)
+        {
+            var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
+            return urlHelper.Action(
+                action: "Picture",
+                controller: "Profile",
+                values: new { id = cached.ProfileId, v = cached.UpdatedAtTicks });
+        }
+
+        return cached.ProfilePictureUrl;
+    }
+
+    private bool IsCurrentUser(Guid userId)
+    {
+        var claim = UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(claim, out var currentUserId) && currentUserId == userId;
     }
 }
