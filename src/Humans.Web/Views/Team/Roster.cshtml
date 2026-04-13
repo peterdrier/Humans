@@ -4,6 +4,13 @@
     ViewData["Title"] = "Team Roster";
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Index">@Localizer["Teams_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Team Roster</li>
+    </ol>
+</nav>
+
 <h2>Team Roster</h2>
 
 <div class="mb-3 d-flex gap-2">
@@ -112,7 +119,7 @@ else
                 @if (isFirstSlotForRole)
                 {
                     <tr class="collapse" id="@collapseId">
-                        <td colspan="5">
+                        <td colspan="6">
                             <div class="role-description small text-muted">
                                 @Html.SanitizedMarkdown(slot.RoleDescription)
                             </div>

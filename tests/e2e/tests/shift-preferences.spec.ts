@@ -4,7 +4,7 @@ import { loginAsVolunteer } from '../helpers/auth';
 test.describe('Shift Preference Wizard (33-shift-preference-wizard)', () => {
   test('page loads with wizard step 1', async ({ page }) => {
     await loginAsVolunteer(page);
-    await page.goto('/Profile/ShiftInfo');
+    await page.goto('/Profile/Me/ShiftInfo');
 
     await expect(page.locator('#stepTitle')).toHaveText('What are you good at?');
     await expect(page.locator('#stepLabel')).toHaveText('Step 1 of 3');
@@ -13,7 +13,7 @@ test.describe('Shift Preference Wizard (33-shift-preference-wizard)', () => {
 
   test('can navigate through all 3 steps', async ({ page }) => {
     await loginAsVolunteer(page);
-    await page.goto('/Profile/ShiftInfo');
+    await page.goto('/Profile/Me/ShiftInfo');
 
     // Step 1 -> Step 2
     await page.click('#nextBtn');
@@ -30,7 +30,7 @@ test.describe('Shift Preference Wizard (33-shift-preference-wizard)', () => {
 
   test('can go back from step 3 to step 1', async ({ page }) => {
     await loginAsVolunteer(page);
-    await page.goto('/Profile/ShiftInfo');
+    await page.goto('/Profile/Me/ShiftInfo');
 
     await page.click('#nextBtn');
     await page.click('#nextBtn');
@@ -44,7 +44,7 @@ test.describe('Shift Preference Wizard (33-shift-preference-wizard)', () => {
 
   test('selecting a chip toggles it', async ({ page }) => {
     await loginAsVolunteer(page);
-    await page.goto('/Profile/ShiftInfo');
+    await page.goto('/Profile/Me/ShiftInfo');
 
     const chip = page.locator('.chip', { hasText: 'Bartending' });
     await chip.click();
@@ -56,7 +56,7 @@ test.describe('Shift Preference Wizard (33-shift-preference-wizard)', () => {
 
   test('save submits and redirects back', async ({ page }) => {
     await loginAsVolunteer(page);
-    await page.goto('/Profile/ShiftInfo');
+    await page.goto('/Profile/Me/ShiftInfo');
 
     // Select a skill
     await page.locator('.chip', { hasText: 'Sound' }).click();

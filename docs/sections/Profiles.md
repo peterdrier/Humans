@@ -77,3 +77,40 @@ Old `/Human/*` routes redirect permanently to their `/Profile/*` equivalents.
 - **Teams**: Active membership equals membership in the Volunteers system team. Profile activation triggers addition.
 - **Onboarding**: Profile completion is a prerequisite step in the onboarding pipeline.
 - **Google Integration**: A human's Google service email determines which email is used for Google Groups and Drive sync.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService`
+**Owned tables:** `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries`
+
+### Current Violations
+
+**ProfileController — injects HumansDbContext (Rule 1):**
+- Directly queries/modifies `ProfileLanguages` in Edit()
+- Queries `UserEmails` in SetGoogleServiceEmail()
+- Queries `EmailOutboxMessages` in MyOutbox() and AdminDetail()
+- Queries `TeamMembers` in Popover()
+- Queries `CampaignGrants` in AdminDetail()
+- Queries and modifies `GoogleSyncOutboxEvents` in EnqueueResyncForUserTeamsAsync()
+
+**ProfileService — queries non-owned tables (Rule 2c):**
+- Queries `Applications` table (owned by Governance) in multiple methods
+- Queries `CampaignGrants` table (owned by Campaigns)
+- Queries `TeamMembers` table (owned by Teams) in GetAdminHumanDetailAsync()
+- Queries `RoleAssignments` table (owned by Auth)
+- Queries `CommunicationPreferences` table (owned by CommunicationPreferenceService)
+- Queries `ShiftSignups` table (owned by Shifts)
+- Queries `CampLeads` table (owned by Camps)
+- Creates `Application` entities in SaveProfileAsync()
+
+**UserEmailService — queries non-owned tables (Rule 2c):**
+- Queries `AccountMergeRequests` in multiple methods
+- Queries `Users` table directly
+
+### Target State
+
+- ProfileController delegates all data access to ProfileService and other section services
+- ProfileService only queries its owned tables; calls `IApplicationDecisionService` (Governance), `ICampaignService`, `ITeamService`, `IRoleAssignmentService` (Auth), `ICommunicationPreferenceService`, `IShiftManagementService`, `ICampService` for cross-section data
+- UserEmailService calls `IAccountMergeService` and `IUserService` instead of querying their tables

@@ -42,3 +42,22 @@
 - **Camps**: CampSeason is the anchor entity; CampLead determines who can edit which polygon.
 - **Admin**: CampAdmin role grants full city-planning access.
 - **Teams**: Membership in the city-planning team (slug: `city-planning`) grants admin access.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `CityPlanningService`
+**Owned tables:** `city_planning_settings`, `camp_polygons`, `camp_polygon_histories`
+
+### Current Violations
+
+**CityPlanningService — queries non-owned tables (Rule 2c):**
+- Queries `CampSeasons` table (owned by Camps) in GetCampSeasonSoundZoneAsync(), GetCampSeasonNameAsync(), and GetCampSeasonsWithoutCampPolygonAsync()
+
+**Controllers:** Compliant — no DbContext injection.
+
+### Target State
+
+- CityPlanningService calls `ICampService` for camp season data instead of querying `CampSeasons` directly
+- CampService exposes methods like `GetCampSeasonSoundZoneAsync()`, `GetCampSeasonNameAsync()`, `GetUnplacedCampSeasonsAsync()`

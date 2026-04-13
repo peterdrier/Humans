@@ -21,7 +21,7 @@
         }
         @if (Model.ShowMedical && !string.IsNullOrEmpty(Model.Profile.MedicalConditions))
         {
-            <span class="badge bg-danger" title="@Model.Profile.MedicalConditions">Medical</span>
+            <span class="badge bg-danger" title="@Model.Profile.MedicalConditions">@Localizer["Medical_Badge"]</span>
         }
     </span>
 }

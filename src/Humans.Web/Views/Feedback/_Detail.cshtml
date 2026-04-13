@@ -60,7 +60,7 @@
                 <div class="input-group input-group-sm" style="width: auto;">
                     <span class="input-group-text"><i class="fa-solid fa-user fa-xs"></i></span>
                     <select name="AssignedToUserId" class="form-select form-select-sm detail-auto-submit" style="width: auto; min-width: 160px;">
-                        <option value="">Unassigned</option>
+                        <option value="">@Localizer["Feedback_Unassigned"]</option>
                         @foreach (var a in Model.AssigneeOptions)
                         {
                             if (Model.AssignedToUserId == a.Id)
@@ -81,7 +81,7 @@
                 <div class="input-group input-group-sm" style="width: auto;">
                     <span class="input-group-text"><i class="fa-solid fa-users fa-xs"></i></span>
                     <select name="AssignedToTeamId" class="form-select form-select-sm detail-auto-submit" style="width: auto; min-width: 160px;">
-                        <option value="">No team</option>
+                        <option value="">@Localizer["Feedback_NoTeam"]</option>
                         @foreach (var t in Model.TeamOptions)
                         {
                             if (Model.AssignedToTeamId == t.Id)
@@ -125,17 +125,17 @@
 {
     <div class="mb-3">
         <a href="@Model.ScreenshotUrl" target="_blank" class="text-muted small">
-            <i class="fa-solid fa-paperclip"></i> Screenshot
+            <i class="fa-solid fa-paperclip"></i> @Localizer["Feedback_ScreenshotLink"]
         </a>
     </div>
 }
 
 <!-- Conversation -->
-<h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; letter-spacing: 0.05em;">Conversation</h6>
+<h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; letter-spacing: 0.05em;">@Localizer["Feedback_Conversation"]</h6>
 
 @if (Model.Messages.Count == 0)
 {
-    <p class="text-muted small">No messages yet.</p>
+    <p class="text-muted small">@Localizer["Feedback_NoMessages"]</p>
 }
 
 @foreach (var msg in Model.Messages)
@@ -154,18 +154,18 @@
     @Html.AntiForgeryToken()
     <div class="d-flex gap-2">
         <textarea name="Content" class="form-control form-control-sm" rows="2"
-                  placeholder="Type a message..." required maxlength="5000"></textarea>
-        <button type="submit" class="btn btn-primary btn-sm align-self-end">Send</button>
+                  placeholder="@Localizer["Feedback_MessagePlaceholder"].Value" required maxlength="5000"></textarea>
+        <button type="submit" class="btn btn-primary btn-sm align-self-end">@Localizer["Feedback_Send"]</button>
     </div>
 </form>
 
 @if (Model.ResolvedAt.HasValue)
 {
     <div class="text-muted small mt-3">
-        Resolved @Model.ResolvedAt.Value.ToString("MMM dd, HH:mm")
+        @Html.Raw(string.Format(Localizer["Feedback_ResolvedAt"].Value, Html.Encode(Model.ResolvedAt.Value.ToString("MMM dd, HH:mm"))))
         @if (!string.IsNullOrEmpty(Model.ResolvedByName))
         {
-            <text> by @Model.ResolvedByName</text>
+            <text> @Html.Raw(string.Format(Localizer["Feedback_ResolvedBy"].Value, Html.Encode(Model.ResolvedByName)))</text>
         }
     </div>
 }

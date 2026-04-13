@@ -44,3 +44,14 @@
 
 - **Teams**: Budget categories can be linked to a department. Coordinator status on the department determines line item editing access.
 - **Admin**: Budget year lifecycle management is restricted to FinanceAdmin and Admin.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `BudgetService`
+**Owned tables:** `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections`
+
+### Current State
+
+**Compliant.** No violations found. Controllers do not inject DbContext. BudgetService only queries its own tables. Cache ownership is correct.

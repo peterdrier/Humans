@@ -1,9 +1,7 @@
 using Humans.Application;
-using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
+using Humans.Application.Interfaces;
 using Humans.Web.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 
@@ -11,14 +9,14 @@ namespace Humans.Web.ViewComponents;
 
 public class NotificationBellViewComponent : ViewComponent
 {
-    private readonly HumansDbContext _dbContext;
+    private readonly INotificationInboxService _notificationInboxService;
     private readonly IMemoryCache _cache;
 
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
 
-    public NotificationBellViewComponent(HumansDbContext dbContext, IMemoryCache cache)
+    public NotificationBellViewComponent(INotificationInboxService notificationInboxService, IMemoryCache cache)
     {
-        _dbContext = dbContext;
+        _notificationInboxService = notificationInboxService;
         _cache = cache;
     }
 
@@ -34,17 +32,7 @@ public class NotificationBellViewComponent : ViewComponent
         {
             entry.AbsoluteExpirationRelativeToNow = CacheDuration;
 
-            var actionableCount = await _dbContext.NotificationRecipients
-                .CountAsync(nr => nr.UserId == userId.Value &&
-                                  nr.ReadAt == null &&
-                                  nr.Notification.ResolvedAt == null &&
-                                  nr.Notification.Class == NotificationClass.Actionable);
-
-            var informationalCount = await _dbContext.NotificationRecipients
-                .CountAsync(nr => nr.UserId == userId.Value &&
-                                  nr.ReadAt == null &&
-                                  nr.Notification.ResolvedAt == null &&
-                                  nr.Notification.Class == NotificationClass.Informational);
+            var (actionableCount, informationalCount) = await _notificationInboxService.GetUnreadBadgeCountsAsync(userId.Value);
 
             return new NotificationBadgeViewModel
             {

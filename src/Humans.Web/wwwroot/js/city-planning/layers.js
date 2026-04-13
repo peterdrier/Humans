@@ -99,9 +99,11 @@ export function renderMap(onCampPolygonClick) {
     map.addLayer({ id: 'limit-zone-fill', type: 'fill', source: 'limit-zone', paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.08 } });
 
     const ZONE_COLORS = { blue: '#2266cc', green: '#229944', yellow: '#cc9900', orange: '#cc6600', red: '#cc1111' };
-    const soundZones = [...new Set((limitZoneData.features || []).map(f => f.properties?.sound_zone).filter(Boolean))];
+    // Support both PascalCase (SoundZone) and legacy snake_case (sound_zone) property names
+    const getSoundZone = (f) => f.properties?.SoundZone || f.properties?.sound_zone;
+    const SoundZones = [...new Set((limitZoneData.features || []).map(getSoundZone).filter(Boolean))];
 
-    for (const zone of soundZones) {
+    for (const zone of SoundZones) {
       const colors = zone.split('_').map(c => ZONE_COLORS[c]).filter(Boolean);
       if (colors.length === 0) colors.push('#ffffff');
       const n = colors.length;
@@ -113,16 +115,16 @@ export function renderMap(onCampPolygonClick) {
         map.addLayer({
           id: `limit-zone-line-${zone}-${i}`,
           type: 'line', source: 'limit-zone',
-          filter: ['==', ['get', 'sound_zone'], zone],
+          filter: ['==', ['coalesce', ['get', 'SoundZone'], ['get', 'sound_zone']], zone],
           paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': dashArray },
         });
       });
     }
 
-    // Fallback: features with no sound_zone property
+    // Fallback: features with neither SoundZone nor sound_zone property
     map.addLayer({
       id: 'limit-zone-line-fallback', type: 'line', source: 'limit-zone',
-      filter: ['!', ['has', 'sound_zone']],
+      filter: ['all', ['!', ['has', 'SoundZone']], ['!', ['has', 'sound_zone']]],
       paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-dasharray': [4, 2] },
     });
   }

@@ -37,39 +37,48 @@ public class CleanupNotificationsJob : IRecurringJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var now = _clock.GetCurrentInstant();
-        var resolvedCutoff = now - ResolvedRetentionPeriod;
-        var informationalCutoff = now - InformationalRetentionPeriod;
-
-        // Pass 1: resolved notifications older than 7 days
-        var resolvedToDelete = await _dbContext.Notifications
-            .Where(n => n.ResolvedAt != null && n.ResolvedAt < resolvedCutoff)
-            .ToListAsync(cancellationToken);
-
-        if (resolvedToDelete.Count > 0)
+        try
         {
-            _dbContext.Notifications.RemoveRange(resolvedToDelete);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            var now = _clock.GetCurrentInstant();
+            var resolvedCutoff = now - ResolvedRetentionPeriod;
+            var informationalCutoff = now - InformationalRetentionPeriod;
+
+            // Pass 1: resolved notifications older than 7 days
+            var resolvedToDelete = await _dbContext.Notifications
+                .Where(n => n.ResolvedAt != null && n.ResolvedAt < resolvedCutoff)
+                .ToListAsync(cancellationToken);
+
+            if (resolvedToDelete.Count > 0)
+            {
+                _dbContext.Notifications.RemoveRange(resolvedToDelete);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            // Pass 2: unresolved informational notifications older than 30 days
+            var staleToDelete = await _dbContext.Notifications
+                .Where(n => n.ResolvedAt == null &&
+                            n.Class == NotificationClass.Informational &&
+                            n.CreatedAt < informationalCutoff)
+                .ToListAsync(cancellationToken);
+
+            if (staleToDelete.Count > 0)
+            {
+                _dbContext.Notifications.RemoveRange(staleToDelete);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            _logger.LogInformation(
+                "CleanupNotificationsJob: deleted {ResolvedCount} resolved (>{ResolvedDays}d) and {StaleCount} stale informational (>{StaleDays}d) notifications",
+                resolvedToDelete.Count, ResolvedRetentionPeriod.Days,
+                staleToDelete.Count, InformationalRetentionPeriod.Days);
+
+            _metrics.RecordJobRun("cleanup_notifications", "success");
         }
-
-        // Pass 2: unresolved informational notifications older than 30 days
-        var staleToDelete = await _dbContext.Notifications
-            .Where(n => n.ResolvedAt == null &&
-                        n.Class == NotificationClass.Informational &&
-                        n.CreatedAt < informationalCutoff)
-            .ToListAsync(cancellationToken);
-
-        if (staleToDelete.Count > 0)
+        catch (Exception ex)
         {
-            _dbContext.Notifications.RemoveRange(staleToDelete);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            _metrics.RecordJobRun("cleanup_notifications", "failure");
+            _logger.LogError(ex, "Error cleaning up notifications");
+            throw;
         }
-
-        _logger.LogInformation(
-            "CleanupNotificationsJob: deleted {ResolvedCount} resolved (>{ResolvedDays}d) and {StaleCount} stale informational (>{StaleDays}d) notifications",
-            resolvedToDelete.Count, ResolvedRetentionPeriod.Days,
-            staleToDelete.Count, InformationalRetentionPeriod.Days);
-
-        _metrics.RecordJobRun("cleanup_notifications", "success");
     }
 }

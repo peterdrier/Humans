@@ -47,3 +47,14 @@
 - **Teams**: Volunteer activation adds the human to the Volunteers system team.
 - **Governance**: Tier applications are optional and independent of Volunteer onboarding.
 - **Feedback**: Feedback submission is available during onboarding, before the human is active.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `OnboardingService`
+**Owned tables:** None — OnboardingService is an orchestrator that coordinates Profiles, Legal, and Teams services.
+
+### Current State
+
+**Compliant.** No violations found. OnboardingReviewController does not inject DbContext. OnboardingService orchestrates via service interfaces as intended.

@@ -42,3 +42,24 @@
 
 - **Profiles**: Camp leads are linked to humans. Lead assignment requires a valid human account.
 - **Admin**: Camp settings management is restricted to CampAdmin and Admin.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `CampService`, `CampContactService`
+**Owned tables:** `camps`, `camp_seasons`, `camp_leads`, `camp_images`, `camp_historical_names`, `camp_settings`
+
+### Current Violations
+
+**Controllers:** Compliant — no DbContext injection.
+**Services:** Compliant — CampService and CampContactService only query their own tables.
+**Cache:** Compliant — CampService owns its camp-related caches.
+
+**Incoming violations (other services querying Camp-owned tables):**
+- `ProfileService` queries `CampLeads` directly
+- `CityPlanningService` queries `CampSeasons` directly
+
+### Target State
+
+- Already compliant internally. Incoming violations are tracked in the Profiles and City Planning section docs.

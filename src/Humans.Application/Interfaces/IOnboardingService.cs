@@ -42,6 +42,17 @@ public interface IOnboardingService
     // --- Shared: consent-check pending (used by ConsentController + ProfileController) ---
     Task<bool> SetConsentCheckPendingIfEligibleAsync(Guid userId, CancellationToken ct = default);
 
+    // --- Badge counts ---
+    /// <summary>
+    /// Gets the count of profiles pending consent review (not yet approved, not rejected).
+    /// </summary>
+    Task<int> GetPendingReviewCountAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the count of submitted applications that the given board member has not yet voted on.
+    /// </summary>
+    Task<int> GetUnvotedApplicationCountAsync(Guid boardMemberUserId, CancellationToken ct = default);
+
     // --- Admin ---
     Task<DTOs.AdminDashboardData> GetAdminDashboardAsync(CancellationToken ct = default);
     Task<OnboardingResult> PurgeHumanAsync(Guid userId, CancellationToken ct = default);

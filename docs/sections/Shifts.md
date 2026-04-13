@@ -58,3 +58,27 @@
 - **Profiles**: Volunteer event profile stores per-event volunteer data (skills, dietary, medical). NoShow history is shown on a human's profile to coordinators and privileged roles.
 - **Admin**: Event settings management is Admin-only.
 - **Email**: Signup status change notifications are queued through the email outbox.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `ShiftManagementService`, `ShiftSignupService`, `GeneralAvailabilityService`
+**Owned tables:** `rotas`, `shifts`, `shift_signups`, `event_settings`, `general_availabilities`, `volunteer_event_profiles`
+
+### Current Violations
+
+**ShiftManagementService — queries non-owned tables (Rule 2c):**
+- Queries `RoleAssignments` table (owned by Auth) in HasActiveRoleAsync()
+- Caches authorization data derived from RoleAssignments and TeamMembers under `shift-auth` key (Rule 2d)
+
+**ShiftSignupService — queries non-owned tables (Rule 2c):**
+- Queries `TeamMembers` table (owned by Teams) in CheckAndNotifyCoverageGapAsync() and DispatchSignupChangeNotificationAsync() to find coordinators
+
+**Controllers:** Compliant — no DbContext injection.
+
+### Target State
+
+- ShiftManagementService calls `IRoleAssignmentService` (Auth) for role checks instead of querying `RoleAssignments` directly
+- ShiftSignupService calls `ITeamService` for coordinator lookups instead of querying `TeamMembers`
+- Authorization cache is either owned by RoleAssignmentService or ShiftManagementService caches results from service calls (not raw DB queries)

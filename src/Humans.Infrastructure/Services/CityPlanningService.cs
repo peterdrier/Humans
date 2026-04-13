@@ -1,5 +1,4 @@
 using Humans.Application.Interfaces;
-using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
@@ -15,61 +14,88 @@ public class CityPlanningService : ICityPlanningService
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
     private readonly IOptions<CityPlanningOptions> _options;
+    private readonly ICampService _campService;
+    private readonly ITeamService _teamService;
+    private readonly IProfileService _profileService;
 
-    public CityPlanningService(HumansDbContext dbContext, IClock clock, IOptions<CityPlanningOptions> options)
+    public CityPlanningService(
+        HumansDbContext dbContext,
+        IClock clock,
+        IOptions<CityPlanningOptions> options,
+        ICampService campService,
+        ITeamService teamService,
+        IProfileService profileService)
     {
         _dbContext = dbContext;
         _clock = clock;
         _options = options;
+        _campService = campService;
+        _teamService = teamService;
+        _profileService = profileService;
     }
 
     public async Task<List<CampPolygonDto>> GetCampPolygonsAsync(int year, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampPolygons
-            .Include(p => p.CampSeason).ThenInclude(s => s.Camp)
-            .Where(p => p.CampSeason.Year == year)
-            .Select(p => new CampPolygonDto(
-                p.CampSeasonId,
-                p.CampSeason.Name,
-                p.CampSeason.Camp.Slug,
-                p.GeoJson,
-                p.AreaSqm,
-                p.CampSeason.SoundZone))
+        // Get display data for the year from camp service (keyed by campSeasonId)
+        var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var seasonIds = displayData.Keys.ToList();
+
+        // Load polygons from owned table, filtered to the year's camp season IDs
+        var polygons = await _dbContext.CampPolygons
+            .Where(p => seasonIds.Contains(p.CampSeasonId))
             .ToListAsync(cancellationToken);
+
+        return polygons
+            .Select(p =>
+            {
+                var data = displayData[p.CampSeasonId];
+                return new CampPolygonDto(
+                    p.CampSeasonId,
+                    data.Name,
+                    data.CampSlug,
+                    p.GeoJson,
+                    p.AreaSqm,
+                    data.SoundZone);
+            })
+            .ToList();
     }
 
     public async Task<SoundZone?> GetCampSeasonSoundZoneAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampSeasons
-            .Where(s => s.Id == campSeasonId)
-            .Select(s => s.SoundZone)
-            .FirstOrDefaultAsync(cancellationToken);
+        return await _campService.GetCampSeasonSoundZoneAsync(campSeasonId, cancellationToken);
     }
 
     public async Task<string?> GetCampSeasonNameAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampSeasons
-            .Where(s => s.Id == campSeasonId)
-            .Select(s => s.Name)
-            .FirstOrDefaultAsync(cancellationToken);
+        return await _campService.GetCampSeasonNameAsync(campSeasonId, cancellationToken);
     }
 
     public async Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.Profiles
-            .Where(p => p.UserId == userId)
-            .Select(p => p.BurnerName)
-            .FirstOrDefaultAsync(cancellationToken);
+        // Use targeted per-user lookup (GetProfileAsync) instead of GetCachedProfileAsync
+        // to avoid warming the full profile cache on cold-cache paths like SignalR connect.
+        var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
+        return profile?.BurnerName;
     }
 
     public async Task<List<CampSeasonSummaryDto>> GetCampSeasonsWithoutCampPolygonAsync(int year, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampSeasons
-            .Include(s => s.Camp)
-            .Where(s => s.Year == year
-                && !_dbContext.CampPolygons.Any(p => p.CampSeasonId == s.Id))
-            .Select(s => new CampSeasonSummaryDto(s.Id, s.Name, s.Camp.Slug))
+        // Get all camp seasons for the year from camp service
+        var allSeasons = await _campService.GetCampSeasonBriefsForYearAsync(year, cancellationToken);
+        var seasonIdsForYear = allSeasons.Select(s => s.CampSeasonId).ToList();
+
+        // Get camp season IDs that already have polygons, filtered in SQL to this year's seasons only
+        var polygonSeasonIds = await _dbContext.CampPolygons
+            .Where(p => seasonIdsForYear.Contains(p.CampSeasonId))
+            .Select(p => p.CampSeasonId)
             .ToListAsync(cancellationToken);
+
+        var polygonSeasonIdSet = new HashSet<Guid>(polygonSeasonIds);
+
+        return allSeasons
+            .Where(s => !polygonSeasonIdSet.Contains(s.CampSeasonId))
+            .Select(s => new CampSeasonSummaryDto(s.CampSeasonId, s.Name, s.CampSlug))
+            .ToList();
     }
 
     public async Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
@@ -82,9 +108,8 @@ public class CityPlanningService : ICityPlanningService
 
         return rows.Select(h => new CampPolygonHistoryEntryDto(
             h.Id,
-            h.ModifiedByUser.UserName ?? h.ModifiedByUserId.ToString(),
-            h.ModifiedAt.InZone(DateTimeZone.Utc).ToDateTimeUnspecified()
-                .ToString("d MMM yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+            h.ModifiedByUser.DisplayName ?? h.ModifiedByUserId.ToString(),
+            h.ModifiedAt,
             h.AreaSqm,
             h.Note,
             h.GeoJson)).ToList();
@@ -92,15 +117,7 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<Guid?> GetUserCampSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default)
     {
-        return await _dbContext.CampLeads
-            .Where(l => l.UserId == userId && l.LeftAt == null)
-            .Join(_dbContext.CampSeasons,
-                l => l.CampId,
-                s => s.CampId,
-                (l, s) => s)
-            .Where(s => s.Year == year)
-            .Select(s => (Guid?)s.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+        return await _campService.GetCampLeadSeasonIdForYearAsync(userId, year, cancellationToken);
     }
 
     public async Task<(CampPolygon polygon, CampPolygonHistory history)> SaveCampPolygonAsync(
@@ -162,12 +179,10 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<bool> IsCityPlanningTeamMemberAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var team = await _dbContext.Teams
-            .FirstOrDefaultAsync(t => t.Slug == _options.Value.CityPlanningTeamSlug, cancellationToken);
+        var team = await _teamService.GetTeamBySlugAsync(_options.Value.CityPlanningTeamSlug, cancellationToken);
         if (team == null) return false;
 
-        return await _dbContext.TeamMembers
-            .AnyAsync(tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt == null, cancellationToken);
+        return await _teamService.IsUserMemberOfTeamAsync(team.Id, userId, cancellationToken);
     }
 
     public async Task<bool> CanUserEditAsync(Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default)
@@ -179,20 +194,16 @@ public class CityPlanningService : ICityPlanningService
         var settings = await GetSettingsAsync(cancellationToken);
         if (!settings.IsPlacementOpen) return false;
 
-        var campSeason = await _dbContext.CampSeasons
-            .FirstOrDefaultAsync(s => s.Id == campSeasonId, cancellationToken);
-        if (campSeason == null) return false;
-        if (campSeason.Year != settings.Year) return false;
+        var campSeasonInfo = await _campService.GetCampSeasonInfoAsync(campSeasonId, cancellationToken);
+        if (campSeasonInfo == null) return false;
+        if (campSeasonInfo.Year != settings.Year) return false;
 
-        return await _dbContext.CampLeads
-            .AnyAsync(l => l.CampId == campSeason.CampId && l.UserId == userId && l.LeftAt == null, cancellationToken);
+        return await _campService.IsUserCampLeadAsync(userId, campSeasonInfo.CampId, cancellationToken);
     }
 
     public async Task<CityPlanningSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
-        var campSettings = await _dbContext.CampSettings
-            .FirstOrDefaultAsync(cancellationToken)
-            ?? throw new InvalidOperationException("CampSettings row not found.");
+        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
 
         var settings = await _dbContext.CityPlanningSettings
             .FirstOrDefaultAsync(s => s.Year == campSettings.PublicYear, cancellationToken);
@@ -270,9 +281,13 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {
+        // Get display data for the year from camp service (keyed by campSeasonId)
+        var displayData = await _campService.GetCampSeasonDisplayDataForYearAsync(year, cancellationToken);
+        var seasonIds = displayData.Keys.ToList();
+
+        // Load polygons from owned table, filtered to the year's camp season IDs
         var polygons = await _dbContext.CampPolygons
-            .Include(p => p.CampSeason).ThenInclude(s => s.Camp)
-            .Where(p => p.CampSeason.Year == year)
+            .Where(p => seasonIds.Contains(p.CampSeasonId))
             .ToListAsync(cancellationToken);
 
         var docs = new List<System.Text.Json.JsonDocument>();
@@ -280,6 +295,7 @@ public class CityPlanningService : ICityPlanningService
         {
             var features = polygons.Select(p =>
             {
+                var data = displayData[p.CampSeasonId];
                 var doc = System.Text.Json.JsonDocument.Parse(p.GeoJson);
                 docs.Add(doc);
                 var geom = doc.RootElement.TryGetProperty("geometry", out var g) ? g : doc.RootElement;
@@ -289,9 +305,9 @@ public class CityPlanningService : ICityPlanningService
                     geometry = geom,
                     properties = new
                     {
-                        campName = p.CampSeason.Name,
-                        campSlug = p.CampSeason.Camp.Slug,
-                        year = p.CampSeason.Year,
+                        campName = data.Name,
+                        campSlug = data.CampSlug,
+                        year,
                         areaSqm = p.AreaSqm
                     }
                 };

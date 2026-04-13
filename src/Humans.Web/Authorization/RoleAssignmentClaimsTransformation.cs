@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.Authorization;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Data;
 
@@ -50,6 +51,18 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
             return principal;
         }
 
+        // Defensive: the SystemPrincipal claim grants background-job authorization bypass in
+        // RoleAssignmentAuthorizationHandler. It must never appear on a real user's identity,
+        // even if an external IdP somehow emits it. Strip any leaked instances here.
+        foreach (var userIdentity in principal.Identities)
+        {
+            var systemClaims = userIdentity.FindAll(SystemPrincipal.SystemClaimType).ToList();
+            foreach (var systemClaim in systemClaims)
+            {
+                userIdentity.RemoveClaim(systemClaim);
+            }
+        }
+
         var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
@@ -90,6 +103,12 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         var now = _clock.GetCurrentInstant();
         var claims = new List<Claim>();
 
+        // Check suspension status — suspended users lose ActiveMember claim
+        // but keep role claims (Admin/Board) so they can manage their own unsuspension
+        var isSuspended = await dbContext.Profiles
+            .AsNoTracking()
+            .AnyAsync(p => p.UserId == userId && p.IsSuspended);
+
         var activeRoles = await dbContext.RoleAssignments
             .AsNoTracking()
             .Where(ra =>
@@ -105,16 +124,19 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        var isVolunteerMember = await dbContext.TeamMembers
-            .AsNoTracking()
-            .AnyAsync(tm =>
-                tm.UserId == userId &&
-                tm.TeamId == SystemTeamIds.Volunteers &&
-                !tm.LeftAt.HasValue);
-
-        if (isVolunteerMember)
+        if (!isSuspended)
         {
-            claims.Add(new Claim(ActiveMemberClaimType, ActiveClaimValue));
+            var isVolunteerMember = await dbContext.TeamMembers
+                .AsNoTracking()
+                .AnyAsync(tm =>
+                    tm.UserId == userId &&
+                    tm.TeamId == SystemTeamIds.Volunteers &&
+                    !tm.LeftAt.HasValue);
+
+            if (isVolunteerMember)
+            {
+                claims.Add(new Claim(ActiveMemberClaimType, ActiveClaimValue));
+            }
         }
 
         var hasProfile = await dbContext.Profiles

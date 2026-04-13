@@ -13,7 +13,7 @@ test.describe('Profile (02-profiles)', () => {
 
   test('US-2.2: edit page has all form sections', async ({ page }) => {
     await loginAsVolunteer(page);
-    await page.goto('/Profile/Edit');
+    await page.goto('/Profile/Me/Edit');
 
     // General info section
     const burnerNameInput = page.locator('input[name="BurnerName"]');
@@ -33,9 +33,9 @@ test.describe('Profile (02-profiles)', () => {
 
   test('GDPR: privacy page loads with data export and deletion options', async ({ page }) => {
     await loginAsVolunteer(page);
-    await page.goto('/Profile/Privacy');
+    await page.goto('/Profile/Me/Privacy');
 
-    if (!page.url().includes('/Profile/Privacy')) return; // onboarding redirect — skip gracefully
+    if (!page.url().includes('/Profile/Me/Privacy')) return; // onboarding redirect — skip gracefully
 
     await expect(page.locator('h1, h2, h3, h4').first()).toBeVisible();
     // Data export link

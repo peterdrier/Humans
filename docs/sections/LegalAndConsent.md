@@ -44,3 +44,21 @@
 - **Onboarding**: Consent to all required documents is a mandatory step before Volunteer activation.
 - **Teams**: Legal documents can be scoped to a specific team. Joining a team may require consenting to team-specific documents.
 - **Google Integration**: Legal document sync from GitHub is a background job.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `LegalDocumentService`, `AdminLegalDocumentService`, `ConsentService`
+**Owned tables:** `legal_documents`, `document_versions`, `consent_records`
+
+### Current Violations
+
+**ConsentService — queries non-owned tables (Rule 2c):**
+- Queries `Profiles` table (owned by Profiles) directly
+
+**Controllers:** Compliant — no DbContext injection.
+
+### Target State
+
+- ConsentService calls `IProfileService` for profile data instead of querying `Profiles` directly

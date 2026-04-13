@@ -163,4 +163,9 @@ public class User : IdentityUser<Guid>
     /// Navigation property to communication preferences.
     /// </summary>
     public ICollection<CommunicationPreference> CommunicationPreferences { get; } = new List<CommunicationPreference>();
+
+    /// <summary>
+    /// Navigation property to event participation records.
+    /// </summary>
+    public ICollection<EventParticipation> EventParticipations { get; } = new List<EventParticipation>();
 }

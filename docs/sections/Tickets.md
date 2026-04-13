@@ -33,9 +33,32 @@
 
 - When ticket sync runs, new orders and attendees are imported and existing ones are updated.
 - Auto-matching runs during sync: orders and attendees are matched to humans by email.
+- Ticket sync derives EventParticipation records: valid ticket -> Ticketed, checked-in -> Attended (permanent).
+- When a user's last valid ticket is voided/transferred, their TicketSync-sourced participation record is removed.
+- Ticket purchase overrides a NotAttending declaration.
+- "Who Hasn't Bought" excludes humans who declared not attending.
 
 ## Cross-Section Dependencies
 
 - **Campaigns**: TicketAdmin can generate discount codes for campaigns via the ticket vendor integration.
 - **Profiles**: Ticket orders and attendees are auto-matched against human email addresses.
 - **Admin**: Sync configuration and manual vendor operations are Admin-only.
+- **Event Participation**: Ticket sync auto-creates/updates EventParticipation records. Admin can backfill historical data via Tickets > Backfill.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService`
+**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`
+
+### Current Violations
+
+**TicketQueryService — queries non-owned tables (Rule 2c):**
+- Queries `Users` table directly for user matching
+
+**Controllers:** Compliant — TicketController does not inject DbContext.
+
+### Target State
+
+- TicketQueryService calls `IUserService` or `IProfileService` for user data instead of querying `Users` directly

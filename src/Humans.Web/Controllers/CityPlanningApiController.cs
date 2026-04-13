@@ -2,6 +2,7 @@ using System.Text.Json;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
+using Humans.Web.Extensions;
 using Humans.Web.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -68,7 +69,16 @@ public class CityPlanningApiController : ControllerBase
     public async Task<IActionResult> GetCampPolygonHistory(Guid campSeasonId, CancellationToken cancellationToken)
     {
         var history = await _cityPlanningService.GetCampPolygonHistoryAsync(campSeasonId, cancellationToken);
-        return Ok(history);
+        var response = history.Select(h => new
+        {
+            id = h.Id,
+            modifiedByDisplayName = h.ModifiedByDisplayName,
+            modifiedAt = h.ModifiedAt.ToDisplayDateTime(),
+            areaSqm = h.AreaSqm,
+            note = h.Note,
+            geoJson = h.GeoJson,
+        });
+        return Ok(response);
     }
 
     /// <summary>Save or update a camp polygon. Broadcasts update to all connected clients via SignalR.</summary>

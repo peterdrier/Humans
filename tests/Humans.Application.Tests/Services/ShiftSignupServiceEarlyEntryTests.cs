@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -34,9 +35,16 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
         _clock = new FakeClock(TestNow);
         _auditLog = Substitute.For<IAuditLogService>();
 
+        var teamService = Substitute.For<ITeamService>();
+        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(ITeamService)).Returns(teamService);
+
         _shiftMgmt = new ShiftManagementService(
             _dbContext,
             _auditLog,
+            roleAssignmentService,
+            serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             _clock,
             NullLogger<ShiftManagementService>.Instance);
@@ -46,6 +54,7 @@ public class ShiftSignupServiceEarlyEntryTests : IDisposable
             _shiftMgmt,
             _auditLog,
             Substitute.For<INotificationService>(),
+            serviceProvider,
             _clock,
             NullLogger<ShiftSignupService>.Instance);
     }

@@ -17,17 +17,20 @@ namespace Humans.Infrastructure.Services;
 public class NotificationService : INotificationService
 {
     private readonly HumansDbContext _dbContext;
+    private readonly ICommunicationPreferenceService _preferenceService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<NotificationService> _logger;
 
     public NotificationService(
         HumansDbContext dbContext,
+        ICommunicationPreferenceService preferenceService,
         IClock clock,
         IMemoryCache cache,
         ILogger<NotificationService> logger)
     {
         _dbContext = dbContext;
+        _preferenceService = preferenceService;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -55,12 +58,9 @@ public class NotificationService : INotificationService
         var now = _clock.GetCurrentInstant();
         var category = source.ToMessageCategory();
 
-        // Load preferences for all recipients at once
-        var preferences = await _dbContext.CommunicationPreferences
-            .Where(cp => recipientUserIds.Contains(cp.UserId) && cp.Category == category)
-            .ToListAsync(cancellationToken);
-
-        var prefByUser = preferences.ToDictionary(p => p.UserId);
+        // Load inbox-disabled users for the category via the preference service
+        var inboxDisabled = await _preferenceService.GetUsersWithInboxDisabledAsync(
+            recipientUserIds, category, cancellationToken);
 
         // For individual target, create one notification per user
         foreach (var userId in recipientUserIds)
@@ -68,7 +68,7 @@ public class NotificationService : INotificationService
             // Check InboxEnabled preference — informational can be suppressed
             if (notificationClass == NotificationClass.Informational)
             {
-                if (prefByUser.TryGetValue(userId, out var pref) && !pref.InboxEnabled)
+                if (inboxDisabled.Contains(userId))
                 {
                     _logger.LogDebug(
                         "Skipping informational notification for user {UserId} — InboxEnabled=false for {Category}",
@@ -145,12 +145,9 @@ public class NotificationService : INotificationService
         var now = _clock.GetCurrentInstant();
         var category = source.ToMessageCategory();
 
-        // Load preferences for all team members
-        var preferences = await _dbContext.CommunicationPreferences
-            .Where(cp => memberUserIds.Contains(cp.UserId) && cp.Category == category)
-            .ToListAsync(cancellationToken);
-
-        var prefByUser = preferences.ToDictionary(p => p.UserId);
+        // Load inbox-disabled users for the category via the preference service
+        var inboxDisabled = await _preferenceService.GetUsersWithInboxDisabledAsync(
+            memberUserIds, category, cancellationToken);
 
         // Group target: one shared notification
         var notification = new Notification
@@ -171,7 +168,7 @@ public class NotificationService : INotificationService
         {
             // Check InboxEnabled preference — informational can be suppressed
             if (notificationClass == NotificationClass.Informational &&
-                prefByUser.TryGetValue(userId, out var pref) && !pref.InboxEnabled)
+                inboxDisabled.Contains(userId))
             {
                 continue;
             }
@@ -229,12 +226,9 @@ public class NotificationService : INotificationService
 
         var category = source.ToMessageCategory();
 
-        // Load preferences
-        var preferences = await _dbContext.CommunicationPreferences
-            .Where(cp => roleUserIds.Contains(cp.UserId) && cp.Category == category)
-            .ToListAsync(cancellationToken);
-
-        var prefByUser = preferences.ToDictionary(p => p.UserId);
+        // Load inbox-disabled users for the category via the preference service
+        var inboxDisabled = await _preferenceService.GetUsersWithInboxDisabledAsync(
+            roleUserIds, category, cancellationToken);
 
         // Group target: one shared notification
         var notification = new Notification
@@ -254,7 +248,7 @@ public class NotificationService : INotificationService
         foreach (var userId in roleUserIds)
         {
             if (notificationClass == NotificationClass.Informational &&
-                prefByUser.TryGetValue(userId, out var pref) && !pref.InboxEnabled)
+                inboxDisabled.Contains(userId))
             {
                 continue;
             }

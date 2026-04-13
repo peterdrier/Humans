@@ -14,14 +14,17 @@ namespace Humans.Web.Authorization.Requirements;
 /// - TeamsAdmin: allow any team
 /// - Team coordinator (or parent department coordinator): allow only their team
 /// - Everyone else: deny
+///
+/// Uses IServiceProvider to lazily resolve ITeamService, breaking the DI cycle:
+/// TeamService → RoleAssignmentService → IAuthorizationService → TeamAuthorizationHandler → ITeamService
 /// </summary>
 public class TeamAuthorizationHandler : AuthorizationHandler<TeamOperationRequirement, Team>
 {
-    private readonly ITeamService _teamService;
+    private readonly IServiceProvider _serviceProvider;
 
-    public TeamAuthorizationHandler(ITeamService teamService)
+    public TeamAuthorizationHandler(IServiceProvider serviceProvider)
     {
-        _teamService = teamService;
+        _serviceProvider = serviceProvider;
     }
 
     protected override async Task HandleRequirementAsync(
@@ -41,7 +44,8 @@ public class TeamAuthorizationHandler : AuthorizationHandler<TeamOperationRequir
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
             return;
 
-        if (await _teamService.IsUserCoordinatorOfTeamAsync(resource.Id, userId))
+        var teamService = _serviceProvider.GetRequiredService<ITeamService>();
+        if (await teamService.IsUserCoordinatorOfTeamAsync(resource.Id, userId))
         {
             context.Succeed(requirement);
         }

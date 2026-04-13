@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
@@ -14,15 +15,23 @@ namespace Humans.Infrastructure.Services;
 public class MembershipCalculator : IMembershipCalculator
 {
     private readonly HumansDbContext _dbContext;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILegalDocumentSyncService _legalDocumentSyncService;
     private readonly IClock _clock;
 
     public MembershipCalculator(
         HumansDbContext dbContext,
+        IServiceProvider serviceProvider,
+        ILegalDocumentSyncService legalDocumentSyncService,
         IClock clock)
     {
         _dbContext = dbContext;
+        _serviceProvider = serviceProvider;
+        _legalDocumentSyncService = legalDocumentSyncService;
         _clock = clock;
     }
+
+    private IConsentService ConsentService => _serviceProvider.GetRequiredService<IConsentService>();
 
     public async Task<MembershipStatus> ComputeStatusAsync(
         Guid userId,
@@ -84,14 +93,14 @@ public class MembershipCalculator : IMembershipCalculator
 
         foreach (var teamId in eligibleTeamIds)
         {
-            var versions = await GetRequiredDocumentVersionsForTeamAsync(teamId, cancellationToken);
+            var versions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, cancellationToken);
             allRequiredVersionIds.AddRange(versions.Select(v => v.Id));
         }
 
         // Deduplicate in case a doc is shared across teams
         var requiredVersionIds = allRequiredVersionIds.Distinct().ToList();
 
-        var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, cancellationToken);
+        var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, cancellationToken);
         var missingVersionIds = requiredVersionIds
             .Where(id => !consentedVersionIds.Contains(id))
             .ToList();
@@ -124,13 +133,13 @@ public class MembershipCalculator : IMembershipCalculator
         Guid teamId,
         CancellationToken ct = default)
     {
-        var requiredVersions = await GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
         if (requiredVersions.Count == 0)
         {
             return true;
         }
 
-        var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, ct);
+        var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, ct);
         return requiredVersions.All(v => consentedVersionIds.Contains(v.Id));
     }
 
@@ -147,8 +156,8 @@ public class MembershipCalculator : IMembershipCalculator
         CancellationToken ct = default)
     {
         var now = _clock.GetCurrentInstant();
-        var requiredVersions = await GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
-        var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, ct);
+        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+        var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, ct);
 
         return requiredVersions
             .Where(v => !consentedVersionIds.Contains(v.Id))
@@ -164,11 +173,11 @@ public class MembershipCalculator : IMembershipCalculator
         CancellationToken cancellationToken = default)
     {
         // Get current versions of all required documents (Volunteers team = global)
-        var requiredVersions = await GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
+        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
         var requiredVersionIds = requiredVersions.Select(v => v.Id).ToList();
 
         // Get versions the user has consented to
-        var consentedVersionIds = await GetConsentedVersionIdsAsync(userId, cancellationToken);
+        var consentedVersionIds = await ConsentService.GetConsentedVersionIdsAsync(userId, cancellationToken);
 
         // Find missing consents
         return requiredVersionIds
@@ -227,7 +236,7 @@ public class MembershipCalculator : IMembershipCalculator
             return new HashSet<Guid>();
         }
 
-        var requiredVersions = await GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
         var requiredVersionIds = requiredVersions.Select(v => v.Id).ToList();
 
         if (requiredVersionIds.Count == 0)
@@ -235,7 +244,7 @@ public class MembershipCalculator : IMembershipCalculator
             return userIdList.ToHashSet();
         }
 
-        var consentsByUser = await GetConsentMapForUsersAsync(userIdList, ct);
+        var consentsByUser = await ConsentService.GetConsentMapForUsersAsync(userIdList, ct);
 
         var requiredSet = requiredVersionIds.ToHashSet();
         var result = new HashSet<Guid>();
@@ -264,7 +273,7 @@ public class MembershipCalculator : IMembershipCalculator
 
         var now = _clock.GetCurrentInstant();
 
-        var requiredVersions = await GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
+        var requiredVersions = await _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, cancellationToken);
         var expiredVersions = requiredVersions
             .Where(v =>
             {
@@ -281,7 +290,7 @@ public class MembershipCalculator : IMembershipCalculator
         var expiredVersionIds = expiredVersions.Select(v => v.Id).ToHashSet();
 
         // Get consented version IDs for all users in batch
-        var consentsByUser = await GetConsentMapForUsersAsync(userIdList, cancellationToken);
+        var consentsByUser = await ConsentService.GetConsentMapForUsersAsync(userIdList, cancellationToken);
 
         var result = new HashSet<Guid>();
         foreach (var userId in userIdList)
@@ -419,60 +428,4 @@ public class MembershipCalculator : IMembershipCalculator
             pendingDeletion);
     }
 
-    private async Task<List<Domain.Entities.DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(
-        Guid teamId,
-        CancellationToken cancellationToken)
-    {
-        var now = _clock.GetCurrentInstant();
-
-        return await _dbContext.LegalDocuments
-            .AsNoTracking()
-            .Where(d => d.IsRequired && d.IsActive && d.TeamId == teamId)
-            .SelectMany(d => d.Versions)
-            .Where(v => v.EffectiveFrom <= now)
-            .Include(v => v.LegalDocument)
-            .GroupBy(v => v.LegalDocumentId)
-            .Select(g => g.OrderByDescending(v => v.EffectiveFrom).First())
-            .ToListAsync(cancellationToken);
-    }
-
-    private async Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
-        Guid userId,
-        CancellationToken cancellationToken)
-    {
-        var ids = await _dbContext.ConsentRecords
-            .AsNoTracking()
-            .Where(cr => cr.UserId == userId && cr.ExplicitConsent)
-            .Select(cr => cr.DocumentVersionId)
-            .ToListAsync(cancellationToken);
-
-        return ids.ToHashSet();
-    }
-
-    private async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
-        List<Guid> userIds,
-        CancellationToken cancellationToken)
-    {
-        if (userIds.Count == 0)
-        {
-            return new Dictionary<Guid, IReadOnlySet<Guid>>();
-        }
-
-        var consents = await _dbContext.ConsentRecords
-            .AsNoTracking()
-            .Where(cr => userIds.Contains(cr.UserId) && cr.ExplicitConsent)
-            .Select(cr => new { cr.UserId, cr.DocumentVersionId })
-            .ToListAsync(cancellationToken);
-
-        var result = userIds.ToDictionary(
-            id => id,
-            _ => (IReadOnlySet<Guid>)new HashSet<Guid>());
-
-        foreach (var consent in consents)
-        {
-            ((HashSet<Guid>)result[consent.UserId]).Add(consent.DocumentVersionId);
-        }
-
-        return result;
-    }
 }

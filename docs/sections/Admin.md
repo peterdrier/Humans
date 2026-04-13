@@ -48,3 +48,26 @@
 - **Legal & Consent**: Document version management is administered by Board and Admin.
 - **Governance**: Role assignment management via human admin actions.
 - **All sections**: Admin has override access to all areas of the system.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `DuplicateAccountService`, `AccountMergeService`
+**Owned tables:** Admin section is primarily an orchestrator — it calls other section services. `AccountMergeService` owns `account_merge_requests`.
+
+### Current Violations
+
+**AdminController — injects HumansDbContext (Rule 1):**
+- Direct database migration queries
+- Direct SQL execution on HangFire tables
+- Queries `Users`, `Profiles`, `TicketOrders`, `TicketAttendees` directly for admin dashboard data
+
+**Controllers:** AdminDuplicateAccountsController and AdminMergeController are compliant.
+**Services:** DuplicateAccountService and AccountMergeService are compliant.
+
+### Target State
+
+- AdminController delegates all data access to appropriate section services
+- Database version/migration info could be exposed via a dedicated admin service
+- HangFire operations may remain as direct SQL (infrastructure concern, not domain data)

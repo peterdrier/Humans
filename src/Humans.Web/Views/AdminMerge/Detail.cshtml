@@ -4,6 +4,14 @@
     var isPending = string.Equals(Model.Status, "Pending", StringComparison.Ordinal);
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Admin" asp-action="Index">Admin</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index">Merge Requests</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Detail</li>
+    </ol>
+</nav>
+
 <h1>Merge Request Detail</h1>
 
 <vc:temp-data-alerts />

@@ -55,6 +55,7 @@ export async function postWithCsrf(
   return page.request.post(url, {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     data: `__RequestVerificationToken=${encodeURIComponent(token)}&${formData}`,
+    maxRedirects: 0,
   });
 }
 

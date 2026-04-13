@@ -21,6 +21,7 @@ public class ProfileService : IProfileService
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IMembershipCalculator _membershipCalculator;
+    private readonly IConsentService _consentService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ProfileService> _logger;
@@ -31,6 +32,7 @@ public class ProfileService : IProfileService
         IEmailService emailService,
         IAuditLogService auditLogService,
         IMembershipCalculator membershipCalculator,
+        IConsentService consentService,
         IClock clock,
         IMemoryCache cache,
         ILogger<ProfileService> logger)
@@ -40,6 +42,7 @@ public class ProfileService : IProfileService
         _emailService = emailService;
         _auditLogService = auditLogService;
         _membershipCalculator = membershipCalculator;
+        _consentService = consentService;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -275,8 +278,8 @@ public class ProfileService : IProfileService
         _cache.InvalidateUserProfile(userId);
         _cache.InvalidateRoleAssignmentClaims(userId);
 
-        // Update profile cache if profile is approved
-        if (profile.IsApproved && !profile.IsSuspended && user is not null)
+        // Update profile cache
+        if (user is not null)
         {
             await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
             UpdateProfileCache(userId, CachedProfile.Create(profile, user));
@@ -380,11 +383,11 @@ public class ProfileService : IProfileService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateUserProfile(userId);
 
-        // Re-add to profile cache if approved
+        // Re-add to profile cache
         var profile = await _dbContext.Profiles
             .Include(p => p.VolunteerHistory)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-        if (profile is { IsApproved: true, IsSuspended: false })
+        if (profile is not null)
         {
             UpdateProfileCache(userId, CachedProfile.Create(profile, user));
         }
@@ -448,21 +451,18 @@ public class ProfileService : IProfileService
 
         var applications = await _dbContext.Applications
             .AsNoTracking()
+            .Include(a => a.StateHistory)
             .Where(a => a.UserId == userId)
             .OrderByDescending(a => a.SubmittedAt)
             .ToListAsync(ct);
 
-        var consents = await _dbContext.ConsentRecords
-            .AsNoTracking()
-            .Include(c => c.DocumentVersion)
-                .ThenInclude(v => v.LegalDocument)
-            .Where(c => c.UserId == userId)
-            .OrderByDescending(c => c.ConsentedAt)
-            .ToListAsync(ct);
+        var consents = await _consentService.GetUserConsentRecordsAsync(userId, ct);
 
         var teamMemberships = await _dbContext.TeamMembers
             .AsNoTracking()
             .Include(tm => tm.Team)
+            .Include(tm => tm.RoleAssignments)
+                .ThenInclude(tra => tra.TeamRoleDefinition)
             .Where(tm => tm.UserId == userId)
             .OrderByDescending(tm => tm.JoinedAt)
             .ToListAsync(ct);
@@ -486,6 +486,120 @@ public class ProfileService : IProfileService
             .OrderBy(e => e.DisplayOrder)
             .ToListAsync(ct);
 
+        var volunteerHistory = profile is not null
+            ? await _dbContext.VolunteerHistoryEntries
+                .AsNoTracking()
+                .Where(vh => vh.ProfileId == profile.Id)
+                .OrderByDescending(vh => vh.Date)
+                .ToListAsync(ct)
+            : [];
+
+        var profileLanguages = profile is not null
+            ? await _dbContext.ProfileLanguages
+                .AsNoTracking()
+                .Where(pl => pl.ProfileId == profile.Id)
+                .ToListAsync(ct)
+            : [];
+
+        var communicationPreferences = await _dbContext.CommunicationPreferences
+            .AsNoTracking()
+            .Where(cp => cp.UserId == userId)
+            .ToListAsync(ct);
+
+        var shiftSignups = await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(ss => ss.Shift)
+                .ThenInclude(s => s.Rota)
+                    .ThenInclude(r => r.Team)
+            .Include(ss => ss.Shift)
+                .ThenInclude(s => s.Rota)
+                    .ThenInclude(r => r.EventSettings)
+            .Where(ss => ss.UserId == userId)
+            .OrderByDescending(ss => ss.CreatedAt)
+            .ToListAsync(ct);
+
+        var volunteerEventProfiles = await _dbContext.VolunteerEventProfiles
+            .AsNoTracking()
+            .Where(vep => vep.UserId == userId)
+            .ToListAsync(ct);
+
+        var generalAvailability = await _dbContext.GeneralAvailability
+            .AsNoTracking()
+            .Include(ga => ga.EventSettings)
+            .Where(ga => ga.UserId == userId)
+            .ToListAsync(ct);
+
+        var tagPreferences = await _dbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Include(vtp => vtp.ShiftTag)
+            .Where(vtp => vtp.UserId == userId)
+            .ToListAsync(ct);
+
+        var feedbackReports = await _dbContext.FeedbackReports
+            .AsNoTracking()
+            .Include(fr => fr.Messages)
+            .Where(fr => fr.UserId == userId)
+            .OrderByDescending(fr => fr.CreatedAt)
+            .ToListAsync(ct);
+
+        var notifications = await _dbContext.NotificationRecipients
+            .AsNoTracking()
+            .Include(nr => nr.Notification)
+            .Where(nr => nr.UserId == userId)
+            .OrderByDescending(nr => nr.Notification.CreatedAt)
+            .ToListAsync(ct);
+
+        var ticketOrders = await _dbContext.TicketOrders
+            .AsNoTracking()
+            .Where(to => to.MatchedUserId == userId)
+            .OrderByDescending(to => to.PurchasedAt)
+            .ToListAsync(ct);
+
+        var ticketAttendees = await _dbContext.TicketAttendees
+            .AsNoTracking()
+            .Where(ta => ta.MatchedUserId == userId)
+            .ToListAsync(ct);
+
+        var campaignGrants = await _dbContext.CampaignGrants
+            .AsNoTracking()
+            .Include(cg => cg.Campaign)
+            .Include(cg => cg.Code)
+            .Where(cg => cg.UserId == userId)
+            .OrderByDescending(cg => cg.AssignedAt)
+            .ToListAsync(ct);
+
+        var campLeadAssignments = await _dbContext.CampLeads
+            .AsNoTracking()
+            .Include(cl => cl.Camp)
+            .Where(cl => cl.UserId == userId)
+            .OrderByDescending(cl => cl.JoinedAt)
+            .ToListAsync(ct);
+
+        var teamJoinRequests = await _dbContext.TeamJoinRequests
+            .AsNoTracking()
+            .Include(tjr => tjr.Team)
+            .Where(tjr => tjr.UserId == userId)
+            .OrderByDescending(tjr => tjr.RequestedAt)
+            .ToListAsync(ct);
+
+        var auditLogEntries = await _dbContext.AuditLogEntries
+            .AsNoTracking()
+            .Where(a => a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId)
+            .OrderByDescending(a => a.OccurredAt)
+            .ToListAsync(ct);
+
+        var budgetAuditLogs = await _dbContext.BudgetAuditLogs
+            .AsNoTracking()
+            .Where(bal => bal.ActorUserId == userId)
+            .OrderByDescending(bal => bal.OccurredAt)
+            .ToListAsync(ct);
+
+        var accountMergeRequests = await _dbContext.AccountMergeRequests
+            .AsNoTracking()
+            .Where(amr => amr.TargetUserId == userId || amr.SourceUserId == userId)
+            .OrderByDescending(amr => amr.CreatedAt)
+            .ToListAsync(ct);
+
         _logger.LogInformation("User {UserId} exported their data", userId);
 
         return new
@@ -496,6 +610,13 @@ public class ProfileService : IProfileService
                 user.Id,
                 user.Email,
                 user.DisplayName,
+                user.PreferredLanguage,
+                user.GoogleEmail,
+                user.UnsubscribedFromCampaigns,
+                user.SuppressScheduleChangeEmails,
+                ContactSource = user.ContactSource?.ToString(),
+                DeletionRequestedAt = user.DeletionRequestedAt.ToInvariantInstantString(),
+                DeletionScheduledFor = user.DeletionScheduledFor.ToInvariantInstantString(),
                 CreatedAt = user.CreatedAt.ToInvariantInstantString(),
                 LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
             } : null,
@@ -515,11 +636,21 @@ public class ProfileService : IProfileService
                 Birthday = profile.DateOfBirth is not null ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}" : null,
                 profile.City,
                 profile.CountryCode,
+                profile.Latitude,
+                profile.Longitude,
                 profile.Bio,
                 profile.Pronouns,
                 profile.ContributionInterests,
                 profile.BoardNotes,
+                profile.MembershipTier,
+                profile.IsApproved,
                 profile.IsSuspended,
+                profile.NoPriorBurnExperience,
+                ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
+                ConsentCheckAt = profile.ConsentCheckAt.ToInvariantInstantString(),
+                profile.ConsentCheckNotes,
+                profile.RejectionReason,
+                RejectedAt = profile.RejectedAt.ToInvariantInstantString(),
                 profile.EmergencyContactName,
                 profile.EmergencyContactPhone,
                 profile.EmergencyContactRelationship,
@@ -534,17 +665,37 @@ public class ProfileService : IProfileService
                 cf.Value,
                 cf.Visibility
             }),
+            VolunteerHistory = volunteerHistory.Select(vh => new
+            {
+                Date = vh.Date.ToIsoDateString(),
+                vh.EventName,
+                vh.Description,
+                CreatedAt = vh.CreatedAt.ToInvariantInstantString()
+            }),
+            Languages = profileLanguages.Select(pl => new
+            {
+                pl.LanguageCode,
+                pl.Proficiency
+            }),
             Applications = applications.Select(a => new
             {
-                a.Id,
                 a.Status,
                 a.MembershipTier,
                 a.Motivation,
                 a.AdditionalInfo,
                 a.SignificantContribution,
                 a.RoleUnderstanding,
+                a.Language,
                 SubmittedAt = a.SubmittedAt.ToInvariantInstantString(),
-                ResolvedAt = a.ResolvedAt.ToInvariantInstantString()
+                ResolvedAt = a.ResolvedAt.ToInvariantInstantString(),
+                TermExpiresAt = a.TermExpiresAt.ToIsoDateString(),
+                BoardMeetingDate = a.BoardMeetingDate.ToIsoDateString(),
+                StateHistory = a.StateHistory.OrderBy(sh => sh.ChangedAt).Select(sh => new
+                {
+                    sh.Status,
+                    ChangedAt = sh.ChangedAt.ToInvariantInstantString(),
+                    sh.Notes
+                })
             }),
             Consents = consents.Select(c => new
             {
@@ -560,14 +711,152 @@ public class ProfileService : IProfileService
                 TeamName = tm.Team.Name,
                 tm.Role,
                 JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
-                LeftAt = tm.LeftAt.ToInvariantInstantString()
+                LeftAt = tm.LeftAt.ToInvariantInstantString(),
+                TeamRoles = tm.RoleAssignments.Select(tra => new
+                {
+                    RoleName = tra.TeamRoleDefinition.Name,
+                    AssignedAt = tra.AssignedAt.ToInvariantInstantString()
+                })
+            }),
+            TeamJoinRequests = teamJoinRequests.Select(tjr => new
+            {
+                TeamName = tjr.Team.Name,
+                tjr.Status,
+                tjr.Message,
+                RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
+                ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
             }),
             RoleAssignments = roleAssignments.Select(ra => new
             {
                 ra.RoleName,
                 ValidFrom = ra.ValidFrom.ToInvariantInstantString(),
-                ValidTo = ra.ValidTo.ToInvariantInstantString(),
-                ra.CreatedByUserId
+                ValidTo = ra.ValidTo.ToInvariantInstantString()
+            }),
+            CommunicationPreferences = communicationPreferences.Select(cp => new
+            {
+                cp.Category,
+                cp.OptedOut,
+                cp.InboxEnabled,
+                UpdatedAt = cp.UpdatedAt.ToInvariantInstantString(),
+                cp.UpdateSource
+            }),
+            ShiftSignups = shiftSignups.Select(ss => new
+            {
+                EventName = ss.Shift.Rota.EventSettings.EventName,
+                Department = ss.Shift.Rota.Team.Name,
+                RotaName = ss.Shift.Rota.Name,
+                ss.Shift.DayOffset,
+                ss.Shift.IsAllDay,
+                ss.Status,
+                ss.Enrolled,
+                ss.StatusReason,
+                CreatedAt = ss.CreatedAt.ToInvariantInstantString(),
+                ReviewedAt = ss.ReviewedAt.ToInvariantInstantString()
+            }),
+            VolunteerEventProfiles = volunteerEventProfiles.Select(vep => new
+            {
+                vep.Skills,
+                vep.Quirks,
+                vep.Languages,
+                vep.DietaryPreference,
+                vep.Allergies,
+                vep.Intolerances,
+                vep.AllergyOtherText,
+                vep.IntoleranceOtherText,
+                vep.MedicalConditions,
+                CreatedAt = vep.CreatedAt.ToInvariantInstantString(),
+                UpdatedAt = vep.UpdatedAt.ToInvariantInstantString()
+            }),
+            GeneralAvailability = generalAvailability.Select(ga => new
+            {
+                EventName = ga.EventSettings.EventName,
+                ga.AvailableDayOffsets,
+                UpdatedAt = ga.UpdatedAt.ToInvariantInstantString()
+            }),
+            ShiftTagPreferences = tagPreferences.Select(vtp => new
+            {
+                TagName = vtp.ShiftTag.Name
+            }),
+            FeedbackReports = feedbackReports.Select(fr => new
+            {
+                fr.Category,
+                fr.Description,
+                fr.PageUrl,
+                fr.Status,
+                CreatedAt = fr.CreatedAt.ToInvariantInstantString(),
+                ResolvedAt = fr.ResolvedAt.ToInvariantInstantString(),
+                Messages = fr.Messages.OrderBy(m => m.CreatedAt).Select(m => new
+                {
+                    m.Content,
+                    IsFromUser = m.SenderUserId == userId,
+                    CreatedAt = m.CreatedAt.ToInvariantInstantString()
+                })
+            }),
+            Notifications = notifications.Select(nr => new
+            {
+                nr.Notification.Title,
+                nr.Notification.Body,
+                nr.Notification.ActionUrl,
+                nr.Notification.Priority,
+                nr.Notification.Source,
+                CreatedAt = nr.Notification.CreatedAt.ToInvariantInstantString(),
+                ReadAt = nr.ReadAt.ToInvariantInstantString(),
+                ResolvedAt = nr.Notification.ResolvedAt.ToInvariantInstantString()
+            }),
+            TicketOrders = ticketOrders.Select(to => new
+            {
+                to.BuyerName,
+                to.BuyerEmail,
+                to.TotalAmount,
+                to.Currency,
+                to.PaymentStatus,
+                to.DiscountCode,
+                PurchasedAt = to.PurchasedAt.ToInvariantInstantString()
+            }),
+            TicketAttendeeMatches = ticketAttendees
+                .Select(ta => new
+                {
+                    ta.AttendeeName,
+                    ta.AttendeeEmail,
+                    ta.TicketTypeName,
+                    ta.Price,
+                    ta.Status
+                }),
+            CampaignGrants = campaignGrants.Select(cg => new
+            {
+                CampaignTitle = cg.Campaign.Title,
+                Code = cg.Code.Code,
+                AssignedAt = cg.AssignedAt.ToInvariantInstantString(),
+                RedeemedAt = cg.RedeemedAt.ToInvariantInstantString(),
+                EmailStatus = cg.LatestEmailStatus?.ToString()
+            }),
+            CampLeadAssignments = campLeadAssignments.Select(cl => new
+            {
+                CampSlug = cl.Camp.Slug,
+                cl.Role,
+                JoinedAt = cl.JoinedAt.ToInvariantInstantString(),
+                LeftAt = cl.LeftAt.ToInvariantInstantString()
+            }),
+            AccountMergeRequests = accountMergeRequests.Select(amr => new
+            {
+                amr.Status,
+                Role = amr.TargetUserId == userId ? "Target" : "Source",
+                CreatedAt = amr.CreatedAt.ToInvariantInstantString(),
+                ResolvedAt = amr.ResolvedAt.ToInvariantInstantString()
+            }),
+            AuditLog = auditLogEntries.Select(a => new
+            {
+                a.Action,
+                a.EntityType,
+                OccurredAt = a.OccurredAt.ToInvariantInstantString(),
+                Role = a.ActorUserId == userId ? "Actor" : "Subject"
+            }),
+            BudgetAuditLog = budgetAuditLogs.Select(bal => new
+            {
+                bal.EntityType,
+                bal.FieldName,
+                bal.Description,
+                OccurredAt = bal.OccurredAt.ToInvariantInstantString()
             })
         };
     }
@@ -603,7 +892,7 @@ public class ProfileService : IProfileService
     {
         var cached = await GetCachedProfilesAsync(ct);
         return cached.Values
-            .Where(p => p.BirthdayMonth == month && p.BirthdayDay.HasValue)
+            .Where(p => p.IsApproved && !p.IsSuspended && p.BirthdayMonth == month && p.BirthdayDay.HasValue)
             .OrderBy(p => p.BirthdayDay)
             .Select(p => new Application.DTOs.BirthdayProfileInfo(p.UserId, p.DisplayName, p.ProfilePictureUrl, p.HasCustomPicture, p.ProfileId, p.BirthdayDay!.Value, p.BirthdayMonth!.Value))
             .ToList();
@@ -614,7 +903,7 @@ public class ProfileService : IProfileService
     {
         var cached = await GetCachedProfilesAsync(ct);
         return cached.Values
-            .Where(p => p.Latitude.HasValue && p.Longitude.HasValue)
+            .Where(p => p.IsApproved && !p.IsSuspended && p.Latitude.HasValue && p.Longitude.HasValue)
             .Select(p => new Application.DTOs.LocationProfileInfo(p.UserId, p.DisplayName, p.ProfilePictureUrl, p.Latitude!.Value, p.Longitude!.Value, p.City, p.CountryCode))
             .ToList();
     }
@@ -698,12 +987,13 @@ public class ProfileService : IProfileService
         var user = await _dbContext.Users
             .Include(u => u.Profile)
             .Include(u => u.Applications)
-            .Include(u => u.ConsentRecords)
             .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
         if (user is null)
             return null;
+
+        var consentCount = await _consentService.GetConsentRecordCountAsync(userId, ct);
 
         var roleAssignments = await _dbContext.RoleAssignments
             .AsNoTracking()
@@ -725,7 +1015,7 @@ public class ProfileService : IProfileService
             user,
             user.Profile,
             user.Applications.OrderByDescending(a => a.SubmittedAt).ToList(),
-            user.ConsentRecords.Count,
+            consentCount,
             roleAssignments,
             rejectedByName);
     }
@@ -770,7 +1060,7 @@ public class ProfileService : IProfileService
         var cached = await GetCachedProfilesAsync(ct);
         var results = new List<HumanSearchResult>();
 
-        foreach (var p in cached.Values)
+        foreach (var p in cached.Values.Where(p => p.IsApproved && !p.IsSuspended))
         {
             var (matchField, matchSnippet) = DetermineMatchFromCache(p, query);
             if (matchField is null) continue;
@@ -793,7 +1083,7 @@ public class ProfileService : IProfileService
 
     private async Task<ConcurrentDictionary<Guid, CachedProfile>> GetCachedProfilesAsync(CancellationToken ct = default)
     {
-        return await _cache.GetOrCreateAsync(CacheKeys.ApprovedProfiles, async entry =>
+        return await _cache.GetOrCreateAsync(CacheKeys.Profiles, async entry =>
         {
             entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
 
@@ -801,7 +1091,6 @@ public class ProfileService : IProfileService
                 .AsNoTracking()
                 .Include(p => p.User)
                 .Include(p => p.VolunteerHistory)
-                .Where(p => p.IsApproved && !p.IsSuspended)
                 .ToListAsync(ct);
 
             return new ConcurrentDictionary<Guid, CachedProfile>(
@@ -814,7 +1103,7 @@ public class ProfileService : IProfileService
     public CachedProfile? GetCachedProfile(Guid userId)
     {
         if (_cache.TryGetExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(
-                CacheKeys.ApprovedProfiles, out var cached)
+                CacheKeys.Profiles, out var cached)
             && cached.TryGetValue(userId, out var profile))
         {
             return profile;
@@ -830,7 +1119,7 @@ public class ProfileService : IProfileService
     }
 
     public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
-        => _cache.UpdateApprovedProfile(userId, newValue);
+        => _cache.UpdateProfile(userId, newValue);
 
     private static (string? Field, string? Snippet) DetermineMatchFromCache(CachedProfile p, string query)
     {
@@ -902,6 +1191,17 @@ public class ProfileService : IProfileService
         }
 
         return profile;
+    }
+
+    public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
+        Guid profileId, CancellationToken ct = default)
+    {
+        return await _dbContext.ProfileLanguages
+            .AsNoTracking()
+            .Where(pl => pl.ProfileId == profileId)
+            .OrderByDescending(pl => pl.Proficiency)
+            .ThenBy(pl => pl.LanguageCode)
+            .ToListAsync(ct);
     }
 
     private static string GetSnippet(string text, string query, int contextChars = 60)

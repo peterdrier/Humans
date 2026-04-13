@@ -81,6 +81,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
             // Batch load all users with profiles and their team memberships (tracked for persistence)
             var users = await _dbContext.Users
                 .Include(u => u.Profile)
+                    .ThenInclude(p => p!.VolunteerHistory)
                 .Include(u => u.UserEmails)
                 .Include(u => u.TeamMemberships.Where(tm => tm.LeftAt == null))
                 .Where(u => usersToSuspend.Contains(u.Id))
@@ -173,11 +174,16 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
 
-                foreach (var userId in suspendedUserIds)
+                foreach (var suspendedUser in users.Where(u => suspendedUserIds.Contains(u.Id)))
                 {
-                    _profileService.UpdateProfileCache(userId, null);
-                    _cache.InvalidateUserProfile(userId);
-                    _teamService.RemoveMemberFromAllTeamsCache(userId);
+                    var cached = suspendedUser.Profile is not null
+                        ? CachedProfile.Create(suspendedUser.Profile, suspendedUser)
+                        : null;
+                    _profileService.UpdateProfileCache(suspendedUser.Id, cached);
+                    _cache.InvalidateUserProfile(suspendedUser.Id);
+                    _cache.InvalidateRoleAssignmentClaims(suspendedUser.Id);
+                    _cache.InvalidateShiftAuthorization(suspendedUser.Id);
+                    _teamService.RemoveMemberFromAllTeamsCache(suspendedUser.Id);
                 }
             }
 

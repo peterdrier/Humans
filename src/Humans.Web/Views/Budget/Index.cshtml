@@ -10,6 +10,13 @@
     var unallocated = totalAllocated - totalLineItems;
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-action="Summary">Budget</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Model.Year.Name</li>
+    </ol>
+</nav>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center gap-3">
         <h1 class="mb-0">@Model.Year.Name</h1>

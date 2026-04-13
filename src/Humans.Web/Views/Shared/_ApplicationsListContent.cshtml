@@ -1,5 +1,12 @@
 @model Humans.Web.Models.AdminApplicationListViewModel
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Board" asp-action="Index">Board</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["AdminApplications_Title"]</li>
+    </ol>
+</nav>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1>@Localizer["AdminApplications_Title"]</h1>
     <span class="text-muted">@string.Format(Localizer["Admin_TotalCount"].Value, Model.TotalCount)</span>

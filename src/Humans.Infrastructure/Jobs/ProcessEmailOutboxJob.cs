@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
@@ -43,7 +44,7 @@ public class ProcessEmailOutboxJob : IRecurringJob
     {
         // 1. Check global pause flag
         var pauseSetting = await _dbContext.SystemSettings
-            .FirstOrDefaultAsync(s => s.Key == "IsEmailSendingPaused", cancellationToken);
+            .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.IsEmailSendingPaused, cancellationToken);
 
         if (pauseSetting is { Value: "true" })
         {

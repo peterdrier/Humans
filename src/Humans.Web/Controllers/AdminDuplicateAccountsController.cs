@@ -96,7 +96,7 @@ public class AdminDuplicateAccountsController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Resolve(Guid sourceUserId, Guid targetUserId, string? notes)
     {
-        var (error, user) = await ResolveCurrentUserAsync();
+        var (error, user) = await RequireCurrentUserAsync();
         if (error is not null) return error;
 
         try

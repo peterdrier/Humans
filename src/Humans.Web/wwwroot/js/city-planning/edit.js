@@ -22,17 +22,20 @@ export function onCampPolygonClick(e) {
     const area         = props.areaSqm   ? `<div class="text-muted small">${Math.round(props.areaSqm).toLocaleString()} m²</div>` : '';
     const warning      = props.outsideZone ? `<div class="text-danger small">⚠️ Outside limits</div>` : '';
     const overlapWarn  = props.overlaps    ? `<div class="text-warning small">⚠️ Overlaps with another barrio</div>` : '';
-    const editBtn      = canEdit ? `<button class="btn btn-primary btn-sm mt-1 js-edit-barrio-btn">Edit</button>` : '';
+    const editBtn      = canEdit ? `<button class="btn btn-primary btn-sm js-edit-barrio-btn">Edit</button>` : '';
+    const historyBtn   = `<button class="btn btn-outline-secondary btn-sm js-history-barrio-btn"><i class="fa fa-history me-1"></i>History</button>`;
 
     if (appState.currentPopup) appState.currentPopup.remove();
     appState.currentPopup = new maplibregl.Popup().setLngLat(e.lngLat)
-        .setHTML(`<div><strong>${escHtml(props.campName || 'Camp')}</strong></div>${area}${warning}${overlapWarn}${editBtn}`)
+        .setHTML(`<div><strong>${escHtml(props.campName || 'Camp')}</strong></div>${area}${warning}${overlapWarn}<div class="d-flex flex-column gap-1 mt-1">${editBtn}${historyBtn}</div>`)
         .addTo(appState.map);
 
     if (canEdit) {
         appState.currentPopup.getElement().querySelector('.js-edit-barrio-btn')
             .addEventListener('click', () => startEditing(campSeasonId));
     }
+    appState.currentPopup.getElement().querySelector('.js-history-barrio-btn')
+        .addEventListener('click', () => loadHistory(campSeasonId, canEdit));
 }
 
 // --- Edit mode lifecycle ---
@@ -40,6 +43,7 @@ export function onCampPolygonClick(e) {
 export function startEditing(campSeasonId) {
     if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
 
+    appState.previewCampSeasonId = null;
     appState.activeCampSeasonId = campSeasonId;
     setActivePolygonDim(campSeasonId);
     appState.draw.deleteAll();
@@ -52,7 +56,6 @@ export function startEditing(campSeasonId) {
         appState.draw.changeMode('direct_select', { featureId: f.id });
     }
 
-    document.getElementById('history-btn').disabled = false;
     setEditingControlsVisible(true);
     updateSaveButton();
 }
@@ -62,7 +65,6 @@ export function exitEditMode() {
     setActivePolygonDim(null);
     appState.activeCampSeasonId = null;
     document.getElementById('save-btn').disabled = true;
-    document.getElementById('history-btn').disabled = true;
     const cancelBtn = document.getElementById('cancel-btn');
     if (cancelBtn) cancelBtn.style.display = 'none';
     clearDrawLabel();
@@ -77,7 +79,6 @@ export function onDrawDelete() {
     setActivePolygonDim(null);
     appState.activeCampSeasonId = null;
     document.getElementById('save-btn').disabled = true;
-    document.getElementById('history-btn').disabled = true;
     const cancelBtn = document.getElementById('cancel-btn');
     if (cancelBtn) cancelBtn.style.display = 'none';
     clearDrawLabel();
@@ -89,18 +90,15 @@ export function onDrawDelete() {
 export function setEditingControlsVisible(visible) {
     const toolbar = document.getElementById('main-toolbar');
     if (!toolbar) return;
-    const saveBtn    = document.getElementById('save-btn');
-    const historyBtn = document.getElementById('history-btn');
+    const saveBtn = document.getElementById('save-btn');
     if (visible) {
         toolbar.style.display = '';
         const addMyBarrioBtn = document.getElementById('add-my-barrio-btn');
         if (addMyBarrioBtn) addMyBarrioBtn.style.display = 'none';
-        if (saveBtn)    saveBtn.style.display = '';
-        if (historyBtn) historyBtn.style.display = '';
+        if (saveBtn) saveBtn.style.display = '';
         return;
     }
-    if (saveBtn)    saveBtn.style.display = 'none';
-    if (historyBtn) historyBtn.style.display = 'none';
+    if (saveBtn) saveBtn.style.display = 'none';
     updateAddMyBarrioVisibility();
     const addMyBarrioVisible = document.getElementById('add-my-barrio-btn')?.style.display !== 'none';
     const addBarrioPresent   = !!document.getElementById('add-barrio-container');
@@ -123,10 +121,10 @@ export function updateAddMyBarrioVisibility() {
 
 export function clearDrawLabel() {
     const { map } = appState;
-    map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [] });
-    map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: [] });
-    map.getSource('draw-warning-error').setData({ type: 'FeatureCollection', features: [] });
-    map.getSource('draw-warning-overlap').setData({ type: 'FeatureCollection', features: [] });
+    map.getSource('draw-label')?.setData({ type: 'FeatureCollection', features: [] });
+    map.getSource('draw-edge-labels')?.setData({ type: 'FeatureCollection', features: [] });
+    map.getSource('draw-warning-error')?.setData({ type: 'FeatureCollection', features: [] });
+    map.getSource('draw-warning-overlap')?.setData({ type: 'FeatureCollection', features: [] });
 }
 
 export function updateSaveButton() {
@@ -176,14 +174,27 @@ export function updateSaveButton() {
 
 // --- History ---
 
-export async function loadHistory() {
-    const campSeasonId = appState.activeCampSeasonId;
-    if (!campSeasonId) return;
+export async function loadHistory(campSeasonId, canEdit = false) {
+    const id = campSeasonId ?? appState.activeCampSeasonId;
+    if (!id) return;
 
-    const resp = await fetch(`/api/city-planning/camp-polygons/${campSeasonId}/history`);
-    const history = await resp.json();
+    const resp = await fetch(`/api/city-planning/camp-polygons/${id}/history`);
+
+    if (appState.currentPopup) { appState.currentPopup.remove(); appState.currentPopup = null; }
+
+    const campName = appState.campMap.campPolygons.find(p => p.campSeasonId === id)?.campName;
+    const titleEl = document.getElementById('history-panel-title');
+    if (titleEl && campName) titleEl.textContent = `History of ${campName}`;
+
     const list = document.getElementById('history-list');
 
+    if (!resp.ok) {
+        list.innerHTML = '<p class="text-danger text-center py-4">Failed to load history.</p>';
+        bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
+        return;
+    }
+
+    const history = await resp.json();
     if (!history.length) {
         list.innerHTML = '<p class="text-muted text-center py-4">No history yet.</p>';
     } else {
@@ -205,25 +216,31 @@ export async function loadHistory() {
 
         list.querySelectorAll('.preview-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                appState.previewCampSeasonId = id;
                 appState.draw.deleteAll();
                 appState.draw.add(JSON.parse(decodeURIComponent(btn.dataset.geojson)));
             });
         });
         list.querySelectorAll('.restore-btn').forEach(btn => {
-            btn.addEventListener('click', () => restoreVersion(btn.dataset.id));
+            btn.addEventListener('click', () => restoreVersion(btn.dataset.id, id));
         });
     }
 
-    bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('history-panel')).show();
+    const panel = document.getElementById('history-panel');
+    panel.addEventListener('hidden.bs.offcanvas', () => {
+        appState.previewCampSeasonId = null;
+        if (!appState.activeCampSeasonId) appState.draw.deleteAll();
+    }, { once: true });
+    bootstrap.Offcanvas.getOrCreateInstance(panel).show();
 }
 
-export async function restoreVersion(historyId) {
-    const campSeasonId = appState.activeCampSeasonId;
-    if (!campSeasonId) return;
-    if (!confirm('Restore this polygon version? The current version will be saved to history first.')) return;
+export async function restoreVersion(historyId, campSeasonId) {
+    const id = campSeasonId ?? appState.activeCampSeasonId;
+    if (!id) return;
+    if (!confirm('Restore this version?')) return;
 
     const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
-    const resp = await fetch(`/api/city-planning/camp-polygons/${campSeasonId}/restore/${historyId}`, {
+    const resp = await fetch(`/api/city-planning/camp-polygons/${id}/restore/${historyId}`, {
         method: 'POST',
         headers: { 'RequestVerificationToken': token },
     });

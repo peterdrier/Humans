@@ -1,12 +1,12 @@
 @{
-    ViewData["Title"] = "Unsubscribe link expired";
+    ViewData["Title"] = Localizer["Unsub_ExpiredTitle"].Value;
 }
 
-<h1>This unsubscribe link has expired</h1>
+<h1>@Localizer["Unsub_ExpiredHeading"]</h1>
 
 <p>
-    Please use the link from a more recent email, or
-    <a asp-controller="Account" asp-action="Login">sign in to manage your communication preferences</a>.
+    @Localizer["Unsub_ExpiredMessage"]
+    <a asp-controller="Account" asp-action="Login">@Localizer["Unsub_ExpiredSignIn"]</a>.
 </p>
 
-<p><a asp-controller="Home" asp-action="Index">Back to home</a></p>
+<p><a asp-controller="Home" asp-action="Index">@Localizer["Unsub_BackHome"]</a></p>

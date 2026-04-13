@@ -203,7 +203,8 @@ public class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderSignupRejected(userName, reason, culture);
-        await EnqueueAsync(userEmail, userName, content, "signup_rejected", cancellationToken);
+        await EnqueueAsync(userEmail, userName, content, "signup_rejected", cancellationToken,
+            category: MessageCategory.System);
     }
 
     /// <inheritdoc />
@@ -216,7 +217,8 @@ public class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderTermRenewalReminder(userName, tierName, expiresAt, culture);
-        await EnqueueAsync(userEmail, userName, content, "term_renewal_reminder", cancellationToken);
+        await EnqueueAsync(userEmail, userName, content, "term_renewal_reminder", cancellationToken,
+            category: MessageCategory.Governance);
     }
 
     /// <inheritdoc />
@@ -230,7 +232,8 @@ public class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderBoardDailyDigest(name, date, groups, outstandingCounts, culture);
-        await EnqueueAsync(email, name, content, "board_daily_digest", cancellationToken);
+        await EnqueueAsync(email, name, content, "board_daily_digest", cancellationToken,
+            category: MessageCategory.Governance);
     }
 
     /// <inheritdoc />
@@ -253,7 +256,8 @@ public class OutboxEmailService : IEmailService
         CancellationToken cancellationToken = default)
     {
         var content = _renderer.RenderFeedbackResponse(userName, originalDescription, responseMessage, reportLink, culture);
-        await EnqueueAsync(userEmail, userName, content, "feedback_response", cancellationToken);
+        await EnqueueAsync(userEmail, userName, content, "feedback_response", cancellationToken,
+            category: MessageCategory.System);
     }
 
     /// <inheritdoc />
@@ -348,10 +352,7 @@ public class OutboxEmailService : IEmailService
         {
             var headers = _commPrefService.GenerateUnsubscribeHeaders(userId.Value, category.Value);
             extraHeadersJson = System.Text.Json.JsonSerializer.Serialize(headers);
-
-            // Extract URL for footer link (strip angle brackets from List-Unsubscribe header)
-            if (headers.TryGetValue("List-Unsubscribe", out var listUnsub))
-                unsubscribeUrl = listUnsub.Trim('<', '>');
+            unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(userId.Value, category.Value);
         }
 
         var (wrappedHtml, plainText) = EmailBodyComposer.Compose(

@@ -1,76 +1,70 @@
-using System.Security.Cryptography;
 using Humans.Application.Interfaces;
 using Humans.Domain.Enums;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Web.Controllers;
 
 public class UnsubscribeController : Controller
 {
-    private readonly HumansDbContext _db;
-    private readonly ICommunicationPreferenceService _preferenceService;
-    private readonly IDataProtectionProvider _dataProtection;
+    private readonly IUnsubscribeService _unsubscribeService;
     private readonly ILogger<UnsubscribeController> _logger;
 
     public UnsubscribeController(
-        HumansDbContext db,
-        ICommunicationPreferenceService preferenceService,
-        IDataProtectionProvider dataProtection,
+        IUnsubscribeService unsubscribeService,
         ILogger<UnsubscribeController> logger)
     {
-        _db = db;
-        _preferenceService = preferenceService;
-        _dataProtection = dataProtection;
+        _unsubscribeService = unsubscribeService;
         _logger = logger;
     }
 
     [HttpGet("/Unsubscribe/{token}")]
     public async Task<IActionResult> Index(string token)
     {
-        // Try new category-aware token first
-        var result = _preferenceService.ValidateUnsubscribeToken(token);
-        if (result is not null)
-        {
-            var (userId, _) = result.Value;
-            var user = await _db.Users.FindAsync(userId);
-            if (user is null)
-                return NotFound();
+        var result = await _unsubscribeService.ValidateTokenAsync(token);
 
-            // Redirect to comms preferences with token — no session created
+        if (result.IsExpired)
+            return View("Expired");
+
+        if (!result.IsValid)
+            return NotFound();
+
+        if (!result.IsLegacy)
+        {
+            // New tokens redirect to comms preferences with token — no session created
             return RedirectToAction(
                 nameof(GuestController.CommunicationPreferences), "Guest",
                 new { utoken = token });
         }
 
-        // Fall back to legacy campaign-only token
-        return await TryLegacyToken(token);
+        // Legacy tokens show the unsubscribe confirmation page
+        ViewData["DisplayName"] = result.DisplayName;
+        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
+        return View();
     }
 
     [HttpPost("/Unsubscribe/{token}")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Confirm(string token)
     {
-        // Try new category-aware token first
-        var result = _preferenceService.ValidateUnsubscribeToken(token);
-        if (result is not null)
+        var result = await _unsubscribeService.ConfirmUnsubscribeAsync(token, "MagicLink");
+
+        if (result.IsExpired)
+            return View("Expired");
+
+        if (!result.IsValid)
+            return NotFound();
+
+        if (!result.IsLegacy)
         {
-            var (userId, category) = result.Value;
-            var user = await _db.Users.FindAsync(userId);
-            if (user is null)
-                return NotFound();
-
-            await _preferenceService.UpdatePreferenceAsync(userId, category, optedOut: true, source: "MagicLink");
-
-            // Redirect to comms preferences with token — no session created
+            // New tokens redirect to comms preferences with token — no session created
             return RedirectToAction(
                 nameof(GuestController.CommunicationPreferences), "Guest",
                 new { utoken = token });
         }
 
-        // Fall back to legacy campaign-only token
-        return await TryLegacyConfirm(token);
+        // Legacy tokens show the done page
+        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
+        return View("Done");
     }
 
     /// <summary>
@@ -84,18 +78,13 @@ public class UnsubscribeController : Controller
     {
         try
         {
-            var result = _preferenceService.ValidateUnsubscribeToken(token);
-            if (result is null)
+            var result = await _unsubscribeService.ConfirmUnsubscribeAsync(token, "OneClick");
+            if (!result.IsValid)
                 return BadRequest();
 
-            var (userId, category) = result.Value;
-            var user = await _db.Users.FindAsync(userId);
-            if (user is null)
-                return NotFound();
-
-            await _preferenceService.UpdatePreferenceAsync(userId, category, optedOut: true, source: "OneClick");
-
-            _logger.LogInformation("RFC 8058 one-click unsubscribe: user {UserId} from {Category}", userId, category);
+            _logger.LogInformation(
+                "RFC 8058 one-click unsubscribe: user {UserId} from {Category}",
+                result.UserId, result.Category);
             return Ok();
         }
         catch (Exception ex)
@@ -103,65 +92,5 @@ public class UnsubscribeController : Controller
             _logger.LogError(ex, "Failed to process RFC 8058 one-click unsubscribe");
             return StatusCode(500);
         }
-    }
-
-    private async Task<IActionResult> TryLegacyToken(string token)
-    {
-        var protector = _dataProtection
-            .CreateProtector("CampaignUnsubscribe")
-            .ToTimeLimitedDataProtector();
-
-        Guid userId;
-        try
-        {
-            var userIdString = protector.Unprotect(token);
-            userId = Guid.Parse(userIdString);
-        }
-        catch (CryptographicException ex)
-        {
-            _logger.LogWarning(ex, "Unsubscribe token was expired or invalid");
-            if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
-                return View("Expired");
-            return NotFound();
-        }
-
-        var user = await _db.Users.FindAsync(userId);
-        if (user is null)
-            return NotFound();
-
-        ViewData["DisplayName"] = user.DisplayName;
-        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
-        return View();
-    }
-
-    private async Task<IActionResult> TryLegacyConfirm(string token)
-    {
-        var protector = _dataProtection
-            .CreateProtector("CampaignUnsubscribe")
-            .ToTimeLimitedDataProtector();
-
-        Guid userId;
-        try
-        {
-            var userIdString = protector.Unprotect(token);
-            userId = Guid.Parse(userIdString);
-        }
-        catch (CryptographicException ex)
-        {
-            _logger.LogWarning(ex, "Unsubscribe token was expired or invalid on POST");
-            if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
-                return View("Expired");
-            return NotFound();
-        }
-
-        var user = await _db.Users.FindAsync(userId);
-        if (user is null)
-            return NotFound();
-
-        // Use the new preference service for legacy tokens too
-        await _preferenceService.UpdatePreferenceAsync(userId, MessageCategory.Marketing, optedOut: true, source: "MagicLink");
-
-        ViewData["CategoryName"] = MessageCategory.Marketing.ToDisplayName();
-        return View("Done");
     }
 }

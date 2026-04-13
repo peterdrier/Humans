@@ -58,7 +58,7 @@ public record CampSeasonSummaryDto(
 public record CampPolygonHistoryEntryDto(
     Guid Id,
     string ModifiedByDisplayName,
-    string ModifiedAt,
+    Instant ModifiedAt,
     double AreaSqm,
     string Note,
     string GeoJson);
