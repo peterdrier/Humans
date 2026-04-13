@@ -66,7 +66,7 @@ public sealed class GoogleSyncAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    // --- TeamsAdmin preview access ---
+    // --- TeamsAdmin access ---
 
     [Fact]
     public async Task TeamsAdmin_CanPreview()
@@ -74,6 +74,15 @@ public sealed class GoogleSyncAuthorizationHandlerTests
         var user = CreateUserWithRoles(RoleNames.TeamsAdmin);
         var result = await EvaluateAsync(
             user, GoogleSyncOperationRequirement.Preview, "SyncResourcesByTypeAsync");
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task TeamsAdmin_CanManageTeamResources()
+    {
+        var user = CreateUserWithRoles(RoleNames.TeamsAdmin);
+        var result = await EvaluateAsync(
+            user, GoogleSyncOperationRequirement.TeamResource, "EnsureTeamGroupAsync");
         result.Should().BeTrue();
     }
 
@@ -86,7 +95,7 @@ public sealed class GoogleSyncAuthorizationHandlerTests
         result.Should().BeFalse();
     }
 
-    // --- Board preview access ---
+    // --- Board access ---
 
     [Fact]
     public async Task Board_CanPreview()
@@ -98,11 +107,52 @@ public sealed class GoogleSyncAuthorizationHandlerTests
     }
 
     [Fact]
+    public async Task Board_CanManageTeamResources()
+    {
+        var user = CreateUserWithRoles(RoleNames.Board);
+        var result = await EvaluateAsync(
+            user, GoogleSyncOperationRequirement.TeamResource, "EnsureTeamGroupAsync");
+        result.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Board_CannotExecute()
     {
         var user = CreateUserWithRoles(RoleNames.Board);
         var result = await EvaluateAsync(
             user, GoogleSyncOperationRequirement.Execute, "RemediateGroupSettingsAsync");
+        result.Should().BeFalse();
+    }
+
+    // --- Admin TeamResource access ---
+
+    [Fact]
+    public async Task Admin_CanManageTeamResources()
+    {
+        var user = CreateUserWithRoles(RoleNames.Admin);
+        var result = await EvaluateAsync(
+            user, GoogleSyncOperationRequirement.TeamResource, "EnsureTeamGroupAsync");
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SystemPrincipal_CanManageTeamResources()
+    {
+        var result = await EvaluateAsync(
+            SystemPrincipal.Instance,
+            GoogleSyncOperationRequirement.TeamResource,
+            "EnsureTeamGroupAsync");
+        result.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(RoleNames.CampAdmin)]
+    [InlineData(RoleNames.HumanAdmin)]
+    public async Task OtherAdminRoles_DeniedForTeamResource(string roleName)
+    {
+        var user = CreateUserWithRoles(roleName);
+        var result = await EvaluateAsync(
+            user, GoogleSyncOperationRequirement.TeamResource, "EnsureTeamGroupAsync");
         result.Should().BeFalse();
     }
 

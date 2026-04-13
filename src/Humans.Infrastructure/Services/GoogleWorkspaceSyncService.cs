@@ -381,7 +381,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         ClaimsPrincipal principal,
         CancellationToken cancellationToken = default)
     {
-        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(ProvisionTeamGroupAsync));
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.TeamResource, nameof(ProvisionTeamGroupAsync));
 
         _logger.LogInformation("Provisioning Google Group '{GroupEmail}' for team {TeamId}", groupEmail, teamId);
 
@@ -1716,7 +1716,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         bool confirmReactivation = false,
         CancellationToken cancellationToken = default)
     {
-        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.Execute, nameof(EnsureTeamGroupAsync));
+        await EnsureAuthorizedAsync(principal, GoogleSyncOperationRequirement.TeamResource, nameof(EnsureTeamGroupAsync));
 
         var team = await _dbContext.Teams
             .Include(t => t.GoogleResources)
