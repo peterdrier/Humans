@@ -217,9 +217,13 @@ public class TeamService : ITeamService
 
         if (!userId.HasValue)
         {
+            // Top-level teams opt into the public directory via IsPublicPage.
+            // Subteams cannot set IsPublicPage (forced false in UpdateTeamAsync);
+            // their opt-in is IsPromotedToDirectory.
             var publicDepartments = cachedTeams.Values
-                .Where(t => t.IsPublicPage && !t.IsSystemTeam && !t.IsHidden
-                    && (t.ParentTeamId is null || t.IsPromotedToDirectory))
+                .Where(t => !t.IsSystemTeam && !t.IsHidden
+                    && ((t.ParentTeamId is null && t.IsPublicPage)
+                        || (t.ParentTeamId is not null && t.IsPromotedToDirectory)))
                 .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(t => CreateDirectorySummary(t, cachedTeams, userId))
                 .ToList();
@@ -283,10 +287,17 @@ public class TeamService : ITeamService
             return null;
         }
 
-        if (!userId.HasValue &&
-            (!team.IsPublicPage || team.IsHidden || team.IsSystemTeam || team.ParentTeamId.HasValue))
+        if (!userId.HasValue)
         {
-            return null;
+            // Anonymous visitors can see top-level teams with IsPublicPage,
+            // or subteams that have been promoted to the directory.
+            var isAnonymouslyVisible = !team.IsHidden && !team.IsSystemTeam
+                && ((team.ParentTeamId is null && team.IsPublicPage)
+                    || (team.ParentTeamId is not null && team.IsPromotedToDirectory));
+            if (!isAnonymouslyVisible)
+            {
+                return null;
+            }
         }
 
         var activeMembers = team.Members
