@@ -376,10 +376,14 @@ public class CampaignService : ICampaignService
                 $"Not enough codes available. Need {eligibleUsers.Count}, have {availableCodes.Count}.");
 
         var now = _clock.GetCurrentInstant();
+        var failedCount = 0;
 
-        // Persist grants first so each has an Id before we enqueue emails through
-        // the EmailOutboxService (which owns EmailOutboxMessages and commits on its own).
-        var grantsByUserId = new Dictionary<Guid, (CampaignGrant Grant, CampaignCode Code)>();
+        // Persist and enqueue one grant at a time. If an enqueue throws mid-loop, we
+        // flip that single grant to Failed locally so subsequent grants still get
+        // processed and RetryAllFailedAsync picks the failed ones up on the next pass.
+        // A batch-level save-then-enqueue would orphan the tail: saved grants whose
+        // outbox row never landed, with LatestEmailStatus == Queued, neither retriable
+        // nor re-granted on the next wave.
         for (var i = 0; i < eligibleUsers.Count; i++)
         {
             var user = eligibleUsers[i];
@@ -396,23 +400,28 @@ public class CampaignService : ICampaignService
                 LatestEmailAt = now
             };
             _dbContext.CampaignGrants.Add(grant);
-            grantsByUserId[user.Id] = (grant, code);
-        }
+            await _dbContext.SaveChangesAsync(ct);
 
-        await _dbContext.SaveChangesAsync(ct);
-
-        // Enqueue campaign emails via the Email service (owner of email_outbox_messages).
-        foreach (var user in eligibleUsers)
-        {
-            var (grant, code) = grantsByUserId[user.Id];
-            await _emailService.SendCampaignCodeAsync(
-                BuildCampaignCodeRequest(campaign, user, code.Code, grant.Id),
-                ct);
+            try
+            {
+                await _emailService.SendCampaignCodeAsync(
+                    BuildCampaignCodeRequest(campaign, user, code.Code, grant.Id),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to enqueue campaign code email for user {UserId} grant {GrantId} in campaign {CampaignId}",
+                    user.Id, grant.Id, campaignId);
+                grant.LatestEmailStatus = EmailOutboxStatus.Failed;
+                await _dbContext.SaveChangesAsync(ct);
+                failedCount++;
+            }
         }
 
         _logger.LogInformation(
-            "Campaign {CampaignId}: sent wave to team {TeamId}, {Count} grants created",
-            campaignId, teamId, eligibleUsers.Count);
+            "Campaign {CampaignId}: sent wave to team {TeamId}, {Count} grants created, {FailedCount} failed to enqueue",
+            campaignId, teamId, eligibleUsers.Count, failedCount);
 
         // In-app notification to each recipient (best-effort)
         try
@@ -532,26 +541,37 @@ public class CampaignService : ICampaignService
             return;
 
         var now = _clock.GetCurrentInstant();
+        var stillFailedCount = 0;
 
+        // Flip-and-enqueue one grant at a time. A batch flip-to-Queued + loop enqueue
+        // would lose grants whose enqueue throws: they would leave the Failed set
+        // without a corresponding outbox row and never be retriable again.
         foreach (var grant in failedGrants)
         {
             grant.LatestEmailStatus = EmailOutboxStatus.Queued;
             grant.LatestEmailAt = now;
-        }
+            await _dbContext.SaveChangesAsync(ct);
 
-        await _dbContext.SaveChangesAsync(ct);
-
-        // Enqueue via the Email service (owner of email_outbox_messages).
-        foreach (var grant in failedGrants)
-        {
-            await _emailService.SendCampaignCodeAsync(
-                BuildCampaignCodeRequest(grant.Campaign, grant.User, grant.Code.Code, grant.Id),
-                ct);
+            try
+            {
+                await _emailService.SendCampaignCodeAsync(
+                    BuildCampaignCodeRequest(grant.Campaign, grant.User, grant.Code.Code, grant.Id),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Retry failed to re-enqueue campaign code email for grant {GrantId} in campaign {CampaignId}",
+                    grant.Id, campaignId);
+                grant.LatestEmailStatus = EmailOutboxStatus.Failed;
+                await _dbContext.SaveChangesAsync(ct);
+                stillFailedCount++;
+            }
         }
 
         _logger.LogInformation(
-            "Campaign {CampaignId}: retried {Count} failed grants",
-            campaignId, failedGrants.Count);
+            "Campaign {CampaignId}: retried {Count} failed grants, {StillFailedCount} still failed",
+            campaignId, failedGrants.Count, stillFailedCount);
     }
 
     private async Task<List<Guid>> GetActiveTeamUserIdsAsync(Guid teamId, CancellationToken ct)
