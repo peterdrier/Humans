@@ -279,6 +279,46 @@ public class CityPlanningService : ICityPlanningService
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await GetOrCreateRegistrationSettingsAsync(cancellationToken);
+        return settings.RegistrationInfo;
+    }
+
+    public async Task UpdateRegistrationInfoAsync(string? registrationInfo, CancellationToken cancellationToken = default)
+    {
+        var settings = await GetOrCreateRegistrationSettingsAsync(cancellationToken);
+        settings.RegistrationInfo = string.IsNullOrWhiteSpace(registrationInfo) ? null : registrationInfo.Trim();
+        settings.UpdatedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    // Registration info is shown on /Barrios/Register, which targets the highest open
+    // season year (see CampController.PopulateRegisterSeasonYearAsync). PublicYear can
+    // lag behind the newest open season during transitions, so key this row to the same
+    // year the register page uses to avoid editing/showing the wrong year's content.
+    private async Task<CityPlanningSettings> GetOrCreateRegistrationSettingsAsync(CancellationToken cancellationToken)
+    {
+        var campSettings = await _campService.GetSettingsAsync(cancellationToken);
+        var targetYear = campSettings.OpenSeasons.Count > 0
+            ? campSettings.OpenSeasons.Max()
+            : campSettings.PublicYear;
+
+        var settings = await _dbContext.CityPlanningSettings
+            .FirstOrDefaultAsync(s => s.Year == targetYear, cancellationToken);
+        if (settings != null) return settings;
+
+        settings = new CityPlanningSettings
+        {
+            Year = targetYear,
+            IsPlacementOpen = false,
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        _dbContext.CityPlanningSettings.Add(settings);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return settings;
+    }
+
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {
         // Get display data for the year from camp service (keyed by campSeasonId)

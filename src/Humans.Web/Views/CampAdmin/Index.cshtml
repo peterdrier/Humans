@@ -253,6 +253,27 @@
     </div>
 </div>
 
+@* Registration Info *@
+<div class="card mb-4">
+    <div class="card-header">
+        <i class="fa-solid fa-circle-info me-2"></i>Registration Info
+    </div>
+    <div class="card-body">
+        <form asp-controller="CampAdmin" asp-action="UpdateRegistrationInfo" method="post">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+                <label for="registrationInfo" class="form-label">Registration Info (shown to humans creating a new barrio)</label>
+                <textarea name="registrationInfo" id="registrationInfo" class="form-control" rows="6"
+                          placeholder="Markdown content displayed at the top of the registration page. Leave empty to hide.">@Model.RegistrationInfo</textarea>
+                <div class="form-text">Supports markdown: paragraphs, lists, links, **bold**, *italic*.</div>
+            </div>
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-floppy-disk me-1"></i>Save Registration Info
+            </button>
+        </form>
+    </div>
+</div>
+
 @* Camp Summary Table *@
 @if (Model.AllCampSummaries.Count > 0)
 {
