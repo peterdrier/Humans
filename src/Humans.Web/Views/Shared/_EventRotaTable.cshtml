@@ -1,0 +1,118 @@
+@model Humans.Web.Models.EventRotaTableViewModel
+@using NodaTime
+
+@functions {
+    string GetPhase(Shift shift, EventSettings es)
+    {
+        return shift.GetShiftPeriod(es) switch
+        {
+            ShiftPeriod.Build => Localizer["Shifts_SetUp"].Value,
+            ShiftPeriod.Event => Localizer["Shifts_Event"].Value,
+            ShiftPeriod.Strike => Localizer["Shifts_Strike"].Value,
+            _ => ""
+        };
+    }
+
+    string GetPhaseBadge(Shift shift, EventSettings es)
+    {
+        return shift.GetShiftPeriod(es) switch
+        {
+            ShiftPeriod.Build => "bg-info",
+            ShiftPeriod.Event => "bg-success",
+            ShiftPeriod.Strike => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+@{
+    var es = Model.EventSettings;
+    var tz = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+}
+<div class="table-responsive">
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>@Localizer["Shifts_Shift"]</th>
+                <th>@Localizer["Shifts_Phase"]</th>
+                <th>@Localizer["Shifts_Date"]</th>
+                <th>@Localizer["Shifts_Time"]</th>
+                <th>@Localizer["Shifts_Duration"]</th>
+                <th>@Localizer["Shifts_Filled"]</th>
+                @if (Model.ShowSignups)
+                {
+                    <th>@Localizer["Shifts_SignedUp"]</th>
+                }
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.Shifts)
+            {
+                var shift = item.Shift;
+                var isFull = item.RemainingSlots <= 0;
+                var understaffed = item.ConfirmedCount < shift.MinVolunteers;
+                <tr class="@(isFull ? "table-secondary" : "")">
+                    <td>@(shift.IsAllDay ? Localizer["Shifts_AllDay"].Value : $"{shift.StartTime.ToDisplayTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToDisplayTime()}")</td>
+                    <td><span class="badge @GetPhaseBadge(shift, es)">@GetPhase(shift, es)</span></td>
+                    <td>@es.GateOpeningDate.PlusDays(shift.DayOffset).ToDisplayShiftDate()</td>
+                    <td>@item.AbsoluteStart.ToDisplayTime(tz)</td>
+                    <td>@(shift.IsAllDay ? Localizer["Shifts_FullDay"].Value : $"{shift.Duration.TotalHours}h")</td>
+                    <td>
+                        <span class="@(understaffed ? "text-danger fw-bold" : "")">@item.ConfirmedCount</span>
+                        <small class="text-muted">/ @shift.MinVolunteers–@shift.MaxVolunteers</small>
+                        @if (understaffed)
+                        {
+                            <span class="badge bg-warning text-dark">@Localizer["Shifts_NeedsHelp"]</span>
+                        }
+                    </td>
+                    @if (Model.ShowSignups)
+                    {
+                        <td class="small">
+                            @for (var i = 0; i < item.Signups.Count; i++)
+                            {
+                                var signup = item.Signups[i];
+                                if (i > 0) { <text>, </text> }
+                                <human-link user-id="@signup.UserId" display-name="@signup.DisplayName" show-popover="true"
+                                           class="@(signup.Status == SignupStatus.Pending ? "text-muted fst-italic" : "")" />@if (signup.Status == SignupStatus.Pending)
+                                {<small class="text-muted"> @Localizer["Shifts_Pending"]</small>}
+                            }
+                        </td>
+                    }
+                    <td>
+                        @if (Model.UserSignupShiftIds.Contains(shift.Id))
+                        {
+                            var status = Model.UserSignupStatuses.GetValueOrDefault(shift.Id);
+                            <span class="badge bg-info">@status</span>
+                        }
+                        else if (isFull)
+                        {
+                            <span class="badge bg-secondary">@Localizer["Shifts_Full"]</span>
+                        }
+                        else
+                        {
+                            <form asp-controller="Shifts" asp-action="SignUp" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="shiftId" value="@shift.Id" />
+                                @if (Model.FilterDepartmentId.HasValue) { <input type="hidden" name="departmentId" value="@Model.FilterDepartmentId" /> }
+                                @if (!string.IsNullOrEmpty(Model.FilterFromDate)) { <input type="hidden" name="fromDate" value="@Model.FilterFromDate" /> }
+                                @if (!string.IsNullOrEmpty(Model.FilterToDate)) { <input type="hidden" name="toDate" value="@Model.FilterToDate" /> }
+                                @if (!string.IsNullOrEmpty(Model.FilterPeriod)) { <input type="hidden" name="period" value="@Model.FilterPeriod" /> }
+                                @foreach (var tagId in Model.FilterTagIds) { <input type="hidden" name="tags" value="@tagId" /> }
+                                <button type="submit" class="btn btn-sm btn-success">@Localizer["Shifts_SignUpButton"]</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+                @if (!string.IsNullOrEmpty(shift.Description))
+                {
+                    <tr class="@(isFull ? "table-secondary" : "")">
+                        <td colspan="@(Model.ShowSignups ? 8 : 7)" class="text-muted small pt-0 pb-1 border-0">
+                            @Html.SanitizedMarkdown(shift.Description)
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

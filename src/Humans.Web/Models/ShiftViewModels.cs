@@ -460,6 +460,41 @@ public class ShiftSignupsViewModel
     public string? DisplayName { get; set; }
 }
 
+// === Rota Partial View Models ===
+
+public class RotaHeaderViewModel
+{
+    public Rota Rota { get; set; } = null!;
+    public bool ShowPreferenceStar { get; set; }
+}
+
+public class BuildStrikeRotaTableViewModel
+{
+    public RotaShiftGroup RotaGroup { get; set; } = null!;
+    public EventSettings EventSettings { get; set; } = null!;
+    public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
+    public bool ShowSignups { get; set; }
+    public Guid? FilterDepartmentId { get; set; }
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+    public string? FilterPeriod { get; set; }
+    public List<Guid> FilterTagIds { get; set; } = [];
+}
+
+public class EventRotaTableViewModel
+{
+    public List<ShiftDisplayItem> Shifts { get; set; } = [];
+    public EventSettings EventSettings { get; set; } = null!;
+    public HashSet<Guid> UserSignupShiftIds { get; set; } = [];
+    public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; set; } = new();
+    public bool ShowSignups { get; set; }
+    public Guid? FilterDepartmentId { get; set; }
+    public string? FilterFromDate { get; set; }
+    public string? FilterToDate { get; set; }
+    public string? FilterPeriod { get; set; }
+    public List<Guid> FilterTagIds { get; set; } = [];
+}
+
 // === No-Show History ===
 
 public class NoShowHistoryItem
