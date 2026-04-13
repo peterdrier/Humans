@@ -188,14 +188,23 @@ builder.Services.AddAuthentication()
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
                     .CreateLogger("GoogleOAuth");
 
-                var isCorrelationFailure = context.Failure?.Message?.Contains("Correlation", StringComparison.OrdinalIgnoreCase) == true;
+                var failureMessage = context.Failure?.Message ?? string.Empty;
+                var isCorrelationFailure = failureMessage.Contains("Correlation", StringComparison.OrdinalIgnoreCase);
+                var isAccessDenied = failureMessage.Contains("access_denied", StringComparison.OrdinalIgnoreCase)
+                    || failureMessage.Contains("denied by the resource owner", StringComparison.OrdinalIgnoreCase);
+
                 if (isCorrelationFailure)
                 {
                     logger.LogDebug(context.Failure, "Google sign-in correlation failed (expected for stale/duplicate requests)");
                 }
+                else if (isAccessDenied)
+                {
+                    // User clicked cancel on the Google consent screen — expected user behavior, not actionable. See #483.
+                    logger.LogInformation("Google sign-in cancelled by user: {Error}", failureMessage);
+                }
                 else
                 {
-                    logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", context.Failure?.Message);
+                    logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", failureMessage);
                 }
 
                 context.Response.Redirect("/Account/Login?error=sign-in-failed");

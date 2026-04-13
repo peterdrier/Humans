@@ -73,7 +73,8 @@ public class UnsubscribeService : IUnsubscribeService
         }
         catch (CryptographicException ex)
         {
-            _logger.LogWarning(ex, "Unsubscribe token was expired or invalid");
+            // CommunicationPreferenceService already logged the first attempt at Information.
+            // Don't double-log here — this is the legacy-protector fallback for the same event. See #483.
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
                 return UnsubscribeTokenResult.Expired();
             return UnsubscribeTokenResult.Invalid();

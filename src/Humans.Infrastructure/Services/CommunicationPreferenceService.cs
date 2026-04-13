@@ -260,14 +260,15 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         catch (CryptographicException ex)
         {
             // DataProtection throws CryptographicException for both expired and tampered tokens.
-            // Expired tokens include "expired" in the message; tampered tokens do not.
+            // Both are expected user-behavior events (old emails, stale key rings) — log at
+            // Information without the stack trace. See #483.
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogWarning(ex, "Expired unsubscribe token");
+                _logger.LogInformation("Expired unsubscribe token");
                 return (TokenValidationStatus.Expired, default, default);
             }
 
-            _logger.LogWarning(ex, "Failed to validate unsubscribe token");
+            _logger.LogInformation("Failed to validate unsubscribe token");
             return (TokenValidationStatus.Invalid, default, default);
         }
     }
