@@ -188,13 +188,7 @@ else
                                                 <a href="/Profile/@m.UserId/Admin"
                                                    class="d-inline-flex align-items-center text-decoration-none text-reset"
                                                    data-human-popover="true" data-user-id="@m.UserId">
-                                                    @await Component.InvokeAsync("UserAvatar", new
-                                                    {
-                                                        profilePictureUrl = m.ProfilePictureUrl,
-                                                        displayName = nameDisplay,
-                                                        size = 24,
-                                                        cssClass = "me-2"
-                                                    })
+                                                    <vc:user-avatar user-id="@m.UserId.Value" size="24" css-class="me-2" />
                                                     <span>@nameDisplay</span>
                                                 </a>
                                             }

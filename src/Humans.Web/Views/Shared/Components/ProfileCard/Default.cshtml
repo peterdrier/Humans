@@ -13,8 +13,7 @@
         @* Photo + Name + Pronouns + Status + Teams *@
         <div class="row mb-3">
             <div class="col-auto">
-                <vc:user-avatar profile-picture-url="@Model.EffectiveProfilePictureUrl"
-                                display-name="@Model.BurnerName"
+                <vc:user-avatar user-id="@Model.UserId"
                                 size="160" />
             </div>
             <div class="col">
