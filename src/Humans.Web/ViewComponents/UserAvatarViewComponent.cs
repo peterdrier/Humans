@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Humans.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
@@ -44,6 +45,14 @@ public class UserAvatarViewComponent : ViewComponent
                 displayName = cached.DisplayName;
                 profilePictureUrl = ResolveAvatarUrl(cached);
             }
+            else if (IsCurrentUser(userId))
+            {
+                // Onboarding/guest users have no Profile row yet. Fall back to the Google
+                // claims on the signed-in principal so their own avatar still renders in
+                // the nav and dashboard until a Profile is created.
+                displayName = UserClaimsPrincipal.FindFirstValue(ClaimTypes.Name);
+                profilePictureUrl = UserClaimsPrincipal.FindFirstValue("urn:google:picture");
+            }
         }
 
         var initial = string.IsNullOrEmpty(displayName) ? "?" : displayName[0].ToString();
@@ -74,5 +83,11 @@ public class UserAvatarViewComponent : ViewComponent
         }
 
         return cached.ProfilePictureUrl;
+    }
+
+    private bool IsCurrentUser(Guid userId)
+    {
+        var claim = UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(claim, out var currentUserId) && currentUserId == userId;
     }
 }
