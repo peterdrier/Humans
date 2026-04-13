@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using NodaTime;
 using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -14,50 +12,32 @@ namespace Humans.Web.Controllers;
 
 public class HomeController : HumansControllerBase
 {
-    private readonly IMembershipCalculator _membershipCalculator;
-    private readonly IProfileService _profileService;
-    private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly IDashboardService _dashboardService;
     private readonly IShiftManagementService _shiftMgmt;
-    private readonly IShiftSignupService _shiftSignup;
+    private readonly IUserService _userService;
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
-    private readonly IClock _clock;
-    private readonly TicketVendorSettings _ticketSettings;
-    private readonly ITicketQueryService _ticketQueryService;
-    private readonly IUserService _userService;
     private readonly ILogger<HomeController> _logger;
 
     public HomeController(
         UserManager<User> userManager,
-        IMembershipCalculator membershipCalculator,
-        IProfileService profileService,
-        IApplicationDecisionService applicationDecisionService,
+        IDashboardService dashboardService,
         IShiftManagementService shiftMgmt,
-        IShiftSignupService shiftSignup,
+        IUserService userService,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
-        IClock clock,
-        IOptions<TicketVendorSettings> ticketSettings,
-        ITicketQueryService ticketQueryService,
-        IUserService userService,
         ILogger<HomeController> logger)
         : base(userManager)
     {
-        _membershipCalculator = membershipCalculator;
-        _profileService = profileService;
-        _applicationDecisionService = applicationDecisionService;
+        _dashboardService = dashboardService;
         _shiftMgmt = shiftMgmt;
-        _shiftSignup = shiftSignup;
+        _userService = userService;
         _configuration = configuration;
         _configRegistry = configRegistry;
-        _clock = clock;
-        _ticketSettings = ticketSettings.Value;
-        _ticketQueryService = ticketQueryService;
-        _userService = userService;
         _logger = logger;
     }
 
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         if (!User.Identity?.IsAuthenticated ?? true)
         {
@@ -80,209 +60,67 @@ public class HomeController : HumansControllerBase
             return RedirectToAction(nameof(Index), "Guest");
         }
 
-        var profile = await _profileService.GetProfileAsync(user.Id);
-
-        var membershipSnapshot = await _membershipCalculator.GetMembershipSnapshotAsync(user.Id);
-
-        // Get all applications for the user
-        var applications = await _applicationDecisionService.GetUserApplicationsAsync(user.Id);
-        var latestApplication = applications.Count > 0 ? applications[0] : null;
-
-        var hasPendingApp = latestApplication is not null &&
-            latestApplication.Status == ApplicationStatus.Submitted;
-
-        // Get term expiry from latest approved application for the user's current tier
-        var currentTier = profile?.MembershipTier ?? MembershipTier.Volunteer;
-        DateTime? termExpiresAt = null;
-        var termExpiresSoon = false;
-        var termExpired = false;
-
-        if (currentTier != MembershipTier.Volunteer)
-        {
-            var latestApprovedApp = applications
-                .Where(a => a.Status == ApplicationStatus.Approved
-                    && a.MembershipTier == currentTier
-                    && a.TermExpiresAt is not null)
-                .OrderByDescending(a => a.TermExpiresAt)
-                .FirstOrDefault();
-
-            if (latestApprovedApp?.TermExpiresAt is not null)
-            {
-                var today = _clock.GetCurrentInstant().InUtc().Date;
-                var expiryDate = latestApprovedApp.TermExpiresAt.Value;
-                termExpiresAt = expiryDate.AtMidnight().InUtc().ToDateTimeUtc();
-                termExpired = expiryDate < today;
-                termExpiresSoon = !termExpired && expiryDate <= today.PlusDays(90);
-            }
-        }
+        var isPrivileged = User.IsInRole("Admin");
+        var data = await _dashboardService.GetMemberDashboardAsync(user.Id, isPrivileged, cancellationToken);
 
         var viewModel = new DashboardViewModel
         {
             UserId = user.Id,
             DisplayName = user.DisplayName,
             ProfilePictureUrl = user.ProfilePictureUrl,
-            MembershipStatus = membershipSnapshot.Status,
-            HasProfile = profile is not null,
-            ProfileComplete = profile is not null && !string.IsNullOrEmpty(profile.FirstName),
-            PendingConsents = membershipSnapshot.PendingConsentCount,
-            TotalRequiredConsents = membershipSnapshot.RequiredConsentCount,
-            IsVolunteerMember = membershipSnapshot.IsVolunteerMember,
-            MembershipTier = currentTier,
-            ConsentCheckStatus = profile?.ConsentCheckStatus,
-            IsRejected = profile?.RejectedAt is not null,
-            RejectionReason = profile?.RejectionReason,
-            HasPendingApplication = hasPendingApp,
-            LatestApplicationStatus = latestApplication?.Status,
-            LatestApplicationDate = latestApplication?.SubmittedAt.ToDateTimeUtc(),
-            LatestApplicationTier = latestApplication?.MembershipTier,
-            TermExpiresAt = termExpiresAt,
-            TermExpiresSoon = termExpiresSoon,
-            TermExpired = termExpired,
+            MembershipStatus = data.MembershipSnapshot.Status,
+            HasProfile = data.Profile is not null,
+            ProfileComplete = data.Profile is not null && !string.IsNullOrEmpty(data.Profile.FirstName),
+            PendingConsents = data.MembershipSnapshot.PendingConsentCount,
+            TotalRequiredConsents = data.MembershipSnapshot.RequiredConsentCount,
+            IsVolunteerMember = data.MembershipSnapshot.IsVolunteerMember,
+            MembershipTier = data.CurrentTier,
+            ConsentCheckStatus = data.Profile?.ConsentCheckStatus,
+            IsRejected = data.Profile?.RejectedAt is not null,
+            RejectionReason = data.Profile?.RejectionReason,
+            HasPendingApplication = data.HasPendingApplication,
+            LatestApplicationStatus = data.LatestApplication?.Status,
+            LatestApplicationDate = data.LatestApplication?.SubmittedAt.ToDateTimeUtc(),
+            LatestApplicationTier = data.LatestApplication?.MembershipTier,
+            TermExpiresAt = data.TermExpiresAt?.AtMidnight().InUtc().ToDateTimeUtc(),
+            TermExpiresSoon = data.TermExpiresSoon,
+            TermExpired = data.TermExpired,
             MemberSince = user.CreatedAt.ToDateTimeUtc(),
-            LastLogin = user.LastLoginAt?.ToDateTimeUtc()
+            LastLogin = user.LastLoginAt?.ToDateTimeUtc(),
+            EventName = data.ActiveEvent?.EventName,
+            IsShiftBrowsingOpen = data.ActiveEvent?.IsShiftBrowsingOpen ?? false,
+            HasShiftSignups = data.HasShiftSignups,
+            TicketPurchaseUrl = "https://tickets.nobodies.team",
+            TicketsConfigured = data.TicketsConfigured,
+            HasTicket = data.HasTicket,
+            UserTicketCount = data.UserTicketCount,
+            EventYear = data.ActiveEvent is not null && data.ActiveEvent.Year > 0 ? data.ActiveEvent.Year : null,
+            ParticipationStatus = data.ParticipationStatus,
         };
 
-        // Load active event once — used by shift cards, ticket widget, and participation
-        EventSettings? activeEvent = null;
-        try
+        ViewData["ShiftCards"] = new ShiftCardsViewModel
         {
-            activeEvent = await _shiftMgmt.GetActiveAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load active event for dashboard");
-        }
-
-        // Shift cards — fully guarded, failures must never crash the homepage
-        try
-        {
-            if (activeEvent is not null)
-            {
-                viewModel.EventName = activeEvent.EventName;
-                viewModel.IsShiftBrowsingOpen = activeEvent.IsShiftBrowsingOpen;
-            }
-            if (activeEvent is not null && activeEvent.IsShiftBrowsingOpen)
-            {
-                var urgentShifts = await _shiftMgmt.GetUrgentShiftsAsync(activeEvent.Id, limit: 3);
-
-                var urgentItems = new List<UrgentShiftItem>();
-                foreach (var u in urgentShifts)
+            UrgentShifts = data.UrgentShifts
+                .Select(u => new UrgentShiftItem
                 {
-                    if (u.Shift is null)
-                    {
-                        _logger.LogWarning("Skipping urgent shift item because shift data was missing");
-                        continue;
-                    }
-
-                    try
-                    {
-                        urgentItems.Add(new UrgentShiftItem
-                        {
-                            Shift = u.Shift,
-                            DepartmentName = u.DepartmentName ?? "Unknown",
-                            AbsoluteStart = u.Shift.GetAbsoluteStart(activeEvent),
-                            RemainingSlots = u.RemainingSlots,
-                            UrgencyScore = u.UrgencyScore
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to build urgent shift item for shift {ShiftId}", u.Shift.Id);
-                    }
-                }
-
-                var nextShifts = new List<MySignupItem>();
-                var pendingCount = 0;
-                try
+                    Shift = u.Shift,
+                    DepartmentName = u.DepartmentName,
+                    AbsoluteStart = u.AbsoluteStart,
+                    RemainingSlots = u.RemainingSlots,
+                    UrgencyScore = u.UrgencyScore,
+                })
+                .ToList(),
+            NextShifts = data.NextShifts
+                .Select(s => new MySignupItem
                 {
-                    var now = _clock.GetCurrentInstant();
-                    var userSignups = await _shiftSignup.GetByUserAsync(user.Id, activeEvent.Id);
-                    pendingCount = userSignups
-                        .Where(s => s.Status == SignupStatus.Pending)
-                        .Select(s => s.SignupBlockId ?? s.Id)
-                        .Distinct()
-                        .Count();
-
-                    foreach (var s in userSignups.Where(s => s.Status == SignupStatus.Confirmed))
-                    {
-                        try
-                        {
-                            if (s.Shift is null)
-                            {
-                                _logger.LogWarning("Skipping signup {SignupId} on dashboard because shift data was missing", s.Id);
-                                continue;
-                            }
-
-                            var item = new MySignupItem
-                            {
-                                Signup = s,
-                                DepartmentName = s.Shift.Rota?.Team?.Name ?? "Unknown",
-                                AbsoluteStart = s.Shift.GetAbsoluteStart(activeEvent),
-                                AbsoluteEnd = s.Shift.GetAbsoluteEnd(activeEvent)
-                            };
-                            if (item.AbsoluteEnd > now)
-                                nextShifts.Add(item);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to build shift item for signup {SignupId}", s.Id);
-                        }
-                    }
-
-                    nextShifts = nextShifts.OrderBy(i => i.AbsoluteStart).Take(3).ToList();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to load user signups for dashboard");
-                }
-
-                ViewData["ShiftCards"] = new ShiftCardsViewModel
-                {
-                    UrgentShifts = urgentItems,
-                    NextShifts = nextShifts,
-                    PendingCount = pendingCount
-                };
-
-                // Pass shift signup state to ThingsToDo wizard
-                viewModel.HasShiftSignups = nextShifts.Count > 0 || pendingCount > 0;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load shift cards for dashboard");
-        }
-
-        // Per-user ticket status — always renders, shows warning when unconfigured
-        viewModel.TicketPurchaseUrl = "https://tickets.nobodies.team";
-        viewModel.TicketsConfigured = _ticketSettings.IsConfigured;
-        try
-        {
-            if (_ticketSettings.IsConfigured)
-            {
-                var ticketCount = await _ticketQueryService.GetUserTicketCountAsync(user.Id);
-                viewModel.HasTicket = ticketCount > 0;
-                viewModel.UserTicketCount = ticketCount;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load ticket status for user {UserId}", user.Id);
-        }
-
-        // Event participation status
-        try
-        {
-            if (activeEvent is not null && activeEvent.Year > 0)
-            {
-                viewModel.EventYear = activeEvent.Year;
-                var participation = await _userService.GetParticipationAsync(user.Id, activeEvent.Year);
-                viewModel.ParticipationStatus = participation?.Status;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load participation status for user {UserId}", user.Id);
-        }
+                    Signup = s.Signup,
+                    DepartmentName = s.DepartmentName,
+                    AbsoluteStart = s.AbsoluteStart,
+                    AbsoluteEnd = s.AbsoluteEnd,
+                })
+                .ToList(),
+            PendingCount = data.PendingSignupCount,
+        };
 
         return View("Dashboard", viewModel);
     }

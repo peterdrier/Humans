@@ -163,6 +163,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IConsentService, ConsentService>();
         services.AddScoped<IProfileService, ProfileService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<SystemTeamSyncJob>();
         services.AddScoped<ISystemTeamSync>(sp => sp.GetRequiredService<SystemTeamSyncJob>());
         services.AddScoped<SyncLegalDocumentsJob>();
