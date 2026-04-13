@@ -2,12 +2,14 @@
 # razor-lint.sh — Lint Razor views and C# files for common pitfalls
 #
 # Usage:
-#   razor-lint.sh [--staged] [--hook] [file...]
+#   razor-lint.sh [--staged | --commit-all] [--hook] [file...]
 #
 # Options:
-#   --staged   Check staged files (for pre-commit use)
-#   --hook     Output in Claude Code hook JSON format
-#   file...    Check specific files (supports .cshtml and .cs)
+#   --staged       Check staged files (git diff --cached). Use for plain `git commit`.
+#   --commit-all   Check tracked modifications (git diff HEAD). Use for `git commit -a`,
+#                  which stages tracked edits during the commit itself.
+#   --hook         Output in Claude Code hook JSON format
+#   file...        Check specific files (supports .cshtml and .cs)
 #
 # Checks (WARNING level — should fix):
 #   1. Boolean attribute trap: disabled="@var" instead of disabled="@(cond ? "disabled" : null)"
@@ -95,18 +97,25 @@ lint_cs() {
 
 FILES=()
 STAGED=false
+COMMIT_ALL=false
 HOOK_FORMAT=false
 
 for arg in "$@"; do
     case "$arg" in
-        --staged) STAGED=true ;;
-        --hook)   HOOK_FORMAT=true ;;
-        *)        FILES+=("$arg") ;;
+        --staged)     STAGED=true ;;
+        --commit-all) COMMIT_ALL=true ;;
+        --hook)       HOOK_FORMAT=true ;;
+        *)            FILES+=("$arg") ;;
     esac
 done
 
-# Collect staged files if requested
-if [ "$STAGED" = true ]; then
+# Collect files to check. --commit-all takes precedence (git commit -a mode).
+if [ "$COMMIT_ALL" = true ]; then
+    # git commit -a will stage tracked modifications during the commit — check all tracked changes
+    while IFS= read -r f; do
+        [ -n "$f" ] && FILES+=("$f")
+    done < <(git diff HEAD --name-only --diff-filter=ACM -- '*.cshtml' '*.cs' 2>/dev/null || true)
+elif [ "$STAGED" = true ]; then
     while IFS= read -r f; do
         [ -n "$f" ] && FILES+=("$f")
     done < <(git diff --cached --name-only --diff-filter=ACM -- '*.cshtml' '*.cs' 2>/dev/null || true)

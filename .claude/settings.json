@@ -18,9 +18,9 @@
           },
           {
             "type": "command",
-            "command": "jq -r '.tool_input.command // \"\"' | grep -qE '^git commit' && git diff --cached --name-only 2>/dev/null | grep -qE '\\.cshtml$' && bash .claude/razor-lint.sh --staged --hook || true",
+            "command": "bash .claude/razor-lint-hook.sh || true",
             "timeout": 15,
-            "statusMessage": "Linting staged Razor views..."
+            "statusMessage": "Linting Razor views..."
           }
         ]
       }
