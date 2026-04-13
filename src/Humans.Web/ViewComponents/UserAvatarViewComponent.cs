@@ -1,7 +1,6 @@
 using Humans.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
-using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Web.ViewComponents;
 
@@ -16,16 +15,13 @@ public class UserAvatarViewComponent : ViewComponent
 {
     private readonly IProfileService _profileService;
     private readonly IUrlHelperFactory _urlHelperFactory;
-    private readonly IMemoryCache _cache;
 
     public UserAvatarViewComponent(
         IProfileService profileService,
-        IUrlHelperFactory urlHelperFactory,
-        IMemoryCache cache)
+        IUrlHelperFactory urlHelperFactory)
     {
         _profileService = profileService;
         _urlHelperFactory = urlHelperFactory;
-        _cache = cache;
     }
 
     public async Task<IViewComponentResult> InvokeAsync(
@@ -68,23 +64,15 @@ public class UserAvatarViewComponent : ViewComponent
 
     private string? ResolveAvatarUrl(CachedProfile cached)
     {
-        // Cache key includes UpdatedAtTicks so a profile picture update busts the cache automatically.
-        var cacheKey = $"useravatar:url:{cached.UserId}:{cached.UpdatedAtTicks}";
-        return _cache.GetOrCreate(cacheKey, entry =>
+        if (cached.HasCustomPicture && cached.ProfileId != Guid.Empty)
         {
-            entry.SlidingExpiration = TimeSpan.FromMinutes(30);
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(4);
+            var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
+            return urlHelper.Action(
+                action: "Picture",
+                controller: "Profile",
+                values: new { id = cached.ProfileId, v = cached.UpdatedAtTicks });
+        }
 
-            if (cached.HasCustomPicture && cached.ProfileId != Guid.Empty)
-            {
-                var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
-                return urlHelper.Action(
-                    action: "Picture",
-                    controller: "Profile",
-                    values: new { id = cached.ProfileId, v = cached.UpdatedAtTicks });
-            }
-
-            return cached.ProfilePictureUrl;
-        });
+        return cached.ProfilePictureUrl;
     }
 }
