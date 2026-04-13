@@ -317,6 +317,61 @@ public class OutboxEmailService : IEmailService
             triggerImmediate: true);
     }
 
+    /// <inheritdoc />
+    public async Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default)
+    {
+        // Substitute placeholders in the Markdown source, then render to HTML.
+        // HTML-encode the substitutions so malicious codes/names cannot inject markup.
+        var encodedCode = System.Net.WebUtility.HtmlEncode(request.Code);
+        var encodedName = System.Net.WebUtility.HtmlEncode(request.RecipientName);
+
+        var markdown = request.MarkdownBody
+            .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
+            .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
+        var renderedBody = Markdig.Markdown.ToHtml(markdown);
+
+        var renderedSubject = request.Subject
+            .Replace("{{Code}}", request.Code, StringComparison.Ordinal)
+            .Replace("{{Name}}", request.RecipientName, StringComparison.Ordinal);
+
+        // Generate unsubscribe headers and footer link for the CampaignCodes category
+        var unsubHeaders = _commPrefService.GenerateUnsubscribeHeaders(request.UserId, MessageCategory.CampaignCodes);
+        string? extraHeadersJson = null;
+        if (unsubHeaders is not null)
+        {
+            extraHeadersJson = System.Text.Json.JsonSerializer.Serialize(unsubHeaders);
+        }
+        var unsubscribeUrl = _commPrefService.GenerateBrowserUnsubscribeUrl(request.UserId, MessageCategory.CampaignCodes);
+
+        var (wrappedHtml, plainText) = EmailBodyComposer.Compose(
+            renderedBody, _settings.BaseUrl, _environmentName, unsubscribeUrl);
+
+        var message = new EmailOutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            RecipientEmail = request.RecipientEmail,
+            RecipientName = request.RecipientName,
+            Subject = renderedSubject,
+            HtmlBody = wrappedHtml,
+            PlainTextBody = plainText,
+            TemplateName = "campaign_code",
+            UserId = request.UserId,
+            CampaignGrantId = request.CampaignGrantId,
+            ReplyTo = request.ReplyTo,
+            ExtraHeaders = extraHeadersJson,
+            Status = EmailOutboxStatus.Queued,
+            CreatedAt = _clock.GetCurrentInstant()
+        };
+
+        _dbContext.EmailOutboxMessages.Add(message);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        _metrics.RecordEmailQueued("campaign_code");
+        _logger.LogInformation(
+            "Campaign code email queued for grant {GrantId} to {Recipient}",
+            request.CampaignGrantId, request.RecipientEmail);
+    }
+
     private async Task EnqueueAsync(
         string recipientEmail,
         string recipientName,

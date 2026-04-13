@@ -27,6 +27,7 @@ public class ProfileServiceTests : IDisposable
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
+    private readonly ITicketQueryService _ticketQueryService = Substitute.For<ITicketQueryService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public ProfileServiceTests()
@@ -39,8 +40,11 @@ public class ProfileServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         _service = new ProfileService(
             _dbContext, _onboardingService, _emailService, _auditLogService,
-            _membershipCalculator, _consentService, _clock, _cache,
+            _membershipCalculator, _consentService, _ticketQueryService, _clock, _cache,
             NullLogger<ProfileService>.Instance);
+
+        _ticketQueryService.GetUserTicketExportDataAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UserTicketExportData([], []));
 
         // Default: return all input IDs as Active (sufficient for most tests that don't filter by status)
         _membershipCalculator

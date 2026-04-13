@@ -270,4 +270,12 @@ public class StubEmailService : IEmailService
         _logger.LogInformation("[STUB] Would send workspace credentials for {WorkspaceEmail} to {RecoveryEmail}", workspaceEmail, recoveryEmail);
         return Task.CompletedTask;
     }
+
+    public Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation(
+            "[STUB] Would send campaign code email to {Email} ({Name}) for grant {GrantId}",
+            request.RecipientEmail, request.RecipientName, request.CampaignGrantId);
+        return Task.CompletedTask;
+    }
 }

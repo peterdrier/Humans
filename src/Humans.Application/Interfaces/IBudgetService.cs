@@ -29,6 +29,39 @@ public interface IBudgetService
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
         decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId);
 
+    /// <summary>
+    /// Sync ticket sales actuals (already aggregated per ISO week by the ticket side)
+    /// into the ticketing budget group. Upserts auto-generated BudgetLineItems for
+    /// each completed week's revenue and processing fees, refreshes projection
+    /// parameters (average ticket price, stripe fee %, TicketTailor fee %) from
+    /// those actuals, and re-materializes projected line items for future weeks.
+    /// Returns the number of line items created or updated.
+    /// </summary>
+    Task<int> SyncTicketingActualsAsync(
+        Guid budgetYearId,
+        IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Re-materialize projected ticketing line items (no actuals sync). Called
+    /// after projection parameters change so the projected lines reflect the new inputs.
+    /// Returns the number of projected line items created.
+    /// </summary>
+    Task<int> RefreshTicketingProjectionsAsync(Guid budgetYearId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Compute virtual (non-persisted) weekly ticket projections for future weeks.
+    /// Used by finance overview pages to display break-even forecasts.
+    /// </summary>
+    Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
+        Guid budgetGroupId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Compute the total number of tickets sold through completed weeks, derived
+    /// from the revenue line item notes on an already-loaded ticketing group.
+    /// </summary>
+    int GetActualTicketsSold(BudgetGroup ticketingGroup);
+
     // Budget Groups
     Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId);
     Task UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId);

@@ -117,7 +117,51 @@ public interface ITicketQueryService
     /// Gets ticket order summaries for a specific user (as buyer), ordered by most recent first.
     /// </summary>
     Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId);
+
+    /// <summary>
+    /// Returns whether a user holds a valid ticket for the current sync's vendor event.
+    /// Checks paid orders matched to the user, then falls back to valid/checked-in attendees.
+    /// Used by profile services to compute account-deletion / event-hold dates without
+    /// touching ticket tables directly.
+    /// </summary>
+    Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns ticket data for a user's GDPR data export — matched orders (as buyer)
+    /// and matched attendee records. Shape matches the existing profile export JSON
+    /// so GDPR exports stay stable after the service-ownership refactor.
+    /// </summary>
+    Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Ticket data for a user's GDPR data export.
+/// </summary>
+public record UserTicketExportData(
+    IReadOnlyList<UserTicketOrderExportRow> Orders,
+    IReadOnlyList<UserTicketAttendeeExportRow> Attendees);
+
+/// <summary>
+/// A single ticket order row in the user data export.
+/// </summary>
+public record UserTicketOrderExportRow(
+    string? BuyerName,
+    string? BuyerEmail,
+    decimal TotalAmount,
+    string Currency,
+    string PaymentStatus,
+    string? DiscountCode,
+    Instant PurchasedAt);
+
+/// <summary>
+/// A single ticket attendee row in the user data export.
+/// </summary>
+public record UserTicketAttendeeExportRow(
+    string? AttendeeName,
+    string? AttendeeEmail,
+    string? TicketTypeName,
+    decimal Price,
+    string Status);
 
 /// <summary>
 /// Summary of a ticket order for display on user-facing pages.

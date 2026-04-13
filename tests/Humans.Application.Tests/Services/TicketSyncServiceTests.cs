@@ -23,6 +23,7 @@ public class TicketSyncServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly ITicketVendorService _vendorService;
     private readonly IStripeService _stripeService;
+    private readonly ICampaignService _campaignService;
     private readonly TicketSyncService _service;
 
     public TicketSyncServiceTests()
@@ -44,6 +45,7 @@ public class TicketSyncServiceTests : IDisposable
 
         _stripeService = Substitute.For<IStripeService>();
         var userService = Substitute.For<IUserService>();
+        _campaignService = Substitute.For<ICampaignService>();
         _service = new TicketSyncService(
             _dbContext,
             _vendorService,
@@ -52,7 +54,8 @@ public class TicketSyncServiceTests : IDisposable
             settings,
             NullLogger<TicketSyncService>.Instance,
             new MemoryCache(new MemoryCacheOptions()),
-            userService);
+            userService,
+            _campaignService);
 
         // Seed the singleton TicketSyncState row
         _dbContext.TicketSyncStates.Add(new TicketSyncState
@@ -171,51 +174,11 @@ public class TicketSyncServiceTests : IDisposable
     // ==========================================================================
 
     [Fact]
-    public async Task SyncOrdersAndAttendeesAsync_MatchesDiscountCodeToCampaignGrant()
+    public async Task SyncOrdersAndAttendeesAsync_ForwardsDiscountCodesToCampaignService()
     {
-        // Seed campaign infrastructure
-        var creatorId = Guid.NewGuid();
-        SeedUser(creatorId, "Creator");
-
-        var campaignId = Guid.NewGuid();
-        var codeId = Guid.NewGuid();
-        var grantUserId = Guid.NewGuid();
-        SeedUser(grantUserId, "GrantUser");
-
-        var campaign = new Campaign
-        {
-            Id = campaignId,
-            Title = "Test Campaign",
-            EmailSubject = "Your code",
-            EmailBodyTemplate = "<p>{{Code}}</p>",
-            Status = CampaignStatus.Active,
-            CreatedAt = _clock.GetCurrentInstant(),
-            CreatedByUserId = creatorId
-        };
-        _dbContext.Campaigns.Add(campaign);
-
-        var code = new CampaignCode
-        {
-            Id = codeId,
-            CampaignId = campaignId,
-            Code = "DISCOUNT10",
-            ImportedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.CampaignCodes.Add(code);
-
-        var grant = new CampaignGrant
-        {
-            Id = Guid.NewGuid(),
-            CampaignId = campaignId,
-            CampaignCodeId = codeId,
-            UserId = grantUserId,
-            AssignedAt = _clock.GetCurrentInstant(),
-            RedeemedAt = null
-        };
-        _dbContext.CampaignGrants.Add(grant);
-        await _dbContext.SaveChangesAsync();
-
-        // Order uses the discount code
+        // Order uses a discount code — TicketSyncService is expected to aggregate
+        // these into DiscountCodeRedemption instances and delegate to ICampaignService
+        // (which owns CampaignGrants) for the actual RedeemedAt updates.
         var orders = new List<VendorOrderDto>
         {
             MakeOrderDto("ord_disc", "Buyer", "buyer@example.com", discountCode: "discount10")
@@ -226,12 +189,20 @@ public class TicketSyncServiceTests : IDisposable
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new List<VendorTicketDto>());
 
+        _campaignService.MarkGrantsRedeemedAsync(
+            Arg.Any<IReadOnlyCollection<DiscountCodeRedemption>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(1);
+
         var result = await _service.SyncOrdersAndAttendeesAsync();
 
         result.CodesRedeemed.Should().Be(1);
 
-        var updatedGrant = await _dbContext.CampaignGrants.FindAsync(grant.Id);
-        updatedGrant!.RedeemedAt.Should().NotBeNull();
+        // Verify the redemption was forwarded to the campaign service
+        await _campaignService.Received(1).MarkGrantsRedeemedAsync(
+            Arg.Is<IReadOnlyCollection<DiscountCodeRedemption>>(r =>
+                r.Count == 1 && string.Equals(r.First().Code, "discount10", StringComparison.Ordinal)),
+            Arg.Any<CancellationToken>());
     }
 
     // ==========================================================================
@@ -290,7 +261,8 @@ public class TicketSyncServiceTests : IDisposable
             settings,
             NullLogger<TicketSyncService>.Instance,
             new MemoryCache(new MemoryCacheOptions()),
-            Substitute.For<IUserService>());
+            Substitute.For<IUserService>(),
+            Substitute.For<ICampaignService>());
 
         var result = await service.SyncOrdersAndAttendeesAsync();
 

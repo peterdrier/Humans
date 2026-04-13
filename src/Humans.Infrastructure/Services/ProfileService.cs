@@ -22,6 +22,7 @@ public class ProfileService : IProfileService
     private readonly IAuditLogService _auditLogService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IConsentService _consentService;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<ProfileService> _logger;
@@ -33,6 +34,7 @@ public class ProfileService : IProfileService
         IAuditLogService auditLogService,
         IMembershipCalculator membershipCalculator,
         IConsentService consentService,
+        ITicketQueryService ticketQueryService,
         IClock clock,
         IMemoryCache cache,
         ILogger<ProfileService> logger)
@@ -43,6 +45,7 @@ public class ProfileService : IProfileService
         _auditLogService = auditLogService;
         _membershipCalculator = membershipCalculator;
         _consentService = consentService;
+        _ticketQueryService = ticketQueryService;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -405,27 +408,9 @@ public class ProfileService : IProfileService
         if (activeEvent is null)
             return null;
 
-        // Use the sync state's VendorEventId to scope to the current event's tickets
-        var syncState = await _dbContext.Set<TicketSyncState>().FirstOrDefaultAsync(ct);
-        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
-            return null;
-
-        var vendorEventId = syncState.VendorEventId;
-
-        // Only hold for paid orders with valid/checked-in attendees
-        var hasTickets = await _dbContext.TicketOrders
-            .AnyAsync(o => o.MatchedUserId == userId
-                && o.VendorEventId == vendorEventId
-                && o.PaymentStatus == TicketPaymentStatus.Paid, ct);
-
-        if (!hasTickets)
-        {
-            hasTickets = await _dbContext.TicketAttendees
-                .AnyAsync(a => a.MatchedUserId == userId
-                    && a.VendorEventId == vendorEventId
-                    && (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn), ct);
-        }
-
+        // Ticket tables are owned by the Tickets section — route through ITicketQueryService
+        // to check whether this user holds a ticket for the current event.
+        var hasTickets = await _ticketQueryService.HasCurrentEventTicketAsync(userId, ct);
         if (!hasTickets)
             return null;
 
@@ -549,16 +534,9 @@ public class ProfileService : IProfileService
             .OrderByDescending(nr => nr.Notification.CreatedAt)
             .ToListAsync(ct);
 
-        var ticketOrders = await _dbContext.TicketOrders
-            .AsNoTracking()
-            .Where(to => to.MatchedUserId == userId)
-            .OrderByDescending(to => to.PurchasedAt)
-            .ToListAsync(ct);
-
-        var ticketAttendees = await _dbContext.TicketAttendees
-            .AsNoTracking()
-            .Where(ta => ta.MatchedUserId == userId)
-            .ToListAsync(ct);
+        // Ticket tables are owned by the Tickets section — route export reads
+        // through ITicketQueryService.
+        var ticketExport = await _ticketQueryService.GetUserTicketExportDataAsync(userId, ct);
 
         var campaignGrants = await _dbContext.CampaignGrants
             .AsNoTracking()
@@ -803,7 +781,7 @@ public class ProfileService : IProfileService
                 ReadAt = nr.ReadAt.ToInvariantInstantString(),
                 ResolvedAt = nr.Notification.ResolvedAt.ToInvariantInstantString()
             }),
-            TicketOrders = ticketOrders.Select(to => new
+            TicketOrders = ticketExport.Orders.Select(to => new
             {
                 to.BuyerName,
                 to.BuyerEmail,
@@ -813,7 +791,7 @@ public class ProfileService : IProfileService
                 to.DiscountCode,
                 PurchasedAt = to.PurchasedAt.ToInvariantInstantString()
             }),
-            TicketAttendeeMatches = ticketAttendees
+            TicketAttendeeMatches = ticketExport.Attendees
                 .Select(ta => new
                 {
                     ta.AttendeeName,

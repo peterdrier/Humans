@@ -291,4 +291,25 @@ public interface IEmailService
         string tempPassword,
         string? culture = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enqueue a campaign code email to a recipient. Campaign content (subject and
+    /// markdown body with {{Code}}/{{Name}} placeholders) is rendered and wrapped in
+    /// the system email template by the outbox service, then linked to the grant
+    /// via <see cref="CampaignCodeEmailRequest.CampaignGrantId"/> for status tracking.
+    /// </summary>
+    Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Payload for enqueuing a campaign-code email.
+/// </summary>
+public record CampaignCodeEmailRequest(
+    Guid UserId,
+    Guid CampaignGrantId,
+    string RecipientEmail,
+    string RecipientName,
+    string Subject,
+    string MarkdownBody,
+    string Code,
+    string? ReplyTo);

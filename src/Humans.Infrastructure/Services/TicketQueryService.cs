@@ -896,6 +896,63 @@ public class TicketQueryService : ITicketQueryService
             .ToListAsync();
     }
 
+    /// <inheritdoc />
+    public async Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default)
+    {
+        // Use the sync state's VendorEventId to scope to the current event's tickets.
+        var syncState = await _dbContext.TicketSyncStates.FirstOrDefaultAsync(ct);
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return false;
+
+        var vendorEventId = syncState.VendorEventId;
+
+        // Only hold for paid orders with the user matched as buyer.
+        var hasPaidOrder = await _dbContext.TicketOrders
+            .AnyAsync(o => o.MatchedUserId == userId
+                && o.VendorEventId == vendorEventId
+                && o.PaymentStatus == TicketPaymentStatus.Paid, ct);
+
+        if (hasPaidOrder)
+            return true;
+
+        // Fallback: user matched as attendee on a valid/checked-in ticket.
+        return await _dbContext.TicketAttendees
+            .AnyAsync(a => a.MatchedUserId == userId
+                && a.VendorEventId == vendorEventId
+                && (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn), ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<UserTicketExportData> GetUserTicketExportDataAsync(Guid userId, CancellationToken ct = default)
+    {
+        var orders = await _dbContext.TicketOrders
+            .AsNoTracking()
+            .Where(o => o.MatchedUserId == userId)
+            .OrderByDescending(o => o.PurchasedAt)
+            .Select(o => new UserTicketOrderExportRow(
+                o.BuyerName,
+                o.BuyerEmail,
+                o.TotalAmount,
+                o.Currency,
+                o.PaymentStatus.ToString(),
+                o.DiscountCode,
+                o.PurchasedAt))
+            .ToListAsync(ct);
+
+        var attendees = await _dbContext.TicketAttendees
+            .AsNoTracking()
+            .Where(a => a.MatchedUserId == userId)
+            .Select(a => new UserTicketAttendeeExportRow(
+                a.AttendeeName,
+                a.AttendeeEmail,
+                a.TicketTypeName,
+                a.Price,
+                a.Status.ToString()))
+            .ToListAsync(ct);
+
+        return new UserTicketExportData(orders, attendees);
+    }
+
     private static bool HasSearchTerm([NotNullWhen(true)] string? value, int minLength = 2) =>
         !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= minLength;
 

@@ -297,6 +297,27 @@ public class SmtpEmailService : IEmailService
         _metrics.RecordEmailSent("workspace_credentials");
     }
 
+    public async Task SendCampaignCodeAsync(CampaignCodeEmailRequest request, CancellationToken cancellationToken = default)
+    {
+        // SmtpEmailService sends inline (no outbox). Render the campaign markdown
+        // body with {{Code}}/{{Name}} placeholders and deliver via SMTP. We HTML-
+        // encode the substitutions so content cannot inject markup.
+        var encodedCode = System.Net.WebUtility.HtmlEncode(request.Code);
+        var encodedName = System.Net.WebUtility.HtmlEncode(request.RecipientName);
+
+        var markdown = request.MarkdownBody
+            .Replace("{{Code}}", encodedCode, StringComparison.Ordinal)
+            .Replace("{{Name}}", encodedName, StringComparison.Ordinal);
+        var renderedBody = Markdig.Markdown.ToHtml(markdown);
+
+        var renderedSubject = request.Subject
+            .Replace("{{Code}}", request.Code, StringComparison.Ordinal)
+            .Replace("{{Name}}", request.RecipientName, StringComparison.Ordinal);
+
+        await SendEmailAsync(request.RecipientEmail, renderedSubject, renderedBody, cancellationToken, request.ReplyTo);
+        _metrics.RecordEmailSent("campaign_code");
+    }
+
     private async Task SendEmailAsync(
         string toAddress,
         string subject,

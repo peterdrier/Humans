@@ -24,6 +24,7 @@ public class TicketSyncService : ITicketSyncService
     private readonly TicketVendorSettings _settings;
     private readonly IMemoryCache _cache;
     private readonly IUserService _userService;
+    private readonly ICampaignService _campaignService;
     private readonly ILogger<TicketSyncService> _logger;
 
     public TicketSyncService(
@@ -34,7 +35,8 @@ public class TicketSyncService : ITicketSyncService
         IOptions<TicketVendorSettings> settings,
         ILogger<TicketSyncService> logger,
         IMemoryCache cache,
-        IUserService userService)
+        IUserService userService,
+        ICampaignService campaignService)
     {
         _dbContext = dbContext;
         _vendorService = vendorService;
@@ -43,6 +45,7 @@ public class TicketSyncService : ITicketSyncService
         _settings = settings.Value;
         _cache = cache;
         _userService = userService;
+        _campaignService = campaignService;
         _logger = logger;
     }
 
@@ -313,49 +316,17 @@ public class TicketSyncService : ITicketSyncService
     {
         var ordersWithCodes = await _dbContext.TicketOrders
             .Where(o => o.DiscountCode != null)
-            .Select(o => new { o.DiscountCode, o.PurchasedAt })
+            .Select(o => new { Code = o.DiscountCode!, o.PurchasedAt })
             .ToListAsync(ct);
 
         if (ordersWithCodes.Count == 0) return 0;
 
-        var codeStrings = new HashSet<string>(
-            ordersWithCodes.Select(o => o.DiscountCode!),
-            StringComparer.OrdinalIgnoreCase);
-
-        // Match codes with ordinal ignore-case semantics so database collation/casing rules
-        // do not cause valid imported codes to be skipped.
-        var unredeemed = (await _dbContext.Set<CampaignGrant>()
-            .Include(g => g.Code)
-            .Include(g => g.Campaign)
-            .Where(g => g.Code != null
-                && (g.Campaign.Status == CampaignStatus.Active || g.Campaign.Status == CampaignStatus.Completed)
-                && g.RedeemedAt == null)
-            .ToListAsync(ct))
-            .Where(g => codeStrings.Contains(g.Code!.Code))
+        var redemptions = ordersWithCodes
+            .Select(o => new DiscountCodeRedemption(o.Code, o.PurchasedAt))
             .ToList();
 
-        var codesRedeemed = 0;
-        foreach (var order in ordersWithCodes)
-        {
-            if (order.DiscountCode is null) continue;
-
-            var grant = unredeemed
-                .Where(g => string.Equals(g.Code!.Code, order.DiscountCode, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(g => g.Campaign.CreatedAt)
-                .FirstOrDefault();
-
-            if (grant is not null)
-            {
-                grant.RedeemedAt = order.PurchasedAt;
-                unredeemed.Remove(grant);
-                codesRedeemed++;
-            }
-        }
-
-        if (codesRedeemed > 0)
-            await _dbContext.SaveChangesAsync(ct);
-
-        return codesRedeemed;
+        // Delegate to CampaignService — CampaignGrants is owned by the Campaigns section.
+        return await _campaignService.MarkGrantsRedeemedAsync(redemptions, ct);
     }
 
     private async Task EnrichOrdersWithStripeDataAsync(CancellationToken ct)
