@@ -72,7 +72,9 @@ public class CityPlanningService : ICityPlanningService
 
     public async Task<string?> GetUserDisplayNameAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var profile = await _profileService.GetCachedProfileAsync(userId, cancellationToken);
+        // Use targeted per-user lookup (GetProfileAsync) instead of GetCachedProfileAsync
+        // to avoid warming the full profile cache on cold-cache paths like SignalR connect.
+        var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
         return profile?.BurnerName;
     }
 
@@ -80,9 +82,11 @@ public class CityPlanningService : ICityPlanningService
     {
         // Get all camp seasons for the year from camp service
         var allSeasons = await _campService.GetCampSeasonBriefsForYearAsync(year, cancellationToken);
+        var seasonIdsForYear = allSeasons.Select(s => s.CampSeasonId).ToList();
 
-        // Get camp season IDs that already have polygons (owned table)
+        // Get camp season IDs that already have polygons, filtered in SQL to this year's seasons only
         var polygonSeasonIds = await _dbContext.CampPolygons
+            .Where(p => seasonIdsForYear.Contains(p.CampSeasonId))
             .Select(p => p.CampSeasonId)
             .ToListAsync(cancellationToken);
 

@@ -524,11 +524,8 @@ public class CityPlanningServiceTests : IDisposable
     public async Task GetUserDisplayNameAsync_ReturnsProfileBurnerName()
     {
         var userId = Guid.NewGuid();
-        _profileService.GetCachedProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new CachedProfile(
-                userId, "Display Name", null, false, Guid.NewGuid(), 0,
-                "Burner Name", null, null, null, null, null, null, null,
-                null, null, true, false, []));
+        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new Profile { UserId = userId, BurnerName = "Burner Name" });
 
         var result = await _sut.GetUserDisplayNameAsync(userId);
 
@@ -539,8 +536,8 @@ public class CityPlanningServiceTests : IDisposable
     public async Task GetUserDisplayNameAsync_ReturnsNull_WhenNoProfile()
     {
         var userId = Guid.NewGuid();
-        _profileService.GetCachedProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns((CachedProfile?)null);
+        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((Profile?)null);
 
         var result = await _sut.GetUserDisplayNameAsync(userId);
 
