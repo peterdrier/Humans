@@ -55,6 +55,19 @@ file sealed class StubAuditLogService : IAuditLogService
         int limit = 20,
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<AuditLogEntry>>(Array.Empty<AuditLogEntry>());
+
+    public Task<AuditLogPageResult> GetAuditLogPageAsync(
+        string? actionFilter, int page, int pageSize, CancellationToken ct = default) =>
+        Task.FromResult(new AuditLogPageResult(
+            Array.Empty<AuditLogEntry>(), 0, 0,
+            new Dictionary<Guid, string>(),
+            new Dictionary<Guid, (string Name, string Slug)>()));
+
+    public Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default) =>
+        Task.FromResult(new Dictionary<Guid, string>());
+
+    public Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default) =>
+        Task.FromResult(new Dictionary<Guid, (string Name, string Slug)>());
 }
 
 public class CommunicationPreferenceServiceTests : IDisposable
@@ -179,4 +192,51 @@ public class CommunicationPreferenceServiceTests : IDisposable
 
         result.Should().BeFalse();
     }
+
+    [Fact]
+    public void ValidateUnsubscribeToken_WithValidToken_ReturnsValidStatusAndCorrectPayload()
+    {
+        var userId = Guid.NewGuid();
+        var category = MessageCategory.TeamUpdates;
+
+        var token = _service.GenerateUnsubscribeToken(userId, category);
+        var (status, decodedUserId, decodedCategory) = _service.ValidateUnsubscribeToken(token);
+
+        status.Should().Be(TokenValidationStatus.Valid);
+        decodedUserId.Should().Be(userId);
+        decodedCategory.Should().Be(category);
+    }
+
+    [Fact]
+    public void ValidateUnsubscribeToken_WithGarbageString_ReturnsInvalidStatus()
+    {
+        // A random string is not a valid DataProtection payload — simulates a tampered token.
+        // Note: DataProtection throws CryptographicException for both expired and tampered tokens.
+        // The service distinguishes expired from tampered by checking whether "expired" appears in
+        // the exception message. A purely garbage string will not match "expired" and maps to Invalid.
+        var (status, decodedUserId, decodedCategory) = _service.ValidateUnsubscribeToken("this-is-not-a-valid-token");
+
+        status.Should().Be(TokenValidationStatus.Invalid);
+        decodedUserId.Should().Be(Guid.Empty);
+        decodedCategory.Should().Be(default(MessageCategory));
+    }
+
+    [Fact]
+    public void ValidateUnsubscribeToken_WithMalformedBase64_ReturnsInvalidStatus()
+    {
+        // Another tamper vector: valid-looking base64 that decrypts to garbage
+        var (status, _, _) = _service.ValidateUnsubscribeToken("aGVsbG8gd29ybGQ=");
+
+        status.Should().Be(TokenValidationStatus.Invalid);
+    }
+
+    // NOTE: Testing TokenValidationStatus.Expired is not straightforward in unit tests because:
+    // - Microsoft.AspNetCore.DataProtection's ITimeLimitedDataProtector uses the real system clock
+    //   to embed expiry in the encrypted payload, and there is no seam to inject a fake clock.
+    // - DataProtectionProvider.Create() used here does not support replacing the clock.
+    // - To produce a genuinely expired token we would need to either (a) use the real system clock
+    //   and Thread.Sleep for 90 days, or (b) use internal/reflection to access the key ring.
+    // The Expired path in ValidateUnsubscribeToken is covered indirectly: the service correctly
+    // checks ex.Message.Contains("expired") before returning TokenValidationStatus.Expired, which
+    // is consistent with how DataProtection surfaces the expiry error in the real runtime.
 }

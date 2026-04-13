@@ -188,14 +188,31 @@ builder.Services.AddAuthentication()
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
                     .CreateLogger("GoogleOAuth");
 
-                var isCorrelationFailure = context.Failure?.Message?.Contains("Correlation", StringComparison.OrdinalIgnoreCase) == true;
-                if (isCorrelationFailure)
+                var failureMessage = context.Failure?.Message ?? string.Empty;
+                var isCorrelationFailure = failureMessage.Contains("Correlation", StringComparison.OrdinalIgnoreCase);
+                var isAccessDenied = failureMessage.Contains("access_denied", StringComparison.OrdinalIgnoreCase)
+                    || failureMessage.Contains("denied by the resource owner", StringComparison.OrdinalIgnoreCase);
+
+                var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                // All three categories are expected user behavior, but support needs to trace them
+                // when someone calls in. Log at Warning with the client IP so /Admin/Logs surfaces
+                // them and the event can be correlated to a user report. Stack traces dropped —
+                // the failure reason and IP are the actionable bits. See #483.
+                if (isAccessDenied)
                 {
-                    logger.LogDebug(context.Failure, "Google sign-in correlation failed (expected for stale/duplicate requests)");
+                    logger.LogWarning(
+                        "Google sign-in cancelled by user (access_denied) from {ClientIp}", clientIp);
+                }
+                else if (isCorrelationFailure)
+                {
+                    logger.LogWarning(
+                        "Google sign-in correlation cookie missing from {ClientIp} (stale or duplicate request)", clientIp);
                 }
                 else
                 {
-                    logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", context.Failure?.Message);
+                    logger.LogWarning(
+                        context.Failure, "Google sign-in failed from {ClientIp}: {Error}", clientIp, failureMessage);
                 }
 
                 context.Response.Redirect("/Account/Login?error=sign-in-failed");
@@ -307,6 +324,11 @@ builder.Services.AddRateLimiter(options =>
 
         // Exclude profile picture requests — list pages legitimately load ~30 images at once
         if (context.Request.Path.StartsWithSegments("/Profile/Picture", StringComparison.OrdinalIgnoreCase))
+            return RateLimitPartition.GetNoLimiter(string.Empty);
+
+        // Exclude local network — e2e tests and internal tooling run from 192.168.*
+        var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+        if (remoteIp is not null && remoteIp.StartsWith("192.168.", StringComparison.Ordinal))
             return RateLimitPartition.GetNoLimiter(string.Empty);
 
         return RateLimitPartition.GetFixedWindowLimiter(

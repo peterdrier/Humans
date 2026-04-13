@@ -198,5 +198,10 @@ public class AdminLegalDocumentServiceTests : IDisposable
         {
             return Task.FromResult<DocumentVersion?>(null);
         }
+
+        public Task<IReadOnlyList<DocumentVersion>> GetRequiredDocumentVersionsForTeamAsync(Guid teamId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<DocumentVersion>>(Array.Empty<DocumentVersion>());
+        }
     }
 }

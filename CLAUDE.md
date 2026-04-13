@@ -6,6 +6,15 @@ Membership management system for Nobodies Collective (Spanish nonprofit).
 
 Manage the full membership lifecycle for Nobodies Collective: volunteer applications are reviewed and approved by the Board, accepted members are provisioned into the appropriate teams and Google Workspace resources (Drive folders, Groups), and governance roles (Board, Coordinators, Admin) are tracked with temporal assignments. The system provides a way to organize teams logically and visually, gives Board and Admin visibility into what happens automatically on members' behalf through audit trails, and maintains GDPR compliance through consent tracking, data export, and right-to-deletion support.
 
+## Critical: Design Rules
+
+**See [`.claude/DESIGN_RULES.md`](.claude/DESIGN_RULES.md) for architectural rules:**
+- **Services own their data** — controllers cannot talk to DB, only services can
+- **Table ownership is strict** — each service owns specific tables, no cross-service DB access
+- **Cache ownership follows data ownership** — only the owning service manages its cache
+- **Cross-service calls via interfaces** — need a profile? Call `IProfileService`, don't query the table
+- **Authorization via resource-based handlers** — services are auth-free, controllers call `IAuthorizationService.AuthorizeAsync`, no `isPrivileged` booleans
+
 ## Critical: Coding Rules
 
 **See [`.claude/CODING_RULES.md`](.claude/CODING_RULES.md) for critical rules:**
@@ -121,6 +130,8 @@ dotnet run --project src/Humans.Web
 
 | Topic | File |
 |-------|------|
+| **Design rules** | **`.claude/DESIGN_RULES.md`** |
+| Dependency graph | `.claude/DEPENDENCY_GRAPH.md` |
 | **Coding rules** | **`.claude/CODING_RULES.md`** |
 | **Code review rules** | **`.claude/CODE_REVIEW_RULES.md`** |
 | Data model | `.claude/DATA_MODEL.md` |

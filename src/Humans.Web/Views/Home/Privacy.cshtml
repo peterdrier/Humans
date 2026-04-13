@@ -3,101 +3,103 @@
 }
 <h1>@Localizer["Privacy_Title"]</h1>
 
-<p class="lead">Humans manages membership for Nobodies Collective and processes personal data in accordance with GDPR and Spanish data protection law (LOPDGDD).</p>
+<p class="lead">@Localizer["Privacy_Lead"]</p>
 
-<h2>Data Controller</h2>
+<h2>@Localizer["Privacy_DataControllerTitle"]</h2>
 <p>
     <strong>Nobodies Collective</strong><br />
-    A Spanish nonprofit association registered in Andalucia.<br />
-    For data protection inquiries, contact our Data Protection Officer at: <a href="mailto:@(ViewData["DpoEmail"])">@ViewData["DpoEmail"]</a>
+    @Localizer["Privacy_DataControllerBody"]<br />
+    @Localizer["Privacy_DataControllerDPO"] <a href="mailto:@(ViewData["DpoEmail"])">@ViewData["DpoEmail"]</a>
 </p>
 
-<h2>Data We Collect</h2>
-<p>We collect and process the following categories of personal data:</p>
+<h2>@Localizer["Privacy_DataWeCollectTitle"]</h2>
+<p>@Localizer["Privacy_DataWeCollectIntro"]</p>
 <ul>
-    <li><strong>Identity data:</strong> Name, email address (from Google authentication), display name/burner name</li>
-    <li><strong>Contact data:</strong> Phone number, city, country (optional)</li>
-    <li><strong>Profile data:</strong> Bio, team memberships, role assignments</li>
-    <li><strong>Technical data:</strong> IP address and user agent (for consent records)</li>
-    <li><strong>Application data:</strong> Membership applications and motivation statements</li>
-    <li><strong>Consent records:</strong> Records of your agreement to legal documents</li>
+    <li><strong>@Localizer["Privacy_Collect_Identity"]</strong></li>
+    <li><strong>@Localizer["Privacy_Collect_Contact"]</strong></li>
+    <li><strong>@Localizer["Privacy_Collect_Profile"]</strong></li>
+    <li><strong>@Localizer["Privacy_Collect_Technical"]</strong></li>
+    <li><strong>@Localizer["Privacy_Collect_Application"]</strong></li>
+    <li><strong>@Localizer["Privacy_Collect_Consent"]</strong></li>
 </ul>
 
-<h2>Legal Basis for Processing</h2>
-<p>We process your data based on:</p>
+<h2>@Localizer["Privacy_LegalBasisTitle"]</h2>
+<p>@Localizer["Privacy_LegalBasisIntro"]</p>
 <ul>
-    <li><strong>Contract:</strong> Processing necessary for membership management</li>
-    <li><strong>Legitimate interest:</strong> Maintaining organizational records and communication</li>
-    <li><strong>Legal obligation:</strong> Compliance with Spanish nonprofit regulations</li>
-    <li><strong>Consent:</strong> For optional data you choose to provide</li>
+    <li><strong>@Localizer["Privacy_Legal_Contract"]</strong></li>
+    <li><strong>@Localizer["Privacy_Legal_LegitimateInterest"]</strong></li>
+    <li><strong>@Localizer["Privacy_Legal_LegalObligation"]</strong></li>
+    <li><strong>@Localizer["Privacy_Legal_Consent"]</strong></li>
 </ul>
 
-<h2>How We Use Your Data</h2>
+<h2>@Localizer["Privacy_HowWeUseTitle"]</h2>
 <ul>
-    <li>To manage your membership and team participation</li>
-    <li>To communicate with you about organizational activities</li>
-    <li>To maintain legal compliance records</li>
-    <li>To facilitate connections between humans (based on your visibility settings)</li>
+    <li>@Localizer["Privacy_Use_Membership"]</li>
+    <li>@Localizer["Privacy_Use_Communicate"]</li>
+    <li>@Localizer["Privacy_Use_LegalCompliance"]</li>
+    <li>@Localizer["Privacy_Use_Connections"]</li>
 </ul>
 
-<h2>Data Retention</h2>
-<p>We retain your data according to the following policies:</p>
+<h2>@Localizer["Privacy_DataRetentionTitle"]</h2>
+<p>@Localizer["Privacy_DataRetentionIntro"]</p>
 <ul>
-    <li><strong>Active accounts:</strong> Data retained while your account is active</li>
-    <li><strong>Inactive accounts:</strong> Data retained for up to 7 years for legal compliance</li>
-    <li><strong>Consent records:</strong> Retained indefinitely as required for GDPR compliance</li>
-    <li><strong>Deleted accounts:</strong> Anonymized after 30-day grace period</li>
+    <li><strong>@Localizer["Privacy_Retention_Active"]</strong></li>
+    <li><strong>@Localizer["Privacy_Retention_Inactive"]</strong></li>
+    <li><strong>@Localizer["Privacy_Retention_Consent"]</strong></li>
+    <li><strong>@Localizer["Privacy_Retention_Deleted"]</strong></li>
 </ul>
 
-<h2>Your Rights</h2>
-<p>Under GDPR, you have the following rights:</p>
+<h2>@Localizer["Privacy_YourRightsTitle"]</h2>
+<p>@Localizer["Privacy_YourRightsIntro"]</p>
 <ul>
-    <li><strong>Access:</strong> Request a copy of your personal data</li>
-    <li><strong>Rectification:</strong> Request correction of inaccurate data</li>
-    <li><strong>Erasure:</strong> Request deletion of your data ("right to be forgotten")</li>
-    <li><strong>Portability:</strong> Receive your data in a machine-readable format</li>
-    <li><strong>Restriction:</strong> Request limitation of processing</li>
-    <li><strong>Objection:</strong> Object to certain types of processing</li>
+    <li><strong>@Localizer["Privacy_Rights_Access"]</strong></li>
+    <li><strong>@Localizer["Privacy_Rights_Rectification"]</strong></li>
+    <li><strong>@Localizer["Privacy_Rights_Erasure"]</strong></li>
+    <li><strong>@Localizer["Privacy_Rights_Portability"]</strong></li>
+    <li><strong>@Localizer["Privacy_Rights_Restriction"]</strong></li>
+    <li><strong>@Localizer["Privacy_Rights_Objection"]</strong></li>
 </ul>
 <p>
-    To exercise these rights, visit your <a asp-controller="Profile" asp-action="Privacy">Privacy & Data</a> settings or contact us at
-    <a href="mailto:@(ViewData["DpoEmail"])">@ViewData["DpoEmail"]</a>.
+    @Html.Raw(string.Format(
+        Localizer["Privacy_YourRightsExercise"].Value,
+        "<a href=\"" + Html.Encode(Url.Action("Privacy", "Profile")) + "\">" + Localizer["Privacy_PrivacyAndData"].Value + "</a>",
+        "<a href=\"mailto:" + Html.Encode(ViewData["DpoEmail"]) + "\">" + Html.Encode(ViewData["DpoEmail"]) + "</a>"))
 </p>
 
-<h2>Cookies</h2>
-<p>This site uses only essential cookies required for:</p>
+<h2>@Localizer["Privacy_CookiesTitle"]</h2>
+<p>@Localizer["Privacy_CookiesIntro"]</p>
 <ul>
-    <li>User authentication and session management</li>
-    <li>Anti-forgery tokens for form security</li>
-    <li>Cookie consent preference</li>
+    <li>@Localizer["Privacy_Cookies_Auth"]</li>
+    <li>@Localizer["Privacy_Cookies_Antiforgery"]</li>
+    <li>@Localizer["Privacy_Cookies_Consent"]</li>
 </ul>
-<p>We do not use analytics, advertising, or third-party tracking cookies.</p>
+<p>@Localizer["Privacy_CookiesNoTracking"]</p>
 
-<h2>Data Security</h2>
-<p>We implement appropriate technical and organizational measures to protect your data, including:</p>
+<h2>@Localizer["Privacy_DataSecurityTitle"]</h2>
+<p>@Localizer["Privacy_DataSecurityIntro"]</p>
 <ul>
-    <li>Encryption in transit (HTTPS)</li>
-    <li>Secure authentication via Google OAuth</li>
-    <li>Access controls and audit logging</li>
-    <li>Regular security reviews</li>
-</ul>
-
-<h2>Third-Party Services</h2>
-<p>We use the following third-party services:</p>
-<ul>
-    <li><strong>Google OAuth:</strong> For secure authentication (Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>)</li>
-    <li><strong>Google Workspace:</strong> For team resource provisioning (shared drives, groups)</li>
+    <li>@Localizer["Privacy_Security_Encryption"]</li>
+    <li>@Localizer["Privacy_Security_OAuth"]</li>
+    <li>@Localizer["Privacy_Security_AccessControls"]</li>
+    <li>@Localizer["Privacy_Security_Reviews"]</li>
 </ul>
 
-<h2>Changes to This Policy</h2>
-<p>We may update this privacy policy from time to time. We will notify active humans of significant changes via email.</p>
+<h2>@Localizer["Privacy_ThirdPartyTitle"]</h2>
+<p>@Localizer["Privacy_ThirdPartyIntro"]</p>
+<ul>
+    <li><strong>Google OAuth:</strong> @Localizer["Privacy_ThirdParty_GoogleOAuth"] (Google's <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>)</li>
+    <li><strong>Google Workspace:</strong> @Localizer["Privacy_ThirdParty_GoogleWorkspace"]</li>
+</ul>
 
-<h2>Contact & Complaints</h2>
+<h2>@Localizer["Privacy_ChangesTitle"]</h2>
+<p>@Localizer["Privacy_ChangesBody"]</p>
+
+<h2>@Localizer["Privacy_ContactTitle"]</h2>
 <p>
-    For questions or concerns about this policy, contact our Data Protection Officer at
-    <a href="mailto:@(ViewData["DpoEmail"])">@ViewData["DpoEmail"]</a>.
+    @Html.Raw(string.Format(Localizer["Privacy_ContactBody"].Value,
+        "<a href=\"mailto:" + Html.Encode(ViewData["DpoEmail"]) + "\">" + Html.Encode(ViewData["DpoEmail"]) + "</a>"))
 </p>
 <p>
-    If you are not satisfied with our response, you have the right to lodge a complaint with the
-    Spanish Data Protection Agency (AEPD) at <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer">www.aepd.es</a>.
+    @Html.Raw(string.Format(Localizer["Privacy_ComplaintBody"].Value,
+        "<a href=\"https://www.aepd.es\" target=\"_blank\" rel=\"noopener noreferrer\">www.aepd.es</a>"))
 </p>

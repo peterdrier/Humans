@@ -38,3 +38,14 @@
 - **Admin**: GitHub issue linking connects feedback reports to the external issue tracker.
 - **Email**: Response emails are queued through the email outbox system.
 - **Onboarding**: Feedback submission is available during onboarding, before the human is an active member.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `FeedbackService`
+**Owned tables:** `feedback_reports`
+
+### Current State
+
+**Compliant.** No violations found. Controllers do not inject DbContext. FeedbackService only queries its own tables.

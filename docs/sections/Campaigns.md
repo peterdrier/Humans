@@ -38,3 +38,22 @@
 - **Tickets**: TicketAdmin can generate discount codes for campaigns via the ticket vendor integration.
 - **Email**: Campaign emails are delivered through the email outbox system.
 - **Profiles**: Campaign grants link to a human. The unsubscribe flag lives on the human's account.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `CampaignService`
+**Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
+
+### Current Violations
+
+**CampaignService — queries non-owned tables (Rule 2c):**
+- Queries `Teams` table (owned by Teams) for team targeting
+- Queries `Users` table (owned by Identity) for user data
+
+**Controllers:** Compliant — CampaignController does not inject DbContext.
+
+### Target State
+
+- CampaignService calls `ITeamService` for team data and `IUserService` for user data instead of querying those tables directly

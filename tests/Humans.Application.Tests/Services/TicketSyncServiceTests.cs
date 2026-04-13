@@ -43,6 +43,7 @@ public class TicketSyncServiceTests : IDisposable
         });
 
         _stripeService = Substitute.For<IStripeService>();
+        var userService = Substitute.For<IUserService>();
         _service = new TicketSyncService(
             _dbContext,
             _vendorService,
@@ -50,7 +51,8 @@ public class TicketSyncServiceTests : IDisposable
             _clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            new MemoryCache(new MemoryCacheOptions()));
+            new MemoryCache(new MemoryCacheOptions()),
+            userService);
 
         // Seed the singleton TicketSyncState row
         _dbContext.TicketSyncStates.Add(new TicketSyncState
@@ -287,7 +289,8 @@ public class TicketSyncServiceTests : IDisposable
             _clock,
             settings,
             NullLogger<TicketSyncService>.Instance,
-            new MemoryCache(new MemoryCacheOptions()));
+            new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<IUserService>());
 
         var result = await service.SyncOrdersAndAttendeesAsync();
 

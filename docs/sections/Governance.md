@@ -50,3 +50,19 @@
 - **Teams**: Tier approval or expiry adds or removes the human from Colaboradors/Asociados system teams.
 - **Onboarding**: Tier applications are a separate, optional path — never blocks Volunteer onboarding.
 - **Legal & Consent**: Consent checks are reviewed alongside (but independently of) tier applications.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `ApplicationDecisionService`
+**Owned tables:** `applications`, `application_state_histories`, `board_votes`
+
+Note: `role_assignments` is owned by the Auth section (`RoleAssignmentService`), not Governance. Governance is about Colaborador/Asociado tier applications and Board voting.
+
+### Current State
+
+**Compliant.** No violations found. Controllers do not inject DbContext. ApplicationDecisionService only queries its own tables.
+
+**Incoming violations (other services querying Governance-owned tables):**
+- `ProfileService` queries `Applications` directly

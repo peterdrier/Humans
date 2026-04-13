@@ -15,7 +15,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
 using Humans.Web.Authorization;
 using Humans.Web.Extensions;
 using Humans.Web.Models;
@@ -46,6 +45,7 @@ public class ProfileController : HumansControllerBase
     private readonly ILogger<ProfileController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly HumansDbContext _dbContext;
+    private readonly ITicketQueryService _ticketQueryService;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
 
@@ -90,6 +90,7 @@ public class ProfileController : HumansControllerBase
         ILogger<ProfileController> logger,
         IStringLocalizer<SharedResource> localizer,
         HumansDbContext dbContext,
+        ITicketQueryService ticketQueryService,
         IMemoryCache cache,
         IClock clock)
         : base(userManager)
@@ -111,6 +112,7 @@ public class ProfileController : HumansControllerBase
         _logger = logger;
         _localizer = localizer;
         _dbContext = dbContext;
+        _ticketQueryService = ticketQueryService;
         _cache = cache;
         _clock = clock;
     }
@@ -176,12 +178,8 @@ public class ProfileController : HumansControllerBase
 
         // Get profile languages for editing
         var languages = profile is not null
-            ? await _dbContext.ProfileLanguages
-                .AsNoTracking()
-                .Where(pl => pl.ProfileId == profile.Id)
-                .OrderBy(pl => pl.LanguageCode)
-                .ToListAsync(ct)
-            : [];
+            ? await _profileService.GetProfileLanguagesAsync(profile.Id, ct)
+            : (IReadOnlyList<ProfileLanguage>)[];
 
         var hasCustomPicture = profile?.HasCustomProfilePicture == true;
 
@@ -589,7 +587,7 @@ public class ProfileController : HumansControllerBase
         {
             var decodedToken = HttpUtility.UrlDecode(token);
             var result = await _userEmailService.VerifyEmailAsync(userId, decodedToken);
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
 
             if (result.MergeRequestCreated)
             {
@@ -612,12 +610,12 @@ public class ProfileController : HumansControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Email verification failed for user {UserId}", userId);
+            _logger.LogInformation("Email verification failed for user {UserId}: {Message}", userId, ex.Message);
             return VerifyEmailError(_localizer["Profile_InvalidVerificationLink"].Value);
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning(ex, "Email verification validation failed for user {UserId}", userId);
+            _logger.LogInformation("Email verification validation failed for user {UserId}: {Message}", userId, ex.Message);
             return VerifyEmailError(ex.Message);
         }
     }
@@ -640,7 +638,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.SetNotificationTargetAsync(user.Id, emailId);
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["Profile_NotificationTargetUpdated"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -691,7 +689,7 @@ public class ProfileController : HumansControllerBase
         try
         {
             await _userEmailService.DeleteEmailAsync(user.Id, emailId);
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(_localizer["Profile_EmailDeleted"].Value);
         }
         catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
@@ -1049,7 +1047,7 @@ public class ProfileController : HumansControllerBase
     public async Task<IActionResult> Popover(Guid id, CancellationToken ct)
     {
         var profile = await _profileService.GetProfileAsync(id, ct);
-        if (profile is null || profile.IsSuspended) return NotFound();
+        if (profile is null) return NotFound();
 
         var teams = await _dbContext.TeamMembers
             .Where(tm => tm.UserId == id && tm.LeftAt == null
@@ -1074,6 +1072,7 @@ public class ProfileController : HumansControllerBase
                 : profile.IsApproved ? "Active" : "Pending",
             City = profile.City,
             CountryCode = profile.CountryCode,
+            IsSuspended = profile.IsSuspended,
             Teams = teams
         };
 
@@ -1288,12 +1287,8 @@ public class ProfileController : HumansControllerBase
         ViewBag.OutboxCount = outboxCount;
 
         var profileLanguages = data.Profile is not null
-            ? await _dbContext.ProfileLanguages
-                .AsNoTracking()
-                .Where(pl => pl.ProfileId == data.Profile.Id)
-                .OrderBy(pl => pl.LanguageCode)
-                .ToListAsync(ct)
-            : [];
+            ? await _profileService.GetProfileLanguagesAsync(data.Profile.Id, ct)
+            : (IReadOnlyList<ProfileLanguage>)[];
 
         var now = _clock.GetCurrentInstant();
 
@@ -1491,12 +1486,6 @@ public class ProfileController : HumansControllerBase
             return View(model);
         }
 
-        // Enforce role assignment authorization
-        if (!RoleChecks.CanManageRole(User, model.RoleName))
-        {
-            return Forbid();
-        }
-
         var currentUser = await GetCurrentUserAsync();
         if (currentUser is null)
         {
@@ -1504,10 +1493,15 @@ public class ProfileController : HumansControllerBase
         }
 
         var result = await _roleAssignmentService.AssignRoleAsync(
-            id, model.RoleName, currentUser.Id, model.Notes);
+            id, model.RoleName, currentUser.Id, model.Notes, User);
 
         if (!result.Success)
         {
+            if (string.Equals(result.ErrorKey, "Unauthorized", StringComparison.Ordinal))
+            {
+                return Forbid();
+            }
+
             SetError(string.Format(_localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
             return RedirectToAction(nameof(AdminDetail), new { id });
         }
@@ -1528,12 +1522,6 @@ public class ProfileController : HumansControllerBase
             return NotFound();
         }
 
-        // Enforce role assignment authorization
-        if (!RoleChecks.CanManageRole(User, roleAssignment.RoleName))
-        {
-            return Forbid();
-        }
-
         var currentUser = await GetCurrentUserAsync();
         if (currentUser is null)
         {
@@ -1541,10 +1529,15 @@ public class ProfileController : HumansControllerBase
         }
 
         var result = await _roleAssignmentService.EndRoleAsync(
-            roleId, currentUser.Id, notes);
+            roleId, currentUser.Id, notes, User);
 
         if (!result.Success)
         {
+            if (string.Equals(result.ErrorKey, "Unauthorized", StringComparison.Ordinal))
+            {
+                return Forbid();
+            }
+
             SetError(_localizer["Admin_RoleNotActive"].Value);
             return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
         }
@@ -1646,9 +1639,8 @@ public class ProfileController : HumansControllerBase
         var prefs = await _commPrefService.GetPreferencesAsync(userId);
         var prefsByCategory = prefs.ToDictionary(p => p.Category);
 
-        // Check if user has a matched ticket order (locks ticketing preference)
-        var hasTicketOrder = await _dbContext.TicketOrders
-            .AnyAsync(o => o.MatchedUserId == userId);
+        // Check if user is a matched ticket attendee (locks ticketing preference)
+        var hasTicketOrder = await _ticketQueryService.HasTicketAttendeeMatchAsync(userId);
 
         var categories = new List<CategoryPreferenceItem>();
 
@@ -1669,7 +1661,7 @@ public class ProfileController : HumansControllerBase
                 AlertEnabled = pref?.InboxEnabled ?? true,
                 EmailEditable = !isAlwaysOn && !isTicketingLocked,
                 AlertEditable = !isAlwaysOn && !isTicketingLocked,
-                Note = isTicketingLocked ? "Locked — you have a ticket order for this year" : null,
+                Note = isTicketingLocked ? "Locked — you have a ticket for this year" : null,
             });
         }
 

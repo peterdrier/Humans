@@ -68,4 +68,22 @@ public static class RoleNames
     /// and line items. Full access to the Finance section.
     /// </summary>
     public const string FinanceAdmin = "FinanceAdmin";
+
+    /// <summary>
+    /// Roles that Board and HumanAdmin are permitted to manage (assign/end).
+    /// Used by both service-layer authorization and Web-layer role checks.
+    /// </summary>
+    public static readonly IReadOnlySet<string> BoardManageableRoles = new HashSet<string>(StringComparer.Ordinal)
+    {
+        Board,
+        HumanAdmin,
+        TeamsAdmin,
+        CampAdmin,
+        TicketAdmin,
+        NoInfoAdmin,
+        FeedbackAdmin,
+        FinanceAdmin,
+        ConsentCoordinator,
+        VolunteerCoordinator
+    };
 }

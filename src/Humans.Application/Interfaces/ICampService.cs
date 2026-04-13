@@ -43,6 +43,11 @@ public interface ICampService
     Task<IReadOnlyList<CampPublicSummary>> GetCampPublicSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CampPlacementSummary>> GetCampPlacementSummariesForYearAsync(int year, CancellationToken cancellationToken = default);
     Task<CampSettings> GetSettingsAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Gets camps with their active leads (and lead user data) for a given year.
+    /// Optionally filters to specific season statuses.
+    /// </summary>
+    Task<List<Camp>> GetCampsWithLeadsForYearAsync(int year, IReadOnlyList<CampSeasonStatus>? statusFilter = null, CancellationToken cancellationToken = default);
     Task<List<Camp>> GetCampsByLeadUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<List<CampSeason>> GetPendingSeasonsAsync(CancellationToken cancellationToken = default);
 
@@ -68,6 +73,14 @@ public interface ICampService
     // Historical names
     Task AddHistoricalNameAsync(Guid campId, string name, CancellationToken cancellationToken = default);
     Task RemoveHistoricalNameAsync(Guid historicalNameId, CancellationToken cancellationToken = default);
+
+    // Cross-service queries (used by CityPlanningService)
+    Task<SoundZone?> GetCampSeasonSoundZoneAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
+    Task<string?> GetCampSeasonNameAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
+    Task<CampSeasonInfo?> GetCampSeasonInfoAsync(Guid campSeasonId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, CampSeasonDisplayData>> GetCampSeasonDisplayDataForYearAsync(int year, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<CampSeasonBrief>> GetCampSeasonBriefsForYearAsync(int year, CancellationToken cancellationToken = default);
+    Task<Guid?> GetCampLeadSeasonIdForYearAsync(Guid userId, int year, CancellationToken cancellationToken = default);
 
     // Authorization checks
     Task<bool> IsUserCampLeadAsync(Guid userId, Guid campId, CancellationToken cancellationToken = default);
@@ -247,3 +260,19 @@ public record CampPlacementSummary(
     string? ContainerNotes,
     string Status,
     string? ElectricalGrid);
+
+/// <summary>
+/// Core camp season info for cross-service lookups (CampId + Year).
+/// </summary>
+public record CampSeasonInfo(Guid CampSeasonId, Guid CampId, int Year);
+
+/// <summary>
+/// Display data for camp seasons: name, camp slug, and sound zone.
+/// Used by CityPlanningService for polygon display/export.
+/// </summary>
+public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? SoundZone);
+
+/// <summary>
+/// Lightweight camp season summary (ID, name, camp slug) for listing.
+/// </summary>
+public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug);

@@ -1,15 +1,15 @@
 @model Humans.Web.Models.FeedbackPageViewModel
 @{
-    ViewData["Title"] = "Feedback";
+    ViewData["Title"] = Localizer["Feedback_PageTitle"].Value;
 }
 
 <div class="container-fluid">
-    <h2 class="mb-3">Feedback</h2>
+    <h2 class="mb-3">@Localizer["Feedback_PageTitle"]</h2>
 
     <!-- Filter bar -->
     <form method="get" class="feedback-filter-form d-flex gap-2 mb-3 flex-wrap">
         <select name="status" class="form-select form-select-sm" style="width: auto;">
-            <option value="">All Statuses</option>
+            <option value="">@Localizer["Feedback_AllStatuses"]</option>
             @foreach (var s in Enum.GetValues<Humans.Domain.Enums.FeedbackStatus>())
             {
                 if (Model.StatusFilter == s)
@@ -23,7 +23,7 @@
             }
         </select>
         <select name="category" class="form-select form-select-sm" style="width: auto;">
-            <option value="">All Categories</option>
+            <option value="">@Localizer["Feedback_AllCategories"]</option>
             @foreach (var c in Enum.GetValues<Humans.Domain.Enums.FeedbackCategory>())
             {
                 if (Model.CategoryFilter == c)
@@ -39,7 +39,7 @@
         @if (Model.IsAdmin && Model.Reporters.Count > 0)
         {
             <select name="reporterUserId" class="form-select form-select-sm" style="width: auto;">
-                <option value="">All Reporters</option>
+                <option value="">@Localizer["Feedback_AllReporters"]</option>
                 @foreach (var r in Model.Reporters)
                 {
                     if (Model.ReporterFilter == r.UserId)
@@ -56,14 +56,14 @@
         @if (Model.IsAdmin)
         {
             <select name="assignedTo" class="form-select form-select-sm" style="width: auto;">
-                <option value="">All Assignees</option>
+                <option value="">@Localizer["Feedback_AllAssignees"]</option>
                 @if (Model.AssignedToFilter == Model.CurrentUserId)
                 {
-                    <option value="@Model.CurrentUserId" selected>Assigned to me</option>
+                    <option value="@Model.CurrentUserId" selected>@Localizer["Feedback_AssignedToMe"]</option>
                 }
                 else
                 {
-                    <option value="@Model.CurrentUserId">Assigned to me</option>
+                    <option value="@Model.CurrentUserId">@Localizer["Feedback_AssignedToMe"]</option>
                 }
                 @foreach (var a in Model.AssigneeOptions)
                 {
@@ -81,7 +81,7 @@
                 }
             </select>
             <select name="team" class="form-select form-select-sm" style="width: auto;">
-                <option value="">All Teams</option>
+                <option value="">@Localizer["Feedback_AllTeams"]</option>
                 @foreach (var t in Model.TeamOptions)
                 {
                     if (Model.TeamFilter == t.Id)
@@ -105,12 +105,12 @@
                     <input class="form-check-input feedback-filter-checkbox" type="checkbox" name="unassigned" value="true"
                            id="unassignedFilter">
                 }
-                <label class="form-check-label small" for="unassignedFilter">Unassigned only</label>
+                <label class="form-check-label small" for="unassignedFilter">@Localizer["Feedback_UnassignedOnly"]</label>
             </div>
         }
         @if (Model.StatusFilter.HasValue || Model.CategoryFilter.HasValue || Model.ReporterFilter.HasValue || Model.AssignedToFilter.HasValue || Model.TeamFilter.HasValue || Model.UnassignedFilter)
         {
-            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Clear</a>
+            <a asp-action="Index" class="btn btn-sm btn-outline-secondary">@Localizer["Feedback_Clear"]</a>
         }
     </form>
 
@@ -119,7 +119,7 @@
         <div class="col-md-5 col-lg-4 border-end overflow-auto" style="max-height: 80vh;">
             @if (Model.Reports.Count == 0)
             {
-                <p class="text-muted p-3">No feedback reports found.</p>
+                <p class="text-muted p-3">@Localizer["Feedback_NoReports"]</p>
             }
             @foreach (var report in Model.Reports)
             {
@@ -172,7 +172,7 @@
                                 @if (isUnassigned)
                                 {
                                     <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle" style="font-size: 0.65rem;">
-                                        Unassigned
+                                        @Localizer["Feedback_Unassigned"]
                                     </span>
                                 }
                             </span>
@@ -182,7 +182,7 @@
                         <span></span>
                         @if (report.NeedsReply && Model.IsAdmin)
                         {
-                            <span class="text-danger"><i class="fa-solid fa-circle fa-xs"></i> needs reply</span>
+                            <span class="text-danger"><i class="fa-solid fa-circle fa-xs"></i> @Localizer["Feedback_NeedsReply"]</span>
                         }
                         @if (report.GitHubIssueNumber.HasValue)
                         {
@@ -196,7 +196,7 @@
         <!-- Right panel: detail -->
         <div class="col-md-7 col-lg-8" id="detail-panel">
             <div class="d-flex align-items-center justify-content-center h-100 text-muted">
-                <p>Select a report to view details</p>
+                <p>@Localizer["Feedback_SelectReport"]</p>
             </div>
         </div>
     </div>

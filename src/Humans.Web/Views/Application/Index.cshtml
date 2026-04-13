@@ -3,6 +3,13 @@
     ViewData["Title"] = Localizer["MyApplications_Title"].Value;
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Governance" asp-action="Index">@Localizer["Governance_Title"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["MyApplications_Title"]</li>
+    </ol>
+</nav>
+
 <h1 class="mb-4">@Localizer["MyApplications_Title"]</h1>
 
 <vc:temp-data-alerts />

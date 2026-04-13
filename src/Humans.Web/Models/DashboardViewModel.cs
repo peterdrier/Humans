@@ -4,6 +4,10 @@ namespace Humans.Web.Models;
 
 public class DashboardViewModel
 {
+    // Event participation
+    public int? EventYear { get; set; }
+    public ParticipationStatus? ParticipationStatus { get; set; }
+
     public Guid UserId { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string? ProfilePictureUrl { get; set; }

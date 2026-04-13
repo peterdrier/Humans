@@ -188,7 +188,7 @@ public class ShiftsController : HumansControllerBase
 
     [HttpPost("SignUp")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUp(Guid shiftId)
+    public async Task<IActionResult> SignUp(Guid shiftId, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -202,19 +202,19 @@ public class ShiftsController : HumansControllerBase
         if (!result.Success)
         {
             SetError(result.Error ?? "Shift signup failed.");
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
         }
 
         SetSuccess(result.Warning is not null
             ? $"Signed up successfully. Note: {result.Warning}"
             : "Signed up successfully!");
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
     }
 
     [HttpPost("SignUpRange")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset)
+    public async Task<IActionResult> SignUpRange(Guid rotaId, int startDayOffset, int endDayOffset, Guid? departmentId, string? fromDate, string? toDate, string? period, [FromForm(Name = "tags")] List<Guid>? tagIds)
     {
         var (currentUserNotFound, user) = await ResolveCurrentUserOrChallengeAsync();
         if (currentUserNotFound is not null)
@@ -228,14 +228,27 @@ public class ShiftsController : HumansControllerBase
         if (!result.Success)
         {
             SetError(result.Error ?? "Shift range signup failed.");
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
         }
 
         SetSuccess(result.Warning is not null
             ? $"Signed up for date range. Note: {result.Warning}"
             : "Signed up for date range!");
 
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), BuildFilterRouteValues(departmentId, fromDate, toDate, period, tagIds));
+    }
+
+    private static RouteValueDictionary BuildFilterRouteValues(Guid? departmentId, string? fromDate, string? toDate, string? period, List<Guid>? tagIds)
+    {
+        var rv = new RouteValueDictionary();
+        if (departmentId.HasValue) rv["departmentId"] = departmentId.Value;
+        if (!string.IsNullOrEmpty(fromDate)) rv["fromDate"] = fromDate;
+        if (!string.IsNullOrEmpty(toDate)) rv["toDate"] = toDate;
+        if (!string.IsNullOrEmpty(period)) rv["period"] = period;
+        if (tagIds is { Count: > 0 })
+            for (var i = 0; i < tagIds.Count; i++)
+                rv[$"tags[{i}]"] = tagIds[i];
+        return rv;
     }
 
     [HttpPost("BailRange")]
@@ -490,6 +503,7 @@ public class ShiftsController : HumansControllerBase
             existing.EventName = model.EventName;
             existing.TimeZoneId = model.TimeZoneId;
             existing.GateOpeningDate = parsedDate.Value;
+            existing.Year = parsedDate.Value.Year;
             existing.BuildStartOffset = model.BuildStartOffset;
             existing.EventEndOffset = model.EventEndOffset;
             existing.StrikeEndOffset = model.StrikeEndOffset;
@@ -521,6 +535,7 @@ public class ShiftsController : HumansControllerBase
                 GlobalVolunteerCap = model.GlobalVolunteerCap,
                 ReminderLeadTimeHours = model.ReminderLeadTimeHours,
                 IsActive = model.IsActive,
+                Year = parsedDate.Value.Year,
                 CreatedAt = _clock.GetCurrentInstant()
             };
 

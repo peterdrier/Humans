@@ -507,75 +507,29 @@ public class VolController : HumansControllerBase
 
     [HttpPost("Approve")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Approve(Guid signupId, string? returnUrl)
-    {
-        try
-        {
-            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err is not null) return err;
-
-            var signup = await _signupService.GetByIdAsync(signupId);
-            if (signup is null)
-            {
-                SetError("Signup not found.");
-                return RedirectToLocalOrAction(returnUrl, nameof(MyShifts));
-            }
-
-            var canApprove = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
-                             await _shiftMgmt.CanApproveSignupsAsync(user.Id, signup.Shift.Rota.TeamId);
-            if (!canApprove) return Forbid();
-
-            var result = await _signupService.ApproveAsync(signupId, user.Id);
-            if (result.Success)
-                SetSuccess("Signup approved.");
-            else
-                SetError(result.Error ?? "Approval failed.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error approving signup {SignupId}", signupId);
-            SetError("Approval failed.");
-        }
-        return RedirectToLocalOrAction(returnUrl, nameof(MyShifts));
-    }
+    public Task<IActionResult> Approve(Guid signupId, string? returnUrl) =>
+        ExecuteSignupActionAsync(signupId, returnUrl, "approve",
+            (id, userId) => _signupService.ApproveAsync(id, userId),
+            "Signup approved.", "Approval failed.");
 
     [HttpPost("Refuse")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Refuse(Guid signupId, string? reason, string? returnUrl)
-    {
-        try
-        {
-            var (err, user) = await ResolveCurrentUserOrChallengeAsync();
-            if (err is not null) return err;
-
-            var signup = await _signupService.GetByIdAsync(signupId);
-            if (signup is null)
-            {
-                SetError("Signup not found.");
-                return RedirectToLocalOrAction(returnUrl, nameof(MyShifts));
-            }
-
-            var canApprove = ShiftRoleChecks.IsPrivilegedSignupApprover(User) ||
-                             await _shiftMgmt.CanApproveSignupsAsync(user.Id, signup.Shift.Rota.TeamId);
-            if (!canApprove) return Forbid();
-
-            var result = await _signupService.RefuseAsync(signupId, user.Id, reason);
-            if (result.Success)
-                SetSuccess("Signup refused.");
-            else
-                SetError(result.Error ?? "Refusal failed.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error refusing signup {SignupId}", signupId);
-            SetError("Refusal failed.");
-        }
-        return RedirectToLocalOrAction(returnUrl, nameof(MyShifts));
-    }
+    public Task<IActionResult> Refuse(Guid signupId, string? reason, string? returnUrl) =>
+        ExecuteSignupActionAsync(signupId, returnUrl, "refuse",
+            (id, userId) => _signupService.RefuseAsync(id, userId, reason),
+            "Signup refused.", "Refusal failed.");
 
     [HttpPost("NoShow")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> NoShow(Guid signupId, string? returnUrl)
+    public Task<IActionResult> NoShow(Guid signupId, string? returnUrl) =>
+        ExecuteSignupActionAsync(signupId, returnUrl, "no-show",
+            (id, userId) => _signupService.MarkNoShowAsync(id, userId),
+            "Marked as no-show.", "No-show marking failed.");
+
+    private async Task<IActionResult> ExecuteSignupActionAsync(
+        Guid signupId, string? returnUrl, string actionName,
+        Func<Guid, Guid, Task<SignupResult>> action,
+        string successMessage, string failureMessage)
     {
         try
         {
@@ -593,16 +547,16 @@ public class VolController : HumansControllerBase
                              await _shiftMgmt.CanApproveSignupsAsync(user.Id, signup.Shift.Rota.TeamId);
             if (!canApprove) return Forbid();
 
-            var result = await _signupService.MarkNoShowAsync(signupId, user.Id);
+            var result = await action(signupId, user.Id);
             if (result.Success)
-                SetSuccess("Marked as no-show.");
+                SetSuccess(successMessage);
             else
-                SetError(result.Error ?? "No-show marking failed.");
+                SetError(result.Error ?? failureMessage);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error marking no-show for signup {SignupId}", signupId);
-            SetError("No-show marking failed.");
+            _logger.LogError(ex, "Error performing {Action} for signup {SignupId}", actionName, signupId);
+            SetError(failureMessage);
         }
         return RedirectToLocalOrAction(returnUrl, nameof(MyShifts));
     }

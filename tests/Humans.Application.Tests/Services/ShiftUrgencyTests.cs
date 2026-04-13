@@ -5,6 +5,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -35,9 +36,14 @@ public class ShiftUrgencyTests : IDisposable
             .Options;
         _dbContext = new HumansDbContext(options);
 
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
+
         _service = new ShiftManagementService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
+            Substitute.For<IRoleAssignmentService>(),
+            serviceProvider,
             new MemoryCache(new MemoryCacheOptions()),
             new FakeClock(TestNow),
             NullLogger<ShiftManagementService>.Instance);

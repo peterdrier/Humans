@@ -14,11 +14,11 @@
             }
             else if (Model.MembershipStatus == "Suspended")
             {
-                <span class="badge bg-danger me-1">Suspended</span>
+                <span class="badge bg-danger me-1">@Localizer["ProfileCard_Suspended"]</span>
             }
             else
             {
-                <span class="badge bg-warning text-dark me-1">Pending</span>
+                <span class="badge bg-warning text-dark me-1">@Localizer["ProfileCard_PendingBadge"]</span>
             }
             @if (!string.IsNullOrEmpty(Model.PreferredLanguage))
             {
@@ -28,7 +28,7 @@
         @if (Model.Teams.Count > 0)
         {
             <div class="mt-2">
-                <small class="text-muted">Teams:</small>
+                <small class="text-muted">@Localizer["ProfileCard_Teams"]</small>
                 @foreach (var team in Model.Teams)
                 {
                     <span class="badge bg-light text-dark border">@team</span>
@@ -38,11 +38,11 @@
         <div class="mt-2 text-muted" style="font-size: 0.8rem;">
             @if (Model.MemberSince.HasValue)
             {
-                <span>Joined @Model.MemberSince.Value.ToString("MMM yyyy")</span>
+                <span>@string.Format(Localizer["ProfileCard_Joined"].Value, Model.MemberSince.Value.ToString("MMM yyyy"))</span>
             }
             @if (Model.LastLogin.HasValue)
             {
-                <span class="ms-2">Last login @Model.LastLogin.Value.ToString("d MMM yyyy")</span>
+                <span class="ms-2">@string.Format(Localizer["ProfileCard_LastLogin"].Value, Model.LastLogin.Value.ToString("d MMM yyyy"))</span>
             }
         </div>
     </div>

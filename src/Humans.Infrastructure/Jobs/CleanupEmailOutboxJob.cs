@@ -37,23 +37,32 @@ public class CleanupEmailOutboxJob : IRecurringJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var cutoff = _clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
-
-        var toDelete = await _dbContext.EmailOutboxMessages
-            .Where(m => m.Status == EmailOutboxStatus.Sent && m.SentAt < cutoff)
-            .ToListAsync(cancellationToken);
-
-        if (toDelete.Count > 0)
+        try
         {
-            _dbContext.EmailOutboxMessages.RemoveRange(toDelete);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            var cutoff = _clock.GetCurrentInstant() - Duration.FromDays(_settings.OutboxRetentionDays);
+
+            var toDelete = await _dbContext.EmailOutboxMessages
+                .Where(m => m.Status == EmailOutboxStatus.Sent && m.SentAt < cutoff)
+                .ToListAsync(cancellationToken);
+
+            if (toDelete.Count > 0)
+            {
+                _dbContext.EmailOutboxMessages.RemoveRange(toDelete);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            _logger.LogInformation(
+                "CleanupEmailOutboxJob deleted {Count} sent messages older than {Cutoff}",
+                toDelete.Count,
+                cutoff);
+
+            _metrics.RecordJobRun("cleanup_email_outbox", "success");
         }
-
-        _logger.LogInformation(
-            "CleanupEmailOutboxJob deleted {Count} sent messages older than {Cutoff}",
-            toDelete.Count,
-            cutoff);
-
-        _metrics.RecordJobRun("cleanup_email_outbox", "success");
+        catch (Exception ex)
+        {
+            _metrics.RecordJobRun("cleanup_email_outbox", "failure");
+            _logger.LogError(ex, "Error cleaning up email outbox");
+            throw;
+        }
     }
 }

@@ -366,6 +366,7 @@ public class ProfileSummaryViewModel
     public DateTime? LastLogin { get; set; }
     public string? City { get; set; }
     public string? CountryCode { get; set; }
+    public bool IsSuspended { get; set; }
     public List<string> Teams { get; set; } = [];
 }
 

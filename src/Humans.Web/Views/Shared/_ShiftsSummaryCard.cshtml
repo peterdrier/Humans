@@ -2,7 +2,7 @@
 
 <div class="card mb-4">
     <div class="card-header">
-        <h6 class="mb-0"><i class="fa-solid fa-clock me-1"></i> Shifts</h6>
+        <h6 class="mb-0"><i class="fa-solid fa-clock me-1"></i> @Localizer["ShiftsSummary_Title"]</h6>
     </div>
     <div class="card-body">
         @if (Model.TotalSlots > 0)
@@ -16,29 +16,29 @@
                 </div>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span>@Model.ConfirmedCount / @Model.TotalSlots slots filled</span>
-                <span>@Model.UniqueVolunteerCount humans signed up</span>
+                <span>@string.Format(Localizer["ShiftsSummary_SlotsFilled"].Value, Model.ConfirmedCount, Model.TotalSlots)</span>
+                <span>@string.Format(Localizer["ShiftsSummary_HumansSignedUp"].Value, Model.UniqueVolunteerCount)</span>
             </div>
             @if (Model.PendingCount > 0)
             {
                 <a href="@Model.ShiftsUrl" class="badge bg-warning text-dark text-decoration-none">
-                    @Model.PendingCount pending
+                    @string.Format(Localizer["ShiftsSummary_PendingCount"].Value, Model.PendingCount)
                 </a>
             }
         }
         else
         {
-            <p class="text-muted mb-0">No shifts configured yet.</p>
+            <p class="text-muted mb-0">@Localizer["ShiftsSummary_NoShifts"]</p>
         }
         @if (Model.IncludesSubTeamCount > 0)
         {
             <small class="text-muted d-block mt-1">
-                <i class="fa-solid fa-sitemap me-1"></i>Includes shifts from @Model.IncludesSubTeamCount sub-team@(Model.IncludesSubTeamCount != 1 ? "s" : "")
+                <i class="fa-solid fa-sitemap me-1"></i>@string.Format(Localizer["ShiftsSummary_IncludesSubTeams"].Value, Model.IncludesSubTeamCount)
             </small>
         }
         @if (Model.CanManageShifts)
         {
-            <a href="@Model.ShiftsUrl" class="btn btn-sm btn-outline-primary mt-2 w-100">Manage Shifts <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+            <a href="@Model.ShiftsUrl" class="btn btn-sm btn-outline-primary mt-2 w-100">@Localizer["ShiftsSummary_ManageShifts"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
         }
     </div>
 </div>

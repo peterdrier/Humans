@@ -1,3 +1,4 @@
+using Humans.Application.Authorization;
 using Humans.Domain.Constants;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
@@ -22,6 +23,9 @@ public static class AuthorizationPolicyExtensions
         services.AddScoped<IAuthorizationHandler, BudgetAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, CampAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, TeamAuthorizationHandler>();
+
+        // Service-layer enforcement handlers (singleton — no scoped dependencies)
+        services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {

@@ -83,6 +83,13 @@ public interface INotificationInboxService
     Task ResolveBySourceAsync(
         Guid userId, NotificationSource source,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets unread notification badge counts for a user (actionable + informational).
+    /// Used by the notification bell ViewComponent.
+    /// </summary>
+    Task<(int Actionable, int Informational)> GetUnreadBadgeCountsAsync(
+        Guid userId, CancellationToken ct = default);
 }
 
 /// <summary>

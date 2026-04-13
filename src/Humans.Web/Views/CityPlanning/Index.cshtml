@@ -58,10 +58,20 @@
                     }
                 </div>
                 <button class="btn btn-primary btn-sm small" data-bs-toggle="modal" data-bs-target="#placement-help-modal">
-                    <i class="fa fa-question-circle me-1"></i>@Localizer["CityPlanning_HelpButton"]
+                    <i class="fa-solid fa-question-circle me-1"></i>@Localizer["CityPlanning_HelpButton"]
                 </button>
             </div>
         </div>
+    </div>
+    }
+
+    <!-- Admin panel link -->
+    @if (isMapAdmin)
+    {
+    <div class="position-absolute top-0 end-0 m-3">
+        <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm shadow-sm">
+            <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
+        </a>
     </div>
     }
 
@@ -74,7 +84,7 @@
             @if (isPlacementOpen && !string.IsNullOrEmpty(userCampSeasonId))
             {
                 <button id="add-my-barrio-btn" class="btn btn-primary btn-sm shadow" style="display:none">
-                    <i class="fa fa-plus me-1"></i> @Localizer["CityPlanning_AddMyBarrioButton"]
+                    <i class="fa-solid fa-plus me-1"></i> @Localizer["CityPlanning_AddMyBarrioButton"]
                 </button>
             }
             @if (isMapAdmin && seasonsWithout.Any())
@@ -90,24 +100,14 @@
                 </div>
             }
             <button id="save-btn" class="btn btn-success btn-sm" style="display:none" disabled>
-                <i class="fa fa-save me-1"></i> @Localizer["CityPlanning_SaveButton"]
+                <i class="fa-solid fa-save me-1"></i> @Localizer["CityPlanning_SaveButton"]
             </button>
             <button id="cancel-btn" class="btn btn-outline-secondary btn-sm" style="display:none">
-                <i class="fa fa-times me-1"></i> @Localizer["Common_Cancel"]
+                <i class="fa-solid fa-times me-1"></i> @Localizer["Common_Cancel"]
             </button>
             <button id="history-btn" class="btn btn-outline-primary btn-sm" style="display:none" disabled>
-                <i class="fa fa-history me-1"></i> @Localizer["CityPlanning_HistoryButton"]
+                <i class="fa-solid fa-history me-1"></i> @Localizer["CityPlanning_HistoryButton"]
             </button>
-            </div>
-        </div>
-        }
-        @if (isMapAdmin)
-        {
-        <div class="card">
-            <div class="card-body">
-                <a href="/CityPlanning/Admin" class="btn btn-outline-primary btn-sm">
-                    <i class="fa fa-cog me-1"></i> @Localizer["CityPlanning_AdminLink"]
-                </a>
             </div>
         </div>
         }

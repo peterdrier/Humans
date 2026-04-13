@@ -66,3 +66,30 @@ Team-level resource linking stays at `/Teams/{slug}/Resources` in `TeamAdminCont
 - **Profiles**: A human's Google service email determines the email address used for Google Groups and Drive access.
 - **Admin**: Sync settings management is Admin-only.
 - **Onboarding**: Volunteer activation triggers system team sync, which cascades to Google Group membership.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService`
+**Owned tables:** `google_resources`, `sync_service_settings`
+
+### Current Violations
+
+**GoogleController — injects HumansDbContext via action parameter (Rule 1):**
+- Accepts `[FromServices] HumansDbContext` in at least one action method
+
+**GoogleWorkspaceSyncService — queries non-owned tables (Rule 2c):**
+- Queries `Users` table (4 locations) for user data during sync operations
+- Queries `Teams` table (3 locations) for team data during sync
+
+**GoogleAdminService — queries non-owned tables (Rule 2c):**
+- Queries `Users` table (4 locations) for user data
+- Queries `Teams` table (2 locations) for team data
+
+**Controllers:** GoogleController has a violation; TeamAdminController (which handles team-level resource linking) is clean.
+
+### Target State
+
+- GoogleController delegates all data access to Google services
+- GoogleWorkspaceSyncService and GoogleAdminService call `IUserService`/`IProfileService` and `ITeamService` for user and team data instead of querying those tables directly

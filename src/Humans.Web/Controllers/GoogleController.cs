@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -529,7 +530,7 @@ public class GoogleController : HumansControllerBase
         else
         {
             // Evict the nobodies.team email cache so the ViewComponent reflects the new email immediately
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
 
             if (result.RecoveryEmail is not null)
             {
@@ -701,7 +702,7 @@ public class GoogleController : HumansControllerBase
 
         if (result.Success)
         {
-            _cache.Remove(ViewComponents.NobodiesEmailBadgeViewComponent.CacheKey);
+            _cache.InvalidateNobodiesTeamEmails();
             SetSuccess(result.Message!);
         }
         else
@@ -729,6 +730,9 @@ public class GoogleController : HumansControllerBase
         var googleEmailLookup = await dbContext.Users
             .Where(u => userIds.Contains(u.Id))
             .ToDictionaryAsync(u => u.Id, u => u.GetGoogleServiceEmail() ?? "unknown");
+        var displayNameLookup = await dbContext.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.DisplayName);
         var teamLookup = await dbContext.Teams
             .Where(t => teamIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, t => t.Name);
@@ -740,6 +744,7 @@ public class GoogleController : HumansControllerBase
                 g => g.Select(r => $"{r.Name} ({r.ResourceType})").ToList());
 
         ViewBag.GoogleEmailLookup = googleEmailLookup;
+        ViewBag.DisplayNameLookup = displayNameLookup;
         ViewBag.TeamLookup = teamLookup;
         ViewBag.ResourceLookup = resourceLookup;
         return View(events);

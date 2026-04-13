@@ -5,34 +5,11 @@ namespace Humans.Web.Authorization;
 
 public static class RoleChecks
 {
-    private static readonly string[] AdminAssignableRoles =
-    [
-        RoleNames.Admin,
-        RoleNames.Board,
-        RoleNames.HumanAdmin,
-        RoleNames.TeamsAdmin,
-        RoleNames.CampAdmin,
-        RoleNames.TicketAdmin,
-        RoleNames.NoInfoAdmin,
-        RoleNames.FeedbackAdmin,
-        RoleNames.FinanceAdmin,
-        RoleNames.ConsentCoordinator,
-        RoleNames.VolunteerCoordinator
-    ];
+    private static readonly IReadOnlyList<string> AdminAssignableRoles =
+        [RoleNames.Admin, .. RoleNames.BoardManageableRoles];
 
-    private static readonly string[] BoardAssignableRoles =
-    [
-        RoleNames.Board,
-        RoleNames.HumanAdmin,
-        RoleNames.TeamsAdmin,
-        RoleNames.CampAdmin,
-        RoleNames.TicketAdmin,
-        RoleNames.NoInfoAdmin,
-        RoleNames.FeedbackAdmin,
-        RoleNames.FinanceAdmin,
-        RoleNames.ConsentCoordinator,
-        RoleNames.VolunteerCoordinator
-    ];
+    private static readonly IReadOnlyList<string> BoardAssignableRoles =
+        [.. RoleNames.BoardManageableRoles];
 
     public static bool IsAdmin(ClaimsPrincipal user)
     {
@@ -154,13 +131,7 @@ public static class RoleChecks
 
         if (IsBoard(user) || IsHumanAdmin(user))
         {
-            return string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.HumanAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.TeamsAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.ConsentCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.VolunteerCoordinator, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.FeedbackAdmin, StringComparison.Ordinal) ||
-                   string.Equals(roleName, RoleNames.FinanceAdmin, StringComparison.Ordinal);
+            return RoleNames.BoardManageableRoles.Contains(roleName);
         }
 
         return false;

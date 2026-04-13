@@ -43,6 +43,11 @@ public class TicketDashboardViewModel
     public int TotalActiveVolunteers { get; set; }
     public int VolunteersWithTickets { get; set; }
     public decimal VolunteerCoveragePercent { get; set; }
+
+    // Participation breakdown
+    public int ParticipationNotAttending { get; set; }
+    public int ParticipationNoTicket { get; set; }
+    public int ParticipationHasTicket { get; set; }
 }
 
 public class PaymentMethodFeeBreakdown
@@ -223,6 +228,12 @@ public class WhoHasntBoughtViewModel : PagedListViewModel
     public string? FilterTier { get; set; }
     public string? FilterTicketStatus { get; set; } // "bought", "not_bought", or null (all)
     public List<string> AvailableTeams { get; set; } = [];
+}
+
+public class ParticipationBackfillViewModel
+{
+    public int Year { get; set; }
+    public string? CsvData { get; set; }
 }
 
 public class WhoHasntBoughtRow

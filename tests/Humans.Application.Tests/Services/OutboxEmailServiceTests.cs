@@ -25,6 +25,7 @@ public class OutboxEmailServiceTests : IDisposable
     private readonly IEmailRenderer _renderer = Substitute.For<IEmailRenderer>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly IBackgroundJobClient _backgroundJobClient = Substitute.For<IBackgroundJobClient>();
+    private readonly ICommunicationPreferenceService _commPrefService = Substitute.For<ICommunicationPreferenceService>();
 
     public OutboxEmailServiceTests()
     {
@@ -53,7 +54,7 @@ public class OutboxEmailServiceTests : IDisposable
             hostEnvironment,
             emailSettings,
             _backgroundJobClient,
-            Substitute.For<ICommunicationPreferenceService>(),
+            _commPrefService,
             NullLogger<OutboxEmailService>.Instance);
     }
 
@@ -174,5 +175,75 @@ public class OutboxEmailServiceTests : IDisposable
         _backgroundJobClient.DidNotReceive().Create(
             Arg.Any<Hangfire.Common.Job>(),
             Arg.Any<Hangfire.States.IState>());
+    }
+
+    [Fact]
+    public async Task EnqueueAsync_WhenUserOptedOutOfCategory_DoesNotCreateOutboxRow()
+    {
+        var userId = Guid.NewGuid();
+        _dbContext.UserEmails.Add(new Humans.Domain.Entities.UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "charlie@example.com",
+            IsVerified = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
+            .Returns(true);
+        _commPrefService.GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>())
+            .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
+        _commPrefService.GenerateBrowserUnsubscribeUrl(Arg.Any<Guid>(), Arg.Any<MessageCategory>())
+            .Returns("https://example.com/unsubscribe/token");
+
+        _renderer.RenderAddedToTeam(
+                "Charlie", "Alpha Team", "alpha", Arg.Any<System.Collections.Generic.List<(string Name, string? Url)>>(), null)
+            .Returns(new EmailContent("Added to Alpha Team", "<p>You joined Alpha Team</p>"));
+
+        await _service.SendAddedToTeamAsync(
+            "charlie@example.com", "Charlie", "Alpha Team", "alpha",
+            Array.Empty<(string Name, string? Url)>());
+
+        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        messages.Should().BeEmpty("the email should have been suppressed because the user opted out of TeamUpdates");
+    }
+
+    [Fact]
+    public async Task EnqueueAsync_WhenUserOptedInToCategory_CreatesOutboxRow()
+    {
+        var userId = Guid.NewGuid();
+        _dbContext.UserEmails.Add(new Humans.Domain.Entities.UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "dana@example.com",
+            IsVerified = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _commPrefService.IsOptedOutAsync(userId, MessageCategory.TeamUpdates, Arg.Any<CancellationToken>())
+            .Returns(false);
+        _commPrefService.GenerateUnsubscribeHeaders(Arg.Any<Guid>(), Arg.Any<MessageCategory>())
+            .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
+        _commPrefService.GenerateBrowserUnsubscribeUrl(Arg.Any<Guid>(), Arg.Any<MessageCategory>())
+            .Returns("https://example.com/unsubscribe/token");
+
+        _renderer.RenderAddedToTeam(
+                "Dana", "Beta Team", "beta", Arg.Any<System.Collections.Generic.List<(string Name, string? Url)>>(), null)
+            .Returns(new EmailContent("Added to Beta Team", "<p>You joined Beta Team</p>"));
+
+        await _service.SendAddedToTeamAsync(
+            "dana@example.com", "Dana", "Beta Team", "beta",
+            Array.Empty<(string Name, string? Url)>());
+
+        var messages = await _dbContext.EmailOutboxMessages.ToListAsync();
+        messages.Should().HaveCount(1, "opted-in user should receive the email");
+        messages[0].RecipientEmail.Should().Be("dana@example.com");
+        messages[0].TemplateName.Should().Be("added_to_team");
     }
 }

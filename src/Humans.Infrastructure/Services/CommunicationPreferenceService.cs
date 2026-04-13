@@ -83,7 +83,20 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         }
 
         if (created)
-            await _db.SaveChangesAsync(cancellationToken);
+        {
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException)
+            {
+                // Another request already created the defaults — reload
+                _db.ChangeTracker.Clear();
+                existing = await _db.CommunicationPreferences
+                    .Where(cp => cp.UserId == userId)
+                    .ToListAsync(cancellationToken);
+            }
+        }
 
         return existing
             .OrderBy(cp => cp.Category)
@@ -227,27 +240,37 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         return _protector.Protect(payload, TokenLifetime);
     }
 
-    public (Guid UserId, MessageCategory Category)? ValidateUnsubscribeToken(string token)
+    public (TokenValidationStatus Status, Guid UserId, MessageCategory Category) ValidateUnsubscribeToken(string token)
     {
         try
         {
             var payload = _protector.Unprotect(token);
             var parts = payload.Split('|');
             if (parts.Length != 2)
-                return null;
+                return (TokenValidationStatus.Invalid, default, default);
 
             if (!Guid.TryParse(parts[0], out var userId))
-                return null;
+                return (TokenValidationStatus.Invalid, default, default);
 
             if (!Enum.TryParse<MessageCategory>(parts[1], out var category))
-                return null;
+                return (TokenValidationStatus.Invalid, default, default);
 
-            return (userId, category);
+            return (TokenValidationStatus.Valid, userId, category);
         }
         catch (CryptographicException ex)
         {
-            _logger.LogWarning(ex, "Failed to validate unsubscribe token");
-            return null;
+            // Expected user-behavior events (old emails, stale key rings) — stay at Warning
+            // so they surface in /Admin/Logs, but drop the stack trace and include the token
+            // prefix so support can correlate a user-reported URL with the logged event. See #483.
+            var tokenPrefix = token.Length > 12 ? token[..12] : token;
+            if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Expired unsubscribe token {TokenPrefix}", tokenPrefix);
+                return (TokenValidationStatus.Expired, default, default);
+            }
+
+            _logger.LogWarning("Failed to validate unsubscribe token {TokenPrefix}", tokenPrefix);
+            return (TokenValidationStatus.Invalid, default, default);
         }
     }
 
@@ -255,6 +278,47 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         Guid userId, CancellationToken cancellationToken = default)
     {
         return !await IsOptedOutAsync(userId, MessageCategory.FacilitatedMessages, cancellationToken);
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetUsersWithInboxDisabledAsync(
+        IReadOnlyList<Guid> userIds, MessageCategory category,
+        CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return new HashSet<Guid>();
+        }
+
+        var disabledUserIds = await _db.CommunicationPreferences
+            .Where(cp => userIds.Contains(cp.UserId) && cp.Category == category && !cp.InboxEnabled)
+            .Select(cp => cp.UserId)
+            .ToListAsync(cancellationToken);
+
+        return disabledUserIds.ToHashSet();
+    }
+
+    public async Task<bool> HasAnyPreferencesAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await _db.CommunicationPreferences
+            .AnyAsync(cp => cp.UserId == userId, cancellationToken);
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetUsersWithAnyPreferencesAsync(
+        IReadOnlyList<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return new HashSet<Guid>();
+        }
+
+        var usersWithPrefs = await _db.CommunicationPreferences
+            .Where(cp => userIds.Contains(cp.UserId))
+            .Select(cp => cp.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return usersWithPrefs.ToHashSet();
     }
 
     public Dictionary<string, string> GenerateUnsubscribeHeaders(Guid userId, MessageCategory category)
@@ -268,5 +332,11 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
             ["List-Unsubscribe"] = $"<{oneClickUrl}>, <{browserUrl}>",
             ["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click",
         };
+    }
+
+    public string GenerateBrowserUnsubscribeUrl(Guid userId, MessageCategory category)
+    {
+        var token = GenerateUnsubscribeToken(userId, category);
+        return $"{_baseUrl}/Unsubscribe/{token}";
     }
 }

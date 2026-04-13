@@ -44,7 +44,7 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasMaxLength(4000);
 
         builder.Property(p => p.IsApproved)
-            .HasDefaultValue(false);
+            .IsRequired();
 
         builder.Property(p => p.MembershipTier)
             .IsRequired()
@@ -72,7 +72,7 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasMaxLength(100);
 
         builder.Property(p => p.NoPriorBurnExperience)
-            .HasDefaultValue(false);
+            .IsRequired();
 
         builder.Property(p => p.ProfilePictureContentType)
             .HasMaxLength(100);

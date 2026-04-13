@@ -62,3 +62,29 @@
 - **Budget**: Budget categories can be linked to a department. Coordinator status determines budget line item editing access.
 - **Onboarding**: Volunteer activation adds the human to the Volunteers system team.
 - **Governance**: Colaborador/Asociado approval or expiry adds/removes humans from the respective system teams.
+
+## Architecture — Current vs Target
+
+See `.claude/DESIGN_RULES.md` for the full rules.
+
+**Owning services:** `TeamService`, `TeamPageService`, `TeamResourceService`
+**Owned tables:** `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages`
+
+### Current Violations
+
+**TeamService — queries non-owned tables (Rule 2c):**
+- Queries `Users` table directly (6 locations) for display names, Google email status, and email notifications
+- Queries `EventSettings` table (owned by Shifts) in GetAdminTeamListAsync()
+
+**TeamPageService — queries non-owned tables (Rule 2c):**
+- Queries `Users` table for page content updater display name
+- Queries `Rotas` and `Shifts` tables (owned by Shifts) to count child teams with shifts
+
+**Controllers:** Compliant — neither TeamController nor TeamAdminController inject DbContext.
+**Cache:** Compliant — TeamService only caches its own data (`CacheKeys.ActiveTeams`).
+
+### Target State
+
+- TeamService calls `IUserService` or `IProfileService` for user data instead of querying `Users` directly
+- TeamService calls `IShiftManagementService` for event settings instead of querying `EventSettings`
+- TeamPageService calls `IProfileService` for display names and `IShiftManagementService` for rota/shift counts

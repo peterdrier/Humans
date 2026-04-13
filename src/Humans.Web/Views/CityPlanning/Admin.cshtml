@@ -7,7 +7,7 @@
     <div class="d-flex align-items-center gap-3 mb-4">
         <h1 class="mb-0">@Localizer["CityPlanning_Admin_Title"]</h1>
         <a href="/CityPlanning" class="btn btn-outline-secondary btn-sm">
-            <i class="fa fa-map"></i> @Localizer["CityPlanning_Admin_ViewMap"]
+            <i class="fa-solid fa-map"></i> @Localizer["CityPlanning_Admin_ViewMap"]
         </a>
     </div>
 
@@ -16,7 +16,7 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header fw-semibold">
-                    <i class="fa fa-door-open me-1"></i> @Localizer["CityPlanning_Admin_PlacementPhaseCard"] (@settings.Year)
+                    <i class="fa-solid fa-door-open me-1"></i> @Localizer["CityPlanning_Admin_PlacementPhaseCard"] (@settings.Year)
                 </div>
                 <div class="card-body">
                     <p class="mb-3">
@@ -43,7 +43,7 @@
                         <form method="post" action="/CityPlanning/Admin/ClosePlacement">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-warning">
-                                <i class="fa fa-lock me-1"></i> @Localizer["CityPlanning_Admin_ClosePlacement"]
+                                <i class="fa-solid fa-lock me-1"></i> @Localizer["CityPlanning_Admin_ClosePlacement"]
                             </button>
                         </form>
                     }
@@ -52,7 +52,7 @@
                         <form method="post" action="/CityPlanning/Admin/OpenPlacement">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-success">
-                                <i class="fa fa-lock-open me-1"></i> @Localizer["CityPlanning_Admin_OpenPlacement"]
+                                <i class="fa-solid fa-lock-open me-1"></i> @Localizer["CityPlanning_Admin_OpenPlacement"]
                             </button>
                         </form>
                     }
@@ -64,7 +64,7 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header fw-semibold">
-                    <i class="fa fa-calendar me-1"></i> @Localizer["CityPlanning_Admin_PlacementDatesCard"] (@settings.Year)
+                    <i class="fa-solid fa-calendar me-1"></i> @Localizer["CityPlanning_Admin_PlacementDatesCard"] (@settings.Year)
                 </div>
                 <div class="card-body">
                     <p class="text-muted small mb-3">@Localizer["CityPlanning_Admin_PlacementDatesHint"]</p>
@@ -81,7 +81,7 @@
                                    value="@(settings.PlacementClosesAt?.ToString("yyyy-MM-ddTHH:mm", null) ?? string.Empty)" />
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fa fa-save me-1"></i> @Localizer["CityPlanning_Admin_SaveDates"]
+                            <i class="fa-solid fa-save me-1"></i> @Localizer["CityPlanning_Admin_SaveDates"]
                         </button>
                     </form>
                 </div>
@@ -92,21 +92,21 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header fw-semibold">
-                    <i class="fa fa-draw-polygon me-1"></i> @Localizer["CityPlanning_Admin_LimitZoneCard"] (@settings.Year)
+                    <i class="fa-solid fa-draw-polygon me-1"></i> @Localizer["CityPlanning_Admin_LimitZoneCard"] (@settings.Year)
                 </div>
                 <div class="card-body">
                     @if (settings.LimitZoneGeoJson != null)
                     {
-                        <p class="text-success mb-3"><i class="fa fa-check-circle me-1"></i> @Localizer["CityPlanning_Admin_LimitZoneUploaded"]</p>
+                        <p class="text-success mb-3"><i class="fa-solid fa-check-circle me-1"></i> @Localizer["CityPlanning_Admin_LimitZoneUploaded"]</p>
                         <div class="d-flex gap-2">
                             <a href="/CityPlanning/Admin/DownloadLimitZone" class="btn btn-outline-secondary btn-sm" download="limit-zone-@(settings.Year).geojson">
-                                <i class="fa fa-download me-1"></i> @Localizer["CityPlanning_Admin_Download"]
+                                <i class="fa-solid fa-download me-1"></i> @Localizer["CityPlanning_Admin_Download"]
                             </a>
                             <form method="post" action="/CityPlanning/Admin/DeleteLimitZone" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-outline-danger btn-sm"
                                         data-confirm="@Localizer["CityPlanning_Admin_LimitZoneDeleteConfirm"]">
-                                    <i class="fa fa-trash me-1"></i> @Localizer["CityPlanning_Admin_Remove"]
+                                    <i class="fa-solid fa-trash me-1"></i> @Localizer["CityPlanning_Admin_Remove"]
                                 </button>
                             </form>
                         </div>
@@ -120,9 +120,10 @@
                         <div class="mb-2">
                             <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_UploadGeoJson"]</label>
                             <input type="file" name="file" accept=".geojson,.json" class="form-control form-control-sm" required />
+                            <div class="form-text">@Localizer["CityPlanning_Admin_LimitZoneHint"]</div>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fa fa-upload me-1"></i> @Localizer["CityPlanning_Admin_Upload"]
+                            <i class="fa-solid fa-upload me-1"></i> @Localizer["CityPlanning_Admin_Upload"]
                         </button>
                     </form>
                 </div>
@@ -133,21 +134,21 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header fw-semibold">
-                    <i class="fa fa-layer-group me-1"></i> @Localizer["CityPlanning_Admin_OfficialZonesCard"] (@settings.Year)
+                    <i class="fa-solid fa-layer-group me-1"></i> @Localizer["CityPlanning_Admin_OfficialZonesCard"] (@settings.Year)
                 </div>
                 <div class="card-body">
                     @if (settings.OfficialZonesGeoJson != null)
                     {
-                        <p class="text-success mb-3"><i class="fa fa-check-circle me-1"></i> @Localizer["CityPlanning_Admin_OfficialZonesUploaded"]</p>
+                        <p class="text-success mb-3"><i class="fa-solid fa-check-circle me-1"></i> @Localizer["CityPlanning_Admin_OfficialZonesUploaded"]</p>
                         <div class="d-flex gap-2">
                             <a href="/CityPlanning/Admin/DownloadOfficialZones" class="btn btn-outline-secondary btn-sm" download="official-zones-@(settings.Year).geojson">
-                                <i class="fa fa-download me-1"></i> @Localizer["CityPlanning_Admin_Download"]
+                                <i class="fa-solid fa-download me-1"></i> @Localizer["CityPlanning_Admin_Download"]
                             </a>
                             <form method="post" action="/CityPlanning/Admin/DeleteOfficialZones" class="d-inline">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-outline-danger btn-sm"
                                         data-confirm="@Localizer["CityPlanning_Admin_OfficialZonesDeleteConfirm"]">
-                                    <i class="fa fa-trash me-1"></i> @Localizer["CityPlanning_Admin_Remove"]
+                                    <i class="fa-solid fa-trash me-1"></i> @Localizer["CityPlanning_Admin_Remove"]
                                 </button>
                             </form>
                         </div>
@@ -161,9 +162,10 @@
                         <div class="mb-2">
                             <label class="form-label small fw-semibold">@Localizer["CityPlanning_Admin_UploadGeoJson"]</label>
                             <input type="file" name="file" accept=".geojson,.json" class="form-control form-control-sm" required />
+                            <div class="form-text">@Localizer["CityPlanning_Admin_OfficialZonesHint"]</div>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fa fa-upload me-1"></i> @Localizer["CityPlanning_Admin_Upload"]
+                            <i class="fa-solid fa-upload me-1"></i> @Localizer["CityPlanning_Admin_Upload"]
                         </button>
                     </form>
                 </div>
@@ -174,12 +176,12 @@
         <div class="col-12">
             <div class="card">
                 <div class="card-header fw-semibold">
-                    <i class="fa fa-file-export me-1"></i> @Localizer["CityPlanning_Admin_ExportCard"]
+                    <i class="fa-solid fa-file-export me-1"></i> @Localizer["CityPlanning_Admin_ExportCard"]
                 </div>
                 <div class="card-body">
                     <p class="mb-2">@string.Format(Localizer["CityPlanning_Admin_ExportDescription"].Value, settings.Year)</p>
                     <a href="/api/city-planning/export.geojson?year=@settings.Year" class="btn btn-outline-secondary btn-sm" download="city-planning-@(settings.Year).geojson">
-                        <i class="fa fa-download me-1"></i> @string.Format(Localizer["CityPlanning_Admin_DownloadGeoJson"].Value, settings.Year)
+                        <i class="fa-solid fa-download me-1"></i> @string.Format(Localizer["CityPlanning_Admin_DownloadGeoJson"].Value, settings.Year)
                     </a>
                 </div>
             </div>

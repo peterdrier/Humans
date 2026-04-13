@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Infrastructure.Migrations
 {
     [DbContext(typeof(HumansDbContext))]
-    [Migration("20260410145936_AddRegistrationInfoToCityPlanningSettings")]
+    [Migration("20260413131100_AddRegistrationInfoToCityPlanningSettings")]
     partial class AddRegistrationInfoToCityPlanningSettings
     {
         /// <inheritdoc />
@@ -1360,6 +1360,39 @@ namespace Humans.Infrastructure.Migrations
                     b.ToTable("email_outbox_messages", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("DeclaredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Year")
+                        .IsUnique();
+
+                    b.ToTable("event_participations", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.EventSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1415,6 +1448,9 @@ namespace Humans.Infrastructure.Migrations
 
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -1672,9 +1708,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("RetryCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("TeamId")
                         .HasColumnType("uuid");
@@ -1894,9 +1928,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasColumnType("character varying(256)");
 
                     b.Property<bool>("IsApproved")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsSuspended")
                         .HasColumnType("boolean");
@@ -1919,9 +1951,7 @@ namespace Humans.Infrastructure.Migrations
                         .HasDefaultValue("Volunteer");
 
                     b.Property<bool>("NoPriorBurnExperience")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
+                        .HasColumnType("boolean");
 
                     b.Property<string>("PlaceId")
                         .HasMaxLength(512)
@@ -3899,6 +3929,17 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Humans.Domain.Entities.EventParticipation", b =>
+                {
+                    b.HasOne("Humans.Domain.Entities.User", "User")
+                        .WithMany("EventParticipations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Humans.Domain.Entities.FeedbackMessage", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.FeedbackReport", "FeedbackReport")
@@ -4562,6 +4603,8 @@ namespace Humans.Infrastructure.Migrations
                     b.Navigation("CommunicationPreferences");
 
                     b.Navigation("ConsentRecords");
+
+                    b.Navigation("EventParticipations");
 
                     b.Navigation("Profile");
 

@@ -5,7 +5,7 @@ import { parseLimitZoneGeom } from './geometry.js';
 import { DRAW_STYLES, generateRainbowPattern, generateCrosshatchPattern, generateDashedHorizontalPattern, renderMap } from './layers.js';
 import {
     onCampPolygonClick, exitEditMode, onDrawChange, onDrawDelete,
-    setEditingControlsVisible, updateAddMyBarrioVisibility, loadHistory,
+    setEditingControlsVisible, updateAddMyBarrioVisibility,
 } from './edit.js';
 import { initSignalR } from './signalr.js';
 
@@ -124,7 +124,5 @@ document.getElementById('cancel-btn')?.addEventListener('click', () => {
     if (!confirm('Discard unsaved changes?')) return;
     exitEditMode();
 });
-
-document.getElementById('history-btn')?.addEventListener('click', loadHistory);
 
 init();

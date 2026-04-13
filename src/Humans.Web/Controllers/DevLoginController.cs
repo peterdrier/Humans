@@ -93,15 +93,18 @@ public class DevLoginController : Controller
             return NotFound();
 
         var id = PersonaGuid(info.Slug);
+        Guid resolvedUserId;
 
         await SeedLock.WaitAsync();
         try
         {
-            await EnsurePersonaAsync(info, id);
+            resolvedUserId = await EnsurePersonaAsync(info, id);
+            if (string.Equals(info.Slug, "coordinator", StringComparison.OrdinalIgnoreCase))
+                await EnsureCoordinatorTeamsAsync(resolvedUserId);
             if (IsBarrioLeadSlug(info.Slug))
-                await EnsureBarrioCampAsync(info.Slug, id);
+                await EnsureBarrioCampAsync(info.Slug, resolvedUserId);
             if (IsCityPlanningSlug(info.Slug))
-                await EnsureCityPlanningTeamAsync(id);
+                await EnsureCityPlanningTeamAsync(resolvedUserId);
         }
         finally
         {
@@ -109,11 +112,11 @@ public class DevLoginController : Controller
         }
 
         var email = $"dev-{info.Slug}@localhost";
-        var user = await _userManager.FindByIdAsync(id.ToString())
+        var user = await _userManager.FindByIdAsync(resolvedUserId.ToString())
                    ?? await _userManager.FindByEmailAsync(email);
         if (user is null)
         {
-            _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, id);
+            _logger.LogError("Dev persona {Slug} ({Id}) not found after seeding", info.Slug, resolvedUserId);
             return StatusCode(500, "Dev persona seeding failed");
         }
 
@@ -170,11 +173,11 @@ public class DevLoginController : Controller
             _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
 
-    private async Task EnsurePersonaAsync(DevPersonaInfo info, Guid id)
+    private async Task<Guid> EnsurePersonaAsync(DevPersonaInfo info, Guid id)
     {
         var existing = await _userManager.FindByIdAsync(id.ToString());
         if (existing is not null)
-            return;
+            return existing.Id;
 
         var email = $"dev-{info.Slug}@localhost";
 
@@ -183,7 +186,7 @@ public class DevLoginController : Controller
         if (byEmail is not null)
         {
             _logger.LogInformation("DEV: found legacy persona {Email} ({OldId}), reusing", email, byEmail.Id);
-            return;
+            return byEmail.Id;
         }
 
         var now = _clock.GetCurrentInstant();
@@ -193,7 +196,7 @@ public class DevLoginController : Controller
         if (string.Equals(info.Slug, "guest", StringComparison.OrdinalIgnoreCase))
         {
             await SeedProfilelessUserAsync(id, email, displayName, now);
-            return;
+            return id;
         }
 
         var nameParts = info.DisplayName.Split(' ', 2);
@@ -228,7 +231,7 @@ public class DevLoginController : Controller
         {
             _logger.LogError("Failed to create dev persona {Email}: {Errors}",
                 email, string.Join(", ", result.Errors.Select(e => e.Description)));
-            return;
+            return id;
         }
 
         _db.UserEmails.Add(new UserEmail
@@ -315,22 +318,14 @@ public class DevLoginController : Controller
             });
         }
 
-        // Coordinator persona: create a department + sub-team and assign as coordinator
-        if (isCoordinatorPersona)
-        {
-            await SeedCoordinatorTeamsAsync(id, now);
-        }
-
         await _db.SaveChangesAsync();
-        _cache.InvalidateApprovedProfiles();
+        _cache.InvalidateProfiles();
         _cache.InvalidateUserAccess(id);
-        if (isCoordinatorPersona)
-        {
-            _cache.InvalidateActiveTeams();
-        }
 
         _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",
             email, string.Join(", ", roles), string.Join(", ", teams.Select(t => t)));
+
+        return id;
     }
 
     /// <summary>
@@ -400,23 +395,64 @@ public class DevLoginController : Controller
     }
 
     /// <summary>
-    /// Seeds a test department and sub-team for the coordinator persona.
-    /// The coordinator is assigned as coordinator of the department and member of the sub-team.
-    /// Uses deterministic IDs so teams are stable across restarts.
+    /// Ensures the coordinator persona's test department and sub-team exist with active memberships.
+    /// Called from SignIn() on every login so sync-job deactivations are repaired.
     /// </summary>
-    private async Task SeedCoordinatorTeamsAsync(Guid coordinatorUserId, Instant now)
+    private async Task EnsureCoordinatorTeamsAsync(Guid coordinatorUserId)
     {
+        var now = _clock.GetCurrentInstant();
+        var changed = false;
         var deptId = PersonaGuid("dev-test-department");
         var subTeamId = PersonaGuid("dev-test-subteam");
 
-        // Only create if the department doesn't already exist
-        var deptExists = await _db.Teams.AnyAsync(t => t.Id == deptId);
-        if (deptExists)
+        // Ensure department exists
+        if (!await _db.Teams.AnyAsync(t => t.Id == deptId))
         {
-            // Ensure the coordinator membership on department exists
-            var hasDeptMembership = await _db.TeamMembers
-                .AnyAsync(tm => tm.TeamId == deptId && tm.UserId == coordinatorUserId);
-            if (!hasDeptMembership)
+            _db.Teams.Add(new Team
+            {
+                Id = deptId,
+                Name = "Dev Test Department",
+                Description = "Test department for coordinator e2e tests",
+                Slug = "dev-test-department",
+                IsActive = true,
+                RequiresApproval = true,
+                SystemTeamType = SystemTeamType.None,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            changed = true;
+        }
+
+        // Ensure sub-team exists
+        if (!await _db.Teams.AnyAsync(t => t.Id == subTeamId))
+        {
+            _db.Teams.Add(new Team
+            {
+                Id = subTeamId,
+                Name = "Dev Test SubTeam",
+                Description = "Test sub-team for coordinator e2e tests",
+                Slug = "dev-test-subteam",
+                IsActive = true,
+                RequiresApproval = true,
+                SystemTeamType = SystemTeamType.None,
+                ParentTeamId = deptId,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            changed = true;
+        }
+
+        // Ensure active coordinator membership on department
+        if (!await _db.TeamMembers.AnyAsync(tm => tm.TeamId == deptId && tm.UserId == coordinatorUserId && tm.LeftAt == null))
+        {
+            var inactive = await _db.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == deptId && tm.UserId == coordinatorUserId && tm.LeftAt != null);
+            if (inactive is not null)
+            {
+                inactive.LeftAt = null;
+                inactive.Role = TeamMemberRole.Coordinator;
+            }
+            else
             {
                 _db.TeamMembers.Add(new TeamMember
                 {
@@ -427,30 +463,20 @@ public class DevLoginController : Controller
                     JoinedAt = now
                 });
             }
+            changed = true;
+        }
 
-            // Ensure sub-team exists (may have been deleted manually in preview env)
-            var subTeamExists = await _db.Teams.AnyAsync(t => t.Id == subTeamId);
-            if (!subTeamExists)
+        // Ensure active membership on sub-team
+        if (!await _db.TeamMembers.AnyAsync(tm => tm.TeamId == subTeamId && tm.UserId == coordinatorUserId && tm.LeftAt == null))
+        {
+            var inactive = await _db.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == subTeamId && tm.UserId == coordinatorUserId && tm.LeftAt != null);
+            if (inactive is not null)
             {
-                _db.Teams.Add(new Team
-                {
-                    Id = subTeamId,
-                    Name = "Dev Test SubTeam",
-                    Description = "Test sub-team for coordinator e2e tests",
-                    Slug = "dev-test-subteam",
-                    IsActive = true,
-                    RequiresApproval = true,
-                    SystemTeamType = SystemTeamType.None,
-                    ParentTeamId = deptId,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                });
+                inactive.LeftAt = null;
+                inactive.Role = TeamMemberRole.Member;
             }
-
-            // Ensure coordinator membership on sub-team exists
-            var hasSubTeamMembership = await _db.TeamMembers
-                .AnyAsync(tm => tm.TeamId == subTeamId && tm.UserId == coordinatorUserId);
-            if (!hasSubTeamMembership)
+            else
             {
                 _db.TeamMembers.Add(new TeamMember
                 {
@@ -461,62 +487,18 @@ public class DevLoginController : Controller
                     JoinedAt = now
                 });
             }
-
-            return;
+            changed = true;
         }
 
-        // Create department
-        _db.Teams.Add(new Team
+        if (changed)
         {
-            Id = deptId,
-            Name = "Dev Test Department",
-            Description = "Test department for coordinator e2e tests",
-            Slug = "dev-test-department",
-            IsActive = true,
-            RequiresApproval = true,
-            SystemTeamType = SystemTeamType.None,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-
-        // Create sub-team under the department
-        _db.Teams.Add(new Team
-        {
-            Id = subTeamId,
-            Name = "Dev Test SubTeam",
-            Description = "Test sub-team for coordinator e2e tests",
-            Slug = "dev-test-subteam",
-            IsActive = true,
-            RequiresApproval = true,
-            SystemTeamType = SystemTeamType.None,
-            ParentTeamId = deptId,
-            CreatedAt = now,
-            UpdatedAt = now
-        });
-
-        // Add coordinator as coordinator of the department
-        _db.TeamMembers.Add(new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            UserId = coordinatorUserId,
-            TeamId = deptId,
-            Role = TeamMemberRole.Coordinator,
-            JoinedAt = now
-        });
-
-        // Add coordinator as regular member of the sub-team
-        _db.TeamMembers.Add(new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            UserId = coordinatorUserId,
-            TeamId = subTeamId,
-            Role = TeamMemberRole.Member,
-            JoinedAt = now
-        });
-
-        _logger.LogInformation(
-            "DEV: seeded coordinator teams — department {DeptId} ({DeptSlug}), sub-team {SubTeamId} ({SubTeamSlug})",
-            deptId, "dev-test-department", subTeamId, "dev-test-subteam");
+            await _db.SaveChangesAsync();
+            _cache.InvalidateActiveTeams();
+            _cache.InvalidateUserAccess(coordinatorUserId);
+            _logger.LogInformation(
+                "DEV: ensured coordinator teams — department {DeptId}, sub-team {SubTeamId}",
+                deptId, subTeamId);
+        }
     }
 
     /// <summary>
@@ -554,17 +536,28 @@ public class DevLoginController : Controller
             _logger.LogInformation("DEV: seeded city planning team {Slug}", teamSlug);
         }
 
-        var hasMembership = await _db.TeamMembers.AnyAsync(tm => tm.TeamId == team.Id && tm.UserId == userId);
-        if (!hasMembership)
+        var hasActiveMembership = await _db.TeamMembers
+            .AnyAsync(tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt == null);
+        if (!hasActiveMembership)
         {
-            _db.TeamMembers.Add(new TeamMember
+            var inactiveMembership = await _db.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt != null);
+            if (inactiveMembership is not null)
             {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                TeamId = team.Id,
-                Role = TeamMemberRole.Coordinator,
-                JoinedAt = now
-            });
+                inactiveMembership.LeftAt = null;
+                inactiveMembership.Role = TeamMemberRole.Coordinator;
+            }
+            else
+            {
+                _db.TeamMembers.Add(new TeamMember
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    TeamId = team.Id,
+                    Role = TeamMemberRole.Coordinator,
+                    JoinedAt = now
+                });
+            }
             changed = true;
         }
 

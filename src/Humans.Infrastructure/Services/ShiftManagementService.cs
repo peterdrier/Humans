@@ -6,6 +6,7 @@ using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 
@@ -28,19 +29,28 @@ public class ShiftManagementService : IShiftManagementService
 
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly ILogger<ShiftManagementService> _logger;
 
+    // Lazy-resolved to break circular dependency: TeamService → IShiftManagementService → ITeamService
+    private ITeamService TeamService => _serviceProvider.GetRequiredService<ITeamService>();
+
     public ShiftManagementService(
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
+        IRoleAssignmentService roleAssignmentService,
+        IServiceProvider serviceProvider,
         IMemoryCache cache,
         IClock clock,
         ILogger<ShiftManagementService> logger)
     {
         _dbContext = dbContext;
         _auditLogService = auditLogService;
+        _roleAssignmentService = roleAssignmentService;
+        _serviceProvider = serviceProvider;
         _cache = cache;
         _clock = clock;
         _logger = logger;
@@ -57,12 +67,8 @@ public class ShiftManagementService : IShiftManagementService
             return true;
 
         // Parent department coordinators can manage child teams
-        var parentTeamId = await _dbContext.Teams.AsNoTracking()
-            .Where(t => t.Id == departmentTeamId)
-            .Select(t => t.ParentTeamId)
-            .FirstOrDefaultAsync();
-
-        return parentTeamId is not null && teamIds.Contains(parentTeamId.Value);
+        var team = await TeamService.GetTeamByIdAsync(departmentTeamId);
+        return team?.ParentTeamId is not null && teamIds.Contains(team.ParentTeamId.Value);
     }
 
     public async Task<bool> CanManageShiftsAsync(Guid userId, Guid departmentTeamId)
@@ -98,41 +104,12 @@ public class ShiftManagementService : IShiftManagementService
 
     private async Task<IReadOnlyList<Guid>> QueryCoordinatorTeamIdsAsync(Guid userId)
     {
-        // Check via IsManagement role assignment (departments and sub-teams)
-        var byRoleAssignment = await _dbContext.TeamRoleAssignments
-            .AsNoTracking()
-            .Where(tra =>
-                tra.TeamMember.UserId == userId &&
-                tra.TeamMember.LeftAt == null &&
-                tra.TeamRoleDefinition.IsManagement &&
-                tra.TeamRoleDefinition.Team.SystemTeamType == SystemTeamType.None)
-            .Select(tra => tra.TeamRoleDefinition.TeamId)
-            .ToListAsync();
-
-        // Also check via TeamMember.Role == Coordinator (may be out of sync with IsManagement)
-        var byMemberRole = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .Where(tm =>
-                tm.UserId == userId &&
-                tm.LeftAt == null &&
-                tm.Role == TeamMemberRole.Coordinator &&
-                tm.Team.SystemTeamType == SystemTeamType.None)
-            .Select(tm => tm.TeamId)
-            .ToListAsync();
-
-        return byRoleAssignment.Union(byMemberRole).Distinct().ToList();
+        return await TeamService.GetUserCoordinatedTeamIdsAsync(userId);
     }
 
     private async Task<bool> HasActiveRoleAsync(Guid userId, string roleName)
     {
-        var now = _clock.GetCurrentInstant();
-        return await _dbContext.RoleAssignments
-            .AsNoTracking()
-            .AnyAsync(ra =>
-                ra.UserId == userId &&
-                ra.RoleName == roleName &&
-                ra.ValidFrom <= now &&
-                (ra.ValidTo == null || ra.ValidTo > now));
+        return await _roleAssignmentService.HasActiveRoleAsync(userId, roleName);
     }
 
     // ============================================================
@@ -209,8 +186,7 @@ public class ShiftManagementService : IShiftManagementService
 
     public async Task CreateRotaAsync(Rota rota)
     {
-        var team = await _dbContext.Teams.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == rota.TeamId);
+        var team = await TeamService.GetTeamByIdAsync(rota.TeamId);
 
         if (team is null)
             throw new InvalidOperationException("Team not found.");
@@ -242,8 +218,7 @@ public class ShiftManagementService : IShiftManagementService
         if (rota is null)
             throw new InvalidOperationException("Rota not found.");
 
-        var targetTeam = await _dbContext.Teams.AsNoTracking()
-            .FirstOrDefaultAsync(t => t.Id == targetTeamId);
+        var targetTeam = await TeamService.GetTeamByIdAsync(targetTeamId);
         if (targetTeam is null)
             throw new InvalidOperationException("Target team not found.");
         if (targetTeam.ParentTeamId is not null)

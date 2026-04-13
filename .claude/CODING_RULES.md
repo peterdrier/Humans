@@ -175,35 +175,15 @@ Prefer centralized authorization declarations and shared role-check helpers over
 - Use `RoleGroups.BoardOrAdmin`, not `"Board,Admin"`
 - Use `ShiftRoleChecks.CanAccessDashboard(User)`, not repeated `IsInRole` chains
 
-### Claims-First Rule for Controller Authorization
+### Authorization: Resource-Based Handlers
 
-Controllers must use `User.IsInRole()` or `RoleChecks`/`ShiftRoleChecks` helpers (which check Identity claims) for HTTP request authorization — **never** query `RoleAssignments` or call service methods that query the database for global role checks.
+**Target pattern:** ASP.NET Core resource-based authorization via `IAuthorizationService.AuthorizeAsync(User, resource, requirement)`. See `.claude/DESIGN_RULES.md` §6 for the full rule and handler inventory.
 
-`RoleAssignmentClaimsTransformation` already converts active `RoleAssignment` records into claims on every request (cached 60s). Querying the DB again is redundant and can disagree with the claims the auth pipeline is using.
+**Current state (migrating):** Some controllers still use inline `IsInRole` checks or `RoleChecks`/`ShiftRoleChecks` helpers. These work but should migrate to authorization handlers over time. `[Authorize(Roles = ...)]` is still fine for simple route-level role gates.
 
-**Two kinds of role checks:**
-- **Global roles** (Admin, Board, TeamsAdmin, etc.) → always use claims via `User.IsInRole()` or `RoleChecks.*`
-- **Team-specific roles** (coordinator of a specific team) → require DB query via service, and that's OK
+**Claims-first for global roles** still applies during migration: `RoleAssignmentClaimsTransformation` converts active `RoleAssignment` records into claims on every request (cached 60s). Don't query the DB for roles already available as claims.
 
-**Pattern:** Check claims first for global roles, fall back to a DB query only for team-specific checks:
-
-```csharp
-// CORRECT — claims-first, DB only for team-specific coordinator check
-private async Task<bool> CanManageAsync(Guid userId, Guid teamId)
-{
-    return RoleChecks.IsAdmin(User) ||
-           User.IsInRole(RoleNames.VolunteerCoordinator) ||
-           await _shiftMgmt.IsDeptCoordinatorAsync(userId, teamId);
-}
-
-// WRONG — queries DB for roles already available as claims
-private async Task<bool> CanManageAsync(Guid userId, Guid teamId)
-{
-    return await _shiftMgmt.CanManageShiftsAsync(userId, teamId);
-}
-```
-
-**Service-level role checks** (e.g., `TeamService.IsUserAdminAsync`) are acceptable for business logic decisions (what data to show, what options to offer), but must not be the sole authorization gate for controller actions.
+**No `isPrivileged` booleans.** Don't pass auth decisions as parameters to services. Services are auth-free — authorization happens before the service is called.
 
 ## Markdown Rendering
 

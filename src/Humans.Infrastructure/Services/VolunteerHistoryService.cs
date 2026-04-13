@@ -97,7 +97,7 @@ public class VolunteerHistoryService : IVolunteerHistoryService
             .Include(p => p.User)
             .Include(p => p.VolunteerHistory)
             .FirstOrDefaultAsync(p => p.Id == profileId, cancellationToken);
-        if (profile is { IsApproved: true, IsSuspended: false })
+        if (profile is not null)
         {
             _profileService.UpdateProfileCache(profile.UserId, CachedProfile.Create(profile, profile.User));
         }

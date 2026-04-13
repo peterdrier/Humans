@@ -186,6 +186,40 @@ public class AuditLogService : IAuditLogService
     }
 
     /// <inheritdoc />
+    public async Task<AuditLogPageResult> GetAuditLogPageAsync(
+        string? actionFilter, int page, int pageSize, CancellationToken ct = default)
+    {
+        var (items, totalCount, anomalyCount) = await GetFilteredAsync(actionFilter, page, pageSize, ct);
+
+        // Collect all user IDs that might appear as actors or subjects
+        var userIds = new HashSet<Guid>();
+        var teamIds = new HashSet<Guid>();
+
+        foreach (var e in items)
+        {
+            if (e.ActorUserId.HasValue)
+                userIds.Add(e.ActorUserId.Value);
+
+            // Subject user ID: User/Profile/WorkspaceAccount entity types, or related User
+            if (e.EntityType is "User" or "Profile" or "WorkspaceAccount")
+                userIds.Add(e.EntityId);
+            else if (string.Equals(e.RelatedEntityType, "User", StringComparison.Ordinal) && e.RelatedEntityId.HasValue)
+                userIds.Add(e.RelatedEntityId.Value);
+
+            // Target team ID
+            if (string.Equals(e.EntityType, "Team", StringComparison.Ordinal))
+                teamIds.Add(e.EntityId);
+            else if (string.Equals(e.RelatedEntityType, "Team", StringComparison.Ordinal) && e.RelatedEntityId.HasValue)
+                teamIds.Add(e.RelatedEntityId.Value);
+        }
+
+        var userDisplayNames = await GetUserDisplayNamesAsync(userIds.ToList(), ct);
+        var teamNameLookup = await GetTeamNamesAsync(teamIds.ToList(), ct);
+
+        return new AuditLogPageResult(items, totalCount, anomalyCount, userDisplayNames, teamNameLookup);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<AuditLogEntry>> GetFilteredEntriesAsync(
         string? entityType = null,
         Guid? entityId = null,
@@ -215,5 +249,27 @@ public class AuditLogService : IAuditLogService
             .OrderByDescending(e => e.OccurredAt)
             .Take(limit)
             .ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<Guid, string>> GetUserDisplayNamesAsync(IReadOnlyList<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        return await _dbContext.Users.AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<Dictionary<Guid, (string Name, string Slug)>> GetTeamNamesAsync(IReadOnlyList<Guid> teamIds, CancellationToken ct = default)
+    {
+        if (teamIds.Count == 0)
+            return new Dictionary<Guid, (string Name, string Slug)>();
+
+        return await _dbContext.Teams.AsNoTracking()
+            .Where(t => teamIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug), ct);
     }
 }

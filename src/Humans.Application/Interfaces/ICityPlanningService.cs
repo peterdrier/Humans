@@ -37,6 +37,7 @@ public interface ICityPlanningService
     Task UpdateOfficialZonesAsync(string geoJson, Guid userId, CancellationToken cancellationToken = default);
     Task DeleteOfficialZonesAsync(Guid userId, CancellationToken cancellationToken = default);
     Task UpdatePlacementDatesAsync(LocalDateTime? opensAt, LocalDateTime? closesAt, CancellationToken cancellationToken = default);
+    Task<string?> GetRegistrationInfoAsync(CancellationToken cancellationToken = default);
     Task UpdateRegistrationInfoAsync(string? registrationInfo, CancellationToken cancellationToken = default);
 
     // Export
@@ -59,7 +60,7 @@ public record CampSeasonSummaryDto(
 public record CampPolygonHistoryEntryDto(
     Guid Id,
     string ModifiedByDisplayName,
-    string ModifiedAt,
+    Instant ModifiedAt,
     double AreaSqm,
     string Note,
     string GeoJson);

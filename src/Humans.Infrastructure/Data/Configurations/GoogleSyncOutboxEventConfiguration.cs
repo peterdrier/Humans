@@ -24,7 +24,6 @@ public class GoogleSyncOutboxEventConfiguration : IEntityTypeConfiguration<Googl
             .HasMaxLength(4000);
 
         builder.Property(e => e.RetryCount)
-            .HasDefaultValue(0)
             .IsRequired();
 
         builder.Property(e => e.OccurredAt)

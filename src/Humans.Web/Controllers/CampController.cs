@@ -100,8 +100,7 @@ public class CampController : HumansCampControllerBase
 
     private async Task PopulateRegistrationInfoAsync()
     {
-        var cityPlanningSettings = await _cityPlanningService.GetSettingsAsync();
-        ViewData["RegistrationInfo"] = cityPlanningSettings.RegistrationInfo;
+        ViewData["RegistrationInfo"] = await _cityPlanningService.GetRegistrationInfoAsync();
     }
 
     [AllowAnonymous]

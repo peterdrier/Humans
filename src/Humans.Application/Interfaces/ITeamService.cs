@@ -72,6 +72,13 @@ public record MyTeamMembershipSummary(
     bool CanLeave,
     int PendingRequestCount);
 
+public record UserTeamGoogleResource(
+    string TeamName,
+    string TeamSlug,
+    string ResourceName,
+    GoogleResourceType ResourceType,
+    string? Url);
+
 public record TeamRosterSlotSummary(
     string TeamName,
     string TeamSlug,
@@ -163,6 +170,12 @@ public interface ITeamService
     /// Gets all teams the user is a member of.
     /// </summary>
     Task<IReadOnlyList<TeamMember>> GetUserTeamsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets active Google resources grouped by team for a user's active team memberships.
+    /// Used by the MyGoogleResources view component on the dashboard.
+    /// </summary>
+    Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamGoogleResourcesAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets the current user's team memberships with viewer-specific pending-request counts.
@@ -451,6 +464,26 @@ public interface ITeamService
     /// </summary>
     Task UnassignFromRoleAsync(
         Guid roleDefinitionId, Guid teamMemberId, Guid actorUserId,
+        CancellationToken cancellationToken = default);
+
+    // ==========================================================================
+    // Coordinator Queries
+    // ==========================================================================
+
+    /// <summary>
+    /// Gets all non-system team IDs where the user is a coordinator or has a management role.
+    /// Used by shift services for authorization — avoids cross-service team table queries.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetUserCoordinatedTeamIdsAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the user IDs of all active coordinators for a team (Coordinator member role).
+    /// Used by shift services for notification dispatch.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
+        Guid teamId,
         CancellationToken cancellationToken = default);
 
     // ==========================================================================

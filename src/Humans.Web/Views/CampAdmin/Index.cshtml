@@ -3,6 +3,13 @@
     ViewData["Title"] = Localizer["Camp_AdminTitle"];
 }
 
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a asp-controller="Camp" asp-action="Index">@Localizer["Camp_Plural"]</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@Localizer["Camp_AdminTitle"]</li>
+    </ol>
+</nav>
+
 <h1>@Localizer["Camp_AdminTitle"]</h1>
 
 <vc:temp-data-alerts />
