@@ -193,18 +193,26 @@ builder.Services.AddAuthentication()
                 var isAccessDenied = failureMessage.Contains("access_denied", StringComparison.OrdinalIgnoreCase)
                     || failureMessage.Contains("denied by the resource owner", StringComparison.OrdinalIgnoreCase);
 
-                if (isCorrelationFailure)
+                var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                // All three categories are expected user behavior, but support needs to trace them
+                // when someone calls in. Log at Warning with the client IP so /Admin/Logs surfaces
+                // them and the event can be correlated to a user report. Stack traces dropped —
+                // the failure reason and IP are the actionable bits. See #483.
+                if (isAccessDenied)
                 {
-                    logger.LogDebug(context.Failure, "Google sign-in correlation failed (expected for stale/duplicate requests)");
+                    logger.LogWarning(
+                        "Google sign-in cancelled by user (access_denied) from {ClientIp}", clientIp);
                 }
-                else if (isAccessDenied)
+                else if (isCorrelationFailure)
                 {
-                    // User clicked cancel on the Google consent screen — expected user behavior, not actionable. See #483.
-                    logger.LogInformation("Google sign-in cancelled by user: {Error}", failureMessage);
+                    logger.LogWarning(
+                        "Google sign-in correlation cookie missing from {ClientIp} (stale or duplicate request)", clientIp);
                 }
                 else
                 {
-                    logger.LogWarning(context.Failure, "Google sign-in failed: {Error}", failureMessage);
+                    logger.LogWarning(
+                        context.Failure, "Google sign-in failed from {ClientIp}: {Error}", clientIp, failureMessage);
                 }
 
                 context.Response.Redirect("/Account/Login?error=sign-in-failed");

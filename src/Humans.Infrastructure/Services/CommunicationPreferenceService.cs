@@ -259,16 +259,17 @@ public class CommunicationPreferenceService : ICommunicationPreferenceService
         }
         catch (CryptographicException ex)
         {
-            // DataProtection throws CryptographicException for both expired and tampered tokens.
-            // Both are expected user-behavior events (old emails, stale key rings) — log at
-            // Information without the stack trace. See #483.
+            // Expected user-behavior events (old emails, stale key rings) — stay at Warning
+            // so they surface in /Admin/Logs, but drop the stack trace and include the token
+            // prefix so support can correlate a user-reported URL with the logged event. See #483.
+            var tokenPrefix = token.Length > 12 ? token[..12] : token;
             if (ex.Message.Contains("expired", StringComparison.OrdinalIgnoreCase))
             {
-                _logger.LogInformation("Expired unsubscribe token");
+                _logger.LogWarning("Expired unsubscribe token {TokenPrefix}", tokenPrefix);
                 return (TokenValidationStatus.Expired, default, default);
             }
 
-            _logger.LogInformation("Failed to validate unsubscribe token");
+            _logger.LogWarning("Failed to validate unsubscribe token {TokenPrefix}", tokenPrefix);
             return (TokenValidationStatus.Invalid, default, default);
         }
     }
