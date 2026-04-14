@@ -145,41 +145,15 @@ public partial class TeamResourceService : ITeamResourceService
         Guid userId,
         CancellationToken ct = default)
     {
-        var memberships = await TeamService.GetUserTeamsAsync(userId, ct);
-        if (memberships.Count == 0)
-        {
-            return Array.Empty<UserTeamGoogleResource>();
-        }
-
-        var teamById = memberships
-            .Select(tm => tm.Team)
-            .Where(t => t is not null)
-            .GroupBy(t => t!.Id)
-            .ToDictionary(g => g.Key, g => g.First()!);
-
-        var teamIds = teamById.Keys.ToList();
-
-        var resources = await _dbContext.GoogleResources
-            .AsNoTracking()
-            .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
-            .ToListAsync(ct);
-
-        return resources
-            .Select(r => new
-            {
-                Team = teamById.TryGetValue(r.TeamId, out var t) ? t : null,
-                Resource = r
-            })
-            .Where(x => x.Team is not null)
-            .OrderBy(x => x.Team!.Name, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(x => x.Resource.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(x => new UserTeamGoogleResource(
-                x.Team!.Name,
-                x.Team.Slug,
-                x.Resource.Name,
-                x.Resource.ResourceType,
-                x.Resource.Url))
-            .ToList();
+        return await (
+            from tm in _dbContext.TeamMembers.AsNoTracking()
+            where tm.UserId == userId && tm.LeftAt == null
+            join t in _dbContext.Teams on tm.TeamId equals t.Id
+            join r in _dbContext.GoogleResources on t.Id equals r.TeamId
+            where r.IsActive
+            orderby t.Name, r.Name
+            select new UserTeamGoogleResource(t.Name, t.Slug, r.Name, r.ResourceType, r.Url)
+        ).ToListAsync(ct);
     }
 
     /// <inheritdoc />
@@ -194,7 +168,7 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<int> GetResourceCountAsync(CancellationToken ct = default)
     {
-        return await _dbContext.GoogleResources.CountAsync(ct);
+        return await _dbContext.GoogleResources.AsNoTracking().CountAsync(ct);
     }
 
     /// <inheritdoc />

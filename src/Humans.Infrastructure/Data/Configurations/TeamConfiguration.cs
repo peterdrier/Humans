@@ -110,10 +110,13 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
         // google_resources is owned by TeamResourceService. The Team → GoogleResource
         // navigation was removed to enforce ownership — the relationship is now
         // configured from the GoogleResource side only via its Team nav property.
+        // Restrict (not SetNull): GoogleResource.TeamId is non-nullable, so SetNull
+        // would produce a NOT NULL violation on team delete. Teams should never be
+        // hard-deleted if resources exist — the caller must unlink resources first.
         builder.HasMany<GoogleResource>()
             .WithOne(gr => gr.Team)
             .HasForeignKey(gr => gr.TeamId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(t => t.Slug)
             .IsUnique();
