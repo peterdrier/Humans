@@ -107,7 +107,10 @@ public class TeamConfiguration : IEntityTypeConfiguration<Team>
             .HasForeignKey(jr => jr.TeamId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(t => t.GoogleResources)
+        // google_resources is owned by TeamResourceService. The Team → GoogleResource
+        // navigation was removed to enforce ownership — the relationship is now
+        // configured from the GoogleResource side only via its Team nav property.
+        builder.HasMany<GoogleResource>()
             .WithOne(gr => gr.Team)
             .HasForeignKey(gr => gr.TeamId)
             .OnDelete(DeleteBehavior.SetNull);

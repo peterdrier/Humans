@@ -36,11 +36,15 @@ public class GoogleAdminServiceTests : IDisposable
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _userEmailService = Substitute.For<IUserEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
+        var teamResourceService = Substitute.For<ITeamResourceService>();
+        teamResourceService.GetActiveResourceCountsByTeamAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, int>());
 
         _service = new GoogleAdminService(
             _dbContext,
             _workspaceUserService,
             _googleSyncService,
+            teamResourceService,
             _userEmailService,
             _auditLogService,
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),

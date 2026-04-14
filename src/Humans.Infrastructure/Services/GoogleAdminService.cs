@@ -20,6 +20,7 @@ public class GoogleAdminService : IGoogleAdminService
     private readonly HumansDbContext _dbContext;
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IGoogleSyncService _googleSyncService;
+    private readonly ITeamResourceService _teamResourceService;
     private readonly IUserEmailService _userEmailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
@@ -31,6 +32,7 @@ public class GoogleAdminService : IGoogleAdminService
         HumansDbContext dbContext,
         IGoogleWorkspaceUserService workspaceUserService,
         IGoogleSyncService googleSyncService,
+        ITeamResourceService teamResourceService,
         IUserEmailService userEmailService,
         IAuditLogService auditLogService,
         IClock clock,
@@ -39,6 +41,7 @@ public class GoogleAdminService : IGoogleAdminService
         _dbContext = dbContext;
         _workspaceUserService = workspaceUserService;
         _googleSyncService = googleSyncService;
+        _teamResourceService = teamResourceService;
         _userEmailService = userEmailService;
         _auditLogService = auditLogService;
         _clock = clock;
@@ -444,11 +447,7 @@ public class GoogleAdminService : IGoogleAdminService
                 .ToList();
 
             // Load resource counts per team for affected resource calculation
-            var teamResourceCounts = await _dbContext.GoogleResources
-                .Where(r => r.IsActive)
-                .GroupBy(r => r.TeamId)
-                .Select(g => new { TeamId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.TeamId, x => x.Count, ct);
+            var teamResourceCounts = await _teamResourceService.GetActiveResourceCountsByTeamAsync(ct);
 
             // Load active team memberships per user
             var userTeamIds = await _dbContext.TeamMembers

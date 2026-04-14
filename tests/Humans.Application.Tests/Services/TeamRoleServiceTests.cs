@@ -41,6 +41,11 @@ public class TeamRoleServiceTests : IDisposable
             NullLogger<RoleAssignmentService>.Instance);
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
+        var teamResourceService = Substitute.For<ITeamResourceService>();
+        teamResourceService
+            .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, TeamResourceSummary>());
+        serviceProvider.GetService(typeof(ITeamResourceService)).Returns(teamResourceService);
         var shiftManagementService = new ShiftManagementService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
@@ -57,6 +62,7 @@ public class TeamRoleServiceTests : IDisposable
             roleAssignmentService,
             shiftManagementService,
             Substitute.For<ISystemTeamSync>(),
+            serviceProvider,
             _clock,
             cache,
             NullLogger<TeamService>.Instance);

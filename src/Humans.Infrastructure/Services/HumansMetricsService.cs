@@ -291,7 +291,8 @@ public sealed class HumansMetricsService : IHumansMetrics, IDisposable
                 .CountAsync(r => r.Status == TeamJoinRequestStatus.Pending);
 
             // google_resources
-            var googleResources = await db.GoogleResources.CountAsync();
+            var teamResourceService = scope.ServiceProvider.GetRequiredService<ITeamResourceService>();
+            var googleResources = await teamResourceService.GetResourceCountAsync();
 
             // legal_documents_active
             var legalDocumentsActive = await db.LegalDocuments

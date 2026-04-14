@@ -1642,7 +1642,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation = false, CancellationToken cancellationToken = default)
     {
         var team = await _dbContext.Teams
-            .Include(t => t.GoogleResources)
             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
 
         if (team is null)
@@ -1651,8 +1650,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return GroupLinkResult.Ok();
         }
 
-        var existingGroup = team.GoogleResources
-            .FirstOrDefault(r => r.ResourceType == GoogleResourceType.Group && r.IsActive);
+        var existingGroup = await _dbContext.GoogleResources
+            .FirstOrDefaultAsync(r =>
+                r.TeamId == teamId
+                && r.ResourceType == GoogleResourceType.Group
+                && r.IsActive,
+                cancellationToken);
 
         // If prefix was cleared, deactivate any active group resource
         if (team.GoogleGroupPrefix is null)

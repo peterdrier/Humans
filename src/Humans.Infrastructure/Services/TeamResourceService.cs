@@ -5,6 +5,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
 using Google.Apis.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -26,7 +27,7 @@ public partial class TeamResourceService : ITeamResourceService
     private readonly HumansDbContext _dbContext;
     private readonly GoogleWorkspaceSettings _googleSettings;
     private readonly TeamResourceManagementSettings _resourceSettings;
-    private readonly ITeamService _teamService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IClock _clock;
@@ -36,11 +37,15 @@ public partial class TeamResourceService : ITeamResourceService
     private CloudIdentityService? _cloudIdentityService;
     private string? _serviceAccountEmail;
 
+    // Lazy to break the DI cycle: ITeamService depends on ITeamResourceService for reads,
+    // and ITeamResourceService depends on ITeamService for team-membership lookups.
+    private ITeamService TeamService => _serviceProvider.GetRequiredService<ITeamService>();
+
     public TeamResourceService(
         HumansDbContext dbContext,
         IOptions<GoogleWorkspaceSettings> googleSettings,
         IOptions<TeamResourceManagementSettings> resourceSettings,
-        ITeamService teamService,
+        IServiceProvider serviceProvider,
         IRoleAssignmentService roleAssignmentService,
         IGoogleSyncService googleSyncService,
         IClock clock,
@@ -49,7 +54,7 @@ public partial class TeamResourceService : ITeamResourceService
         _dbContext = dbContext;
         _googleSettings = googleSettings.Value;
         _resourceSettings = resourceSettings.Value;
-        _teamService = teamService;
+        _serviceProvider = serviceProvider;
         _roleAssignmentService = roleAssignmentService;
         _googleSyncService = googleSyncService;
         _clock = clock;
@@ -59,7 +64,137 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default)
     {
-        return await TeamResourcePersistence.GetActiveTeamResourcesAsync(_dbContext, teamId, ct);
+        return await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Where(r => r.TeamId == teamId && r.IsActive)
+            .OrderBy(r => r.ProvisionedAt)
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResource>>> GetResourcesByTeamIdsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken ct = default)
+    {
+        if (teamIds.Count == 0)
+        {
+            return new Dictionary<Guid, IReadOnlyList<GoogleResource>>();
+        }
+
+        var rows = await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
+            .OrderBy(r => r.ProvisionedAt)
+            .ToListAsync(ct);
+
+        var result = new Dictionary<Guid, IReadOnlyList<GoogleResource>>(teamIds.Count);
+        foreach (var teamId in teamIds)
+        {
+            result[teamId] = Array.Empty<GoogleResource>();
+        }
+        foreach (var group in rows.GroupBy(r => r.TeamId))
+        {
+            result[group.Key] = group.ToList();
+        }
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<Guid, TeamResourceSummary>> GetTeamResourceSummariesAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken ct = default)
+    {
+        if (teamIds.Count == 0)
+        {
+            return new Dictionary<Guid, TeamResourceSummary>();
+        }
+
+        var rows = await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
+            .Select(r => new { r.TeamId, r.ResourceType })
+            .ToListAsync(ct);
+
+        var result = new Dictionary<Guid, TeamResourceSummary>(teamIds.Count);
+        foreach (var teamId in teamIds)
+        {
+            result[teamId] = TeamResourceSummary.Empty;
+        }
+        foreach (var group in rows.GroupBy(r => r.TeamId))
+        {
+            var hasMailGroup = group.Any(r => r.ResourceType == GoogleResourceType.Group);
+            var driveCount = group.Count(r => r.ResourceType != GoogleResourceType.Group);
+            result[group.Key] = new TeamResourceSummary(hasMailGroup, driveCount);
+        }
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default)
+    {
+        return await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Where(r => r.IsActive)
+            .GroupBy(r => r.TeamId)
+            .Select(g => new { TeamId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.TeamId, x => x.Count, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamResourcesAsync(
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var memberships = await TeamService.GetUserTeamsAsync(userId, ct);
+        if (memberships.Count == 0)
+        {
+            return Array.Empty<UserTeamGoogleResource>();
+        }
+
+        var teamById = memberships
+            .Select(tm => tm.Team)
+            .Where(t => t is not null)
+            .GroupBy(t => t!.Id)
+            .ToDictionary(g => g.Key, g => g.First()!);
+
+        var teamIds = teamById.Keys.ToList();
+
+        var resources = await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Where(r => teamIds.Contains(r.TeamId) && r.IsActive)
+            .ToListAsync(ct);
+
+        return resources
+            .Select(r => new
+            {
+                Team = teamById.TryGetValue(r.TeamId, out var t) ? t : null,
+                Resource = r
+            })
+            .Where(x => x.Team is not null)
+            .OrderBy(x => x.Team!.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x.Resource.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(x => new UserTeamGoogleResource(
+                x.Team!.Name,
+                x.Team.Slug,
+                x.Resource.Name,
+                x.Resource.ResourceType,
+                x.Resource.Url))
+            .ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default)
+    {
+        return await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Where(r => r.IsActive && r.ResourceType == GoogleResourceType.DriveFolder)
+            .ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<int> GetResourceCountAsync(CancellationToken ct = default)
+    {
+        return await _dbContext.GoogleResources.CountAsync(ct);
     }
 
     /// <inheritdoc />
@@ -383,11 +518,15 @@ public partial class TeamResourceService : ITeamResourceService
     /// <inheritdoc />
     public async Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default)
     {
-        var resource = await TeamResourcePersistence.DeactivateResourceAsync(_dbContext, resourceId, ct);
+        var resource = await _dbContext.GoogleResources
+            .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
         if (resource is null)
         {
             return;
         }
+
+        resource.IsActive = false;
+        await _dbContext.SaveChangesAsync(ct);
 
         _logger.LogInformation("Unlinked resource {ResourceId} ({ResourceName})", resourceId, resource.Name);
     }
@@ -396,7 +535,7 @@ public partial class TeamResourceService : ITeamResourceService
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
         return await TeamResourceAccessRules.CanManageTeamResourcesAsync(
-            _teamService,
+            TeamService,
             _roleAssignmentService,
             _resourceSettings,
             teamId,
@@ -681,7 +820,10 @@ public partial class TeamResourceService : ITeamResourceService
 
     public async Task<GoogleResource?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default)
     {
-        return await TeamResourcePersistence.GetResourceByIdAsync(_dbContext, resourceId, ct);
+        return await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Include(r => r.Team)
+            .FirstOrDefaultAsync(r => r.Id == resourceId, ct);
     }
 
     /// <inheritdoc />

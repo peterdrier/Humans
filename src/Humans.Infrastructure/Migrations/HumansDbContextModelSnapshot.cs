@@ -4009,7 +4009,7 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.GoogleResource", b =>
                 {
                     b.HasOne("Humans.Domain.Entities.Team", "Team")
-                        .WithMany("GoogleResources")
+                        .WithMany()
                         .HasForeignKey("TeamId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .IsRequired();
@@ -4561,8 +4561,6 @@ namespace Humans.Infrastructure.Migrations
             modelBuilder.Entity("Humans.Domain.Entities.Team", b =>
                 {
                     b.Navigation("ChildTeams");
-
-                    b.Navigation("GoogleResources");
 
                     b.Navigation("JoinRequests");
 

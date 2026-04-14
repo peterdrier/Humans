@@ -8,16 +8,16 @@ namespace Humans.Web.ViewComponents;
 
 public class MyGoogleResourcesViewComponent : ViewComponent
 {
-    private readonly ITeamService _teamService;
+    private readonly ITeamResourceService _teamResourceService;
     private readonly UserManager<User> _userManager;
     private readonly ILogger<MyGoogleResourcesViewComponent> _logger;
 
     public MyGoogleResourcesViewComponent(
-        ITeamService teamService,
+        ITeamResourceService teamResourceService,
         UserManager<User> userManager,
         ILogger<MyGoogleResourcesViewComponent> logger)
     {
-        _teamService = teamService;
+        _teamResourceService = teamResourceService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -30,7 +30,7 @@ public class MyGoogleResourcesViewComponent : ViewComponent
             if (user is null)
                 return Content(string.Empty);
 
-            var resources = await _teamService.GetUserTeamGoogleResourcesAsync(user.Id);
+            var resources = await _teamResourceService.GetUserTeamResourcesAsync(user.Id);
 
             if (resources.Count == 0)
                 return Content(string.Empty);

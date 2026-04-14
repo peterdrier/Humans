@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application;
@@ -26,9 +27,15 @@ public class TeamService : ITeamService
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftManagementService _shiftManagementService;
     private readonly ISystemTeamSync _systemTeamSync;
+    private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TeamService> _logger;
+
+    // Lazy to break the DI cycle with ITeamResourceService, which also needs ITeamService
+    // for user-membership lookups when resolving resources.
+    private ITeamResourceService TeamResourceService
+        => _serviceProvider.GetRequiredService<ITeamResourceService>();
 
     public TeamService(
         HumansDbContext dbContext,
@@ -38,6 +45,7 @@ public class TeamService : ITeamService
         IRoleAssignmentService roleAssignmentService,
         IShiftManagementService shiftManagementService,
         ISystemTeamSync systemTeamSync,
+        IServiceProvider serviceProvider,
         IClock clock,
         IMemoryCache cache,
         ILogger<TeamService> logger)
@@ -49,6 +57,7 @@ public class TeamService : ITeamService
         _roleAssignmentService = roleAssignmentService;
         _shiftManagementService = shiftManagementService;
         _systemTeamSync = systemTeamSync;
+        _serviceProvider = serviceProvider;
         _clock = clock;
         _cache = cache;
         _logger = logger;
@@ -360,22 +369,6 @@ public class TeamService : ITeamService
                 .ThenInclude(t => t.ParentTeam)
             .OrderBy(tm => tm.Team.Name)
             .ToListAsync(cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamGoogleResourcesAsync(Guid userId, CancellationToken cancellationToken = default)
-    {
-        var teamResources = await (
-            from tm in _dbContext.TeamMembers.AsNoTracking()
-            where tm.UserId == userId && tm.LeftAt == null
-            join t in _dbContext.Teams on tm.TeamId equals t.Id
-            join r in _dbContext.GoogleResources on t.Id equals r.TeamId
-            where r.IsActive
-            orderby t.Name, r.Name
-            select new UserTeamGoogleResource(t.Name, t.Slug, r.Name, r.ResourceType, r.Url)
-        ).ToListAsync(cancellationToken);
-
-        return teamResources;
     }
 
     public async Task<IReadOnlyList<MyTeamMembershipSummary>> GetMyTeamMembershipsAsync(
@@ -1903,11 +1896,7 @@ public class TeamService : ITeamService
             if (user is null) return;
 
             var email = user.GetEffectiveEmail() ?? user.Email!;
-            var resources = await _dbContext.GoogleResources
-                .AsNoTracking()
-                .Where(gr => gr.TeamId == team.Id && gr.IsActive)
-                .Select(gr => new { gr.Name, gr.Url })
-                .ToListAsync(cancellationToken);
+            var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
             await _emailService.SendAddedToTeamAsync(
                 email, user.DisplayName, team.Name, team.Slug,
@@ -2052,7 +2041,6 @@ public class TeamService : ITeamService
         var query = _dbContext.Teams
             .Include(t => t.Members.Where(m => m.LeftAt == null))
             .Include(t => t.JoinRequests.Where(r => r.Status == TeamJoinRequestStatus.Pending))
-            .Include(t => t.GoogleResources)
             .Include(t => t.RoleDefinitions)
             .OrderBy(t => t.SystemTeamType)
             .ThenBy(t => t.Name);
@@ -2085,7 +2073,13 @@ public class TeamService : ITeamService
             : await _shiftManagementService.GetPendingShiftSignupCountsByTeamAsync(
                 activeEventId, cancellationToken);
 
-        return new AdminTeamListResult(BuildAdminTeamSummaries(items, pendingShiftCounts), totalCount);
+        var teamIds = items.Select(t => t.Id).ToList();
+        var resourceSummaries = await TeamResourceService
+            .GetTeamResourceSummariesAsync(teamIds, cancellationToken);
+
+        return new AdminTeamListResult(
+            BuildAdminTeamSummaries(items, pendingShiftCounts, resourceSummaries),
+            totalCount);
     }
 
     // ==========================================================================
@@ -2182,7 +2176,8 @@ public class TeamService : ITeamService
 
     private static IReadOnlyList<AdminTeamSummary> BuildAdminTeamSummaries(
         IReadOnlyList<Team> teams,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts)
+        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
+        IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
     {
         var ordered = new List<AdminTeamSummary>(teams.Count);
 
@@ -2193,30 +2188,31 @@ public class TeamService : ITeamService
                 continue;
             }
 
-            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false, pendingShiftCounts));
+            ordered.Add(CreateAdminTeamSummary(team, isChildTeam: false, pendingShiftCounts, resourceSummaries));
 
             var children = teams
                 .Where(child => child.ParentTeamId == team.Id)
                 .OrderBy(child => child.Name, StringComparer.OrdinalIgnoreCase);
 
-            ordered.AddRange(children.Select(child => CreateAdminTeamSummary(child, isChildTeam: true, pendingShiftCounts)));
+            ordered.AddRange(children.Select(child =>
+                CreateAdminTeamSummary(child, isChildTeam: true, pendingShiftCounts, resourceSummaries)));
         }
 
         return ordered;
     }
 
     private static AdminTeamSummary CreateAdminTeamSummary(
-        Team team, bool isChildTeam, IReadOnlyDictionary<Guid, int> pendingShiftCounts)
+        Team team,
+        bool isChildTeam,
+        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
+        IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
     {
         var systemTeamType = team.SystemTeamType != SystemTeamType.None
             ? team.SystemTeamType.ToString()
             : null;
-        var hasMailGroup = team.GoogleResources.Any(resource =>
-            resource.ResourceType == GoogleResourceType.Group &&
-            resource.IsActive);
-        var driveResourceCount = team.GoogleResources.Count(resource =>
-            resource.ResourceType != GoogleResourceType.Group &&
-            resource.IsActive);
+        var resourceSummary = resourceSummaries.TryGetValue(team.Id, out var summary)
+            ? summary
+            : TeamResourceSummary.Empty;
 
         return new AdminTeamSummary(
             team.Id,
@@ -2228,9 +2224,9 @@ public class TeamService : ITeamService
             systemTeamType,
             team.Members.Count,
             team.JoinRequests.Count,
-            hasMailGroup,
+            resourceSummary.HasMailGroup,
             team.GoogleGroupEmail,
-            driveResourceCount,
+            resourceSummary.DriveResourceCount,
             team.RoleDefinitions.Sum(role => role.SlotCount),
             team.CreatedAt,
             isChildTeam,

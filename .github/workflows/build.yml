@@ -54,3 +54,6 @@ jobs:
 
     - name: Check formatting
       run: dotnet format Humans.slnx --verify-no-changes --verbosity diagnostic --exclude src/Humans.Infrastructure/Migrations/
+
+    - name: Enforce google_resources ownership
+      run: bash scripts/check-google-resource-ownership.sh

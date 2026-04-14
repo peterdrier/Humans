@@ -155,11 +155,6 @@ public class Team
     public ICollection<TeamJoinRequest> JoinRequests { get; } = new List<TeamJoinRequest>();
 
     /// <summary>
-    /// Navigation property to associated Google resources.
-    /// </summary>
-    public ICollection<GoogleResource> GoogleResources { get; } = new List<GoogleResource>();
-
-    /// <summary>
     /// Navigation property to legal documents scoped to this team.
     /// </summary>
     public ICollection<LegalDocument> LegalDocuments { get; } = new List<LegalDocument>();

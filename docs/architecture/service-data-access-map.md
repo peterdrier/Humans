@@ -237,13 +237,9 @@ No direct cache. Delegates to other services.
 |-------|-----|
 | GoogleResources | R/W |
 
-No cache.
-
-### TeamResourcePersistence (static helper, not DI-registered)
-
-| Table | R/W |
-|-------|-----|
-| GoogleResources | R/W |
+Sole owner of the `google_resources` table. All consumers call
+`ITeamResourceService` read methods rather than touching `DbSet<GoogleResource>`
+directly; ownership is enforced by `scripts/check-google-resource-ownership.sh`.
 
 No cache.
 

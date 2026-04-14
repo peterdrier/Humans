@@ -25,6 +25,7 @@ namespace Humans.Infrastructure.Services;
 public class DriveActivityMonitorService : IDriveActivityMonitorService
 {
     private readonly HumansDbContext _dbContext;
+    private readonly ITeamResourceService _teamResourceService;
     private readonly IAuditLogService _auditLogService;
     private readonly GoogleWorkspaceSettings _settings;
     private readonly IClock _clock;
@@ -45,12 +46,14 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
 
     public DriveActivityMonitorService(
         HumansDbContext dbContext,
+        ITeamResourceService teamResourceService,
         IAuditLogService auditLogService,
         IOptions<GoogleWorkspaceSettings> settings,
         IClock clock,
         ILogger<DriveActivityMonitorService> logger)
     {
         _dbContext = dbContext;
+        _teamResourceService = teamResourceService;
         _auditLogService = auditLogService;
         _settings = settings.Value;
         _clock = clock;
@@ -60,9 +63,7 @@ public class DriveActivityMonitorService : IDriveActivityMonitorService
     /// <inheritdoc />
     public async Task<int> CheckForAnomalousActivityAsync(CancellationToken cancellationToken = default)
     {
-        var resources = await _dbContext.GoogleResources
-            .Where(r => r.IsActive && r.ResourceType == GoogleResourceType.DriveFolder)
-            .ToListAsync(cancellationToken);
+        var resources = await _teamResourceService.GetActiveDriveFoldersAsync(cancellationToken);
 
         if (resources.Count == 0)
         {

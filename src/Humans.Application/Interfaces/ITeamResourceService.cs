@@ -5,16 +5,81 @@ using Humans.Domain.Enums;
 namespace Humans.Application.Interfaces;
 
 /// <summary>
+/// Aggregate summary of a team's Google resources, used by admin listings that need
+/// per-team flags/counts without loading the full resource rows.
+/// </summary>
+public record TeamResourceSummary(bool HasMailGroup, int DriveResourceCount)
+{
+    public static TeamResourceSummary Empty { get; } = new(false, 0);
+}
+
+/// <summary>
+/// A Google resource projection joined with its owning team, used by the dashboard
+/// "My Google Resources" widget. Owned by ITeamResourceService so callers do not
+/// need to reach across the team ↔ resource boundary.
+/// </summary>
+public record UserTeamGoogleResource(
+    string TeamName,
+    string TeamSlug,
+    string ResourceName,
+    GoogleResourceType ResourceType,
+    string? Url);
+
+/// <summary>
 /// Service for linking and managing pre-shared Google resources for teams.
 /// Unlike IGoogleSyncService (which provisions new resources), this service
 /// validates and links existing resources that have been pre-shared with the service account.
+///
+/// This service is the sole owner of the <c>google_resources</c> table: callers must
+/// never access <c>DbSet&lt;GoogleResource&gt;</c> directly and must go through the
+/// read methods on this interface instead.
 /// </summary>
 public interface ITeamResourceService
 {
     /// <summary>
-    /// Gets all Google resources linked to a team.
+    /// Gets all active Google resources linked to a single team, ordered by provision time.
     /// </summary>
     Task<IReadOnlyList<GoogleResource>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets all active Google resources for a set of teams, grouped by team id.
+    /// Missing team ids map to an empty list in the returned dictionary.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<GoogleResource>>> GetResourcesByTeamIdsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets aggregate summaries (mail group presence, drive resource count) for a set of teams.
+    /// Missing team ids map to <see cref="TeamResourceSummary.Empty"/>.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, TeamResourceSummary>> GetTeamResourceSummariesAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the total active-resource count for every team that currently has any,
+    /// regardless of resource type. Used by admin aggregates (e.g. email rename impact).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, int>> GetActiveResourceCountsByTeamAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the active Google resources visible to a user, joined with their team metadata.
+    /// Dashboard "My Google Resources" widget.
+    /// </summary>
+    Task<IReadOnlyList<UserTeamGoogleResource>> GetUserTeamResourcesAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets every active Drive folder resource across all teams.
+    /// Used by Drive activity anomaly detection.
+    /// </summary>
+    Task<IReadOnlyList<GoogleResource>> GetActiveDriveFoldersAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the total number of Google resource rows (including inactive).
+    /// Used by the observable metrics gauge.
+    /// </summary>
+    Task<int> GetResourceCountAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Links an existing Google Drive folder to a team by URL.

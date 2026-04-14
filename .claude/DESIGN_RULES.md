@@ -57,7 +57,8 @@ Each section's service owns these tables. Cross-service access goes through the 
 | **Budget** | `BudgetService` | `budget_years`, `budget_groups`, `budget_categories`, `budget_line_items`, `budget_audit_logs`, `ticketing_projections` |
 | **Tickets** | `TicketQueryService`, `TicketSyncService`, `TicketingBudgetService` | `ticket_orders`, `ticket_attendees`, `ticket_sync_states` |
 | **Campaigns** | `CampaignService` | `campaigns`, `campaign_codes`, `campaign_grants` |
-| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `google_resources`, `sync_service_settings` |
+| **Team Resources** | `TeamResourceService` | `google_resources` |
+| **Google Integration** | `GoogleSyncService`, `GoogleAdminService`, `GoogleWorkspaceUserService`, `DriveActivityMonitorService`, `SyncSettingsService`, `EmailProvisioningService` | `sync_service_settings` |
 | **Email** | `EmailOutboxService`, `EmailService` | `email_outbox_messages` |
 | **Feedback** | `FeedbackService` | `feedback_reports` |
 | **Notifications** | `NotificationService`, `NotificationInboxService` | *(in-memory / transient)* |
