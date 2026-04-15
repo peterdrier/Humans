@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
-using ApplicationDecisionService = Humans.Application.Services.ApplicationDecisionService;
+using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

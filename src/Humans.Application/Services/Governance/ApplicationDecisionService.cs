@@ -4,6 +4,7 @@ using Humans.Application.DTOs.Governance;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Domain;
@@ -12,7 +13,7 @@ using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 
-namespace Humans.Application.Services;
+namespace Humans.Application.Services.Governance;
 
 /// <summary>
 /// Business service for the Governance section. Implements

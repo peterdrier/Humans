@@ -1,10 +1,10 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
-using Humans.Application.Services;
-using Humans.Infrastructure.Services;
+using Humans.Application.Services.Governance;
+using Humans.Infrastructure.Services.Governance;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -24,11 +24,11 @@ namespace Humans.Application.Tests.Architecture;
 public class GovernanceArchitectureTests
 {
     [Fact]
-    public void ApplicationDecisionService_LivesInHumansApplicationServicesNamespace()
+    public void ApplicationDecisionService_LivesInHumansApplicationServicesGovernanceNamespace()
     {
         typeof(ApplicationDecisionService).Namespace
-            .Should().Be("Humans.Application.Services",
-                because: "services with business logic must live in Humans.Application per design-rules §2b");
+            .Should().Be("Humans.Application.Services.Governance",
+                because: "services with business logic live in Humans.Application per design-rules §2b, organized by section");
     }
 
     [Fact]
@@ -94,10 +94,10 @@ public class GovernanceArchitectureTests
     }
 
     [Fact]
-    public void CachingApplicationDecisionService_LivesInHumansInfrastructureServicesNamespace()
+    public void CachingApplicationDecisionService_LivesInHumansInfrastructureServicesGovernanceNamespace()
     {
         typeof(CachingApplicationDecisionService).Namespace
-            .Should().Be("Humans.Infrastructure.Services",
-                because: "caching decorators live in Humans.Infrastructure.Services alongside the IMemoryCache-backed invalidators they wrap (design-rules §5)");
+            .Should().Be("Humans.Infrastructure.Services.Governance",
+                because: "caching decorators live in Humans.Infrastructure.Services.{Section} alongside the IMemoryCache-backed invalidators they wrap (design-rules §5)");
     }
 }

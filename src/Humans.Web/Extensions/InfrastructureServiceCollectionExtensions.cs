@@ -2,6 +2,7 @@ using Humans.Application.Configuration;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Services.Gdpr;
@@ -11,9 +12,10 @@ using Humans.Infrastructure.HostedServices;
 using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Services.Governance;
 using Humans.Infrastructure.Stores;
 using Humans.Web.Filters;
-using GovernanceApplicationDecisionService = Humans.Application.Services.ApplicationDecisionService;
+using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 
 namespace Humans.Web.Extensions;
 

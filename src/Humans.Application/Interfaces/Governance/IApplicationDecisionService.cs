@@ -3,7 +3,7 @@ using Humans.Domain.Enums;
 using NodaTime;
 using MemberApplication = Humans.Domain.Entities.Application;
 
-namespace Humans.Application.Interfaces;
+namespace Humans.Application.Interfaces.Governance;
 
 /// <summary>
 /// Single code path for tier application lifecycle: submit, withdraw, approve, reject.

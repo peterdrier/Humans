@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Governance;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
 using Humans.Web.Authorization;

@@ -2,12 +2,13 @@ using NodaTime;
 using Humans.Application.DTOs.Governance;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
+using Humans.Application.Interfaces.Governance;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Enums;
 using MemberApplication = Humans.Domain.Entities.Application;
 
-namespace Humans.Infrastructure.Services;
+namespace Humans.Infrastructure.Services.Governance;
 
 /// <summary>
 /// Caching decorator for <see cref="IApplicationDecisionService"/>. Registered
