@@ -640,14 +640,35 @@ public class TeamService : ITeamService
             throw new InvalidOperationException("Cannot deactivate a team that has active sub-teams. Remove or reassign sub-teams first.");
         }
 
+        var now = _clock.GetCurrentInstant();
+
+        // Close out all active team memberships so downstream sync jobs stop treating
+        // this team's roster as current and can revoke Drive/Group access on their
+        // next tick. (See #494.)
+        var activeMembers = await _dbContext.TeamMembers
+            .Where(tm => tm.TeamId == teamId && tm.LeftAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (var member in activeMembers)
+        {
+            member.LeftAt = now;
+        }
+
         team.IsActive = false;
-        team.UpdatedAt = _clock.GetCurrentInstant();
+        team.UpdatedAt = now;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
+        // Deactivate the team's Google resources via the owning service so the bulk
+        // sync queries stop hitting them. Actual revocation of user permissions and
+        // group memberships happens on the next sync tick through the normal
+        // remove-user paths.
+        await TeamResourceService.DeactivateResourcesForTeamAsync(teamId, cancellationToken);
+
         RemoveCachedTeam(teamId);
 
-        _logger.LogInformation("Deactivated team {TeamId} ({TeamName})", teamId, team.Name);
+        _logger.LogInformation(
+            "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",
+            teamId, team.Name, activeMembers.Count);
     }
 
     public async Task<TeamJoinRequest> RequestToJoinTeamAsync(

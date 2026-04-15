@@ -773,7 +773,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             : null;
 
         var resources = await _dbContext.GoogleResources
-            .Where(r => r.TeamId == teamId && r.IsActive)
+            .Where(r => r.TeamId == teamId && r.IsActive && r.Team.IsActive)
             .ToListAsync(cancellationToken);
 
         foreach (var resource in resources)
@@ -803,7 +803,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         if (team?.ParentTeamId is not null)
         {
             var parentResources = await _dbContext.GoogleResources
-                .Where(r => r.TeamId == team.ParentTeamId && r.IsActive)
+                .Where(r => r.TeamId == team.ParentTeamId && r.IsActive && r.Team.IsActive)
                 .ToListAsync(cancellationToken);
 
             foreach (var resource in parentResources)
@@ -926,7 +926,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             .Include(r => r.Team)
                 .ThenInclude(t => t.Members.Where(tm => tm.LeftAt == null))
                     .ThenInclude(tm => tm.User)
-            .Where(r => r.ResourceType == resourceType && r.IsActive)
+            .Where(r => r.ResourceType == resourceType && r.IsActive && r.Team.IsActive)
             .ToListAsync(cancellationToken);
 
         var now = _clock.GetCurrentInstant();
@@ -1843,7 +1843,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
         var groupResources = await _dbContext.GoogleResources
             .Include(r => r.Team)
-            .Where(r => r.ResourceType == GoogleResourceType.Group && r.IsActive)
+            .Where(r => r.ResourceType == GoogleResourceType.Group && r.IsActive && r.Team.IsActive)
             .ToListAsync(cancellationToken);
 
         _logger.LogInformation("Checking group settings for {Count} active Google Groups", groupResources.Count);
@@ -2297,7 +2297,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     public async Task<int> UpdateDriveFolderPathsAsync(CancellationToken cancellationToken = default)
     {
         var driveResources = await _dbContext.GoogleResources
-            .Where(r => r.ResourceType == GoogleResourceType.DriveFolder && r.IsActive)
+            .Where(r => r.ResourceType == GoogleResourceType.DriveFolder && r.IsActive && r.Team.IsActive)
             .ToListAsync(cancellationToken);
 
         if (driveResources.Count == 0)
@@ -2410,7 +2410,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var restrictedResources = await _dbContext.GoogleResources
             .Where(r => r.RestrictInheritedAccess
                 && r.ResourceType == GoogleResourceType.DriveFolder
-                && r.IsActive)
+                && r.IsActive
+                && r.Team.IsActive)
             .ToListAsync(cancellationToken);
 
         if (restrictedResources.Count == 0)

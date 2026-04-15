@@ -506,6 +506,38 @@ public partial class TeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
+    public async Task DeactivateResourcesForTeamAsync(Guid teamId, CancellationToken ct = default)
+    {
+        var resources = await _dbContext.GoogleResources
+            .Where(r => r.TeamId == teamId && r.IsActive)
+            .ToListAsync(ct);
+
+        if (resources.Count == 0)
+        {
+            return;
+        }
+
+        var auditLogService = _serviceProvider.GetRequiredService<IAuditLogService>();
+
+        foreach (var resource in resources)
+        {
+            resource.IsActive = false;
+            await auditLogService.LogAsync(
+                AuditAction.GoogleResourceDeactivated,
+                nameof(GoogleResource),
+                resource.Id,
+                $"Resource '{resource.Name}' deactivated because owning team was soft-deleted.",
+                nameof(TeamResourceService));
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Deactivated {Count} Google resources for soft-deleted team {TeamId}",
+            resources.Count, teamId);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {
         return await TeamResourceAccessRules.CanManageTeamResourcesAsync(

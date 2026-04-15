@@ -111,6 +111,15 @@ public interface ITeamResourceService
     Task UnlinkResourceAsync(Guid resourceId, CancellationToken ct = default);
 
     /// <summary>
+    /// Deactivates every Google resource owned by a team (soft-delete: IsActive = false)
+    /// and writes an audit log entry for each. Called by <see cref="ITeamService"/> when a
+    /// team is soft-deleted so the downstream sync jobs stop provisioning access to its
+    /// Drive folders and Groups. The actual revocation of Drive permissions and Group
+    /// membership happens on the next sync tick via the normal remove-user paths.
+    /// </summary>
+    Task DeactivateResourcesForTeamAsync(Guid teamId, CancellationToken ct = default);
+
+    /// <summary>
     /// Checks whether a user can manage resources for a team.
     /// Board members can always manage. Leads can manage if the admin setting allows it.
     /// </summary>

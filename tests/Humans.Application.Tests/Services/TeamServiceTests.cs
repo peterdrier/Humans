@@ -24,6 +24,7 @@ public class TeamServiceTests : IDisposable
     private readonly FakeClock _clock;
     private readonly TeamService _service;
     private readonly RoleAssignmentService _roleAssignmentService;
+    private readonly ITeamResourceService _teamResourceService;
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
 
     public TeamServiceTests()
@@ -44,11 +45,11 @@ public class TeamServiceTests : IDisposable
             NullLogger<RoleAssignmentService>.Instance);
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITeamService)).Returns(Substitute.For<ITeamService>());
-        var teamResourceService = Substitute.For<ITeamResourceService>();
-        teamResourceService
+        _teamResourceService = Substitute.For<ITeamResourceService>();
+        _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamResourceSummary>());
-        serviceProvider.GetService(typeof(ITeamResourceService)).Returns(teamResourceService);
+        serviceProvider.GetService(typeof(ITeamResourceService)).Returns(_teamResourceService);
         var shiftManagementService = new ShiftManagementService(
             _dbContext,
             Substitute.For<IAuditLogService>(),
@@ -1532,6 +1533,66 @@ public class TeamServiceTests : IDisposable
 
         var summary = result.Teams.Should().ContainSingle(t => t.Name == "Dept B").Subject;
         summary.PendingShiftSignupCount.Should().Be(0);
+    }
+
+    // ==========================================================================
+    // DeleteTeamAsync — #494: revoke Google access when a team is soft-deleted
+    // ==========================================================================
+
+    [Fact]
+    public async Task DeleteTeamAsync_ClosesActiveMembershipsAndDeactivatesResources()
+    {
+        // Arrange
+        var team = SeedTeam("Doomed Team");
+        var alice = SeedUser(displayName: "Alice");
+        var bob = SeedUser(displayName: "Bob");
+        SeedTeamMember(team.Id, alice.Id);
+        SeedTeamMember(team.Id, bob.Id);
+        // Previously-left member should NOT be touched.
+        var ghost = SeedUser(displayName: "Ghost");
+        SeedTeamMember(team.Id, ghost.Id, leftAt: _clock.GetCurrentInstant() - Duration.FromDays(30));
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        await _service.DeleteTeamAsync(team.Id);
+
+        // Assert — team soft-deleted
+        var reloaded = await _dbContext.Teams.FindAsync(team.Id);
+        reloaded!.IsActive.Should().BeFalse();
+
+        // All previously-active memberships now have LeftAt set.
+        var aliceMember = await _dbContext.TeamMembers
+            .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == alice.Id);
+        var bobMember = await _dbContext.TeamMembers
+            .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == bob.Id);
+        aliceMember.LeftAt.Should().NotBeNull();
+        bobMember.LeftAt.Should().NotBeNull();
+        aliceMember.LeftAt.Should().Be(_clock.GetCurrentInstant());
+        bobMember.LeftAt.Should().Be(_clock.GetCurrentInstant());
+
+        // Previously-left membership is unchanged (still has its original LeftAt).
+        var ghostMember = await _dbContext.TeamMembers
+            .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == ghost.Id);
+        ghostMember.LeftAt.Should().Be(_clock.GetCurrentInstant() - Duration.FromDays(30));
+
+        // Google resources deactivated via the owning service (no direct DB touch).
+        await _teamResourceService.Received(1).DeactivateResourcesForTeamAsync(
+            team.Id, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteTeamAsync_NoActiveMembers_StillDeactivatesResources()
+    {
+        var team = SeedTeam("Empty Team");
+        await _dbContext.SaveChangesAsync();
+
+        await _service.DeleteTeamAsync(team.Id);
+
+        var reloaded = await _dbContext.Teams.FindAsync(team.Id);
+        reloaded!.IsActive.Should().BeFalse();
+
+        await _teamResourceService.Received(1).DeactivateResourcesForTeamAsync(
+            team.Id, Arg.Any<CancellationToken>());
     }
 
     // --- Helpers ---
