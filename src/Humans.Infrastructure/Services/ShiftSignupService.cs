@@ -1054,17 +1054,26 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
+        // Load signups WITHOUT an `.Include(r => r.Team)` — `teams` is owned by
+        // the Teams section, not Shifts, so the Department name must come
+        // through ITeamService instead of a join. The Rota's TeamId is already
+        // a scalar FK on the Rota entity (no navigation needed for the ID).
         var signups = await _dbContext.ShiftSignups
             .AsNoTracking()
-            .Include(ss => ss.Shift)
-                .ThenInclude(s => s.Rota)
-                    .ThenInclude(r => r.Team)
             .Include(ss => ss.Shift)
                 .ThenInclude(s => s.Rota)
                     .ThenInclude(r => r.EventSettings)
             .Where(ss => ss.UserId == userId)
             .OrderByDescending(ss => ss.CreatedAt)
             .ToListAsync(ct);
+
+        // Resolve TeamId → Team.Name through the owning section's service.
+        // At ~500 users and <~100 teams, GetAllTeamsAsync (which is cached
+        // inside TeamService) is cheaper than N round trips.
+        var teamNamesById = signups.Count == 0
+            ? new Dictionary<Guid, string>()
+            : (await TeamService.GetAllTeamsAsync(ct))
+                .ToDictionary(t => t.Id, t => t.Name);
 
         var volunteerEventProfiles = await _dbContext.VolunteerEventProfiles
             .AsNoTracking()
@@ -1083,54 +1092,46 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             .Where(vtp => vtp.UserId == userId)
             .ToListAsync(ct);
 
-        var signupSlice = signups.Count == 0
-            ? new UserDataSlice(GdprExportSections.ShiftSignups, null)
-            : new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new
-            {
-                EventName = ss.Shift.Rota.EventSettings.EventName,
-                Department = ss.Shift.Rota.Team.Name,
-                RotaName = ss.Shift.Rota.Name,
-                ss.Shift.DayOffset,
-                ss.Shift.IsAllDay,
-                ss.Status,
-                ss.Enrolled,
-                ss.StatusReason,
-                CreatedAt = ss.CreatedAt.ToInvariantInstantString(),
-                ReviewedAt = ss.ReviewedAt.ToInvariantInstantString()
-            }).ToList());
+        var signupSlice = new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new
+        {
+            EventName = ss.Shift.Rota.EventSettings.EventName,
+            Department = teamNamesById.TryGetValue(ss.Shift.Rota.TeamId, out var teamName) ? teamName : null,
+            RotaName = ss.Shift.Rota.Name,
+            ss.Shift.DayOffset,
+            ss.Shift.IsAllDay,
+            ss.Status,
+            ss.Enrolled,
+            ss.StatusReason,
+            CreatedAt = ss.CreatedAt.ToInvariantInstantString(),
+            ReviewedAt = ss.ReviewedAt.ToInvariantInstantString()
+        }).ToList());
 
-        var vepSlice = volunteerEventProfiles.Count == 0
-            ? new UserDataSlice(GdprExportSections.VolunteerEventProfiles, null)
-            : new UserDataSlice(GdprExportSections.VolunteerEventProfiles, volunteerEventProfiles.Select(vep => new
-            {
-                vep.Skills,
-                vep.Quirks,
-                vep.Languages,
-                vep.DietaryPreference,
-                vep.Allergies,
-                vep.Intolerances,
-                vep.AllergyOtherText,
-                vep.IntoleranceOtherText,
-                vep.MedicalConditions,
-                CreatedAt = vep.CreatedAt.ToInvariantInstantString(),
-                UpdatedAt = vep.UpdatedAt.ToInvariantInstantString()
-            }).ToList());
+        var vepSlice = new UserDataSlice(GdprExportSections.VolunteerEventProfiles, volunteerEventProfiles.Select(vep => new
+        {
+            vep.Skills,
+            vep.Quirks,
+            vep.Languages,
+            vep.DietaryPreference,
+            vep.Allergies,
+            vep.Intolerances,
+            vep.AllergyOtherText,
+            vep.IntoleranceOtherText,
+            vep.MedicalConditions,
+            CreatedAt = vep.CreatedAt.ToInvariantInstantString(),
+            UpdatedAt = vep.UpdatedAt.ToInvariantInstantString()
+        }).ToList());
 
-        var availabilitySlice = generalAvailability.Count == 0
-            ? new UserDataSlice(GdprExportSections.GeneralAvailability, null)
-            : new UserDataSlice(GdprExportSections.GeneralAvailability, generalAvailability.Select(ga => new
-            {
-                EventName = ga.EventSettings.EventName,
-                ga.AvailableDayOffsets,
-                UpdatedAt = ga.UpdatedAt.ToInvariantInstantString()
-            }).ToList());
+        var availabilitySlice = new UserDataSlice(GdprExportSections.GeneralAvailability, generalAvailability.Select(ga => new
+        {
+            EventName = ga.EventSettings.EventName,
+            ga.AvailableDayOffsets,
+            UpdatedAt = ga.UpdatedAt.ToInvariantInstantString()
+        }).ToList());
 
-        var tagPreferenceSlice = tagPreferences.Count == 0
-            ? new UserDataSlice(GdprExportSections.ShiftTagPreferences, null)
-            : new UserDataSlice(GdprExportSections.ShiftTagPreferences, tagPreferences.Select(vtp => new
-            {
-                TagName = vtp.ShiftTag.Name
-            }).ToList());
+        var tagPreferenceSlice = new UserDataSlice(GdprExportSections.ShiftTagPreferences, tagPreferences.Select(vtp => new
+        {
+            TagName = vtp.ShiftTag.Name
+        }).ToList());
 
         return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
     }

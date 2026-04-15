@@ -391,11 +391,6 @@ public class ApplicationDecisionService : IApplicationDecisionService, IUserData
             .OrderByDescending(a => a.SubmittedAt)
             .ToListAsync(ct);
 
-        if (applications.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.Applications, null)];
-        }
-
         var shaped = applications.Select(a => new
         {
             a.Status,

@@ -127,6 +127,49 @@ public class GdprExportServiceTests
         export.Sections.Should().ContainKey("Languages");
     }
 
+    [Fact]
+    public async Task ExportForUserAsync_EmptyCollectionSliceSurvivesAsEmptyList()
+    {
+        // Empty collections MUST round-trip to "[]" in the JSON — the legacy
+        // ExportDataAsync always emitted collection keys even when the user
+        // had no records, and downstream consumers depend on that.
+        var emptyConsents = Array.Empty<object>();
+        var service = CreateService(
+            new FakeContributor("Profile", new { Name = "Jane" }),
+            new FakeContributor("Consents", emptyConsents));
+
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+
+        export.Sections.Should().ContainKey("Consents",
+            "an empty collection slice must NOT be dropped by the orchestrator");
+        export.Sections["Consents"].Should().BeSameAs(emptyConsents);
+    }
+
+    [Fact]
+    public async Task ExportForUserAsync_EmptyCollectionSerializesToEmptyArray()
+    {
+        var emptyConsents = new List<object>();
+        var service = CreateService(
+            new FakeContributor("Profile", new { Name = "Jane" }),
+            new FakeContributor("Consents", emptyConsents));
+
+        var export = await service.ExportForUserAsync(Guid.NewGuid(), CancellationToken.None);
+
+        // Flatten into the shape the controllers serialize
+        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["ExportedAt"] = export.ExportedAt
+        };
+        foreach (var (section, data) in export.Sections)
+        {
+            payload[section] = data;
+        }
+
+        var json = System.Text.Json.JsonSerializer.Serialize(payload);
+        json.Should().Contain("\"Consents\":[]",
+            "empty collection slices must serialize as '[]' in the downloaded JSON");
+    }
+
     private sealed class FakeContributor : IUserDataContributor
     {
         private readonly UserDataSlice[] _slices;

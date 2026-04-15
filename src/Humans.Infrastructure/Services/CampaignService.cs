@@ -629,11 +629,6 @@ public class CampaignService : ICampaignService, IUserDataContributor
             .OrderByDescending(cg => cg.AssignedAt)
             .ToListAsync(ct);
 
-        if (grants.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.CampaignGrants, null)];
-        }
-
         var shaped = grants.Select(cg => new
         {
             CampaignTitle = cg.Campaign.Title,

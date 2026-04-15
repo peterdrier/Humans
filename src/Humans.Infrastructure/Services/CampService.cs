@@ -1298,11 +1298,6 @@ public class CampService : ICampService, IUserDataContributor
             .OrderByDescending(cl => cl.JoinedAt)
             .ToListAsync(ct);
 
-        if (leadAssignments.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.CampLeadAssignments, null)];
-        }
-
         var shaped = leadAssignments.Select(cl => new
         {
             CampSlug = cl.Camp.Slug,

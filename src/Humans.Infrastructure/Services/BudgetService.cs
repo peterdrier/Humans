@@ -1578,11 +1578,6 @@ public class BudgetService : IBudgetService, IUserDataContributor
             .OrderByDescending(bal => bal.OccurredAt)
             .ToListAsync(ct);
 
-        if (entries.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.BudgetAuditLog, null)];
-        }
-
         var shaped = entries.Select(bal => new
         {
             bal.EntityType,

@@ -298,11 +298,6 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
             .Where(ra => ra.UserId == userId)
             .ToListAsync(ct);
 
-        if (assignments.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.RoleAssignments, null)];
-        }
-
         var shaped = assignments.Select(ra => new
         {
             ra.RoleName,

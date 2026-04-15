@@ -874,55 +874,45 @@ public class ProfileService : IProfileService, IUserDataContributor
                 UpdatedAt = profile.UpdatedAt.ToInvariantInstantString()
             });
 
-        var contactFieldSlice = contactFields.Count == 0
-            ? new UserDataSlice(GdprExportSections.ContactFields, null)
-            : new UserDataSlice(GdprExportSections.ContactFields, contactFields.Select(cf => new
-            {
-                cf.FieldType,
-                Label = cf.DisplayLabel,
-                cf.Value,
-                cf.Visibility
-            }).ToList());
+        var contactFieldSlice = new UserDataSlice(GdprExportSections.ContactFields, contactFields.Select(cf => new
+        {
+            cf.FieldType,
+            Label = cf.DisplayLabel,
+            cf.Value,
+            cf.Visibility
+        }).ToList());
 
-        var userEmailsSlice = userEmails.Count == 0
-            ? new UserDataSlice(GdprExportSections.UserEmails, null)
-            : new UserDataSlice(GdprExportSections.UserEmails, userEmails.Select(e => new
-            {
-                e.Email,
-                e.IsVerified,
-                e.IsOAuth,
-                e.IsNotificationTarget,
-                e.Visibility
-            }).ToList());
+        var userEmailsSlice = new UserDataSlice(GdprExportSections.UserEmails, userEmails.Select(e => new
+        {
+            e.Email,
+            e.IsVerified,
+            e.IsOAuth,
+            e.IsNotificationTarget,
+            e.Visibility
+        }).ToList());
 
-        var volunteerHistorySlice = volunteerHistory.Count == 0
-            ? new UserDataSlice(GdprExportSections.VolunteerHistory, null)
-            : new UserDataSlice(GdprExportSections.VolunteerHistory, volunteerHistory.Select(vh => new
-            {
-                Date = vh.Date.ToIsoDateString(),
-                vh.EventName,
-                vh.Description,
-                CreatedAt = vh.CreatedAt.ToInvariantInstantString()
-            }).ToList());
+        var volunteerHistorySlice = new UserDataSlice(GdprExportSections.VolunteerHistory, volunteerHistory.Select(vh => new
+        {
+            Date = vh.Date.ToIsoDateString(),
+            vh.EventName,
+            vh.Description,
+            CreatedAt = vh.CreatedAt.ToInvariantInstantString()
+        }).ToList());
 
-        var languagesSlice = profileLanguages.Count == 0
-            ? new UserDataSlice(GdprExportSections.Languages, null)
-            : new UserDataSlice(GdprExportSections.Languages, profileLanguages.Select(pl => new
-            {
-                pl.LanguageCode,
-                pl.Proficiency
-            }).ToList());
+        var languagesSlice = new UserDataSlice(GdprExportSections.Languages, profileLanguages.Select(pl => new
+        {
+            pl.LanguageCode,
+            pl.Proficiency
+        }).ToList());
 
-        var commPrefsSlice = communicationPreferences.Count == 0
-            ? new UserDataSlice(GdprExportSections.CommunicationPreferences, null)
-            : new UserDataSlice(GdprExportSections.CommunicationPreferences, communicationPreferences.Select(cp => new
-            {
-                cp.Category,
-                cp.OptedOut,
-                cp.InboxEnabled,
-                UpdatedAt = cp.UpdatedAt.ToInvariantInstantString(),
-                cp.UpdateSource
-            }).ToList());
+        var commPrefsSlice = new UserDataSlice(GdprExportSections.CommunicationPreferences, communicationPreferences.Select(cp => new
+        {
+            cp.Category,
+            cp.OptedOut,
+            cp.InboxEnabled,
+            UpdatedAt = cp.UpdatedAt.ToInvariantInstantString(),
+            cp.UpdateSource
+        }).ToList());
 
         return [
             profileSlice,

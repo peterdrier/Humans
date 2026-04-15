@@ -276,11 +276,6 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
             })
             .ToListAsync(ct);
 
-        if (requests.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.AccountMergeRequests, null)];
-        }
-
         var shaped = requests.Select(r => new
         {
             r.Status,

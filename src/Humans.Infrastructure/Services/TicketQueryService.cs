@@ -964,29 +964,25 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
     {
         var export = await GetUserTicketExportDataAsync(userId, ct);
 
-        var ordersSlice = export.Orders.Count == 0
-            ? new UserDataSlice(GdprExportSections.TicketOrders, null)
-            : new UserDataSlice(GdprExportSections.TicketOrders, export.Orders.Select(o => new
-            {
-                o.BuyerName,
-                o.BuyerEmail,
-                o.TotalAmount,
-                o.Currency,
-                o.PaymentStatus,
-                o.DiscountCode,
-                PurchasedAt = o.PurchasedAt.ToInvariantInstantString()
-            }).ToList());
+        var ordersSlice = new UserDataSlice(GdprExportSections.TicketOrders, export.Orders.Select(o => new
+        {
+            o.BuyerName,
+            o.BuyerEmail,
+            o.TotalAmount,
+            o.Currency,
+            o.PaymentStatus,
+            o.DiscountCode,
+            PurchasedAt = o.PurchasedAt.ToInvariantInstantString()
+        }).ToList());
 
-        var attendeesSlice = export.Attendees.Count == 0
-            ? new UserDataSlice(GdprExportSections.TicketAttendeeMatches, null)
-            : new UserDataSlice(GdprExportSections.TicketAttendeeMatches, export.Attendees.Select(a => new
-            {
-                a.AttendeeName,
-                a.AttendeeEmail,
-                a.TicketTypeName,
-                a.Price,
-                a.Status
-            }).ToList());
+        var attendeesSlice = new UserDataSlice(GdprExportSections.TicketAttendeeMatches, export.Attendees.Select(a => new
+        {
+            a.AttendeeName,
+            a.AttendeeEmail,
+            a.TicketTypeName,
+            a.Price,
+            a.Status
+        }).ToList());
 
         return [ordersSlice, attendeesSlice];
     }

@@ -403,11 +403,6 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
             .OrderByDescending(fr => fr.CreatedAt)
             .ToListAsync(ct);
 
-        if (reports.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.FeedbackReports, null)];
-        }
-
         var shaped = reports.Select(fr => new
         {
             fr.Category,

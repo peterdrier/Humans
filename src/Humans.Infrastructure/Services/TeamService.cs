@@ -2411,31 +2411,27 @@ public class TeamService : ITeamService, IUserDataContributor
             .OrderByDescending(tjr => tjr.RequestedAt)
             .ToListAsync(ct);
 
-        var membershipSlice = memberships.Count == 0
-            ? new UserDataSlice(GdprExportSections.TeamMemberships, null)
-            : new UserDataSlice(GdprExportSections.TeamMemberships, memberships.Select(tm => new
+        var membershipSlice = new UserDataSlice(GdprExportSections.TeamMemberships, memberships.Select(tm => new
+        {
+            TeamName = tm.Team.Name,
+            tm.Role,
+            JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
+            LeftAt = tm.LeftAt.ToInvariantInstantString(),
+            TeamRoles = tm.RoleAssignments.Select(tra => new
             {
-                TeamName = tm.Team.Name,
-                tm.Role,
-                JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
-                LeftAt = tm.LeftAt.ToInvariantInstantString(),
-                TeamRoles = tm.RoleAssignments.Select(tra => new
-                {
-                    RoleName = tra.TeamRoleDefinition.Name,
-                    AssignedAt = tra.AssignedAt.ToInvariantInstantString()
-                })
-            }).ToList());
+                RoleName = tra.TeamRoleDefinition.Name,
+                AssignedAt = tra.AssignedAt.ToInvariantInstantString()
+            })
+        }).ToList());
 
-        var joinRequestSlice = joinRequests.Count == 0
-            ? new UserDataSlice(GdprExportSections.TeamJoinRequests, null)
-            : new UserDataSlice(GdprExportSections.TeamJoinRequests, joinRequests.Select(tjr => new
-            {
-                TeamName = tjr.Team.Name,
-                tjr.Status,
-                tjr.Message,
-                RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
-                ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
-            }).ToList());
+        var joinRequestSlice = new UserDataSlice(GdprExportSections.TeamJoinRequests, joinRequests.Select(tjr => new
+        {
+            TeamName = tjr.Team.Name,
+            tjr.Status,
+            tjr.Message,
+            RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
+            ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
+        }).ToList());
 
         return [membershipSlice, joinRequestSlice];
     }

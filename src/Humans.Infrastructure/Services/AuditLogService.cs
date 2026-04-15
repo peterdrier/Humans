@@ -283,11 +283,6 @@ public class AuditLogService : IAuditLogService, IUserDataContributor
             .OrderByDescending(a => a.OccurredAt)
             .ToListAsync(ct);
 
-        if (entries.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.AuditLog, null)];
-        }
-
         var shaped = entries.Select(a => new
         {
             a.Action,

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using AwesomeAssertions;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Infrastructure.Services;
@@ -114,6 +115,53 @@ public class GdprExportDependencyInjectionTests
 
         services.Should().ContainSingle(d => d.ServiceType == typeof(IGdprExportService),
             "the GDPR export orchestrator must be registered exactly once");
+    }
+
+    [Fact]
+    public void EveryIUserDataContributorFactoryForwardsToAnExpectedConcreteType()
+    {
+        // This is the "prevent silent drop" assertion. Counting descriptors
+        // alone doesn't catch the bug where one contributor's factory is
+        // duplicated and another is omitted — count still matches. Here we
+        // actually invoke the real forwarding factories via a test
+        // ServiceProvider whose concrete-type registrations are replaced with
+        // `GetUninitializedObject` fakes. Each factory resolves its target
+        // concrete type, and the set of resolved types must exactly match
+        // `ExpectedContributorTypes`.
+        var services = new ServiceCollection();
+        Humans.Web.Extensions.InfrastructureServiceCollectionExtensions
+            .AddHumansInfrastructure(
+                services,
+                BuildMinimalConfiguration(),
+                new StubHostEnvironment());
+
+        // Replace every contributor's concrete-type registration with a fake
+        // instance of that same type. GetUninitializedObject skips the
+        // constructor, so we never touch DbContext, IClock, or any of the
+        // other runtime dependencies.
+        foreach (var type in ExpectedContributorTypes)
+        {
+            var existing = services.FirstOrDefault(d =>
+                d.ServiceType == type && d.ImplementationFactory is null);
+            if (existing is not null)
+            {
+                services.Remove(existing);
+            }
+            var fake = RuntimeHelpers.GetUninitializedObject(type);
+            services.AddScoped(type, _ => fake);
+        }
+
+        using var provider = services.BuildServiceProvider(validateScopes: false);
+        using var scope = provider.CreateScope();
+
+        var resolvedTypes = scope.ServiceProvider
+            .GetRequiredService<IEnumerable<IUserDataContributor>>()
+            .Select(c => c.GetType())
+            .ToArray();
+
+        resolvedTypes.Should().BeEquivalentTo(
+            ExpectedContributorTypes,
+            "every IUserDataContributor forwarding factory must resolve to a distinct expected concrete type — duplicated or mis-forwarded factories would silently drop a section");
     }
 
     private static IConfiguration BuildMinimalConfiguration()

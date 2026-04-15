@@ -242,11 +242,6 @@ public class ConsentService : IConsentService, IUserDataContributor
     {
         var consents = await GetUserConsentRecordsAsync(userId, ct);
 
-        if (consents.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.Consents, null)];
-        }
-
         var shaped = consents.Select(c => new
         {
             DocumentName = c.DocumentVersion.LegalDocument.Name,

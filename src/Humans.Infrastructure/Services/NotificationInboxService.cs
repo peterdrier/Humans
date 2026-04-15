@@ -441,11 +441,6 @@ public class NotificationInboxService : INotificationInboxService, IUserDataCont
             .OrderByDescending(nr => nr.Notification.CreatedAt)
             .ToListAsync(ct);
 
-        if (recipients.Count == 0)
-        {
-            return [new UserDataSlice(GdprExportSections.Notifications, null)];
-        }
-
         var shaped = recipients.Select(nr => new
         {
             nr.Notification.Title,
