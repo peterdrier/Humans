@@ -99,6 +99,67 @@ public interface ICampService
 
     // Name change (handles historical name logging)
     Task ChangeSeasonNameAsync(Guid seasonId, string newName, CancellationToken cancellationToken = default);
+
+    // ======================================================================
+    // Camp membership per season
+    // ======================================================================
+
+    /// <summary>
+    /// Human requests to join a camp for the currently-open season.
+    /// Creates a <see cref="CampMember"/> in Pending status. No-op if an active or pending
+    /// record already exists for the human in that season.
+    /// </summary>
+    Task<CampMemberRequestResult> RequestCampMembershipAsync(
+        Guid campId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Approve a pending camp membership request. Sets status to Active.
+    /// </summary>
+    Task ApproveCampMemberAsync(
+        Guid campMemberId, Guid approvedByUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reject a pending camp membership request. Sets status to Removed.
+    /// </summary>
+    Task RejectCampMemberAsync(
+        Guid campMemberId, Guid rejectedByUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lead removes an active camp member. Sets status to Removed.
+    /// </summary>
+    Task RemoveCampMemberAsync(
+        Guid campMemberId, Guid removedByUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Human withdraws their own pending request. Sets status to Removed.
+    /// </summary>
+    Task WithdrawCampMembershipRequestAsync(
+        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Human leaves an active membership. Sets status to Removed.
+    /// </summary>
+    Task LeaveCampAsync(
+        Guid campMemberId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current user's membership state for a camp's open-season (or null if no open season).
+    /// </summary>
+    Task<CampMembershipState> GetMembershipStateForCampAsync(
+        Guid campId, Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists members (pending + active) for a given camp season. Privileged view.
+    /// </summary>
+    Task<CampMemberListData> GetCampMembersAsync(
+        Guid campSeasonId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists camps a human belongs to or has requested, grouped by year.
+    /// Used for the human's own profile dashboard.
+    /// </summary>
+    Task<IReadOnlyList<CampMembershipSummary>> GetCampMembershipsForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
 }
 
 public record CampSeasonData(
@@ -276,3 +337,68 @@ public record CampSeasonDisplayData(string Name, string CampSlug, SoundZone? Sou
 /// Lightweight camp season summary (ID, name, camp slug) for listing.
 /// </summary>
 public record CampSeasonBrief(Guid CampSeasonId, string Name, string CampSlug);
+
+/// <summary>
+/// Result of a camp membership request action.
+/// </summary>
+public record CampMemberRequestResult(
+    Guid CampMemberId,
+    CampMemberRequestOutcome Outcome,
+    string? Message = null);
+
+public enum CampMemberRequestOutcome
+{
+    /// <summary>A new pending request was created.</summary>
+    Created,
+    /// <summary>An existing pending request already existed for the human.</summary>
+    AlreadyPending,
+    /// <summary>The human is already an active member of the camp for this season.</summary>
+    AlreadyActive,
+    /// <summary>No open season for the camp — the request was not created.</summary>
+    NoOpenSeason
+}
+
+/// <summary>
+/// Current human's camp membership state relative to a camp's open-season.
+/// </summary>
+public record CampMembershipState(
+    int? OpenSeasonYear,
+    Guid? OpenSeasonId,
+    Guid? CampMemberId,
+    CampMemberStatusSummary Status);
+
+public enum CampMemberStatusSummary
+{
+    /// <summary>No open season for the camp.</summary>
+    NoOpenSeason,
+    /// <summary>Open season exists but human has no record.</summary>
+    None,
+    /// <summary>Human has a pending request.</summary>
+    Pending,
+    /// <summary>Human is an active member.</summary>
+    Active
+}
+
+public record CampMemberListData(
+    Guid CampSeasonId,
+    int Year,
+    IReadOnlyList<CampMemberRow> Pending,
+    IReadOnlyList<CampMemberRow> Active);
+
+public record CampMemberRow(
+    Guid CampMemberId,
+    Guid UserId,
+    string DisplayName,
+    Instant RequestedAt,
+    Instant? ConfirmedAt);
+
+public record CampMembershipSummary(
+    Guid CampMemberId,
+    Guid CampId,
+    string CampSlug,
+    string CampName,
+    Guid CampSeasonId,
+    int Year,
+    CampMemberStatus Status,
+    Instant RequestedAt,
+    Instant? ConfirmedAt);

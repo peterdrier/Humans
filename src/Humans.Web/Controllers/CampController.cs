@@ -116,8 +116,9 @@ public class CampController : HumansCampControllerBase
             return NotFound();
 
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
+        var membership = await ResolveCurrentUserMembershipStateAsync(camp.Id);
 
-        return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
+        return View(MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
     }
 
     [AllowAnonymous]
@@ -136,8 +137,38 @@ public class CampController : HumansCampControllerBase
             return NotFound();
 
         var (isLead, isCampAdmin) = await ResolveCampViewerStateAsync(camp);
+        var membership = await ResolveCurrentUserMembershipStateAsync(camp.Id);
 
-        return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin));
+        return View(nameof(Details), MapCampDetailViewModel(campDetail, isLead, isCampAdmin, membership));
+    }
+
+    private async Task<CampMembershipStateViewModel> ResolveCurrentUserMembershipStateAsync(Guid campId)
+    {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return new CampMembershipStateViewModel { Status = CampMemberStatusSummaryView.NoOpenSeason };
+        }
+
+        var user = await GetCurrentUserAsync();
+        if (user is null)
+        {
+            return new CampMembershipStateViewModel { Status = CampMemberStatusSummaryView.NoOpenSeason };
+        }
+
+        var state = await _campService.GetMembershipStateForCampAsync(campId, user.Id);
+        var status = state.Status switch
+        {
+            CampMemberStatusSummary.Active => CampMemberStatusSummaryView.Active,
+            CampMemberStatusSummary.Pending => CampMemberStatusSummaryView.Pending,
+            CampMemberStatusSummary.None => CampMemberStatusSummaryView.None,
+            _ => CampMemberStatusSummaryView.NoOpenSeason
+        };
+        return new CampMembershipStateViewModel
+        {
+            OpenSeasonYear = state.OpenSeasonYear,
+            CampMemberId = state.CampMemberId,
+            Status = status
+        };
     }
 
     // ======================================================================
@@ -343,7 +374,39 @@ public class CampController : HumansCampControllerBase
             return RedirectToAction(nameof(Details), new { slug });
         }
 
-        return View(MapToEditViewModel(editData));
+        var viewModel = MapToEditViewModel(editData);
+        await PopulateEditMembersAsync(viewModel);
+        return View(viewModel);
+    }
+
+    private async Task PopulateEditMembersAsync(CampEditViewModel viewModel)
+    {
+        if (viewModel.SeasonId == Guid.Empty)
+        {
+            return;
+        }
+
+        var members = await _campService.GetCampMembersAsync(viewModel.SeasonId);
+        viewModel.PendingMembers = members.Pending
+            .Select(m => new CampMemberRowViewModel
+            {
+                CampMemberId = m.CampMemberId,
+                UserId = m.UserId,
+                DisplayName = m.DisplayName,
+                RequestedAt = m.RequestedAt,
+                ConfirmedAt = m.ConfirmedAt
+            })
+            .ToList();
+        viewModel.ActiveMembers = members.Active
+            .Select(m => new CampMemberRowViewModel
+            {
+                CampMemberId = m.CampMemberId,
+                UserId = m.UserId,
+                DisplayName = m.DisplayName,
+                RequestedAt = m.RequestedAt,
+                ConfirmedAt = m.ConfirmedAt
+            })
+            .ToList();
     }
 
     [Authorize]
@@ -692,6 +755,229 @@ public class CampController : HumansCampControllerBase
     }
 
     // ======================================================================
+    // Camp membership per season (issue #488)
+    // ======================================================================
+
+    [Authorize]
+    [HttpPost("{slug}/Members/Request")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RequestMembership(string slug)
+    {
+        var camp = await GetCampBySlugAsync(slug);
+        if (camp is null) return NotFound();
+
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null) return currentUserError;
+
+        try
+        {
+            var result = await _campService.RequestCampMembershipAsync(camp.Id, user.Id);
+            switch (result.Outcome)
+            {
+                case CampMemberRequestOutcome.Created:
+                    SetSuccess("Your request to join has been sent to the camp leads.");
+                    break;
+                case CampMemberRequestOutcome.AlreadyPending:
+                    SetInfo("You already have a pending request for this camp.");
+                    break;
+                case CampMemberRequestOutcome.AlreadyActive:
+                    SetInfo("You are already an active member of this camp.");
+                    break;
+                case CampMemberRequestOutcome.NoOpenSeason:
+                    SetError(result.Message ?? "Camp is not open for membership this year.");
+                    break;
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Camp membership request failed for camp {CampId} and user {UserId}", camp.Id, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Details), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Members/Withdraw/{campMemberId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> WithdrawMembershipRequest(string slug, Guid campMemberId)
+    {
+        var camp = await GetCampBySlugAsync(slug);
+        if (camp is null) return NotFound();
+
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null) return currentUserError;
+
+        try
+        {
+            await _campService.WithdrawCampMembershipRequestAsync(campMemberId, user.Id);
+            SetSuccess("Your pending request was withdrawn.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Withdraw camp membership request failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Details), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Members/Leave/{campMemberId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> LeaveMembership(string slug, Guid campMemberId)
+    {
+        var camp = await GetCampBySlugAsync(slug);
+        if (camp is null) return NotFound();
+
+        var (currentUserError, user) = await ResolveCurrentUserOrUnauthorizedAsync();
+        if (currentUserError is not null) return currentUserError;
+
+        try
+        {
+            await _campService.LeaveCampAsync(campMemberId, user.Id);
+            SetSuccess("You have left this camp for this season.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Leave camp failed for member {MemberId} and user {UserId}", campMemberId, user.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Details), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Members/Approve/{campMemberId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveMembership(string slug, Guid campMemberId)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await _campService.ApproveCampMemberAsync(campMemberId, user.Id);
+
+            var member = await _campService.GetCampMembersAsync(await ResolveOpenSeasonIdForCampAsync(camp.Id));
+            var row = member.Active.FirstOrDefault(r => r.CampMemberId == campMemberId)
+                ?? member.Pending.FirstOrDefault(r => r.CampMemberId == campMemberId);
+
+            // Notify the requester (best-effort)
+            try
+            {
+                var campName = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name ?? camp.Slug;
+                if (row is not null)
+                {
+                    await _notificationService.SendAsync(
+                        NotificationSource.CampMembershipApproved,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"Your request to join {campName} was approved",
+                        [row.UserId],
+                        actionUrl: $"/Camps/{slug}",
+                        actionLabel: "View camp");
+                }
+            }
+            catch (Exception notifEx)
+            {
+                _logger.LogError(notifEx, "Failed to notify requester about approved camp membership {MemberId}", campMemberId);
+            }
+
+            SetSuccess("Membership approved.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Approve camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Members/Reject/{campMemberId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RejectMembership(string slug, Guid campMemberId)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        // Capture the requester BEFORE rejecting (after rejection the row status is Removed).
+        var seasonId = await ResolveOpenSeasonIdForCampAsync(camp.Id);
+        Guid? requesterUserId = null;
+        if (seasonId != Guid.Empty)
+        {
+            var list = await _campService.GetCampMembersAsync(seasonId);
+            requesterUserId = list.Pending.FirstOrDefault(r => r.CampMemberId == campMemberId)?.UserId;
+        }
+
+        try
+        {
+            await _campService.RejectCampMemberAsync(campMemberId, user.Id);
+
+            try
+            {
+                if (requesterUserId.HasValue)
+                {
+                    var campName = camp.Seasons.OrderByDescending(s => s.Year).FirstOrDefault()?.Name ?? camp.Slug;
+                    await _notificationService.SendAsync(
+                        NotificationSource.CampMembershipRejected,
+                        NotificationClass.Informational,
+                        NotificationPriority.Normal,
+                        $"Your request to join {campName} was not approved",
+                        [requesterUserId.Value]);
+                }
+            }
+            catch (Exception notifEx)
+            {
+                _logger.LogError(notifEx, "Failed to notify requester about rejected camp membership {MemberId}", campMemberId);
+            }
+
+            SetSuccess("Request rejected.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Reject camp membership failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    [Authorize]
+    [HttpPost("{slug}/Members/Remove/{campMemberId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RemoveMembership(string slug, Guid campMemberId)
+    {
+        var (errorResult, user, camp) = await ResolveCampManagementAsync(slug);
+        if (errorResult is not null) return errorResult;
+
+        try
+        {
+            await _campService.RemoveCampMemberAsync(campMemberId, user.Id);
+            SetSuccess("Member removed.");
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Remove camp member failed for member {MemberId} and camp {CampId}", campMemberId, camp.Id);
+            SetError(ex.Message);
+        }
+
+        return RedirectToAction(nameof(Edit), new { slug });
+    }
+
+    private async Task<Guid> ResolveOpenSeasonIdForCampAsync(Guid campId)
+    {
+        var settings = await _campService.GetSettingsAsync();
+        var camp = await _campService.GetCampByIdAsync(campId);
+        var season = camp?.Seasons
+            .FirstOrDefault(s => s.Year == settings.PublicYear
+                && (s.Status == CampSeasonStatus.Active || s.Status == CampSeasonStatus.Full));
+        return season?.Id ?? Guid.Empty;
+    }
+
+    // ======================================================================
     // Helper methods
     // ======================================================================
 
@@ -743,6 +1029,7 @@ public class CampController : HumansCampControllerBase
                 SortOrder = image.SortOrder
             })
             .ToList();
+        await PopulateEditMembersAsync(model);
     }
 
     private static CampEditViewModel MapToEditViewModel(CampEditData editData) =>
@@ -804,7 +1091,8 @@ public class CampController : HumansCampControllerBase
     private static CampDetailViewModel MapCampDetailViewModel(
         CampDetailData campDetail,
         bool isLead,
-        bool isCampAdmin) => new()
+        bool isCampAdmin,
+        CampMembershipStateViewModel membership) => new()
         {
             Id = campDetail.Id,
             Slug = campDetail.Slug,
@@ -850,7 +1138,8 @@ public class CampController : HumansCampControllerBase
                 IsNameLocked = campDetail.CurrentSeason.IsNameLocked
             },
             IsCurrentUserLead = isLead,
-            IsCurrentUserCampAdmin = isCampAdmin
+            IsCurrentUserCampAdmin = isCampAdmin,
+            Membership = membership
         };
 
     private void ValidatePhoneE164(string? phone, string fieldName)

@@ -263,6 +263,70 @@
             </div>
         </div>
 
+        @* Camp membership (authenticated humans only, never public) *@
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fa-solid fa-user-plus me-1"></i> Join this @Localizer["Camp_Singular"]
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        Each camp manages its own membership through its own process (website, spreadsheet, WhatsApp).
+                        This button does <strong>not</strong> join you to the camp. Use it to tell Humans about it once
+                        you are already in, so the system knows and can set up roles and early-entry slots.
+                    </p>
+                    @switch (Model.Membership.Status)
+                    {
+                        case CampMemberStatusSummaryView.Active:
+                            <div class="alert alert-success mb-2">
+                                <i class="fa-solid fa-check me-1"></i>
+                                You are a member of this camp for @Model.Membership.OpenSeasonYear.
+                            </div>
+                            @if (Model.Membership.CampMemberId.HasValue)
+                            {
+                                <form asp-action="LeaveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@Model.Membership.CampMemberId" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-danger w-100" data-confirm="Leave this camp for this season?">
+                                        <i class="fa-solid fa-right-from-bracket me-1"></i> Leave this @Localizer["Camp_Singular"]
+                                    </button>
+                                </form>
+                            }
+                            break;
+                        case CampMemberStatusSummaryView.Pending:
+                            <div class="alert alert-info mb-2">
+                                <i class="fa-solid fa-hourglass-half me-1"></i> Request pending — a camp lead will confirm it soon.
+                            </div>
+                            @if (Model.Membership.CampMemberId.HasValue)
+                            {
+                                <form asp-action="WithdrawMembershipRequest" asp-route-slug="@Model.Slug" asp-route-campMemberId="@Model.Membership.CampMemberId" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-outline-secondary w-100">
+                                        <i class="fa-solid fa-xmark me-1"></i> Withdraw request
+                                    </button>
+                                </form>
+                            }
+                            break;
+                        case CampMemberStatusSummaryView.None:
+                            <form asp-action="RequestMembership" asp-route-slug="@Model.Slug" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-primary w-100"
+                                        title="This doesn't join you to the camp — do that through the camp's own process first.">
+                                    <i class="fa-solid fa-hand me-1"></i> Request to join for @Model.Membership.OpenSeasonYear
+                                </button>
+                            </form>
+                            break;
+                        case CampMemberStatusSummaryView.NoOpenSeason:
+                        default:
+                            <button type="button" class="btn btn-outline-secondary w-100" disabled>
+                                <i class="fa-solid fa-ban me-1"></i> @Localizer["Camp_Singular"] not open for membership this year
+                            </button>
+                            break;
+                    }
+                </div>
+            </div>
+        }
+
         @* Times participating *@
         @if (Model.TimesAtNowhere > 0)
         {

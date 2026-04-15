@@ -569,6 +569,270 @@ public class CampServiceTests : IDisposable
     }
 
     // ==========================================================================
+    // Camp membership per season (issue #488)
+    // ==========================================================================
+
+    [Fact]
+    public async Task RequestCampMembershipAsync_OpenSeason_CreatesPending()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+
+        var result = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        result.Outcome.Should().Be(CampMemberRequestOutcome.Created);
+        var member = await _dbContext.CampMembers.FirstAsync(m => m.Id == result.CampMemberId);
+        member.Status.Should().Be(CampMemberStatus.Pending);
+        member.UserId.Should().Be(userId);
+    }
+
+    [Fact]
+    public async Task RequestCampMembershipAsync_NoOpenSeason_ReturnsNoOpenSeason()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        // Season is still Pending — not open for membership
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+
+        var result = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        result.Outcome.Should().Be(CampMemberRequestOutcome.NoOpenSeason);
+        (await _dbContext.CampMembers.AnyAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RequestCampMembershipAsync_AlreadyPending_IsIdempotent()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+
+        var first = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        var second = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        second.Outcome.Should().Be(CampMemberRequestOutcome.AlreadyPending);
+        second.CampMemberId.Should().Be(first.CampMemberId);
+        (await _dbContext.CampMembers.CountAsync(m => m.CampSeasonId != Guid.Empty)).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ApproveCampMemberAsync_PendingRequest_SetsActive()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        var approverId = Guid.NewGuid();
+
+        await _service.ApproveCampMemberAsync(request.CampMemberId, approverId);
+
+        var member = await _dbContext.CampMembers.FindAsync(request.CampMemberId);
+        member!.Status.Should().Be(CampMemberStatus.Active);
+        member.ConfirmedByUserId.Should().Be(approverId);
+        member.ConfirmedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task RejectCampMemberAsync_PendingRequest_SetsRemoved()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        await _service.RejectCampMemberAsync(request.CampMemberId, Guid.NewGuid());
+
+        var member = await _dbContext.CampMembers.FindAsync(request.CampMemberId);
+        member!.Status.Should().Be(CampMemberStatus.Removed);
+        member.RemovedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task RejectCampMemberAsync_AllowsReRequest()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var first = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.RejectCampMemberAsync(first.CampMemberId, Guid.NewGuid());
+
+        var second = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        second.Outcome.Should().Be(CampMemberRequestOutcome.Created);
+        second.CampMemberId.Should().NotBe(first.CampMemberId);
+    }
+
+    [Fact]
+    public async Task WithdrawCampMembershipRequestAsync_Self_SetsRemoved()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        await _service.WithdrawCampMembershipRequestAsync(request.CampMemberId, userId);
+
+        var member = await _dbContext.CampMembers.FindAsync(request.CampMemberId);
+        member!.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [Fact]
+    public async Task WithdrawCampMembershipRequestAsync_OtherUser_Throws()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+
+        var act = () => _service.WithdrawCampMembershipRequestAsync(request.CampMemberId, Guid.NewGuid());
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*only withdraw your own*");
+    }
+
+    [Fact]
+    public async Task LeaveCampAsync_ActiveMember_SetsRemoved()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.ApproveCampMemberAsync(request.CampMemberId, Guid.NewGuid());
+
+        await _service.LeaveCampAsync(request.CampMemberId, userId);
+
+        var member = await _dbContext.CampMembers.FindAsync(request.CampMemberId);
+        member!.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [Fact]
+    public async Task RemoveCampMemberAsync_ActiveMember_SetsRemoved()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.ApproveCampMemberAsync(request.CampMemberId, Guid.NewGuid());
+
+        await _service.RemoveCampMemberAsync(request.CampMemberId, Guid.NewGuid());
+
+        var member = await _dbContext.CampMembers.FindAsync(request.CampMemberId);
+        member!.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [Fact]
+    public async Task WithdrawSeasonAsync_AutoWithdrawsPendingMemberships()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+
+        await _service.WithdrawSeasonAsync(season.Id);
+
+        var member = await _dbContext.CampMembers.FindAsync(request.CampMemberId);
+        member!.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [Fact]
+    public async Task RejectSeasonAsync_AutoWithdrawsPendingMemberships()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        // Season still Pending. Open a second open-season for membership path:
+        // To test, promote the current season to Active so we can register a membership,
+        // then set it back to Pending. Simpler: override the RequestCampMembership to
+        // inject a pending member via DbContext directly.
+        var season = await _dbContext.CampSeasons.FirstAsync(s => s.CampId == camp.Id);
+        // Bypass the open-season check by seeding a CampMember directly.
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var memberId = Guid.NewGuid();
+        _dbContext.CampMembers.Add(new CampMember
+        {
+            Id = memberId,
+            CampSeasonId = season.Id,
+            UserId = userId,
+            Status = CampMemberStatus.Pending,
+            RequestedAt = _clock.GetCurrentInstant()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        await _service.RejectSeasonAsync(season.Id, Guid.NewGuid(), "Not ready");
+
+        var member = await _dbContext.CampMembers.FindAsync(memberId);
+        member!.Status.Should().Be(CampMemberStatus.Removed);
+    }
+
+    [Fact]
+    public async Task GetMembershipStateForCampAsync_ActiveMember_ReturnsActive()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var request = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.ApproveCampMemberAsync(request.CampMemberId, Guid.NewGuid());
+
+        var state = await _service.GetMembershipStateForCampAsync(camp.Id, userId);
+
+        state.Status.Should().Be(CampMemberStatusSummary.Active);
+        state.OpenSeasonYear.Should().Be(2026);
+    }
+
+    [Fact]
+    public async Task GetMembershipStateForCampAsync_NoSeason_ReturnsNoOpenSeason()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        // Season is still Pending — not open for membership
+
+        var state = await _service.GetMembershipStateForCampAsync(camp.Id, Guid.NewGuid());
+
+        state.Status.Should().Be(CampMemberStatusSummary.NoOpenSeason);
+    }
+
+    [Fact]
+    public async Task GetCampMembershipsForUserAsync_MultipleYears_GroupsByYear()
+    {
+        await SeedSettingsAsync();
+        var camp = await CreateTestCamp();
+        await ApproveLatestSeasonAsync(camp.Id);
+        var userId = Guid.NewGuid();
+        await SeedUserAsync(userId, "Alice");
+        var req = await _service.RequestCampMembershipAsync(camp.Id, userId);
+        await _service.ApproveCampMemberAsync(req.CampMemberId, Guid.NewGuid());
+
+        var memberships = await _service.GetCampMembershipsForUserAsync(userId);
+
+        memberships.Should().HaveCount(1);
+        memberships[0].Status.Should().Be(CampMemberStatus.Active);
+        memberships[0].Year.Should().Be(2026);
+    }
+
+    // ==========================================================================
     // Helpers
     // ==========================================================================
 

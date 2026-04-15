@@ -53,6 +53,25 @@ public class CampDetailViewModel
     public CampSeasonDetailViewModel? CurrentSeason { get; set; }
     public bool IsCurrentUserLead { get; set; }
     public bool IsCurrentUserCampAdmin { get; set; }
+    public CampMembershipStateViewModel Membership { get; set; } = new();
+}
+
+/// <summary>
+/// Represents the current authenticated user's relationship to a camp for the open season.
+/// </summary>
+public class CampMembershipStateViewModel
+{
+    public int? OpenSeasonYear { get; set; }
+    public Guid? CampMemberId { get; set; }
+    public CampMemberStatusSummaryView Status { get; set; } = CampMemberStatusSummaryView.NoOpenSeason;
+}
+
+public enum CampMemberStatusSummaryView
+{
+    NoOpenSeason,
+    None,
+    Pending,
+    Active
 }
 
 public class CampSeasonDetailViewModel
@@ -129,6 +148,17 @@ public class CampEditViewModel : CampRegisterViewModel
     public List<CampLeadViewModel> Leads { get; set; } = new();
     public List<CampImageViewModel> Images { get; set; } = new();
     public List<CampHistoricalNameViewModel> ExistingHistoricalNames { get; set; } = new();
+    public List<CampMemberRowViewModel> PendingMembers { get; set; } = new();
+    public List<CampMemberRowViewModel> ActiveMembers { get; set; } = new();
+}
+
+public class CampMemberRowViewModel
+{
+    public Guid CampMemberId { get; set; }
+    public Guid UserId { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public NodaTime.Instant RequestedAt { get; set; }
+    public NodaTime.Instant? ConfirmedAt { get; set; }
 }
 
 public class CampImageViewModel

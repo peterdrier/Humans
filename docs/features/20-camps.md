@@ -121,6 +121,25 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - `GET /api/camps/{year}/placement` returns placement-relevant data (space, sound zone, containers, electrical)
 - Both endpoints are public (no authentication required)
 
+### US-20.12: Per-season Camp Membership (issue #488)
+**As an** authenticated human
+**I want to** tell Humans which camp I have joined for this year
+**So that** the system can assign me camp-specific roles and early-entry slots
+
+**Important framing:** Humans does NOT manage a camp's real membership. Each camp runs its own process (website, spreadsheet, WhatsApp). A `CampMember` record is a **post-hoc** representation — humans join through the camp's own channel first, then come to Humans to record the relationship. The UI must make this clear.
+
+**Acceptance Criteria:**
+- On `/Camps/{slug}`, authenticated humans see a "Request to join for {year}" button when the camp has an Active or Full season for the current public year. Tooltip clarifies that this doesn't join you to the camp — do that through the camp's own process first.
+- When no eligible open season exists the button is disabled with "Camp not open for membership this year".
+- Clicking creates a `CampMember` row with status `Pending` and the button changes to "Request pending".
+- Camp leads and CampAdmin/Admin see a "Humans in this camp" section on `/Camps/{slug}/Edit` listing pending requests (Approve / Reject) and active members (Remove).
+- On Approve: status → `Active`, `ConfirmedAt`/`ConfirmedByUserId` set, the requester receives an in-app notification (`CampMembershipApproved`).
+- On Reject: status → `Removed`, requester is notified (`CampMembershipRejected`). Removed rows are preserved for audit and allow re-requesting later.
+- A human can withdraw their own pending request and leave their own active membership from the camp detail page.
+- When a season transitions to `Rejected` or `Withdrawn`, any pending membership rows for that season are auto-withdrawn (status → Removed).
+- The member list is **private** — never rendered on anonymous or public views, only to camp leads, CampAdmin, Admin, and the human themselves.
+- Humans see their own camps, grouped by year (Active + Pending), on their profile page via the `MyCamps` view component.
+
 ### US-20.11: Export Camps CSV
 **As a** CampAdmin or Admin
 **I want to** export camp data as CSV
@@ -208,10 +227,12 @@ CampSettings
 ### Supporting Entities
 - **CampHistoricalName**: Id, CampId, Name, Year (int?), Source (CampNameSource), CreatedAt
 - **CampImage**: Id, CampId, FileName, StoragePath, ContentType, SortOrder, UploadedAt
+- **CampMember**: Id, CampSeasonId, UserId, Status (CampMemberStatus), RequestedAt, ConfirmedAt?, ConfirmedByUserId?, RemovedAt?, RemovedByUserId?. Unique index on `(CampSeasonId, UserId) WHERE Status <> 'Removed'` — one active/pending row per season; removed rows allow re-requesting.
 
 ### Enums
 ```
 CampSeasonStatus: Pending(0), Active(1), Full(2), Rejected(4), Withdrawn(5)
+CampMemberStatus: Pending(0), Active(1), Removed(2)
 CampLeadRole: Primary(0), CoLead(1)
 CampVibe: Adult(0), ChillOut(1), ElectronicMusic(2), Games(3), Queer(4), Sober(5), Lecture(6), LiveMusic(7), Wellness(8), Workshop(9)
 CampNameSource: Manual(0), NameChange(1)
@@ -310,6 +331,11 @@ Transitions:
 | Set name lock date | CampAdmin or Admin |
 | Delete camp | Admin only |
 | JSON API | Public (AllowAnonymous) |
+| Request camp membership | Authenticated |
+| Withdraw own membership request | Authenticated (owner only) |
+| Leave own camp membership | Authenticated (owner only) |
+| Approve / Reject / Remove camp member | Camp Lead, CampAdmin, or Admin |
+| View camp member list | Camp Lead, CampAdmin, or Admin (never public) |
 
 ## URL Structure
 
@@ -337,6 +363,12 @@ Transitions:
 | `POST /Camps/Admin/SetPublicYear` | Set public year |
 | `POST /Camps/Admin/SetNameLockDate` | Set name lock date |
 | `POST /Camps/Admin/Delete/{campId}` | Delete camp |
+| `POST /Camps/{slug}/Members/Request` | Request to join camp (authenticated human) |
+| `POST /Camps/{slug}/Members/Withdraw/{campMemberId}` | Withdraw own pending request |
+| `POST /Camps/{slug}/Members/Leave/{campMemberId}` | Leave own active membership |
+| `POST /Camps/{slug}/Members/Approve/{campMemberId}` | Approve pending request (lead/CampAdmin) |
+| `POST /Camps/{slug}/Members/Reject/{campMemberId}` | Reject pending request (lead/CampAdmin) |
+| `POST /Camps/{slug}/Members/Remove/{campMemberId}` | Remove active member (lead/CampAdmin) |
 | `GET /api/camps/{year}` | JSON API: camps for year |
 | `GET /api/camps/{year}/placement` | JSON API: placement data |
 

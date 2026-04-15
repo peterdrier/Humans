@@ -33,6 +33,9 @@ public static class NotificationSourceMapping
         NotificationSource.GoogleDriftDetected => MessageCategory.System,
         NotificationSource.FacilitatedMessageReceived => MessageCategory.FacilitatedMessages,
         NotificationSource.LegalDocumentPublished => MessageCategory.System,
+        NotificationSource.CampMembershipRequested => MessageCategory.TeamUpdates,
+        NotificationSource.CampMembershipApproved => MessageCategory.TeamUpdates,
+        NotificationSource.CampMembershipRejected => MessageCategory.TeamUpdates,
         _ => MessageCategory.System
     };
 }

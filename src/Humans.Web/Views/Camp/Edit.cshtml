@@ -286,6 +286,84 @@
             </div>
         </div>
 
+        @* Camp Members (issue #488) *@
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fa-solid fa-users me-1"></i> Humans in this @Localizer["Camp_Singular"] (@Model.Year)
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-0">
+                    This is a post-hoc list — humans join through the @Localizer["Camp_Singular"].@("'")s own process,
+                    then come here to tell Humans. Only camp leads and CampAdmin see this list.
+                </p>
+            </div>
+            @if (Model.PendingMembers.Count > 0)
+            {
+                <div class="card-header bg-warning-subtle">
+                    <strong>Pending requests (@Model.PendingMembers.Count)</strong>
+                </div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var member in Model.PendingMembers)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <human-link user-id="@member.UserId" display-name="@member.DisplayName" show-popover="true" />
+                                <br />
+                                <small class="text-muted">Requested @member.RequestedAt.ToDateTimeUtc().ToString("d MMM yyyy")</small>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <form asp-action="ApproveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@member.CampMemberId" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Approve">
+                                        <i class="fa-solid fa-check"></i>
+                                    </button>
+                                </form>
+                                <form asp-action="RejectMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@member.CampMemberId" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Reject" data-confirm="Reject this request?">
+                                        <i class="fa-solid fa-xmark"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+            <div class="card-header">
+                <strong>Active members (@Model.ActiveMembers.Count)</strong>
+            </div>
+            @if (Model.ActiveMembers.Count > 0)
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var member in Model.ActiveMembers)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <human-link user-id="@member.UserId" display-name="@member.DisplayName" show-popover="true" />
+                                @if (member.ConfirmedAt.HasValue)
+                                {
+                                    <br />
+                                    <small class="text-muted">Confirmed @member.ConfirmedAt.Value.ToDateTimeUtc().ToString("d MMM yyyy")</small>
+                                }
+                            </div>
+                            <form asp-action="RemoveMembership" asp-route-slug="@Model.Slug" asp-route-campMemberId="@member.CampMemberId" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove member" data-confirm="Remove @member.DisplayName from the camp?">
+                                    <i class="fa-solid fa-user-minus"></i>
+                                </button>
+                            </form>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <div class="card-body text-muted small">
+                    No active members yet.
+                </div>
+            }
+        </div>
+
         @* Image Management *@
         <div class="card mb-4">
             <div class="card-header">

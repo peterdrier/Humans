@@ -76,5 +76,14 @@ public enum NotificationSource
     FacilitatedMessageReceived = 23,
 
     /// <summary>A new legal document version was published.</summary>
-    LegalDocumentPublished = 24
+    LegalDocumentPublished = 24,
+
+    /// <summary>A camp membership request was approved by a lead.</summary>
+    CampMembershipApproved = 25,
+
+    /// <summary>A camp membership request was rejected by a lead.</summary>
+    CampMembershipRejected = 26,
+
+    /// <summary>A human requested membership in a camp (notifies leads).</summary>
+    CampMembershipRequested = 27
 }
