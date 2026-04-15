@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -41,6 +42,7 @@ public class ProfileController : HumansControllerBase
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftSignupService _shiftSignupService;
     private readonly IShiftManagementService _shiftMgmt;
+    private readonly IGdprExportService _gdprExportService;
     private readonly IConfiguration _configuration;
     private readonly ConfigurationRegistry _configRegistry;
     private readonly ILogger<ProfileController> _logger;
@@ -87,6 +89,7 @@ public class ProfileController : HumansControllerBase
         IRoleAssignmentService roleAssignmentService,
         IShiftSignupService shiftSignupService,
         IShiftManagementService shiftMgmt,
+        IGdprExportService gdprExportService,
         IConfiguration configuration,
         ConfigurationRegistry configRegistry,
         ILogger<ProfileController> logger,
@@ -110,6 +113,7 @@ public class ProfileController : HumansControllerBase
         _roleAssignmentService = roleAssignmentService;
         _shiftSignupService = shiftSignupService;
         _shiftMgmt = shiftMgmt;
+        _gdprExportService = gdprExportService;
         _configuration = configuration;
         _configRegistry = configRegistry;
         _logger = logger;
@@ -954,19 +958,33 @@ public class ProfileController : HumansControllerBase
 
     [HttpGet("Me/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public async Task<IActionResult> DownloadData()
+    public async Task<IActionResult> DownloadData(CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
             return NotFound();
 
-        var exportData = await _profileService.ExportDataAsync(user.Id);
+        var export = await _gdprExportService.ExportForUserAsync(user.Id, ct);
 
-        var json = System.Text.Json.JsonSerializer.Serialize(exportData, ExportJsonOptions);
+        var payload = BuildExportPayload(export);
+        var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
         var bytes = System.Text.Encoding.UTF8.GetBytes(json);
         var fileName = $"nobodies-profiles-export-{_clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
 
         return File(bytes, "application/json", fileName);
+    }
+
+    private static Dictionary<string, object?> BuildExportPayload(GdprExport export)
+    {
+        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["ExportedAt"] = export.ExportedAt
+        };
+        foreach (var (section, data) in export.Sections)
+        {
+            payload[section] = data;
+        }
+        return payload;
     }
 
     // ─── Shared (Profile Picture) ────────────────────────────────────

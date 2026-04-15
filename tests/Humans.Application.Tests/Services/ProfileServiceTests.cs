@@ -1002,17 +1002,6 @@ public class ProfileServiceTests : IDisposable
         pendingEmailId.Should().BeNull();
     }
 
-    [Fact]
-    public async Task ExportDataAsync_ReturnsNonNull()
-    {
-        var userId = Guid.NewGuid();
-        await SeedUserWithProfileAsync(userId);
-
-        var result = await _service.ExportDataAsync(userId);
-
-        result.Should().NotBeNull();
-    }
-
     // --- Search ---
 
     [Fact]
