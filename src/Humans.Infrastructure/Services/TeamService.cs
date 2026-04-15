@@ -7,6 +7,7 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -18,7 +19,7 @@ namespace Humans.Infrastructure.Services;
 /// <summary>
 /// Service for managing teams and team membership.
 /// </summary>
-public class TeamService : ITeamService
+public class TeamService : ITeamService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
@@ -2390,5 +2391,52 @@ public class TeamService : ITeamService
                 }
             }
         });
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var memberships = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Include(tm => tm.Team)
+            .Include(tm => tm.RoleAssignments)
+                .ThenInclude(tra => tra.TeamRoleDefinition)
+            .Where(tm => tm.UserId == userId)
+            .OrderByDescending(tm => tm.JoinedAt)
+            .ToListAsync(ct);
+
+        var joinRequests = await _dbContext.TeamJoinRequests
+            .AsNoTracking()
+            .Include(tjr => tjr.Team)
+            .Where(tjr => tjr.UserId == userId)
+            .OrderByDescending(tjr => tjr.RequestedAt)
+            .ToListAsync(ct);
+
+        var membershipSlice = memberships.Count == 0
+            ? new UserDataSlice(GdprExportSections.TeamMemberships, null)
+            : new UserDataSlice(GdprExportSections.TeamMemberships, memberships.Select(tm => new
+            {
+                TeamName = tm.Team.Name,
+                tm.Role,
+                JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
+                LeftAt = tm.LeftAt.ToInvariantInstantString(),
+                TeamRoles = tm.RoleAssignments.Select(tra => new
+                {
+                    RoleName = tra.TeamRoleDefinition.Name,
+                    AssignedAt = tra.AssignedAt.ToInvariantInstantString()
+                })
+            }).ToList());
+
+        var joinRequestSlice = joinRequests.Count == 0
+            ? new UserDataSlice(GdprExportSections.TeamJoinRequests, null)
+            : new UserDataSlice(GdprExportSections.TeamJoinRequests, joinRequests.Select(tjr => new
+            {
+                TeamName = tjr.Team.Name,
+                tjr.Status,
+                tjr.Message,
+                RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
+                ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
+            }).ToList());
+
+        return [membershipSlice, joinRequestSlice];
     }
 }

@@ -1,5 +1,7 @@
 using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -12,7 +14,7 @@ namespace Humans.Infrastructure.Services;
 /// <summary>
 /// Service for notification inbox read models and write operations.
 /// </summary>
-public class NotificationInboxService : INotificationInboxService
+public class NotificationInboxService : INotificationInboxService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
@@ -428,5 +430,34 @@ public class NotificationInboxService : INotificationInboxService
         {
             _cache.Remove(CacheKeys.NotificationBadgeCounts(userId));
         }
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var recipients = await _dbContext.NotificationRecipients
+            .AsNoTracking()
+            .Include(nr => nr.Notification)
+            .Where(nr => nr.UserId == userId)
+            .OrderByDescending(nr => nr.Notification.CreatedAt)
+            .ToListAsync(ct);
+
+        if (recipients.Count == 0)
+        {
+            return [new UserDataSlice(GdprExportSections.Notifications, null)];
+        }
+
+        var shaped = recipients.Select(nr => new
+        {
+            nr.Notification.Title,
+            nr.Notification.Body,
+            nr.Notification.ActionUrl,
+            nr.Notification.Priority,
+            nr.Notification.Source,
+            CreatedAt = nr.Notification.CreatedAt.ToInvariantInstantString(),
+            ReadAt = nr.ReadAt.ToInvariantInstantString(),
+            ResolvedAt = nr.Notification.ResolvedAt.ToInvariantInstantString()
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.Notifications, shaped)];
     }
 }
