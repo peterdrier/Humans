@@ -603,8 +603,8 @@ public class OnboardingServiceTests : IDisposable
         var (applications, _) = await _service.GetBoardVotingDashboardAsync();
 
         applications.Should().HaveCount(2);
-        applications[0].Id.Should().Be(colabId);
-        applications[1].Id.Should().Be(asocId);
+        applications[0].ApplicationId.Should().Be(colabId);
+        applications[1].ApplicationId.Should().Be(asocId);
     }
 
     [Fact]
@@ -712,8 +712,8 @@ public class OnboardingServiceTests : IDisposable
         var result = await _service.GetBoardVotingDetailAsync(appId);
 
         result.Should().NotBeNull();
-        result!.Id.Should().Be(appId);
-        result.BoardVotes.Should().HaveCount(1);
+        result!.ApplicationId.Should().Be(appId);
+        result.Votes.Should().HaveCount(1);
     }
 
     [Fact]
@@ -744,9 +744,8 @@ public class OnboardingServiceTests : IDisposable
         var result = await _service.GetBoardVotingDetailAsync(appId);
 
         result.Should().NotBeNull();
-        var vote = result!.BoardVotes.First();
-        vote.BoardMemberUser.Should().NotBeNull();
-        vote.BoardMemberUser.DisplayName.Should().Be("Voter");
+        var vote = result!.Votes.First();
+        vote.BoardMemberDisplayName.Should().Be("Voter");
     }
 
     // --- HasBoardVotesAsync ---

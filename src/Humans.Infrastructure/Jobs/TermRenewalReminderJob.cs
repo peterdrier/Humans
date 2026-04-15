@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Interfaces;
+using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
@@ -46,8 +47,6 @@ public class TermRenewalReminderJob : IRecurringJob
 
             // Find approved applications with term expiring within 90 days that haven't had a reminder sent
             var expiringApplications = await _dbContext.Applications
-                .Include(a => a.User)
-                    .ThenInclude(u => u.UserEmails)
                 .Where(a =>
                     a.Status == ApplicationStatus.Approved &&
                     a.TermExpiresAt != null &&
@@ -74,6 +73,19 @@ public class TermRenewalReminderJob : IRecurringJob
                 .Select(x => (x.UserId, x.MembershipTier))
                 .ToHashSet();
 
+            // Stitch applicant user info in memory — Application.User cross-domain
+            // nav was stripped in the Governance migration (design-rules §6).
+            var applicantIds = latestPerUserTier
+                .Select(a => a.UserId)
+                .Distinct()
+                .ToList();
+            var applicantsById = applicantIds.Count == 0
+                ? new Dictionary<Guid, User>()
+                : await _dbContext.Users
+                    .Include(u => u.UserEmails)
+                    .Where(u => applicantIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id, cancellationToken);
+
             var sentCount = 0;
 
             foreach (var application in latestPerUserTier)
@@ -86,7 +98,15 @@ public class TermRenewalReminderJob : IRecurringJob
                     continue;
                 }
 
-                var email = application.User.GetEffectiveEmail() ?? application.User.Email;
+                if (!applicantsById.TryGetValue(application.UserId, out var applicant))
+                {
+                    _logger.LogWarning(
+                        "User {UserId} not found while sending renewal reminder for {Tier}",
+                        application.UserId, application.MembershipTier);
+                    continue;
+                }
+
+                var email = applicant.GetEffectiveEmail() ?? applicant.Email;
                 if (email is null)
                 {
                     continue;
@@ -99,10 +119,10 @@ public class TermRenewalReminderJob : IRecurringJob
 
                     await _emailService.SendTermRenewalReminderAsync(
                         email,
-                        application.User.DisplayName,
+                        applicant.DisplayName,
                         application.MembershipTier.ToString(),
                         expiresFormatted,
-                        application.User.PreferredLanguage,
+                        applicant.PreferredLanguage,
                         cancellationToken);
 
                     application.RenewalReminderSentAt = _clock.GetCurrentInstant();

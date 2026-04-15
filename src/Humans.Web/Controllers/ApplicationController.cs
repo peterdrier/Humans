@@ -179,16 +179,15 @@ public class ApplicationController : HumansControllerBase
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
             ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
             ResolvedAt = application.ResolvedAt?.ToDateTimeUtc(),
-            ReviewerName = application.ReviewedByUser?.DisplayName,
+            ReviewerName = application.ReviewerName,
             ReviewNotes = application.ReviewNotes,
             CanWithdraw = application.Status == ApplicationStatus.Submitted,
-            History = application.StateHistory
-                .OrderByDescending(h => h.ChangedAt)
+            History = application.History
                 .Select(h => new ApplicationHistoryViewModel
                 {
                     Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByUser.DisplayName,
+                    ChangedBy = h.ChangedByDisplayName ?? string.Empty,
                     Notes = h.Notes
                 }).ToList()
         };
@@ -238,8 +237,8 @@ public class ApplicationController : HumansControllerBase
         {
             Id = a.Id,
             UserId = a.UserId,
-            UserEmail = a.User.Email ?? string.Empty,
-            UserDisplayName = a.User.DisplayName,
+            UserEmail = a.UserEmail,
+            UserDisplayName = a.UserDisplayName,
             Status = a.Status,
             StatusBadgeClass = a.Status.GetBadgeClass(),
             SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
@@ -275,9 +274,9 @@ public class ApplicationController : HumansControllerBase
         {
             Id = application.Id,
             UserId = application.UserId,
-            UserEmail = application.User.Email ?? string.Empty,
-            UserDisplayName = application.User.DisplayName,
-            UserProfilePictureUrl = application.User.ProfilePictureUrl,
+            UserEmail = application.UserEmail,
+            UserDisplayName = application.UserDisplayName,
+            UserProfilePictureUrl = application.UserProfilePictureUrl,
             Status = application.Status,
             Motivation = application.Motivation,
             AdditionalInfo = application.AdditionalInfo,
@@ -287,16 +286,15 @@ public class ApplicationController : HumansControllerBase
             Language = application.Language,
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
             ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
-            ReviewerName = application.ReviewedByUser?.DisplayName,
+            ReviewerName = application.ReviewerName,
             ReviewNotes = application.ReviewNotes,
             CanApproveReject = application.Status == ApplicationStatus.Submitted,
-            History = application.StateHistory
-                .OrderByDescending(h => h.ChangedAt)
+            History = application.History
                 .Select(h => new ApplicationHistoryViewModel
                 {
                     Status = h.Status,
                     ChangedAt = h.ChangedAt.ToDateTimeUtc(),
-                    ChangedBy = h.ChangedByUser.DisplayName,
+                    ChangedBy = h.ChangedByDisplayName ?? string.Empty,
                     Notes = h.Notes
                 }).ToList()
         };

@@ -20,14 +20,11 @@ public class Application
     public Guid Id { get; init; }
 
     /// <summary>
-    /// Foreign key to the applicant user.
+    /// Foreign key to the applicant user. Use <c>IUserService.GetByIdAsync</c>
+    /// or <c>IUserService.GetByIdsAsync</c> to hydrate user info — cross-domain
+    /// navigation properties are forbidden on this entity (design-rules §6).
     /// </summary>
     public Guid UserId { get; init; }
-
-    /// <summary>
-    /// Navigation property to the applicant.
-    /// </summary>
-    public User User { get; set; } = null!;
 
     /// <summary>
     /// The membership tier being applied for (Colaborador or Asociado — never Volunteer).
@@ -85,14 +82,11 @@ public class Application
     public Instant? ResolvedAt { get; private set; }
 
     /// <summary>
-    /// ID of the reviewer who processed the application.
+    /// ID of the reviewer who processed the application. Use
+    /// <c>IUserService</c> to hydrate reviewer info — cross-domain
+    /// navigation properties are forbidden on this entity.
     /// </summary>
     public Guid? ReviewedByUserId { get; private set; }
-
-    /// <summary>
-    /// Navigation property to the reviewer.
-    /// </summary>
-    public User? ReviewedByUser { get; set; }
 
     /// <summary>
     /// Reason for rejection or notes from reviewer.

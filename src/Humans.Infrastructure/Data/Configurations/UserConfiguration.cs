@@ -48,8 +48,14 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(cr => cr.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // One-way relationship: User.Applications collection nav is
+        // preserved (still used by ProfileService's admin flow — tracked as
+        // a known incoming violation in Governance.md that the Profile
+        // migration will clean up) but the back-nav Application.User has
+        // been stripped per §6. EF configures the relationship without a
+        // back-reference expression.
         builder.HasMany(u => u.Applications)
-            .WithOne(a => a.User)
+            .WithOne()
             .HasForeignKey(a => a.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 

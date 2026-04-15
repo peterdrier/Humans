@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Domain.Entities;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Data.Configurations;
@@ -42,7 +43,10 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplicati
         builder.Property(a => a.UpdatedAt)
             .IsRequired();
 
-        builder.HasOne(a => a.ReviewedByUser)
+        // FK-only relationship to User — the cross-domain nav property was
+        // stripped in the Governance migration (design-rules §6). The FK
+        // column stays in the schema; only the in-memory nav is removed.
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(a => a.ReviewedByUserId)
             .OnDelete(DeleteBehavior.Restrict);

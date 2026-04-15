@@ -76,23 +76,40 @@ public class SendBoardDailyDigestJob : IRecurringJob
                 groups.Add(new BoardDigestTierGroup("Volunteer", volunteerNames));
             }
 
-            // 2. Tier application approvals (Colaborador/Asociado)
+            // 2. Tier application approvals (Colaborador/Asociado).
+            //    Application.User nav was stripped in the Governance migration —
+            //    fetch applicants separately and stitch DisplayName in memory.
             var tierApprovals = await _dbContext.Applications
-                .Include(a => a.User)
                 .Where(a => a.Status == ApplicationStatus.Approved
                     && a.ResolvedAt != null
                     && a.ResolvedAt.Value >= windowStart
                     && a.ResolvedAt.Value < windowEnd)
-                .Select(a => new { a.MembershipTier, a.User.DisplayName })
+                .Select(a => new { a.MembershipTier, a.UserId })
                 .ToListAsync(cancellationToken);
 
-            foreach (var tierGroup in tierApprovals
-                .GroupBy(a => a.MembershipTier)
-                .OrderBy(g => g.Key))
+            if (tierApprovals.Count > 0)
             {
-                var tierLabel = tierGroup.Key.ToString();
-                var names = tierGroup.Select(a => a.DisplayName).OrderBy(n => n, StringComparer.Ordinal).ToList();
-                groups.Add(new BoardDigestTierGroup(tierLabel, names));
+                var approvedUserIds = tierApprovals
+                    .Select(a => a.UserId)
+                    .Distinct()
+                    .ToList();
+                var approvedUsersById = await _dbContext.Users
+                    .AsNoTracking()
+                    .Where(u => approvedUserIds.Contains(u.Id))
+                    .Select(u => new { u.Id, u.DisplayName })
+                    .ToDictionaryAsync(u => u.Id, u => u.DisplayName, cancellationToken);
+
+                foreach (var tierGroup in tierApprovals
+                    .GroupBy(a => a.MembershipTier)
+                    .OrderBy(g => g.Key))
+                {
+                    var tierLabel = tierGroup.Key.ToString();
+                    var names = tierGroup
+                        .Select(a => approvedUsersById.GetValueOrDefault(a.UserId) ?? string.Empty)
+                        .OrderBy(n => n, StringComparer.Ordinal)
+                        .ToList();
+                    groups.Add(new BoardDigestTierGroup(tierLabel, names));
+                }
             }
 
             // 3. Compute shared outstanding counts

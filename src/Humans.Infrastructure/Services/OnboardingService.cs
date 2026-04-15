@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.DTOs.Governance;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
@@ -113,12 +114,43 @@ public class OnboardingService : IOnboardingService
         GetBoardVotingDashboardAsync(CancellationToken ct = default)
     {
         var applications = await _dbContext.Applications
-            .Include(a => a.User)
             .Include(a => a.BoardVotes)
             .Where(a => a.Status == ApplicationStatus.Submitted)
             .OrderBy(a => a.MembershipTier)
             .ThenBy(a => a.SubmittedAt)
             .ToListAsync(ct);
+
+        // Stitch applicant user info in memory — the cross-domain nav
+        // Application.User was stripped in the Governance migration.
+        var applicantIds = applications.Select(a => a.UserId).Distinct().ToList();
+        var applicantsById = applicantIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => applicantIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, ct);
+
+        var rows = applications.Select(a =>
+        {
+            var applicant = applicantsById.GetValueOrDefault(a.UserId);
+            return new BoardVotingDashboardRow(
+                ApplicationId: a.Id,
+                UserId: a.UserId,
+                UserDisplayName: applicant?.DisplayName ?? string.Empty,
+                UserProfilePictureUrl: applicant?.ProfilePictureUrl,
+                MembershipTier: a.MembershipTier,
+                ApplicationMotivation: a.Motivation,
+                SubmittedAt: a.SubmittedAt,
+                Status: a.Status,
+                Votes: a.BoardVotes
+                    .Select(v => new BoardVoteRow(
+                        BoardMemberUserId: v.BoardMemberUserId,
+                        BoardMemberDisplayName: null,
+                        Vote: v.Vote,
+                        Note: v.Note,
+                        VotedAt: v.VotedAt))
+                    .ToList());
+        }).ToList();
 
         var now = _clock.GetCurrentInstant();
         var boardMemberIds = await _dbContext.RoleAssignments
@@ -142,17 +174,66 @@ public class OnboardingService : IOnboardingService
             .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new Application.DTOs.BoardVotingDashboardData(applications, boardMembers);
+        return new Application.DTOs.BoardVotingDashboardData(rows, boardMembers);
     }
 
-    public async Task<MemberApplication?> GetBoardVotingDetailAsync(Guid applicationId, CancellationToken ct = default)
+    public async Task<BoardVotingDetailData?> GetBoardVotingDetailAsync(
+        Guid applicationId,
+        CancellationToken ct = default)
     {
-        return await _dbContext.Applications
-            .Include(a => a.User)
-                .ThenInclude(u => u.Profile)
+        var application = await _dbContext.Applications
             .Include(a => a.BoardVotes)
-                .ThenInclude(v => v.BoardMemberUser)
             .FirstOrDefaultAsync(a => a.Id == applicationId, ct);
+        if (application is null)
+            return null;
+
+        // Fetch applicant user + profile in memory — cross-domain navs stripped.
+        var applicant = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == application.UserId, ct);
+        var profile = await _dbContext.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == application.UserId, ct);
+
+        // Fetch voter display names in bulk.
+        var voterIds = application.BoardVotes
+            .Select(v => v.BoardMemberUserId)
+            .Distinct()
+            .ToList();
+        var votersById = voterIds.Count == 0
+            ? new Dictionary<Guid, User>()
+            : await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => voterIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, ct);
+
+        var voteRows = application.BoardVotes
+            .Select(v => new BoardVoteRow(
+                BoardMemberUserId: v.BoardMemberUserId,
+                BoardMemberDisplayName: votersById.GetValueOrDefault(v.BoardMemberUserId)?.DisplayName,
+                Vote: v.Vote,
+                Note: v.Note,
+                VotedAt: v.VotedAt))
+            .ToList();
+
+        return new BoardVotingDetailData(
+            ApplicationId: application.Id,
+            UserId: application.UserId,
+            DisplayName: applicant?.DisplayName ?? string.Empty,
+            ProfilePictureUrl: applicant?.ProfilePictureUrl,
+            Email: applicant?.Email ?? string.Empty,
+            FirstName: profile?.FirstName ?? string.Empty,
+            LastName: profile?.LastName ?? string.Empty,
+            City: profile?.City,
+            CountryCode: profile?.CountryCode,
+            MembershipTier: application.MembershipTier,
+            Status: application.Status,
+            Motivation: application.Motivation,
+            AdditionalInfo: application.AdditionalInfo,
+            SignificantContribution: application.SignificantContribution,
+            RoleUnderstanding: application.RoleUnderstanding,
+            SubmittedAt: application.SubmittedAt,
+            Votes: voteRows);
     }
 
     public async Task<OnboardingResult> ClearConsentCheckAsync(

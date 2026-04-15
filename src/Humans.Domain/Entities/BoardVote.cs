@@ -26,14 +26,11 @@ public class BoardVote
     public Application Application { get; set; } = null!;
 
     /// <summary>
-    /// Foreign key to the Board member who cast the vote.
+    /// Foreign key to the Board member who cast the vote. Use
+    /// <c>IUserService</c> to hydrate display info — cross-domain
+    /// navigation properties are forbidden on this entity (design-rules §6).
     /// </summary>
     public Guid BoardMemberUserId { get; init; }
-
-    /// <summary>
-    /// Navigation property to the Board member.
-    /// </summary>
-    public User BoardMemberUser { get; set; } = null!;
 
     /// <summary>
     /// The vote choice.

@@ -34,14 +34,11 @@ public class ApplicationStateHistory
     public Instant ChangedAt { get; init; }
 
     /// <summary>
-    /// ID of the user who made the change.
+    /// ID of the user who made the change. Use <c>IUserService</c> to
+    /// hydrate display info — cross-domain navigation properties are
+    /// forbidden on this entity (design-rules §6).
     /// </summary>
     public Guid ChangedByUserId { get; init; }
-
-    /// <summary>
-    /// Navigation property to the user who made the change.
-    /// </summary>
-    public User ChangedByUser { get; set; } = null!;
 
     /// <summary>
     /// Optional notes about the state change.

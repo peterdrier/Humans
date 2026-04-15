@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using ApplicationDecisionService = Humans.Application.Services.ApplicationDecisionService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 
@@ -86,10 +87,18 @@ public class GdprExportDependencyInjectionTests
     [Fact]
     public void EveryIUserDataContributorInInfrastructureIsExpected()
     {
+        // Scan both assemblies where section services live: Humans.Infrastructure
+        // still holds most of them, and Humans.Application is the new target
+        // location per the repository/store/decorator migration — the first
+        // such move is ApplicationDecisionService (Governance, PR #503).
         var infrastructureAssembly = typeof(ProfileService).Assembly;
-        var foundContributors = infrastructureAssembly.GetTypes()
+        var applicationAssembly = typeof(ApplicationDecisionService).Assembly;
+
+        var foundContributors = new[] { infrastructureAssembly, applicationAssembly }
+            .SelectMany(asm => asm.GetTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false })
             .Where(t => typeof(IUserDataContributor).IsAssignableFrom(t))
+            .Distinct()
             .ToArray();
 
         foundContributors.Should().BeEquivalentTo(

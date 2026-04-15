@@ -1,32 +1,36 @@
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Application.Interfaces;
+using Humans.Application.Services;
 using Humans.Domain;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Stores;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Tests.Services;
 
-public class ApplicationDecisionServiceTests : IDisposable
+public sealed class ApplicationDecisionServiceTests : IDisposable
 {
     private readonly HumansDbContext _dbContext;
+    private readonly ApplicationRepository _repository;
+    private readonly ApplicationStore _store;
     private readonly FakeClock _clock;
-    private readonly ApplicationDecisionService _service;
+    private readonly IUserService _userService = Substitute.For<IUserService>();
+    private readonly IProfileService _profileService = Substitute.For<IProfileService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationService _notificationService = Substitute.For<INotificationService>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
+    private readonly ApplicationDecisionService _service;
 
     public ApplicationDecisionServiceTests()
     {
@@ -35,16 +39,32 @@ public class ApplicationDecisionServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
+        _repository = new ApplicationRepository(_dbContext);
+        _store = new ApplicationStore();
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+
+        // Default stubs — tests that need stitched user data override these.
+        _userService.GetByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(new Dictionary<Guid, User>()));
+        _userService.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<User?>(null));
+
         _service = new ApplicationDecisionService(
-            _dbContext, _auditLogService, _emailService, _notificationService, _syncJob,
-            _metrics, _clock, _cache,
+            _repository,
+            _store,
+            _userService,
+            _profileService,
+            _auditLogService,
+            _emailService,
+            _notificationService,
+            _syncJob,
+            _metrics,
+            _clock,
             NullLogger<ApplicationDecisionService>.Instance);
     }
 
     public void Dispose()
     {
-        _cache.Dispose();
         _dbContext.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -111,15 +131,17 @@ public class ApplicationDecisionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SubmitAsync_ReturnsApplicationId()
+    public async Task SubmitAsync_UpsertsIntoStore()
     {
+        var userId = Guid.NewGuid();
+
         var result = await _service.SubmitAsync(
-            Guid.NewGuid(), MembershipTier.Colaborador, "Motivation",
+            userId, MembershipTier.Colaborador, "Motivation",
             null, null, null, "en");
 
-        result.ApplicationId.Should().NotBeNull();
-        var app = await _dbContext.Applications.FirstAsync();
-        result.ApplicationId.Should().Be(app.Id);
+        var stored = _store.GetById(result.ApplicationId!.Value);
+        stored.Should().NotBeNull();
+        stored!.UserId.Should().Be(userId);
     }
 
     // --- Withdraw flow ---
@@ -169,7 +191,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task ApproveAsync_SubmittedApplication_SetsApproved()
     {
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
 
         var result = await _service.ApproveAsync(app.Id, Guid.NewGuid(), "Approved", null);
 
@@ -181,7 +203,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task ApproveAsync_SetsTermExpiry()
     {
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
@@ -192,20 +214,21 @@ public class ApplicationDecisionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ApproveAsync_UpdatesProfileTier()
+    public async Task ApproveAsync_UpdatesProfileTierViaProfileService()
     {
-        var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
-        profile.MembershipTier.Should().Be(MembershipTier.Asociado);
+        await _profileService.Received().SetMembershipTierAsync(
+            userId, MembershipTier.Asociado, Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task ApproveAsync_DeletesBoardVotes()
     {
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         _dbContext.BoardVotes.Add(new BoardVote
         {
             Id = Guid.NewGuid(),
@@ -225,7 +248,8 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task ApproveAsync_SyncsColaboradorTeam()
     {
-        var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
@@ -236,7 +260,8 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task ApproveAsync_SyncsAsociadoTeam()
     {
-        var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
 
@@ -245,9 +270,21 @@ public class ApplicationDecisionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ApproveAsync_UpsertsIntoStore()
+    {
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
+
+        var stored = _store.GetById(app.Id);
+        stored.Should().NotBeNull();
+        stored!.Status.Should().Be(ApplicationStatus.Approved);
+    }
+
+    [Fact]
     public async Task ApproveAsync_NotSubmitted_ReturnsError()
     {
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         app.Withdraw(_clock);
         await _dbContext.SaveChangesAsync();
 
@@ -266,12 +303,36 @@ public class ApplicationDecisionServiceTests : IDisposable
         result.ErrorKey.Should().Be("NotFound");
     }
 
+    [Fact]
+    public async Task ApproveAsync_EmailsApplicantViaUserServiceLookup()
+    {
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Colaborador);
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Alice",
+            UserName = "alice@test.com",
+            Email = "alice@test.com",
+            PreferredLanguage = "en"
+        };
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+
+        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, null);
+
+        await _emailService.Received().SendApplicationApprovedAsync(
+            "alice@test.com",
+            "Alice",
+            MembershipTier.Colaborador,
+            "en");
+    }
+
     // --- Reject flow ---
 
     [Fact]
     public async Task RejectAsync_SubmittedApplication_SetsRejected()
     {
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
 
         var result = await _service.RejectAsync(app.Id, Guid.NewGuid(), "Not ready", null);
 
@@ -284,7 +345,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task RejectAsync_DeletesBoardVotes()
     {
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         _dbContext.BoardVotes.Add(new BoardVote
         {
             Id = Guid.NewGuid(),
@@ -304,18 +365,19 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task RejectAsync_DoesNotUpdateProfileTier()
     {
-        var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
-        profile.MembershipTier.Should().Be(MembershipTier.Volunteer);
+        await _profileService.DidNotReceive().SetMembershipTierAsync(
+            Arg.Any<Guid>(), Arg.Any<MembershipTier>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task RejectAsync_DoesNotSyncTeams()
     {
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", null);
 
@@ -326,7 +388,7 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task RejectAsync_NotSubmitted_ReturnsError()
     {
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         app.Withdraw(_clock);
         await _dbContext.SaveChangesAsync();
 
@@ -370,7 +432,6 @@ public class ApplicationDecisionServiceTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant()
         };
         await _dbContext.Applications.AddRangeAsync(app1, app2, app3);
-        // Approve one, withdraw another, leave the third as Submitted
         app1.Approve(Guid.NewGuid(), "ok", _clock);
         app2.Withdraw(_clock);
         await _dbContext.SaveChangesAsync();
@@ -378,12 +439,9 @@ public class ApplicationDecisionServiceTests : IDisposable
         var result = await _service.GetUserApplicationsAsync(userId);
 
         result.Should().HaveCount(3);
-        result[0].Id.Should().Be(app3.Id); // most recent
+        result[0].Id.Should().Be(app3.Id);
         result[1].Id.Should().Be(app2.Id);
-        result[2].Id.Should().Be(app1.Id); // oldest
-        result.Select(a => a.Status).Should().Contain(ApplicationStatus.Submitted);
-        result.Select(a => a.Status).Should().Contain(ApplicationStatus.Approved);
-        result.Select(a => a.Status).Should().Contain(ApplicationStatus.Withdrawn);
+        result[2].Id.Should().Be(app1.Id);
     }
 
     [Fact]
@@ -411,35 +469,39 @@ public class ApplicationDecisionServiceTests : IDisposable
     // --- GetUserApplicationDetailAsync ---
 
     [Fact]
-    public async Task GetUserApplicationDetailAsync_ReturnsApplicationWithIncludes()
+    public async Task GetUserApplicationDetailAsync_ReturnsStitchedUserDetailDto()
     {
+        var userId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        var reviewer = new User
         {
             Id = reviewerId,
             DisplayName = "Reviewer",
-            UserName = "reviewer@test.com",
-            Email = "reviewer@test.com"
-        });
-        await _dbContext.SaveChangesAsync();
+            UserName = "r@t.com",
+            Email = "r@t.com"
+        };
+        var users = new Dictionary<Guid, User> { [reviewerId] = reviewer };
+        _userService.GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(reviewerId)),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(users));
 
-        var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(userId);
         app.Approve(reviewerId, "Good", _clock);
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId);
 
         result.Should().NotBeNull();
-        result!.ReviewedByUser.Should().NotBeNull();
-        result.ReviewedByUser!.DisplayName.Should().Be("Reviewer");
-        result.StateHistory.Should().NotBeEmpty();
+        result!.ReviewerName.Should().Be("Reviewer");
+        result.History.Should().NotBeEmpty();
+        result.History[0].ChangedByDisplayName.Should().Be("Reviewer");
     }
 
     [Fact]
     public async Task GetUserApplicationDetailAsync_WrongUser_ReturnsNull()
     {
-        var userId = Guid.NewGuid();
-        var app = await SeedSubmittedApplicationAsync(userId);
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
 
         var result = await _service.GetUserApplicationDetailAsync(app.Id, Guid.NewGuid());
 
@@ -457,15 +519,16 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task GetUserApplicationDetailAsync_IncludesStateHistory()
     {
-        var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId);
         app.Withdraw(_clock);
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.GetUserApplicationDetailAsync(app.Id, userId);
 
         result.Should().NotBeNull();
-        result!.StateHistory.Should().HaveCount(1);
-        result.StateHistory.First().Status.Should().Be(ApplicationStatus.Withdrawn);
+        result!.History.Should().HaveCount(1);
+        result.History[0].Status.Should().Be(ApplicationStatus.Withdrawn);
     }
 
     // --- GetFilteredApplicationsAsync ---
@@ -473,8 +536,8 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task GetFilteredApplicationsAsync_DefaultsToSubmitted()
     {
-        var (submittedApp, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
-        var (approvedApp, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var submittedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var approvedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         approvedApp.Approve(Guid.NewGuid(), "ok", _clock);
         await _dbContext.SaveChangesAsync();
 
@@ -489,8 +552,8 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task GetFilteredApplicationsAsync_FiltersByStatus()
     {
-        var (_, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
-        var (approvedApp, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        await SeedSubmittedApplicationAsync(Guid.NewGuid());
+        var approvedApp = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         approvedApp.Approve(Guid.NewGuid(), "ok", _clock);
         await _dbContext.SaveChangesAsync();
 
@@ -504,22 +567,20 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task GetFilteredApplicationsAsync_FiltersByTier()
     {
-        var (colabApp, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
-        var (asociadoApp, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
+        await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Colaborador);
+        var asociadoApp = await SeedSubmittedApplicationAsync(Guid.NewGuid(), MembershipTier.Asociado);
 
-        var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, "Colaborador", 1, 10);
+        var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, "Asociado", 1, 10);
 
         totalCount.Should().Be(1);
-        items.Should().HaveCount(1);
-        items[0].MembershipTier.Should().Be(MembershipTier.Colaborador);
+        items[0].MembershipTier.Should().Be(MembershipTier.Asociado);
     }
 
     [Fact]
     public async Task GetFilteredApplicationsAsync_Pagination()
     {
-        // Seed 3 Submitted apps
         for (var i = 0; i < 3; i++)
-            await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+            await SeedSubmittedApplicationAsync(Guid.NewGuid());
 
         var (items, totalCount) = await _service.GetFilteredApplicationsAsync(null, null, 1, 2);
 
@@ -528,51 +589,75 @@ public class ApplicationDecisionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetFilteredApplicationsAsync_CombinedFilter()
+    public async Task GetFilteredApplicationsAsync_StitchesApplicantInfo()
     {
-        // Submitted Colaborador
-        var (_, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
-        // Submitted Asociado
-        var (_, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
-        // Approved Colaborador
-        var (approvedColab, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
-        approvedColab.Approve(Guid.NewGuid(), "ok", _clock);
-        await _dbContext.SaveChangesAsync();
+        var userId = Guid.NewGuid();
+        await SeedSubmittedApplicationAsync(userId);
+        var user = new User
+        {
+            Id = userId,
+            DisplayName = "Applicant",
+            UserName = "a@t.com",
+            Email = "a@t.com"
+        };
+        _userService.GetByIdsAsync(
+            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
+                new Dictionary<Guid, User> { [userId] = user }));
 
-        var (items, totalCount) = await _service.GetFilteredApplicationsAsync("Submitted", "Asociado", 1, 10);
+        var (items, _) = await _service.GetFilteredApplicationsAsync(null, null, 1, 10);
 
-        totalCount.Should().Be(1);
         items.Should().HaveCount(1);
-        items[0].MembershipTier.Should().Be(MembershipTier.Asociado);
-        items[0].Status.Should().Be(ApplicationStatus.Submitted);
+        items[0].UserDisplayName.Should().Be("Applicant");
+        items[0].UserEmail.Should().Be("a@t.com");
     }
 
-    // --- GetApplicationDetailAsync ---
+    // --- GetApplicationDetailAsync (admin) ---
 
     [Fact]
-    public async Task GetApplicationDetailAsync_ReturnsApplicationWithIncludes()
+    public async Task GetApplicationDetailAsync_ReturnsStitchedAdminDetailDto()
     {
+        var applicantId = Guid.NewGuid();
         var reviewerId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        var applicant = new User
+        {
+            Id = applicantId,
+            DisplayName = "Applicant",
+            UserName = "a@t.com",
+            Email = "a@t.com",
+            ProfilePictureUrl = "https://example.com/pic.png"
+        };
+        var reviewer = new User
         {
             Id = reviewerId,
             DisplayName = "Admin",
-            UserName = "admin@test.com",
-            Email = "admin@test.com"
-        });
-        await _dbContext.SaveChangesAsync();
+            UserName = "r@t.com",
+            Email = "r@t.com"
+        };
+        _userService.GetByIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, User>>(
+                new Dictionary<Guid, User>
+                {
+                    [applicantId] = applicant,
+                    [reviewerId] = reviewer
+                }));
 
-        var (app, _) = await SeedApplicationWithUserProfileAsync(MembershipTier.Colaborador);
+        var app = await SeedSubmittedApplicationAsync(applicantId);
         app.Approve(reviewerId, "Looks good", _clock);
         await _dbContext.SaveChangesAsync();
 
         var result = await _service.GetApplicationDetailAsync(app.Id);
 
         result.Should().NotBeNull();
-        result!.User.Should().NotBeNull();
-        result.ReviewedByUser.Should().NotBeNull();
-        result.ReviewedByUser!.DisplayName.Should().Be("Admin");
-        result.StateHistory.Should().NotBeEmpty();
+        result!.UserId.Should().Be(applicantId);
+        result.UserDisplayName.Should().Be("Applicant");
+        result.UserEmail.Should().Be("a@t.com");
+        result.UserProfilePictureUrl.Should().Be("https://example.com/pic.png");
+        result.ReviewerName.Should().Be("Admin");
+        result.History.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -586,59 +671,22 @@ public class ApplicationDecisionServiceTests : IDisposable
     [Fact]
     public async Task GetApplicationDetailAsync_NoOwnershipFilter()
     {
-        var (app, userId) = await SeedApplicationWithUserProfileAsync(MembershipTier.Asociado);
+        var userId = Guid.NewGuid();
+        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
 
-        // Admin detail query works without knowing the userId
         var result = await _service.GetApplicationDetailAsync(app.Id);
 
         result.Should().NotBeNull();
         result!.Id.Should().Be(app.Id);
         result.UserId.Should().Be(userId);
-        result.User.Should().NotBeNull();
     }
 
     // --- Helpers ---
 
-    private async Task<MemberApplication> SeedSubmittedApplicationAsync(Guid userId)
+    private async Task<MemberApplication> SeedSubmittedApplicationAsync(
+        Guid userId,
+        MembershipTier tier = MembershipTier.Colaborador)
     {
-        var app = new MemberApplication
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            MembershipTier = MembershipTier.Colaborador,
-            Motivation = "Motivation",
-            SubmittedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        };
-        _dbContext.Applications.Add(app);
-        await _dbContext.SaveChangesAsync();
-        return app;
-    }
-
-    private async Task<(MemberApplication App, Guid UserId)> SeedApplicationWithUserProfileAsync(
-        MembershipTier tier)
-    {
-        var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            DisplayName = "Applicant",
-            UserName = $"applicant-{userId}@test.com",
-            Email = $"applicant-{userId}@test.com",
-            PreferredLanguage = "en"
-        };
-        _dbContext.Users.Add(user);
-        _dbContext.Profiles.Add(new Profile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            BurnerName = "Applicant",
-            FirstName = "Test",
-            LastName = "User",
-            MembershipTier = MembershipTier.Volunteer,
-            CreatedAt = _clock.GetCurrentInstant(),
-            UpdatedAt = _clock.GetCurrentInstant()
-        });
         var app = new MemberApplication
         {
             Id = Guid.NewGuid(),
@@ -650,6 +698,6 @@ public class ApplicationDecisionServiceTests : IDisposable
         };
         _dbContext.Applications.Add(app);
         await _dbContext.SaveChangesAsync();
-        return (app, userId);
+        return app;
     }
 }

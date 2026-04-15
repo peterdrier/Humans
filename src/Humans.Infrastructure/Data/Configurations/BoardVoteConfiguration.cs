@@ -27,7 +27,9 @@ public class BoardVoteConfiguration : IEntityTypeConfiguration<BoardVote>
             .HasForeignKey(bv => bv.ApplicationId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(bv => bv.BoardMemberUser)
+        // FK-only relationship to User — the cross-domain nav property was
+        // stripped in the Governance migration (design-rules §6).
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(bv => bv.BoardMemberUserId)
             .OnDelete(DeleteBehavior.Restrict);

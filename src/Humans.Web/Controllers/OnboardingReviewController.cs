@@ -202,16 +202,16 @@ public class OnboardingReviewController : HumansControllerBase
             {
                 var appVm = new BoardVotingApplicationViewModel
                 {
-                    ApplicationId = a.Id,
+                    ApplicationId = a.ApplicationId,
                     UserId = a.UserId,
-                    DisplayName = a.User.DisplayName,
-                    ProfilePictureUrl = a.User.ProfilePictureUrl,
+                    DisplayName = a.UserDisplayName,
+                    ProfilePictureUrl = a.UserProfilePictureUrl,
                     MembershipTier = a.MembershipTier,
-                    ApplicationMotivation = a.Motivation,
+                    ApplicationMotivation = a.ApplicationMotivation,
                     SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
                     Status = a.Status
                 };
-                foreach (var vote in a.BoardVotes)
+                foreach (var vote in a.Votes)
                 {
                     appVm.VotesByBoardMember[vote.BoardMemberUserId] = new BoardVoteCellViewModel
                     {
@@ -238,20 +238,20 @@ public class OnboardingReviewController : HumansControllerBase
         if (currentUser is null)
             return NotFound();
 
-        var currentVote = application.BoardVotes.FirstOrDefault(v => v.BoardMemberUserId == currentUser.Id);
+        var currentVote = application.Votes.FirstOrDefault(v => v.BoardMemberUserId == currentUser.Id);
         var isAdmin = RoleChecks.IsAdmin(User);
 
         var viewModel = new BoardVotingDetailViewModel
         {
-            ApplicationId = application.Id,
+            ApplicationId = application.ApplicationId,
             UserId = application.UserId,
-            DisplayName = application.User.DisplayName,
-            ProfilePictureUrl = application.User.ProfilePictureUrl,
-            Email = application.User.Email ?? string.Empty,
-            FirstName = application.User.Profile?.FirstName ?? string.Empty,
-            LastName = application.User.Profile?.LastName ?? string.Empty,
-            City = application.User.Profile?.City,
-            CountryCode = application.User.Profile?.CountryCode,
+            DisplayName = application.DisplayName,
+            ProfilePictureUrl = application.ProfilePictureUrl,
+            Email = application.Email,
+            FirstName = application.FirstName,
+            LastName = application.LastName,
+            City = application.City,
+            CountryCode = application.CountryCode,
             MembershipTier = application.MembershipTier,
             Status = application.Status,
             ApplicationMotivation = application.Motivation,
@@ -259,11 +259,11 @@ public class OnboardingReviewController : HumansControllerBase
             SignificantContribution = application.SignificantContribution,
             RoleUnderstanding = application.RoleUnderstanding,
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
-            Votes = application.BoardVotes
+            Votes = application.Votes
                 .Select(v => new BoardVoteDetailItemViewModel
                 {
                     BoardMemberUserId = v.BoardMemberUserId,
-                    DisplayName = v.BoardMemberUser.DisplayName,
+                    DisplayName = v.BoardMemberDisplayName ?? string.Empty,
                     Vote = v.Vote,
                     Note = v.Note,
                     VotedAt = v.VotedAt.ToDateTimeUtc()

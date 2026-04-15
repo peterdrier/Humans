@@ -22,7 +22,9 @@ public class ApplicationStateHistoryConfiguration : IEntityTypeConfiguration<App
         builder.Property(sh => sh.Notes)
             .HasMaxLength(4000);
 
-        builder.HasOne(sh => sh.ChangedByUser)
+        // FK-only relationship to User — the cross-domain nav property was
+        // stripped in the Governance migration (design-rules §6).
+        builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(sh => sh.ChangedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
