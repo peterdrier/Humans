@@ -252,6 +252,24 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full directed dependency graph with current vs target edges and circular dependency analysis.
 
+### 8a. User-Scoped Sections Must Contribute to the GDPR Export
+
+Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Application.Interfaces.Gdpr`) so the GDPR Article 15 data export (`IGdprExportService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData`.
+
+Adding a new user-scoped section requires three steps:
+
+1. Add the section-name constants to `GdprExportSections` (`Humans.Application.Interfaces.Gdpr`).
+2. Make the owning service implement `IUserDataContributor` returning its own slice. A contributor reads only its own section's tables — cross-section data flows through other contributors, not through `Include` chains.
+3. Register the service in `InfrastructureServiceCollectionExtensions` using the forwarding pattern so the same scoped instance serves both the primary interface and `IUserDataContributor`:
+
+   ```csharp
+   services.AddScoped<MyNewService>();
+   services.AddScoped<IMyNewService>(sp => sp.GetRequiredService<MyNewService>());
+   services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MyNewService>());
+   ```
+
+The architecture test `GdprExportDependencyInjectionTests.EveryIUserDataContributorInInfrastructureIsExpected` fails the build if a new contributor is added to `Humans.Infrastructure` without being enumerated in the expected-types list, and `EveryExpectedContributorIsRegisteredInInfrastructure` fails if a section is added to the list without being wired in DI. The export can never silently drop a category. See [`docs/features/gdpr-export.md`](../features/gdpr-export.md) for the JSON output shape and the full list of current contributors.
+
 ## 9. Cross-Service Communication
 
 When a service needs data from another section, it calls that section's public service interface via constructor injection. Repositories and stores are never crossed — only the public `I{Section}Service` interface.

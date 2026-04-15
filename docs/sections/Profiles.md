@@ -109,25 +109,12 @@ See `docs/architecture/design-rules.md` for the full rules.
 
 ### Current violations
 
-Observed in this section's service code as of 2026-04-15 (reforge `dbset-usage` sweep of `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService`, `ContactService`, plus grep for `.Include(` and `_cache.`):
+Observed in this section's service code as of 2026-04-15 (reforge `dbset-usage` sweep of `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService`, `ContactService`, plus grep for `.Include(` and `_cache.`). The 15 cross-section reads and 13 cross-domain `Include` chains that used to live in `ProfileService.ExportDataAsync` were removed in #502 — those reads now come from each owning section through `IUserDataContributor` and `IGdprExportService` (`Humans.Application.Services.Gdpr`). See [`docs/features/gdpr-export.md`](../features/gdpr-export.md).
 
 - **Cross-domain `.Include()` calls:**
   - `ProfileService.cs:67` — `.Include(p => p.User)` in `GetProfileAsync` (navigates to `Users` domain)
   - `ProfileService.cs:100` — `.Include(g => g.Campaign)` in `GetActiveOrCompletedCampaignGrantsAsync` (navigates to `Campaigns` domain)
   - `ProfileService.cs:101` — `.Include(g => g.Code)` in `GetActiveOrCompletedCampaignGrantsAsync` (navigates to `Campaigns` domain)
-  - `ProfileService.cs:439` — `.Include(a => a.StateHistory)` in `ExportDataAsync` (navigates to `Governance` domain)
-  - `ProfileService.cs:448` — `.Include(tm => tm.Team)` in `ExportDataAsync` (navigates to `Teams` domain)
-  - `ProfileService.cs:449` — `.Include(tm => tm.RoleAssignments)` in `ExportDataAsync` (navigates to `Auth` domain)
-  - `ProfileService.cs:496` — `.Include(ss => ss.Shift)` in `ExportDataAsync` (navigates to `Shifts` domain)
-  - `ProfileService.cs:499` — `.Include(ss => ss.Shift)` in `ExportDataAsync` (navigates to `Shifts` domain)
-  - `ProfileService.cs:513` — `.Include(ga => ga.EventSettings)` in `ExportDataAsync` (navigates to `Shifts` domain)
-  - `ProfileService.cs:519` — `.Include(vtp => vtp.ShiftTag)` in `ExportDataAsync` (navigates to `Shifts` domain)
-  - `ProfileService.cs:525` — `.Include(fr => fr.Messages)` in `ExportDataAsync` (navigates to `Feedback` domain)
-  - `ProfileService.cs:532` — `.Include(nr => nr.Notification)` in `ExportDataAsync` (navigates to `Notifications` domain)
-  - `ProfileService.cs:543` — `.Include(cg => cg.Campaign)` in `ExportDataAsync` (navigates to `Campaigns` domain)
-  - `ProfileService.cs:544` — `.Include(cg => cg.Code)` in `ExportDataAsync` (navigates to `Campaigns` domain)
-  - `ProfileService.cs:551` — `.Include(cl => cl.Camp)` in `ExportDataAsync` (navigates to `Camps` domain)
-  - `ProfileService.cs:558` — `.Include(tjr => tjr.Team)` in `ExportDataAsync` (navigates to `Teams` domain)
   - `ProfileService.cs:966` — `.Include(u => u.Profile)` in `GetAdminHumanDetailAsync` (query root is `Users` — the entire query lives in the wrong domain)
   - `ProfileService.cs:967` — `.Include(u => u.Applications)` in `GetAdminHumanDetailAsync` (navigates to `Governance` domain)
   - `ProfileService.cs:968` — `.Include(u => u.UserEmails)` in `GetAdminHumanDetailAsync` (query root is `Users`)
@@ -148,22 +135,6 @@ Observed in this section's service code as of 2026-04-15 (reforge `dbset-usage` 
   - `ProfileService.cs:301` — `_dbContext.Users.FindAsync()` in `RequestDeletionAsync` (owned by `Users`)
   - `ProfileService.cs:376` — `_dbContext.Users.FindAsync()` in `CancelDeletionAsync` (owned by `Users`)
   - `ProfileService.cs:405` — `_dbContext.EventSettings` in `GetEventHoldDateAsync` (owned by `Shifts`)
-  - `ProfileService.cs:431` — `_dbContext.Users.FindAsync()` in `ExportDataAsync` (owned by `Users`)
-  - `ProfileService.cs:437` — `_dbContext.Applications` in `ExportDataAsync` (owned by `Governance`)
-  - `ProfileService.cs:446` — `_dbContext.TeamMembers` in `ExportDataAsync` (owned by `Teams`)
-  - `ProfileService.cs:463` — `_dbContext.RoleAssignments` in `ExportDataAsync` (owned by `Auth`)
-  - `ProfileService.cs:494` — `_dbContext.ShiftSignups` in `ExportDataAsync` (owned by `Shifts`)
-  - `ProfileService.cs:506` — `_dbContext.VolunteerEventProfiles` in `ExportDataAsync` (owned by `Shifts`)
-  - `ProfileService.cs:511` — `_dbContext.GeneralAvailability` in `ExportDataAsync` (owned by `Shifts`)
-  - `ProfileService.cs:517` — `_dbContext.VolunteerTagPreferences` in `ExportDataAsync` (likely `Shifts`; table not explicitly listed in §8)
-  - `ProfileService.cs:523` — `_dbContext.FeedbackReports` in `ExportDataAsync` (owned by `Feedback`)
-  - `ProfileService.cs:530` — `_dbContext.NotificationRecipients` in `ExportDataAsync` (owned by `Notifications`)
-  - `ProfileService.cs:541` — `_dbContext.CampaignGrants` in `ExportDataAsync` (owned by `Campaigns`)
-  - `ProfileService.cs:549` — `_dbContext.CampLeads` in `ExportDataAsync` (owned by `Camps`)
-  - `ProfileService.cs:556` — `_dbContext.TeamJoinRequests` in `ExportDataAsync` (owned by `Teams`)
-  - `ProfileService.cs:563` — `_dbContext.AuditLogEntries` in `ExportDataAsync` (owned by `Audit`)
-  - `ProfileService.cs:569` — `_dbContext.BudgetAuditLogs` in `ExportDataAsync` (owned by `Budget`)
-  - `ProfileService.cs:575` — `_dbContext.AccountMergeRequests` in `ExportDataAsync` (owned by `Admin`)
   - `ProfileService.cs:98` — `_dbContext.CampaignGrants` in `GetActiveOrCompletedCampaignGrantsAsync` (owned by `Campaigns`)
   - `ProfileService.cs:892` — `_dbContext.Users` in `GetFilteredHumansAsync` (owned by `Users`)
   - `ProfileService.cs:965` — `_dbContext.Users` in `GetAdminHumanDetailAsync` (owned by `Users`)
@@ -182,12 +153,9 @@ Observed in this section's service code as of 2026-04-15 (reforge `dbset-usage` 
   - `ContactService.cs:175` — `_dbContext.Users` in `GetFilteredContactsAsync` (owned by `Users`)
   - `ContactService.cs:216` — `_dbContext.Users` in `GetContactDetailAsync` (owned by `Users`)
 - **Within-section cross-service direct DbContext reads** (per §2c each SERVICE owns tables, not each SECTION — these are real violations, though less severe than cross-section):
-  - `ProfileService.cs:456` — `_dbContext.ContactFields` in `ExportDataAsync` (owned by sibling `ContactFieldService`)
-  - `ProfileService.cs:468` — `_dbContext.UserEmails` in `ExportDataAsync` (owned by sibling `UserEmailService`)
-  - `ProfileService.cs:475` — `_dbContext.VolunteerHistoryEntries` in `ExportDataAsync` (owned by sibling `VolunteerHistoryService`)
-  - `ProfileService.cs:489` — `_dbContext.CommunicationPreferences` in `ExportDataAsync` (owned by sibling `CommunicationPreferenceService`)
   - `ProfileService.cs:907` — `_dbContext.UserEmails` in `GetFilteredHumansAsync` (owned by sibling `UserEmailService`)
   - `ProfileService.cs:1006` — `_dbContext.UserEmails` in `GetAdminHumanDetailAsync` (owned by sibling `UserEmailService`)
+  - `ProfileService.ContributeForUserAsync` — `_dbContext.{ContactFields,UserEmails,VolunteerHistoryEntries,CommunicationPreferences}` (owned by sibling services within Profiles section). This is scope-deferred per #502: the GDPR fan-out pulls the WHOLE Profiles-section slice through `ProfileService` for now; splitting it into per-service contributors happens when the section migrates to repositories.
   - `ContactFieldService.cs:44` — `_dbContext.Profiles` in `GetContactFieldsAsync` (owned by sibling `ProfileService`)
   - `VolunteerHistoryService.cs:95` — `_dbContext.Profiles` in `SaveAsync` (owned by sibling `ProfileService`)
   - `ContactService.cs:89` — `_dbContext.UserEmails` in `CreateContactAsync` (owned by sibling `UserEmailService` — assuming `ContactService` belongs in Profiles section)
@@ -216,7 +184,7 @@ Observed in this section's service code as of 2026-04-15 (reforge `dbset-usage` 
 
 Until this section is migrated end-to-end, when touching its code:
 
-- When touching `ProfileService.ExportDataAsync` (lines 431–575), do NOT add new `_dbContext.X` reads for other sections. Every external slice (applications, team memberships, role assignments, shift signups, general availability, volunteer event profiles, feedback reports, notifications, campaign grants, camp leads, team join requests, audit/budget audit logs, account merge requests) must come from the owning service interface (`IApplicationDecisionService`, `ITeamService`, `IRoleAssignmentService`, `IShiftManagementService`, `IShiftSignupService`, `IGeneralAvailabilityService`, `IFeedbackService`, `INotificationService`, `ICampaignService`, `ICampService`, `IAuditLogService`, `IBudgetService`, `IAccountMergeService`) and be stitched in memory — per §2c and §6.
+- When adding a new user-scoped section (or new user-scoped table in an existing section), make the owning service implement `IUserDataContributor` in `Humans.Application.Interfaces.Gdpr` and wire it through `InfrastructureServiceCollectionExtensions` using the forwarding pattern. Do NOT add new `_dbContext.X` reads to `ProfileService.ContributeForUserAsync` for other sections — the orchestrator picks them up automatically once registered. See `docs/features/gdpr-export.md`.
 - When touching `ProfileService.GetAdminHumanDetailAsync` (lines 963–1020) or `GetFilteredHumansAsync` (lines 889+), do not add new `.Include(u => u.Profile / u.Applications / u.UserEmails)` chains on a `_dbContext.Users` root. The query root belongs in `Users` (or should be flipped to a `Profiles`-rooted query that resolves user data via `IUserService.GetByIdsAsync`). Lines 965–968 and 976 are the exact pattern to NOT copy.
 - When touching `ProfileService.GetProfileAsync` (line 59+) or `GetCachedProfilesAsync` (line 1062+), resist adding fresh `_cache.*` calls (see the 13 hits at 62, 72, 278–282, 350, 351, 387, 1064, 1083, 1100). All cache logic is slated to move into a `CachingProfileService` decorator per §4–§5 — any new cache needs there become rework.
 - When touching `UserEmailService` methods that currently hit `AccountMergeRequests` (lines 48, 128, 133, 244, 262) or `Users` (lines 444, 459), call `IAccountMergeService` / `IUserService` instead. Same rule applies to `ContactService` (lines 54, 62, 89, 96, 148, 175, 216) — route `Users` reads through `IUserService` and `UserEmails` writes through `IUserEmailService`.
