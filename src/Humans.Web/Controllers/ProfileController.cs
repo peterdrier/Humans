@@ -3,6 +3,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Web;
+using Humans.Application.Authorization;
 using Humans.Application.Configuration;
 using Humans.Application.Extensions;
 using Microsoft.AspNetCore.Authorization;
@@ -48,6 +49,7 @@ public class ProfileController : HumansControllerBase
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
+    private readonly IAuthorizationService _authorizationService;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -92,7 +94,8 @@ public class ProfileController : HumansControllerBase
         HumansDbContext dbContext,
         ITicketQueryService ticketQueryService,
         IMemoryCache cache,
-        IClock clock)
+        IClock clock,
+        IAuthorizationService authorizationService)
         : base(userManager)
     {
         _userManager = userManager;
@@ -115,6 +118,7 @@ public class ProfileController : HumansControllerBase
         _ticketQueryService = ticketQueryService;
         _cache = cache;
         _clock = clock;
+        _authorizationService = authorizationService;
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -1501,16 +1505,21 @@ public class ProfileController : HumansControllerBase
             return Unauthorized();
         }
 
+        var authResult = await _authorizationService.AuthorizeAsync(
+            User, model.RoleName, RoleAssignmentOperationRequirement.Manage);
+        if (!authResult.Succeeded)
+        {
+            _logger.LogWarning(
+                "Authorization denied for role assignment: principal {Principal} attempted to assign role {Role} to user {UserId}",
+                User.Identity?.Name, model.RoleName, id);
+            return Forbid();
+        }
+
         var result = await _roleAssignmentService.AssignRoleAsync(
-            id, model.RoleName, currentUser.Id, model.Notes, User);
+            id, model.RoleName, currentUser.Id, model.Notes);
 
         if (!result.Success)
         {
-            if (string.Equals(result.ErrorKey, "Unauthorized", StringComparison.Ordinal))
-            {
-                return Forbid();
-            }
-
             SetError(string.Format(_localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
             return RedirectToAction(nameof(AdminDetail), new { id });
         }
@@ -1528,6 +1537,7 @@ public class ProfileController : HumansControllerBase
 
         if (roleAssignment is null)
         {
+            // Return NotFound rather than Unauthorized to prevent role-assignment enumeration.
             return NotFound();
         }
 
@@ -1537,16 +1547,21 @@ public class ProfileController : HumansControllerBase
             return Unauthorized();
         }
 
+        var authResult = await _authorizationService.AuthorizeAsync(
+            User, roleAssignment.RoleName, RoleAssignmentOperationRequirement.Manage);
+        if (!authResult.Succeeded)
+        {
+            _logger.LogWarning(
+                "Authorization denied for ending role: principal {Principal} attempted to end role {Role} for user {UserId}",
+                User.Identity?.Name, roleAssignment.RoleName, roleAssignment.UserId);
+            return NotFound();
+        }
+
         var result = await _roleAssignmentService.EndRoleAsync(
-            roleId, currentUser.Id, notes, User);
+            roleId, currentUser.Id, notes);
 
         if (!result.Success)
         {
-            if (string.Equals(result.ErrorKey, "Unauthorized", StringComparison.Ordinal))
-            {
-                return Forbid();
-            }
-
             SetError(_localizer["Admin_RoleNotActive"].Value);
             return RedirectToAction(nameof(AdminDetail), new { id = roleAssignment.UserId });
         }

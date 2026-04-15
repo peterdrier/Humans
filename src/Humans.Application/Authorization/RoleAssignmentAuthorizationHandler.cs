@@ -5,12 +5,8 @@ namespace Humans.Application.Authorization;
 
 /// <summary>
 /// Resource-based authorization handler for role assignment operations.
-/// Evaluates whether a user can assign or end a specific role.
-///
-/// Authorization logic:
-/// - Admin: can manage any role
-/// - Board or HumanAdmin: can manage roles in RoleNames.BoardManageableRoles
-/// - System principal: can manage any role (for background jobs)
+/// - Admin: manage any role
+/// - Board or HumanAdmin: manage roles in RoleNames.BoardManageableRoles
 /// - Everyone else: deny
 /// </summary>
 public class RoleAssignmentAuthorizationHandler : AuthorizationHandler<RoleAssignmentOperationRequirement, string>
@@ -23,12 +19,6 @@ public class RoleAssignmentAuthorizationHandler : AuthorizationHandler<RoleAssig
         string roleName)
     {
         if (context.User.IsInRole(RoleNames.Admin))
-        {
-            context.Succeed(requirement);
-            return Task.CompletedTask;
-        }
-
-        if (SystemPrincipal.IsSystem(context.User))
         {
             context.Succeed(requirement);
             return Task.CompletedTask;

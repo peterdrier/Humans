@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Application;
-using Humans.Application.Authorization;
 using Humans.Domain.Constants;
 using Humans.Infrastructure.Data;
 
@@ -49,18 +48,6 @@ public class RoleAssignmentClaimsTransformation : IClaimsTransformation
         if (principal.Identity?.IsAuthenticated != true)
         {
             return principal;
-        }
-
-        // Defensive: the SystemPrincipal claim grants background-job authorization bypass in
-        // RoleAssignmentAuthorizationHandler. It must never appear on a real user's identity,
-        // even if an external IdP somehow emits it. Strip any leaked instances here.
-        foreach (var userIdentity in principal.Identities)
-        {
-            var systemClaims = userIdentity.FindAll(SystemPrincipal.SystemClaimType).ToList();
-            foreach (var systemClaim in systemClaims)
-            {
-                userIdentity.RemoveClaim(systemClaim);
-            }
         }
 
         var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);

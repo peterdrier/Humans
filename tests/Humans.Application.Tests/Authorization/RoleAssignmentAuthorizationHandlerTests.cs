@@ -38,18 +38,6 @@ public sealed class RoleAssignmentAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
-    // --- System principal override ---
-
-    [Theory]
-    [InlineData(RoleNames.Admin)]
-    [InlineData(RoleNames.Board)]
-    [InlineData(RoleNames.TeamsAdmin)]
-    public async Task SystemPrincipal_CanManageAnyRole(string roleName)
-    {
-        var result = await EvaluateAsync(SystemPrincipal.Instance, roleName);
-        result.Should().BeTrue();
-    }
-
     // --- Board access ---
 
     [Theory]

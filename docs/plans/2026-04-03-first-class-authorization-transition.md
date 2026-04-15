@@ -113,27 +113,40 @@ This is a mechanical refactor done section by section. Each section is one PR.
 
 ---
 
-## Phase 3: Service-Layer Enforcement
+## Phase 3: Service-Layer Enforcement — **CANCELLED**
 
-**Objective:** Push authorization checks down to service boundaries for sensitive mutations, so they're protected regardless of call path (controller, background job, future API).
+> **Status: tombstoned.** Do not reopen without reading this section. The superseding rule is `docs/architecture/design-rules.md` §11: services are auth-free.
 
-**Do this incrementally** — as new mutation paths are added or existing ones are refactored.
+**Original objective:** Push authorization checks down to service boundaries for sensitive mutations, so they're protected regardless of call path (controller, background job, future API).
 
-**First candidates:**
-- Role assignment / removal
-- Google sync actions with external side effects
-- Budget mutations
-- Privileged onboarding/review actions
+**Why it was cancelled:**
 
-**What changes:**
+1. **Phase 3a / #418 (role assignment, PR #210)** shipped and broke QA within two days. The cycle `TeamService → RoleAssignmentService → IAuthorizationService → TeamAuthorizationHandler → ITeamService` crashed DI validation on startup. Fixed in commit `225ac14` by making `TeamAuthorizationHandler` lazily resolve `ITeamService` via `IServiceProvider` — i.e., a service-locator escape hatch that hides the cycle from the validator rather than removing it. Hazard preserved, lesson ignored.
+2. **Phase 3b / #419 (Google sync)** was merged as `1626098` and reverted in `bbbe508` for the same reason.
+3. **Phase 3c / #420 (budget mutations)** was drafted on branch `sprint/20260415/batch-4` but never merged. Closed as *won't do* on 2026-04-15.
 
-- Service methods accept the current `ClaimsPrincipal` (or an authorization context) and call `IAuthorizationService` before executing
-- Controllers become thin — they authorize via attribute and delegate to the service
-- Services that are also called from background jobs use a system-level authorization context
+Two out of three attempts ended in crash or revert. The pattern has zero clean wins on this codebase.
 
-**Exit criteria:**
-- Sensitive workflows are protected even if later reused from jobs, APIs, or alternate UI surfaces
-- Controllers don't duplicate authorization logic that services already enforce
+**Why service-layer enforcement is unnecessary at our scale:**
+
+The defence-in-depth argument for Phase 3 was "protect mutations regardless of call path — controllers, background jobs, future APIs." In practice on Humans:
+
+- We have **one UI** and no public API. "Future API" is speculative; service-layer enforcement cannot be justified by a caller that does not exist.
+- Background jobs that mutate state (`TicketingBudgetSyncJob`, `SystemTeamSyncJob`) are trusted server-side code and do not need to authenticate against their own domain's auth handlers.
+- Controllers are the only human-facing mutation path. Enforcing auth there (via `[Authorize]` + resource-based `IAuthorizationService.AuthorizeAsync`) covers 100% of the real threat surface.
+
+**The superseding pattern (from `design-rules.md` §11):**
+
+```csharp
+// Controller — authorize, then call service
+var authResult = await _authorizationService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit);
+if (!authResult.Succeeded) return Forbid();
+await _budgetService.DeleteLineItemAsync(id);
+```
+
+Resource-based handlers (`BudgetAuthorizationHandler`, `RoleAssignmentAuthorizationHandler`, etc.) still exist and are still the right shape — they just get invoked from controllers, not from inside services. Services remain auth-free, do not inject `IAuthorizationService`, do not accept `ClaimsPrincipal` parameters, do not use `SystemPrincipal`.
+
+**Unwind PR:** Phase 3a's in-service auth was reverted in a follow-up PR that removed the `ClaimsPrincipal` parameter from `IRoleAssignmentService`, moved the `AuthorizeAsync` call to `ProfileController`, deleted `SystemPrincipal`, and removed the `IServiceProvider` hack from `TeamAuthorizationHandler`. The `RoleAssignmentAuthorizationHandler` and `RoleAssignmentOperationRequirement` remain — they are now called from the controller, which is the correct pattern.
 
 ---
 
@@ -144,11 +157,11 @@ This is a mechanical refactor done section by section. Each section is one PR.
 | Phase 0 | PR #116 merged | 1 PR — inventory doc |
 | Phase 1 | Phase 0 complete | ~8 section PRs, mechanical |
 | Phase 2 | Feature needs object-relative auth | 1 PR for the vertical slice |
-| Phase 3 | Ongoing as mutations are added/refactored | Incremental |
+| ~~Phase 3~~ | **Cancelled — see Phase 3 section above** | — |
 
 Phase 0 is the first issue created. Phase 1 is done section-by-section across sprint batches — not all at once. Each section PR is small and low-risk.
 
-Phases 2 and 3 are driven by real feature work, not scheduled proactively.
+Phase 2 is driven by real feature work, not scheduled proactively. Phase 3 is cancelled; any future proposal to push auth into services must update `design-rules.md` §11 first.
 
 ---
 
@@ -171,4 +184,4 @@ Each phase step creates one GitHub issue. The exit gate of each issue includes c
 
 **Phase 2 issue:** created when a feature needs resource-based auth
 
-**Phase 3 issues:** created per-service as mutations are added
+**~~Phase 3 issues~~:** cancelled. #418 shipped and required hazard-hiding hotfix `225ac14`. #419 merged and reverted (`bbbe508`). #420 closed *won't do* on 2026-04-15. See the Phase 3 tombstone above for rationale.

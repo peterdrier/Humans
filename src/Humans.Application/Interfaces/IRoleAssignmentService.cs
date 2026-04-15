@@ -1,18 +1,10 @@
-using System.Security.Claims;
 using Humans.Domain.Entities;
 using NodaTime;
 
 namespace Humans.Application.Interfaces;
 
-/// <summary>
-/// Service for role assignment queries and mutations.
-/// </summary>
 public interface IRoleAssignmentService
 {
-    /// <summary>
-    /// Checks whether the proposed role window overlaps any existing window
-    /// for the same user and role.
-    /// </summary>
     Task<bool> HasOverlappingAssignmentAsync(
         Guid userId,
         string roleName,
@@ -30,12 +22,12 @@ public interface IRoleAssignmentService
 
     Task<OnboardingResult> AssignRoleAsync(
         Guid userId, string roleName, Guid assignerId,
-        string? notes, ClaimsPrincipal principal,
+        string? notes,
         CancellationToken ct = default);
 
     Task<OnboardingResult> EndRoleAsync(
         Guid assignmentId, Guid enderId,
-        string? notes, ClaimsPrincipal principal,
+        string? notes,
         CancellationToken ct = default);
 
     /// <summary>

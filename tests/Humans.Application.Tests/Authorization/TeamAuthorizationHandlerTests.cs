@@ -5,7 +5,6 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
 
@@ -27,10 +26,7 @@ public sealed class TeamAuthorizationHandlerTests
 
     public TeamAuthorizationHandlerTests()
     {
-        var services = new ServiceCollection();
-        services.AddSingleton(_teamService);
-        var serviceProvider = services.BuildServiceProvider();
-        _handler = new TeamAuthorizationHandler(serviceProvider);
+        _handler = new TeamAuthorizationHandler(_teamService);
 
         _teamService.IsUserCoordinatorOfTeamAsync(CoordinatorTeamId, UserId)
             .Returns(true);
