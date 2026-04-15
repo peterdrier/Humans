@@ -9,6 +9,24 @@ namespace Humans.Application.Interfaces;
 public interface IUserService
 {
     /// <summary>
+    /// Fetches a single user by id. Returns null if the user does not exist.
+    /// Used by section services that need a slice of user data (email,
+    /// display name, preferred language) for rendering or notifications
+    /// without loading a cross-domain navigation property.
+    /// </summary>
+    Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Fetches a batched set of users keyed by id. Missing users are simply
+    /// absent from the returned dictionary. Used for in-memory stitching
+    /// when rendering lists that previously relied on
+    /// <c>.Include(x =&gt; x.User)</c>.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Get the participation record for a user in a given year. Returns null if no record exists.
     /// </summary>
     Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default);

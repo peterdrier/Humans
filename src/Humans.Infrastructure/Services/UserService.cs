@@ -26,6 +26,30 @@ public class UserService : IUserService, IUserDataContributor
         _logger = logger;
     }
 
+    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        return await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, User>();
+        }
+
+        var list = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .ToListAsync(ct);
+
+        return list.ToDictionary(u => u.Id);
+    }
+
     public async Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default)
     {
         return await _dbContext.EventParticipations

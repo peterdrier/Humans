@@ -76,6 +76,46 @@ public class ProfileService : IProfileService, IUserDataContributor
         return profile;
     }
 
+    public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, Profile>();
+        }
+
+        var list = await _dbContext.Profiles
+            .AsNoTracking()
+            .Where(p => userIds.Contains(p.UserId))
+            .ToListAsync(ct);
+
+        return list.ToDictionary(p => p.UserId);
+    }
+
+    public async Task SetMembershipTierAsync(
+        Guid userId,
+        MembershipTier tier,
+        CancellationToken ct = default)
+    {
+        var profile = await _dbContext.Profiles
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+        if (profile is null)
+        {
+            _logger.LogWarning(
+                "Cannot set membership tier for user {UserId} — no profile exists",
+                userId);
+            return;
+        }
+
+        profile.MembershipTier = tier;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        await _dbContext.SaveChangesAsync(ct);
+
+        _cache.InvalidateUserProfile(userId);
+    }
+
     public async Task<(Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
         GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default)
     {

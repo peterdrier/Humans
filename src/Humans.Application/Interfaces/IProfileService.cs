@@ -55,6 +55,29 @@ public record CachedVolunteerEntry(string EventName, string? Description);
 public interface IProfileService
 {
     Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Batched profile fetch keyed by user id. Missing users are absent
+    /// from the returned dictionary. Used by cross-section services that
+    /// need to stitch profile slices in memory instead of pulling them
+    /// through a cross-domain <c>.Include</c> chain.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates the profile's <see cref="Profile.MembershipTier"/> and
+    /// <see cref="Profile.UpdatedAt"/>, persists, and invalidates the
+    /// profile's cache entry. No-op with a warning log if the user has no
+    /// profile. Used by governance services that previously mutated the
+    /// profile directly through a cross-domain navigation property.
+    /// </summary>
+    Task SetMembershipTierAsync(
+        Guid userId,
+        MembershipTier tier,
+        CancellationToken ct = default);
+
     Task<(Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
         GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default);
     Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
