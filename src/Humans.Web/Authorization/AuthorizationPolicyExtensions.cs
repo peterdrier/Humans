@@ -26,6 +26,7 @@ public static class AuthorizationPolicyExtensions
 
         // Service-layer enforcement handlers (singleton — no scoped dependencies)
         services.AddSingleton<IAuthorizationHandler, RoleAssignmentAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, BudgetManageAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {

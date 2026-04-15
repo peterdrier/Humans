@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 
@@ -11,13 +12,18 @@ public interface ITicketingBudgetService
     /// <summary>
     /// Sync completed weeks of ticket sales into budget line items from TicketTailor/Stripe data,
     /// then refresh projections for future weeks.
+    /// The <paramref name="principal"/> is forwarded to <see cref="IBudgetService"/> for
+    /// service-boundary authorization. Background jobs pass
+    /// <see cref="Humans.Application.Authorization.SystemPrincipal.Instance"/>.
     /// </summary>
-    Task<int> SyncActualsAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<int> SyncActualsAsync(Guid budgetYearId, ClaimsPrincipal principal, CancellationToken ct = default);
 
     /// <summary>
     /// Refresh projected line items only (no actuals sync). Called after saving projection parameters.
+    /// The <paramref name="principal"/> is forwarded to <see cref="IBudgetService"/> for
+    /// service-boundary authorization.
     /// </summary>
-    Task<int> RefreshProjectionsAsync(Guid budgetYearId, CancellationToken ct = default);
+    Task<int> RefreshProjectionsAsync(Guid budgetYearId, ClaimsPrincipal principal, CancellationToken ct = default);
 
     /// <summary>
     /// Compute projected line items for future weeks based on ticketing projection parameters

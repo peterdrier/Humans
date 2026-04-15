@@ -1,3 +1,4 @@
+using Humans.Application.Authorization;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -178,19 +179,21 @@ public sealed class DevelopmentBudgetSeeder
         var allYears = await _budgetService.GetAllYearsAsync(includeArchived: true);
         var budgetYear = allYears.FirstOrDefault(y => string.Equals(y.Year, budgetYearCode, StringComparison.Ordinal));
 
+        var principal = SystemPrincipal.Instance;
+
         if (budgetYear is null)
         {
-            budgetYear = await _budgetService.CreateYearAsync(budgetYearCode, budgetYearName, actorUserId);
+            budgetYear = await _budgetService.CreateYearAsync(budgetYearCode, budgetYearName, actorUserId, principal);
         }
         else if (budgetYear.IsDeleted)
         {
-            await _budgetService.RestoreYearAsync(budgetYear.Id, actorUserId);
+            await _budgetService.RestoreYearAsync(budgetYear.Id, actorUserId, principal);
         }
 
-        var departmentCategoriesSynced = await _budgetService.SyncDepartmentsAsync(budgetYear.Id, actorUserId);
+        var departmentCategoriesSynced = await _budgetService.SyncDepartmentsAsync(budgetYear.Id, actorUserId, principal);
 
         var groupsCreated = 0;
-        if (await _budgetService.EnsureTicketingGroupAsync(budgetYear.Id, actorUserId))
+        if (await _budgetService.EnsureTicketingGroupAsync(budgetYear.Id, actorUserId, principal))
         {
             groupsCreated++;
         }
@@ -199,7 +202,7 @@ public sealed class DevelopmentBudgetSeeder
         var activatedBudgetYear = false;
         if (activeYear is null)
         {
-            await _budgetService.UpdateYearStatusAsync(budgetYear.Id, BudgetYearStatus.Active, actorUserId);
+            await _budgetService.UpdateYearStatusAsync(budgetYear.Id, BudgetYearStatus.Active, actorUserId, principal);
             activatedBudgetYear = true;
         }
 
@@ -208,21 +211,21 @@ public sealed class DevelopmentBudgetSeeder
             ?? throw new InvalidOperationException($"Budget year {budgetYear.Id} not found after creation");
 
         var departmentGroup = currentYear.Groups.Single(g => g.IsDepartmentGroup);
-        await _budgetService.UpdateGroupAsync(departmentGroup.Id, departmentGroup.Name, 0, departmentGroup.IsRestricted, actorUserId);
+        await _budgetService.UpdateGroupAsync(departmentGroup.Id, departmentGroup.Name, 0, departmentGroup.IsRestricted, actorUserId, principal);
 
         var sharedServicesGroup = currentYear.Groups.FirstOrDefault(g =>
             string.Equals(g.Name, "Shared Services", StringComparison.Ordinal));
 
         if (sharedServicesGroup is null)
         {
-            sharedServicesGroup = await _budgetService.CreateGroupAsync(budgetYear.Id, "Shared Services", false, actorUserId);
+            sharedServicesGroup = await _budgetService.CreateGroupAsync(budgetYear.Id, "Shared Services", false, actorUserId, principal);
             groupsCreated++;
         }
 
-        await _budgetService.UpdateGroupAsync(sharedServicesGroup.Id, sharedServicesGroup.Name, 1, sharedServicesGroup.IsRestricted, actorUserId);
+        await _budgetService.UpdateGroupAsync(sharedServicesGroup.Id, sharedServicesGroup.Name, 1, sharedServicesGroup.IsRestricted, actorUserId, principal);
 
         var ticketingGroup = currentYear.Groups.Single(g => g.IsTicketingGroup);
-        await _budgetService.UpdateGroupAsync(ticketingGroup.Id, ticketingGroup.Name, 2, ticketingGroup.IsRestricted, actorUserId);
+        await _budgetService.UpdateGroupAsync(ticketingGroup.Id, ticketingGroup.Name, 2, ticketingGroup.IsRestricted, actorUserId, principal);
 
         var categoriesCreated = 0;
         var lineItemsCreated = 0;
@@ -245,7 +248,7 @@ public sealed class DevelopmentBudgetSeeder
             if (category is null)
             {
                 category = await _budgetService.CreateCategoryAsync(
-                    departmentGroup.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId);
+                    departmentGroup.Id, teamSeed.Name, teamSeed.AllocatedAmount, teamSeed.ExpenditureType, team.Id, actorUserId, principal);
                 categoriesCreated++;
             }
 
@@ -260,7 +263,7 @@ public sealed class DevelopmentBudgetSeeder
             if (category is null)
             {
                 category = await _budgetService.CreateCategoryAsync(
-                    sharedServicesGroup.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId);
+                    sharedServicesGroup.Id, sharedSeed.Name, sharedSeed.AllocatedAmount, sharedSeed.ExpenditureType, null, actorUserId, principal);
                 categoriesCreated++;
             }
 
@@ -275,7 +278,7 @@ public sealed class DevelopmentBudgetSeeder
             if (category is null)
             {
                 category = await _budgetService.CreateCategoryAsync(
-                    ticketingGroup.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId);
+                    ticketingGroup.Id, ticketSeed.Name, ticketSeed.AllocatedAmount, ticketSeed.ExpenditureType, null, actorUserId, principal);
                 categoriesCreated++;
             }
 
@@ -293,7 +296,8 @@ public sealed class DevelopmentBudgetSeeder
             stripeFeePercent: 1.50m,
             stripeFeeFixed: 0.25m,
             ticketTailorFeePercent: 3.00m,
-            actorUserId);
+            actorUserId,
+            principal);
 
         _logger.LogInformation(
             "Development budget seed completed for {BudgetYearCode}: teamsCreated={TeamsCreated}, teamsUpdated={TeamsUpdated}, categoriesCreated={CategoriesCreated}, lineItemsCreated={LineItemsCreated}",
@@ -347,8 +351,10 @@ public sealed class DevelopmentBudgetSeeder
         CancellationToken cancellationToken,
         Action onLineItemCreated)
     {
+        var principal = SystemPrincipal.Instance;
+
         await _budgetService.UpdateCategoryAsync(category.Id, category.Name,
-            lineItems.Sum(li => li.Amount), category.ExpenditureType, actorUserId);
+            lineItems.Sum(li => li.Amount), category.ExpenditureType, actorUserId, principal);
 
         foreach (var lineItem in lineItems)
         {
@@ -365,7 +371,8 @@ public sealed class DevelopmentBudgetSeeder
                     notes: lineItem.Notes,
                     expectedDate: lineItem.ExpectedDate,
                     vatRate: lineItem.VatRate,
-                    actorUserId);
+                    actorUserId,
+                    principal);
 
                 onLineItemCreated();
                 continue;
@@ -379,7 +386,8 @@ public sealed class DevelopmentBudgetSeeder
                 notes: lineItem.Notes,
                 expectedDate: lineItem.ExpectedDate,
                 vatRate: lineItem.VatRate,
-                actorUserId);
+                actorUserId,
+                principal);
         }
     }
 

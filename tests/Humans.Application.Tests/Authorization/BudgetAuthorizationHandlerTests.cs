@@ -1,10 +1,12 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Application.Authorization;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization.Requirements;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
 
@@ -26,10 +28,41 @@ public sealed class BudgetAuthorizationHandlerTests
 
     public BudgetAuthorizationHandlerTests()
     {
-        _handler = new BudgetAuthorizationHandler(_budgetService);
+        var services = new ServiceCollection();
+        services.AddSingleton(_budgetService);
+        var provider = services.BuildServiceProvider();
+        _handler = new BudgetAuthorizationHandler(provider);
 
         _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId)
             .Returns(new HashSet<Guid> { CoordinatorTeamId });
+    }
+
+    // --- System principal override (background jobs) ---
+
+    [Fact]
+    public async Task SystemPrincipal_CanEditAnyCategory()
+    {
+        var category = CreateCategory(OtherTeamId, isRestricted: true, isDeleted: true);
+
+        var result = await EvaluateAsync(SystemPrincipal.Instance, category);
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ManageRequirement_NotHandled_ByEditHandler()
+    {
+        // The Edit handler only fires for the Edit requirement. When the Manage
+        // requirement is supplied with a BudgetCategory resource, this handler
+        // must not succeed — Manage is handled by BudgetManageAuthorizationHandler.
+        var user = CreateUserWithRoles(RoleNames.FinanceAdmin);
+        var category = CreateCategory(OtherTeamId);
+        var requirement = BudgetOperationRequirement.Manage;
+        var context = new AuthorizationHandlerContext([requirement], user, category);
+
+        await _handler.HandleAsync(context);
+
+        context.HasSucceeded.Should().BeFalse();
     }
 
     // --- Admin override ---

@@ -55,3 +55,12 @@ See `.claude/DESIGN_RULES.md` for the full rules.
 ### Current State
 
 **Compliant.** No violations found. Controllers do not inject DbContext. BudgetService only queries its own tables. Cache ownership is correct.
+
+### Authorization
+
+Budget mutations are guarded at two layers (defense in depth):
+
+1. **Controller layer** — `[Authorize(Policy = PolicyNames.FinanceAdminOrAdmin)]` on `FinanceController`, and resource-based `BudgetOperationRequirement.Edit` checks in `BudgetController` before calling line-item mutations.
+2. **Service layer** — `BudgetService` mutation methods call `IAuthorizationService.AuthorizeAsync` internally, throwing `UnauthorizedAccessException` for unprivileged callers. Admin/group/category/year/projection mutations use `BudgetOperationRequirement.Manage` (FinanceAdmin / Admin / system-principal only). Line-item create/update/delete use `BudgetOperationRequirement.Edit` with the owning `BudgetCategory` resource — so department coordinators are scoped to their own categories, FinanceAdmin/Admin succeed on any category, and background jobs pass `SystemPrincipal.Instance`.
+
+Service-layer enforcement means that future call paths (background jobs, alternate UI surfaces, future API endpoints) cannot bypass authorization by skipping controller attributes.

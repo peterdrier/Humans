@@ -1,3 +1,4 @@
+using Humans.Application.Authorization;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
 using Humans.Web.Authorization;
@@ -174,7 +175,7 @@ public class BudgetController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id, User);
             SetSuccess($"Line item '{description}' created.");
         }
         catch (Exception ex)
@@ -203,7 +204,7 @@ public class BudgetController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id, User);
             SetSuccess($"Line item '{description}' updated.");
         }
         catch (Exception ex)
@@ -229,7 +230,7 @@ public class BudgetController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteLineItemAsync(id, user.Id);
+            await _budgetService.DeleteLineItemAsync(id, user.Id, User);
             SetSuccess("Line item deleted.");
         }
         catch (Exception ex)

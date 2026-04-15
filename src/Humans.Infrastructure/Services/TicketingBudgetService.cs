@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
@@ -35,7 +36,7 @@ public class TicketingBudgetService : ITicketingBudgetService
         _logger = logger;
     }
 
-    public async Task<int> SyncActualsAsync(Guid budgetYearId, CancellationToken ct = default)
+    public async Task<int> SyncActualsAsync(Guid budgetYearId, ClaimsPrincipal principal, CancellationToken ct = default)
     {
         try
         {
@@ -82,7 +83,7 @@ public class TicketingBudgetService : ITicketingBudgetService
 
             // Delegate the BudgetLineItem / TicketingProjection mutations to
             // BudgetService, which owns those tables.
-            return await _budgetService.SyncTicketingActualsAsync(budgetYearId, weeklyActuals, ct);
+            return await _budgetService.SyncTicketingActualsAsync(budgetYearId, weeklyActuals, principal, ct);
         }
         catch (Exception ex)
         {
@@ -91,11 +92,11 @@ public class TicketingBudgetService : ITicketingBudgetService
         }
     }
 
-    public async Task<int> RefreshProjectionsAsync(Guid budgetYearId, CancellationToken ct = default)
+    public async Task<int> RefreshProjectionsAsync(Guid budgetYearId, ClaimsPrincipal principal, CancellationToken ct = default)
     {
         try
         {
-            return await _budgetService.RefreshTicketingProjectionsAsync(budgetYearId, ct);
+            return await _budgetService.RefreshTicketingProjectionsAsync(budgetYearId, principal, ct);
         }
         catch (Exception ex)
         {

@@ -178,7 +178,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            var count = await _budgetService.SyncDepartmentsAsync(id, user.Id);
+            var count = await _budgetService.SyncDepartmentsAsync(id, user.Id, User);
             if (count > 0)
                 SetSuccess($"Synced {count} new department(s) into budget.");
             else
@@ -208,7 +208,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateYearAsync(year, name, user.Id);
+            await _budgetService.CreateYearAsync(year, name, user.Id, User);
             SetSuccess($"Budget year '{name}' created.");
             return RedirectToAction(nameof(Admin));
         }
@@ -229,7 +229,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateYearStatusAsync(id, status, user.Id);
+            await _budgetService.UpdateYearStatusAsync(id, status, user.Id, User);
             SetSuccess($"Budget year status updated to {status}.");
             return RedirectToAction(nameof(Admin));
         }
@@ -250,7 +250,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateYearAsync(id, year, name, user.Id);
+            await _budgetService.UpdateYearAsync(id, year, name, user.Id, User);
             SetSuccess("Budget year updated.");
             return RedirectToAction(nameof(Admin));
         }
@@ -271,7 +271,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteYearAsync(id, user.Id);
+            await _budgetService.DeleteYearAsync(id, user.Id, User);
             SetSuccess("Budget year deleted.");
             return RedirectToAction(nameof(Admin));
         }
@@ -292,7 +292,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
+            await _budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id, User);
             SetSuccess($"Group '{name}' created.");
             return RedirectToAction(nameof(Admin));
         }
@@ -313,7 +313,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id);
+            await _budgetService.UpdateGroupAsync(id, name, sortOrder, isRestricted, user.Id, User);
             SetSuccess($"Group '{name}' updated.");
             return RedirectToAction(nameof(Admin));
         }
@@ -334,7 +334,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteGroupAsync(id, user.Id);
+            await _budgetService.DeleteGroupAsync(id, user.Id, User);
             SetSuccess("Group deleted.");
             return RedirectToAction(nameof(Admin));
         }
@@ -356,7 +356,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id);
+            await _budgetService.CreateCategoryAsync(budgetGroupId, name, allocatedAmount, expenditureType, teamId, user.Id, User);
             SetSuccess($"Category '{name}' created.");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
@@ -378,7 +378,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateCategoryAsync(id, name, allocatedAmount, expenditureType, user.Id);
+            await _budgetService.UpdateCategoryAsync(id, name, allocatedAmount, expenditureType, user.Id, User);
             SetSuccess($"Category '{name}' updated.");
             return RedirectToAction(nameof(CategoryDetail), new { id });
         }
@@ -399,7 +399,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteCategoryAsync(id, user.Id);
+            await _budgetService.DeleteCategoryAsync(id, user.Id, User);
             SetSuccess("Category deleted.");
             return RedirectToAction(nameof(YearDetail), new { id = budgetYearId });
         }
@@ -423,7 +423,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            await _budgetService.CreateLineItemAsync(budgetCategoryId, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id, User);
             SetSuccess($"Line item '{description}' created.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
@@ -447,7 +447,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id);
+            await _budgetService.UpdateLineItemAsync(id, description, amount, responsibleTeamId, notes, nodaDate, vatRate, user.Id, User);
             SetSuccess($"Line item '{description}' updated.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
@@ -468,7 +468,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            await _budgetService.DeleteLineItemAsync(id, user.Id);
+            await _budgetService.DeleteLineItemAsync(id, user.Id, User);
             SetSuccess("Line item deleted.");
             return RedirectToAction(nameof(CategoryDetail), new { id = budgetCategoryId });
         }
@@ -489,7 +489,7 @@ public class FinanceController : HumansControllerBase
 
         try
         {
-            var added = await _budgetService.EnsureTicketingGroupAsync(id, user.Id);
+            var added = await _budgetService.EnsureTicketingGroupAsync(id, user.Id, User);
             if (added)
                 SetSuccess("Ticketing group added to this budget year.");
             else
@@ -520,10 +520,10 @@ public class FinanceController : HumansControllerBase
         {
             await _budgetService.UpdateTicketingProjectionAsync(groupId, nodaStart, nodaEvent,
                 initialSalesCount, dailySalesRate, averageTicketPrice, vatRate,
-                stripeFeePercent, stripeFeeFixed, ticketTailorFeePercent, user.Id);
+                stripeFeePercent, stripeFeeFixed, ticketTailorFeePercent, user.Id, User);
 
             // Refresh projections after saving parameters (no actuals sync needed)
-            var count = await _ticketingBudgetService.RefreshProjectionsAsync(budgetYearId);
+            var count = await _ticketingBudgetService.RefreshProjectionsAsync(budgetYearId, User);
             SetSuccess($"Ticketing projection saved — {count} projected line item(s) generated.");
         }
         catch (Exception ex)
@@ -541,7 +541,7 @@ public class FinanceController : HumansControllerBase
     {
         try
         {
-            var count = await _ticketingBudgetService.SyncActualsAsync(yearId);
+            var count = await _ticketingBudgetService.SyncActualsAsync(yearId, User);
             if (count > 0)
                 SetSuccess($"Synced {count} ticketing line item(s) from ticket sales data.");
             else

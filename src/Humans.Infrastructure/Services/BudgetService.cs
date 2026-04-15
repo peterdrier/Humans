@@ -1,7 +1,10 @@
 using System.Globalization;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Authorization;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Domain.Entities;
@@ -12,21 +15,64 @@ namespace Humans.Infrastructure.Services;
 
 /// <summary>
 /// Service for managing budget years, groups, categories, and line items with integrated audit logging.
+///
+/// Mutation methods enforce authorization at the service boundary via
+/// <see cref="IAuthorizationService"/> and throw <see cref="UnauthorizedAccessException"/>
+/// for unprivileged callers — protecting budget mutations regardless of call path
+/// (controllers, background jobs, future API surfaces).
 /// </summary>
 public class BudgetService : IBudgetService
 {
     private readonly HumansDbContext _dbContext;
+    private readonly IAuthorizationService _authorizationService;
     private readonly IClock _clock;
     private readonly ILogger<BudgetService> _logger;
 
     public BudgetService(
         HumansDbContext dbContext,
+        IAuthorizationService authorizationService,
         IClock clock,
         ILogger<BudgetService> logger)
     {
         _dbContext = dbContext;
+        _authorizationService = authorizationService;
         _clock = clock;
         _logger = logger;
+    }
+
+    private async Task AuthorizeManageAsync(ClaimsPrincipal principal, string operation)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        var result = await _authorizationService.AuthorizeAsync(
+            principal, null, BudgetOperationRequirement.Manage);
+
+        if (!result.Succeeded)
+        {
+            _logger.LogWarning(
+                "Authorization denied for budget Manage operation '{Operation}': principal {Principal}",
+                operation, principal.Identity?.Name);
+            throw new UnauthorizedAccessException(
+                $"Caller is not authorized to perform budget operation '{operation}'.");
+        }
+    }
+
+    private async Task AuthorizeEditAsync(ClaimsPrincipal principal, BudgetCategory category, string operation)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        ArgumentNullException.ThrowIfNull(category);
+
+        var result = await _authorizationService.AuthorizeAsync(
+            principal, category, BudgetOperationRequirement.Edit);
+
+        if (!result.Succeeded)
+        {
+            _logger.LogWarning(
+                "Authorization denied for budget Edit operation '{Operation}' on category {CategoryId}: principal {Principal}",
+                operation, category.Id, principal.Identity?.Name);
+            throw new UnauthorizedAccessException(
+                $"Caller is not authorized to edit budget category {category.Id}.");
+        }
     }
 
     // ───────────────────────── Budget Years ─────────────────────────
@@ -72,8 +118,10 @@ public class BudgetService : IBudgetService
         return await GetYearByIdAsync(activeYear.Id);
     }
 
-    public async Task<BudgetYear> CreateYearAsync(string year, string name, Guid actorUserId)
+    public async Task<BudgetYear> CreateYearAsync(string year, string name, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(CreateYearAsync));
+
         var now = _clock.GetCurrentInstant();
 
         var budgetYear = new BudgetYear
@@ -187,8 +235,10 @@ public class BudgetService : IBudgetService
         return budgetYear;
     }
 
-    public async Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId)
+    public async Task UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(UpdateYearStatusAsync));
+
         var year = await _dbContext.BudgetYears.FindAsync(yearId)
             ?? throw new InvalidOperationException($"Budget year {yearId} not found");
 
@@ -226,8 +276,10 @@ public class BudgetService : IBudgetService
             yearId, oldStatus, status);
     }
 
-    public async Task UpdateYearAsync(Guid yearId, string year, string name, Guid actorUserId)
+    public async Task UpdateYearAsync(Guid yearId, string year, string name, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(UpdateYearAsync));
+
         var budgetYear = await _dbContext.BudgetYears.FindAsync(yearId)
             ?? throw new InvalidOperationException($"Budget year {yearId} not found");
 
@@ -254,8 +306,10 @@ public class BudgetService : IBudgetService
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task DeleteYearAsync(Guid yearId, Guid actorUserId)
+    public async Task DeleteYearAsync(Guid yearId, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(DeleteYearAsync));
+
         var year = await _dbContext.BudgetYears.FindAsync(yearId)
             ?? throw new InvalidOperationException($"Budget year {yearId} not found");
 
@@ -279,8 +333,10 @@ public class BudgetService : IBudgetService
         _logger.LogInformation("Archived budget year {YearId} ({Year})", yearId, year.Year);
     }
 
-    public async Task RestoreYearAsync(Guid yearId, Guid actorUserId)
+    public async Task RestoreYearAsync(Guid yearId, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(RestoreYearAsync));
+
         var year = await _dbContext.BudgetYears.FindAsync(yearId)
             ?? throw new InvalidOperationException($"Budget year {yearId} not found");
 
@@ -303,8 +359,10 @@ public class BudgetService : IBudgetService
         _logger.LogInformation("Restored budget year {YearId} ({Year})", yearId, year.Year);
     }
 
-    public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId)
+    public async Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(SyncDepartmentsAsync));
+
         await EnsureYearNotClosedAsync(budgetYearId);
 
         var deptGroup = await _dbContext.BudgetGroups
@@ -359,8 +417,10 @@ public class BudgetService : IBudgetService
         return budgetTeams.Count;
     }
 
-    public async Task<bool> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId)
+    public async Task<bool> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(EnsureTicketingGroupAsync));
+
         await EnsureYearNotClosedAsync(budgetYearId);
 
         var exists = await _dbContext.BudgetGroups
@@ -433,8 +493,10 @@ public class BudgetService : IBudgetService
 
     // ───────────────────────── Budget Groups ─────────────────────────
 
-    public async Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
+    public async Task<BudgetGroup> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(CreateGroupAsync));
+
         await EnsureYearNotClosedAsync(budgetYearId);
 
         var year = await _dbContext.BudgetYears.FindAsync(budgetYearId)
@@ -471,8 +533,10 @@ public class BudgetService : IBudgetService
         return group;
     }
 
-    public async Task UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId)
+    public async Task UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(UpdateGroupAsync));
+
         var group = await _dbContext.BudgetGroups.FindAsync(groupId)
             ?? throw new InvalidOperationException($"Budget group {groupId} not found");
 
@@ -508,8 +572,10 @@ public class BudgetService : IBudgetService
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task DeleteGroupAsync(Guid groupId, Guid actorUserId)
+    public async Task DeleteGroupAsync(Guid groupId, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(DeleteGroupAsync));
+
         var group = await _dbContext.BudgetGroups.FindAsync(groupId)
             ?? throw new InvalidOperationException($"Budget group {groupId} not found");
 
@@ -547,8 +613,10 @@ public class BudgetService : IBudgetService
 
     public async Task<BudgetCategory> CreateCategoryAsync(
         Guid budgetGroupId, string name, decimal allocatedAmount,
-        ExpenditureType expenditureType, Guid? teamId, Guid actorUserId)
+        ExpenditureType expenditureType, Guid? teamId, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(CreateCategoryAsync));
+
         var group = await _dbContext.BudgetGroups.FindAsync(budgetGroupId)
             ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
 
@@ -587,8 +655,10 @@ public class BudgetService : IBudgetService
 
     public async Task UpdateCategoryAsync(
         Guid categoryId, string name, decimal allocatedAmount,
-        ExpenditureType expenditureType, Guid actorUserId)
+        ExpenditureType expenditureType, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(UpdateCategoryAsync));
+
         var category = await _dbContext.BudgetCategories
             .Include(c => c.BudgetGroup)
             .FirstOrDefaultAsync(c => c.Id == categoryId)
@@ -629,8 +699,10 @@ public class BudgetService : IBudgetService
         await _dbContext.SaveChangesAsync();
     }
 
-    public async Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId)
+    public async Task DeleteCategoryAsync(Guid categoryId, Guid actorUserId, ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(DeleteCategoryAsync));
+
         var category = await _dbContext.BudgetCategories
             .Include(c => c.BudgetGroup)
             .FirstOrDefaultAsync(c => c.Id == categoryId)
@@ -662,14 +734,17 @@ public class BudgetService : IBudgetService
     public async Task<BudgetLineItem> CreateLineItemAsync(
         Guid budgetCategoryId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
-        int vatRate, Guid actorUserId)
+        int vatRate, Guid actorUserId, ClaimsPrincipal principal)
     {
         ValidateVatRate(vatRate);
 
         var category = await _dbContext.BudgetCategories
             .Include(c => c.BudgetGroup)
+                .ThenInclude(g => g!.BudgetYear)
             .FirstOrDefaultAsync(c => c.Id == budgetCategoryId)
             ?? throw new InvalidOperationException($"Budget category {budgetCategoryId} not found");
+
+        await AuthorizeEditAsync(principal, category, nameof(CreateLineItemAsync));
 
         var budgetYearId = category.BudgetGroup!.BudgetYearId;
         await EnsureYearNotClosedAsync(budgetYearId);
@@ -710,15 +785,18 @@ public class BudgetService : IBudgetService
     public async Task UpdateLineItemAsync(
         Guid lineItemId, string description, decimal amount,
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
-        int vatRate, Guid actorUserId)
+        int vatRate, Guid actorUserId, ClaimsPrincipal principal)
     {
         ValidateVatRate(vatRate);
 
         var lineItem = await _dbContext.BudgetLineItems
             .Include(li => li.BudgetCategory)
                 .ThenInclude(c => c!.BudgetGroup)
+                    .ThenInclude(g => g!.BudgetYear)
             .FirstOrDefaultAsync(li => li.Id == lineItemId)
             ?? throw new InvalidOperationException($"Budget line item {lineItemId} not found");
+
+        await AuthorizeEditAsync(principal, lineItem.BudgetCategory!, nameof(UpdateLineItemAsync));
 
         var budgetYearId = lineItem.BudgetCategory!.BudgetGroup!.BudgetYearId;
         await EnsureYearNotClosedAsync(budgetYearId);
@@ -788,13 +866,16 @@ public class BudgetService : IBudgetService
             throw new ArgumentOutOfRangeException(nameof(vatRate), vatRate, "VAT rate must be between 0 and 21.");
     }
 
-    public async Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId)
+    public async Task DeleteLineItemAsync(Guid lineItemId, Guid actorUserId, ClaimsPrincipal principal)
     {
         var lineItem = await _dbContext.BudgetLineItems
             .Include(li => li.BudgetCategory)
                 .ThenInclude(c => c!.BudgetGroup)
+                    .ThenInclude(g => g!.BudgetYear)
             .FirstOrDefaultAsync(li => li.Id == lineItemId)
             ?? throw new InvalidOperationException($"Budget line item {lineItemId} not found");
+
+        await AuthorizeEditAsync(principal, lineItem.BudgetCategory!, nameof(DeleteLineItemAsync));
 
         var budgetYearId = lineItem.BudgetCategory!.BudgetGroup!.BudgetYearId;
         await EnsureYearNotClosedAsync(budgetYearId);
@@ -823,8 +904,11 @@ public class BudgetService : IBudgetService
     public async Task UpdateTicketingProjectionAsync(
         Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
-        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId)
+        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId,
+        ClaimsPrincipal principal)
     {
+        await AuthorizeManageAsync(principal, nameof(UpdateTicketingProjectionAsync));
+
         var group = await _dbContext.BudgetGroups.FindAsync(budgetGroupId)
             ?? throw new InvalidOperationException($"Budget group {budgetGroupId} not found");
 
@@ -1180,8 +1264,11 @@ public class BudgetService : IBudgetService
     public async Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
         IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        ClaimsPrincipal principal,
         CancellationToken ct = default)
     {
+        await AuthorizeManageAsync(principal, nameof(SyncTicketingActualsAsync));
+
         var ticketingGroup = await LoadTicketingGroupAsync(budgetYearId, ct);
         if (ticketingGroup is null)
         {
@@ -1242,8 +1329,13 @@ public class BudgetService : IBudgetService
         return lineItemsCreated;
     }
 
-    public async Task<int> RefreshTicketingProjectionsAsync(Guid budgetYearId, CancellationToken ct = default)
+    public async Task<int> RefreshTicketingProjectionsAsync(
+        Guid budgetYearId,
+        ClaimsPrincipal principal,
+        CancellationToken ct = default)
     {
+        await AuthorizeManageAsync(principal, nameof(RefreshTicketingProjectionsAsync));
+
         var ticketingGroup = await LoadTicketingGroupAsync(budgetYearId, ct);
         if (ticketingGroup is null) return 0;
 

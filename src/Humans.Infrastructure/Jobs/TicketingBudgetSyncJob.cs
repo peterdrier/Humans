@@ -1,4 +1,5 @@
 using Hangfire;
+using Humans.Application.Authorization;
 using Humans.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -38,7 +39,7 @@ public class TicketingBudgetSyncJob : IRecurringJob
 
         try
         {
-            var count = await _ticketingBudgetService.SyncActualsAsync(activeYear.Id);
+            var count = await _ticketingBudgetService.SyncActualsAsync(activeYear.Id, SystemPrincipal.Instance, cancellationToken);
             _logger.LogInformation("Ticketing budget sync completed: {Count} line items synced", count);
         }
         catch (Exception ex)

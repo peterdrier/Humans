@@ -3,7 +3,14 @@ using Humans.Domain.Constants;
 
 namespace Humans.Web.Authorization;
 
-public static class RoleChecks
+/// <summary>
+/// Internal helper for role-based predicates used by the Humans.Web authorization
+/// layer (handlers, nav TagHelpers, controllers). Kept internal as part of the
+/// first-class authorization transition — external callers should use
+/// <see cref="Microsoft.AspNetCore.Authorization.IAuthorizationService"/> with
+/// named policies or resource-based requirements instead.
+/// </summary>
+internal static class RoleChecks
 {
     private static readonly IReadOnlyList<string> AdminAssignableRoles =
         [RoleNames.Admin, .. RoleNames.BoardManageableRoles];
