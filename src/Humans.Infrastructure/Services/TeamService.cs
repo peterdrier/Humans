@@ -177,6 +177,25 @@ public class TeamService : ITeamService, IUserDataContributor
             .FirstOrDefaultAsync(t => t.Id == teamId, cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (teamIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        // Deliberately NO IsActive filter — historical signups, audit entries,
+        // and other GDPR-export records may reference teams that have since
+        // been deactivated, and those users still need a team name in their
+        // downloaded data.
+        return await _dbContext.Teams
+            .AsNoTracking()
+            .Where(t => teamIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => t.Name, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default)
     {
         // Still used by callers that need Team entities (admin pages).

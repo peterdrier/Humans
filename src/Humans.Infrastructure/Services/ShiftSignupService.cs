@@ -1068,12 +1068,15 @@ public class ShiftSignupService : IShiftSignupService, IUserDataContributor
             .ToListAsync(ct);
 
         // Resolve TeamId → Team.Name through the owning section's service.
-        // At ~500 users and <~100 teams, GetAllTeamsAsync (which is cached
-        // inside TeamService) is cheaper than N round trips.
-        var teamNamesById = signups.Count == 0
-            ? new Dictionary<Guid, string>()
-            : (await TeamService.GetAllTeamsAsync(ct))
-                .ToDictionary(t => t.Id, t => t.Name);
+        // Explicitly NOT GetAllTeamsAsync — that filters to IsActive, which
+        // would drop the Department name for historical signups whose rota
+        // points at a deactivated team (GDPR data-loss regression). The
+        // dedicated GetTeamNamesByIdsAsync includes deactivated teams.
+        var referencedTeamIds = signups
+            .Select(ss => ss.Shift.Rota.TeamId)
+            .Distinct()
+            .ToList();
+        var teamNamesById = await TeamService.GetTeamNamesByIdsAsync(referencedTeamIds, ct);
 
         var volunteerEventProfiles = await _dbContext.VolunteerEventProfiles
             .AsNoTracking()
