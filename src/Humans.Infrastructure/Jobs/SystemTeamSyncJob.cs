@@ -501,6 +501,25 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .AsNoTracking()
             .AnyAsync(l => l.UserId == userId && l.LeftAt == null, cancellationToken);
 
+        // Idempotency guard: if the user should be a member and already has an active
+        // team_members row, do nothing. This avoids unique-index violations
+        // (IX_team_members_active_unique) on the Barrio Leads team when the user is
+        // registering another camp and already has an active membership from a
+        // previous registration. Checks against the database directly rather than the
+        // filtered Include collection to be robust against any tracker staleness.
+        if (isLeadAnywhere)
+        {
+            var alreadyActive = await _dbContext.TeamMembers
+                .AsNoTracking()
+                .AnyAsync(
+                    tm => tm.TeamId == team.Id && tm.UserId == userId && tm.LeftAt == null,
+                    cancellationToken);
+            if (alreadyActive)
+            {
+                return;
+            }
+        }
+
         var eligibleUserIds = isLeadAnywhere ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
     }

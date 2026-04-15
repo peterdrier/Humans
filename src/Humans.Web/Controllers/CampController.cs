@@ -7,6 +7,7 @@ using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Domain.ValueObjects;
 using Humans.Web.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -316,6 +317,18 @@ public class CampController : HumansCampControllerBase
         {
             _logger.LogWarning(ex, "Camp registration failed for user {UserId} in year {Year}", user.Id, year);
             ModelState.AddModelError(string.Empty, ex.Message);
+            await PopulateRegisterSeasonYearAsync();
+            await PopulateRegistrationInfoAsync();
+            return View(model);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Belt-and-suspenders for any future race in downstream sync side effects
+            // (e.g. duplicate system-team memberships). The primary fix lives in the
+            // owning service; this ensures the user always sees a friendly error
+            // instead of a 500.
+            _logger.LogError(ex, "Camp registration failed with DB error for user {UserId} in year {Year}", user.Id, year);
+            ModelState.AddModelError(string.Empty, "We couldn't register your camp right now. Please try again, or contact an admin if the problem persists.");
             await PopulateRegisterSeasonYearAsync();
             await PopulateRegistrationInfoAsync();
             return View(model);
