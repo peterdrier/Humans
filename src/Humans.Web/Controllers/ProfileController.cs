@@ -1009,10 +1009,11 @@ public class ProfileController : HumansControllerBase
 
         // Load no-show history for coordinators/NoInfoAdmin/Admin viewing other profiles
         List<NoShowHistoryItem>? noShowHistory = null;
+        var viewerCanViewShiftHistory = false;
         if (!isOwnProfile)
         {
             var viewerIsCoordinator = (await _shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id)).Count > 0;
-            var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
+            viewerCanViewShiftHistory = viewerIsCoordinator || ShiftRoleChecks.IsPrivilegedSignupApprover(User);
 
             if (viewerCanViewShiftHistory)
             {
@@ -1047,6 +1048,7 @@ public class ProfileController : HumansControllerBase
             IsOwnProfile = isOwnProfile,
             IsApproved = profile.IsApproved,
             NoShowHistory = noShowHistory,
+            CanViewShiftSignups = viewerCanViewShiftHistory,
         };
 
         return View("Index", viewModel);

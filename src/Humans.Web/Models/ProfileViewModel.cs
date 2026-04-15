@@ -314,6 +314,12 @@ public class ProfileViewModel
     public List<NoShowHistoryItem>? NoShowHistory { get; set; }
 
     /// <summary>
+    /// Whether the viewer can see the shift signups section (coordinators, signup approvers, admins).
+    /// Uses the same gate as NoShowHistory. Only meaningful when IsOwnProfile is false.
+    /// </summary>
+    public bool CanViewShiftSignups { get; set; }
+
+    /// <summary>
     /// Languages for editing (owner only).
     /// </summary>
     public List<ProfileLanguageEditViewModel> EditableLanguages { get; set; } = [];
