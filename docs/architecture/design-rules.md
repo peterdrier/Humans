@@ -412,6 +412,8 @@ This is the target. Existing code violates most of it. Migration is **per-domain
 
 ### 15a. Migration Phases
 
+> **Practice spike completed 2026-04-15:** **Governance** (`ApplicationDecisionService`) is the first section to land the full repo/store/decorator pattern end-to-end — see PR #503 and [`docs/superpowers/plans/2026-04-15-governance-migration.md`](../superpowers/plans/2026-04-15-governance-migration.md). Use that PR as the **reference template** for every subsequent section migration. Profile remains Step 0 in the original migration sequence (below) but the mechanics are now proven on a smaller target.
+
 1. **Step 0 — Spike on Profile.** Land the full pattern on one domain to validate the shape: create `IProfileRepository` + `ProfileRepository`, create `IProfileStore` + `ProfileStore`, move `ProfileService` from `Humans.Infrastructure` to `Humans.Application`, create `CachingProfileService` decorator, wire DI. Verify build and smoke test. This is the architectural proof — if it feels wrong, bail before touching more domains.
 2. **Step 1 — Quarantine direct access to the spiked domain.** Replace every `_dbContext.Profiles.*` call in other services with `IProfileService` calls. Delete every `.Include(x => x.Profile)` / `.Include(x => x.User)` in other domains; replace with in-memory stitching per §6b. At the end of this step, `DbContext.Profiles` is referenced in exactly one file: `ProfileRepository.cs`.
 3. **Step 2 — Repeat per domain, highest-blast-radius first.** Priority order (driven by cross-domain `.Include` count and fan-in, not alphabet): User, Team, RoleAssignment, then Campaign, Application, Consent, then the long tail.
@@ -427,12 +429,13 @@ This is the target. Existing code violates most of it. Migration is **per-domain
 
 ### 15c. Known Current Violations (as of 2026-04-15)
 
-- **43 services** live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0 (all business services move to `Humans.Application`).
-- **48 cross-domain `.Include()` calls** across **20 services**. Biggest offenders: `OnboardingService` (9), `GoogleWorkspaceSyncService` (4), `ApplicationDecisionService` (4), `FeedbackService` (4). Target: 0.
-- **0 repositories** exist today. Target: one per domain (~20 total).
-- **0 stores** exist today. Target: one per cached domain (~15–20).
-- **Inline `IMemoryCache.GetOrCreateAsync`** scattered across services. Target: replaced by decorator + store pattern.
-- **Cross-domain navigation properties** (`Profile.User`, `TeamMember.User`, `CampLead.User`, etc.) are used freely today. Target: stripped at the entity boundary, FK-only.
+- **42 services** live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0 (all business services move to `Humans.Application`). **Governance:** migrated 2026-04-15 in PR #503 — `ApplicationDecisionService` now lives in `Humans.Application.Services` and is the first fully-migrated section; use as reference template.
+- **~40 cross-domain `.Include()` calls** across **19 services**. Biggest offenders: `OnboardingService` (7 after governance fix), `GoogleWorkspaceSyncService` (4), `FeedbackService` (4). The 8 `ApplicationDecisionService` includes are gone; `OnboardingService`'s two BoardVoting includes and both Application-touching jobs were fixed in-place as part of the Governance PR. Target: 0.
+- **1 repository** exists today (`ApplicationRepository`). Target: one per domain (~20 total).
+- **1 store** exists today (`ApplicationStore`). Target: one per cached domain (~15–20).
+- **1 caching decorator** exists today (`CachingApplicationDecisionService`). Target: one per migrated service.
+- **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services. Governance was the first to extract invalidations to cross-cutting interfaces (`INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`). Target: replaced by decorator + store pattern everywhere.
+- **Cross-domain navigation properties** (`Profile.User`, `TeamMember.User`, `CampLead.User`, etc.) are used freely today. **Governance entities** (`Application`, `ApplicationStateHistory`, `BoardVote`) are the first to have these stripped. Target: stripped at the entity boundary, FK-only.
 
 Controllers with direct DbContext access (violation of §2a, tracked separately):
 - `AdminController`, `ProfileController`, `GoogleController`, `DevLoginController` (dev-only, low priority).

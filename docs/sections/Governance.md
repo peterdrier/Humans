@@ -58,59 +58,18 @@ See `docs/architecture/design-rules.md` for the full rules.
 **Owning services:** `ApplicationDecisionService`
 **Owned tables:** `applications`, `application_state_histories`, `board_votes`
 
-## Target Architecture Direction
+## Architecture
 
-> **Status:** This section currently follows the "services in Infrastructure, direct DbContext" model. It will be migrated to the repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md). **Delete this block once the migration lands and this section's services live in `Humans.Application` with `*Repository.cs` impls in `Humans.Infrastructure/Repositories/`.**
+This section is the **first fully-migrated implementation** of the target repository/store/decorator pattern per [`../architecture/design-rules.md`](../architecture/design-rules.md) §§3–5 — landed in PR #503. Use this section as the reference shape for every subsequent section migration.
 
-### Target repositories
-
-- **`IApplicationRepository`** — owns `applications`, `application_state_histories`, `board_votes`
-  - Aggregate-local navs kept: `Application.StateHistory`, `Application.BoardVotes`, `ApplicationStateHistory.Application` (back-ref), `BoardVote.Application` (back-ref)
-  - Cross-domain navs stripped: `Application.User → Application.UserId`, `Application.ReviewedByUser → Application.ReviewedByUserId`, `ApplicationStateHistory.ChangedByUser → ApplicationStateHistory.ChangedByUserId`, `BoardVote.BoardMemberUser → BoardVote.BoardMemberUserId`
-  - Note: `application_state_histories` is append-only per §12 — repository exposes `AddAsync` and `GetXxxAsync` but no `UpdateAsync`/`DeleteAsync`.
-
-### Current violations
-
-Observed in this section's service code as of 2026-04-15:
-
-- **Cross-domain `.Include()` calls:**
-  - `ApplicationDecisionService.cs:57–58` — `.Include(a => a.User).ThenInclude(u => u.Profile)` in `ApproveAsync` (navigates Governance → Users → Profiles — two domain boundaries in one chain)
-  - `ApplicationDecisionService.cs:161` — `.Include(a => a.User)` in `RejectAsync` (navigates to Users domain)
-  - `ApplicationDecisionService.cs:251` — `.Include(a => a.ReviewedByUser)` in `GetUserApplicationDetailAsync` (navigates to Users domain)
-  - `ApplicationDecisionService.cs:253` — `.ThenInclude(h => h.ChangedByUser)` on `StateHistory` in `GetUserApplicationDetailAsync` (navigates to Users domain)
-  - `ApplicationDecisionService.cs:345` — `.Include(a => a.User)` in `GetFilteredApplicationsAsync` (navigates to Users domain)
-  - `ApplicationDecisionService.cs:377` — `.Include(a => a.User)` in `GetApplicationDetailAsync` (navigates to Users domain)
-  - `ApplicationDecisionService.cs:378` — `.Include(a => a.ReviewedByUser)` in `GetApplicationDetailAsync` (navigates to Users domain)
-  - `ApplicationDecisionService.cs:380` — `.ThenInclude(h => h.ChangedByUser)` on `StateHistory` in `GetApplicationDetailAsync` (navigates to Users domain)
-  - (`.Include(a => a.BoardVotes)` at lines 59, 162 and `.Include(a => a.StateHistory)` at lines 60, 163, 252, 320, 379 are aggregate-local — kept, not violations.)
-- **Cross-section direct DbContext reads:** None found — verified via `reforge dbset-usage Humans.Infrastructure.Services.ApplicationDecisionService` — all 11 DbContext reads are against owned tables (`Applications`, `BoardVotes`).
-- **Inline `IMemoryCache` usage in service methods:**
-  - `ApplicationDecisionService.cs:101` — `_cache.InvalidateNavBadgeCounts()` in `ApproveAsync`
-  - `ApplicationDecisionService.cs:102` — `_cache.InvalidateNotificationMeters()` in `ApproveAsync`
-  - `ApplicationDecisionService.cs:103` — `_cache.InvalidateUserProfile(application.UserId)` in `ApproveAsync`
-  - `ApplicationDecisionService.cs:105` — `_cache.InvalidateVotingBadge(id)` in `ApproveAsync`
-  - `ApplicationDecisionService.cs:192` — `_cache.InvalidateNavBadgeCounts()` in `RejectAsync`
-  - `ApplicationDecisionService.cs:193` — `_cache.InvalidateNotificationMeters()` in `RejectAsync`
-  - `ApplicationDecisionService.cs:195` — `_cache.InvalidateVotingBadge(id)` in `RejectAsync`
-  - `ApplicationDecisionService.cs:288` — `_cache.InvalidateNavBadgeCounts()` in `SubmitAsync`
-  - `ApplicationDecisionService.cs:289` — `_cache.InvalidateNotificationMeters()` in `SubmitAsync`
-  - `ApplicationDecisionService.cs:331` — `_cache.InvalidateNavBadgeCounts()` in `WithdrawAsync`
-  - `ApplicationDecisionService.cs:332` — `_cache.InvalidateNotificationMeters()` in `WithdrawAsync`
-- **Cross-domain nav properties on this section's entities:**
-  - `Application.User → Application.UserId` (Users is a separate domain) — `Application.cs:30`
-  - `Application.ReviewedByUser → Application.ReviewedByUserId` (Users is a separate domain) — `Application.cs:95`
-  - `ApplicationStateHistory.ChangedByUser → ApplicationStateHistory.ChangedByUserId` (Users is a separate domain) — `ApplicationStateHistory.cs:44`
-  - `BoardVote.BoardMemberUser → BoardVote.BoardMemberUserId` (Users is a separate domain) — `BoardVote.cs:36`
-
-### Touch-and-clean guidance
-
-Until this section is migrated end-to-end, when touching its code:
-
-- When an `ApplicationDecisionService` method needs User or Profile data, keep the `.Include(a => a.User[.Profile])` / `.Include(a => a.ReviewedByUser)` / `.ThenInclude(h => h.ChangedByUser)` chains at lines 57–58, 161, 251, 253, 345, 377–378, 380 confined to their current methods — do not copy them into new methods. New methods should return the `Application` entity (with its FKs) and let the caller fetch User/Profile via `IUserService` / `IProfileService`.
-- The existing `_cache.Invalidate*` calls at lines 101–105, 192–195, 288–289, 331–332 will be replaced by a `CachingApplicationDecisionService` decorator + `IApplicationStore` per §5. Do not add new `_cache.*` invalidation calls inline — if a new mutation needs invalidation, raise it in review so the decorator pattern can be applied consistently.
-- Do not add new cross-domain navigation properties to `Application`, `ApplicationStateHistory`, or `BoardVote`. New relationships to other domains should be stored as FKs (GUIDs) only, to match the target `IApplicationRepository` shape.
-- When `ApplicationDecisionService` is eventually moved to `Humans.Application/Services/`, its `HumansDbContext` dependency is replaced by `IApplicationRepository` + `IApplicationStore`. Any new method added today should keep its EF logic tight and isolated so the future extraction is mechanical.
+- **`ApplicationDecisionService`** lives in `Humans.Application/Services/` and injects `IApplicationRepository` + `IApplicationStore` + `IUserService` + `IProfileService` + cross-cutting services (audit, email, notification, team sync). No `HumansDbContext`, no `IMemoryCache`.
+- **`IApplicationRepository`** (`Humans.Application/Interfaces/Repositories/`, impl in `Humans.Infrastructure/Repositories/`) is the only non-test file that touches `DbContext.Applications` / `BoardVotes` / `ApplicationStateHistories`. Aggregate includes `Application` + `ApplicationStateHistory` + `BoardVote`. `FinalizeAsync(app, ct)` is the atomic approve/reject commit: application update + board-vote bulk delete in one `SaveChangesAsync`. `application_state_histories` is append-only per §12 — the repository exposes no `UpdateStateHistoryAsync`/`DeleteStateHistoryAsync`.
+- **`IApplicationStore`** (`Humans.Application/Interfaces/Stores/`, impl in `Humans.Infrastructure/Stores/`) is a dict-backed `ConcurrentDictionary<Guid, Application>` canonical store, warmed at startup via `ApplicationStoreWarmupHostedService`.
+- **`CachingApplicationDecisionService`** (`Humans.Infrastructure/Services/`) decorates `IApplicationDecisionService` via Scrutor `.Decorate<>()`. Read short-circuits serve `GetUserApplicationsAsync` from the store. Write invalidations flow through three cross-cutting interfaces: `INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`.
+- **Cross-domain nav properties** (`Application.User`, `Application.ReviewedByUser`, `ApplicationStateHistory.ChangedByUser`, `BoardVote.BoardMemberUser`) are stripped from the entities. User/reviewer/voter display fields are resolved via `IUserService.GetByIdsAsync` and stitched into the returned DTOs (`ApplicationAdminDetailDto`, `ApplicationUserDetailDto`, `ApplicationAdminRowDto`, `ApplicationStateHistoryDto`).
 
 ### Known incoming violations (other sections reading Governance tables)
 
-Per reforge analysis of ProfileService, `_dbContext.Applications` is read from multiple ProfileService methods. These are violations of §2c owned by the Profiles section to fix — noted here so future touch-and-clean on the Profiles side knows to call `IApplicationDecisionService` instead. See `docs/sections/Profiles.md` for details.
+`ProfileService` still calls `_dbContext.Applications.AnyAsync(...)` and similar in a few paths (tracked in `docs/sections/Profiles.md`). These remain as known violations until the Profiles section is migrated — at that point, ProfileService should call `IApplicationDecisionService.GetUserApplicationsAsync` instead. The Governance migration preserved these reads unchanged.
+
+`OnboardingService`, `SendBoardDailyDigestJob`, and `SendAdminDailyDigestJob` also still read governance-owned tables directly for dashboard-counting and batch jobs. Those uses are allowed until the sections owning those services migrate too.

@@ -19,3 +19,4 @@ Tracks when recurring maintenance processes were last run.
 | About page package sync | 2026-04-15 | 2026-05-15 | Monthly | — | Update `About.cshtml` package versions after NuGet updates |
 | GitHub issue triage | 2026-03-08 | 2026-03-15 | Weekly | — | Sync issues vs todos.md |
 | Access matrix verification | 2026-03-18 | 2026-03-25 | Weekly | — | Compare `AccessMatrixDefinitions.cs` against actual controller auth checks |
+| Service ownership migration | 2026-04-15 | As needed | Per-section | — | Governance landed as first full end-to-end spike in PR #503. Profile is §15a Step 0 next. |
