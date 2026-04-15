@@ -1,46 +1,230 @@
 # Design Rules
 
-Architectural rules governing how components interact. These are target-state rules — new code must follow them, existing code should be migrated incrementally (see [Migration Strategy](#migration-strategy)).
+Architectural rules governing how Web, Application, Infrastructure, and Domain interact. **These are target-state rules.** New code must follow them; existing code is migrated incrementally per [Migration Strategy](#15-migration-strategy).
 
 ## 1. Layer Responsibilities
 
-Clean Architecture with strict dependency direction: Web → Application → Domain. Infrastructure implements Application interfaces.
+Clean Architecture with strict dependency direction. Application depends only on Domain. Infrastructure and Web both depend inward toward Application and Domain. Nothing depends on Web or Infrastructure.
 
-| Layer | Allowed | Not Allowed |
-|-------|---------|-------------|
-| **Domain** | Entities, enums, value objects. No dependencies on other layers. | Services, interfaces, framework references |
-| **Application** | Interfaces, DTOs, use cases. Depends only on Domain. | DbContext, EF Core, HTTP, external SDKs |
-| **Infrastructure** | Implements Application interfaces. EF Core, external API clients, background jobs. | Controller logic, Razor, HTTP request/response |
-| **Web** | Controllers, views, view models, API endpoints. Depends on Application interfaces only. | DbContext, direct EF queries, direct cache access |
+```
+Domain  ←  Application  ←  Infrastructure
+                       ←  Web
+```
+
+| Layer | Contains | Forbidden |
+|---|---|---|
+| **Domain** | Entities, enums, value objects. No external dependencies. | Services, interfaces, framework references, EF types, DTOs |
+| **Application** | Service **interfaces** and **implementations** (business logic), repository and store **interfaces**, DTOs, use cases, authorization handlers | `DbContext`, `Microsoft.EntityFrameworkCore.*`, HTTP types, external SDKs, direct I/O |
+| **Infrastructure** | Repository implementations, store implementations, caching decorators, `HumansDbContext`, migrations, external API clients (Google, Stripe, SMTP), background jobs | Controller logic, Razor, HTTP request/response, business rules |
+| **Web** | Controllers, views, view models, API endpoints, DI wiring | `DbContext`, direct EF queries, direct cache access for domain data, raw SQL |
+
+The project reference graph (`Humans.Application.csproj` references only `Humans.Domain.csproj`) **structurally enforces** that services in Application cannot import `Microsoft.EntityFrameworkCore`. EF pollution in business logic is a compile error, not a code-review finding.
+
+**Key change from prior rules:** Services now live in `Humans.Application`, not `Humans.Infrastructure`. The old rule ("services own their data access") meant "services inject `DbContext` directly," which conflated business logic with persistence and made "no cross-domain joins" impossible to enforce structurally. The new rule is "services go through their owning repository."
 
 ## 2. Service Ownership — The Core Rule
 
-**Each service is the exclusive gateway to its data.** No other component — controller, service, job, or view component — may bypass the owning service to access its tables or cache.
+Each service is the exclusive gateway to its data. No component — controller, other service, job, or view component — may bypass the owning service to reach its tables, its cache, or its store.
 
 ### 2a. Controllers Cannot Talk to the Database
 
-Controllers call services. Controllers never inject `DbContext`, never write EF queries, never access `IMemoryCache` for domain data. Their job is: receive HTTP request → call service(s) → return response.
+Controllers call services. Controllers never inject `DbContext`, never write EF queries, never instantiate repositories or stores directly, never access `IMemoryCache` for domain data. Their job is: receive HTTP request → authorize → call service(s) → return response.
 
-**Exceptions:** `UserManager<User>` for ASP.NET Identity operations (login, password, claims) is allowed in controllers since Identity is a framework concern, not a domain service.
+**Exception:** `UserManager<User>` / `SignInManager<User>` for ASP.NET Identity operations (login, password, claims) are allowed in controllers since Identity is a framework concern, not a domain service.
 
-### 2b. Only Services Talk to the Database
+### 2b. Services Live in Application, Not Infrastructure
 
-All EF Core queries live in Infrastructure service implementations. If data needs to come from the database, it goes through a service method.
+Business services (`ProfileService`, `TeamService`, `BudgetService`, etc.) live in `Humans.Application`. They contain business rules, workflow logic, validation, and orchestration. They **never** import EF types. When they need to load or persist entities, they call their owning repository interface; when they need cached data, they go through their owning store.
+
+Repository **implementations** (the classes that talk to `DbContext`) live in `Humans.Infrastructure`. That is the only project that may touch EF Core.
 
 ### 2c. Table Ownership Is Strict and Sectional
 
-Each service owns specific database tables. **No other service may query, insert, update, or delete rows in tables it does not own.** If `CampService` needs a profile, it calls `IProfileService` — it does not query the `profiles` table.
+Each domain's tables are owned by exactly one service (and that service's repository). **No other service may query, insert, update, or delete rows in tables it does not own.** If `CampService` needs a profile, it calls `IProfileService` — it does not query the `profiles` table, does not instantiate `IProfileRepository`, does not read from `IProfileStore`.
 
 ### 2d. Cache Ownership Follows Data Ownership
 
-The service that owns the data owns the cache for that data. Caching is an internal implementation detail of the owning service. Callers don't know whether data came from cache or DB — they call the service method and get the result.
+Caching is an internal concern of the owning service. Callers don't know whether data came from memory, the store, or the database — they call the service method and get the result. The mechanism for caching is the **store pattern** (§4) and the **caching decorator** (§5), not raw `IMemoryCache` calls inlined in service methods.
 
-- Only the owning service may read/write/invalidate cache entries for its data.
-- Other services and controllers must not access `IMemoryCache` with another service's cache keys.
+## 3. Repository Layer
 
-## 3. Table Ownership Map
+Every domain has a narrow, entity-shaped **repository interface** in `Humans.Application/Interfaces/Repositories/` and an EF-backed **implementation** in `Humans.Infrastructure/Repositories/`. The repository is the single point of EF access for its tables.
 
-Each section's service owns these tables. Cross-service access goes through the service interface, never direct DB queries.
+### 3a. Repository Rules
+
+1. **Entities in, entities out.** Return types are `Profile`, `IReadOnlyList<Profile>`, `IReadOnlyDictionary<Guid, Profile>`, or scalar / id values. Never `IQueryable<T>`, never EF types, never DTOs.
+2. **No cross-domain method signatures.** A repository for the Profile domain never takes a `Team`, returns a `User`, or accepts a filter that requires joining another domain's table. If a caller needs a compound shape, a composer at the service layer stitches it from multiple repositories.
+3. **Bulk-by-ids is first class.** Every repository exposes a `GetByIdsAsync(IReadOnlyCollection<Guid>)` returning a dictionary. This is what makes in-memory joins (§6) cheap.
+4. **`GetAllAsync` exists for store warmup.** At ~500 users it is trivial. Larger datasets would replace it with a streaming shape; at our scale it is strictly cheaper than lazy loading.
+5. **No cross-domain navigation properties in return shapes.** `Profile.User` is a cross-domain nav — callers get the FK (`Profile.UserId`) and resolve via `IUserRepository` if they need the User. Aggregate-local navs (`Profile.Languages`) are fine.
+6. **No logging of domain events, no audit, no `IClock`, no caching.** Just persistence. Side effects belong to the service.
+
+### 3b. Canonical Repository Shape
+
+```csharp
+// Humans.Application/Interfaces/Repositories/IProfileRepository.cs
+public interface IProfileRepository
+{
+    Task<Profile?> GetByIdAsync(Guid profileId, CancellationToken ct = default);
+    Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
+
+    Task<IReadOnlyList<Profile>> GetAllAsync(CancellationToken ct = default);
+
+    Task<int> CountByTierAsync(MembershipTier tier, CancellationToken ct = default);
+    Task<IReadOnlyList<Guid>> GetUserIdsByBirthdayMonthAsync(int month, CancellationToken ct = default);
+
+    Task AddAsync(Profile profile, CancellationToken ct = default);
+    Task UpdateAsync(Profile profile, CancellationToken ct = default);
+    Task DeleteAsync(Guid profileId, CancellationToken ct = default);
+}
+```
+
+## 4. Store Pattern (In-Memory Entity Cache)
+
+Every cached domain has a **store** — a dedicated class that owns an in-memory canonical copy of its entities. The store is the *data shape* of the cache; it is separate from the decorator that makes reads transparent.
+
+### 4a. Store Rules
+
+1. **One store per domain.** `IProfileStore` holds the Profile world. `ITeamStore` holds the Team world. Stores do not share state.
+2. **Canonical storage is a dictionary keyed by primary id** (`Dictionary<Guid, Profile>`). Secondary indexes (e.g., `Dictionary<string, Guid>` for email → id) are allowed when a specific lookup pattern justifies them; the store keeps them consistent because only the store writes.
+3. **Single writer.** Only the owning service writes to the store, and only as part of a successful DB write. The store interface exposes `Upsert(entity)` and `Remove(id)`; the owning service calls these immediately after its repository write returns successfully.
+4. **Startup warmup.** Each store loads its full domain on startup via `IProfileRepository.GetAllAsync()`. At ~500 users this is trivial memory and query cost; it eliminates cache-miss reasoning entirely.
+5. **Stores are Infrastructure.** The interface lives in `Humans.Application/Interfaces/Stores/`, the implementation lives in `Humans.Infrastructure/Stores/`.
+
+### 4b. Why a Store, Not Inline `IMemoryCache.GetOrCreateAsync`
+
+The old pattern (`_cache.GetOrCreateAsync($"profile:{id}", ...)` inside a service method) caches *query results*, not entities. `GetById`, `GetByEmail`, and `GetByIds` become three independent cache entries for overlapping data, with three independent invalidation paths and three opportunities for staleness. Under the store pattern, all three are dict lookups over the same canonical `Profile` object, and invalidation is a single `Upsert` call in one place: the owning service's write method.
+
+## 5. Decorator Caching
+
+Services are cached by **wrapping them in a decorator**, not by inlining `IMemoryCache` calls. The decorator is registered via `services.Decorate<IProfileService, CachingProfileService>()` (Scrutor). Callers inject `IProfileService` and get the cached version transparently.
+
+### 5a. Decorator Rules
+
+1. **One decorator per service.** `CachingProfileService : IProfileService` wraps the real `ProfileService`.
+2. **Reads go through the store.** The decorator asks `IProfileStore` first. With startup warmup, every read is a hit at our scale.
+3. **Writes pass through to the inner service.** The inner service writes to the repository and then updates the store. The decorator does not update the store itself — the service does, because only the service knows what the final entity state is after business rules run.
+4. **Decorators contain zero business logic.** If the decorator needs to decide anything beyond "is it in the store?", that decision belongs in the service, not the wrapper.
+
+### 5b. The Full Stack
+
+```
+Controllers / other services
+          ↓ IProfileService
+CachingProfileService (decorator)       [Infrastructure]
+          ↓ IProfileService
+ProfileService (business logic)         [Application]
+          ↓ IProfileRepository, IProfileStore
+ProfileRepository, ProfileStore         [Infrastructure]
+          ↓ DbContext
+HumansDbContext                         [Infrastructure]
+```
+
+Three roles, cleanly separated:
+- **Repository** talks to EF, nothing else
+- **Service** runs business rules and coordinates repository + store writes
+- **Decorator** makes caching invisible to callers
+
+## 6. Cross-Domain Joins Are Forbidden
+
+**No EF query may `.Include()` or `.Join()` across a domain boundary.** A Profile query cannot navigate into User, Team, or Campaign. A Team query cannot navigate into Profile or User. A Campaign query cannot navigate into Team members. And so on.
+
+### 6a. Why
+
+Cross-domain joins couple caching and invalidation to the database because no single service owns the joined shape. Nothing upstream can safely cache a Team+Profile join; nothing upstream can safely invalidate it when either side changes. These joins are the single biggest structural barrier to the caching model in §4–§5, and they silently break the table-ownership rule in §2c because the joining service ends up reading columns it does not own.
+
+### 6b. In-Memory Joins Are the Replacement
+
+When a caller needs Team + Profile + User together, the caller (controller, page service, or composer service) asks each owning service for its slice and stitches in memory:
+
+```csharp
+// In a controller or composer
+var team = await _teamService.GetByIdAsync(teamId, ct);
+var userIds = team.Members.Select(m => m.UserId).ToList();
+var profiles = await _profileService.GetByUserIdsAsync(userIds, ct);
+var users = await _userService.GetByIdsAsync(userIds, ct);
+
+var rows = team.Members.Select(m => new TeamMemberRow(
+    UserId:      m.UserId,
+    DisplayName: users[m.UserId].DisplayName,
+    BurnerName:  profiles[m.UserId].BurnerName,
+    Role:        m.Role));
+```
+
+Three store reads, no SQL joins, cache ownership intact, each service cachable independently.
+
+### 6c. Cross-Domain Nav Properties
+
+Strip cross-domain navigation properties at the repository and entity boundary:
+
+- ❌ `Profile.User` (nav to User entity in another domain)
+- ✅ `Profile.UserId` (FK only)
+- ❌ `TeamMember.User` (nav to User)
+- ✅ `TeamMember.UserId` (FK only)
+- ❌ `CampLead.User`, `ApplicationVote.BoardMember`, etc.
+- ✅ The corresponding FKs
+- ✅ `Profile.Languages` (aggregate-local collection, fine — same domain)
+
+### 6d. What You Give Up
+
+- **Server-side filter or sort on joined columns** (e.g., "teams ordered by coordinator's city"). At 500 users you filter and sort in memory — cheap.
+- **Some EF LINQ elegance.** You write more `Dictionary<Guid, T>` lookups and fewer `Include / ThenInclude` chains.
+
+### 6e. What You Gain
+
+- Cache ownership becomes tractable. Every domain owns its own store and its own invalidation.
+- Every table has exactly one writer (its repository) and one cache (its store).
+- Missing-`Include` bugs (lazy-load exceptions, over-fetching graphs) stop happening because there are no cross-domain navs to forget.
+- The table-ownership rule finally has teeth at query time, not just at write time.
+
+## 7. Decorators vs In-Service Crosscuts
+
+Not every crosscut belongs in a decorator. The decorator pattern works only for concerns that are **mechanical and context-free** — where the wrapper does not need to know *who* is calling or *why*.
+
+| Concern | Pattern | Why |
+|---|---|---|
+| Caching | Decorator ✅ | Mechanical, context-free |
+| Metrics / timing | Decorator ✅ | Mechanical, context-free |
+| Retry / circuit breaker (external calls) | Decorator ✅ | Mechanical, context-free |
+| Access logging (GDPR "who viewed what") | Decorator ✅ | Mechanical, context-free |
+| **Domain audit** (suspended, approved, tier changed) | **In-service** | Needs actor, before/after state, semantic intent, same transaction as the write |
+| **Authorization** | **In-controller** (resource-based handlers, §11) | Needs HTTP identity + resource context |
+| **Transactions / unit of work** | **In-service** | Must wrap the whole business operation |
+
+### 7a. Audit Is In-Service
+
+Domain audit events — "user X suspended user Y for reason Z" — need the actor, the before/after state, the semantic intent, and must commit in the same unit of work as the mutation. A decorator wrapping `SuspendAsync(userId)` has none of that context: it does not know the actor (unless plumbed in), it does not know the old state (unless it re-reads, which is wasteful), and it cannot distinguish a name edit from a suspension from a tier change.
+
+Services call `IAuditLogService.LogAsync(...)` explicitly inside the business method:
+
+```csharp
+public async Task SuspendAsync(Guid userId, Guid actorId, string reason, CancellationToken ct)
+{
+    var profile = await _repo.GetByUserIdAsync(userId, ct);
+    if (profile is null) return;
+
+    var wasAlreadySuspended = profile.IsSuspended;
+    profile.IsSuspended = true;
+    await _repo.UpdateAsync(profile, ct);
+    _store.Upsert(profile);
+
+    await _auditLog.LogAsync(new AuditEntry(
+        Actor:   actorId,
+        Subject: userId,
+        Action:  "ProfileSuspended",
+        Before:  wasAlreadySuspended,
+        After:   true,
+        Reason:  reason), ct);
+}
+```
+
+If audit calls become noisy across many methods inside one service, the next evolution is **domain events** raised from the entity and handled in Infrastructure — not a decorator.
+
+## 8. Table Ownership Map
+
+Each section's service owns these tables. Cross-service access goes through the service interface, never through direct DB queries, never through another domain's repository or store.
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
@@ -68,43 +252,51 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full directed dependency graph with current vs target edges and circular dependency analysis.
 
-## 4. Cross-Service Communication
+## 9. Cross-Service Communication
 
-When a service needs data from another section, it calls that section's service interface via constructor injection.
+When a service needs data from another section, it calls that section's public service interface via constructor injection. Repositories and stores are never crossed — only the public `I{Section}Service` interface.
 
 ```csharp
-// CORRECT — CampService needs a profile, asks ProfileService
-public class CampService : ICampService
+// CORRECT — CampService needs profiles, asks ProfileService
+public class CampService(
+    ICampRepository campRepository,
+    ICampStore campStore,
+    IProfileService profileService) : ICampService
 {
-    private readonly IProfileService _profileService;
-    
-    public async Task<CampDetailDto> GetCampDetailAsync(Guid campId)
+    public async Task<CampDetailDto> GetCampDetailAsync(Guid campId, CancellationToken ct)
     {
-        var camp = await _context.Camps.FindAsync(campId);
-        var leadProfiles = await _profileService.GetProfilesByIdsAsync(camp.LeadUserIds);
-        // ...
-    }
-}
+        var camp = await campRepository.GetByIdAsync(campId, ct);
+        if (camp is null) return null;
 
-// WRONG — CampService queries profiles table directly
-public class CampService : ICampService
-{
-    public async Task<CampDetailDto> GetCampDetailAsync(Guid campId)
-    {
-        var camp = await _context.Camps.FindAsync(campId);
-        var leads = await _context.Profiles.Where(p => leadIds.Contains(p.UserId)).ToListAsync();
-        // ...
+        var leadProfiles = await profileService.GetByUserIdsAsync(camp.LeadUserIds, ct);
+        return BuildDto(camp, leadProfiles);
     }
 }
 ```
 
-### Cross-Service Contract Rules
+Wrong patterns — each violates an invariant somewhere:
 
-- Cross-service calls are by **ID or small parameter set** — `GetProfileAsync(Guid userId)`, not raw queries.
-- Services return **DTOs or domain entities** — never `IQueryable` or EF query fragments.
-- Circular dependencies are resolved by extracting a shared interface or using an orchestrating service (like `OnboardingService` orchestrating Profiles + Legal + Teams).
+```csharp
+// WRONG — reaches into another domain's repository
+public class CampService(ICampRepository repo, IProfileRepository profileRepo) : ICampService { ... }
 
-## 5. Cross-Cutting Services
+// WRONG — reaches into another domain's store
+public class CampService(ICampRepository repo, IProfileStore profileStore) : ICampService { ... }
+
+// WRONG — direct DbContext access (impossible by project graph once migrated)
+public class CampService(HumansDbContext db) : ICampService { ... }
+
+// WRONG — cross-domain .Include
+var camp = await db.Camps.Include(c => c.Leads).ThenInclude(l => l.Profile).FirstAsync(...);
+```
+
+### Rules
+
+- Cross-service calls are **by id or small parameter set** — `GetByUserIdAsync(Guid)`, `GetByIdsAsync(IReadOnlyCollection<Guid>)`. Never a raw predicate that pushes another domain's schema knowledge into the caller.
+- Services return **DTOs or domain entities** — never `IQueryable`, never cross-domain entity graphs.
+- Circular dependencies are resolved by extracting a shared interface or using an orchestrating service (e.g., `OnboardingService` orchestrates Profiles + Legal + Teams).
+
+## 10. Cross-Cutting Services
 
 Some services are used across all sections. They own their own tables but are injected everywhere.
 
@@ -115,9 +307,9 @@ Some services are used across all sections. They own their own tables but are in
 | `EmailOutboxService` | Queue and track transactional emails | `email_outbox_messages` |
 | `NotificationService` | In-app notifications | *(transient)* |
 
-These are standalone services, not embedded in section services. Any service or controller can call `IAuditLogService.LogAsync(...)` to record an action, or `IRoleAssignmentService.HasActiveRoleAsync(...)` to check a role.
+These are standalone services, not embedded in section services. Any service or controller can call `IAuditLogService.LogAsync(...)` to record an action, or `IRoleAssignmentService.HasActiveRoleAsync(...)` to check a role. They follow the same repository + store + decorator pattern as any other service.
 
-## 6. Authorization Pattern
+## 11. Authorization Pattern
 
 Authorization uses **ASP.NET Core resource-based authorization** — one pattern, everywhere.
 
@@ -150,7 +342,7 @@ await _budgetService.DeleteLineItemAsync(id);
 - **Services are auth-free.** They don't check roles, don't inject `IHttpContextAccessor`, don't receive boolean privilege flags. Authorization happens before the service is called.
 - **New sections need a handler.** When adding a new section with resource-scoped auth, add a `*OperationRequirement` + `*AuthorizationHandler` pair. Don't invent a new pattern.
 
-## 7. Immutable Entity Rules
+## 12. Immutable Entity Rules
 
 Some entities are append-only. They have database triggers or application-level enforcement preventing UPDATE and DELETE.
 
@@ -163,9 +355,9 @@ Some entities are append-only. They have database triggers or application-level 
 | `ApplicationStateHistory` | `application_state_histories` | Append-only by convention |
 | `TeamJoinRequestStateHistory` | `team_join_request_state_histories` | Append-only by convention |
 
-**Rule:** Never add UPDATE or DELETE logic for append-only entities. New state = new row.
+**Rule:** Never add UPDATE or DELETE logic for append-only entities. New state = new row. Repository interfaces for these domains expose `AddAsync` and `GetX` methods but no `UpdateAsync` or `DeleteAsync`.
 
-## 8. Google Resource Ownership
+## 13. Google Resource Ownership
 
 All Google Drive resources are on **Shared Drives** (never My Drive). Google integration is managed by dedicated services:
 
@@ -174,69 +366,43 @@ All Google Drive resources are on **Shared Drives** (never My Drive). Google int
 - `GoogleWorkspaceUserService` — user provisioning
 - `SyncSettingsService` — per-service sync mode (None/AddOnly/AddAndRemove)
 
-**No other service queries Google resources directly.** If a section needs to know about a team's Google resources, it asks `ITeamResourceService`.
+**No other service queries Google resources directly.** If a section needs to know about a team's Google resources, it asks `ITeamResourceService`. The guardrail script `scripts/check-google-resource-ownership.sh` enforces this at CI time.
 
-## 9. DTO and ViewModel Boundary
+## 14. DTO and ViewModel Boundary
 
-- **Services** return DTOs or domain entities to callers.
-- **Controllers** map service results to ViewModels for Razor views.
-- **Domain entities** should not leak into Razor views when a ViewModel would provide better separation. For simple cases where the entity maps 1:1 to the view, passing the entity is acceptable.
-- **View Components** may inject services directly (they are part of the Web layer) but still follow the service gateway rule — they call services, not DbContext.
+- **Domain entities** live in `Humans.Domain`. They are mutable, have identity, and carry invariants. Entities never reference EF types.
+- **DTOs** live in `Humans.Application`. They are read-optimized shapes for specific use cases (admin tables, API responses, view data). Services return DTOs when the shape is call-specific and the entity does not match; they return entities when the caller needs the full aggregate.
+- **ViewModels** live in `Humans.Web` (or are inlined in controllers). Controllers map DTOs or entities to view models for Razor.
+- **Domain entities should not leak into Razor views** when a DTO would provide better separation. Simple 1:1 cases are acceptable; anything that would have required `.Include` for navigation in the old model is not.
+- **View components** are part of Web. They call services, not repositories or stores.
 
-## 10. Cache Invalidation Responsibility
+## 15. Migration Strategy
 
-The owning service decides when to invalidate its cache. Common patterns:
+This is the target. Existing code violates most of it. Migration is **per-domain, one at a time** — no big-bang rewrite.
 
-```csharp
-// ProfileService owns profile caching
-public class ProfileService : IProfileService
-{
-    public async Task<ProfileDto> GetProfileAsync(Guid userId)
-    {
-        return await _cache.GetOrCreateAsync($"profile:{userId}", async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-            return await LoadFromDb(userId);
-        });
-    }
-    
-    public async Task UpdateProfileAsync(Guid userId, UpdateProfileDto dto)
-    {
-        // ... save to DB ...
-        _cache.Remove($"profile:{userId}");  // Owning service invalidates
-    }
-}
+### 15a. Migration Phases
 
-// WRONG — CampService invalidating ProfileService's cache
-public class CampService : ICampService
-{
-    private readonly IMemoryCache _cache;
-    
-    public async Task UpdateCampLeadAsync(...)
-    {
-        // ...
-        _cache.Remove($"profile:{leadUserId}");  // NOT YOUR CACHE
-    }
-}
-```
+1. **Step 0 — Spike on Profile.** Land the full pattern on one domain to validate the shape: create `IProfileRepository` + `ProfileRepository`, create `IProfileStore` + `ProfileStore`, move `ProfileService` from `Humans.Infrastructure` to `Humans.Application`, create `CachingProfileService` decorator, wire DI. Verify build and smoke test. This is the architectural proof — if it feels wrong, bail before touching more domains.
+2. **Step 1 — Quarantine direct access to the spiked domain.** Replace every `_dbContext.Profiles.*` call in other services with `IProfileService` calls. Delete every `.Include(x => x.Profile)` / `.Include(x => x.User)` in other domains; replace with in-memory stitching per §6b. At the end of this step, `DbContext.Profiles` is referenced in exactly one file: `ProfileRepository.cs`.
+3. **Step 2 — Repeat per domain, highest-blast-radius first.** Priority order (driven by cross-domain `.Include` count and fan-in, not alphabet): User, Team, RoleAssignment, then Campaign, Application, Consent, then the long tail.
+4. **Step 3 — Tail domains.** Audit log, outbox, sync settings, and other low-traffic domains get the full pattern for consistency. These are mechanical and low-risk.
+5. **Step 4 — Structural enforcement.** Architecture test or CI grep that fails if (a) any service lives in `Humans.Infrastructure/Services/`, or (b) any file outside a `*Repository.cs` references `DbContext.<tablename>`, or (c) any `.Include()` navigates across domain boundaries.
 
-If a cross-service operation requires cache invalidation, the owning service should expose a method for it (e.g., `IProfileService.InvalidateCacheAsync(Guid userId)`), or the invalidation should happen naturally when the owning service's write method is called.
+### 15b. Migration Rules During the Transition
 
-## Migration Strategy
+1. **New code must comply.** New features use the target pattern from day one, even in domains that have not been migrated yet. That means creating the repository + store + decorator for a new domain the same day you create its service.
+2. **Touch-and-clean within scope.** When modifying an existing service for unrelated reasons, don't scope-creep into a full repository migration. Fix the immediate bug; migrate the domain in a dedicated session.
+3. **Don't half-migrate a domain.** If you start extracting `IProfileRepository`, finish the full stack (repo + store + decorator + caller updates) in one session. A half-migrated domain where some callers use the new service and others still `.Include()` directly is worse than either extreme.
+4. **EF migration review still applies.** Schema changes still go through the EF migration reviewer agent — the repository layer does not change what migrations look like, just who calls them.
 
-This is a target architecture. Existing code has violations. The migration approach:
+### 15c. Known Current Violations (as of 2026-04-15)
 
-1. **New code must comply.** All new features, services, and controllers follow these rules from day one.
-2. **Touch-and-clean.** When modifying an existing controller or service for any reason, clean up violations in the code you're touching. Don't scope-creep into unrelated files.
-3. **Tech debt cleanup.** Systematic violation cleanup is tracked as tech debt. Section-by-section migration can be done as dedicated work.
-4. **Don't break working code for purity.** If a refactor to comply would require significant changes across multiple files, create a GitHub issue instead of a risky inline fix.
+- **43 services** live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0 (all business services move to `Humans.Application`).
+- **48 cross-domain `.Include()` calls** across **20 services**. Biggest offenders: `OnboardingService` (9), `GoogleWorkspaceSyncService` (4), `ApplicationDecisionService` (4), `FeedbackService` (4). Target: 0.
+- **0 repositories** exist today. Target: one per domain (~20 total).
+- **0 stores** exist today. Target: one per cached domain (~15–20).
+- **Inline `IMemoryCache.GetOrCreateAsync`** scattered across services. Target: replaced by decorator + store pattern.
+- **Cross-domain navigation properties** (`Profile.User`, `TeamMember.User`, `CampLead.User`, etc.) are used freely today. Target: stripped at the entity boundary, FK-only.
 
-### Known Current Violations
-
-Controllers with direct DbContext access (to be migrated):
-- `AdminController` — queries DB directly for admin operations
-- `ProfileController` — some direct DB queries
-- `GoogleController` — direct DB access for sync operations
-- `DevLoginController` — dev-only, low priority
-
-Cross-service table access violations are documented per-section in `docs/sections/`.
+Controllers with direct DbContext access (violation of §2a, tracked separately):
+- `AdminController`, `ProfileController`, `GoogleController`, `DevLoginController` (dev-only, low priority).
