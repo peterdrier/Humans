@@ -17,8 +17,6 @@ namespace Humans.Infrastructure.Services.Governance;
 ///
 /// Responsibilities:
 /// <list type="bullet">
-/// <item>Read short-circuits: <see cref="GetUserApplicationsAsync"/> is served
-/// from the store directly (post-warmup there is no cache-miss reasoning to do).</item>
 /// <item>Write pass-through: all write methods forward to the inner service,
 /// which is responsible for updating the store after its repository write
 /// returns successfully.</item>
@@ -27,6 +25,19 @@ namespace Humans.Infrastructure.Services.Governance;
 /// NavBadge, NotificationMeter, and per-voter VotingBadge caches.
 /// <see cref="SubmitAsync"/> and <see cref="WithdrawAsync"/> invalidate
 /// NavBadge and NotificationMeter only.</item>
+/// <item>Read pass-through: <b>read methods currently pass through to the
+/// inner service</b> rather than short-circuiting via the store. Reason:
+/// <c>ProfileService.SaveProfileAsync</c> still creates/edits tier
+/// applications directly via <c>_dbContext.Applications</c> during initial
+/// profile setup (known incoming violation, tracked in
+/// <c>docs/sections/Governance.md</c>). Those writes never hit
+/// <see cref="IApplicationStore"/>, so any store-backed read would return
+/// stale data until the Profile section migrates too. Once Profile routes
+/// its application writes through <see cref="IApplicationDecisionService"/>,
+/// <see cref="GetUserApplicationsAsync"/> can be flipped back to serving
+/// from <see cref="IApplicationStore"/> directly. The store is still used
+/// internally by the inner service for its own state mirroring and is
+/// warmed at startup.</item>
 /// </list>
 ///
 /// Voter ids for the per-voter VotingBadge invalidation are captured BEFORE
@@ -38,7 +49,6 @@ namespace Humans.Infrastructure.Services.Governance;
 public sealed class CachingApplicationDecisionService : IApplicationDecisionService
 {
     private readonly IApplicationDecisionService _inner;
-    private readonly IApplicationStore _store;
     private readonly IApplicationRepository _repository;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly INotificationMeterCacheInvalidator _notificationMeter;
@@ -46,14 +56,12 @@ public sealed class CachingApplicationDecisionService : IApplicationDecisionServ
 
     public CachingApplicationDecisionService(
         IApplicationDecisionService inner,
-        IApplicationStore store,
         IApplicationRepository repository,
         INavBadgeCacheInvalidator navBadge,
         INotificationMeterCacheInvalidator notificationMeter,
         IVotingBadgeCacheInvalidator votingBadge)
     {
         _inner = inner;
-        _store = store;
         _repository = repository;
         _navBadge = navBadge;
         _notificationMeter = notificationMeter;
@@ -111,8 +119,13 @@ public sealed class CachingApplicationDecisionService : IApplicationDecisionServ
     public Task<IReadOnlyList<MemberApplication>> GetUserApplicationsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // Store is warmed at startup; reads are always a hit at our scale.
-        return Task.FromResult(_store.GetByUserId(userId));
+        // Pass through to the inner service (which reads from the
+        // repository) instead of serving from IApplicationStore. See the
+        // class remarks above for the reason — ProfileService.SaveProfileAsync
+        // still creates/edits tier applications outside this service, so
+        // any store-backed read would serve stale data until the Profile
+        // section migrates too. Flip this back once that happens.
+        return _inner.GetUserApplicationsAsync(userId, ct);
     }
 
     public Task<ApplicationUserDetailDto?> GetUserApplicationDetailAsync(

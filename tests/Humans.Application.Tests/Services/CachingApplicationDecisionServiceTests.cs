@@ -9,7 +9,6 @@ using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Services.Governance;
-using Humans.Infrastructure.Stores;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
 
@@ -17,14 +16,15 @@ namespace Humans.Application.Tests.Services;
 
 /// <summary>
 /// Unit tests for <see cref="CachingApplicationDecisionService"/>. These cover
-/// the decorator's three responsibilities: read short-circuits via the store,
-/// pass-through of writes to the inner service, and cross-cutting cache
-/// invalidation after successful writes.
+/// the decorator's two responsibilities: pass-through of reads and writes to
+/// the inner service, and cross-cutting cache invalidation after successful
+/// writes. The decorator does NOT short-circuit reads via
+/// <c>IApplicationStore</c> — see the remarks on the decorator class for why
+/// (ProfileService still writes applications outside the service).
 /// </summary>
 public sealed class CachingApplicationDecisionServiceTests
 {
     private readonly IApplicationDecisionService _inner = Substitute.For<IApplicationDecisionService>();
-    private readonly ApplicationStore _store = new();
     private readonly IApplicationRepository _repository = Substitute.For<IApplicationRepository>();
     private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
@@ -35,7 +35,6 @@ public sealed class CachingApplicationDecisionServiceTests
     {
         _decorator = new CachingApplicationDecisionService(
             _inner,
-            _store,
             _repository,
             _navBadge,
             _notificationMeter,
@@ -43,16 +42,17 @@ public sealed class CachingApplicationDecisionServiceTests
     }
 
     [Fact]
-    public async Task GetUserApplicationsAsync_ServedFromStoreWithoutCallingInner()
+    public async Task GetUserApplicationsAsync_PassesThroughToInner()
     {
         var userId = Guid.NewGuid();
         var app = NewApp(userId: userId);
-        _store.Upsert(app);
+        _inner.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new[] { app });
 
         var result = await _decorator.GetUserApplicationsAsync(userId);
 
         result.Should().ContainSingle(a => a.Id == app.Id);
-        await _inner.DidNotReceive().GetUserApplicationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _inner.Received().GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>());
     }
 
     [Fact]

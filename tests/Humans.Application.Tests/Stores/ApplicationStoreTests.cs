@@ -131,12 +131,12 @@ public sealed class ApplicationStoreTests
         Guid? id = null,
         Guid? userId = null,
         Instant? submittedAt = null) => new()
-    {
-        Id = id ?? Guid.NewGuid(),
-        UserId = userId ?? Guid.NewGuid(),
-        MembershipTier = MembershipTier.Colaborador,
-        Motivation = "m",
-        SubmittedAt = submittedAt ?? Instant.FromUtc(2026, 3, 1, 12, 0),
-        UpdatedAt = submittedAt ?? Instant.FromUtc(2026, 3, 1, 12, 0)
-    };
+        {
+            Id = id ?? Guid.NewGuid(),
+            UserId = userId ?? Guid.NewGuid(),
+            MembershipTier = MembershipTier.Colaborador,
+            Motivation = "m",
+            SubmittedAt = submittedAt ?? Instant.FromUtc(2026, 3, 1, 12, 0),
+            UpdatedAt = submittedAt ?? Instant.FromUtc(2026, 3, 1, 12, 0)
+        };
 }
