@@ -1,4 +1,6 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -8,7 +10,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Services;
 
-public class UserService : IUserService
+public class UserService : IUserService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
@@ -205,5 +207,35 @@ public class UserService : IUserService
             count, year);
 
         return count;
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is null)
+        {
+            return [new UserDataSlice(GdprExportSections.Account, null)];
+        }
+
+        var shaped = new
+        {
+            user.Id,
+            user.Email,
+            user.DisplayName,
+            user.PreferredLanguage,
+            user.GoogleEmail,
+            user.UnsubscribedFromCampaigns,
+            user.SuppressScheduleChangeEmails,
+            ContactSource = user.ContactSource?.ToString(),
+            DeletionRequestedAt = user.DeletionRequestedAt.ToInvariantInstantString(),
+            DeletionScheduledFor = user.DeletionScheduledFor.ToInvariantInstantString(),
+            CreatedAt = user.CreatedAt.ToInvariantInstantString(),
+            LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
+        };
+
+        return [new UserDataSlice(GdprExportSections.Account, shaped)];
     }
 }
