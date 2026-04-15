@@ -21,10 +21,37 @@ public class GdprExportDependencyInjectionTests
 {
     /// <summary>
     /// Every section service that owns user-scoped tables MUST appear here.
-    /// Update this list when a new user-scoped section is introduced. If a
-    /// contributor is added to <c>Humans.Infrastructure</c> but not added
-    /// here, <see cref="EveryIUserDataContributorInInfrastructureIsExpected"/>
-    /// will fail.
+    /// This list is the enforced view of the §8 Table Ownership Map in
+    /// <c>docs/architecture/design-rules.md</c> — when adding a new section to
+    /// §8 whose tables hold per-user rows, ALSO add its owning service type
+    /// here. The tests below use this list to prove two invariants:
+    ///
+    /// <list type="number">
+    /// <item><description>
+    /// Every type in this list actually implements
+    /// <see cref="IUserDataContributor"/>
+    /// (<see cref="EverySectionServiceMustImplementIUserDataContributor"/>).
+    /// </description></item>
+    /// <item><description>
+    /// Every <see cref="IUserDataContributor"/> implementation found by
+    /// reflection in the <c>Humans.Infrastructure</c> assembly is accounted
+    /// for in this list
+    /// (<see cref="EveryIUserDataContributorInInfrastructureIsExpected"/>) —
+    /// so you can't add a new contributor without registering it here.
+    /// </description></item>
+    /// <item><description>
+    /// Every listed type is registered in DI as both its concrete type and a
+    /// forwarding <see cref="IUserDataContributor"/> factory
+    /// (<see cref="EveryExpectedContributorIsRegisteredInInfrastructure"/>
+    /// and <see cref="EveryIUserDataContributorFactoryForwardsToAnExpectedConcreteType"/>).
+    /// </description></item>
+    /// </list>
+    ///
+    /// <b>Uncaught case:</b> If a new user-scoped section is added to §8 but
+    /// its owning service never implements <see cref="IUserDataContributor"/>
+    /// in the first place, reflection finds nothing to enumerate and the tests
+    /// pass vacuously. The §8a cross-cutting note in <c>design-rules.md</c>
+    /// is the prose-level guardrail against that.
     /// </summary>
     public static readonly Type[] ExpectedContributorTypes =
     [

@@ -118,8 +118,13 @@ Adding a new section:
 1. Add the section name constant to `GdprExportSections`.
 2. Make the owning service implement `IUserDataContributor`. Return a
    `UserDataSlice(sectionName, data)` with shape documented in a new table row
-   above. Return `null` data when the user has no records in this section so
-   the orchestrator drops the entry from the export.
+   above. **Null semantics:** for collection sections, always return the shaped
+   collection (an empty list when the user has no records) — the legacy
+   `ExportDataAsync` JSON shape always emitted collection top-level keys as
+   `[]`, and downstream consumers depend on that stability. Return `null` data
+   only for single-object sections whose underlying entity doesn't exist for
+   this user (for example, a profileless account has no `Profile`). The
+   orchestrator drops only `null` slices from the export.
 3. Register the service in `InfrastructureServiceCollectionExtensions` using
    the forwarding pattern:
 
