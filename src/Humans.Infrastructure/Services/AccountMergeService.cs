@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -14,7 +16,7 @@ namespace Humans.Infrastructure.Services;
 /// When accepted, migrates data from the source account to the target account
 /// and archives (anonymizes) the source account.
 /// </summary>
-public class AccountMergeService : IAccountMergeService
+public class AccountMergeService : IAccountMergeService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
@@ -257,5 +259,36 @@ public class AccountMergeService : IAccountMergeService
 
         // Note: Consent records are immutable (INSERT-only), kept for GDPR audit trail.
         // Applications are kept as historical records, linked to the anonymized user.
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var requests = await _dbContext.AccountMergeRequests
+            .AsNoTracking()
+            .Where(amr => amr.TargetUserId == userId || amr.SourceUserId == userId)
+            .OrderByDescending(amr => amr.CreatedAt)
+            .Select(amr => new
+            {
+                amr.Status,
+                Role = amr.TargetUserId == userId ? "Target" : "Source",
+                CreatedAt = amr.CreatedAt,
+                ResolvedAt = amr.ResolvedAt
+            })
+            .ToListAsync(ct);
+
+        if (requests.Count == 0)
+        {
+            return [new UserDataSlice(GdprExportSections.AccountMergeRequests, null)];
+        }
+
+        var shaped = requests.Select(r => new
+        {
+            r.Status,
+            r.Role,
+            CreatedAt = r.CreatedAt.ToInvariantInstantString(),
+            ResolvedAt = r.ResolvedAt.ToInvariantInstantString()
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.AccountMergeRequests, shaped)];
     }
 }

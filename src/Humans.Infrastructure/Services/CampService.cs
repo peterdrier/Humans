@@ -1,6 +1,7 @@
 using Humans.Application.Interfaces;
 using Humans.Application;
 using Humans.Application.Extensions;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.ValueObjects;
@@ -12,7 +13,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Services;
 
-public class CampService : ICampService
+public class CampService : ICampService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
@@ -1286,5 +1287,30 @@ public class CampService : ICampService
             CreatedAt = now,
             UpdatedAt = now
         };
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var leadAssignments = await _dbContext.CampLeads
+            .AsNoTracking()
+            .Include(cl => cl.Camp)
+            .Where(cl => cl.UserId == userId)
+            .OrderByDescending(cl => cl.JoinedAt)
+            .ToListAsync(ct);
+
+        if (leadAssignments.Count == 0)
+        {
+            return [new UserDataSlice(GdprExportSections.CampLeadAssignments, null)];
+        }
+
+        var shaped = leadAssignments.Select(cl => new
+        {
+            CampSlug = cl.Camp.Slug,
+            cl.Role,
+            JoinedAt = cl.JoinedAt.ToInvariantInstantString(),
+            LeftAt = cl.LeftAt.ToInvariantInstantString()
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.CampLeadAssignments, shaped)];
     }
 }

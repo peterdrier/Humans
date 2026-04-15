@@ -1,5 +1,7 @@
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -9,7 +11,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Services;
 
-public class CampaignService : ICampaignService
+public class CampaignService : ICampaignService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
@@ -615,5 +617,32 @@ public class CampaignService : ICampaignService
         var notificationEmail = user.UserEmails
             .FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
         return notificationEmail?.Email ?? user.Email!;
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var grants = await _dbContext.CampaignGrants
+            .AsNoTracking()
+            .Include(cg => cg.Campaign)
+            .Include(cg => cg.Code)
+            .Where(cg => cg.UserId == userId)
+            .OrderByDescending(cg => cg.AssignedAt)
+            .ToListAsync(ct);
+
+        if (grants.Count == 0)
+        {
+            return [new UserDataSlice(GdprExportSections.CampaignGrants, null)];
+        }
+
+        var shaped = grants.Select(cg => new
+        {
+            CampaignTitle = cg.Campaign.Title,
+            Code = cg.Code.Code,
+            AssignedAt = cg.AssignedAt.ToInvariantInstantString(),
+            RedeemedAt = cg.RedeemedAt.ToInvariantInstantString(),
+            EmailStatus = cg.LatestEmailStatus?.ToString()
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.CampaignGrants, shaped)];
     }
 }
