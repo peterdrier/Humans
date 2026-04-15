@@ -39,8 +39,12 @@ public class OnboardingServiceTests : IDisposable
 
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
+        // Real UserService backed by the same in-memory DbContext so
+        // stitched user reads in OnboardingService's BoardVoting methods
+        // resolve to the seeded users without extra mocking.
+        var userService = new UserService(_dbContext, _clock, NullLogger<UserService>.Instance);
         _service = new OnboardingService(
-            _dbContext, _auditLogService, _emailService, _notificationService,
+            _dbContext, userService, _auditLogService, _emailService, _notificationService,
             _notificationInboxService, _syncJob,
             _membershipCalculator, _metrics, _clock, _cache,
             NullLogger<OnboardingService>.Instance);

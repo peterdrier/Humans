@@ -16,6 +16,7 @@ namespace Humans.Infrastructure.Services;
 public class OnboardingService : IOnboardingService
 {
     private readonly HumansDbContext _dbContext;
+    private readonly IUserService _userService;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
@@ -29,6 +30,7 @@ public class OnboardingService : IOnboardingService
 
     public OnboardingService(
         HumansDbContext dbContext,
+        IUserService userService,
         IAuditLogService auditLogService,
         IEmailService emailService,
         INotificationService notificationService,
@@ -41,6 +43,7 @@ public class OnboardingService : IOnboardingService
         ILogger<OnboardingService> logger)
     {
         _dbContext = dbContext;
+        _userService = userService;
         _auditLogService = auditLogService;
         _emailService = emailService;
         _notificationService = notificationService;
@@ -122,13 +125,9 @@ public class OnboardingService : IOnboardingService
 
         // Stitch applicant user info in memory — the cross-domain nav
         // Application.User was stripped in the Governance migration.
+        // Cross-section read goes through IUserService (design-rules §2c, §9).
         var applicantIds = applications.Select(a => a.UserId).Distinct().ToList();
-        var applicantsById = applicantIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _dbContext.Users
-                .AsNoTracking()
-                .Where(u => applicantIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, ct);
+        var applicantsById = await _userService.GetByIdsAsync(applicantIds, ct);
 
         var rows = applications.Select(a =>
         {
@@ -163,13 +162,9 @@ public class OnboardingService : IOnboardingService
             .Distinct()
             .ToListAsync(ct);
 
-        var boardUsers = await _dbContext.Users
-            .AsNoTracking()
-            .Where(u => boardMemberIds.Contains(u.Id))
-            .Select(u => new { u.Id, u.DisplayName })
-            .ToListAsync(ct);
-
-        var boardMembers = boardUsers
+        // Board members resolved via IUserService (design-rules §2c, §9).
+        var boardUsersById = await _userService.GetByIdsAsync(boardMemberIds, ct);
+        var boardMembers = boardUsersById.Values
             .Select(u => new Application.DTOs.BoardMemberInfo(u.Id, u.DisplayName))
             .OrderBy(m => m.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -187,25 +182,21 @@ public class OnboardingService : IOnboardingService
         if (application is null)
             return null;
 
-        // Fetch applicant user + profile in memory — cross-domain navs stripped.
-        var applicant = await _dbContext.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == application.UserId, ct);
+        // Fetch applicant user via IUserService (cross-section read through
+        // the owning service, design-rules §9). Profile stays on direct
+        // DbContext for now — that's a pre-existing violation tracked by
+        // the Profile section migration, not by governance.
+        var applicant = await _userService.GetByIdAsync(application.UserId, ct);
         var profile = await _dbContext.Profiles
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.UserId == application.UserId, ct);
 
-        // Fetch voter display names in bulk.
+        // Fetch voter display names in bulk via IUserService.
         var voterIds = application.BoardVotes
             .Select(v => v.BoardMemberUserId)
             .Distinct()
             .ToList();
-        var votersById = voterIds.Count == 0
-            ? new Dictionary<Guid, User>()
-            : await _dbContext.Users
-                .AsNoTracking()
-                .Where(u => voterIds.Contains(u.Id))
-                .ToDictionaryAsync(u => u.Id, ct);
+        var votersById = await _userService.GetByIdsAsync(voterIds, ct);
 
         var voteRows = application.BoardVotes
             .Select(v => new BoardVoteRow(

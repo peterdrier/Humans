@@ -33,6 +33,16 @@ public sealed class ApplicationStore : IApplicationStore
 
     public void Remove(Guid applicationId) => _byId.TryRemove(applicationId, out _);
 
+    /// <summary>
+    /// Replaces the entire store with <paramref name="applications"/>. There
+    /// is a brief window between <c>Clear()</c> and the final insert during
+    /// which concurrent readers see an empty store — this method is therefore
+    /// <b>startup-only</b> and must never be called after
+    /// <see cref="ApplicationStoreWarmupHostedService"/> has completed and
+    /// the host has begun serving requests. The warmup hosted service runs
+    /// inside <c>IHost.StartAsync()</c>, which blocks the Kestrel listener
+    /// startup, so in practice the window is unreachable from HTTP.
+    /// </summary>
     public void LoadAll(IReadOnlyList<MemberApplication> applications)
     {
         _byId.Clear();

@@ -4,6 +4,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Application.Services;
+using Humans.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -90,5 +91,13 @@ public class GovernanceArchitectureTests
         typeof(IApplicationStore).Namespace
             .Should().Be("Humans.Application.Interfaces.Stores",
                 because: "store interfaces live in Humans.Application.Interfaces.Stores per design-rules §4");
+    }
+
+    [Fact]
+    public void CachingApplicationDecisionService_LivesInHumansInfrastructureServicesNamespace()
+    {
+        typeof(CachingApplicationDecisionService).Namespace
+            .Should().Be("Humans.Infrastructure.Services",
+                because: "caching decorators live in Humans.Infrastructure.Services alongside the IMemoryCache-backed invalidators they wrap (design-rules §5)");
     }
 }

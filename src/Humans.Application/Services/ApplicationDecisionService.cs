@@ -91,18 +91,27 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         var today = _clock.GetCurrentInstant().InUtc().Date;
         application.TermExpiresAt = TermExpiryCalculator.ComputeTermExpiry(today);
 
-        // Audit — separate transaction. Accepted cross-section non-atomicity.
+        // Atomic commit of governance-owned state: application update +
+        // state history append + board vote bulk-delete in one SaveChanges.
+        // MUST happen before audit log / profile tier update / team sync /
+        // notifications. Otherwise a repository failure here would leave
+        // an orphaned audit entry (append-only per §12, can't be corrected)
+        // or a partially-provisioned downstream state claiming an approval
+        // that never committed.
+        await _repository.FinalizeAsync(application, cancellationToken);
+        _store.Upsert(application);
+
+        // Audit AFTER the governance state is committed — separate
+        // transaction but at minimum correctly sequenced. A failure here
+        // leaves a successful application finalize with no audit row,
+        // which is recoverable (the state history row on the application
+        // itself carries the actor + timestamp).
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationApproved,
             nameof(Humans.Domain.Entities.Application),
             application.Id,
             $"{application.MembershipTier} application approved",
             reviewerUserId);
-
-        // Atomic commit of governance-owned state: application update +
-        // state history append + board vote bulk-delete in one SaveChanges.
-        await _repository.FinalizeAsync(application, cancellationToken);
-        _store.Upsert(application);
 
         _metrics.RecordApplicationProcessed("approved");
         _logger.LogInformation(
@@ -182,15 +191,16 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
         application.BoardMeetingDate = boardMeetingDate;
         application.DecisionNote = reason;
 
+        // Atomic commit before audit (same rationale as ApproveAsync).
+        await _repository.FinalizeAsync(application, cancellationToken);
+        _store.Upsert(application);
+
         await _auditLogService.LogAsync(
             AuditAction.TierApplicationRejected,
             nameof(Humans.Domain.Entities.Application),
             application.Id,
             $"{application.MembershipTier} application rejected",
             reviewerUserId);
-
-        await _repository.FinalizeAsync(application, cancellationToken);
-        _store.Upsert(application);
 
         _metrics.RecordApplicationProcessed("rejected");
         _logger.LogInformation(
