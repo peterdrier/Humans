@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -11,7 +12,7 @@ using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Services;
 
-public class RoleAssignmentService : IRoleAssignmentService
+public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
@@ -288,5 +289,22 @@ public class RoleAssignmentService : IRoleAssignmentService
                 ra.ValidFrom <= now &&
                 (ra.ValidTo == null || ra.ValidTo > now),
                 cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var assignments = await _dbContext.RoleAssignments
+            .AsNoTracking()
+            .Where(ra => ra.UserId == userId)
+            .ToListAsync(ct);
+
+        var shaped = assignments.Select(ra => new
+        {
+            ra.RoleName,
+            ValidFrom = ra.ValidFrom.ToInvariantInstantString(),
+            ValidTo = ra.ValidTo.ToInvariantInstantString()
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.RoleAssignments, shaped)];
     }
 }

@@ -3,7 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.DTOs;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -13,7 +15,7 @@ namespace Humans.Infrastructure.Services;
 /// <summary>
 /// Service for managing budget years, groups, categories, and line items with integrated audit logging.
 /// </summary>
-public class BudgetService : IBudgetService
+public class BudgetService : IBudgetService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
@@ -1566,5 +1568,24 @@ public class BudgetService : IBudgetService
     private static string FormatTicketingWeekLabel(LocalDate monday, LocalDate sunday)
     {
         return $"{monday.ToString("MMM d", null)}–{sunday.ToString("MMM d", null)}";
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var entries = await _dbContext.BudgetAuditLogs
+            .AsNoTracking()
+            .Where(bal => bal.ActorUserId == userId)
+            .OrderByDescending(bal => bal.OccurredAt)
+            .ToListAsync(ct);
+
+        var shaped = entries.Select(bal => new
+        {
+            bal.EntityType,
+            bal.FieldName,
+            bal.Description,
+            OccurredAt = bal.OccurredAt.ToInvariantInstantString()
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.BudgetAuditLog, shaped)];
     }
 }

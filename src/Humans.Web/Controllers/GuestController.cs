@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Web.Models;
@@ -20,6 +21,7 @@ public class GuestController : HumansControllerBase
     private readonly ICommunicationPreferenceService _commPrefService;
     private readonly IProfileService _profileService;
     private readonly ITicketQueryService _ticketQueryService;
+    private readonly IGdprExportService _gdprExportService;
     private readonly IClock _clock;
     private readonly ILogger<GuestController> _logger;
 
@@ -35,6 +37,7 @@ public class GuestController : HumansControllerBase
         ICommunicationPreferenceService commPrefService,
         IProfileService profileService,
         ITicketQueryService ticketQueryService,
+        IGdprExportService gdprExportService,
         IClock clock,
         ILogger<GuestController> logger)
         : base(userManager)
@@ -42,6 +45,7 @@ public class GuestController : HumansControllerBase
         _commPrefService = commPrefService;
         _profileService = profileService;
         _ticketQueryService = ticketQueryService;
+        _gdprExportService = gdprExportService;
         _clock = clock;
         _logger = logger;
     }
@@ -125,7 +129,7 @@ public class GuestController : HumansControllerBase
 
     [HttpGet("Guest/DownloadData")]
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public async Task<IActionResult> DownloadData()
+    public async Task<IActionResult> DownloadData(CancellationToken ct)
     {
         var user = await GetCurrentUserAsync();
         if (user is null)
@@ -133,9 +137,10 @@ public class GuestController : HumansControllerBase
 
         try
         {
-            var exportData = await _profileService.ExportDataAsync(user.Id);
+            var export = await _gdprExportService.ExportForUserAsync(user.Id, ct);
 
-            var json = System.Text.Json.JsonSerializer.Serialize(exportData, ExportJsonOptions);
+            var payload = BuildExportPayload(export);
+            var json = System.Text.Json.JsonSerializer.Serialize(payload, ExportJsonOptions);
             var bytes = System.Text.Encoding.UTF8.GetBytes(json);
             var fileName = $"nobodies-data-export-{_clock.GetCurrentInstant().ToDateTimeUtc().ToIsoDateString()}.json";
 
@@ -147,6 +152,19 @@ public class GuestController : HumansControllerBase
             SetError("Failed to export data. Please try again.");
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    private static Dictionary<string, object?> BuildExportPayload(GdprExport export)
+    {
+        var payload = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["ExportedAt"] = export.ExportedAt
+        };
+        foreach (var (section, data) in export.Sections)
+        {
+            payload[section] = data;
+        }
+        return payload;
     }
 
     // ─── GDPR Deletion Request ─────────────────────────────────────

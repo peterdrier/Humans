@@ -139,6 +139,18 @@ public interface ITeamService
     Task<Team?> GetTeamByIdAsync(Guid teamId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Resolves a set of team IDs to their display names WITHOUT filtering by
+    /// <see cref="Team.IsActive"/>. Used by the GDPR export, where historical
+    /// records (shift signups, audit entries) may reference teams that have
+    /// since been deactivated — those users still deserve a name in their
+    /// downloaded data, not <c>null</c>. The returned dictionary contains one
+    /// entry per input ID that resolves; unknown IDs are simply absent.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetTeamNamesByIdsAsync(
+        IReadOnlyCollection<Guid> teamIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets all active teams.
     /// </summary>
     Task<IReadOnlyList<Team>> GetAllTeamsAsync(CancellationToken cancellationToken = default);

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain;
 using Humans.Domain.Constants;
 using Humans.Domain.Enums;
@@ -12,7 +13,7 @@ using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Services;
 
-public class ApplicationDecisionService : IApplicationDecisionService
+public class ApplicationDecisionService : IApplicationDecisionService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IAuditLogService _auditLogService;
@@ -379,5 +380,38 @@ public class ApplicationDecisionService : IApplicationDecisionService
             .Include(a => a.StateHistory)
                 .ThenInclude(h => h.ChangedByUser)
             .FirstOrDefaultAsync(a => a.Id == applicationId, ct);
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var applications = await _dbContext.Applications
+            .AsNoTracking()
+            .Include(a => a.StateHistory)
+            .Where(a => a.UserId == userId)
+            .OrderByDescending(a => a.SubmittedAt)
+            .ToListAsync(ct);
+
+        var shaped = applications.Select(a => new
+        {
+            a.Status,
+            a.MembershipTier,
+            a.Motivation,
+            a.AdditionalInfo,
+            a.SignificantContribution,
+            a.RoleUnderstanding,
+            a.Language,
+            SubmittedAt = a.SubmittedAt.ToInvariantInstantString(),
+            ResolvedAt = a.ResolvedAt.ToInvariantInstantString(),
+            TermExpiresAt = a.TermExpiresAt.ToIsoDateString(),
+            BoardMeetingDate = a.BoardMeetingDate.ToIsoDateString(),
+            StateHistory = a.StateHistory.OrderBy(sh => sh.ChangedAt).Select(sh => new
+            {
+                sh.Status,
+                ChangedAt = sh.ChangedAt.ToInvariantInstantString(),
+                sh.Notes
+            })
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.Applications, shaped)];
     }
 }

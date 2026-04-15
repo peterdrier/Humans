@@ -6,13 +6,14 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Services;
 
-public class FeedbackService : IFeedbackService
+public class FeedbackService : IFeedbackService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
@@ -391,5 +392,33 @@ public class FeedbackService : IFeedbackService
             .Select(g => (g.Key.UserId, g.Key.DisplayName, g.Count()))
             .OrderBy(r => r.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var reports = await _dbContext.FeedbackReports
+            .AsNoTracking()
+            .Include(fr => fr.Messages)
+            .Where(fr => fr.UserId == userId)
+            .OrderByDescending(fr => fr.CreatedAt)
+            .ToListAsync(ct);
+
+        var shaped = reports.Select(fr => new
+        {
+            fr.Category,
+            fr.Description,
+            fr.PageUrl,
+            fr.Status,
+            CreatedAt = fr.CreatedAt.ToInvariantInstantString(),
+            ResolvedAt = fr.ResolvedAt.ToInvariantInstantString(),
+            Messages = fr.Messages.OrderBy(m => m.CreatedAt).Select(m => new
+            {
+                m.Content,
+                IsFromUser = m.SenderUserId == userId,
+                CreatedAt = m.CreatedAt.ToInvariantInstantString()
+            })
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.FeedbackReports, shaped)];
     }
 }

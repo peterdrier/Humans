@@ -252,6 +252,36 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 See [`docs/architecture/dependency-graph.md`](dependency-graph.md) for the full directed dependency graph with current vs target edges and circular dependency analysis.
 
+### 8a. User-Scoped Sections Must Contribute to the GDPR Export
+
+Every section whose owned tables hold per-user rows MUST implement `IUserDataContributor` (`Humans.Application.Interfaces.Gdpr`) so the GDPR Article 15 data export (`IGdprExportService`) can assemble a complete document without any cross-section database reads. The orchestrator injects `IEnumerable<IUserDataContributor>`, fans out one call per contributor, and merges the returned slices into the JSON document the user downloads from `/Profile/Me/DownloadData`.
+
+Adding a new user-scoped section to §8 above requires four coupled steps — all four, in any order, before the PR can land:
+
+1. Add the new section-name constants to `GdprExportSections` (`Humans.Application.Interfaces.Gdpr`).
+2. Make the owning service implement `IUserDataContributor` and return its own slice. A contributor reads only its own section's tables — cross-section data flows through other contributors, not through `Include` chains. Collection slices must always return the shaped list (empty when the user has no records); `null` data is reserved for single-object sections whose entity doesn't exist for this user.
+3. Register the service in `InfrastructureServiceCollectionExtensions` using the forwarding pattern so the same scoped instance serves both the primary interface and `IUserDataContributor`:
+
+   ```csharp
+   services.AddScoped<MyNewService>();
+   services.AddScoped<IMyNewService>(sp => sp.GetRequiredService<MyNewService>());
+   services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<MyNewService>());
+   ```
+
+4. Add the concrete service type to `GdprExportDependencyInjectionTests.ExpectedContributorTypes` — the enforced view of the §8 rows that hold user-scoped data.
+
+The architecture test suite in `GdprExportDependencyInjectionTests.cs` enforces every step automatically:
+
+- `EverySectionServiceMustImplementIUserDataContributor` — each listed type really implements the interface.
+- `EveryIUserDataContributorInInfrastructureIsExpected` — every `IUserDataContributor` found via reflection in `Humans.Infrastructure` is in the expected list (catches new contributors that forget the list).
+- `EveryExpectedContributorIsRegisteredInInfrastructure` — every listed type has a DI registration.
+- `EveryIUserDataContributorFactoryForwardsToAnExpectedConcreteType` — each forwarding factory resolves to a distinct expected concrete type, so a duplicated or mis-wired factory can't silently drop a section.
+- `GdprExportServiceIsRegistered` — the orchestrator itself is registered.
+
+**Uncaught case (convention, not test):** if a new user-scoped section is added to §8 but its owning service never implements `IUserDataContributor` at all, reflection finds nothing to enumerate and the suite passes vacuously. The four-step list above is the prose-level guardrail — reviewers should reject any §8 edit that adds a user-scoped row without touching `ExpectedContributorTypes` in the same PR.
+
+See [`docs/features/gdpr-export.md`](../features/gdpr-export.md) for the JSON output shape, the contributor table, and a worked example of adding a new section.
+
 ## 9. Cross-Service Communication
 
 When a service needs data from another section, it calls that section's public service interface via constructor injection. Repositories and stores are never crossed — only the public `I{Section}Service` interface.

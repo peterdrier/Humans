@@ -5,6 +5,7 @@ using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -13,7 +14,7 @@ using NodaTime;
 
 namespace Humans.Infrastructure.Services;
 
-public class TicketQueryService : ITicketQueryService
+public class TicketQueryService : ITicketQueryService, IUserDataContributor
 {
     private static readonly TimeSpan TicketCountCacheTtl = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan DashboardStatsCacheTtl = TimeSpan.FromMinutes(5);
@@ -958,4 +959,31 @@ public class TicketQueryService : ITicketQueryService
 
     private static bool ContainsIgnoreCase(string? source, string value) =>
         source?.Contains(value, StringComparison.OrdinalIgnoreCase) == true;
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var export = await GetUserTicketExportDataAsync(userId, ct);
+
+        var ordersSlice = new UserDataSlice(GdprExportSections.TicketOrders, export.Orders.Select(o => new
+        {
+            o.BuyerName,
+            o.BuyerEmail,
+            o.TotalAmount,
+            o.Currency,
+            o.PaymentStatus,
+            o.DiscountCode,
+            PurchasedAt = o.PurchasedAt.ToInvariantInstantString()
+        }).ToList());
+
+        var attendeesSlice = new UserDataSlice(GdprExportSections.TicketAttendeeMatches, export.Attendees.Select(a => new
+        {
+            a.AttendeeName,
+            a.AttendeeEmail,
+            a.TicketTypeName,
+            a.Price,
+            a.Status
+        }).ToList());
+
+        return [ordersSlice, attendeesSlice];
+    }
 }

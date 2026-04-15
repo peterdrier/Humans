@@ -6,6 +6,7 @@ using NodaTime;
 using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -14,7 +15,7 @@ using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Services;
 
-public class ProfileService : IProfileService
+public class ProfileService : IProfileService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IOnboardingService _onboardingService;
@@ -426,419 +427,6 @@ public class ProfileService : IProfileService
         return postEventInstant > now ? postEventInstant : null;
     }
 
-    public async Task<object> ExportDataAsync(Guid userId, CancellationToken ct = default)
-    {
-        var user = await _dbContext.Users.FindAsync([userId], ct);
-
-        var profile = await _dbContext.Profiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
-
-        var applications = await _dbContext.Applications
-            .AsNoTracking()
-            .Include(a => a.StateHistory)
-            .Where(a => a.UserId == userId)
-            .OrderByDescending(a => a.SubmittedAt)
-            .ToListAsync(ct);
-
-        var consents = await _consentService.GetUserConsentRecordsAsync(userId, ct);
-
-        var teamMemberships = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .Include(tm => tm.Team)
-            .Include(tm => tm.RoleAssignments)
-                .ThenInclude(tra => tra.TeamRoleDefinition)
-            .Where(tm => tm.UserId == userId)
-            .OrderByDescending(tm => tm.JoinedAt)
-            .ToListAsync(ct);
-
-        var contactFields = profile is not null
-            ? await _dbContext.ContactFields
-                .AsNoTracking()
-                .Where(cf => cf.ProfileId == profile.Id)
-                .OrderBy(cf => cf.DisplayOrder)
-                .ToListAsync(ct)
-            : [];
-
-        var roleAssignments = await _dbContext.RoleAssignments
-            .AsNoTracking()
-            .Where(ra => ra.UserId == userId)
-            .ToListAsync(ct);
-
-        var userEmails = await _dbContext.UserEmails
-            .AsNoTracking()
-            .Where(e => e.UserId == userId)
-            .OrderBy(e => e.DisplayOrder)
-            .ToListAsync(ct);
-
-        var volunteerHistory = profile is not null
-            ? await _dbContext.VolunteerHistoryEntries
-                .AsNoTracking()
-                .Where(vh => vh.ProfileId == profile.Id)
-                .OrderByDescending(vh => vh.Date)
-                .ToListAsync(ct)
-            : [];
-
-        var profileLanguages = profile is not null
-            ? await _dbContext.ProfileLanguages
-                .AsNoTracking()
-                .Where(pl => pl.ProfileId == profile.Id)
-                .ToListAsync(ct)
-            : [];
-
-        var communicationPreferences = await _dbContext.CommunicationPreferences
-            .AsNoTracking()
-            .Where(cp => cp.UserId == userId)
-            .ToListAsync(ct);
-
-        var shiftSignups = await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(ss => ss.Shift)
-                .ThenInclude(s => s.Rota)
-                    .ThenInclude(r => r.Team)
-            .Include(ss => ss.Shift)
-                .ThenInclude(s => s.Rota)
-                    .ThenInclude(r => r.EventSettings)
-            .Where(ss => ss.UserId == userId)
-            .OrderByDescending(ss => ss.CreatedAt)
-            .ToListAsync(ct);
-
-        var volunteerEventProfiles = await _dbContext.VolunteerEventProfiles
-            .AsNoTracking()
-            .Where(vep => vep.UserId == userId)
-            .ToListAsync(ct);
-
-        var generalAvailability = await _dbContext.GeneralAvailability
-            .AsNoTracking()
-            .Include(ga => ga.EventSettings)
-            .Where(ga => ga.UserId == userId)
-            .ToListAsync(ct);
-
-        var tagPreferences = await _dbContext.VolunteerTagPreferences
-            .AsNoTracking()
-            .Include(vtp => vtp.ShiftTag)
-            .Where(vtp => vtp.UserId == userId)
-            .ToListAsync(ct);
-
-        var feedbackReports = await _dbContext.FeedbackReports
-            .AsNoTracking()
-            .Include(fr => fr.Messages)
-            .Where(fr => fr.UserId == userId)
-            .OrderByDescending(fr => fr.CreatedAt)
-            .ToListAsync(ct);
-
-        var notifications = await _dbContext.NotificationRecipients
-            .AsNoTracking()
-            .Include(nr => nr.Notification)
-            .Where(nr => nr.UserId == userId)
-            .OrderByDescending(nr => nr.Notification.CreatedAt)
-            .ToListAsync(ct);
-
-        // Ticket tables are owned by the Tickets section — route export reads
-        // through ITicketQueryService.
-        var ticketExport = await _ticketQueryService.GetUserTicketExportDataAsync(userId, ct);
-
-        var campaignGrants = await _dbContext.CampaignGrants
-            .AsNoTracking()
-            .Include(cg => cg.Campaign)
-            .Include(cg => cg.Code)
-            .Where(cg => cg.UserId == userId)
-            .OrderByDescending(cg => cg.AssignedAt)
-            .ToListAsync(ct);
-
-        var campLeadAssignments = await _dbContext.CampLeads
-            .AsNoTracking()
-            .Include(cl => cl.Camp)
-            .Where(cl => cl.UserId == userId)
-            .OrderByDescending(cl => cl.JoinedAt)
-            .ToListAsync(ct);
-
-        var teamJoinRequests = await _dbContext.TeamJoinRequests
-            .AsNoTracking()
-            .Include(tjr => tjr.Team)
-            .Where(tjr => tjr.UserId == userId)
-            .OrderByDescending(tjr => tjr.RequestedAt)
-            .ToListAsync(ct);
-
-        var auditLogEntries = await _dbContext.AuditLogEntries
-            .AsNoTracking()
-            .Where(a => a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId)
-            .OrderByDescending(a => a.OccurredAt)
-            .ToListAsync(ct);
-
-        var budgetAuditLogs = await _dbContext.BudgetAuditLogs
-            .AsNoTracking()
-            .Where(bal => bal.ActorUserId == userId)
-            .OrderByDescending(bal => bal.OccurredAt)
-            .ToListAsync(ct);
-
-        var accountMergeRequests = await _dbContext.AccountMergeRequests
-            .AsNoTracking()
-            .Where(amr => amr.TargetUserId == userId || amr.SourceUserId == userId)
-            .OrderByDescending(amr => amr.CreatedAt)
-            .ToListAsync(ct);
-
-        _logger.LogInformation("User {UserId} exported their data", userId);
-
-        return new
-        {
-            ExportedAt = _clock.GetCurrentInstant().ToInvariantInstantString(),
-            Account = user is not null ? new
-            {
-                user.Id,
-                user.Email,
-                user.DisplayName,
-                user.PreferredLanguage,
-                user.GoogleEmail,
-                user.UnsubscribedFromCampaigns,
-                user.SuppressScheduleChangeEmails,
-                ContactSource = user.ContactSource?.ToString(),
-                DeletionRequestedAt = user.DeletionRequestedAt.ToInvariantInstantString(),
-                DeletionScheduledFor = user.DeletionScheduledFor.ToInvariantInstantString(),
-                CreatedAt = user.CreatedAt.ToInvariantInstantString(),
-                LastLoginAt = user.LastLoginAt.ToInvariantInstantString()
-            } : null,
-            UserEmails = userEmails.Select(e => new
-            {
-                e.Email,
-                e.IsVerified,
-                e.IsOAuth,
-                e.IsNotificationTarget,
-                e.Visibility
-            }),
-            Profile = profile is not null ? new
-            {
-                profile.BurnerName,
-                profile.FirstName,
-                profile.LastName,
-                Birthday = profile.DateOfBirth is not null ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}" : null,
-                profile.City,
-                profile.CountryCode,
-                profile.Latitude,
-                profile.Longitude,
-                profile.Bio,
-                profile.Pronouns,
-                profile.ContributionInterests,
-                profile.BoardNotes,
-                profile.MembershipTier,
-                profile.IsApproved,
-                profile.IsSuspended,
-                profile.NoPriorBurnExperience,
-                ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
-                ConsentCheckAt = profile.ConsentCheckAt.ToInvariantInstantString(),
-                profile.ConsentCheckNotes,
-                profile.RejectionReason,
-                RejectedAt = profile.RejectedAt.ToInvariantInstantString(),
-                profile.EmergencyContactName,
-                profile.EmergencyContactPhone,
-                profile.EmergencyContactRelationship,
-                profile.HasCustomProfilePicture,
-                CreatedAt = profile.CreatedAt.ToInvariantInstantString(),
-                UpdatedAt = profile.UpdatedAt.ToInvariantInstantString()
-            } : null,
-            ContactFields = contactFields.Select(cf => new
-            {
-                cf.FieldType,
-                Label = cf.DisplayLabel,
-                cf.Value,
-                cf.Visibility
-            }),
-            VolunteerHistory = volunteerHistory.Select(vh => new
-            {
-                Date = vh.Date.ToIsoDateString(),
-                vh.EventName,
-                vh.Description,
-                CreatedAt = vh.CreatedAt.ToInvariantInstantString()
-            }),
-            Languages = profileLanguages.Select(pl => new
-            {
-                pl.LanguageCode,
-                pl.Proficiency
-            }),
-            Applications = applications.Select(a => new
-            {
-                a.Status,
-                a.MembershipTier,
-                a.Motivation,
-                a.AdditionalInfo,
-                a.SignificantContribution,
-                a.RoleUnderstanding,
-                a.Language,
-                SubmittedAt = a.SubmittedAt.ToInvariantInstantString(),
-                ResolvedAt = a.ResolvedAt.ToInvariantInstantString(),
-                TermExpiresAt = a.TermExpiresAt.ToIsoDateString(),
-                BoardMeetingDate = a.BoardMeetingDate.ToIsoDateString(),
-                StateHistory = a.StateHistory.OrderBy(sh => sh.ChangedAt).Select(sh => new
-                {
-                    sh.Status,
-                    ChangedAt = sh.ChangedAt.ToInvariantInstantString(),
-                    sh.Notes
-                })
-            }),
-            Consents = consents.Select(c => new
-            {
-                DocumentName = c.DocumentVersion.LegalDocument.Name,
-                DocumentVersion = c.DocumentVersion.VersionNumber,
-                c.ExplicitConsent,
-                ConsentedAt = c.ConsentedAt.ToInvariantInstantString(),
-                c.IpAddress,
-                c.UserAgent
-            }),
-            TeamMemberships = teamMemberships.Select(tm => new
-            {
-                TeamName = tm.Team.Name,
-                tm.Role,
-                JoinedAt = tm.JoinedAt.ToInvariantInstantString(),
-                LeftAt = tm.LeftAt.ToInvariantInstantString(),
-                TeamRoles = tm.RoleAssignments.Select(tra => new
-                {
-                    RoleName = tra.TeamRoleDefinition.Name,
-                    AssignedAt = tra.AssignedAt.ToInvariantInstantString()
-                })
-            }),
-            TeamJoinRequests = teamJoinRequests.Select(tjr => new
-            {
-                TeamName = tjr.Team.Name,
-                tjr.Status,
-                tjr.Message,
-                RequestedAt = tjr.RequestedAt.ToInvariantInstantString(),
-                ResolvedAt = tjr.ResolvedAt.ToInvariantInstantString()
-            }),
-            RoleAssignments = roleAssignments.Select(ra => new
-            {
-                ra.RoleName,
-                ValidFrom = ra.ValidFrom.ToInvariantInstantString(),
-                ValidTo = ra.ValidTo.ToInvariantInstantString()
-            }),
-            CommunicationPreferences = communicationPreferences.Select(cp => new
-            {
-                cp.Category,
-                cp.OptedOut,
-                cp.InboxEnabled,
-                UpdatedAt = cp.UpdatedAt.ToInvariantInstantString(),
-                cp.UpdateSource
-            }),
-            ShiftSignups = shiftSignups.Select(ss => new
-            {
-                EventName = ss.Shift.Rota.EventSettings.EventName,
-                Department = ss.Shift.Rota.Team.Name,
-                RotaName = ss.Shift.Rota.Name,
-                ss.Shift.DayOffset,
-                ss.Shift.IsAllDay,
-                ss.Status,
-                ss.Enrolled,
-                ss.StatusReason,
-                CreatedAt = ss.CreatedAt.ToInvariantInstantString(),
-                ReviewedAt = ss.ReviewedAt.ToInvariantInstantString()
-            }),
-            VolunteerEventProfiles = volunteerEventProfiles.Select(vep => new
-            {
-                vep.Skills,
-                vep.Quirks,
-                vep.Languages,
-                vep.DietaryPreference,
-                vep.Allergies,
-                vep.Intolerances,
-                vep.AllergyOtherText,
-                vep.IntoleranceOtherText,
-                vep.MedicalConditions,
-                CreatedAt = vep.CreatedAt.ToInvariantInstantString(),
-                UpdatedAt = vep.UpdatedAt.ToInvariantInstantString()
-            }),
-            GeneralAvailability = generalAvailability.Select(ga => new
-            {
-                EventName = ga.EventSettings.EventName,
-                ga.AvailableDayOffsets,
-                UpdatedAt = ga.UpdatedAt.ToInvariantInstantString()
-            }),
-            ShiftTagPreferences = tagPreferences.Select(vtp => new
-            {
-                TagName = vtp.ShiftTag.Name
-            }),
-            FeedbackReports = feedbackReports.Select(fr => new
-            {
-                fr.Category,
-                fr.Description,
-                fr.PageUrl,
-                fr.Status,
-                CreatedAt = fr.CreatedAt.ToInvariantInstantString(),
-                ResolvedAt = fr.ResolvedAt.ToInvariantInstantString(),
-                Messages = fr.Messages.OrderBy(m => m.CreatedAt).Select(m => new
-                {
-                    m.Content,
-                    IsFromUser = m.SenderUserId == userId,
-                    CreatedAt = m.CreatedAt.ToInvariantInstantString()
-                })
-            }),
-            Notifications = notifications.Select(nr => new
-            {
-                nr.Notification.Title,
-                nr.Notification.Body,
-                nr.Notification.ActionUrl,
-                nr.Notification.Priority,
-                nr.Notification.Source,
-                CreatedAt = nr.Notification.CreatedAt.ToInvariantInstantString(),
-                ReadAt = nr.ReadAt.ToInvariantInstantString(),
-                ResolvedAt = nr.Notification.ResolvedAt.ToInvariantInstantString()
-            }),
-            TicketOrders = ticketExport.Orders.Select(to => new
-            {
-                to.BuyerName,
-                to.BuyerEmail,
-                to.TotalAmount,
-                to.Currency,
-                to.PaymentStatus,
-                to.DiscountCode,
-                PurchasedAt = to.PurchasedAt.ToInvariantInstantString()
-            }),
-            TicketAttendeeMatches = ticketExport.Attendees
-                .Select(ta => new
-                {
-                    ta.AttendeeName,
-                    ta.AttendeeEmail,
-                    ta.TicketTypeName,
-                    ta.Price,
-                    ta.Status
-                }),
-            CampaignGrants = campaignGrants.Select(cg => new
-            {
-                CampaignTitle = cg.Campaign.Title,
-                Code = cg.Code.Code,
-                AssignedAt = cg.AssignedAt.ToInvariantInstantString(),
-                RedeemedAt = cg.RedeemedAt.ToInvariantInstantString(),
-                EmailStatus = cg.LatestEmailStatus?.ToString()
-            }),
-            CampLeadAssignments = campLeadAssignments.Select(cl => new
-            {
-                CampSlug = cl.Camp.Slug,
-                cl.Role,
-                JoinedAt = cl.JoinedAt.ToInvariantInstantString(),
-                LeftAt = cl.LeftAt.ToInvariantInstantString()
-            }),
-            AccountMergeRequests = accountMergeRequests.Select(amr => new
-            {
-                amr.Status,
-                Role = amr.TargetUserId == userId ? "Target" : "Source",
-                CreatedAt = amr.CreatedAt.ToInvariantInstantString(),
-                ResolvedAt = amr.ResolvedAt.ToInvariantInstantString()
-            }),
-            AuditLog = auditLogEntries.Select(a => new
-            {
-                a.Action,
-                a.EntityType,
-                OccurredAt = a.OccurredAt.ToInvariantInstantString(),
-                Role = a.ActorUserId == userId ? "Actor" : "Subject"
-            }),
-            BudgetAuditLog = budgetAuditLogs.Select(bal => new
-            {
-                bal.EntityType,
-                bal.FieldName,
-                bal.Description,
-                OccurredAt = bal.OccurredAt.ToInvariantInstantString()
-            })
-        };
-    }
-
     public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default)
     {
         var colaboradorCount = await _dbContext.Profiles
@@ -1193,5 +781,146 @@ public class ProfileService : IProfileService
         if (start > 0) snippet = "..." + snippet;
         if (end < text.Length) snippet += "...";
         return snippet;
+    }
+
+    /// <summary>
+    /// Contributes the Profiles-section slices of the GDPR export: profile,
+    /// contact fields, user emails, volunteer history, languages, and
+    /// communication preferences.
+    ///
+    /// <para>
+    /// These tables are owned by five different services within the Profiles
+    /// section (<c>ProfileService</c>, <c>ContactFieldService</c>,
+    /// <c>UserEmailService</c>, <c>VolunteerHistoryService</c>,
+    /// <c>CommunicationPreferenceService</c>). Per #502 the Profiles section
+    /// aggregates its own slices through <c>ProfileService</c> for now — this
+    /// removes the 15 cross-section reads from the old <c>ExportDataAsync</c>
+    /// but preserves the within-Profiles direct reads as a scoped compromise
+    /// until each service is migrated to its own repository.
+    /// </para>
+    /// </summary>
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var profile = await _dbContext.Profiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+
+        var contactFields = profile is not null
+            ? await _dbContext.ContactFields
+                .AsNoTracking()
+                .Where(cf => cf.ProfileId == profile.Id)
+                .OrderBy(cf => cf.DisplayOrder)
+                .ToListAsync(ct)
+            : [];
+
+        var userEmails = await _dbContext.UserEmails
+            .AsNoTracking()
+            .Where(e => e.UserId == userId)
+            .OrderBy(e => e.DisplayOrder)
+            .ToListAsync(ct);
+
+        var volunteerHistory = profile is not null
+            ? await _dbContext.VolunteerHistoryEntries
+                .AsNoTracking()
+                .Where(vh => vh.ProfileId == profile.Id)
+                .OrderByDescending(vh => vh.Date)
+                .ToListAsync(ct)
+            : [];
+
+        var profileLanguages = profile is not null
+            ? await _dbContext.ProfileLanguages
+                .AsNoTracking()
+                .Where(pl => pl.ProfileId == profile.Id)
+                .ToListAsync(ct)
+            : [];
+
+        var communicationPreferences = await _dbContext.CommunicationPreferences
+            .AsNoTracking()
+            .Where(cp => cp.UserId == userId)
+            .ToListAsync(ct);
+
+        var profileSlice = profile is null
+            ? new UserDataSlice(GdprExportSections.Profile, null)
+            : new UserDataSlice(GdprExportSections.Profile, new
+            {
+                profile.BurnerName,
+                profile.FirstName,
+                profile.LastName,
+                Birthday = profile.DateOfBirth is not null
+                    ? $"{profile.DateOfBirth.Value.Month:D2}-{profile.DateOfBirth.Value.Day:D2}"
+                    : null,
+                profile.City,
+                profile.CountryCode,
+                profile.Latitude,
+                profile.Longitude,
+                profile.Bio,
+                profile.Pronouns,
+                profile.ContributionInterests,
+                profile.BoardNotes,
+                profile.MembershipTier,
+                profile.IsApproved,
+                profile.IsSuspended,
+                profile.NoPriorBurnExperience,
+                ConsentCheckStatus = profile.ConsentCheckStatus?.ToString(),
+                ConsentCheckAt = profile.ConsentCheckAt.ToInvariantInstantString(),
+                profile.ConsentCheckNotes,
+                profile.RejectionReason,
+                RejectedAt = profile.RejectedAt.ToInvariantInstantString(),
+                profile.EmergencyContactName,
+                profile.EmergencyContactPhone,
+                profile.EmergencyContactRelationship,
+                profile.HasCustomProfilePicture,
+                CreatedAt = profile.CreatedAt.ToInvariantInstantString(),
+                UpdatedAt = profile.UpdatedAt.ToInvariantInstantString()
+            });
+
+        var contactFieldSlice = new UserDataSlice(GdprExportSections.ContactFields, contactFields.Select(cf => new
+        {
+            cf.FieldType,
+            Label = cf.DisplayLabel,
+            cf.Value,
+            cf.Visibility
+        }).ToList());
+
+        var userEmailsSlice = new UserDataSlice(GdprExportSections.UserEmails, userEmails.Select(e => new
+        {
+            e.Email,
+            e.IsVerified,
+            e.IsOAuth,
+            e.IsNotificationTarget,
+            e.Visibility
+        }).ToList());
+
+        var volunteerHistorySlice = new UserDataSlice(GdprExportSections.VolunteerHistory, volunteerHistory.Select(vh => new
+        {
+            Date = vh.Date.ToIsoDateString(),
+            vh.EventName,
+            vh.Description,
+            CreatedAt = vh.CreatedAt.ToInvariantInstantString()
+        }).ToList());
+
+        var languagesSlice = new UserDataSlice(GdprExportSections.Languages, profileLanguages.Select(pl => new
+        {
+            pl.LanguageCode,
+            pl.Proficiency
+        }).ToList());
+
+        var commPrefsSlice = new UserDataSlice(GdprExportSections.CommunicationPreferences, communicationPreferences.Select(cp => new
+        {
+            cp.Category,
+            cp.OptedOut,
+            cp.InboxEnabled,
+            UpdatedAt = cp.UpdatedAt.ToInvariantInstantString(),
+            cp.UpdateSource
+        }).ToList());
+
+        return [
+            profileSlice,
+            contactFieldSlice,
+            userEmailsSlice,
+            volunteerHistorySlice,
+            languagesSlice,
+            commPrefsSlice
+        ];
     }
 }

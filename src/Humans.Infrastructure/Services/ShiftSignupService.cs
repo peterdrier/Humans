@@ -1,4 +1,6 @@
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -12,7 +14,7 @@ namespace Humans.Infrastructure.Services;
 /// <summary>
 /// Manages the shift signup state machine with invariant enforcement.
 /// </summary>
-public class ShiftSignupService : IShiftSignupService
+public class ShiftSignupService : IShiftSignupService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IShiftManagementService _shiftMgmt;
@@ -1049,4 +1051,91 @@ public class ShiftSignupService : IShiftSignupService
     /// </summary>
     private static string FormatShiftDate(LocalDate date) =>
         date.DayOfWeek.ToString()[..3] + " " + date.ToString("MMM d", null);
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        // Load signups WITHOUT an `.Include(r => r.Team)` — `teams` is owned by
+        // the Teams section, not Shifts, so the Department name must come
+        // through ITeamService instead of a join. The Rota's TeamId is already
+        // a scalar FK on the Rota entity (no navigation needed for the ID).
+        var signups = await _dbContext.ShiftSignups
+            .AsNoTracking()
+            .Include(ss => ss.Shift)
+                .ThenInclude(s => s.Rota)
+                    .ThenInclude(r => r.EventSettings)
+            .Where(ss => ss.UserId == userId)
+            .OrderByDescending(ss => ss.CreatedAt)
+            .ToListAsync(ct);
+
+        // Resolve TeamId → Team.Name through the owning section's service.
+        // Explicitly NOT GetAllTeamsAsync — that filters to IsActive, which
+        // would drop the Department name for historical signups whose rota
+        // points at a deactivated team (GDPR data-loss regression). The
+        // dedicated GetTeamNamesByIdsAsync includes deactivated teams.
+        var referencedTeamIds = signups
+            .Select(ss => ss.Shift.Rota.TeamId)
+            .Distinct()
+            .ToList();
+        var teamNamesById = await TeamService.GetTeamNamesByIdsAsync(referencedTeamIds, ct);
+
+        var volunteerEventProfiles = await _dbContext.VolunteerEventProfiles
+            .AsNoTracking()
+            .Where(vep => vep.UserId == userId)
+            .ToListAsync(ct);
+
+        var generalAvailability = await _dbContext.GeneralAvailability
+            .AsNoTracking()
+            .Include(ga => ga.EventSettings)
+            .Where(ga => ga.UserId == userId)
+            .ToListAsync(ct);
+
+        var tagPreferences = await _dbContext.VolunteerTagPreferences
+            .AsNoTracking()
+            .Include(vtp => vtp.ShiftTag)
+            .Where(vtp => vtp.UserId == userId)
+            .ToListAsync(ct);
+
+        var signupSlice = new UserDataSlice(GdprExportSections.ShiftSignups, signups.Select(ss => new
+        {
+            EventName = ss.Shift.Rota.EventSettings.EventName,
+            Department = teamNamesById.TryGetValue(ss.Shift.Rota.TeamId, out var teamName) ? teamName : null,
+            RotaName = ss.Shift.Rota.Name,
+            ss.Shift.DayOffset,
+            ss.Shift.IsAllDay,
+            ss.Status,
+            ss.Enrolled,
+            ss.StatusReason,
+            CreatedAt = ss.CreatedAt.ToInvariantInstantString(),
+            ReviewedAt = ss.ReviewedAt.ToInvariantInstantString()
+        }).ToList());
+
+        var vepSlice = new UserDataSlice(GdprExportSections.VolunteerEventProfiles, volunteerEventProfiles.Select(vep => new
+        {
+            vep.Skills,
+            vep.Quirks,
+            vep.Languages,
+            vep.DietaryPreference,
+            vep.Allergies,
+            vep.Intolerances,
+            vep.AllergyOtherText,
+            vep.IntoleranceOtherText,
+            vep.MedicalConditions,
+            CreatedAt = vep.CreatedAt.ToInvariantInstantString(),
+            UpdatedAt = vep.UpdatedAt.ToInvariantInstantString()
+        }).ToList());
+
+        var availabilitySlice = new UserDataSlice(GdprExportSections.GeneralAvailability, generalAvailability.Select(ga => new
+        {
+            EventName = ga.EventSettings.EventName,
+            ga.AvailableDayOffsets,
+            UpdatedAt = ga.UpdatedAt.ToInvariantInstantString()
+        }).ToList());
+
+        var tagPreferenceSlice = new UserDataSlice(GdprExportSections.ShiftTagPreferences, tagPreferences.Select(vtp => new
+        {
+            TagName = vtp.ShiftTag.Name
+        }).ToList());
+
+        return [signupSlice, vepSlice, availabilitySlice, tagPreferenceSlice];
+    }
 }

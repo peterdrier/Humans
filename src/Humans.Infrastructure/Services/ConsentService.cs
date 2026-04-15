@@ -4,14 +4,16 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Services;
 
-public class ConsentService : IConsentService
+public class ConsentService : IConsentService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IOnboardingService _onboardingService;
@@ -234,5 +236,22 @@ public class ConsentService : IConsentService
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(content));
         return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var consents = await GetUserConsentRecordsAsync(userId, ct);
+
+        var shaped = consents.Select(c => new
+        {
+            DocumentName = c.DocumentVersion.LegalDocument.Name,
+            DocumentVersion = c.DocumentVersion.VersionNumber,
+            c.ExplicitConsent,
+            ConsentedAt = c.ConsentedAt.ToInvariantInstantString(),
+            c.IpAddress,
+            c.UserAgent
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.Consents, shaped)];
     }
 }

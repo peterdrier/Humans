@@ -69,7 +69,6 @@ public interface IProfileService
     /// or null if no hold applies.
     /// </summary>
     Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default);
-    Task<object> ExportDataAsync(Guid userId, CancellationToken ct = default);
     Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
         GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default);
 
