@@ -567,7 +567,7 @@ public class ProfileController : HumansControllerBase
         }
         catch (ValidationException ex)
         {
-            _logger.LogInformation("Rejected email add for user {UserId}: {Reason}", user.Id, ex.Message);
+            _logger.LogWarning("Rejected email add for user {UserId}: {Reason}", user.Id, ex.Message);
             ModelState.AddModelError(nameof(model.NewEmail), ex.Message);
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
@@ -982,7 +982,7 @@ public class ProfileController : HumansControllerBase
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            _logger.LogInformation("Profile picture request for {ProfileId} was cancelled by the client", id);
+            _logger.LogWarning("Profile picture request for {ProfileId} was cancelled by the client", id);
             return StatusCode(499);
         }
     }
