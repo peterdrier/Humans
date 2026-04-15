@@ -567,7 +567,6 @@ public class ProfileController : HumansControllerBase
         }
         catch (ValidationException ex)
         {
-            _logger.LogWarning(ex, "Failed to add email address for user {UserId}", user.Id);
             ModelState.AddModelError(nameof(model.NewEmail), ex.Message);
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
         }
@@ -971,12 +970,19 @@ public class ProfileController : HumansControllerBase
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
     public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
     {
-        var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
+        try
+        {
+            var (data, contentType) = await _profileService.GetProfilePictureAsync(id, ct);
 
-        if (data is null || string.IsNullOrEmpty(contentType))
-            return NotFound();
+            if (data is null || string.IsNullOrEmpty(contentType))
+                return NotFound();
 
-        return File(data, contentType);
+            return File(data, contentType);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return StatusCode(499);
+        }
     }
 
     // ─── View Another Profile ────────────────────────────────────────

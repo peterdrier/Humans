@@ -479,7 +479,6 @@ public class ShiftAdminController : HumansTeamControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            _logger.LogWarning(ex, "Failed to delete shift {ShiftId} in team {Slug}", shiftId, slug);
             SetError(ex.Message);
         }
 
