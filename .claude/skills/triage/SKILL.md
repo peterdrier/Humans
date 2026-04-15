@@ -449,7 +449,7 @@ Every Error or Fatal log entry represents something that went wrong in code. The
 
 The default stance on warnings is: **if it's in the logs, it's noise, and noise should be fixed.** Warnings exist to surface problems. If a warning fires repeatedly and nobody acts on it, it trains everyone to ignore warnings — and real problems hide in the noise.
 
-**Actionable warnings (fix the root cause or suppress correctly):**
+**Actionable warnings (fix the root cause or handle the condition correctly):**
 - Failed external API calls (Google, email, Stripe)
 - Database query issues, missing value comparers, migration problems
 - Configuration warnings (missing env vars, port overrides, startup noise)
@@ -457,11 +457,37 @@ The default stance on warnings is: **if it's in the logs, it's noise, and noise 
 - Background job failures
 - Authorization failures on API endpoints
 - EF Core advisories (value comparers, query warnings) — these are fixable
-- Infrastructure/startup warnings — configure correctly or suppress at the Serilog level
+- Infrastructure/startup warnings — configure correctly
 
-**The only warnings to skip** are those caused by a user's own action where the system correctly handled it AND the warning serves as a useful audit trail. For example, "User X attempted to access resource they don't own → 403 returned" is the system working as designed and the log entry has diagnostic value. But even here, if the warning is noisy (fires hundreds of times), consider whether the log level should be lowered to Debug.
+**The only warnings to skip** are those caused by a user's own action where the system correctly handled it AND the warning serves as a useful audit trail. For example, "User X attempted to access resource they don't own → 403 returned" is the system working as designed and the log entry has diagnostic value. Even here, **keep the Warning severity** — see "What 'fixing' means" below. Do not downgrade to Information: in production, Information-level logs do NOT appear in the log viewer, so a downgrade is effectively the same as deletion.
 
-The rule of thumb: **can this warning be eliminated by fixing code, config, or log levels?** If yes, it's actionable. "Pre-existing" and "normal" are not reasons to skip — they're reasons it should have been fixed already.
+The rule of thumb: **can this warning be eliminated by making the code handle the condition correctly or adjusting config?** If yes, it's actionable. "Pre-existing" and "normal" are not reasons to skip — they're reasons it should have been fixed already.
+
+### What "fixing" a log message actually means
+
+This is the most commonly misunderstood part of log triage, and getting it wrong is worse than leaving the warning alone. When you propose a fix in the issue you create, be explicit about the goal so that whoever (or whatever) picks up the issue doesn't take the shortcut of deleting the log call or downgrading it into invisibility.
+
+**The goal of fixing a log message is to turn an *unknown* problem into a *known, handled* problem — not to silence the problem.** We always want a record when something goes wrong. That record is how we spot regressions, detect abuse, and understand usage patterns. Deleting a log line throws away that signal. **So does downgrading it to Information in production**, because the production log viewer only shows Warning and above — an Information-level log is effectively invisible there.
+
+**What fixing looks like in practice:**
+
+1. **Identify the condition** that's triggering the log. Is it a user-driven validation failure? A guardrail hit? A cancelled request? A genuine bug? A flaky external service?
+2. **Decide whether it's expected or not.** "Expected" means: this happens in the normal course of operation, nothing is actually broken, the system handled it correctly.
+3. **Rewrite the call site — keep it at Warning, drop the exception object:**
+   - **Expected, user-driven, or guardrail** → wrap the throwing call in a `try/catch` for the *specific* expected exception type. Keep the log call at `LogWarning` so it remains visible in the production log viewer, but **drop the exception argument** so the stack trace doesn't spam the error channel. Use the message / reason as a structured property instead. Example: `_logger.LogWarning("Rejected email add for user {UserId}: {Reason}", user.Id, ex.Message);` instead of `_logger.LogWarning(ex, "Failed to add email...", user.Id);` — same severity, same visibility, no stack trace, better structured context.
+   - **Bug** → fix the bug. The log call stays as-is (or escalates to Error) because we still want to know if the bug recurs.
+   - **Flaky external service** → catch the specific exception, log at `Warning` with structured context about what was attempted, and retry or fall back per business requirements.
+4. **The only acceptable way to remove a log call entirely** is if the *code path itself* is being removed (dead code cleanup) or if the condition is literally impossible after a structural fix (e.g., the call site is gone because the whole method was replaced). Never delete a log call just because the event is "expected."
+5. **Never downgrade to `LogInformation` or `LogDebug` as the fix.** That's equivalent to deletion in production because those levels don't render in the prod log viewer. Stay at Warning.
+
+**Anti-patterns to refuse when writing proposed-fix text:**
+- ❌ "Remove the `LogWarning` wrapping X" — ambiguous, will be read as delete-the-line
+- ❌ "Downgrade to Information" — effectively invisible in prod
+- ❌ "Stop logging this" — destroys the signal
+- ✅ "Convert the catch block around X to `LogWarning` *without* the exception object, using structured `{Reason}` instead of `{Exception}`."
+- ✅ "Catch `OperationCanceledException` in X and `LogWarning` the cancellation without the exception object."
+
+Be prescriptive: name the severity (Warning), specify that the `ex` argument comes out of the log call, and give the replacement message template.
 
 ## Step 3.4: Research and group
 
