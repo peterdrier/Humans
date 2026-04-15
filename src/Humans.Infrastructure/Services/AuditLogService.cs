@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NodaTime;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -13,7 +15,7 @@ namespace Humans.Infrastructure.Services;
 /// Entries are NOT saved here — the caller's SaveChangesAsync persists them
 /// atomically with the business operation.
 /// </summary>
-public class AuditLogService : IAuditLogService
+public class AuditLogService : IAuditLogService, IUserDataContributor
 {
     private readonly HumansDbContext _dbContext;
     private readonly IClock _clock;
@@ -271,5 +273,29 @@ public class AuditLogService : IAuditLogService
         return await _dbContext.Teams.AsNoTracking()
             .Where(t => teamIds.Contains(t.Id))
             .ToDictionaryAsync(t => t.Id, t => (t.Name, t.Slug), ct);
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var entries = await _dbContext.AuditLogEntries
+            .AsNoTracking()
+            .Where(a => a.EntityId == userId || a.RelatedEntityId == userId || a.ActorUserId == userId)
+            .OrderByDescending(a => a.OccurredAt)
+            .ToListAsync(ct);
+
+        if (entries.Count == 0)
+        {
+            return [new UserDataSlice(GdprExportSections.AuditLog, null)];
+        }
+
+        var shaped = entries.Select(a => new
+        {
+            a.Action,
+            a.EntityType,
+            OccurredAt = a.OccurredAt.ToInvariantInstantString(),
+            Role = a.ActorUserId == userId ? "Actor" : "Subject"
+        }).ToList();
+
+        return [new UserDataSlice(GdprExportSections.AuditLog, shaped)];
     }
 }
