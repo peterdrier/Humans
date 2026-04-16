@@ -319,7 +319,7 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [season2026Id] = new("Test Camp 2026", "test-camp", null)
+                [season2026Id] = new("Test Camp 2026", "test-camp", null, null)
             });
 
         var result = await _sut.GetCampPolygonsAsync(2026);
@@ -362,7 +362,7 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", null)
+                [campSeasonId] = new("Test Camp", "test-camp", null, null)
             });
 
         var result = await _sut.ExportAsGeoJsonAsync(2026);
@@ -407,7 +407,7 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", SoundZone.Blue)
+                [campSeasonId] = new("Test Camp", "test-camp", SoundZone.Blue, null)
             });
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
@@ -426,7 +426,7 @@ public class CityPlanningServiceTests : IDisposable
         _campService.GetCampSeasonDisplayDataForYearAsync(2026, Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, CampSeasonDisplayData>
             {
-                [campSeasonId] = new("Test Camp", "test-camp", null)
+                [campSeasonId] = new("Test Camp", "test-camp", null, null)
             });
 
         var polygons = await _sut.GetCampPolygonsAsync(2026);
