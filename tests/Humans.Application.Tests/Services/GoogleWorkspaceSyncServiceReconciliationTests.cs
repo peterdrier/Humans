@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Tests.Fakes;
 using Humans.Domain.Entities;
@@ -231,7 +232,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : IDisposable
     // stays IsActive = true after the DriveFolder pass.
 
     // -------------------------------------------------------------------------
-    // Scenario 5: AddOnly mode skips deactivation
+    // Scenario 5: AddOnly mode — soft-deleted team
     // -------------------------------------------------------------------------
 
     [Fact]
@@ -254,17 +255,13 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : IDisposable
 
         result.Diffs.Should().ContainSingle()
             .Which.ErrorMessage.Should().BeNull();
-
-        // The diff correctly reported Alice as Extra, but RemoveUserFromDrive
-        // short-circuited because mode != AddAndRemove, and the post-execute
-        // deactivation block also skips when mode != AddAndRemove.
         _driveClient.GetPermissions(folder.GoogleId).Should().ContainSingle(p => p.EmailAddress == alice.Email);
         var row = await _dbContext.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == folder.Id);
         row.IsActive.Should().BeTrue();
     }
 
     // -------------------------------------------------------------------------
-    // Scenario 6: None mode skips deactivation
+    // Scenario 6: None mode — soft-deleted team
     // -------------------------------------------------------------------------
 
     [Fact]
@@ -289,6 +286,405 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : IDisposable
         _driveClient.GetPermissions(folder.GoogleId).Should().ContainSingle(p => p.EmailAddress == alice.Email);
         var row = await _dbContext.GoogleResources.AsNoTracking().SingleAsync(r => r.Id == folder.Id);
         row.IsActive.Should().BeTrue();
+    }
+
+    // =========================================================================
+    // ADD PATH — missing members get provisioned
+    // =========================================================================
+
+    [Fact]
+    public async Task MissingGroupMember_IsAddedOnExecute()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(team.Id, alice.Id);
+
+        var group = SeedResource(team.Id, GoogleResourceType.Group, "group-add");
+        // No membership seeded in the fake — Alice is Missing.
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute);
+
+        _groupClient.GetMemberships(group.GoogleId)
+            .Should().ContainSingle(m => m.PreferredMemberKey!.Id == alice.Email);
+    }
+
+    [Fact]
+    public async Task MissingDriveMember_IsAddedWithCorrectRole()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleDrive, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(team.Id, alice.Id);
+
+        var folder = SeedResource(team.Id, GoogleResourceType.DriveFolder, "folder-add",
+            driveLevel: DrivePermissionLevel.ContentManager);
+        // No permission seeded — Alice is Missing.
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute);
+
+        var perms = _driveClient.GetPermissions(folder.GoogleId);
+        perms.Should().ContainSingle(p =>
+            p.EmailAddress == alice.Email && p.Role == "fileOrganizer");
+    }
+
+    // =========================================================================
+    // NO-OP PATH — correct state, no side effects
+    // =========================================================================
+
+    [Fact]
+    public async Task CorrectGroupMember_NoMutationsOccur()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(team.Id, alice.Id);
+
+        var group = SeedResource(team.Id, GoogleResourceType.Group, "group-noop");
+        _groupClient.SeedMembership(group.GoogleId, alice.Email!);
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        var result = await service.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute);
+
+        var diff = result.Diffs.Should().ContainSingle().Subject;
+        diff.ErrorMessage.Should().BeNull();
+        diff.Members.Should().ContainSingle(m => m.State == MemberSyncState.Correct);
+        _groupClient.GetMemberships(group.GoogleId).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task CorrectDriveMember_NoMutationsOccur()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleDrive, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(team.Id, alice.Id);
+
+        var folder = SeedResource(team.Id, GoogleResourceType.DriveFolder, "folder-noop");
+        _driveClient.SeedDirectPermission(folder.GoogleId, alice.Email!, "writer");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        var result = await service.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute);
+
+        var diff = result.Diffs.Should().ContainSingle().Subject;
+        diff.ErrorMessage.Should().BeNull();
+        diff.Members.Should().ContainSingle(m => m.State == MemberSyncState.Correct);
+        _driveClient.GetPermissions(folder.GoogleId).Should().ContainSingle();
+    }
+
+    // =========================================================================
+    // REMOVE PATH — extra members on active team
+    // =========================================================================
+
+    [Fact]
+    public async Task ExtraGroupMember_IsRemovedOnExecute()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var group = SeedResource(team.Id, GoogleResourceType.Group, "group-extra");
+        _groupClient.SeedMembership(group.GoogleId, "stranger@example.com");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute);
+
+        _groupClient.GetMemberships(group.GoogleId).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ExtraDirectDrivePermission_IsRemovedOnExecute()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleDrive, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var folder = SeedResource(team.Id, GoogleResourceType.DriveFolder, "folder-extra");
+        _driveClient.SeedDirectPermission(folder.GoogleId, "stranger@example.com");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute);
+
+        _driveClient.GetPermissions(folder.GoogleId).Should().BeEmpty();
+    }
+
+    // =========================================================================
+    // WRONG ROLE — member at wrong Drive permission level gets upgraded
+    // =========================================================================
+
+    [Fact]
+    public async Task DriveMember_AtWrongRole_IsUpgraded()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleDrive, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(team.Id, alice.Id);
+
+        var folder = SeedResource(team.Id, GoogleResourceType.DriveFolder, "folder-role",
+            driveLevel: DrivePermissionLevel.ContentManager);
+        // Alice is at "reader" (Viewer) but the resource expects ContentManager ("fileOrganizer").
+        _driveClient.SeedDirectPermission(folder.GoogleId, alice.Email!, "reader");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        var result = await service.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute);
+
+        var diff = result.Diffs.Should().ContainSingle().Subject;
+        diff.Members.Should().ContainSingle(m => m.State == MemberSyncState.WrongRole);
+
+        // After execute, the fake should have a new permission at the correct level
+        // (the old one stays — real Google API replaces; our fake just adds, which is fine
+        // for verifying the upgrade was attempted with the correct role).
+        _driveClient.GetPermissions(folder.GoogleId)
+            .Should().Contain(p => p.Role == "fileOrganizer" && p.EmailAddress == alice.Email);
+    }
+
+    // =========================================================================
+    // MIXED TRANSITIONS — correct + missing + extra in one tick
+    // =========================================================================
+
+    [Fact]
+    public async Task GroupReconciliation_MixedState_AddsRemovesAndKeeps()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        var bob = SeedUser("bob@nobodies.team", "Bob");
+        SeedActiveMember(team.Id, alice.Id);
+        SeedActiveMember(team.Id, bob.Id);
+
+        var group = SeedResource(team.Id, GoogleResourceType.Group, "group-mixed");
+        _groupClient.SeedMembership(group.GoogleId, alice.Email!);
+        _groupClient.SeedMembership(group.GoogleId, "stranger@example.com");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        var result = await service.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute);
+
+        var diff = result.Diffs.Should().ContainSingle().Subject;
+        diff.Members.Should().Contain(m => m.Email == alice.Email && m.State == MemberSyncState.Correct);
+        diff.Members.Should().Contain(m => m.Email == bob.Email && m.State == MemberSyncState.Missing);
+        diff.Members.Should().Contain(m => m.Email == "stranger@example.com" && m.State == MemberSyncState.Extra);
+
+        var remaining = _groupClient.GetMemberships(group.GoogleId);
+        remaining.Should().HaveCount(2);
+        remaining.Select(m => m.PreferredMemberKey!.Id).Should().Contain(alice.Email)
+            .And.Contain(bob.Email)
+            .And.NotContain("stranger@example.com");
+    }
+
+    // =========================================================================
+    // SHARED GoogleId UNION — Drive folder linked to two teams
+    // =========================================================================
+
+    [Fact]
+    public async Task SharedGoogleIdDrive_UnionOfTeamMembersIsExpected()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleDrive, SyncMode.AddAndRemove);
+
+        var teamA = SeedTeam(slug: "alpha");
+        var teamB = SeedTeam(slug: "bravo");
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        var bob = SeedUser("bob@nobodies.team", "Bob");
+        SeedActiveMember(teamA.Id, alice.Id);
+        SeedActiveMember(teamB.Id, bob.Id);
+
+        const string sharedFolder = "shared-folder-union";
+        SeedResource(teamA.Id, GoogleResourceType.DriveFolder, sharedFolder);
+        SeedResource(teamB.Id, GoogleResourceType.DriveFolder, sharedFolder);
+        // Neither has a permission yet — both Alice and Bob should be added.
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute);
+
+        var perms = _driveClient.GetPermissions(sharedFolder);
+        perms.Select(p => p.EmailAddress).Should().Contain(alice.Email).And.Contain(bob.Email);
+    }
+
+    [Fact]
+    public async Task SharedGoogleIdDrive_MaxPermissionLevelWins()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleDrive, SyncMode.AddAndRemove);
+
+        var teamA = SeedTeam(slug: "alpha-lv");
+        var teamB = SeedTeam(slug: "bravo-lv");
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(teamA.Id, alice.Id);
+        SeedActiveMember(teamB.Id, alice.Id);
+
+        const string sharedFolder = "shared-folder-level";
+        SeedResource(teamA.Id, GoogleResourceType.DriveFolder, sharedFolder,
+            driveLevel: DrivePermissionLevel.Viewer);
+        SeedResource(teamB.Id, GoogleResourceType.DriveFolder, sharedFolder,
+            driveLevel: DrivePermissionLevel.ContentManager);
+        // No existing permission — Alice should be added at max (ContentManager → fileOrganizer).
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute);
+
+        _driveClient.GetPermissions(sharedFolder)
+            .Should().ContainSingle(p =>
+                p.EmailAddress == alice.Email && p.Role == "fileOrganizer");
+    }
+
+    // =========================================================================
+    // INHERITED PERMISSION — never flagged as Extra or removed
+    // =========================================================================
+
+    [Fact]
+    public async Task InheritedDrivePermission_IsNotTreatedAsExtra()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleDrive, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var folder = SeedResource(team.Id, GoogleResourceType.DriveFolder, "folder-inherited");
+        _driveClient.SeedInheritedPermission(folder.GoogleId, "shared-drive-user@example.com");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        var result = await service.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute);
+
+        var diff = result.Diffs.Should().ContainSingle().Subject;
+        diff.Members.Should().ContainSingle(m =>
+            m.Email == "shared-drive-user@example.com" && m.State == MemberSyncState.Inherited);
+        _driveClient.GetPermissions(folder.GoogleId).Should().ContainSingle(
+            "inherited permissions must never be deleted by reconciliation");
+    }
+
+    // =========================================================================
+    // AddOnly MODE — adds missing but does NOT remove extras
+    // =========================================================================
+
+    [Fact]
+    public async Task AddOnlyMode_AddsMissingButKeepsExtras()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleGroups, SyncMode.AddOnly);
+
+        var team = SeedTeam();
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(team.Id, alice.Id);
+
+        var group = SeedResource(team.Id, GoogleResourceType.Group, "group-addonly");
+        _groupClient.SeedMembership(group.GoogleId, "stranger@example.com");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute);
+
+        var members = _groupClient.GetMemberships(group.GoogleId);
+        members.Should().HaveCount(2);
+        members.Select(m => m.PreferredMemberKey!.Id)
+            .Should().Contain(alice.Email, "missing member should be added in AddOnly mode")
+            .And.Contain("stranger@example.com", "extra member should NOT be removed in AddOnly mode");
+    }
+
+    // =========================================================================
+    // SUB-TEAM ROLLUP — child team members expected in parent's resource
+    // =========================================================================
+
+    [Fact]
+    public async Task SubTeamRollup_ChildMembersAreExpectedInParentGroup()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove);
+
+        var department = SeedTeam(slug: "dept");
+        var childTeam = SeedTeam(slug: "child");
+        childTeam.ParentTeamId = department.Id;
+
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(childTeam.Id, alice.Id);
+
+        var group = SeedResource(department.Id, GoogleResourceType.Group, "group-dept");
+        // Alice is not on the department team directly, but is on a child team.
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute);
+
+        _groupClient.GetMemberships(group.GoogleId)
+            .Should().ContainSingle(m => m.PreferredMemberKey!.Id == alice.Email,
+                "child team members must be rolled up into the parent's Google resource");
+    }
+
+    // =========================================================================
+    // SERVICE ACCOUNT FILTER — SA email not flagged as Extra
+    // =========================================================================
+
+    [Fact]
+    public async Task ServiceAccountEmail_IsNotFlaggedAsExtra()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var group = SeedResource(team.Id, GoogleResourceType.Group, "group-sa");
+        // The SA email comes from GetServiceAccountEmailAsync which returns
+        // "unknown@serviceaccount.iam.gserviceaccount.com" when no key is configured.
+        _groupClient.SeedMembership(group.GoogleId, "unknown@serviceaccount.iam.gserviceaccount.com");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        var result = await service.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute);
+
+        var diff = result.Diffs.Should().ContainSingle().Subject;
+        diff.Members.Should().BeEmpty("the SA email should be silently excluded from the diff");
+        _groupClient.GetMemberships(group.GoogleId).Should().ContainSingle(
+            "SA membership must not be removed by reconciliation");
+    }
+
+    // =========================================================================
+    // DriveFile PARITY — same code path as DriveFolder
+    // =========================================================================
+
+    [Fact]
+    public async Task DriveFile_ReconcilesIdenticallyToDriveFolder()
+    {
+        _syncSettings.SetMode(SyncServiceType.GoogleDrive, SyncMode.AddAndRemove);
+
+        var team = SeedTeam();
+        var alice = SeedUser("alice@nobodies.team", "Alice");
+        SeedActiveMember(team.Id, alice.Id);
+
+        var file = SeedResource(team.Id, GoogleResourceType.DriveFile, "file-parity");
+        _driveClient.SeedDirectPermission(file.GoogleId, "stranger@example.com");
+
+        await _dbContext.SaveChangesAsync();
+        var service = BuildService();
+
+        await service.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute);
+
+        var perms = _driveClient.GetPermissions(file.GoogleId);
+        perms.Should().ContainSingle(p => p.EmailAddress == alice.Email,
+            "missing member should be added on DriveFile just like DriveFolder");
+        perms.Should().NotContain(p => p.EmailAddress == "stranger@example.com",
+            "extra permission should be removed on DriveFile just like DriveFolder");
     }
 
     // -------------------------------------------------------------------------
@@ -352,6 +748,17 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : IDisposable
         return user;
     }
 
+    private void SeedActiveMember(Guid teamId, Guid userId)
+    {
+        _dbContext.TeamMembers.Add(new TeamMember
+        {
+            Id = Guid.NewGuid(),
+            TeamId = teamId,
+            UserId = userId,
+            JoinedAt = _clock.GetCurrentInstant() - Duration.FromDays(30)
+        });
+    }
+
     private void SeedLeftMember(Guid teamId, Guid userId)
     {
         var now = _clock.GetCurrentInstant();
@@ -365,7 +772,8 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : IDisposable
         });
     }
 
-    private GoogleResource SeedResource(Guid teamId, GoogleResourceType type, string googleId)
+    private GoogleResource SeedResource(Guid teamId, GoogleResourceType type, string googleId,
+        DrivePermissionLevel driveLevel = DrivePermissionLevel.Contributor)
     {
         var resource = new GoogleResource
         {
@@ -378,7 +786,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : IDisposable
             IsActive = true,
             DrivePermissionLevel = type == GoogleResourceType.Group
                 ? DrivePermissionLevel.None
-                : DrivePermissionLevel.Contributor,
+                : driveLevel,
             ProvisionedAt = _clock.GetCurrentInstant() - Duration.FromDays(10)
         };
         _dbContext.GoogleResources.Add(resource);
