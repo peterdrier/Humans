@@ -25,7 +25,7 @@ export function getSoundZoneOutOfRange(feature, campSoundZone) {
             if (turf.booleanPointInPolygon(centroid, zf)) {
                 return !zf.properties.SoundZone.split('_').includes(campZoneName);
             }
-        } catch { /* ignore */ }
+        } catch (e) { console.debug('Sound zone geometry check failed:', e); }
     }
     return false;
 }
