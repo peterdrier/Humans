@@ -43,7 +43,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_SyncsBothResourceTypes()
+    public async Task ExecuteAsync_SyncsEveryLinkableResourceType()
     {
         _googleSyncService.CheckGroupSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new GroupSettingsDriftResult());
@@ -52,6 +52,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 
         await _googleSyncService.Received(1)
             .SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, Arg.Any<CancellationToken>());
+        await _googleSyncService.Received(1)
+            .SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, Arg.Any<CancellationToken>());
         await _googleSyncService.Received(1)
             .SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, Arg.Any<CancellationToken>());
     }

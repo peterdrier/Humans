@@ -38,7 +38,12 @@ public class GoogleResourceReconciliationJob : IRecurringJob
 
         try
         {
+            // Reconcile every resource type teams can link. DriveFile is handled by the
+            // same Drive permission path as DriveFolder, and omitting it meant soft-deleted
+            // teams with linked files kept Google permissions indefinitely because no
+            // reconciliation pass ever touched them.
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFolder, SyncAction.Execute, cancellationToken);
+            await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.DriveFile, SyncAction.Execute, cancellationToken);
             await _googleSyncService.SyncResourcesByTypeAsync(GoogleResourceType.Group, SyncAction.Execute, cancellationToken);
 
             // Update Drive folder paths (detects renames and moves)
