@@ -623,7 +623,8 @@ public class ProfileService : IProfileService
             user.Applications.OrderByDescending(a => a.SubmittedAt).ToList(),
             consentCount,
             roleAssignments,
-            rejectedByName);
+            rejectedByName,
+            user.UserEmails.ToList());
     }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>

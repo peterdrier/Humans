@@ -9,4 +9,5 @@ public record AdminHumanDetailData(
     IReadOnlyList<MemberApplication> Applications,
     int ConsentCount,
     IReadOnlyList<RoleAssignment> RoleAssignments,
-    string? RejectedByName);
+    string? RejectedByName,
+    IReadOnlyList<UserEmail> UserEmails);

@@ -1,5 +1,6 @@
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using NodaTime;
 
 namespace Humans.Application.Interfaces;
 
@@ -86,4 +87,17 @@ public interface IUserService
     /// Updates <c>User.DisplayName</c>. No-op if the user does not exist.
     /// </summary>
     Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets the deletion-pending fields on a user (<c>DeletionRequestedAt</c>,
+    /// <c>DeletionScheduledFor</c>). Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> SetDeletionPendingAsync(Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears deletion-pending fields (<c>DeletionRequestedAt</c>,
+    /// <c>DeletionScheduledFor</c>, <c>DeletionEligibleAfter</c>).
+    /// Returns false if the user does not exist.
+    /// </summary>
+    Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
 }

@@ -1325,10 +1325,14 @@ public class ProfileController : HumansControllerBase
 
         var now = _clock.GetCurrentInstant();
 
+        var effectiveEmail = data.UserEmails
+            .FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
+            ?? data.User.Email;
+
         var viewModel = new AdminHumanDetailViewModel
         {
             UserId = data.User.Id,
-            Email = data.User.GetEffectiveEmail() ?? string.Empty,
+            Email = effectiveEmail ?? string.Empty,
             DisplayName = data.User.DisplayName,
             ProfilePictureUrl = data.User.ProfilePictureUrl,
             CreatedAt = data.User.CreatedAt.ToDateTimeUtc(),
@@ -1375,7 +1379,7 @@ public class ProfileController : HumansControllerBase
             OAuthEmail = data.User.Email,
             GoogleServiceEmail = data.User.GetGoogleServiceEmail(),
             GoogleEmailStatus = data.User.GoogleEmailStatus,
-            UserEmails = data.User.UserEmails
+            UserEmails = data.UserEmails
                 .OrderBy(e => e.DisplayOrder)
                 .Select(e => new AdminUserEmailViewModel
                 {

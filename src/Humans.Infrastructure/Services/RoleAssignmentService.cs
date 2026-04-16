@@ -291,6 +291,28 @@ public class RoleAssignmentService : IRoleAssignmentService, IUserDataContributo
                 cancellationToken);
     }
 
+    public async Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default)
+    {
+        var now = _clock.GetCurrentInstant();
+
+        var activeRoles = await _dbContext.RoleAssignments
+            .Where(ra => ra.UserId == userId && ra.ValidFrom <= now && (ra.ValidTo == null || ra.ValidTo > now))
+            .ToListAsync(ct);
+
+        if (activeRoles.Count == 0)
+            return 0;
+
+        foreach (var role in activeRoles)
+        {
+            role.ValidTo = now;
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+        _cache.InvalidateRoleAssignmentClaims(userId);
+
+        return activeRoles.Count;
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var assignments = await _dbContext.RoleAssignments

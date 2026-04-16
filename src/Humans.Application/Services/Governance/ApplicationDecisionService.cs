@@ -455,6 +455,36 @@ public sealed class ApplicationDecisionService : IApplicationDecisionService, IU
             History: history);
     }
 
+    public async Task UpdateDraftApplicationAsync(
+        Guid applicationId, MembershipTier tier, string motivation,
+        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
+        CancellationToken ct = default)
+    {
+        var application = await _repository.GetByIdAsync(applicationId, ct);
+        if (application is null)
+        {
+            _logger.LogWarning("UpdateDraftApplicationAsync: application {Id} not found", applicationId);
+            return;
+        }
+
+        if (application.Status != ApplicationStatus.Submitted)
+        {
+            _logger.LogWarning(
+                "UpdateDraftApplicationAsync: application {Id} is {Status}, not Submitted",
+                applicationId, application.Status);
+            return;
+        }
+
+        application.MembershipTier = tier;
+        application.Motivation = motivation;
+        application.AdditionalInfo = additionalInfo;
+        application.SignificantContribution = significantContribution;
+        application.RoleUnderstanding = roleUnderstanding;
+        application.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _repository.UpdateAsync(application, ct);
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var applications = await _repository.GetByUserIdAsync(userId, ct);

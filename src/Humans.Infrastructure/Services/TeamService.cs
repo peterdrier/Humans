@@ -2434,6 +2434,39 @@ public class TeamService : ITeamService, IUserDataContributor
         });
     }
 
+    public async Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var now = _clock.GetCurrentInstant();
+
+        var activeMembers = await _dbContext.TeamMembers
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
+            .ToListAsync(cancellationToken);
+
+        if (activeMembers.Count == 0)
+            return 0;
+
+        var activeMemberIds = activeMembers.Select(m => m.Id).ToList();
+
+        // Remove team role assignments for departing memberships
+        var roleAssignments = await _dbContext.Set<TeamRoleAssignment>()
+            .Where(a => activeMemberIds.Contains(a.TeamMemberId))
+            .ToListAsync(cancellationToken);
+        if (roleAssignments.Count > 0)
+        {
+            _dbContext.Set<TeamRoleAssignment>().RemoveRange(roleAssignments);
+        }
+
+        foreach (var membership in activeMembers)
+        {
+            membership.LeftAt = now;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        RemoveMemberFromAllTeamsCache(userId);
+
+        return activeMembers.Count;
+    }
+
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var memberships = await _dbContext.TeamMembers

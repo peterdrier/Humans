@@ -295,4 +295,29 @@ public class UserService : IUserService, IUserDataContributor
         user.DisplayName = displayName;
         await _dbContext.SaveChangesAsync(ct);
     }
+
+    public async Task<bool> SetDeletionPendingAsync(Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default)
+    {
+        var user = await _dbContext.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.DeletionRequestedAt = requestedAt;
+        user.DeletionScheduledFor = scheduledFor;
+        await _dbContext.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
+    {
+        var user = await _dbContext.Users.FindAsync([userId], ct);
+        if (user is null)
+            return false;
+
+        user.DeletionRequestedAt = null;
+        user.DeletionScheduledFor = null;
+        user.DeletionEligibleAfter = null;
+        await _dbContext.SaveChangesAsync(ct);
+        return true;
+    }
 }

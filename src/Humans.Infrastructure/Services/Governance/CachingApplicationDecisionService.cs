@@ -180,4 +180,15 @@ public sealed class CachingApplicationDecisionService : IApplicationDecisionServ
     {
         return _inner.GetApplicationDetailAsync(applicationId, ct);
     }
+
+    public Task UpdateDraftApplicationAsync(
+        Guid applicationId, MembershipTier tier, string motivation,
+        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
+        CancellationToken ct = default)
+    {
+        // Pass through — draft application edits don't affect caches
+        // (the application hasn't changed status, no nav badge/notification impact)
+        return _inner.UpdateDraftApplicationAsync(
+            applicationId, tier, motivation, additionalInfo, significantContribution, roleUnderstanding, ct);
+    }
 }

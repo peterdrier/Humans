@@ -50,4 +50,11 @@ public interface IRoleAssignmentService
     /// Generic version — prefer the specific Is*Async methods when available.
     /// </summary>
     Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ends all active governance role assignments for a user by setting
+    /// <c>ValidTo</c> to now. Returns the count of ended assignments.
+    /// Used during account deletion.
+    /// </summary>
+    Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default);
 }

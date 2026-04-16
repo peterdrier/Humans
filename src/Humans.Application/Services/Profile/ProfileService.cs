@@ -245,17 +245,15 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
 
                 if (existingApp is not null)
                 {
-                    // Application updates go through IApplicationDecisionService
-                    // For now, the service handles the update internally.
-                    // TODO: Add an UpdateApplicationAsync method to IApplicationDecisionService
-                    existingApp.Motivation = request.ApplicationMotivation!;
-                    existingApp.AdditionalInfo = request.ApplicationAdditionalInfo;
-                    existingApp.MembershipTier = selectedTier;
-                    existingApp.SignificantContribution = selectedTier == MembershipTier.Asociado
-                        ? request.ApplicationSignificantContribution : null;
-                    existingApp.RoleUnderstanding = selectedTier == MembershipTier.Asociado
-                        ? request.ApplicationRoleUnderstanding : null;
-                    existingApp.UpdatedAt = now;
+                    // Route update through IApplicationDecisionService (cross-section write)
+                    await _applicationDecisionService.UpdateDraftApplicationAsync(
+                        existingApp.Id,
+                        selectedTier,
+                        request.ApplicationMotivation!,
+                        request.ApplicationAdditionalInfo,
+                        selectedTier == MembershipTier.Asociado ? request.ApplicationSignificantContribution : null,
+                        selectedTier == MembershipTier.Asociado ? request.ApplicationRoleUnderstanding : null,
+                        ct);
                 }
                 else if (!hasPendingOrApprovedApp)
                 {
@@ -499,7 +497,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             applications.OrderByDescending(a => a.SubmittedAt).ToList(),
             consentCount,
             roleAssignments,
-            rejectedByName);
+            rejectedByName,
+            userEmails);
     }
 
     public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>

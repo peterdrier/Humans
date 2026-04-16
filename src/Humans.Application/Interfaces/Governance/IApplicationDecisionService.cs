@@ -71,6 +71,16 @@ public interface IApplicationDecisionService
     /// </summary>
     Task<ApplicationAdminDetailDto?> GetApplicationDetailAsync(
         Guid applicationId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates a submitted (draft) application's motivation, tier, and optional
+    /// Asociado fields. Only allowed on <see cref="ApplicationStatus.Submitted"/>
+    /// applications. Used by the profile save flow during initial setup.
+    /// </summary>
+    Task UpdateDraftApplicationAsync(
+        Guid applicationId, MembershipTier tier, string motivation,
+        string? additionalInfo, string? significantContribution, string? roleUnderstanding,
+        CancellationToken ct = default);
 }
 
 public record ApplicationDecisionResult(bool Success, string? ErrorKey = null, Guid? ApplicationId = null);

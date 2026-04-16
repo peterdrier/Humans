@@ -494,4 +494,10 @@ public interface ITeamService
     /// Removes a user from all teams in the cache (e.g., on account deletion/suspension).
     /// </summary>
     void RemoveMemberFromAllTeamsCache(Guid userId);
+
+    /// <summary>
+    /// Ends all active team memberships for a user, removes their team role assignments,
+    /// and returns the count of ended memberships. Used during account deletion.
+    /// </summary>
+    Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default);
 }
