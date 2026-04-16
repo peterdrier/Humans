@@ -279,11 +279,19 @@ public class StubTeamResourceService : ITeamResourceService
     }
 
     /// <inheritdoc />
-    public async Task DeactivateResourcesForTeamAsync(Guid teamId, CancellationToken ct = default)
+    public async Task DeactivateResourcesForTeamAsync(
+        Guid teamId,
+        GoogleResourceType? resourceType = null,
+        CancellationToken ct = default)
     {
-        var resources = await _dbContext.GoogleResources
-            .Where(r => r.TeamId == teamId && r.IsActive)
-            .ToListAsync(ct);
+        var query = _dbContext.GoogleResources
+            .Where(r => r.TeamId == teamId && r.IsActive);
+        if (resourceType is { } rt)
+        {
+            query = query.Where(r => r.ResourceType == rt);
+        }
+
+        var resources = await query.ToListAsync(ct);
 
         if (resources.Count == 0)
         {
@@ -305,8 +313,8 @@ public class StubTeamResourceService : ITeamResourceService
 
         await _dbContext.SaveChangesAsync(ct);
         _logger.LogInformation(
-            "[STUB] Deactivated {Count} Google resources for soft-deleted team {TeamId}",
-            resources.Count, teamId);
+            "[STUB] Deactivated {Count} Google resources (type={ResourceType}) for soft-deleted team {TeamId}",
+            resources.Count, resourceType?.ToString() ?? "all", teamId);
     }
 
     /// <inheritdoc />

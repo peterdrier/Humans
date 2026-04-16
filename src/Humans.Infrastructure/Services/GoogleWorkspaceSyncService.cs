@@ -1027,11 +1027,17 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             var mode = await _syncSettingsService.GetModeAsync(serviceType, cancellationToken);
             if (mode == SyncMode.AddAndRemove)
             {
-                // Only deactivate teams whose resources all reconciled without a top-level
-                // error (e.g. the Google resource itself being 404/403). Leave errored
-                // resources active so a later tick can retry. Per-member failures are
-                // logged inside Execute* but are accepted here as an acceptable risk —
-                // team deletion is rare and manual re-sync is always available.
+                // Only deactivate resources whose diff carries no top-level error
+                // (e.g. the Google resource itself being 404/403). Leave errored
+                // resources active so a later tick can retry. Per-member failures
+                // are logged inside Execute* but are accepted here as an acceptable
+                // risk — team deletion is rare and manual re-sync is always available.
+                //
+                // Critically, scope the deactivation to resourceType. The reconciliation
+                // job runs Drive first then Groups — deactivating all of a soft-deleted
+                // team's resources after the Drive pass would cause the Group pass to
+                // skip the same team's group resource (filtered by r.IsActive) and
+                // leave Group memberships in place.
                 var erroredResourceIds = diffs
                     .Where(d => !string.IsNullOrEmpty(d.ErrorMessage))
                     .Select(d => d.ResourceId)
@@ -1046,7 +1052,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                     var teamResourceService = _serviceProvider.GetRequiredService<ITeamResourceService>();
                     foreach (var teamId in softDeletedTeamIds)
                     {
-                        await teamResourceService.DeactivateResourcesForTeamAsync(teamId, cancellationToken);
+                        await teamResourceService.DeactivateResourcesForTeamAsync(
+                            teamId, resourceType, cancellationToken);
                     }
                 }
             }

@@ -1580,7 +1580,7 @@ public class TeamServiceTests : IDisposable
         // skip the resources and leave stale Google access in place. Deactivation happens
         // in the sync service after access has been revoked.
         await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<GoogleResourceType?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -1595,7 +1595,7 @@ public class TeamServiceTests : IDisposable
         reloaded!.IsActive.Should().BeFalse();
 
         await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(
-            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            Arg.Any<Guid>(), Arg.Any<GoogleResourceType?>(), Arg.Any<CancellationToken>());
     }
 
     // --- Helpers ---

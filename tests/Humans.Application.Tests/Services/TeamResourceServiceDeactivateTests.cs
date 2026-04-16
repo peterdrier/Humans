@@ -97,6 +97,31 @@ public class TeamResourceServiceDeactivateTests : IDisposable
     }
 
     [Fact]
+    public async Task DeactivateResourcesForTeamAsync_WithResourceType_OnlyFlipsMatchingType()
+    {
+        // Guards the reconciliation-ordering bug: the nightly job runs DriveFolder then
+        // Group, so when the Drive pass calls this, it must NOT touch the team's Group
+        // row — otherwise the Group pass filters r.IsActive, skips it, and leaves
+        // Group membership in place.
+        var teamId = Guid.NewGuid();
+        SeedTeam(teamId, "Doomed");
+        SeedResource(teamId, "Doomed Drive", GoogleResourceType.DriveFolder);
+        SeedResource(teamId, "Doomed Group", GoogleResourceType.Group);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.DeactivateResourcesForTeamAsync(teamId, GoogleResourceType.DriveFolder);
+
+        var rows = await _dbContext.GoogleResources
+            .AsNoTracking()
+            .Where(r => r.TeamId == teamId)
+            .ToListAsync();
+
+        rows.Should().HaveCount(2);
+        rows.Single(r => r.ResourceType == GoogleResourceType.DriveFolder).IsActive.Should().BeFalse();
+        rows.Single(r => r.ResourceType == GoogleResourceType.Group).IsActive.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task DeactivateResourcesForTeamAsync_NoActiveResources_IsNoOp()
     {
         var teamId = Guid.NewGuid();
