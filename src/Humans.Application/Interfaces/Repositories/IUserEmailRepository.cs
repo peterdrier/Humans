@@ -115,5 +115,18 @@ public interface IUserEmailRepository
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);
-    Task SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Persists changes to a single tracked <see cref="UserEmail"/> entity.
+    /// The caller must have obtained the entity via a tracked query method
+    /// in the same scope.
+    /// </summary>
+    Task UpdateAsync(UserEmail email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Persists changes to multiple tracked <see cref="UserEmail"/> entities
+    /// in one SaveChanges call. Used by batch operations (e.g., setting
+    /// notification target across all emails for a user).
+    /// </summary>
+    Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default);
 }

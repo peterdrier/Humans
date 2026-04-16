@@ -190,7 +190,7 @@ public sealed class UserEmailService : IUserEmailService
 
         pendingEmail.IsVerified = true;
         pendingEmail.UpdatedAt = _clock.GetCurrentInstant();
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _repository.UpdateAsync(pendingEmail, cancellationToken);
 
         await TryBackfillGoogleEmailAsync(userId, cancellationToken);
 
@@ -215,7 +215,7 @@ public sealed class UserEmailService : IUserEmailService
             email.UpdatedAt = now;
         }
 
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _repository.UpdateBatchAsync(emails.ToList(), cancellationToken);
     }
 
     public async Task SetVisibilityAsync(
@@ -227,7 +227,7 @@ public sealed class UserEmailService : IUserEmailService
 
         email.Visibility = visibility;
         email.UpdatedAt = _clock.GetCurrentInstant();
-        await _repository.SaveChangesAsync(cancellationToken);
+        await _repository.UpdateAsync(email, cancellationToken);
     }
 
     public async Task DeleteEmailAsync(

@@ -1,4 +1,49 @@
+using Humans.Domain.Entities;
+
 namespace Humans.Application.Interfaces.Stores;
+
+/// <summary>
+/// Cached representation of a <see cref="Profile"/> + its owning <see cref="User"/>,
+/// denormalized for in-memory search and listing. Implementation detail of
+/// <see cref="IProfileStore"/> and the <c>CachingProfileService</c> decorator.
+/// </summary>
+public record CachedProfile(
+    Guid UserId, string DisplayName, string? ProfilePictureUrl,
+    bool HasCustomPicture, Guid ProfileId, long UpdatedAtTicks,
+    string? BurnerName, string? Bio, string? Pronouns,
+    string? ContributionInterests,
+    string? City, string? CountryCode, double? Latitude, double? Longitude,
+    int? BirthdayDay, int? BirthdayMonth,
+    bool IsApproved, bool IsSuspended,
+    IReadOnlyList<CachedVolunteerEntry> VolunteerHistory,
+    string? NotificationEmail = null)
+{
+    public static CachedProfile Create(Profile profile, User user, string? notificationEmail = null) => new(
+        UserId: user.Id,
+        DisplayName: user.DisplayName,
+        ProfilePictureUrl: user.ProfilePictureUrl,
+        HasCustomPicture: profile.ProfilePictureData is not null,
+        ProfileId: profile.Id,
+        UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
+        BurnerName: profile.BurnerName,
+        Bio: profile.Bio,
+        Pronouns: profile.Pronouns,
+        ContributionInterests: profile.ContributionInterests,
+        City: profile.City,
+        CountryCode: profile.CountryCode,
+        Latitude: profile.Latitude,
+        Longitude: profile.Longitude,
+        BirthdayDay: profile.DateOfBirth?.Day,
+        BirthdayMonth: profile.DateOfBirth?.Month,
+        IsApproved: profile.IsApproved,
+        IsSuspended: profile.IsSuspended,
+        VolunteerHistory: profile.VolunteerHistory
+            .Select(v => new CachedVolunteerEntry(v.EventName, v.Description))
+            .ToList(),
+        NotificationEmail: notificationEmail);
+}
+
+public record CachedVolunteerEntry(string EventName, string? Description);
 
 /// <summary>
 /// In-memory canonical store for <see cref="CachedProfile"/> entries,

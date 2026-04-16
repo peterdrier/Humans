@@ -217,6 +217,9 @@ public sealed class UserEmailRepository : IUserEmailRepository
             match.User.LastLoginAt);
     }
 
-    public Task SaveChangesAsync(CancellationToken ct = default) =>
+    public Task UpdateAsync(UserEmail email, CancellationToken ct = default) =>
+        _dbContext.SaveChangesAsync(ct);
+
+    public Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default) =>
         _dbContext.SaveChangesAsync(ct);
 }

@@ -228,7 +228,7 @@ Each section's service owns these tables. Cross-service access goes through the 
 
 | Section | Service(s) | Owned Tables |
 |---------|-----------|--------------|
-| **Profiles** | `ProfileService`, `ContactFieldService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries` |
+| **Profiles** | `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService` | `profiles`, `contact_fields`, `user_emails`, `communication_preferences`, `volunteer_history_entries` |
 | **Users/Identity** | `UserService`, `AccountProvisioningService`, `DuplicateAccountService`, `AccountMergeService` | `AspNetUsers` (users), `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens` |
 | **Teams** | `TeamService`, `TeamPageService`, `TeamResourceService` | `teams`, `team_members`, `team_join_requests`, `team_join_request_state_histories`, `team_role_definitions`, `team_role_assignments`, `team_pages` |
 | **Auth** | `RoleAssignmentService` | `role_assignments` |
@@ -427,15 +427,15 @@ This is the target. Existing code violates most of it. Migration is **per-domain
 3. **Don't half-migrate a domain.** If you start extracting `IProfileRepository`, finish the full stack (repo + store + decorator + caller updates) in one session. A half-migrated domain where some callers use the new service and others still `.Include()` directly is worse than either extreme.
 4. **EF migration review still applies.** Schema changes still go through the EF migration reviewer agent — the repository layer does not change what migrations look like, just who calls them.
 
-### 15c. Known Current Violations (as of 2026-04-15)
+### 15c. Known Current Violations (as of 2026-04-16)
 
-- **42 services** live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0 (all business services move to `Humans.Application`). **Governance:** migrated 2026-04-15 in PR #503 — `ApplicationDecisionService` now lives in `Humans.Application.Services` and is the first fully-migrated section; use as reference template.
-- **~40 cross-domain `.Include()` calls** across **19 services**. Biggest offenders: `OnboardingService` (7 after governance fix), `GoogleWorkspaceSyncService` (4), `FeedbackService` (4). The 8 `ApplicationDecisionService` includes are gone; `OnboardingService`'s two BoardVoting includes and both Application-touching jobs were fixed in-place as part of the Governance PR. Target: 0.
-- **1 repository** exists today (`ApplicationRepository`). Target: one per domain (~20 total).
-- **1 store** exists today (`ApplicationStore`). Target: one per cached domain (~15–20).
-- **1 caching decorator** exists today (`CachingApplicationDecisionService`). Target: one per migrated service.
-- **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services. Governance was the first to extract invalidations to cross-cutting interfaces (`INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`, `IVotingBadgeCacheInvalidator`). Target: replaced by decorator + store pattern everywhere.
-- **Cross-domain navigation properties** (`Profile.User`, `TeamMember.User`, `CampLead.User`, etc.) are used freely today. **Governance entities** (`Application`, `ApplicationStateHistory`, `BoardVote`) are the first to have these stripped. Target: stripped at the entity boundary, FK-only.
+- **36 services** live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0 (all business services move to `Humans.Application`). **Governance:** migrated 2026-04-15 in PR #503. **Profiles:** migrated 2026-04-16 in #504 — 6 services (`ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService`) now live in `Humans.Application.Services.Profile`.
+- **~28 cross-domain `.Include()` calls** across **~16 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4), `FeedbackService` (4). The 12 Profile-section includes and 8 Governance includes are gone. Target: 0.
+- **6 repositories** exist today (`ApplicationRepository`, `ProfileRepository`, `ContactFieldRepository`, `UserEmailRepository`, `CommunicationPreferenceRepository`, `VolunteerHistoryRepository`). Target: one per domain (~20 total).
+- **2 stores** exist today (`ApplicationStore`, `ProfileStore`). Target: one per cached domain (~15–20).
+- **2 caching decorators** exist today (`CachingApplicationDecisionService`, `CachingProfileService`). Target: one per migrated service.
+- **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services. Governance and Profiles extracted invalidations to cross-cutting interfaces and the decorator pattern. Target: replaced by decorator + store pattern everywhere.
+- **Cross-domain navigation properties** (`TeamMember.User`, `CampLead.User`, etc.) are used freely today. **Governance entities** and **Profile-section entities** (`Profile`, `UserEmail`, `CommunicationPreference`) have been stripped. Target: stripped at the entity boundary, FK-only.
 
 Controllers with direct DbContext access (violation of §2a, tracked separately):
 - `AdminController`, `ProfileController`, `GoogleController`, `DevLoginController` (dev-only, low priority).

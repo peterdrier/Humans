@@ -5,6 +5,7 @@ using NodaTime;
 using Humans.Application.DTOs.Governance;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
