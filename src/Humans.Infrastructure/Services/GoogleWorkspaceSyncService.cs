@@ -18,6 +18,7 @@ using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.GoogleSync;
 
 namespace Humans.Infrastructure.Services;
 
@@ -46,6 +47,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private GroupssettingsService? _groupssettingsService;
     private string? _serviceAccountEmail;
 
+    private IGoogleGroupMembershipClient? _groupMembershipClient;
+    private IGoogleDrivePermissionClient? _drivePermissionClient;
+
     public GoogleWorkspaceSyncService(
         HumansDbContext dbContext,
         IDbContextFactory<HumansDbContext> dbContextFactory,
@@ -64,6 +68,32 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _syncSettingsService = syncSettingsService;
         _serviceProvider = serviceProvider;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Test-only constructor that lets reconciliation tests substitute fake Google API
+    /// clients for <see cref="IGoogleGroupMembershipClient"/> and
+    /// <see cref="IGoogleDrivePermissionClient"/>. Production code MUST use the
+    /// public constructor — this one bypasses the Google credential setup entirely and will
+    /// fail on any code path that still uses the raw <see cref="CloudIdentityService"/> /
+    /// <see cref="DriveService"/> clients.
+    /// </summary>
+    internal GoogleWorkspaceSyncService(
+        HumansDbContext dbContext,
+        IDbContextFactory<HumansDbContext> dbContextFactory,
+        IOptions<GoogleWorkspaceSettings> settings,
+        IClock clock,
+        IAuditLogService auditLogService,
+        ISyncSettingsService syncSettingsService,
+        IServiceProvider serviceProvider,
+        ILogger<GoogleWorkspaceSyncService> logger,
+        IGoogleGroupMembershipClient groupMembershipClient,
+        IGoogleDrivePermissionClient drivePermissionClient)
+        : this(dbContext, dbContextFactory, settings, clock, auditLogService,
+            syncSettingsService, serviceProvider, logger)
+    {
+        _groupMembershipClient = groupMembershipClient;
+        _drivePermissionClient = drivePermissionClient;
     }
 
     private async Task<CloudIdentityService> GetCloudIdentityServiceAsync()
@@ -139,6 +169,26 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         });
 
         return _directoryService;
+    }
+
+    private async Task<IGoogleGroupMembershipClient> GetGroupMembershipClientAsync()
+    {
+        if (_groupMembershipClient is not null)
+            return _groupMembershipClient;
+
+        var cloudIdentity = await GetCloudIdentityServiceAsync();
+        _groupMembershipClient = new RealGoogleGroupMembershipClient(cloudIdentity);
+        return _groupMembershipClient;
+    }
+
+    private async Task<IGoogleDrivePermissionClient> GetDrivePermissionClientAsync()
+    {
+        if (_drivePermissionClient is not null)
+            return _drivePermissionClient;
+
+        var drive = await GetDriveServiceAsync();
+        _drivePermissionClient = new RealGoogleDrivePermissionClient(drive);
+        return _drivePermissionClient;
     }
 
     private async Task<GoogleCredential> GetCredentialAsync(params string[] scopes)
@@ -223,7 +273,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             .Include(tm => tm.User)
             .Include(tm => tm.Team)
             .Where(tm =>
-                distinctIds.Contains(tm.Team.ParentTeamId!.Value) &&
+                tm.Team.ParentTeamId.HasValue &&
+                distinctIds.Contains(tm.Team.ParentTeamId.Value) &&
                 tm.Team.IsActive &&
                 tm.LeftAt == null)
             .ToListAsync(cancellationToken);
@@ -443,19 +494,11 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        var cloudIdentity = await GetCloudIdentityServiceAsync();
-
-        var membership = new Membership
-        {
-            PreferredMemberKey = new EntityKey { Id = userEmail },
-            Roles = [new MembershipRole { Name = "MEMBER" }]
-        };
+        var groupClient = await GetGroupMembershipClientAsync();
 
         try
         {
-            await cloudIdentity.Groups.Memberships
-                .Create(membership, $"groups/{resource.GoogleId}")
-                .ExecuteAsync(cancellationToken);
+            await groupClient.CreateMembershipAsync(resource.GoogleId, userEmail, cancellationToken);
 
             await _auditLogService.LogGoogleSyncAsync(
                 AuditAction.GoogleResourceAccessGranted, groupResourceId,
@@ -537,27 +580,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        var cloudIdentity = await GetCloudIdentityServiceAsync();
+        var groupClient = await GetGroupMembershipClientAsync();
 
-        // Look up membership name for this email
-        string? membershipName = null;
-        string? nextPageToken = null;
-        do
-        {
-            var membersRequest = cloudIdentity.Groups.Memberships.List($"groups/{resource.GoogleId}");
-            membersRequest.PageSize = 200;
-            membersRequest.PageToken = nextPageToken;
-            var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
-
-            var match = membersResponse.Memberships?.FirstOrDefault(m =>
-                string.Equals(m.PreferredMemberKey?.Id, userEmail, StringComparison.OrdinalIgnoreCase));
-            if (match is not null)
-            {
-                membershipName = match.Name;
-                break;
-            }
-            nextPageToken = membersResponse.NextPageToken;
-        } while (nextPageToken is not null);
+        var memberships = await groupClient.ListMembershipsAsync(resource.GoogleId, cancellationToken);
+        var membershipName = memberships
+            .FirstOrDefault(m => string.Equals(m.PreferredMemberKey?.Id, userEmail, StringComparison.OrdinalIgnoreCase))
+            ?.Name;
 
         if (membershipName is null)
         {
@@ -565,8 +593,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        await cloudIdentity.Groups.Memberships.Delete(membershipName)
-            .ExecuteAsync(cancellationToken);
+        await groupClient.DeleteMembershipAsync(membershipName, cancellationToken);
 
         await _auditLogService.LogGoogleSyncAsync(
             AuditAction.GoogleResourceAccessRevoked, groupResourceId,
@@ -602,21 +629,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         var effectiveLevel = permissionLevelOverride ?? resource.DrivePermissionLevel;
-        var drive = await GetDriveServiceAsync();
+        var driveClient = await GetDrivePermissionClientAsync();
         var apiRole = effectiveLevel.ToApiRole();
-        var permission = new Google.Apis.Drive.v3.Data.Permission
-        {
-            Type = "user",
-            Role = apiRole,
-            EmailAddress = userEmail
-        };
 
         try
         {
-            var createReq = drive.Permissions.Create(permission, resource.GoogleId);
-            createReq.SupportsAllDrives = true;
-            createReq.SendNotificationEmail = false;
-            await createReq.ExecuteAsync(cancellationToken);
+            await driveClient.CreatePermissionAsync(resource.GoogleId, userEmail, apiRole, cancellationToken);
 
             await _auditLogService.LogGoogleSyncAsync(
                 AuditAction.GoogleResourceAccessGranted, resource.Id,
@@ -648,10 +666,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        var drive = await GetDriveServiceAsync();
-        var deleteReq = drive.Permissions.Delete(resource.GoogleId, permissionId);
-        deleteReq.SupportsAllDrives = true;
-        await deleteReq.ExecuteAsync(cancellationToken);
+        var driveClient = await GetDrivePermissionClientAsync();
+        await driveClient.DeletePermissionAsync(resource.GoogleId, permissionId, cancellationToken);
 
         await _auditLogService.LogGoogleSyncAsync(
             AuditAction.GoogleResourceAccessRevoked, resource.Id,
@@ -890,34 +906,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         return true;
     }
 
-    private static async Task<List<Google.Apis.Drive.v3.Data.Permission>> ListDrivePermissionsAsync(
-        DriveService drive, string fileId, CancellationToken cancellationToken)
-    {
-        var permissions = new List<Google.Apis.Drive.v3.Data.Permission>();
-        string? pageToken = null;
-
-        do
-        {
-            var listReq = drive.Permissions.List(fileId);
-            listReq.SupportsAllDrives = true;
-            listReq.Fields = "nextPageToken, permissions(id, emailAddress, role, type, permissionDetails)";
-            if (pageToken is not null)
-            {
-                listReq.PageToken = pageToken;
-            }
-
-            var response = await listReq.ExecuteAsync(cancellationToken);
-            if (response.Permissions is not null)
-            {
-                permissions.AddRange(response.Permissions);
-            }
-
-            pageToken = response.NextPageToken;
-        } while (!string.IsNullOrEmpty(pageToken));
-
-        return permissions;
-    }
-
     /// <inheritdoc />
     public async Task<SyncPreviewResult> SyncResourcesByTypeAsync(
         GoogleResourceType resourceType,
@@ -949,9 +937,9 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         if (resourceType == GoogleResourceType.Group)
         {
             // Eagerly initialize Google API clients before parallel execution to avoid
-            // non-thread-safe lazy init race in GetCloudIdentityServiceAsync/GetDriveServiceAsync.
+            // non-thread-safe lazy init race in the getter helpers.
             if (resources.Count > 0)
-                await GetCloudIdentityServiceAsync();
+                await GetGroupMembershipClientAsync();
 
             // Groups: one group per team — compute diffs in parallel (Google API reads only).
             // Each task gets its own DbContext via factory; semaphore throttles concurrency.
@@ -982,7 +970,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             // Eagerly initialize Drive client before parallel execution
             if (resources.Count > 0)
-                await GetDriveServiceAsync();
+                await GetDrivePermissionClientAsync();
 
             // Drive resources: group by GoogleId since multiple teams can share one resource.
             // Each task gets its own DbContext via factory; semaphore throttles concurrency.
@@ -1142,9 +1130,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         {
             // Expected: team's active members (use Google service email preference)
             // Skip users with Rejected GoogleEmailStatus — their email was permanently
-            // rejected by Google (no Google account associated with the address)
+            // rejected by Google (no Google account associated with the address).
+            // The tm.LeftAt == null check is also applied by the filtered Include on the
+            // calling query; repeating it here keeps the code provider-agnostic since the
+            // EF Core InMemory provider does not honor filtered Includes.
             var expectedMembers = resource.Team.Members
-                .Where(tm => tm.User.GetGoogleServiceEmail() is not null
+                .Where(tm => tm.LeftAt == null
+                    && tm.User.GetGoogleServiceEmail() is not null
                     && tm.User.GoogleEmailStatus != GoogleEmailStatus.Rejected)
                 .Select(tm => new { Email = tm.User.GetGoogleServiceEmail(), tm.User.DisplayName, tm.User.Id, tm.User.ProfilePictureUrl })
                 .ToList();
@@ -1169,7 +1161,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 expectedMembers.Select(m => m.Email!), NormalizingEmailComparer.Instance);
 
             // Current: Google Group members via Cloud Identity
-            var cloudIdentity = await GetCloudIdentityServiceAsync();
+            var groupClient = await GetGroupMembershipClientAsync();
             var saEmail = await GetServiceAccountEmailAsync();
             var currentEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
             // Track membership resource names for deletion (email → "groups/{id}/memberships/{id}")
@@ -1177,31 +1169,16 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
 
             try
             {
-                string? pageToken = null;
-                do
+                var memberships = await groupClient.ListMembershipsAsync(resource.GoogleId, cancellationToken);
+                foreach (var membership in memberships)
                 {
-                    var membersRequest = cloudIdentity.Groups.Memberships.List($"groups/{resource.GoogleId}");
-                    membersRequest.PageSize = 200;
-                    if (pageToken is not null)
-                        membersRequest.PageToken = pageToken;
-
-                    var membersResponse = await membersRequest.ExecuteAsync(cancellationToken);
-
-                    if (membersResponse.Memberships is not null)
+                    var email = membership.PreferredMemberKey?.Id;
+                    if (!string.IsNullOrEmpty(email))
                     {
-                        foreach (var membership in membersResponse.Memberships)
-                        {
-                            var email = membership.PreferredMemberKey?.Id;
-                            if (!string.IsNullOrEmpty(email))
-                            {
-                                currentEmails.Add(email);
-                                membershipNames[email] = membership.Name;
-                            }
-                        }
+                        currentEmails.Add(email);
+                        membershipNames[email] = membership.Name;
                     }
-
-                    pageToken = membersResponse.NextPageToken;
-                } while (!string.IsNullOrEmpty(pageToken));
+                }
             }
             catch (Google.GoogleApiException ex) when (ex.Error?.Code is 404 or 403)
             {
@@ -1408,8 +1385,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var extraMembers = diff.Members.Where(m => m.State == MemberSyncState.Extra).ToList();
         if (extraMembers.Count > 0)
         {
-            var drive = await GetDriveServiceAsync();
-            var permissions = await ListDrivePermissionsAsync(drive, primary.GoogleId, cancellationToken);
+            var driveClient = await GetDrivePermissionClientAsync();
+            var permissions = await driveClient.ListPermissionsAsync(primary.GoogleId, cancellationToken);
 
             foreach (var member in extraMembers)
             {
@@ -1477,7 +1454,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 var level = resource.DrivePermissionLevel is DrivePermissionLevel.None
                     ? null : resource.DrivePermissionLevel.ToString();
                 var teamLink = new TeamLink(resource.Team.Name, resource.Team.Slug, level);
-                foreach (var tm in resource.Team.Members)
+                // The tm.LeftAt == null check is also applied by the filtered Include on the
+                // calling query; repeating it here keeps the code provider-agnostic since the
+                // EF Core InMemory provider does not honor filtered Includes.
+                foreach (var tm in resource.Team.Members.Where(tm => tm.LeftAt == null))
                 {
                     var memberEmail = tm.User.GetGoogleServiceEmail();
                     if (memberEmail is null || tm.User.GoogleEmailStatus == GoogleEmailStatus.Rejected)
@@ -1522,8 +1502,8 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 .DistinctBy(tl => tl.Slug, StringComparer.Ordinal).ToList();
 
             // Current: Drive permissions
-            var drive = await GetDriveServiceAsync();
-            var permissions = await ListDrivePermissionsAsync(drive, primary.GoogleId, cancellationToken);
+            var driveClient = await GetDrivePermissionClientAsync();
+            var permissions = await driveClient.ListPermissionsAsync(primary.GoogleId, cancellationToken);
             // All user permissions (direct + inherited) — for checking if member already has access
             var allEmails = new HashSet<string>(NormalizingEmailComparer.Instance);
             // Only direct managed permissions — for detecting removable extras
