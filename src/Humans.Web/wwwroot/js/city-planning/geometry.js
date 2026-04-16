@@ -8,6 +8,7 @@ export function isOutsideZone(feature) {
 }
 
 const SOUND_ZONE_NAMES = { 0: 'blue', 1: 'green', 2: 'yellow', 3: 'orange', 4: 'red' };
+// 5 means "surprise", which is OK for all sound zones
 
 export function getSoundZoneOutOfRange(feature, campSoundZone) {
     if (campSoundZone === undefined || campSoundZone === null || campSoundZone === -1 || campSoundZone === 5) return false;
