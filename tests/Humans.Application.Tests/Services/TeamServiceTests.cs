@@ -1540,7 +1540,7 @@ public class TeamServiceTests : IDisposable
     // ==========================================================================
 
     [Fact]
-    public async Task DeleteTeamAsync_ClosesActiveMembershipsAndDeactivatesResources()
+    public async Task DeleteTeamAsync_ClosesActiveMemberships()
     {
         // Arrange
         var team = SeedTeam("Doomed Team");
@@ -1575,13 +1575,16 @@ public class TeamServiceTests : IDisposable
             .FirstAsync(tm => tm.TeamId == team.Id && tm.UserId == ghost.Id);
         ghostMember.LeftAt.Should().Be(_clock.GetCurrentInstant() - Duration.FromDays(30));
 
-        // Google resources deactivated via the owning service (no direct DB touch).
-        await _teamResourceService.Received(1).DeactivateResourcesForTeamAsync(
-            team.Id, Arg.Any<CancellationToken>());
+        // DeactivateResourcesForTeamAsync is intentionally NOT called from DeleteTeamAsync:
+        // flipping GoogleResource.IsActive here would make the next reconciliation tick
+        // skip the resources and leave stale Google access in place. Deactivation happens
+        // in the sync service after access has been revoked.
+        await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task DeleteTeamAsync_NoActiveMembers_StillDeactivatesResources()
+    public async Task DeleteTeamAsync_NoActiveMembers_StillSoftDeletes()
     {
         var team = SeedTeam("Empty Team");
         await _dbContext.SaveChangesAsync();
@@ -1591,8 +1594,8 @@ public class TeamServiceTests : IDisposable
         var reloaded = await _dbContext.Teams.FindAsync(team.Id);
         reloaded!.IsActive.Should().BeFalse();
 
-        await _teamResourceService.Received(1).DeactivateResourcesForTeamAsync(
-            team.Id, Arg.Any<CancellationToken>());
+        await _teamResourceService.DidNotReceive().DeactivateResourcesForTeamAsync(
+            Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
     // --- Helpers ---

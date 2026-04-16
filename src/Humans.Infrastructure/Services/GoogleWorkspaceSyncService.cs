@@ -7,6 +7,7 @@ using Google.Apis.Drive.v3;
 using Google.Apis.Groupssettings.v1;
 using Google.Apis.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -31,6 +32,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly IClock _clock;
     private readonly IAuditLogService _auditLogService;
     private readonly ISyncSettingsService _syncSettingsService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
     /// <summary>
@@ -51,6 +53,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         IClock clock,
         IAuditLogService auditLogService,
         ISyncSettingsService syncSettingsService,
+        IServiceProvider serviceProvider,
         ILogger<GoogleWorkspaceSyncService> logger)
     {
         _dbContext = dbContext;
@@ -59,6 +62,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _clock = clock;
         _auditLogService = auditLogService;
         _syncSettingsService = syncSettingsService;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -922,11 +926,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     {
         _logger.LogInformation("SyncResourcesByType: type={ResourceType}, action={Action}", resourceType, action);
 
+        // Include resources for soft-deleted teams (Team.IsActive == false). Those teams
+        // will have all TeamMember.LeftAt set, so expectedMembers is empty and reconciliation
+        // will revoke every current Google permission/membership as Extra. Skipping them here
+        // would leave stale access in place indefinitely. (See #494.)
         var resources = await _dbContext.GoogleResources
             .Include(r => r.Team)
                 .ThenInclude(t => t.Members.Where(tm => tm.LeftAt == null))
                     .ThenInclude(tm => tm.User)
-            .Where(r => r.ResourceType == resourceType && r.IsActive && r.Team.IsActive)
+            .Where(r => r.ResourceType == resourceType && r.IsActive)
             .ToListAsync(cancellationToken);
 
         var now = _clock.GetCurrentInstant();
@@ -1004,7 +1012,45 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         }
 
         if (action == SyncAction.Execute)
+        {
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            // Deactivate resources belonging to soft-deleted teams now that reconciliation
+            // has revoked their Google access. Only when the sync mode was AddAndRemove —
+            // otherwise the extras weren't actually removed on Google's side, so leave
+            // the resources active for a future reconciliation tick to clean up.
+            // Routed through the owning service so audit logs are written consistently;
+            // resolved via IServiceProvider to avoid a constructor-time dependency cycle.
+            var serviceType = resourceType == GoogleResourceType.Group
+                ? SyncServiceType.GoogleGroups
+                : SyncServiceType.GoogleDrive;
+            var mode = await _syncSettingsService.GetModeAsync(serviceType, cancellationToken);
+            if (mode == SyncMode.AddAndRemove)
+            {
+                // Only deactivate teams whose resources all reconciled without a top-level
+                // error (e.g. the Google resource itself being 404/403). Leave errored
+                // resources active so a later tick can retry. Per-member failures are
+                // logged inside Execute* but are accepted here as an acceptable risk —
+                // team deletion is rare and manual re-sync is always available.
+                var erroredResourceIds = diffs
+                    .Where(d => !string.IsNullOrEmpty(d.ErrorMessage))
+                    .Select(d => d.ResourceId)
+                    .ToHashSet();
+                var softDeletedTeamIds = resources
+                    .Where(r => !r.Team.IsActive && r.IsActive && !erroredResourceIds.Contains(r.Id))
+                    .Select(r => r.TeamId)
+                    .Distinct()
+                    .ToList();
+                if (softDeletedTeamIds.Count > 0)
+                {
+                    var teamResourceService = _serviceProvider.GetRequiredService<ITeamResourceService>();
+                    foreach (var teamId in softDeletedTeamIds)
+                    {
+                        await teamResourceService.DeactivateResourcesForTeamAsync(teamId, cancellationToken);
+                    }
+                }
+            }
+        }
 
         return new SyncPreviewResult { Diffs = diffs };
     }

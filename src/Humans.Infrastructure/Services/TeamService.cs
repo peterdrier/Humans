@@ -658,11 +658,12 @@ public class TeamService : ITeamService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        // Deactivate the team's Google resources via the owning service so the bulk
-        // sync queries stop hitting them. Actual revocation of user permissions and
-        // group memberships happens on the next sync tick through the normal
-        // remove-user paths.
-        await TeamResourceService.DeactivateResourcesForTeamAsync(teamId, cancellationToken);
+        // NOTE: GoogleResource.IsActive stays true here. The next Google reconciliation
+        // tick sees Team.IsActive == false with every TeamMember.LeftAt set, computes
+        // every current Google permission as an Extra, revokes them, and then flips
+        // GoogleResource.IsActive to false via the owning service. Deactivating the
+        // resources synchronously here would cause reconciliation to skip them and
+        // leave access in place indefinitely.
 
         RemoveCachedTeam(teamId);
 
