@@ -34,18 +34,6 @@ public interface IUserEmailRepository
     Task<UserEmail?> GetByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the first unverified non-OAuth email for a user, tracked.
-    /// </summary>
-    Task<UserEmail?> GetPendingVerificationAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns the OAuth email for a user, tracked.
-    /// </summary>
-    Task<UserEmail?> GetOAuthEmailAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
     /// Checks whether an email (or gmail/googlemail alternate) already
     /// exists for this user.
     /// </summary>

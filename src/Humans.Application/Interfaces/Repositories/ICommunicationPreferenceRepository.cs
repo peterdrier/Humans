@@ -50,14 +50,16 @@ public interface ICommunicationPreferenceRepository
     Task AddRangeAsync(IReadOnlyList<CommunicationPreference> preferences, CancellationToken ct = default);
 
     /// <summary>
+    /// Attempts to insert <paramref name="defaults"/> for <paramref name="userId"/>.
+    /// If another request races and inserts first (DbUpdateException), clears the
+    /// change tracker and reloads from the database. Returns the final list.
+    /// </summary>
+    Task<List<CommunicationPreference>> AddDefaultsOrReloadAsync(
+        Guid userId, IReadOnlyList<CommunicationPreference> defaults, CancellationToken ct = default);
+
+    /// <summary>
     /// Persists changes to tracked entities. Used after in-place mutations on
     /// entities returned by the tracked query methods.
     /// </summary>
     Task SaveChangesAsync(CancellationToken ct = default);
-
-    /// <summary>
-    /// Clears the change tracker. Used to recover from concurrency exceptions
-    /// when creating default preferences.
-    /// </summary>
-    void ClearChangeTracker();
 }

@@ -146,7 +146,8 @@ public sealed class UserEmailService : IUserEmailService
         var user = await _userService.GetByIdAsync(userId, cancellationToken)
             ?? throw new InvalidOperationException("User not found.");
 
-        var pendingEmail = await _repository.GetPendingVerificationAsync(userId, cancellationToken)
+        var userEmails = await _repository.GetByUserIdTrackedAsync(userId, cancellationToken);
+        var pendingEmail = userEmails.FirstOrDefault(e => !e.IsVerified && !e.IsOAuth)
             ?? throw new ValidationException("No email pending verification.");
 
         var isValid = await _userManager.VerifyUserTokenAsync(
@@ -241,7 +242,8 @@ public sealed class UserEmailService : IUserEmailService
         // If this was the notification target, reassign to OAuth email
         if (email.IsNotificationTarget)
         {
-            var oauthEmail = await _repository.GetOAuthEmailAsync(userId, cancellationToken);
+            var allEmails = await _repository.GetByUserIdTrackedAsync(userId, cancellationToken);
+            var oauthEmail = allEmails.FirstOrDefault(e => e.IsOAuth);
             if (oauthEmail is not null)
             {
                 oauthEmail.IsNotificationTarget = true;

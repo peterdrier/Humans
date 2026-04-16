@@ -74,16 +74,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
 
         if (toAdd.Count > 0)
         {
-            try
-            {
-                await _repository.AddRangeAsync(toAdd, cancellationToken);
-            }
-            catch (Exception)
-            {
-                // Another request already created the defaults — reload
-                _repository.ClearChangeTracker();
-                existing = await _repository.GetByUserIdAsync(userId, cancellationToken);
-            }
+            existing = await _repository.AddDefaultsOrReloadAsync(userId, toAdd, cancellationToken);
         }
 
         return existing

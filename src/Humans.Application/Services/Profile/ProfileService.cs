@@ -36,6 +36,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IApplicationDecisionService _applicationDecisionService;
     private readonly ICampaignService _campaignService;
+    private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
@@ -56,6 +57,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         ITicketQueryService ticketQueryService,
         IApplicationDecisionService applicationDecisionService,
         ICampaignService campaignService,
+        ITeamService teamService,
         IRoleAssignmentService roleAssignmentService,
         IClock clock,
         ILogger<ProfileService> logger)
@@ -75,6 +77,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         _ticketQueryService = ticketQueryService;
         _applicationDecisionService = applicationDecisionService;
         _campaignService = campaignService;
+        _teamService = teamService;
         _roleAssignmentService = roleAssignmentService;
         _clock = clock;
         _logger = logger;
@@ -284,9 +287,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
 
     public async Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        // Deletion touches User entity (cross-section → IUserService)
-        // and team/role data (cross-section → ITeamService/IRoleAssignmentService)
-        // For now, keep the core workflow here but route User writes through IUserService.
         var user = await _userService.GetByIdAsync(userId, ct);
         if (user is null)
             return new OnboardingResult(false, "NotFound");
@@ -297,19 +297,41 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         var now = _clock.GetCurrentInstant();
         var deletionDate = now.Plus(Duration.FromDays(30));
 
-        // User mutation and team/role revocation are cross-domain writes
-        // that still need to go through the UserService/TeamService/RoleService.
-        // This is a §15 Step 1 quarantine item — the deletion orchestration
-        // should be extracted to a dedicated DeletionService that coordinates
-        // across sections. For now, we accept these cross-domain writes.
-        user.DeletionRequestedAt = now;
-        user.DeletionScheduledFor = deletionDate;
+        // 1. Persist deletion-pending fields on User (tracked write via IUserService)
+        await _userService.SetDeletionPendingAsync(userId, now, deletionDate, ct);
+
+        // 2. Revoke team memberships and team role assignments
+        var endedMemberships = await _teamService.RevokeAllMembershipsAsync(userId, ct);
+
+        // 3. Revoke governance role assignments
+        var endedRoles = await _roleAssignmentService.RevokeAllActiveAsync(userId, ct);
+
+        // 4. Audit log
+        await _auditLogService.LogAsync(
+            AuditAction.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
+            userId);
 
         _logger.LogWarning(
-            "User {UserId} requested account deletion. Scheduled for {DeletionDate}",
-            user.Id, deletionDate);
+            "User {UserId} requested account deletion. Scheduled for {DeletionDate}. " +
+            "Revoked {MembershipCount} memberships and {RoleCount} roles immediately",
+            userId, deletionDate, endedMemberships, endedRoles);
 
-        // Store update handled by CachingProfileService decorator
+        // 5. Send deletion confirmation email
+        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var notificationEmail = userEmails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
+                                ?? user.Email;
+        if (notificationEmail is not null)
+        {
+            await _emailService.SendAccountDeletionRequestedAsync(
+                notificationEmail,
+                user.DisplayName,
+                deletionDate.ToDateTimeUtc(),
+                user.PreferredLanguage,
+                ct);
+        }
+
+        // Store update and cache invalidation handled by CachingProfileService decorator
         return new OnboardingResult(true);
     }
 
@@ -322,13 +344,12 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         if (!user.IsDeletionPending)
             return new OnboardingResult(false, "NoDeletionPending");
 
-        user.DeletionRequestedAt = null;
-        user.DeletionScheduledFor = null;
-        user.DeletionEligibleAfter = null;
+        // Persist clearing of deletion fields (tracked write via IUserService)
+        await _userService.ClearDeletionAsync(userId, ct);
 
         _logger.LogInformation("User {UserId} cancelled account deletion request", userId);
 
-        // Store update handled by CachingProfileService decorator
+        // Store update and cache invalidation handled by CachingProfileService decorator
         return new OnboardingResult(true);
     }
 
@@ -503,7 +524,6 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     public async Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default)
     {
         // Search through the store + user data (instead of cross-domain DB query)
-        var pattern = query.ToUpperInvariant();
         var approved = _store.GetAll()
             .Where(p => p.IsApproved && !p.IsSuspended)
             .ToList();

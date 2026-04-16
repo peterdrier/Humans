@@ -63,30 +63,12 @@ public sealed class CachingVolunteerHistoryService : IVolunteerHistoryService
             var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
             var notificationEmail = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email;
 
-            var cached = new CachedProfile(
-                UserId: userId,
-                DisplayName: user.DisplayName,
-                ProfilePictureUrl: user.ProfilePictureUrl,
-                HasCustomPicture: profile.ProfilePictureData is not null,
-                ProfileId: profile.Id,
-                UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
-                BurnerName: profile.BurnerName,
-                Bio: profile.Bio,
-                Pronouns: profile.Pronouns,
-                ContributionInterests: profile.ContributionInterests,
-                City: profile.City,
-                CountryCode: profile.CountryCode,
-                Latitude: profile.Latitude,
-                Longitude: profile.Longitude,
-                BirthdayDay: profile.DateOfBirth?.Day,
-                BirthdayMonth: profile.DateOfBirth?.Month,
-                IsApproved: profile.IsApproved,
-                IsSuspended: profile.IsSuspended,
-                VolunteerHistory: history
-                    .Select(v => new CachedVolunteerEntry(v.EventName, v.Description))
-                    .ToList(),
-                NotificationEmail: notificationEmail);
+            // Populate the navigation property so CachedProfile.Create can read it
+            profile.VolunteerHistory.Clear();
+            foreach (var h in history)
+                profile.VolunteerHistory.Add(h);
 
+            var cached = CachedProfile.Create(profile, user, notificationEmail);
             _store.Upsert(userId, cached);
         }
     }

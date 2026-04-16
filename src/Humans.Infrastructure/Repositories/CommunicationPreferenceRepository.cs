@@ -86,8 +86,25 @@ public sealed class CommunicationPreferenceRepository : ICommunicationPreference
         await _dbContext.SaveChangesAsync(ct);
     }
 
+    public async Task<List<CommunicationPreference>> AddDefaultsOrReloadAsync(
+        Guid userId, IReadOnlyList<CommunicationPreference> defaults, CancellationToken ct = default)
+    {
+        try
+        {
+            _dbContext.CommunicationPreferences.AddRange(defaults);
+            await _dbContext.SaveChangesAsync(ct);
+            return defaults.ToList();
+        }
+        catch (DbUpdateException)
+        {
+            // Another request already created the defaults — reload
+            _dbContext.ChangeTracker.Clear();
+            return await _dbContext.CommunicationPreferences
+                .Where(cp => cp.UserId == userId)
+                .ToListAsync(ct);
+        }
+    }
+
     public Task SaveChangesAsync(CancellationToken ct = default) =>
         _dbContext.SaveChangesAsync(ct);
-
-    public void ClearChangeTracker() => _dbContext.ChangeTracker.Clear();
 }

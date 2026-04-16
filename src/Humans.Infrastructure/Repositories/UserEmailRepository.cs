@@ -45,16 +45,6 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == emailId, ct);
 
-    public Task<UserEmail?> GetPendingVerificationAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _dbContext.UserEmails
-            .FirstOrDefaultAsync(e => e.UserId == userId && !e.IsVerified && !e.IsOAuth, ct);
-
-    public Task<UserEmail?> GetOAuthEmailAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _dbContext.UserEmails
-            .FirstOrDefaultAsync(e => e.UserId == userId && e.IsOAuth, ct);
-
     public async Task<bool> ExistsForUserAsync(
         Guid userId, string normalizedEmail, string? alternateEmail,
         CancellationToken ct = default) =>
