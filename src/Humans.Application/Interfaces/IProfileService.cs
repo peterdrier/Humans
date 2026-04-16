@@ -24,9 +24,10 @@ public record CachedProfile(
     string? City, string? CountryCode, double? Latitude, double? Longitude,
     int? BirthdayDay, int? BirthdayMonth,
     bool IsApproved, bool IsSuspended,
-    IReadOnlyList<CachedVolunteerEntry> VolunteerHistory)
+    IReadOnlyList<CachedVolunteerEntry> VolunteerHistory,
+    string? NotificationEmail = null)
 {
-    public static CachedProfile Create(Profile profile, User user) => new(
+    public static CachedProfile Create(Profile profile, User user, string? notificationEmail = null) => new(
         UserId: user.Id,
         DisplayName: user.DisplayName,
         ProfilePictureUrl: user.ProfilePictureUrl,
@@ -47,7 +48,8 @@ public record CachedProfile(
         IsSuspended: profile.IsSuspended,
         VolunteerHistory: profile.VolunteerHistory
             .Select(v => new CachedVolunteerEntry(v.EventName, v.Description))
-            .ToList());
+            .ToList(),
+        NotificationEmail: notificationEmail);
 }
 
 public record CachedVolunteerEntry(string EventName, string? Description);

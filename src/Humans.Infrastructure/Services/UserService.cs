@@ -50,6 +50,13 @@ public class UserService : IUserService, IUserDataContributor
         return list.ToDictionary(u => u.Id);
     }
 
+    public async Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default)
+    {
+        return await _dbContext.Users
+            .AsNoTracking()
+            .ToListAsync(ct);
+    }
+
     public async Task<EventParticipation?> GetParticipationAsync(Guid userId, int year, CancellationToken ct = default)
     {
         return await _dbContext.EventParticipations

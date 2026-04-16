@@ -100,6 +100,14 @@ public interface IUserEmailRepository
     Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
         IEnumerable<Guid> userIds, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns a mapping of userId → verified notification-target email for all users
+    /// that have one. If a user has multiple verified notification-target emails,
+    /// one is picked arbitrarily.
+    /// </summary>
+    Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
+        CancellationToken ct = default);
+
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);

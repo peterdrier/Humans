@@ -898,6 +898,27 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
     }
 
     /// <inheritdoc />
+    public async Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default)
+    {
+        var activeEvent = await _dbContext.EventSettings
+            .FirstOrDefaultAsync(e => e.IsActive, ct);
+
+        if (activeEvent is null)
+            return null;
+
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(activeEvent.TimeZoneId)
+                 ?? DateTimeZone.Utc;
+        var postEventDate = activeEvent.GateOpeningDate
+            .PlusDays(activeEvent.StrikeEndOffset + 1);
+        var postEventInstant = postEventDate
+            .AtStartOfDayInZone(tz)
+            .ToInstant();
+
+        var now = _clock.GetCurrentInstant();
+        return postEventInstant > now ? postEventInstant : null;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> HasCurrentEventTicketAsync(Guid userId, CancellationToken ct = default)
     {
         // Use the sync state's VendorEventId to scope to the current event's tickets.

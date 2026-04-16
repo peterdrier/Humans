@@ -5,6 +5,7 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Gdpr;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -28,6 +29,7 @@ public sealed class CachingProfileService : IProfileService
     private readonly IProfileService _inner;
     private readonly IProfileStore _store;
     private readonly IUserService _userService;
+    private readonly IUserEmailRepository _userEmailRepository;
     private readonly IMemoryCache _cache;
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly INotificationMeterCacheInvalidator _notificationMeter;
@@ -38,6 +40,7 @@ public sealed class CachingProfileService : IProfileService
         IProfileService inner,
         IProfileStore store,
         IUserService userService,
+        IUserEmailRepository userEmailRepository,
         IMemoryCache cache,
         INavBadgeCacheInvalidator navBadge,
         INotificationMeterCacheInvalidator notificationMeter)
@@ -45,6 +48,7 @@ public sealed class CachingProfileService : IProfileService
         _inner = inner;
         _store = store;
         _userService = userService;
+        _userEmailRepository = userEmailRepository;
         _cache = cache;
         _navBadge = navBadge;
         _notificationMeter = notificationMeter;
@@ -225,6 +229,9 @@ public sealed class CachingProfileService : IProfileService
             return;
         }
 
-        _store.Upsert(userId, CachedProfile.Create(profile, user));
+        var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var notificationEmail = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email;
+
+        _store.Upsert(userId, CachedProfile.Create(profile, user, notificationEmail));
     }
 }

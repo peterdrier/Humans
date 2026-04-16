@@ -35,6 +35,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     private readonly IConsentService _consentService;
     private readonly ITicketQueryService _ticketQueryService;
     private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly ICampaignService _campaignService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IClock _clock;
     private readonly ILogger<ProfileService> _logger;
 
@@ -53,6 +55,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         IConsentService consentService,
         ITicketQueryService ticketQueryService,
         IApplicationDecisionService applicationDecisionService,
+        ICampaignService campaignService,
+        IRoleAssignmentService roleAssignmentService,
         IClock clock,
         ILogger<ProfileService> logger)
     {
@@ -70,6 +74,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         _consentService = consentService;
         _ticketQueryService = ticketQueryService;
         _applicationDecisionService = applicationDecisionService;
+        _campaignService = campaignService;
+        _roleAssignmentService = roleAssignmentService;
         _clock = clock;
         _logger = logger;
     }
@@ -119,15 +125,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
         Guid userId, CancellationToken ct = default)
     {
-        // CampaignGrants are owned by the Campaigns section.
-        // For now, this is a known cross-section read that will be resolved
-        // when the Campaigns section is migrated (§15 Step 1 quarantine).
-        // Returning empty until then — this method's consumers need to be
-        // re-routed to ICampaignService.
-        _logger.LogWarning(
-            "GetActiveOrCompletedCampaignGrantsAsync called for user {UserId} but CampaignGrants " +
-            "is not yet routed through ICampaignService — returning empty", userId);
-        return [];
+        return await _campaignService.GetActiveOrCompletedGrantsForUserAsync(userId, ct);
     }
 
     public async Task<(Domain.Entities.Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
@@ -341,12 +339,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         if (!hasTickets)
             return null;
 
-        // EventSettings read is a cross-section dependency on the Tickets section.
-        // This is a §15 Step 1 quarantine item — should be extracted to a method
-        // on ITicketQueryService that returns the hold date. For now, return a
-        // generic 30-day hold as a safe approximation.
-        var now = _clock.GetCurrentInstant();
-        return now.Plus(Duration.FromDays(30));
+        return await _ticketQueryService.GetPostEventHoldDateAsync(ct);
     }
 
     public Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default) =>
@@ -382,27 +375,19 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
     public async Task<IReadOnlyList<AdminHumanRow>> GetFilteredHumansAsync(
         string? search, string? statusFilter, CancellationToken ct = default)
     {
-        // This method has heavy cross-domain reads (Users, UserEmails, MembershipCalculator).
-        // The User and UserEmail queries are cross-domain reads that will be fully
-        // resolved in §15 Step 1 quarantine. For now, we use IUserService for user data
-        // and IUserEmailRepository for notification emails (within-section).
+        // Start from ALL users (including profileless) via IUserService
+        var allUsers = await _userService.GetAllUsersAsync(ct);
 
-        // Get all users (cross-section → IUserService)
-        // At ~500 users, loading all is fine
-        var allUserIds = _store.GetAll().Select(p => p.UserId).ToList();
-        var users = await _userService.GetByIdsAsync(allUserIds, ct);
-
-        // Get notification emails (within Profile section → IUserEmailRepository)
+        // Build notification email lookup from the store's cached data
         var notificationEmails = new Dictionary<Guid, string>();
-        foreach (var (userId, user) in users)
+        foreach (var user in allUsers)
         {
-            var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-            var notifEmail = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
-            if (notifEmail is not null)
-                notificationEmails[userId] = notifEmail.Email;
+            var cached = _store.GetByUserId(user.Id);
+            if (cached?.NotificationEmail is not null)
+                notificationEmails[user.Id] = cached.NotificationEmail;
         }
 
-        var userList = users.Values.Select(u => new
+        var userList = allUsers.Select(u => new
         {
             u.Id,
             Email = u.Email ?? string.Empty,
@@ -477,8 +462,8 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
 
         var consentCount = await _consentService.GetConsentRecordCountAsync(userId, ct);
 
-        // RoleAssignments are cross-domain — pass empty for now (§15 Step 1 quarantine)
-        var roleAssignments = new List<RoleAssignment>();
+        // RoleAssignments (cross-section → IRoleAssignmentService)
+        var roleAssignments = await _roleAssignmentService.GetByUserIdAsync(userId, ct);
 
         string? rejectedByName = null;
         if (profile?.RejectedByUserId is not null)
@@ -588,7 +573,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         if (user is null)
             return null;
 
-        var entry = CachedProfile.Create(profile, user);
+        var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var notificationEmail = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email;
+
+        var entry = CachedProfile.Create(profile, user, notificationEmail);
         _store.Upsert(userId, entry);
         return entry;
     }

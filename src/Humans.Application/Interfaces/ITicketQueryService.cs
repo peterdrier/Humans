@@ -119,6 +119,13 @@ public interface ITicketQueryService
     Task<List<UserTicketOrderSummary>> GetUserTicketOrderSummariesAsync(Guid userId);
 
     /// <summary>
+    /// Returns the post-event hold date (GateOpeningDate + StrikeEndOffset + 1 day, start of day
+    /// in the event's timezone) if there is an active event and the date is in the future.
+    /// Returns null if no active event or the hold date has already passed.
+    /// </summary>
+    Task<Instant?> GetPostEventHoldDateAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Returns whether a user holds a valid ticket for the current sync's vendor event.
     /// Checks paid orders matched to the user, then falls back to valid/checked-in attendees.
     /// Used by profile services to compute account-deletion / event-hold dates without

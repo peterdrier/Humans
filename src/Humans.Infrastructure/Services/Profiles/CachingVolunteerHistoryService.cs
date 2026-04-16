@@ -2,6 +2,7 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
+using Humans.Domain.Entities;
 
 namespace Humans.Infrastructure.Services.Profiles;
 
@@ -17,19 +18,22 @@ public sealed class CachingVolunteerHistoryService : IVolunteerHistoryService
     private readonly IProfileRepository _profileRepository;
     private readonly IVolunteerHistoryRepository _volunteerHistoryRepository;
     private readonly IUserService _userService;
+    private readonly IUserEmailRepository _userEmailRepository;
 
     public CachingVolunteerHistoryService(
         IVolunteerHistoryService inner,
         IProfileStore store,
         IProfileRepository profileRepository,
         IVolunteerHistoryRepository volunteerHistoryRepository,
-        IUserService userService)
+        IUserService userService,
+        IUserEmailRepository userEmailRepository)
     {
         _inner = inner;
         _store = store;
         _profileRepository = profileRepository;
         _volunteerHistoryRepository = volunteerHistoryRepository;
         _userService = userService;
+        _userEmailRepository = userEmailRepository;
     }
 
     public Task<IReadOnlyList<VolunteerHistoryEntryDto>> GetAllAsync(
@@ -56,6 +60,8 @@ public sealed class CachingVolunteerHistoryService : IVolunteerHistoryService
         if (profile is not null && user is not null)
         {
             var history = await _volunteerHistoryRepository.GetByProfileIdReadOnlyAsync(profileId, cancellationToken);
+            var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+            var notificationEmail = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email;
 
             var cached = new CachedProfile(
                 UserId: userId,
@@ -78,7 +84,8 @@ public sealed class CachingVolunteerHistoryService : IVolunteerHistoryService
                 IsSuspended: profile.IsSuspended,
                 VolunteerHistory: history
                     .Select(v => new CachedVolunteerEntry(v.EventName, v.Description))
-                    .ToList());
+                    .ToList(),
+                NotificationEmail: notificationEmail);
 
             _store.Upsert(userId, cached);
         }

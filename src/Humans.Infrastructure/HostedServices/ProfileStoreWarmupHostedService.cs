@@ -36,6 +36,7 @@ public sealed class ProfileStoreWarmupHostedService : IHostedService
             using var scope = _scopeFactory.CreateScope();
             var profileRepository = scope.ServiceProvider.GetRequiredService<IProfileRepository>();
             var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+            var userEmailRepository = scope.ServiceProvider.GetRequiredService<IUserEmailRepository>();
 
             // Load all profiles with aggregate-local collections
             var profiles = await profileRepository.GetAllAsync(cancellationToken);
@@ -44,6 +45,9 @@ public sealed class ProfileStoreWarmupHostedService : IHostedService
             var userIds = profiles.Select(p => p.UserId).ToList();
             var users = await userService.GetByIdsAsync(userIds, cancellationToken);
 
+            // Load notification emails in bulk
+            var notificationEmails = await userEmailRepository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+
             // Build CachedProfile entries keyed by UserId
             var entries = new Dictionary<Guid, CachedProfile>(profiles.Count);
             foreach (var profile in profiles)
@@ -51,7 +55,8 @@ public sealed class ProfileStoreWarmupHostedService : IHostedService
                 if (!users.TryGetValue(profile.UserId, out var user))
                     continue;
 
-                entries[profile.UserId] = CachedProfile.Create(profile, user);
+                notificationEmails.TryGetValue(profile.UserId, out var notificationEmail);
+                entries[profile.UserId] = CachedProfile.Create(profile, user, notificationEmail);
             }
 
             _store.LoadAll(entries);

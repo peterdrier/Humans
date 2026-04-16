@@ -67,6 +67,12 @@ public interface IUserService
     /// </summary>
     Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default);
 
+    /// <summary>
+    /// Returns all users, read-only. At ~500 users this is cheap to load in full.
+    /// Used by admin list views that must include profileless users.
+    /// </summary>
+    Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default);
+
     // ---- Methods added for Profile-section migration (§15 Step 0) ----
 
     /// <summary>

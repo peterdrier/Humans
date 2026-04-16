@@ -149,6 +149,21 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
     }
 
+    public async Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
+        CancellationToken ct = default)
+    {
+        return await _dbContext.UserEmails
+            .AsNoTracking()
+            .Where(e => e.IsVerified && e.IsNotificationTarget)
+            .GroupBy(e => e.UserId)
+            .Select(g => new
+            {
+                UserId = g.Key,
+                Email = g.Select(e => e.Email).First()
+            })
+            .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
+    }
+
     public async Task AddAsync(UserEmail email, CancellationToken ct = default)
     {
         _dbContext.UserEmails.Add(email);
