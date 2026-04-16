@@ -2,6 +2,9 @@
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
 
+export const SIZE_RATIO_UPPER = 1.5;
+export const SIZE_RATIO_LOWER = 0.5;
+
 export function isOutsideZone(feature) {
   if (!appState.limitZoneGeom) return false;
   try { return !!turf.difference(turf.featureCollection([feature, appState.limitZoneGeom])); } catch { return false; }
@@ -46,7 +49,7 @@ export function buildCampPolygonFeatures(campPolygons) {
         const f = JSON.parse(p.geoJson);
         const spaceReq = p.spaceRequirementSqm ?? null;
         const spaceOutOfRange = spaceReq && p.areaSqm
-            ? (p.areaSqm > spaceReq * 1.5 || p.areaSqm < spaceReq * 0.5)
+            ? (p.areaSqm > spaceReq * SIZE_RATIO_UPPER || p.areaSqm < spaceReq * SIZE_RATIO_LOWER)
             : false;
         const soundZoneVal = (p.soundZone !== undefined && p.soundZone !== null) ? p.soundZone : -1;
         f.properties = Object.assign(f.properties || {}, {

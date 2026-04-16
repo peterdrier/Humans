@@ -1,7 +1,7 @@
 // Editing mode: toolbar state, draw label updates, popup, button handlers.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
-import { isOutsideZone, overlapsOtherCamps, getSoundZoneOutOfRange } from './geometry.js';
+import { isOutsideZone, overlapsOtherCamps, getSoundZoneOutOfRange, SIZE_RATIO_UPPER, SIZE_RATIO_LOWER } from './geometry.js';
 import { setActivePolygonDim } from './layers.js';
 
 function getCampSoundZone(campSeasonId) {
@@ -41,8 +41,8 @@ export function onCampPolygonClick(e) {
     const sizeWarn     = (() => {
         if (!props.spaceRequirementSqm || !props.areaSqm) return '';
         const ratio = props.areaSqm / props.spaceRequirementSqm;
-        if (ratio > 1.5) return `<div class="text-warning small">⚠️ Area much larger than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
-        if (ratio < 0.5) return `<div class="text-warning small">⚠️ Area much smaller than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
+        if (ratio > SIZE_RATIO_UPPER) return `<div class="text-warning small">⚠️ Area much larger than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
+        if (ratio < SIZE_RATIO_LOWER) return `<div class="text-warning small">⚠️ Area much smaller than requested (${Math.round(props.spaceRequirementSqm).toLocaleString()} m²)</div>`;
         return '';
     })();
     const soundZoneWarn = props.soundZoneOutOfRange ? `<div class="text-warning small">⚠️ Sound zone doesn't match this area</div>` : '';
@@ -180,8 +180,8 @@ export function updateSaveButton() {
         const sizeWarning = (() => {
             if (!spaceReqSqm) return '';
             const ratio = area / spaceReqSqm;
-            if (ratio > 1.5) return `\n⚠️ Area larger than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
-            if (ratio < 0.5) return `\n⚠️ Area smaller than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
+            if (ratio > SIZE_RATIO_UPPER) return `\n⚠️ Area larger than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
+            if (ratio < SIZE_RATIO_LOWER) return `\n⚠️ Area smaller than requested (${Math.round(spaceReqSqm).toLocaleString()} m²)`;
             return '';
         })();
         const soundZoneMismatch = getSoundZoneOutOfRange(poly, getCampSoundZone(editId));
