@@ -99,6 +99,7 @@ public class CityPlanningService : ICityPlanningService
             .ToList();
     }
 
+    // Keep in sync with SpaceSize enum — adding a new enum value requires a matching case here.
     private static double? SpaceSizeToSqm(SpaceSize? size) => size switch
     {
         SpaceSize.Sqm150  => 150,
