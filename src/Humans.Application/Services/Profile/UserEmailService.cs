@@ -350,6 +350,10 @@ public sealed class UserEmailService : IUserEmailService
         Guid userId, CancellationToken cancellationToken = default) =>
         _repository.HasNobodiesTeamEmailAsync(userId, cancellationToken);
 
+    public Task<string?> GetVerifiedEmailAddressAsync(
+        Guid userId, Guid emailId, CancellationToken cancellationToken = default) =>
+        _repository.GetVerifiedEmailAddressAsync(userId, emailId, cancellationToken);
+
     public Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
         CancellationToken cancellationToken = default) =>
         _repository.GetNobodiesTeamEmailStatusByUserAsync(cancellationToken);
@@ -357,6 +361,14 @@ public sealed class UserEmailService : IUserEmailService
     public Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
         IEnumerable<Guid> userIds, CancellationToken cancellationToken = default) =>
         _repository.GetNobodiesTeamEmailsByUserIdsAsync(userIds, cancellationToken);
+
+    public async Task<UserEmailWithUser?> FindVerifiedEmailWithUserAsync(
+        string email, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = EmailNormalization.NormalizeForComparison(email);
+        var alternateEmail = GetAlternateComparableEmail(normalizedEmail);
+        return await _repository.FindVerifiedWithUserAsync(normalizedEmail, alternateEmail, cancellationToken);
+    }
 
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch

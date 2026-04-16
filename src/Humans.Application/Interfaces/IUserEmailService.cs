@@ -119,6 +119,24 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the email address for a verified email record owned by the user.
+    /// Returns null if not found, not owned by the user, or not verified.
+    /// </summary>
+    Task<string?> GetVerifiedEmailAddressAsync(
+        Guid userId,
+        Guid emailId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Finds a verified UserEmail matching the given address (or gmail/googlemail alternate).
+    /// Includes the owning User for contact-creation conflict checks.
+    /// Returns null if no match.
+    /// </summary>
+    Task<UserEmailWithUser?> FindVerifiedEmailWithUserAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets @nobodies.team email status for all users who have one.
     /// Returns a dictionary of userId → isNotificationTarget (i.e., is it their primary email).
     /// Used for admin listing pages.

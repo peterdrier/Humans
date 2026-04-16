@@ -100,4 +100,20 @@ public interface IUserService
     /// Returns false if the user does not exist.
     /// </summary>
     Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default);
+
+    // ---- Methods added for ContactService migration ----
+
+    /// <summary>
+    /// Finds a user whose <c>Email</c> or <c>GoogleEmail</c> matches the given
+    /// address (case-insensitive). Also checks the gmail/googlemail alternate
+    /// when applicable. Returns null if no match.
+    /// </summary>
+    Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all contact users (ContactSource != null, LastLoginAt == null),
+    /// optionally filtered by display name or email search term.
+    /// Ordered by CreatedAt descending.
+    /// </summary>
+    Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default);
 }

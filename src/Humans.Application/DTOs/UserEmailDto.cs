@@ -40,3 +40,16 @@ public record AddEmailResult(string Token, bool IsConflict);
 /// <param name="Email">The verified email address.</param>
 /// <param name="MergeRequestCreated">True if a merge request was created instead of completing verification.</param>
 public record VerifyEmailResult(string Email, bool MergeRequestCreated);
+
+/// <summary>
+/// A verified UserEmail paired with minimal User info for conflict checks.
+/// </summary>
+/// <param name="UserId">The owning user's ID.</param>
+/// <param name="Email">The verified email address.</param>
+/// <param name="ContactSource">Non-null if the user is a pre-provisioned contact.</param>
+/// <param name="LastLoginAt">Null for contacts that have never logged in.</param>
+public record UserEmailWithUser(
+    Guid UserId,
+    string Email,
+    Humans.Domain.Enums.ContactSource? ContactSource,
+    NodaTime.Instant? LastLoginAt);

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Humans.Application.DTOs;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -174,6 +175,38 @@ public sealed class UserEmailRepository : IUserEmailRepository
 
         _dbContext.UserEmails.RemoveRange(emails);
         await _dbContext.SaveChangesAsync(ct);
+    }
+
+    public async Task<UserEmailWithUser?> FindVerifiedWithUserAsync(
+        string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default)
+    {
+        var query = _dbContext.UserEmails
+            .AsNoTracking()
+            .Include(ue => ue.User)
+            .Where(ue => ue.IsVerified);
+
+        UserEmail? match;
+        if (alternateEmail is null)
+        {
+            match = await query.FirstOrDefaultAsync(
+                ue => EF.Functions.ILike(ue.Email, normalizedEmail), ct);
+        }
+        else
+        {
+            match = await query.FirstOrDefaultAsync(
+                ue => EF.Functions.ILike(ue.Email, normalizedEmail) ||
+                      EF.Functions.ILike(ue.Email, alternateEmail), ct);
+        }
+
+        if (match is null)
+            return null;
+
+        return new UserEmailWithUser(
+            match.User.Id,
+            match.Email,
+            match.User.ContactSource,
+            match.User.LastLoginAt);
     }
 
     public Task SaveChangesAsync(CancellationToken ct = default) =>

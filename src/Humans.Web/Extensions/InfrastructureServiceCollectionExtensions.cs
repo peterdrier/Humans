@@ -22,6 +22,7 @@ using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactF
 using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailService;
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using ProfilesVolunteerHistoryService = Humans.Application.Services.Profile.VolunteerHistoryService;
+using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
 
 namespace Humans.Web.Extensions;
 
@@ -206,7 +207,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AccountMergeService>());
 
         services.AddScoped<IDuplicateAccountService, DuplicateAccountService>();
-        services.AddScoped<IContactService, ContactService>();
+        services.AddScoped<IContactService, ProfilesContactService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
         services.AddScoped<IMagicLinkService, MagicLinkService>();
 

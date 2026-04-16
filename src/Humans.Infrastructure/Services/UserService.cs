@@ -3,6 +3,7 @@ using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Gdpr;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Humans.Domain.Helpers;
 using Humans.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -319,5 +320,61 @@ public class UserService : IUserService, IUserDataContributor
         user.DeletionEligibleAfter = null;
         await _dbContext.SaveChangesAsync(ct);
         return true;
+    }
+
+    // ---- Methods added for ContactService migration ----
+
+    public async Task<User?> GetByEmailOrAlternateAsync(string email, CancellationToken ct = default)
+    {
+        var normalized = EmailNormalization.NormalizeForComparison(email);
+        var alternate = GetAlternateEmail(normalized);
+
+        if (alternate is null)
+        {
+            return await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u =>
+                    (u.Email != null && EF.Functions.ILike(u.Email, normalized)) ||
+                    (u.GoogleEmail != null && EF.Functions.ILike(u.GoogleEmail, normalized)),
+                    ct);
+        }
+
+        return await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u =>
+                (u.Email != null && (
+                    EF.Functions.ILike(u.Email, normalized) ||
+                    EF.Functions.ILike(u.Email, alternate))) ||
+                (u.GoogleEmail != null && (
+                    EF.Functions.ILike(u.GoogleEmail, normalized) ||
+                    EF.Functions.ILike(u.GoogleEmail, alternate))),
+                ct);
+    }
+
+    public async Task<IReadOnlyList<User>> GetContactUsersAsync(string? search, CancellationToken ct = default)
+    {
+        var query = _dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.ContactSource != null && u.LastLoginAt == null);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var pattern = $"%{search}%";
+            query = query.Where(u =>
+                EF.Functions.ILike(u.DisplayName, pattern) ||
+                (u.Email != null && EF.Functions.ILike(u.Email, pattern)));
+        }
+
+        return await query
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync(ct);
+    }
+
+    private static string? GetAlternateEmail(string normalizedEmail)
+    {
+        if (normalizedEmail.EndsWith("@gmail.com", StringComparison.Ordinal))
+            return $"{normalizedEmail[..^"@gmail.com".Length]}@googlemail.com";
+
+        return null;
     }
 }

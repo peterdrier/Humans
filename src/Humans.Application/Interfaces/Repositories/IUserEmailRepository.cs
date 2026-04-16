@@ -1,3 +1,4 @@
+using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 
@@ -95,6 +96,21 @@ public interface IUserEmailRepository
     /// </summary>
     Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Finds a verified UserEmail matching the normalized (or alternate) address,
+    /// returning minimal User info for conflict checking.
+    /// </summary>
+    Task<UserEmailWithUser?> FindVerifiedWithUserAsync(
+        string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the email address for a verified email owned by the user,
+    /// or null if not found or not verified.
+    /// </summary>
+    Task<string?> GetVerifiedEmailAddressAsync(
+        Guid userId, Guid emailId, CancellationToken ct = default);
 
     Task AddAsync(UserEmail email, CancellationToken ct = default);
     Task RemoveAsync(UserEmail email, CancellationToken ct = default);
