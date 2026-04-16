@@ -21,16 +21,19 @@ export function getSoundZoneOutOfRange(feature, campSoundZone) {
     let limitZoneData;
     try { limitZoneData = JSON.parse(appState.campMap.limitZoneGeoJson); } catch { return false; }
     const features = limitZoneData.type === 'FeatureCollection' ? limitZoneData.features : [limitZoneData];
-    const centroid = turf.centroid(feature);
+    let bestZone = null;
+    let bestArea = 0;
     for (const zf of features) {
         if (!zf.properties?.SoundZone) continue;
         try {
-            if (turf.booleanPointInPolygon(centroid, zf)) {
-                return !zf.properties.SoundZone.split('_').includes(campZoneName);
-            }
+            const intersection = turf.intersect(turf.featureCollection([feature, zf]));
+            if (!intersection) continue;
+            const area = turf.area(intersection);
+            if (area > bestArea) { bestArea = area; bestZone = zf; }
         } catch (e) { console.debug('Sound zone geometry check failed:', e); }
     }
-    return false;
+    if (!bestZone) return false;
+    return !bestZone.properties.SoundZone.split('_').includes(campZoneName);
 }
 
 export function parseLimitZoneGeom(geoJson) {
