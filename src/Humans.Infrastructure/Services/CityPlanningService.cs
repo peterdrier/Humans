@@ -102,18 +102,18 @@ public class CityPlanningService : ICityPlanningService
     // Keep in sync with SpaceSize enum — adding a new enum value requires a matching case here.
     private static double? SpaceSizeToSqm(SpaceSize? size) => size switch
     {
-        SpaceSize.Sqm150  => 150,
-        SpaceSize.Sqm300  => 300,
-        SpaceSize.Sqm450  => 450,
-        SpaceSize.Sqm600  => 600,
-        SpaceSize.Sqm800  => 800,
+        SpaceSize.Sqm150 => 150,
+        SpaceSize.Sqm300 => 300,
+        SpaceSize.Sqm450 => 450,
+        SpaceSize.Sqm600 => 600,
+        SpaceSize.Sqm800 => 800,
         SpaceSize.Sqm1000 => 1000,
         SpaceSize.Sqm1200 => 1200,
         SpaceSize.Sqm1500 => 1500,
         SpaceSize.Sqm1800 => 1800,
         SpaceSize.Sqm2200 => 2200,
         SpaceSize.Sqm2800 => 2800,
-        _                 => null
+        _ => null
     };
 
     public async Task<List<CampPolygonHistoryEntryDto>> GetCampPolygonHistoryAsync(Guid campSeasonId, CancellationToken cancellationToken = default)
