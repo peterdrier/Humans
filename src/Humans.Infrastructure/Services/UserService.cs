@@ -262,4 +262,30 @@ public class UserService : IUserService, IUserDataContributor
 
         return [new UserDataSlice(GdprExportSections.Account, shaped)];
     }
+
+    // ---- Methods added for Profile-section migration (§15 Step 0) ----
+
+    public async Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
+    {
+        var user = await _dbContext.Users.FindAsync([userId], ct);
+        if (user?.GoogleEmail is not null)
+            return false;
+
+        if (user is null)
+            return false;
+
+        user.GoogleEmail = email;
+        await _dbContext.SaveChangesAsync(ct);
+        return true;
+    }
+
+    public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
+    {
+        var user = await _dbContext.Users.FindAsync([userId], ct);
+        if (user is null)
+            return;
+
+        user.DisplayName = displayName;
+        await _dbContext.SaveChangesAsync(ct);
+    }
 }

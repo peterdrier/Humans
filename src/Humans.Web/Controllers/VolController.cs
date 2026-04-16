@@ -23,7 +23,6 @@ public class VolController : HumansControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly ITeamService _teamService;
-    private readonly IProfileService _profileService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly ILogger<VolController> _logger;
 
@@ -31,7 +30,6 @@ public class VolController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         ITeamService teamService,
-        IProfileService profileService,
         IGeneralAvailabilityService availabilityService,
         UserManager<User> userManager,
         ILogger<VolController> logger)
@@ -40,7 +38,6 @@ public class VolController : HumansControllerBase
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _teamService = teamService;
-        _profileService = profileService;
         _availabilityService = availabilityService;
         _logger = logger;
     }
@@ -792,7 +789,7 @@ public class VolController : HumansControllerBase
             var results = await ShiftVolunteerSearchBuilder.BuildAsync(
                 shift, query, es,
                 ShiftRoleChecks.CanViewMedical(User),
-                UserManager, _profileService, _signupService, _availabilityService);
+                UserManager, _shiftMgmt, _signupService, _availabilityService);
             return Json(results);
         }
         catch (Exception ex)

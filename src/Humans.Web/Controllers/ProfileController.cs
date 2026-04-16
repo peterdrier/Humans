@@ -847,7 +847,7 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            var profile = await _profileService.GetShiftProfileAsync(user.Id, includeMedical: false);
+            var profile = await _shiftMgmt.GetShiftProfileAsync(user.Id, includeMedical: false);
 
             var quirks = profile?.Quirks ?? [];
             var skills = profile?.Skills ?? [];
@@ -887,7 +887,7 @@ public class ProfileController : HumansControllerBase
             if (user is null)
                 return NotFound();
 
-            var shiftProfile = await _profileService.GetOrCreateShiftProfileAsync(user.Id);
+            var shiftProfile = await _shiftMgmt.GetOrCreateShiftProfileAsync(user.Id);
 
             shiftProfile.Skills = ShiftInfoViewModel.MergeSkills(
                 model.SelectedSkills, model.SkillOtherText, shiftProfile.Skills);
@@ -896,7 +896,7 @@ public class ProfileController : HumansControllerBase
             shiftProfile.Languages = ShiftInfoViewModel.MergeLanguages(
                 model.SelectedLanguages, model.LanguageOtherText, shiftProfile.Languages);
 
-            await _profileService.UpdateShiftProfileAsync(shiftProfile);
+            await _shiftMgmt.UpdateShiftProfileAsync(shiftProfile);
 
             SetSuccess(_localizer["Profile_Updated"].Value);
             return RedirectToAction(nameof(ShiftInfo));

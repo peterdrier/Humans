@@ -15,7 +15,7 @@ using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Services;
 
-public class ProfileService : IProfileService, IUserDataContributor
+public class ProfileService : IProfileService
 {
     private readonly HumansDbContext _dbContext;
     private readonly IOnboardingService _onboardingService;
@@ -750,53 +750,6 @@ public class ProfileService : IProfileService, IUserDataContributor
         }
 
         return (null, null);
-    }
-
-    // ==========================================================================
-    // Volunteer Event Profiles
-    // ==========================================================================
-
-    public async Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId)
-    {
-        var existing = await _dbContext.VolunteerEventProfiles
-            .FirstOrDefaultAsync(p => p.UserId == userId);
-
-        if (existing is not null)
-            return existing;
-
-        var now = _clock.GetCurrentInstant();
-        var profile = new VolunteerEventProfile
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-
-        _dbContext.VolunteerEventProfiles.Add(profile);
-        await _dbContext.SaveChangesAsync();
-        return profile;
-    }
-
-    public async Task UpdateShiftProfileAsync(VolunteerEventProfile profile)
-    {
-        profile.UpdatedAt = _clock.GetCurrentInstant();
-        _dbContext.VolunteerEventProfiles.Update(profile);
-        await _dbContext.SaveChangesAsync();
-    }
-
-    public async Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical)
-    {
-        var profile = await _dbContext.VolunteerEventProfiles
-            .AsNoTracking()
-            .FirstOrDefaultAsync(p => p.UserId == userId);
-
-        if (profile is not null && !includeMedical)
-        {
-            profile.MedicalConditions = null;
-        }
-
-        return profile;
     }
 
     public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(

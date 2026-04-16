@@ -286,4 +286,46 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
 
         return [new UserDataSlice(GdprExportSections.AccountMergeRequests, shaped)];
     }
+
+    // ---- Methods added for Profile-section migration (§15 Step 0) ----
+
+    public async Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
+        IReadOnlyList<Guid> emailIds, CancellationToken ct = default)
+    {
+        if (emailIds.Count == 0)
+            return new HashSet<Guid>();
+
+        var ids = await _dbContext.AccountMergeRequests
+            .Where(r => emailIds.Contains(r.PendingEmailId)
+                && r.Status == AccountMergeRequestStatus.Pending)
+            .Select(r => r.PendingEmailId)
+            .ToListAsync(ct);
+
+        return ids.ToHashSet();
+    }
+
+    public async Task<bool> HasPendingForUserAndEmailAsync(
+        Guid targetUserId, string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default) =>
+        alternateEmail is null
+            ? await _dbContext.AccountMergeRequests.AnyAsync(
+                r => r.TargetUserId == targetUserId
+                    && EF.Functions.ILike(r.Email, normalizedEmail)
+                    && r.Status == AccountMergeRequestStatus.Pending, ct)
+            : await _dbContext.AccountMergeRequests.AnyAsync(
+                r => r.TargetUserId == targetUserId
+                    && (EF.Functions.ILike(r.Email, normalizedEmail) ||
+                        EF.Functions.ILike(r.Email, alternateEmail))
+                    && r.Status == AccountMergeRequestStatus.Pending, ct);
+
+    public async Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default) =>
+        await _dbContext.AccountMergeRequests
+            .AnyAsync(r => r.PendingEmailId == pendingEmailId
+                && r.Status == AccountMergeRequestStatus.Pending, ct);
+
+    public async Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default)
+    {
+        _dbContext.AccountMergeRequests.Add(request);
+        await _dbContext.SaveChangesAsync(ct);
+    }
 }

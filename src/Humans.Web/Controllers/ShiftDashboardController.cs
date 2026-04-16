@@ -20,7 +20,6 @@ public class ShiftDashboardController : HumansControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
-    private readonly IProfileService _profileService;
     private readonly UserManager<User> _userManager;
     private readonly ILogger<ShiftDashboardController> _logger;
 
@@ -28,7 +27,6 @@ public class ShiftDashboardController : HumansControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
-        IProfileService profileService,
         UserManager<User> userManager,
         ILogger<ShiftDashboardController> logger)
         : base(userManager)
@@ -36,7 +34,6 @@ public class ShiftDashboardController : HumansControllerBase
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
-        _profileService = profileService;
         _userManager = userManager;
         _logger = logger;
     }
@@ -105,7 +102,7 @@ public class ShiftDashboardController : HumansControllerBase
                 es,
                 ShiftRoleChecks.CanViewMedical(User),
                 _userManager,
-                _profileService,
+                _shiftMgmt,
                 _signupService,
                 _availabilityService);
             return Json(results);

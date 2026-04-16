@@ -1,0 +1,107 @@
+using Humans.Domain.Entities;
+using Humans.Domain.Enums;
+
+namespace Humans.Application.Interfaces.Repositories;
+
+/// <summary>
+/// Repository for the <c>user_emails</c> table.
+/// The only non-test file that may write to this DbSet.
+/// </summary>
+public interface IUserEmailRepository
+{
+    /// <summary>
+    /// Returns all emails for a user, read-only, ordered by
+    /// <c>DisplayOrder</c> then <c>CreatedAt</c>.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> GetByUserIdReadOnlyAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns all emails for a user as tracked entities for modification.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> GetByUserIdTrackedAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a single email by id and user id, tracked for modification.
+    /// </summary>
+    Task<UserEmail?> GetByIdAndUserIdAsync(
+        Guid emailId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a single email by id, read-only.
+    /// </summary>
+    Task<UserEmail?> GetByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the first unverified non-OAuth email for a user, tracked.
+    /// </summary>
+    Task<UserEmail?> GetPendingVerificationAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the OAuth email for a user, tracked.
+    /// </summary>
+    Task<UserEmail?> GetOAuthEmailAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Checks whether an email (or gmail/googlemail alternate) already
+    /// exists for this user.
+    /// </summary>
+    Task<bool> ExistsForUserAsync(
+        Guid userId, string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Checks whether a verified email (or gmail/googlemail alternate) exists
+    /// for a different user. Used for conflict/merge detection.
+    /// </summary>
+    Task<bool> ExistsVerifiedForOtherUserAsync(
+        Guid userId, string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the first verified email matching the normalized (or alternate)
+    /// address that belongs to a different user. For merge flow.
+    /// </summary>
+    Task<UserEmail?> GetConflictingVerifiedEmailAsync(
+        Guid excludeEmailId, string normalizedEmail, string? alternateEmail,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the maximum display order for a user's emails.
+    /// </summary>
+    Task<int> GetMaxDisplayOrderAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the @nobodies.team email for a user, or null.
+    /// </summary>
+    Task<string?> GetNobodiesTeamEmailAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns whether a user has any verified @nobodies.team email.
+    /// </summary>
+    Task<bool> HasNobodiesTeamEmailAsync(
+        Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a mapping of userId → isNotificationTarget for all users
+    /// with verified @nobodies.team emails.
+    /// </summary>
+    Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a mapping of userId → email for the given users' @nobodies.team
+    /// addresses. Prefers notification target, then earliest created.
+    /// </summary>
+    Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default);
+
+    Task AddAsync(UserEmail email, CancellationToken ct = default);
+    Task RemoveAsync(UserEmail email, CancellationToken ct = default);
+    Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);
+    Task SaveChangesAsync(CancellationToken ct = default);
+}

@@ -15,7 +15,7 @@ public static class ShiftVolunteerSearchBuilder
         EventSettings eventSettings,
         bool canViewMedical,
         UserManager<User> userManager,
-        IProfileService profileService,
+        IShiftManagementService shiftManagementService,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService)
     {
@@ -34,7 +34,7 @@ public static class ShiftVolunteerSearchBuilder
         var results = new List<VolunteerSearchResult>();
         foreach (var user in users)
         {
-            var profile = await profileService.GetShiftProfileAsync(user.Id, includeMedical: canViewMedical);
+            var profile = await shiftManagementService.GetShiftProfileAsync(user.Id, includeMedical: canViewMedical);
             var userSignups = await signupService.GetByUserAsync(user.Id, eventSettings.Id);
             var confirmedSignups = userSignups.Where(s => s.Status == SignupStatus.Confirmed).ToList();
 

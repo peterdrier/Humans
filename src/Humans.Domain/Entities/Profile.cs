@@ -22,6 +22,9 @@ public class Profile
 
     /// <summary>
     /// Navigation property to the user.
+    /// QUARANTINE: This cross-domain nav will be stripped in §15 Step 1 when
+    /// all ~15 consumer services are migrated to use IUserService.GetByIdAsync().
+    /// Profile-section services (Application layer) already ignore this property.
     /// </summary>
     public User User { get; set; } = null!;
 

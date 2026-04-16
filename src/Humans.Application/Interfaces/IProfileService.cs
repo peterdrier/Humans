@@ -143,20 +143,6 @@ public interface IProfileService
     /// </summary>
     Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(Guid profileId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets or creates the user's shift profile (1:1 with User).
-    /// </summary>
-    Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId);
-
-    /// <summary>
-    /// Updates a volunteer shift profile.
-    /// </summary>
-    Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
-
-    /// <summary>
-    /// Gets a user's shift profile. Medical data included only when includeMedical=true.
-    /// </summary>
-    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical);
 }
 
 public record UserSearchResult(Guid UserId, string DisplayName, string Email);

@@ -66,4 +66,18 @@ public interface IUserService
     /// Bulk import historical participation data (admin backfill).
     /// </summary>
     Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default);
+
+    // ---- Methods added for Profile-section migration (§15 Step 0) ----
+
+    /// <summary>
+    /// Sets <c>User.GoogleEmail</c> if it is currently null. No-op if the
+    /// user already has a GoogleEmail set or the user does not exist.
+    /// Returns true if the GoogleEmail was set.
+    /// </summary>
+    Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates <c>User.DisplayName</c>. No-op if the user does not exist.
+    /// </summary>
+    Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default);
 }

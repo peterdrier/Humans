@@ -237,6 +237,24 @@ public interface IShiftManagementService
     Task<IReadOnlyDictionary<Guid, int>> GetPendingShiftSignupCountsByTeamAsync(
         Guid eventSettingsId,
         CancellationToken cancellationToken = default);
+
+    // ---- Methods moved from IProfileService (Profile-section migration §15 Step 0) ----
+    // VolunteerEventProfile is owned by the Shifts section, not the Profile section.
+
+    /// <summary>
+    /// Gets or creates the user's shift profile (1:1 with User).
+    /// </summary>
+    Task<VolunteerEventProfile> GetOrCreateShiftProfileAsync(Guid userId);
+
+    /// <summary>
+    /// Updates a volunteer shift profile.
+    /// </summary>
+    Task UpdateShiftProfileAsync(VolunteerEventProfile profile);
+
+    /// <summary>
+    /// Gets a user's shift profile. Medical data included only when includeMedical=true.
+    /// </summary>
+    Task<VolunteerEventProfile?> GetShiftProfileAsync(Guid userId, bool includeMedical);
 }
 
 /// <summary>
@@ -280,3 +298,4 @@ public record DailyStaffingHours(
     double EssentialHours,
     double ImportantHours,
     double NormalHours);
+

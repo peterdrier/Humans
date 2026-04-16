@@ -13,9 +13,15 @@ using Humans.Infrastructure.Jobs;
 using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Governance;
+using Humans.Infrastructure.Services.Profiles;
 using Humans.Infrastructure.Stores;
 using Humans.Web.Filters;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
+using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
+using ProfilesContactFieldService = Humans.Application.Services.Profile.ContactFieldService;
+using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailService;
+using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
+using ProfilesVolunteerHistoryService = Humans.Application.Services.Profile.VolunteerHistoryService;
 
 namespace Humans.Web.Extensions;
 
@@ -113,17 +119,29 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddScoped<ICityPlanningService, CityPlanningService>();
         services.AddScoped<ICampContactService, CampContactService>();
-        services.AddScoped<ICommunicationPreferenceService, CommunicationPreferenceService>();
+        // Profile section — repository/store/decorator pattern (§15 Step 0, PR #504)
+        services.AddScoped<IProfileRepository, ProfileRepository>();
+        services.AddScoped<IContactFieldRepository, ContactFieldRepository>();
+        services.AddScoped<IUserEmailRepository, UserEmailRepository>();
+        services.AddScoped<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
+        services.AddScoped<IVolunteerHistoryRepository, VolunteerHistoryRepository>();
+
+        services.AddSingleton<IProfileStore, ProfileStore>();
+
+        services.AddScoped<IUnsubscribeTokenProvider, UnsubscribeTokenProvider>();
+
+        services.AddScoped<ICommunicationPreferenceService, ProfilesCommunicationPreferenceService>();
         services.AddScoped<IUnsubscribeService, UnsubscribeService>();
 
         services.AddScoped<CampaignService>();
         services.AddScoped<ICampaignService>(sp => sp.GetRequiredService<CampaignService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CampaignService>());
 
-        services.AddScoped<IContactFieldService, ContactFieldService>();
-        services.AddScoped<IUserEmailService, UserEmailService>();
+        services.AddScoped<IContactFieldService, ProfilesContactFieldService>();
+        services.AddScoped<IUserEmailService, ProfilesUserEmailService>();
         services.AddScoped<IEmailProvisioningService, EmailProvisioningService>();
-        services.AddScoped<IVolunteerHistoryService, VolunteerHistoryService>();
+        services.AddScoped<IVolunteerHistoryService, ProfilesVolunteerHistoryService>();
+        services.Decorate<IVolunteerHistoryService, CachingVolunteerHistoryService>();
         services.AddScoped<ILegalDocumentSyncService, LegalDocumentSyncService>();
         services.AddScoped<IAdminLegalDocumentService, AdminLegalDocumentService>();
         services.AddScoped<ILegalDocumentService, LegalDocumentService>();
@@ -231,9 +249,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IConsentService>(sp => sp.GetRequiredService<ConsentService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ConsentService>());
 
-        services.AddScoped<ProfileService>();
-        services.AddScoped<IProfileService>(sp => sp.GetRequiredService<ProfileService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfileService>());
+        services.AddScoped<ProfilesProfileService>();
+        services.AddScoped<IProfileService>(sp => sp.GetRequiredService<ProfilesProfileService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesProfileService>());
+
+        // Wrap IProfileService with caching decorator via Scrutor
+        services.Decorate<IProfileService, CachingProfileService>();
+
+        // Startup warmup: load profiles into the store before serving requests
+        services.AddHostedService<ProfileStoreWarmupHostedService>();
 
         services.AddScoped<UserService>();
         services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());

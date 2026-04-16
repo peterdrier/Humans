@@ -20,7 +20,6 @@ public class ShiftAdminController : HumansTeamControllerBase
     private readonly IShiftManagementService _shiftMgmt;
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
-    private readonly IProfileService _profileService;
     private readonly IClock _clock;
     private readonly ILogger<ShiftAdminController> _logger;
 
@@ -29,7 +28,6 @@ public class ShiftAdminController : HumansTeamControllerBase
         IShiftManagementService shiftMgmt,
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
-        IProfileService profileService,
         UserManager<User> userManager,
         IAuthorizationService authorizationService,
         IClock clock,
@@ -40,7 +38,6 @@ public class ShiftAdminController : HumansTeamControllerBase
         _shiftMgmt = shiftMgmt;
         _signupService = signupService;
         _availabilityService = availabilityService;
-        _profileService = profileService;
         _clock = clock;
         _logger = logger;
     }
@@ -91,7 +88,7 @@ public class ShiftAdminController : HumansTeamControllerBase
         var profileDict = new Dictionary<Guid, VolunteerEventProfile>();
         foreach (var uid in allUserIds)
         {
-            var profile = await _profileService.GetShiftProfileAsync(uid, includeMedical: canViewMedical);
+            var profile = await _shiftMgmt.GetShiftProfileAsync(uid, includeMedical: canViewMedical);
             if (profile is not null)
             {
                 profileDict[uid] = profile;
@@ -658,7 +655,7 @@ public class ShiftAdminController : HumansTeamControllerBase
                 es,
                 ShiftRoleChecks.CanViewMedical(User),
                 UserManager,
-                _profileService,
+                _shiftMgmt,
                 _signupService,
                 _availabilityService);
             return Json(results);

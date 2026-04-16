@@ -11,17 +11,20 @@ namespace Humans.Web.ViewComponents;
 public class ThingsToDoViewComponent : ViewComponent
 {
     private readonly IProfileService _profileService;
+    private readonly IShiftManagementService _shiftMgmt;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IStringLocalizer<SharedResource> _localizer;
     private readonly ILogger<ThingsToDoViewComponent> _logger;
 
     public ThingsToDoViewComponent(
         IProfileService profileService,
+        IShiftManagementService shiftMgmt,
         IMembershipCalculator membershipCalculator,
         IStringLocalizer<SharedResource> localizer,
         ILogger<ThingsToDoViewComponent> logger)
     {
         _profileService = profileService;
+        _shiftMgmt = shiftMgmt;
         _membershipCalculator = membershipCalculator;
         _localizer = localizer;
         _logger = logger;
@@ -101,7 +104,7 @@ public class ThingsToDoViewComponent : ViewComponent
                 var needsShiftInfo = false;
                 try
                 {
-                    var shiftProfile = await _profileService.GetShiftProfileAsync(userId, includeMedical: false);
+                    var shiftProfile = await _shiftMgmt.GetShiftProfileAsync(userId, includeMedical: false);
                     needsShiftInfo = shiftProfile is null || IsShiftProfileEmpty(shiftProfile);
                 }
                 catch (Exception ex)

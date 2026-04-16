@@ -21,6 +21,7 @@ public class UserEmail
 
     /// <summary>
     /// Navigation property to the user.
+    /// QUARANTINE: This cross-domain nav will be stripped in §15 Step 1.
     /// </summary>
     public User User { get; set; } = null!;
 

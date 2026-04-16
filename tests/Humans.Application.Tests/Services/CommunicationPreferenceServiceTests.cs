@@ -1,10 +1,12 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Configuration;
 using Humans.Infrastructure.Data;
-using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Repositories;
+using Humans.Infrastructure.Services.Profiles;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -12,6 +14,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using Xunit;
+using CommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -92,12 +95,17 @@ public class CommunicationPreferenceServiceTests : IDisposable
             BaseUrl = "https://test.example.com"
         });
 
+        var repository = new CommunicationPreferenceRepository(_dbContext);
+
+        var tokenProvider = new UnsubscribeTokenProvider(
+            dataProtectionProvider, emailSettings,
+            NullLogger<UnsubscribeTokenProvider>.Instance);
+
         _service = new CommunicationPreferenceService(
-            _dbContext,
-            dataProtectionProvider,
+            repository,
+            tokenProvider,
             _clock,
             new StubAuditLogService(),
-            emailSettings,
             NullLogger<CommunicationPreferenceService>.Instance);
     }
 
