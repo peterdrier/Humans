@@ -1033,19 +1033,34 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
                 // are logged inside Execute* but are accepted here as an acceptable
                 // risk — team deletion is rare and manual re-sync is always available.
                 //
-                // Critically, scope the deactivation to resourceType. The reconciliation
-                // job runs Drive first then Groups — deactivating all of a soft-deleted
-                // team's resources after the Drive pass would cause the Group pass to
-                // skip the same team's group resource (filtered by r.IsActive) and
-                // leave Group memberships in place.
-                var erroredResourceIds = diffs
+                // Track errored diffs by GoogleId, not diff.ResourceId: drive
+                // resources are grouped by GoogleId and a single diff represents
+                // potentially many GoogleResource rows (one per linked team). The
+                // diff only carries the group's primary ResourceId, so filtering
+                // on that would leave non-primary rows in a failed drive group
+                // eligible for deactivation and silently drop their stale access.
+                //
+                // Critically, also scope the deactivation to resourceType. The
+                // reconciliation job runs Drive first then Groups — deactivating
+                // all of a soft-deleted team's resources after the Drive pass
+                // would cause the Group pass to skip the same team's group
+                // resource (filtered by r.IsActive) and leave Group memberships
+                // in place.
+                var erroredGoogleIds = diffs
                     .Where(d => !string.IsNullOrEmpty(d.ErrorMessage))
-                    .Select(d => d.ResourceId)
-                    .ToHashSet();
+                    .Select(d => d.GoogleId)
+                    .Where(id => !string.IsNullOrEmpty(id))
+                    .ToHashSet(StringComparer.Ordinal);
+                // A soft-deleted team is only eligible for deactivation when EVERY one of
+                // its resources of this type reconciled without error. If any single
+                // resource errored we defer the entire team so the next tick can retry;
+                // otherwise we'd risk leaving the errored row live while a follow-up
+                // deactivation call scopes by team+type and marks it inactive anyway.
                 var softDeletedTeamIds = resources
-                    .Where(r => !r.Team.IsActive && r.IsActive && !erroredResourceIds.Contains(r.Id))
-                    .Select(r => r.TeamId)
-                    .Distinct()
+                    .Where(r => !r.Team.IsActive && r.IsActive)
+                    .GroupBy(r => r.TeamId)
+                    .Where(g => g.All(r => !erroredGoogleIds.Contains(r.GoogleId)))
+                    .Select(g => g.Key)
                     .ToList();
                 if (softDeletedTeamIds.Count > 0)
                 {
