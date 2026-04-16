@@ -152,7 +152,7 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         await _dbContext.SaveChangesAsync(ct);
 
         // Invalidate caches
-        _profileService.UpdateProfileCache(sourceUser.Id, null);
+        await _profileService.InvalidateCacheAsync(sourceUser.Id, ct);
         _teamService.RemoveMemberFromAllTeamsCache(sourceUser.Id);
     }
 

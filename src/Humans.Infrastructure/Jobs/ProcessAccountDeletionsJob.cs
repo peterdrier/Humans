@@ -137,7 +137,7 @@ public class ProcessAccountDeletionsJob : IRecurringJob
 
             foreach (var userId in processedUserIds)
             {
-                _profileService.UpdateProfileCache(userId, null);
+                await _profileService.InvalidateCacheAsync(userId);
                 _cache.InvalidateUserProfile(userId);
                 _teamService.RemoveMemberFromAllTeamsCache(userId);
                 _cache.InvalidateRoleAssignmentClaims(userId);

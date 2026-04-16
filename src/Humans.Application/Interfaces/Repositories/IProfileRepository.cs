@@ -69,6 +69,12 @@ public interface IProfileRepository
         Guid profileId, CancellationToken ct = default);
 
     /// <summary>
+    /// Removes all existing languages for the profile, replaces them with the
+    /// given set, and persists in a single <c>SaveChangesAsync</c> call.
+    /// </summary>
+    Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
+
+    /// <summary>
     /// Persists a new profile.
     /// </summary>
     Task AddAsync(Profile profile, CancellationToken ct = default);

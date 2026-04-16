@@ -27,6 +27,7 @@ public sealed class ProfileRepository : IProfileRepository
     public Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default) =>
         _dbContext.Profiles
             .AsNoTracking()
+            .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
     public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
@@ -98,6 +99,19 @@ public sealed class ProfileRepository : IProfileRepository
             .OrderByDescending(pl => pl.Proficiency)
             .ThenBy(pl => pl.LanguageCode)
             .ToListAsync(ct);
+
+    public async Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
+    {
+        var existing = await _dbContext.ProfileLanguages
+            .Where(pl => pl.ProfileId == profileId)
+            .ToListAsync(ct);
+        _dbContext.ProfileLanguages.RemoveRange(existing);
+
+        if (languages.Count > 0)
+            _dbContext.ProfileLanguages.AddRange(languages);
+
+        await _dbContext.SaveChangesAsync(ct);
+    }
 
     public async Task AddAsync(Profile profile, CancellationToken ct = default)
     {

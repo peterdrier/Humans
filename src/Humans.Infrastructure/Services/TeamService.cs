@@ -2420,6 +2420,50 @@ public class TeamService : ITeamService, IUserDataContributor
         definition.IsManagement &&
         definition.Team.SystemTeamType == SystemTeamType.None;
 
+    public async Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var cached = await GetCachedTeamsAsync(cancellationToken);
+        return cached.Values
+            .Where(t => t.SystemTeamType != SystemTeamType.Volunteers
+                && t.Members.Any(m => m.UserId == userId))
+            .Select(t => t.Name)
+            .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public async Task EnqueueGoogleResyncForUserTeamsAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var memberships = await _dbContext.TeamMembers
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
+            .Select(tm => new { tm.Id, tm.TeamId })
+            .ToListAsync(cancellationToken);
+
+        var now = _clock.GetCurrentInstant();
+        foreach (var membership in memberships)
+        {
+            var dedupeKey = $"{membership.Id}:{GoogleSyncOutboxEventTypes.AddUserToTeamResources}:resync:{now}";
+            _dbContext.GoogleSyncOutboxEvents.Add(new GoogleSyncOutboxEvent
+            {
+                Id = Guid.NewGuid(),
+                EventType = GoogleSyncOutboxEventTypes.AddUserToTeamResources,
+                TeamId = membership.TeamId,
+                UserId = userId,
+                OccurredAt = now,
+                DeduplicationKey = dedupeKey
+            });
+        }
+
+        if (memberships.Count > 0)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation(
+                "Enqueued {Count} re-sync events for user {UserId} after Google email change",
+                memberships.Count, userId);
+        }
+    }
+
     public void RemoveMemberFromAllTeamsCache(Guid userId)
     {
         TryMutateActiveTeamsCache(cached =>

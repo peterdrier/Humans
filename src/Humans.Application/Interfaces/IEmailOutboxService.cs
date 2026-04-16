@@ -25,6 +25,18 @@ public interface IEmailOutboxService
     Task<EmailOutboxStats> GetOutboxStatsAsync(int recentMessageCount = 50, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets outbox messages for a specific user, ordered by CreatedAt descending.
+    /// </summary>
+    Task<IReadOnlyList<EmailOutboxMessage>> GetMessagesForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the count of outbox messages for a specific user.
+    /// </summary>
+    Task<int> GetMessageCountForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets whether email sending is currently paused.
     /// </summary>
     Task<bool> IsEmailPausedAsync(CancellationToken cancellationToken = default);

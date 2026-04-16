@@ -121,29 +121,22 @@ public interface IProfileService
     Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets a cached profile by user ID from the in-memory cache.
-    /// Returns null on cache miss (no DB query).
+    /// Invalidates any cached profile data for the given user. Used by
+    /// cross-section services that modify profile-related data and need
+    /// to ensure the next read returns fresh results.
     /// </summary>
-    CachedProfile? GetCachedProfile(Guid userId);
-
-    /// <summary>
-    /// Gets a cached profile by user ID, warming the cache first if cold.
-    /// Returns null only if the user has no profile.
-    /// </summary>
-    Task<CachedProfile?> GetCachedProfileAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Updates a single entry in the profiles cache.
-    /// Pass null to remove the entry (e.g., on account deletion).
-    /// For status changes like suspension, pass an updated <see cref="CachedProfile"/> instead.
-    /// </summary>
-    void UpdateProfileCache(Guid userId, CachedProfile? newValue);
+    Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// Gets the languages associated with a profile, ordered by proficiency (descending) then language code.
     /// Returns an empty list if the profile does not exist.
     /// </summary>
     Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(Guid profileId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Replaces all languages for the given profile with the new set.
+    /// </summary>
+    Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
 
 }
 

@@ -295,7 +295,7 @@ public class DuplicateAccountService : IDuplicateAccountService
         await transaction.CommitAsync(ct);
 
         // Invalidate caches
-        _profileService.UpdateProfileCache(sourceUserId, null);
+        await _profileService.InvalidateCacheAsync(sourceUserId, ct);
         _teamService.RemoveMemberFromAllTeamsCache(sourceUserId);
 
         _logger.LogInformation(

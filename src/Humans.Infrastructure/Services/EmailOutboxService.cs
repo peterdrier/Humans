@@ -70,6 +70,17 @@ public class EmailOutboxService : IEmailOutboxService
         return new EmailOutboxStats(totalCount, queuedCount, sentLast24H, failedCount, isPaused, messages);
     }
 
+    public async Task<IReadOnlyList<EmailOutboxMessage>> GetMessagesForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        await _dbContext.EmailOutboxMessages
+            .Where(m => m.UserId == userId)
+            .OrderByDescending(m => m.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public Task<int> GetMessageCountForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default) =>
+        _dbContext.EmailOutboxMessages.CountAsync(m => m.UserId == userId, cancellationToken);
+
     public async Task<bool> IsEmailPausedAsync(CancellationToken cancellationToken = default)
     {
         var setting = await _dbContext.SystemSettings

@@ -486,6 +486,20 @@ public interface ITeamService
         Guid teamId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Gets the names of all active (non-Volunteers) teams the user belongs to,
+    /// ordered alphabetically. Used for profile popover display.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetActiveTeamNamesForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Enqueues AddUserToTeamResources sync events for all active team
+    /// memberships of a user. Used when the user's Google service email changes.
+    /// </summary>
+    Task EnqueueGoogleResyncForUserTeamsAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
     // ==========================================================================
     // Cache Helpers
     // ==========================================================================

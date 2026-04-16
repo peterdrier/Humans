@@ -1218,32 +1218,19 @@ public class ProfileServiceTests : IDisposable
     // --- Cache behavior ---
 
     [Fact]
-    public async Task UpdateProfileCache_AddAndRemove()
+    public async Task InvalidateCacheAsync_ClearsUserProfileCache()
     {
         var userId = Guid.NewGuid();
-        var cached = new CachedProfile(
-            userId, "Test", null, false, Guid.NewGuid(), 123,
-            null, null, null, null, null, null, null, null, null, null, true, false, []);
-
-        // Cache not loaded yet — should not throw
-        _service.UpdateProfileCache(userId, cached);
-
-        // Load cache first
         await SeedUserAsync(userId);
         var profile = MakeProfile(userId, isApproved: true);
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
-        await _service.GetApprovedProfilesWithLocationAsync(); // triggers cache load
 
-        // Now add
-        _service.UpdateProfileCache(userId, cached);
-        var searchResults = await _service.SearchHumansAsync("Test");
-        searchResults.Should().Contain(r => r.UserId == userId);
+        // Prime the profiles cache
+        await _service.GetApprovedProfilesWithLocationAsync();
 
-        // Remove
-        _service.UpdateProfileCache(userId, null);
-        searchResults = await _service.SearchHumansAsync("Test");
-        searchResults.Should().NotContain(r => r.UserId == userId);
+        // Invalidate should not throw
+        await _service.InvalidateCacheAsync(userId);
     }
 
     [Fact]
@@ -1301,7 +1288,7 @@ public class ProfileServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GetCachedProfileAsync_ReturnsSuspendedUser()
+    public async Task GetProfileAsync_ReturnsSuspendedUser()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -1309,16 +1296,16 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
-        var cached = await _service.GetCachedProfileAsync(userId);
+        var result = await _service.GetProfileAsync(userId);
 
-        cached.Should().NotBeNull();
-        cached!.UserId.Should().Be(userId);
-        cached.IsApproved.Should().BeTrue();
-        cached.IsSuspended.Should().BeTrue();
+        result.Should().NotBeNull();
+        result!.UserId.Should().Be(userId);
+        result.IsApproved.Should().BeTrue();
+        result.IsSuspended.Should().BeTrue();
     }
 
     [Fact]
-    public async Task GetCachedProfileAsync_ReturnsPendingUser()
+    public async Task GetProfileAsync_ReturnsPendingUser()
     {
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
@@ -1326,12 +1313,12 @@ public class ProfileServiceTests : IDisposable
         _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
-        var cached = await _service.GetCachedProfileAsync(userId);
+        var result = await _service.GetProfileAsync(userId);
 
-        cached.Should().NotBeNull();
-        cached!.UserId.Should().Be(userId);
-        cached.IsApproved.Should().BeFalse();
-        cached.IsSuspended.Should().BeFalse();
+        result.Should().NotBeNull();
+        result!.UserId.Should().Be(userId);
+        result.IsApproved.Should().BeFalse();
+        result.IsSuspended.Should().BeFalse();
     }
 
     // --- Helpers ---

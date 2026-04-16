@@ -155,6 +155,14 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
     }
 
+    public async Task<string?> GetVerifiedEmailAddressAsync(
+        Guid userId, Guid emailId, CancellationToken ct = default) =>
+        await _dbContext.UserEmails
+            .AsNoTracking()
+            .Where(ue => ue.Id == emailId && ue.UserId == userId && ue.IsVerified)
+            .Select(ue => ue.Email)
+            .FirstOrDefaultAsync(ct);
+
     public async Task AddAsync(UserEmail email, CancellationToken ct = default)
     {
         _dbContext.UserEmails.Add(email);

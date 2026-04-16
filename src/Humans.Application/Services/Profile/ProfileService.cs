@@ -570,47 +570,19 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return Task.FromResult<IReadOnlyList<HumanSearchResult>>(ordered);
     }
 
-    // ==========================================================================
-    // Profile Store (delegates to CachingProfileService decorator)
-    // ==========================================================================
-
-    public CachedProfile? GetCachedProfile(Guid userId) =>
-        _store.GetByUserId(userId);
-
-    public async Task<CachedProfile?> GetCachedProfileAsync(Guid userId, CancellationToken ct = default)
+    public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
     {
-        var cached = _store.GetByUserId(userId);
-        if (cached is not null)
-            return cached;
-
-        // Store miss — warm the entry if the user has a profile
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        if (profile is null)
-            return null;
-
-        var user = await _userService.GetByIdAsync(userId, ct);
-        if (user is null)
-            return null;
-
-        var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email;
-
-        var entry = CachedProfile.Create(profile, user, notificationEmail);
-        _store.Upsert(userId, entry);
-        return entry;
-    }
-
-    public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
-    {
-        if (newValue is null)
-            _store.Remove(userId);
-        else
-            _store.Upsert(userId, newValue);
+        // No-op in the inner service — cache invalidation is handled
+        // by the CachingProfileService decorator.
+        return Task.CompletedTask;
     }
 
     public Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
         Guid profileId, CancellationToken ct = default) =>
         _profileRepository.GetLanguagesAsync(profileId, ct);
+
+    public Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
+        _profileRepository.ReplaceLanguagesAsync(profileId, languages, ct);
 
     // ==========================================================================
     // Volunteer Event Profiles — cross-section reads (§15 Step 1 quarantine)

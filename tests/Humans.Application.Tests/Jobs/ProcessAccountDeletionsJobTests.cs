@@ -315,7 +315,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        _profileService.Received(1).UpdateProfileCache(user.Id, null);
+        await _profileService.Received(1).InvalidateCacheAsync(user.Id, Arg.Any<CancellationToken>());
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(user.Id);
     }
 

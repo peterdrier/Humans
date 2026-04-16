@@ -176,10 +176,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
 
                 foreach (var suspendedUser in users.Where(u => suspendedUserIds.Contains(u.Id)))
                 {
-                    var cached = suspendedUser.Profile is not null
-                        ? CachedProfile.Create(suspendedUser.Profile, suspendedUser)
-                        : null;
-                    _profileService.UpdateProfileCache(suspendedUser.Id, cached);
+                    await _profileService.InvalidateCacheAsync(suspendedUser.Id, cancellationToken);
                     _cache.InvalidateUserProfile(suspendedUser.Id);
                     _cache.InvalidateRoleAssignmentClaims(suspendedUser.Id);
                     _cache.InvalidateShiftAuthorization(suspendedUser.Id);

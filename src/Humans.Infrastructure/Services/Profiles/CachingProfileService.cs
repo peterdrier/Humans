@@ -133,18 +133,14 @@ public sealed class CachingProfileService : IProfileService
         Guid profileId, CancellationToken ct = default) =>
         _inner.GetProfileLanguagesAsync(profileId, ct);
 
-    // ==========================================================================
-    // Cache / store delegates
-    // ==========================================================================
+    public Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
+        _inner.SaveProfileLanguagesAsync(profileId, languages, ct);
 
-    public CachedProfile? GetCachedProfile(Guid userId) =>
-        _inner.GetCachedProfile(userId);
-
-    public Task<CachedProfile?> GetCachedProfileAsync(Guid userId, CancellationToken ct = default) =>
-        _inner.GetCachedProfileAsync(userId, ct);
-
-    public void UpdateProfileCache(Guid userId, CachedProfile? newValue) =>
-        _inner.UpdateProfileCache(userId, newValue);
+    public async Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
+    {
+        InvalidateUserCaches(userId);
+        await RefreshStoreEntryAsync(userId, ct);
+    }
 
     // ==========================================================================
     // Writes — delegate then invalidate

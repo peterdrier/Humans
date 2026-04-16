@@ -75,11 +75,11 @@ public class HumanLinkTagHelper : TagHelper
         // Resolve display name and profile picture from cache when not explicitly provided
         if (string.IsNullOrEmpty(DisplayName) && UserId != Guid.Empty)
         {
-            var cached = await _profileService.GetCachedProfileAsync(UserId);
-            if (cached is not null)
+            var profile = await _profileService.GetProfileAsync(UserId);
+            if (profile?.User is not null)
             {
-                DisplayName = cached.DisplayName;
-                ProfilePictureUrl ??= cached.ProfilePictureUrl;
+                DisplayName = profile.User.DisplayName;
+                ProfilePictureUrl ??= profile.User.ProfilePictureUrl;
             }
             else
             {

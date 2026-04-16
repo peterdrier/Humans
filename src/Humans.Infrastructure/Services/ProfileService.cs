@@ -326,7 +326,7 @@ public class ProfileService : IProfileService
         if (user is not null)
         {
             await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-            UpdateProfileCache(userId, CachedProfile.Create(profile, user));
+            UpdateProfileCacheEntry(userId, CachedProfile.Create(profile, user));
         }
 
         // Check consent eligibility
@@ -387,7 +387,7 @@ public class ProfileService : IProfileService
             user.Id);
 
         await _dbContext.SaveChangesAsync(ct);
-        UpdateProfileCache(userId, null);
+        UpdateProfileCacheEntry(userId, null);
         _cache.InvalidateUserAccess(userId);
         _cache.InvalidateUserProfile(userId);
 
@@ -433,7 +433,7 @@ public class ProfileService : IProfileService
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
         if (profile is not null)
         {
-            UpdateProfileCache(userId, CachedProfile.Create(profile, user));
+            UpdateProfileCacheEntry(userId, CachedProfile.Create(profile, user));
         }
 
         _logger.LogInformation("User {UserId} cancelled account deletion request", userId);
@@ -707,25 +707,14 @@ public class ProfileService : IProfileService
         }) ?? new();
     }
 
-    public CachedProfile? GetCachedProfile(Guid userId)
+    public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
     {
-        if (_cache.TryGetExistingValue<ConcurrentDictionary<Guid, CachedProfile>>(
-                CacheKeys.Profiles, out var cached)
-            && cached.TryGetValue(userId, out var profile))
-        {
-            return profile;
-        }
-
-        return null;
+        _cache.UpdateProfile(userId, null);
+        _cache.InvalidateUserProfile(userId);
+        return Task.CompletedTask;
     }
 
-    public async Task<CachedProfile?> GetCachedProfileAsync(Guid userId, CancellationToken ct = default)
-    {
-        var profiles = await GetCachedProfilesAsync(ct);
-        return profiles.TryGetValue(userId, out var profile) ? profile : null;
-    }
-
-    public void UpdateProfileCache(Guid userId, CachedProfile? newValue)
+    private void UpdateProfileCacheEntry(Guid userId, CachedProfile? newValue)
         => _cache.UpdateProfile(userId, newValue);
 
     private static (string? Field, string? Snippet) DetermineMatchFromCache(CachedProfile p, string query)
@@ -762,6 +751,19 @@ public class ProfileService : IProfileService
             .OrderByDescending(pl => pl.Proficiency)
             .ThenBy(pl => pl.LanguageCode)
             .ToListAsync(ct);
+    }
+
+    public async Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
+    {
+        var existing = await _dbContext.ProfileLanguages
+            .Where(pl => pl.ProfileId == profileId)
+            .ToListAsync(ct);
+        _dbContext.ProfileLanguages.RemoveRange(existing);
+
+        if (languages.Count > 0)
+            _dbContext.ProfileLanguages.AddRange(languages);
+
+        await _dbContext.SaveChangesAsync(ct);
     }
 
     private static string GetSnippet(string text, string query, int contextChars = 60)
