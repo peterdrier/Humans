@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using ApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
 using ProfilesProfileService = Humans.Application.Services.Profile.ProfileService;
+using UserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Application.Tests.Services.Gdpr;
 

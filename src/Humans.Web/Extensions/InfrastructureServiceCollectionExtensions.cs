@@ -14,6 +14,7 @@ using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
 using Humans.Infrastructure.Services.Governance;
 using Humans.Infrastructure.Services.Profiles;
+using Humans.Infrastructure.Services.Users;
 using Humans.Infrastructure.Stores;
 using Humans.Web.Filters;
 using GovernanceApplicationDecisionService = Humans.Application.Services.Governance.ApplicationDecisionService;
@@ -23,6 +24,7 @@ using ProfilesUserEmailService = Humans.Application.Services.Profile.UserEmailSe
 using ProfilesCommunicationPreferenceService = Humans.Application.Services.Profile.CommunicationPreferenceService;
 using ProfilesVolunteerHistoryService = Humans.Application.Services.Profile.VolunteerHistoryService;
 using ProfilesContactService = Humans.Application.Services.Profile.ContactService;
+using UsersUserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Web.Extensions;
 
@@ -260,9 +262,19 @@ public static class InfrastructureServiceCollectionExtensions
         // Startup warmup: load profiles into the store before serving requests
         services.AddHostedService<ProfileStoreWarmupHostedService>();
 
-        services.AddScoped<UserService>();
-        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UserService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UserService>());
+        // User section — migrated per §15 Step 2 (issue #511)
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddSingleton<IUserStore, UserStore>();
+
+        services.AddScoped<UsersUserService>();
+        services.AddScoped<IUserService>(sp => sp.GetRequiredService<UsersUserService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<UsersUserService>());
+
+        // Wrap IUserService with caching decorator via Scrutor
+        services.Decorate<IUserService, CachingUserService>();
+
+        // Startup warmup: load users into the store before serving requests
+        services.AddHostedService<UserStoreWarmupHostedService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<ISystemTeamSync, SystemTeamSyncJob>();
         services.AddScoped<SyncLegalDocumentsJob>();

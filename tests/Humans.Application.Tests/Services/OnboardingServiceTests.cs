@@ -11,9 +11,12 @@ using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
+using Humans.Infrastructure.Repositories;
 using Humans.Infrastructure.Services;
+using Humans.Infrastructure.Stores;
 using Xunit;
 using MemberApplication = Humans.Domain.Entities.Application;
+using UserService = Humans.Application.Services.Users.UserService;
 
 namespace Humans.Application.Tests.Services;
 
@@ -42,7 +45,9 @@ public class OnboardingServiceTests : IDisposable
         // Real UserService backed by the same in-memory DbContext so
         // stitched user reads in OnboardingService's BoardVoting methods
         // resolve to the seeded users without extra mocking.
-        var userService = new UserService(_dbContext, _clock, NullLogger<UserService>.Instance);
+        var userRepository = new UserRepository(_dbContext);
+        var userStore = new UserStore();
+        var userService = new UserService(userRepository, userStore, _clock, NullLogger<UserService>.Instance);
         _service = new OnboardingService(
             _dbContext, userService, _auditLogService, _emailService, _notificationService,
             _notificationInboxService, _syncJob,
