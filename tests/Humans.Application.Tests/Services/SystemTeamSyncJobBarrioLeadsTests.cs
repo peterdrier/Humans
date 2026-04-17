@@ -40,6 +40,7 @@ public class SystemTeamSyncJobBarrioLeadsTests : IDisposable
             Substitute.For<IGoogleSyncService>(),
             Substitute.For<IAuditLogService>(),
             Substitute.For<IEmailService>(),
+            Substitute.For<IUserEmailService>(),
             _cache,
             Substitute.For<IHumansMetrics>(),
             NullLogger<SystemTeamSyncJob>.Instance,

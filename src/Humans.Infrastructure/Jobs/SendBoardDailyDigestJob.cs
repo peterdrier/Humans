@@ -18,6 +18,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SendBoardDailyDigestJob> _logger;
@@ -26,6 +27,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
     public SendBoardDailyDigestJob(
         HumansDbContext dbContext,
         IEmailService emailService,
+        IUserEmailService userEmailService,
         IMembershipCalculator membershipCalculator,
         IHumansMetrics metrics,
         ILogger<SendBoardDailyDigestJob> logger,
@@ -33,6 +35,7 @@ public class SendBoardDailyDigestJob : IRecurringJob
     {
         _dbContext = dbContext;
         _emailService = emailService;
+        _userEmailService = userEmailService;
         _membershipCalculator = membershipCalculator;
         _metrics = metrics;
         _logger = logger;
@@ -172,7 +175,6 @@ public class SendBoardDailyDigestJob : IRecurringJob
             // 5. Find active Board members
             var boardMembers = await _dbContext.RoleAssignments
                 .Include(ra => ra.User)
-                    .ThenInclude(u => u.UserEmails)
                 .Where(ra => ra.RoleName == RoleNames.Board
                     && ra.ValidFrom <= now
                     && (ra.ValidTo == null || ra.ValidTo.Value > now))
@@ -180,10 +182,16 @@ public class SendBoardDailyDigestJob : IRecurringJob
                 .Distinct()
                 .ToListAsync(cancellationToken);
 
+            var boardMemberIds = boardMembers.Select(m => m.Id).ToList();
+            var effectiveEmails = boardMemberIds.Count == 0
+                ? new Dictionary<Guid, string>()
+                : (IReadOnlyDictionary<Guid, string>)await _userEmailService
+                    .GetNotificationEmailsByUserIdsAsync(boardMemberIds, cancellationToken);
+
             var sentCount = 0;
             foreach (var member in boardMembers)
             {
-                var email = member.GetEffectiveEmail();
+                var email = effectiveEmails.TryGetValue(member.Id, out var e) ? e : null;
                 if (email is null)
                 {
                     _logger.LogWarning("Board member {UserId} ({Name}) has no effective email, skipping digest",

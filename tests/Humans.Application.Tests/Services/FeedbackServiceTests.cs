@@ -40,7 +40,9 @@ public class FeedbackServiceTests : IDisposable
         var notificationService = Substitute.For<INotificationService>();
 
         _service = new FeedbackService(
-            _dbContext, _emailService, notificationService, _auditLog, _clock, cache, env,
+            _dbContext, _emailService, notificationService, _auditLog,
+            Substitute.For<IUserEmailService>(),
+            _clock, cache, env,
             NullLogger<FeedbackService>.Instance);
     }
 

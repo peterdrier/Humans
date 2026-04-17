@@ -25,7 +25,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
+    private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
     private readonly IMemoryCache _cache;
     private readonly HumansMetricsService _metrics;
     private readonly FakeClock _clock;
@@ -46,7 +48,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         _googleSyncService = Substitute.For<IGoogleSyncService>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _profileService = Substitute.For<IProfileService>();
+        _userEmailService = Substitute.For<IUserEmailService>();
         _teamService = Substitute.For<ITeamService>();
+        _userService = Substitute.For<IUserService>();
         _cache = new MemoryCache(new MemoryCacheOptions());
         _clock = new FakeClock(Now);
         _metrics = new HumansMetricsService(
@@ -54,10 +58,14 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Substitute.For<ILogger<HumansMetricsService>>());
         var logger = Substitute.For<ILogger<SuspendNonCompliantMembersJob>>();
 
+        _teamService.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<TeamMember>());
+
         _job = new SuspendNonCompliantMembersJob(
             _dbContext, _membershipCalculator, _emailService,
             _notificationService, _googleSyncService, _auditLogService,
-            _profileService, _teamService, _cache, _metrics, logger, _clock);
+            _profileService, _userEmailService, _teamService, _userService,
+            _cache, _metrics, logger, _clock);
     }
 
     public void Dispose()
@@ -77,9 +85,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        var updated = await _dbContext.Users.Include(u => u.Profile).SingleAsync();
-        updated.Profile!.IsSuspended.Should().BeTrue();
-        updated.Profile.UpdatedAt.Should().Be(Now);
+        var updatedProfile = await _dbContext.Profiles.SingleAsync();
+        updatedProfile.IsSuspended.Should().BeTrue();
+        updatedProfile.UpdatedAt.Should().Be(Now);
     }
 
     [Fact]
@@ -113,7 +121,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
     public async Task ExecuteAsync_SkipsUsersWithoutProfile()
     {
         var userId = Guid.NewGuid();
-        _dbContext.Users.Add(new User
+        var user = new User
         {
             Id = userId,
             UserName = "noprofile",
@@ -122,9 +130,11 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             NormalizedEmail = "NOPROFILE@EXAMPLE.COM",
             DisplayName = "No Profile",
             PreferredLanguage = "en"
-        });
+        };
+        _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
 
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { userId });
 
@@ -187,16 +197,19 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         };
         _dbContext.Teams.Add(team);
 
-        _dbContext.TeamMembers.Add(new TeamMember
+        var membership = new TeamMember
         {
             Id = Guid.NewGuid(),
             TeamId = team.Id,
             UserId = user.Id,
             JoinedAt = Now - Duration.FromDays(50),
             LeftAt = null
-        });
+        };
+        _dbContext.TeamMembers.Add(membership);
         await _dbContext.SaveChangesAsync();
 
+        _teamService.GetUserTeamsAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(new[] { membership });
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
 
@@ -251,16 +264,19 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         };
         _dbContext.Teams.Add(team);
 
-        _dbContext.TeamMembers.Add(new TeamMember
+        var membership = new TeamMember
         {
             Id = Guid.NewGuid(),
             TeamId = team.Id,
             UserId = user.Id,
             JoinedAt = Now - Duration.FromDays(50),
             LeftAt = null
-        });
+        };
+        _dbContext.TeamMembers.Add(membership);
         await _dbContext.SaveChangesAsync();
 
+        _teamService.GetUserTeamsAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(new[] { membership });
         _membershipCalculator.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>())
             .Returns(new List<Guid> { user.Id });
 
@@ -272,8 +288,8 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         await _job.ExecuteAsync();
 
         // User should still be suspended despite Google sync failure
-        var updated = await _dbContext.Users.Include(u => u.Profile).SingleAsync();
-        updated.Profile!.IsSuspended.Should().BeTrue();
+        var updatedProfile = await _dbContext.Profiles.SingleAsync();
+        updatedProfile.IsSuspended.Should().BeTrue();
     }
 
     private async Task<User> SeedUserWithProfile(bool isSuspended = false)
@@ -302,6 +318,11 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
+
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailService.GetNotificationEmailAsync(userId, Arg.Any<CancellationToken>())
+            .Returns("test@example.com");
+
         return user;
     }
 }

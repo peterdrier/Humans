@@ -23,13 +23,26 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
     private readonly HumansDbContext _dbContext;
     private readonly IMemoryCache _cache;
     private readonly IBudgetService _budgetService;
+    private readonly IProfileService _profileService;
+    private readonly IUserEmailService _userEmailService;
+    private readonly ITeamService _teamService;
     private readonly IClock _clock;
 
-    public TicketQueryService(HumansDbContext dbContext, IMemoryCache cache, IBudgetService budgetService, IClock clock)
+    public TicketQueryService(
+        HumansDbContext dbContext,
+        IMemoryCache cache,
+        IBudgetService budgetService,
+        IProfileService profileService,
+        IUserEmailService userEmailService,
+        ITeamService teamService,
+        IClock clock)
     {
         _dbContext = dbContext;
         _cache = cache;
         _budgetService = budgetService;
+        _profileService = profileService;
+        _userEmailService = userEmailService;
+        _teamService = teamService;
         _clock = clock;
     }
 
@@ -566,19 +579,44 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
     {
         var matchedUserIds = await GetAllMatchedUserIdsAsync();
 
-        // Load ALL active humans (not just unmatched) so we can toggle between views
-        var users = await _dbContext.Users
-            .Include(u => u.Profile)
-            .Include(u => u.UserEmails)
-            .Include(u => u.TeamMemberships).ThenInclude(tm => tm.Team)
-            .AsSplitQuery()
-            .ToListAsync();
+        // Load users without cross-domain navs; fetch Profile, TeamMemberships,
+        // and UserEmails via their owning services and stitch in memory.
+        // Scale justification: ~500 humans total (see CLAUDE.md).
+        var users = await _dbContext.Users.AsNoTracking().ToListAsync();
+
+        var allUserIds = users.Select(u => u.Id).ToList();
+        var profilesByUserId = await _profileService.GetByUserIdsAsync(allUserIds);
+
+        // Batch-load active team memberships per user via ITeamService.
+        var teamMembershipsByUserId = new Dictionary<Guid, IReadOnlyList<TeamMember>>();
+        foreach (var id in allUserIds)
+        {
+            teamMembershipsByUserId[id] = await _teamService.GetUserTeamsAsync(id);
+        }
+
+        var notificationEmailsByUserId = await _userEmailService
+            .GetNotificationEmailsByUserIdsAsync(allUserIds);
+
+        // §2c transitional: direct DbContext.UserEmails read needed so the search
+        // predicate can match ANY of a user's emails (not just the notification
+        // target). IUserEmailService does not currently expose a batch "all emails
+        // by userIds" API; add one in a follow-up pass and swap this out.
+        var allEmailsByUserId = (await _dbContext.Set<UserEmail>()
+                .AsNoTracking()
+                .Where(e => allUserIds.Contains(e.UserId))
+                .Select(e => new { e.UserId, e.Email })
+                .ToListAsync())
+            .GroupBy(e => e.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<string>)g.Select(x => x.Email).ToList());
 
         var volunteersTeamId = SystemTeamIds.Volunteers;
 
         var activeHumans = users
-            .Where(u => u.Profile is not null &&
-                u.TeamMemberships.Any(tm => tm.TeamId == volunteersTeamId && tm.LeftAt == null))
+            .Where(u => profilesByUserId.ContainsKey(u.Id)
+                && teamMembershipsByUserId[u.Id].Any(tm =>
+                    tm.TeamId == volunteersTeamId && tm.LeftAt == null))
             .ToList();
 
         // Exclude humans who declared not attending this year
@@ -604,7 +642,10 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
             filterTicketStatus,
             filterTeam,
             filterTier,
-            search);
+            search,
+            profilesByUserId,
+            teamMembershipsByUserId,
+            allEmailsByUserId);
 
         var totalCount = filteredHumans.Count;
         var pagedHumans = filteredHumans
@@ -615,17 +656,17 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
                 UserId = u.Id,
                 HasTicket = matchedUserIds.Contains(u.Id),
                 Name = u.DisplayName,
-                Email = u.UserEmails.FirstOrDefault(e => e.IsNotificationTarget)?.Email ?? string.Empty,
-                Teams = string.Join(", ", u.TeamMemberships
+                Email = notificationEmailsByUserId.TryGetValue(u.Id, out var e) ? e : string.Empty,
+                Teams = string.Join(", ", teamMembershipsByUserId[u.Id]
                     .Where(tm => tm.LeftAt == null)
                     .Select(tm => tm.Team.Name)
                     .Order(StringComparer.OrdinalIgnoreCase)),
-                Tier = u.Profile?.MembershipTier ?? MembershipTier.Volunteer,
+                Tier = profilesByUserId.TryGetValue(u.Id, out var p) ? p.MembershipTier : MembershipTier.Volunteer,
             })
             .ToList();
 
         var teams = activeHumans
-            .SelectMany(u => u.TeamMemberships)
+            .SelectMany(u => teamMembershipsByUserId[u.Id])
             .Where(tm => tm.LeftAt == null)
             .Select(tm => tm.Team.Name)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -837,7 +878,10 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
         string? filterTicketStatus,
         string? filterTeam,
         string? filterTier,
-        string? search)
+        string? search,
+        IReadOnlyDictionary<Guid, Profile> profilesByUserId,
+        IReadOnlyDictionary<Guid, IReadOnlyList<TeamMember>> teamMembershipsByUserId,
+        IReadOnlyDictionary<Guid, IReadOnlyList<string>> allEmailsByUserId)
     {
         var filteredHumans = humans;
 
@@ -853,21 +897,24 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
         if (!string.IsNullOrEmpty(filterTeam))
         {
             filteredHumans = filteredHumans.Where(u =>
-                u.TeamMemberships.Any(tm =>
+                teamMembershipsByUserId.TryGetValue(u.Id, out var tms) &&
+                tms.Any(tm =>
                     tm.LeftAt == null &&
                     string.Equals(tm.Team.Name, filterTeam, StringComparison.OrdinalIgnoreCase)));
         }
 
         if (!string.IsNullOrEmpty(filterTier) && Enum.TryParse<MembershipTier>(filterTier, ignoreCase: true, out var parsedTier))
         {
-            filteredHumans = filteredHumans.Where(u => u.Profile?.MembershipTier == parsedTier);
+            filteredHumans = filteredHumans.Where(u =>
+                profilesByUserId.TryGetValue(u.Id, out var p) && p.MembershipTier == parsedTier);
         }
 
         if (HasSearchTerm(search, 1))
         {
             filteredHumans = filteredHumans.Where(u =>
                 ContainsIgnoreCase(u.DisplayName, search) ||
-                u.UserEmails.Any(e => ContainsIgnoreCase(e.Email, search)));
+                (allEmailsByUserId.TryGetValue(u.Id, out var emails)
+                    && emails.Any(e => ContainsIgnoreCase(e, search))));
         }
 
         return filteredHumans.ToList();

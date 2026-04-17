@@ -35,6 +35,12 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
+    // Lazy to avoid pulling ITeamService's full dependency chain eagerly,
+    // and to keep clear of any DI cycles with services that themselves
+    // depend on Google sync.
+    private ITeamService TeamService =>
+        _serviceProvider.GetRequiredService<ITeamService>();
+
     /// <summary>
     /// Throttles concurrent DB access during parallel sync operations.
     /// </summary>
@@ -1871,17 +1877,22 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     {
         _logger.LogInformation("Restoring Google resource access for user {UserId}", userId);
 
-        var user = await _dbContext.Users
-            .Include(u => u.TeamMemberships.Where(tm => tm.LeftAt == null))
-            .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        var userExists = await _dbContext.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Id == userId, cancellationToken);
 
-        if (user is null)
+        if (!userExists)
         {
             _logger.LogWarning("User {UserId} not found for access restoration", userId);
             return;
         }
 
-        foreach (var membership in user.TeamMemberships)
+        // Fetch active team memberships via ITeamService — replaces the
+        // cross-domain .Include(u => u.TeamMemberships) nav-read.
+        var allMemberships = await TeamService.GetUserTeamsAsync(userId, cancellationToken);
+        var activeMemberships = allMemberships.Where(tm => tm.LeftAt == null);
+
+        foreach (var membership in activeMemberships)
         {
             try
             {

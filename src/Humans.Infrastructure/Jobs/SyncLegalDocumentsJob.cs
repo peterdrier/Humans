@@ -13,6 +13,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
 {
     private readonly ILegalDocumentSyncService _syncService;
     private readonly IEmailService _emailService;
+    private readonly IUserEmailService _userEmailService;
     private readonly HumansDbContext _dbContext;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SyncLegalDocumentsJob> _logger;
@@ -21,6 +22,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
     public SyncLegalDocumentsJob(
         ILegalDocumentSyncService syncService,
         IEmailService emailService,
+        IUserEmailService userEmailService,
         HumansDbContext dbContext,
         IHumansMetrics metrics,
         ILogger<SyncLegalDocumentsJob> logger,
@@ -28,6 +30,7 @@ public class SyncLegalDocumentsJob : IRecurringJob
     {
         _syncService = syncService;
         _emailService = emailService;
+        _userEmailService = userEmailService;
         _dbContext = dbContext;
         _metrics = metrics;
         _logger = logger;
@@ -128,12 +131,18 @@ public class SyncLegalDocumentsJob : IRecurringJob
             .Where(u => usersToNotify.Contains(u.Id))
             .ToListAsync(cancellationToken);
 
+        var notifyUserIds = users.Select(u => u.Id).ToList();
+        var effectiveEmails = notifyUserIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : (IReadOnlyDictionary<Guid, string>)await _userEmailService
+                .GetNotificationEmailsByUserIdsAsync(notifyUserIds, cancellationToken);
+
         var documentNames = updatedDocs.Where(d => d.IsRequired).Select(d => d.Name).ToList();
         var notificationCount = 0;
 
         foreach (var user in users)
         {
-            var effectiveEmail = user.GetEffectiveEmail();
+            var effectiveEmail = effectiveEmails.TryGetValue(user.Id, out var e) ? e : null;
             if (effectiveEmail is null)
             {
                 continue;

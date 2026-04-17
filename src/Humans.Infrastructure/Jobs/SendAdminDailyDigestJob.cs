@@ -17,6 +17,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SendAdminDailyDigestJob> _logger;
@@ -25,6 +26,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
     public SendAdminDailyDigestJob(
         HumansDbContext dbContext,
         IEmailService emailService,
+        IUserEmailService userEmailService,
         IMembershipCalculator membershipCalculator,
         IHumansMetrics metrics,
         ILogger<SendAdminDailyDigestJob> logger,
@@ -32,6 +34,7 @@ public class SendAdminDailyDigestJob : IRecurringJob
     {
         _dbContext = dbContext;
         _emailService = emailService;
+        _userEmailService = userEmailService;
         _membershipCalculator = membershipCalculator;
         _metrics = metrics;
         _logger = logger;
@@ -134,7 +137,6 @@ public class SendAdminDailyDigestJob : IRecurringJob
             // Find active Admins
             var admins = await _dbContext.RoleAssignments
                 .Include(ra => ra.User)
-                    .ThenInclude(u => u.UserEmails)
                 .Where(ra => ra.RoleName == RoleNames.Admin
                     && ra.ValidFrom <= now
                     && (ra.ValidTo == null || ra.ValidTo.Value > now))
@@ -142,10 +144,16 @@ public class SendAdminDailyDigestJob : IRecurringJob
                 .Distinct()
                 .ToListAsync(cancellationToken);
 
+            var adminIds = admins.Select(a => a.Id).ToList();
+            var effectiveEmails = adminIds.Count == 0
+                ? new Dictionary<Guid, string>()
+                : (IReadOnlyDictionary<Guid, string>)await _userEmailService
+                    .GetNotificationEmailsByUserIdsAsync(adminIds, cancellationToken);
+
             var sentCount = 0;
             foreach (var admin in admins)
             {
-                var email = admin.GetEffectiveEmail();
+                var email = effectiveEmails.TryGetValue(admin.Id, out var e) ? e : null;
                 if (email is null)
                 {
                     _logger.LogWarning("Admin {UserId} ({Name}) has no effective email, skipping digest",

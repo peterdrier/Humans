@@ -17,6 +17,7 @@ public class CampaignService : ICampaignService, IUserDataContributor
     private readonly IClock _clock;
     private readonly INotificationService _notificationService;
     private readonly ICommunicationPreferenceService _commPrefService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IEmailService _emailService;
     private readonly ILogger<CampaignService> _logger;
 
@@ -25,6 +26,7 @@ public class CampaignService : ICampaignService, IUserDataContributor
         IClock clock,
         INotificationService notificationService,
         ICommunicationPreferenceService commPrefService,
+        IUserEmailService userEmailService,
         IEmailService emailService,
         ILogger<CampaignService> logger)
     {
@@ -32,6 +34,7 @@ public class CampaignService : ICampaignService, IUserDataContributor
         _clock = clock;
         _notificationService = notificationService;
         _commPrefService = commPrefService;
+        _userEmailService = userEmailService;
         _emailService = emailService;
         _logger = logger;
     }
@@ -374,7 +377,6 @@ public class CampaignService : ICampaignService, IUserDataContributor
         var alreadyGrantedSet = alreadyGrantedUserIds.ToHashSet();
 
         var candidateUsers = await _dbContext.Users
-            .Include(u => u.UserEmails)
             .Where(u => activeTeamUserIds.Contains(u.Id)
                         && !alreadyGrantedSet.Contains(u.Id))
             .ToListAsync(ct);
@@ -405,6 +407,11 @@ public class CampaignService : ICampaignService, IUserDataContributor
         var now = _clock.GetCurrentInstant();
         var failedCount = 0;
 
+        // Batch-resolve notification emails for all eligible users via IUserEmailService,
+        // avoiding a cross-domain .Include(u => u.UserEmails).
+        var notificationEmails = await _userEmailService
+            .GetNotificationEmailsByUserIdsAsync(eligibleUsers.Select(u => u.Id), ct);
+
         // Persist and enqueue one grant at a time. If an enqueue throws mid-loop, we
         // flip that single grant to Failed locally so subsequent grants still get
         // processed and RetryAllFailedAsync picks the failed ones up on the next pass.
@@ -431,8 +438,9 @@ public class CampaignService : ICampaignService, IUserDataContributor
 
             try
             {
+                var recipientEmail = ResolveRecipientEmail(user, notificationEmails);
                 await _emailService.SendCampaignCodeAsync(
-                    BuildCampaignCodeRequest(campaign, user, code.Code, grant.Id),
+                    BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code, grant.Id),
                     ct);
             }
             catch (Exception ex)
@@ -473,10 +481,12 @@ public class CampaignService : ICampaignService, IUserDataContributor
 
     public async Task ResendToGrantAsync(Guid grantId, CancellationToken ct = default)
     {
+        // Keep .Include(g => g.User) — CampaignGrant.User is owned by the Campaign
+        // section; only the cross-domain .ThenInclude(u => u.UserEmails) is stripped.
         var grant = await _dbContext.CampaignGrants
             .Include(g => g.Campaign)
             .Include(g => g.Code)
-            .Include(g => g.User).ThenInclude(u => u.UserEmails)
+            .Include(g => g.User)
             .FirstOrDefaultAsync(g => g.Id == grantId, ct)
             ?? throw new InvalidOperationException($"Grant {grantId} not found.");
 
@@ -487,8 +497,11 @@ public class CampaignService : ICampaignService, IUserDataContributor
 
         await _dbContext.SaveChangesAsync(ct);
 
+        var recipientEmail = await _userEmailService.GetNotificationEmailAsync(grant.User.Id, ct)
+            ?? grant.User.Email!;
+
         await _emailService.SendCampaignCodeAsync(
-            BuildCampaignCodeRequest(grant.Campaign, grant.User, grant.Code.Code, grant.Id),
+            BuildCampaignCodeRequest(grant.Campaign, grant.User, recipientEmail, grant.Code.Code, grant.Id),
             ct);
 
         _logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
@@ -556,10 +569,12 @@ public class CampaignService : ICampaignService, IUserDataContributor
 
     public async Task RetryAllFailedAsync(Guid campaignId, CancellationToken ct = default)
     {
+        // Keep .Include(g => g.User) — CampaignGrant.User is owned by the Campaign
+        // section; only the cross-domain .ThenInclude(u => u.UserEmails) is stripped.
         var failedGrants = await _dbContext.CampaignGrants
             .Include(g => g.Campaign)
             .Include(g => g.Code)
-            .Include(g => g.User).ThenInclude(u => u.UserEmails)
+            .Include(g => g.User)
             .Where(g => g.CampaignId == campaignId
                         && g.LatestEmailStatus == EmailOutboxStatus.Failed)
             .ToListAsync(ct);
@@ -569,6 +584,12 @@ public class CampaignService : ICampaignService, IUserDataContributor
 
         var now = _clock.GetCurrentInstant();
         var stillFailedCount = 0;
+
+        // Batch-resolve notification emails for the affected users.
+        var notificationEmails = await _userEmailService
+            .GetNotificationEmailsByUserIdsAsync(
+                failedGrants.Select(g => g.User.Id).Distinct(),
+                ct);
 
         // Flip-and-enqueue one grant at a time. A batch flip-to-Queued + loop enqueue
         // would lose grants whose enqueue throws: they would leave the Failed set
@@ -581,8 +602,9 @@ public class CampaignService : ICampaignService, IUserDataContributor
 
             try
             {
+                var recipientEmail = ResolveRecipientEmail(grant.User, notificationEmails);
                 await _emailService.SendCampaignCodeAsync(
-                    BuildCampaignCodeRequest(grant.Campaign, grant.User, grant.Code.Code, grant.Id),
+                    BuildCampaignCodeRequest(grant.Campaign, grant.User, recipientEmail, grant.Code.Code, grant.Id),
                     ct);
             }
             catch (Exception ex)
@@ -624,12 +646,12 @@ public class CampaignService : ICampaignService, IUserDataContributor
     /// email_outbox_messages ownership in a single place.
     /// </summary>
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
-        Campaign campaign, User user, string code, Guid grantId)
+        Campaign campaign, User user, string recipientEmail, string code, Guid grantId)
     {
         return new CampaignCodeEmailRequest(
             UserId: user.Id,
             CampaignGrantId: grantId,
-            RecipientEmail: GetNotificationEmail(user),
+            RecipientEmail: recipientEmail,
             RecipientName: user.DisplayName,
             Subject: campaign.EmailSubject,
             MarkdownBody: campaign.EmailBodyTemplate,
@@ -637,11 +659,13 @@ public class CampaignService : ICampaignService, IUserDataContributor
             ReplyTo: campaign.ReplyToAddress);
     }
 
-    private static string GetNotificationEmail(User user)
+    private static string ResolveRecipientEmail(
+        User user,
+        IReadOnlyDictionary<Guid, string> notificationEmails)
     {
-        var notificationEmail = user.UserEmails
-            .FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
-        return notificationEmail?.Email ?? user.Email!;
+        return notificationEmails.TryGetValue(user.Id, out var email) && !string.IsNullOrEmpty(email)
+            ? email
+            : user.Email!;
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)

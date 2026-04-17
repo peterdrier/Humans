@@ -17,6 +17,7 @@ public class SendReConsentReminderJob : IRecurringJob
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly ILegalDocumentSyncService _legalDocService;
     private readonly IEmailService _emailService;
+    private readonly IUserEmailService _userEmailService;
     private readonly EmailSettings _emailSettings;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SendReConsentReminderJob> _logger;
@@ -27,6 +28,7 @@ public class SendReConsentReminderJob : IRecurringJob
         IMembershipCalculator membershipCalculator,
         ILegalDocumentSyncService legalDocService,
         IEmailService emailService,
+        IUserEmailService userEmailService,
         IOptions<EmailSettings> emailSettings,
         IHumansMetrics metrics,
         ILogger<SendReConsentReminderJob> logger,
@@ -36,6 +38,7 @@ public class SendReConsentReminderJob : IRecurringJob
         _membershipCalculator = membershipCalculator;
         _legalDocService = legalDocService;
         _emailService = emailService;
+        _userEmailService = userEmailService;
         _emailSettings = emailSettings.Value;
         _metrics = metrics;
         _logger = logger;
@@ -69,9 +72,11 @@ public class SendReConsentReminderJob : IRecurringJob
 
             var userIds = usersNeedingReminder.ToList();
             var users = await _dbContext.Users
-                .Include(u => u.UserEmails)
                 .Where(u => userIds.Contains(u.Id))
                 .ToDictionaryAsync(u => u.Id, cancellationToken);
+
+            var effectiveEmails = await _userEmailService
+                .GetNotificationEmailsByUserIdsAsync(userIds, cancellationToken);
 
             var now = _clock.GetCurrentInstant();
             var cooldown = Duration.FromDays(cooldownDays);
@@ -91,7 +96,7 @@ public class SendReConsentReminderJob : IRecurringJob
                     continue;
                 }
 
-                var effectiveEmail = user.GetEffectiveEmail();
+                var effectiveEmail = effectiveEmails.TryGetValue(userId, out var e) ? e : null;
                 if (effectiveEmail is not null)
                 {
                     await _emailService.SendReConsentReminderAsync(

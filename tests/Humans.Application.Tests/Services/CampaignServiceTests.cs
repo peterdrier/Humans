@@ -34,6 +34,7 @@ public class CampaignServiceTests : IDisposable
             _clock,
             Substitute.For<INotificationService>(),
             Substitute.For<ICommunicationPreferenceService>(),
+            Substitute.For<IUserEmailService>(),
             _emailService,
             NullLogger<CampaignService>.Instance);
     }

@@ -38,6 +38,12 @@ public class TeamService : ITeamService, IUserDataContributor
     private ITeamResourceService TeamResourceService
         => _serviceProvider.GetRequiredService<ITeamResourceService>();
 
+    // Lazy to avoid pulling IUserEmailService's dependency chain eagerly and
+    // to stay clear of any potential cycles with services that depend on
+    // ITeamService.
+    private IUserEmailService UserEmailService
+        => _serviceProvider.GetRequiredService<IUserEmailService>();
+
     public TeamService(
         HumansDbContext dbContext,
         IAuditLogService auditLogService,
@@ -1951,11 +1957,16 @@ public class TeamService : ITeamService, IUserDataContributor
         try
         {
             var user = await _dbContext.Users
-                .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
             if (user is null) return;
 
-            var email = user.GetEffectiveEmail() ?? user.Email!;
+            // Treat empty string the same as null so test substitutes that return
+            // string.Empty by default still trigger the fallback correctly.
+            var notificationEmail = await UserEmailService
+                .GetNotificationEmailAsync(user.Id, cancellationToken);
+            var email = !string.IsNullOrEmpty(notificationEmail)
+                ? notificationEmail
+                : user.Email!;
             var resources = await TeamResourceService.GetTeamResourcesAsync(team.Id, cancellationToken);
 
             await _emailService.SendAddedToTeamAsync(

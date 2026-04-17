@@ -21,6 +21,7 @@ public class CampController : HumansCampControllerBase
     private readonly ICampContactService _campContactService;
     private readonly ICityPlanningService _cityPlanningService;
     private readonly INotificationService _notificationService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IClock _clock;
     private readonly ILogger<CampController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
@@ -30,6 +31,7 @@ public class CampController : HumansCampControllerBase
         ICampContactService campContactService,
         ICityPlanningService cityPlanningService,
         INotificationService notificationService,
+        IUserEmailService userEmailService,
         UserManager<User> userManager,
         IAuthorizationService authorizationService,
         IClock clock,
@@ -41,6 +43,7 @@ public class CampController : HumansCampControllerBase
         _campContactService = campContactService;
         _cityPlanningService = cityPlanningService;
         _notificationService = notificationService;
+        _userEmailService = userEmailService;
         _clock = clock;
         _logger = logger;
         _localizer = localizer;
@@ -183,7 +186,8 @@ public class CampController : HumansCampControllerBase
         var campDisplayName = camp.Seasons
             .OrderByDescending(s => s.Year)
             .FirstOrDefault()?.Name ?? slug;
-        var senderEmail = currentUser.GetEffectiveEmail() ?? currentUser.Email!;
+        var senderEmail = (await _userEmailService.GetNotificationEmailAsync(currentUser.Id))
+            ?? currentUser.Email!;
 
         try
         {

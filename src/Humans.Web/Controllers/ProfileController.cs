@@ -1146,7 +1146,6 @@ public class ProfileController : HumansControllerBase
             return RedirectToAction(nameof(ViewProfile), new { id });
 
         var targetUser = await _userManager.Users
-            .Include(u => u.UserEmails)
             .FirstOrDefaultAsync(u => u.Id == id);
         if (targetUser is null)
             return NotFound();
@@ -1169,17 +1168,18 @@ public class ProfileController : HumansControllerBase
             TimeSpan.FromSeconds(1));
 
         var sender = await _userManager.Users
-            .Include(u => u.UserEmails)
             .FirstAsync(u => u.Id == currentUser.Id);
 
-        var recipientEmail = targetUser.GetEffectiveEmail() ?? targetUser.Email;
+        var recipientEmail = await _userEmailService.GetNotificationEmailAsync(targetUser.Id)
+            ?? targetUser.Email;
         if (string.IsNullOrWhiteSpace(recipientEmail))
         {
             ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);
             return View(model);
         }
 
-        var senderEmail = sender.GetEffectiveEmail() ?? sender.Email;
+        var senderEmail = await _userEmailService.GetNotificationEmailAsync(sender.Id)
+            ?? sender.Email;
         if (string.IsNullOrWhiteSpace(senderEmail))
         {
             ModelState.AddModelError(string.Empty, _localizer["Common_Error"].Value);

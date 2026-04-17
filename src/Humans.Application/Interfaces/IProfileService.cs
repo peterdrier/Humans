@@ -32,6 +32,28 @@ public interface IProfileService
         MembershipTier tier,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Marks the volunteer profile as approved (<c>IsApproved = true</c>) and
+    /// bumps <c>UpdatedAt</c>. No-op if the user has no profile. Persists and
+    /// refreshes the profile store entry.
+    /// </summary>
+    Task ApproveVolunteerAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Suspends the profile: sets <c>IsSuspended = true</c>,
+    /// <c>AdminNotes</c> to the given reason (may be null), and bumps
+    /// <c>UpdatedAt</c>. No-op if the user has no profile. Persists and
+    /// refreshes the profile store entry.
+    /// </summary>
+    Task SuspendAsync(Guid userId, string? notes, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lifts a suspension: sets <c>IsSuspended = false</c> and bumps
+    /// <c>UpdatedAt</c>. No-op if the user has no profile. Persists and
+    /// refreshes the profile store entry.
+    /// </summary>
+    Task UnsuspendAsync(Guid userId, CancellationToken ct = default);
+
     Task<(Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
         GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default);
     Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>

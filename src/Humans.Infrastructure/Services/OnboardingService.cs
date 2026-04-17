@@ -456,17 +456,23 @@ public class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> ApproveVolunteerAsync(
         Guid userId, Guid adminId, CancellationToken ct = default)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        var user = await _userService.GetByIdAsync(userId, ct);
+        if (user is null)
+            return new OnboardingResult(false, "NotFound");
 
-        if (user?.Profile is null)
+        // §2c violation: OnboardingService is not itself a migrated service
+        // owner, so it keeps direct DbContext.Profiles access for Profile
+        // mutation. Acceptable transitional per §15c.
+        var profile = await _dbContext.Profiles
+            .Include(p => p.VolunteerHistory)
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (profile is null)
             return new OnboardingResult(false, "NotFound");
 
         var now = _clock.GetCurrentInstant();
 
-        user.Profile.IsApproved = true;
-        user.Profile.UpdatedAt = now;
+        profile.IsApproved = true;
+        profile.UpdatedAt = now;
 
         await _auditLogService.LogAsync(
             AuditAction.VolunteerApproved, nameof(User), userId,
@@ -481,8 +487,7 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateUserProfile(userId);
 
         // Update profile cache
-        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, user));
 
         // Sync Volunteers team membership (adds user if they also have all required consents)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId);
@@ -515,16 +520,22 @@ public class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> SuspendAsync(
         Guid userId, Guid adminId, string? notes, CancellationToken ct = default)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
-
-        if (user?.Profile is null)
+        var user = await _userService.GetByIdAsync(userId, ct);
+        if (user is null)
             return new OnboardingResult(false, "NotFound");
 
-        user.Profile.IsSuspended = true;
-        user.Profile.AdminNotes = notes;
-        user.Profile.UpdatedAt = _clock.GetCurrentInstant();
+        // §2c violation: OnboardingService is not itself a migrated service
+        // owner, so it keeps direct DbContext.Profiles access for Profile
+        // mutation. Acceptable transitional per §15c.
+        var profile = await _dbContext.Profiles
+            .Include(p => p.VolunteerHistory)
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        profile.IsSuspended = true;
+        profile.AdminNotes = notes;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _auditLogService.LogAsync(
             AuditAction.MemberSuspended, nameof(User), userId,
@@ -534,8 +545,7 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
 
         // Update profile cache with suspended state
-        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, user));
         _cache.InvalidateUserProfile(userId);
 
         // In-app notification to the suspended user (best-effort)
@@ -568,15 +578,21 @@ public class OnboardingService : IOnboardingService
     public async Task<OnboardingResult> UnsuspendAsync(
         Guid userId, Guid adminId, CancellationToken ct = default)
     {
-        var user = await _dbContext.Users
-            .Include(u => u.Profile)
-            .FirstOrDefaultAsync(u => u.Id == userId, ct);
-
-        if (user?.Profile is null)
+        var user = await _userService.GetByIdAsync(userId, ct);
+        if (user is null)
             return new OnboardingResult(false, "NotFound");
 
-        user.Profile.IsSuspended = false;
-        user.Profile.UpdatedAt = _clock.GetCurrentInstant();
+        // §2c violation: OnboardingService is not itself a migrated service
+        // owner, so it keeps direct DbContext.Profiles access for Profile
+        // mutation. Acceptable transitional per §15c.
+        var profile = await _dbContext.Profiles
+            .Include(p => p.VolunteerHistory)
+            .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (profile is null)
+            return new OnboardingResult(false, "NotFound");
+
+        profile.IsSuspended = false;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
 
         await _auditLogService.LogAsync(
             AuditAction.MemberUnsuspended, nameof(User), userId,
@@ -587,8 +603,7 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateUserProfile(userId);
 
         // Update profile cache with unsuspended state
-        await _dbContext.Entry(user.Profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(user.Profile, user));
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, user));
 
         // Auto-resolve any outstanding AccessSuspended notifications (best-effort)
         try
@@ -692,13 +707,29 @@ public class OnboardingService : IOnboardingService
             })
             .FirstOrDefaultAsync(ct);
 
-        var languageDistribution = (await _dbContext.Users
-            .Where(u => u.Profile != null && u.Profile.IsApproved && !u.Profile.IsSuspended)
-            .GroupBy(u => u.PreferredLanguage)
-            .Select(g => new { Language = g.Key, Count = g.Count() })
+        // Language distribution among approved, non-suspended members.
+        // Previously this joined User→Profile via the cross-domain nav; we now
+        // read the Profiles table directly to filter eligibility, then join in
+        // memory against preferred language from Users.
+        // §2c violation (acceptable per §15c): OnboardingService is not itself
+        // a migrated service owner, so it keeps direct DbContext.Profiles
+        // access. The cleaner IProfileService.GetByUserIdsAsync path is
+        // unavailable because ProfileService depends on IOnboardingService,
+        // which would introduce a DI cycle.
+        var eligibleUserIds = await _dbContext.Profiles
+            .AsNoTracking()
+            .Where(p => p.IsApproved && !p.IsSuspended)
+            .Select(p => p.UserId)
+            .ToHashSetAsync(ct);
+        var languagesOfEligibleUsers = await _dbContext.Users
+            .AsNoTracking()
+            .Where(u => eligibleUserIds.Contains(u.Id))
+            .Select(u => u.PreferredLanguage)
+            .ToListAsync(ct);
+        var languageDistribution = languagesOfEligibleUsers
+            .GroupBy(lang => lang, StringComparer.Ordinal)
+            .Select(g => new Application.DTOs.LanguageCount(g.Key, g.Count()))
             .OrderByDescending(g => g.Count)
-            .ToListAsync(ct))
-            .Select(g => new Application.DTOs.LanguageCount(g.Language, g.Count))
             .ToList();
 
         return new Application.DTOs.AdminDashboardData(

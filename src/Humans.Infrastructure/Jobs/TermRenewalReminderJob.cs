@@ -13,6 +13,7 @@ public class TermRenewalReminderJob : IRecurringJob
 {
     private readonly HumansDbContext _dbContext;
     private readonly IEmailService _emailService;
+    private readonly IUserEmailService _userEmailService;
     private readonly INotificationService _notificationService;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<TermRenewalReminderJob> _logger;
@@ -23,6 +24,7 @@ public class TermRenewalReminderJob : IRecurringJob
     public TermRenewalReminderJob(
         HumansDbContext dbContext,
         IEmailService emailService,
+        IUserEmailService userEmailService,
         INotificationService notificationService,
         IHumansMetrics metrics,
         ILogger<TermRenewalReminderJob> logger,
@@ -30,6 +32,7 @@ public class TermRenewalReminderJob : IRecurringJob
     {
         _dbContext = dbContext;
         _emailService = emailService;
+        _userEmailService = userEmailService;
         _notificationService = notificationService;
         _metrics = metrics;
         _logger = logger;
@@ -82,9 +85,13 @@ public class TermRenewalReminderJob : IRecurringJob
             var applicantsById = applicantIds.Count == 0
                 ? new Dictionary<Guid, User>()
                 : await _dbContext.Users
-                    .Include(u => u.UserEmails)
                     .Where(u => applicantIds.Contains(u.Id))
                     .ToDictionaryAsync(u => u.Id, cancellationToken);
+
+            var effectiveEmails = applicantIds.Count == 0
+                ? new Dictionary<Guid, string>()
+                : (IReadOnlyDictionary<Guid, string>)await _userEmailService
+                    .GetNotificationEmailsByUserIdsAsync(applicantIds, cancellationToken);
 
             var sentCount = 0;
 
@@ -106,7 +113,8 @@ public class TermRenewalReminderJob : IRecurringJob
                     continue;
                 }
 
-                var email = applicant.GetEffectiveEmail() ?? applicant.Email;
+                var effectiveEmail = effectiveEmails.TryGetValue(application.UserId, out var e) ? e : null;
+                var email = effectiveEmail ?? applicant.Email;
                 if (email is null)
                 {
                     continue;

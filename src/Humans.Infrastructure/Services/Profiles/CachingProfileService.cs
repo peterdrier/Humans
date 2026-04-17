@@ -155,6 +155,27 @@ public sealed class CachingProfileService : IProfileService
         await RefreshStoreEntryAsync(userId, ct);
     }
 
+    public async Task ApproveVolunteerAsync(Guid userId, CancellationToken ct = default)
+    {
+        await _inner.ApproveVolunteerAsync(userId, ct);
+        InvalidateUserCaches(userId);
+        await RefreshStoreEntryAsync(userId, ct);
+    }
+
+    public async Task SuspendAsync(Guid userId, string? notes, CancellationToken ct = default)
+    {
+        await _inner.SuspendAsync(userId, notes, ct);
+        InvalidateUserCaches(userId);
+        await RefreshStoreEntryAsync(userId, ct);
+    }
+
+    public async Task UnsuspendAsync(Guid userId, CancellationToken ct = default)
+    {
+        await _inner.UnsuspendAsync(userId, ct);
+        InvalidateUserCaches(userId);
+        await RefreshStoreEntryAsync(userId, ct);
+    }
+
     public async Task<Guid> SaveProfileAsync(
         Guid userId, string displayName, ProfileSaveRequest request, string language,
         CancellationToken ct = default)

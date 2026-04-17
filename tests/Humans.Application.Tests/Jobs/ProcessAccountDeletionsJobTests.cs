@@ -22,7 +22,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
+    private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IMemoryCache _cache;
     private readonly HumansMetricsService _metrics;
     private readonly FakeClock _clock;
@@ -40,7 +42,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _emailService = Substitute.For<IEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _profileService = Substitute.For<IProfileService>();
+        _userEmailService = Substitute.For<IUserEmailService>();
         _teamService = Substitute.For<ITeamService>();
+        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
         _cache = new MemoryCache(new MemoryCacheOptions());
         _clock = new FakeClock(Now);
         _metrics = new HumansMetricsService(
@@ -50,7 +54,8 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         _job = new ProcessAccountDeletionsJob(
             _dbContext, _emailService, _auditLogService,
-            _profileService, _teamService, _cache, _metrics, logger, _clock);
+            _profileService, _userEmailService, _teamService, _roleAssignmentService,
+            _cache, _metrics, logger, _clock);
     }
 
     public void Dispose()
@@ -68,7 +73,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        var updated = await _dbContext.Users.Include(u => u.Profile).SingleAsync();
+        var updated = await _dbContext.Users.SingleAsync();
         updated.DisplayName.Should().Be("Deleted User");
         updated.Email.Should().StartWith("deleted-");
         updated.Email.Should().EndWith("@deleted.local");
@@ -77,10 +82,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         updated.DeletionScheduledFor.Should().BeNull();
         updated.DeletionRequestedAt.Should().BeNull();
         updated.LockoutEnd.Should().Be(DateTimeOffset.MaxValue);
-        updated.Profile!.FirstName.Should().Be("Deleted");
-        updated.Profile.LastName.Should().Be("User");
-        updated.Profile.Bio.Should().BeNull();
-        updated.Profile.City.Should().BeNull();
+
+        // GDPR-blanking of the Profile is now delegated to IProfileService.GdprBlankAsync
+        await _profileService.Received(1).GdprBlankAsync(user.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -126,6 +130,8 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     public async Task ExecuteAsync_SendsConfirmationEmail()
     {
         var user = await SeedUserScheduledForDeletion(Now - Duration.FromDays(1));
+        _userEmailService.GetNotificationEmailAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns("test@example.com");
 
         await _job.ExecuteAsync();
 
@@ -154,100 +160,40 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_RemovesContactFieldsAndVolunteerHistory()
+    public async Task ExecuteAsync_DelegatesProfileBlankingToProfileService()
     {
+        // GDPR-blanking of the Profile (19 PII fields + ContactFields + VolunteerHistory)
+        // is delegated to IProfileService.GdprBlankAsync. The job itself no longer
+        // removes ContactFields or VolunteerHistory directly.
         var user = await SeedUserScheduledForDeletion(Now - Duration.FromDays(1));
-
-        // Seed contact fields
-        _dbContext.ContactFields.Add(new ContactField
-        {
-            Id = Guid.NewGuid(),
-            ProfileId = user.Profile!.Id,
-            FieldType = ContactFieldType.Phone,
-            Value = "+1234567890",
-            Visibility = ContactFieldVisibility.AllActiveProfiles
-        });
-
-        // Seed volunteer history
-        _dbContext.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
-        {
-            Id = Guid.NewGuid(),
-            ProfileId = user.Profile.Id,
-            EventName = "Test Event",
-            Description = "Testing"
-        });
-        await _dbContext.SaveChangesAsync();
 
         await _job.ExecuteAsync();
 
-        var contactFields = await _dbContext.ContactFields
-            .Where(cf => cf.ProfileId == user.Profile.Id)
-            .CountAsync();
-        contactFields.Should().Be(0);
-
-        var historyEntries = await _dbContext.VolunteerHistoryEntries
-            .Where(vh => vh.ProfileId == user.Profile.Id)
-            .CountAsync();
-        historyEntries.Should().Be(0);
+        await _profileService.Received(1).GdprBlankAsync(user.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ExecuteAsync_EndsActiveTeamMemberships()
+    public async Task ExecuteAsync_DelegatesTeamMembershipRevocationToTeamService()
     {
+        // Team membership revocation (ending memberships + removing TeamRoleAssignments)
+        // is delegated to ITeamService.RevokeAllMembershipsAsync.
         var user = await SeedUserScheduledForDeletion(Now - Duration.FromDays(1));
-
-        var team = new Team
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Team",
-            Slug = "test-team",
-            CreatedAt = Now - Duration.FromDays(100)
-        };
-        _dbContext.Teams.Add(team);
-
-        var membership = new TeamMember
-        {
-            Id = Guid.NewGuid(),
-            TeamId = team.Id,
-            UserId = user.Id,
-            JoinedAt = Now - Duration.FromDays(50),
-            LeftAt = null
-        };
-        _dbContext.TeamMembers.Add(membership);
-        await _dbContext.SaveChangesAsync();
-
-        // Re-read user so navigation property is populated
-        _dbContext.Entry(user).State = EntityState.Detached;
 
         await _job.ExecuteAsync();
 
-        var updatedMembership = await _dbContext.TeamMembers.SingleAsync();
-        updatedMembership.LeftAt.Should().Be(Now);
+        await _teamService.Received(1).RevokeAllMembershipsAsync(user.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task ExecuteAsync_EndsActiveRoleAssignments()
+    public async Task ExecuteAsync_DelegatesRoleAssignmentRevocationToRoleAssignmentService()
     {
+        // Role assignment revocation is delegated to
+        // IRoleAssignmentService.RevokeAllActiveAsync.
         var user = await SeedUserScheduledForDeletion(Now - Duration.FromDays(1));
-
-        var roleAssignment = new RoleAssignment
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            RoleName = "Admin",
-            ValidFrom = Now - Duration.FromDays(30),
-            ValidTo = null,
-            CreatedByUserId = user.Id
-        };
-        _dbContext.RoleAssignments.Add(roleAssignment);
-        await _dbContext.SaveChangesAsync();
-
-        _dbContext.Entry(user).State = EntityState.Detached;
 
         await _job.ExecuteAsync();
 
-        var updated = await _dbContext.RoleAssignments.SingleAsync();
-        updated.ValidTo.Should().Be(Now);
+        await _roleAssignmentService.Received(1).RevokeAllActiveAsync(user.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -286,26 +232,14 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_RemovesUserEmails()
+    public async Task ExecuteAsync_DelegatesUserEmailRemovalToUserEmailService()
     {
+        // UserEmail removal is delegated to IUserEmailService.RemoveAllEmailsAsync.
         var user = await SeedUserScheduledForDeletion(Now - Duration.FromDays(1));
-
-        _dbContext.UserEmails.Add(new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            Email = "secondary@example.com",
-            IsVerified = true,
-            IsNotificationTarget = false
-        });
-        await _dbContext.SaveChangesAsync();
-
-        _dbContext.Entry(user).State = EntityState.Detached;
 
         await _job.ExecuteAsync();
 
-        var emailCount = await _dbContext.UserEmails.Where(e => e.UserId == user.Id).CountAsync();
-        emailCount.Should().Be(0);
+        await _userEmailService.Received(1).RemoveAllEmailsAsync(user.Id, Arg.Any<CancellationToken>());
     }
 
     [Fact]

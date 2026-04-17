@@ -25,7 +25,59 @@ public class TicketQueryServiceTests : IDisposable
             .Options;
 
         _dbContext = new HumansDbContext(options);
-        _service = new TicketQueryService(_dbContext, new MemoryCache(new MemoryCacheOptions()), Substitute.For<IBudgetService>(), SystemClock.Instance);
+
+        // Wire substitute services to the in-memory DbContext so tests exercise
+        // real stitching behavior instead of empty dict defaults.
+        var profileService = Substitute.For<IProfileService>();
+        profileService.GetByUserIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                var profiles = _dbContext.Profiles
+                    .AsNoTracking()
+                    .Where(p => ids.Contains(p.UserId))
+                    .ToList()
+                    .ToDictionary(p => p.UserId, p => p);
+                return Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(profiles);
+            });
+
+        var teamService = Substitute.For<ITeamService>();
+        teamService.GetUserTeamsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var userId = ci.Arg<Guid>();
+                var memberships = _dbContext.TeamMembers
+                    .AsNoTracking()
+                    .Include(tm => tm.Team)
+                    .Where(tm => tm.UserId == userId)
+                    .ToList();
+                return Task.FromResult<IReadOnlyList<TeamMember>>(memberships);
+            });
+
+        var userEmailService = Substitute.For<IUserEmailService>();
+        userEmailService.GetNotificationEmailsByUserIdsAsync(
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(ci =>
+            {
+                var ids = ci.Arg<IEnumerable<Guid>>().ToHashSet();
+                var emails = _dbContext.Set<UserEmail>()
+                    .AsNoTracking()
+                    .Where(e => ids.Contains(e.UserId) && e.IsNotificationTarget)
+                    .Select(e => new { e.UserId, e.Email })
+                    .ToList()
+                    .ToDictionary(x => x.UserId, x => x.Email);
+                return Task.FromResult<IReadOnlyDictionary<Guid, string>>(emails);
+            });
+
+        _service = new TicketQueryService(
+            _dbContext,
+            new MemoryCache(new MemoryCacheOptions()),
+            Substitute.For<IBudgetService>(),
+            profileService,
+            userEmailService,
+            teamService,
+            SystemClock.Instance);
     }
 
     public void Dispose()

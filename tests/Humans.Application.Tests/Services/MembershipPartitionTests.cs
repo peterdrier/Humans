@@ -33,7 +33,21 @@ public class MembershipPartitionTests : IDisposable
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(IConsentService)).Returns(_consentService);
 
-        _service = new MembershipCalculator(_dbContext, serviceProvider, _legalDocumentSyncService, _clock);
+        var profileService = Substitute.For<IProfileService>();
+        profileService.GetByUserIdsAsync(
+            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo =>
+            {
+                var userIds = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                var profiles = _dbContext.Profiles
+                    .AsNoTracking()
+                    .Where(p => userIds.Contains(p.UserId))
+                    .ToList()
+                    .ToDictionary(p => p.UserId, p => p);
+                return Task.FromResult<IReadOnlyDictionary<Guid, Profile>>(profiles);
+            });
+
+        _service = new MembershipCalculator(_dbContext, serviceProvider, _legalDocumentSyncService, profileService, _clock);
 
         // Delegate to in-memory DB so seeded data is returned
         _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(

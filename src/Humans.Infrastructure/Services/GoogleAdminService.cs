@@ -1,6 +1,7 @@
 using Humans.Application.DTOs;
 using Humans.Application.Helpers;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -22,6 +23,7 @@ public class GoogleAdminService : IGoogleAdminService
     private readonly IGoogleSyncService _googleSyncService;
     private readonly ITeamResourceService _teamResourceService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IUserEmailRepository _userEmailRepository;
     private readonly IAuditLogService _auditLogService;
     private readonly IClock _clock;
     private readonly ILogger<GoogleAdminService> _logger;
@@ -34,6 +36,7 @@ public class GoogleAdminService : IGoogleAdminService
         IGoogleSyncService googleSyncService,
         ITeamResourceService teamResourceService,
         IUserEmailService userEmailService,
+        IUserEmailRepository userEmailRepository,
         IAuditLogService auditLogService,
         IClock clock,
         ILogger<GoogleAdminService> logger)
@@ -43,6 +46,7 @@ public class GoogleAdminService : IGoogleAdminService
         _googleSyncService = googleSyncService;
         _teamResourceService = teamResourceService;
         _userEmailService = userEmailService;
+        _userEmailRepository = userEmailRepository;
         _auditLogService = auditLogService;
         _clock = clock;
         _logger = logger;
@@ -345,7 +349,6 @@ public class GoogleAdminService : IGoogleAdminService
             try
             {
                 var user = await _dbContext.Users
-                    .Include(u => u.UserEmails)
                     .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
                 if (user is null)
@@ -361,8 +364,11 @@ public class GoogleAdminService : IGoogleAdminService
                 user.NormalizedEmail = googleEmail.ToUpperInvariant();
                 user.NormalizedUserName = googleEmail.ToUpperInvariant();
 
-                // Update OAuth UserEmail record if it exists
-                var oauthEmail = user.UserEmails.FirstOrDefault(e => e.IsOAuth);
+                // Update OAuth UserEmail record if it exists. Route through the
+                // tracked repository method so EF picks up the mutation in the
+                // shared SaveChanges below.
+                var userEmails = await _userEmailRepository.GetByUserIdTrackedAsync(userId, ct);
+                var oauthEmail = userEmails.FirstOrDefault(e => e.IsOAuth);
                 if (oauthEmail is not null)
                 {
                     oauthEmail.Email = googleEmail;
@@ -535,7 +541,6 @@ public class GoogleAdminService : IGoogleAdminService
         try
         {
             var user = await _dbContext.Users
-                .Include(u => u.UserEmails)
                 .FirstOrDefaultAsync(u => u.Id == userId, ct);
 
             if (user is null)
@@ -554,8 +559,11 @@ public class GoogleAdminService : IGoogleAdminService
             user.GoogleEmail = newEmail;
             user.GoogleEmailStatus = GoogleEmailStatus.Unknown;
 
-            // Update the corresponding UserEmail record if one exists for the old email
-            var oldUserEmail = user.UserEmails.FirstOrDefault(ue =>
+            // Update the corresponding UserEmail record if one exists for the old email.
+            // Route through the tracked repository method so the mutation is picked up
+            // by the shared SaveChanges below.
+            var userEmails = await _userEmailRepository.GetByUserIdTrackedAsync(userId, ct);
+            var oldUserEmail = userEmails.FirstOrDefault(ue =>
                 string.Equals(ue.Email, oldEmail, StringComparison.OrdinalIgnoreCase));
 
             if (oldUserEmail is not null)

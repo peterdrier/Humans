@@ -22,6 +22,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IEmailService _emailService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IMemoryCache _cache;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SystemTeamSyncJob> _logger;
@@ -33,6 +34,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
         IEmailService emailService,
+        IUserEmailService userEmailService,
         IMemoryCache cache,
         IHumansMetrics metrics,
         ILogger<SystemTeamSyncJob> logger,
@@ -43,6 +45,7 @@ public class SystemTeamSyncJob : ISystemTeamSync
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
         _emailService = emailService;
+        _userEmailService = userEmailService;
         _cache = cache;
         _metrics = metrics;
         _logger = logger;
@@ -687,15 +690,20 @@ public class SystemTeamSyncJob : ISystemTeamSync
             var resourceTuples = resources.Select(r => (r.Name, r.Url)).ToList();
 
             var addedUsers = await _dbContext.Users
-                .Include(u => u.UserEmails)
                 .Where(u => toAdd.Contains(u.Id))
                 .ToListAsync(cancellationToken);
+
+            var addedUserIds = addedUsers.Select(u => u.Id).ToList();
+            var effectiveEmails = addedUserIds.Count == 0
+                ? new Dictionary<Guid, string>()
+                : (IReadOnlyDictionary<Guid, string>)await _userEmailService
+                    .GetNotificationEmailsByUserIdsAsync(addedUserIds, cancellationToken);
 
             foreach (var user in addedUsers)
             {
                 try
                 {
-                    var email = user.GetEffectiveEmail() ?? user.Email!;
+                    var email = (effectiveEmails.TryGetValue(user.Id, out var e) ? e : null) ?? user.Email!;
                     await _emailService.SendAddedToTeamAsync(
                         email, user.DisplayName, team.Name, team.Slug,
                         resourceTuples, user.PreferredLanguage, cancellationToken);

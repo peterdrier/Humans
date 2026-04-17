@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Services;
@@ -46,6 +47,7 @@ public class GoogleAdminServiceTests : IDisposable
             _googleSyncService,
             teamResourceService,
             _userEmailService,
+            Substitute.For<IUserEmailRepository>(),
             _auditLogService,
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<GoogleAdminService>.Instance);

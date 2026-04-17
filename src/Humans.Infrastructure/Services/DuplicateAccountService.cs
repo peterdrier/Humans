@@ -20,6 +20,8 @@ public class DuplicateAccountService : IDuplicateAccountService
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IUserEmailService _userEmailService;
     private readonly ILogger<DuplicateAccountService> _logger;
     private readonly IClock _clock;
 
@@ -28,6 +30,8 @@ public class DuplicateAccountService : IDuplicateAccountService
         IAuditLogService auditLogService,
         IProfileService profileService,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
+        IUserEmailService userEmailService,
         ILogger<DuplicateAccountService> logger,
         IClock clock)
     {
@@ -35,6 +39,8 @@ public class DuplicateAccountService : IDuplicateAccountService
         _auditLogService = auditLogService;
         _profileService = profileService;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
+        _userEmailService = userEmailService;
         _logger = logger;
         _clock = clock;
     }
@@ -182,7 +188,6 @@ public class DuplicateAccountService : IDuplicateAccountService
         string? notes = null, CancellationToken ct = default)
     {
         var sourceUser = await _dbContext.Users
-            .Include(u => u.RoleAssignments)
             .FirstOrDefaultAsync(u => u.Id == sourceUserId, ct)
             ?? throw new InvalidOperationException("Source user not found.");
 
@@ -250,35 +255,28 @@ public class DuplicateAccountService : IDuplicateAccountService
         }
 
         // 4. Migrate source's active global role assignments to target (if target doesn't already have them)
-        var targetRoleNames = await _dbContext.Set<RoleAssignment>()
-            .Where(r => r.UserId == targetUserId && r.ValidTo == null)
+        var sourceActiveRoles = await _roleAssignmentService.GetByUserIdAsync(sourceUserId, ct);
+        var targetActiveRoles = await _roleAssignmentService.GetByUserIdAsync(targetUserId, ct);
+        var targetRoleNames = targetActiveRoles
+            .Where(r => r.ValidTo == null)
             .Select(r => r.RoleName)
-            .ToHashSetAsync(ct);
+            .ToHashSet(StringComparer.Ordinal);
 
-        foreach (var role in sourceUser.RoleAssignments.Where(r => r.ValidTo == null))
+        foreach (var role in sourceActiveRoles.Where(r => r.ValidTo == null))
         {
             if (!targetRoleNames.Contains(role.RoleName))
             {
-                _dbContext.Set<RoleAssignment>().Add(new RoleAssignment
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = targetUserId,
-                    RoleName = role.RoleName,
-                    ValidFrom = now,
-                    Notes = $"Migrated from merged account {sourceUserId}",
-                    CreatedAt = now,
-                    CreatedByUserId = adminUserId
-                });
+                await _roleAssignmentService.AssignRoleAsync(
+                    targetUserId, role.RoleName, adminUserId,
+                    $"Migrated from merged account {sourceUserId}", ct);
             }
-
-            role.ValidTo = now;
         }
 
+        // End all source's active roles
+        await _roleAssignmentService.RevokeAllActiveAsync(sourceUserId, ct);
+
         // 5. Delete source's email rows
-        var sourceEmails = await _dbContext.UserEmails
-            .Where(e => e.UserId == sourceUserId)
-            .ToListAsync(ct);
-        _dbContext.UserEmails.RemoveRange(sourceEmails);
+        await _userEmailService.RemoveAllEmailsAsync(sourceUserId, ct);
 
         // 6. Anonymize the source account
         await AnonymizeSourceAccountAsync(sourceUser, ct);

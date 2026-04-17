@@ -1,54 +1,104 @@
+using Humans.Application;
+using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
+using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 
 namespace Humans.Infrastructure.Services.Users;
 
 /// <summary>
-/// Caching decorator for <see cref="IUserService"/>. Currently a thin
-/// pass-through: reads that return full <see cref="User"/> entities cannot be
-/// trivially rehydrated from <see cref="CachedUser"/> (User is an
-/// <c>IdentityUser&lt;Guid&gt;</c> with many framework fields), so they
-/// delegate to the inner service. Writes delegate to the inner service, which
-/// refreshes <see cref="IUserStore"/> itself.
+/// Caching decorator for <see cref="IUserService"/>. Caches per-user
+/// <see cref="User"/> reads (<see cref="GetByIdAsync"/> and
+/// <see cref="GetByIdsAsync"/>) using an <see cref="IMemoryCache"/>-backed
+/// 2-minute TTL per-user entry, mirroring the pattern used by
+/// <c>CachingProfileService</c>.
 /// </summary>
 /// <remarks>
 /// <para>
-/// Even as a pass-through, the decorator serves two purposes:
+/// <b>Staleness note:</b> <see cref="User"/> inherits from
+/// <c>IdentityUser&lt;Guid&gt;</c> and carries security-sensitive fields
+/// (SecurityStamp, ConcurrencyStamp). Caching is safe for the service's
+/// existing consumers because they use the cached entity only for display
+/// or notification data (DisplayName, Email, GoogleEmail, PreferredLanguage).
+/// Security-sensitive flows (sign-in, password reset) use
+/// <c>UserManager.FindByIdAsync</c>, which does its own load and does not
+/// go through this decorator. Same risk profile as
+/// <c>CachingProfileService</c>.
 /// </para>
-/// <list type="number">
-///   <item>Completes the symmetrical repository/store/decorator pattern for the
-///   service-ownership migration (see <c>docs/architecture/design-rules.md</c> §5).</item>
-///   <item>Provides a clean extension point: callers that only need display
-///   data (DisplayName, Email, GoogleEmail, …) can migrate to
-///   <see cref="IUserStore.GetById"/> directly in a follow-up, bypassing this
-///   decorator entirely.</item>
-/// </list>
+/// <para>
+/// Low-volume / admin-only / batch-shaped reads (<see cref="GetAllUsersAsync"/>,
+/// <see cref="GetByEmailOrAlternateAsync"/>, <see cref="GetContactUsersAsync"/>,
+/// and the <c>EventParticipation</c> queries) pass through. Per-user write
+/// methods remove the cached entry so the next read repopulates from the
+/// inner service.
+/// </para>
 /// </remarks>
 public sealed class CachingUserService : IUserService
 {
     private readonly IUserService _inner;
     private readonly IUserStore _store;
+    private readonly IMemoryCache _cache;
 
-    public CachingUserService(IUserService inner, IUserStore store)
+    private static readonly TimeSpan UserCacheTtl = TimeSpan.FromMinutes(2);
+
+    public CachingUserService(IUserService inner, IUserStore store, IMemoryCache cache)
     {
         _inner = inner;
         _store = store;
+        _cache = cache;
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Reads — all pass through to the inner service
+    // Reads — per-user cache + pass-through
     // ──────────────────────────────────────────────────────────────────────────
 
-    public Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default) =>
-        _inner.GetByIdAsync(userId, ct);
+    public async Task<User?> GetByIdAsync(Guid userId, CancellationToken ct = default)
+    {
+        var cacheKey = CacheKeys.User(userId);
+        if (_cache.TryGetExistingValue<User>(cacheKey, out var cached))
+            return cached;
 
-    public Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        _inner.GetByIdsAsync(userIds, ct);
+        var user = await _inner.GetByIdAsync(userId, ct);
+        if (user is not null)
+            _cache.Set(cacheKey, user, UserCacheTtl);
 
+        return user;
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, User>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<Guid, User>();
+
+        var result = new Dictionary<Guid, User>(userIds.Count);
+        var misses = new List<Guid>();
+
+        foreach (var id in userIds)
+        {
+            if (_cache.TryGetExistingValue<User>(CacheKeys.User(id), out var cached))
+                result[id] = cached;
+            else
+                misses.Add(id);
+        }
+
+        if (misses.Count == 0)
+            return result;
+
+        var fetched = await _inner.GetByIdsAsync(misses, ct);
+        foreach (var (id, user) in fetched)
+        {
+            _cache.Set(CacheKeys.User(id), user, UserCacheTtl);
+            result[id] = user;
+        }
+
+        return result;
+    }
+
+    // Low-volume / admin-only / batch-shaped reads — pass through
     public Task<IReadOnlyList<User>> GetAllUsersAsync(CancellationToken ct = default) =>
         _inner.GetAllUsersAsync(ct);
 
@@ -65,33 +115,72 @@ public sealed class CachingUserService : IUserService
         _inner.GetAllParticipationsForYearAsync(year, ct);
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Writes — pass through; inner service owns IUserStore upserts
+    // Writes — delegate then invalidate the per-user cache entry
     // ──────────────────────────────────────────────────────────────────────────
 
-    public Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default) =>
-        _inner.TrySetGoogleEmailAsync(userId, email, ct);
+    public async Task<bool> TrySetGoogleEmailAsync(Guid userId, string email, CancellationToken ct = default)
+    {
+        var result = await _inner.TrySetGoogleEmailAsync(userId, email, ct);
+        if (result)
+            _cache.Remove(CacheKeys.User(userId));
+        return result;
+    }
 
-    public Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default) =>
-        _inner.UpdateDisplayNameAsync(userId, displayName, ct);
+    public async Task UpdateDisplayNameAsync(Guid userId, string displayName, CancellationToken ct = default)
+    {
+        await _inner.UpdateDisplayNameAsync(userId, displayName, ct);
+        _cache.Remove(CacheKeys.User(userId));
+    }
 
-    public Task<bool> SetDeletionPendingAsync(Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default) =>
-        _inner.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, ct);
+    public async Task<bool> SetDeletionPendingAsync(Guid userId, Instant requestedAt, Instant scheduledFor, CancellationToken ct = default)
+    {
+        var result = await _inner.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, ct);
+        if (result)
+            _cache.Remove(CacheKeys.User(userId));
+        return result;
+    }
 
-    public Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default) =>
-        _inner.ClearDeletionAsync(userId, ct);
+    public async Task<bool> ClearDeletionAsync(Guid userId, CancellationToken ct = default)
+    {
+        var result = await _inner.ClearDeletionAsync(userId, ct);
+        if (result)
+            _cache.Remove(CacheKeys.User(userId));
+        return result;
+    }
 
-    public Task<EventParticipation> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default) =>
-        _inner.DeclareNotAttendingAsync(userId, year, ct);
+    // EventParticipation writes do not affect cached User entities, but keep
+    // invalidation symmetrical for anything that later includes participation
+    // data in the User projection.
+    public async Task<EventParticipation> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
+    {
+        var result = await _inner.DeclareNotAttendingAsync(userId, year, ct);
+        _cache.Remove(CacheKeys.User(userId));
+        return result;
+    }
 
-    public Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default) =>
-        _inner.UndoNotAttendingAsync(userId, year, ct);
+    public async Task<bool> UndoNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
+    {
+        var result = await _inner.UndoNotAttendingAsync(userId, year, ct);
+        if (result)
+            _cache.Remove(CacheKeys.User(userId));
+        return result;
+    }
 
-    public Task SetParticipationFromTicketSyncAsync(Guid userId, int year, ParticipationStatus status, CancellationToken ct = default) =>
-        _inner.SetParticipationFromTicketSyncAsync(userId, year, status, ct);
+    public async Task SetParticipationFromTicketSyncAsync(Guid userId, int year, ParticipationStatus status, CancellationToken ct = default)
+    {
+        await _inner.SetParticipationFromTicketSyncAsync(userId, year, status, ct);
+        _cache.Remove(CacheKeys.User(userId));
+    }
 
-    public Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
-        _inner.RemoveTicketSyncParticipationAsync(userId, year, ct);
+    public async Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default)
+    {
+        await _inner.RemoveTicketSyncParticipationAsync(userId, year, ct);
+        _cache.Remove(CacheKeys.User(userId));
+    }
 
+    // Batch backfill affects EventParticipations, not User rows directly. User
+    // cache entries do not contain participation data, so no bulk invalidation
+    // is needed here — the existing 2-min TTL keeps any derived views fresh.
     public Task<int> BackfillParticipationsAsync(int year, List<(Guid UserId, ParticipationStatus Status)> entries, CancellationToken ct = default) =>
         _inner.BackfillParticipationsAsync(year, entries, ct);
 }

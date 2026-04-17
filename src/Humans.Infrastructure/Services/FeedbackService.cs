@@ -19,6 +19,7 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
+    private readonly IUserEmailService _userEmailService;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly IHostEnvironment _env;
@@ -36,6 +37,7 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
         IEmailService emailService,
         INotificationService notificationService,
         IAuditLogService auditLogService,
+        IUserEmailService userEmailService,
         IClock clock,
         IMemoryCache cache,
         IHostEnvironment env,
@@ -45,6 +47,7 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
         _emailService = emailService;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
+        _userEmailService = userEmailService;
         _clock = clock;
         _cache = cache;
         _env = env;
@@ -224,9 +227,10 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
         Guid reportId, Guid? senderUserId, string content, bool isAdmin,
         CancellationToken cancellationToken = default)
     {
+        // Keep .Include(f => f.User) — FeedbackReport.User is owned by the Feedback
+        // section; only the cross-domain .ThenInclude(u => u.UserEmails) is stripped.
         var report = await _dbContext.FeedbackReports
             .Include(f => f.User)
-                .ThenInclude(u => u.UserEmails)
             .FirstOrDefaultAsync(f => f.Id == reportId, cancellationToken)
             ?? throw new InvalidOperationException($"Feedback report {reportId} not found");
 
@@ -246,7 +250,15 @@ public class FeedbackService : IFeedbackService, IUserDataContributor
             report.LastAdminMessageAt = now;
             var user = report.User;
             var reportLink = $"/Feedback/{reportId}";
-            var recipientEmail = user.GetEffectiveEmail();
+            // Prefer the notification-target email; fall back to the User.Email
+            // (OAuth primary) to match the prior GetEffectiveEmail() semantics.
+            // Treat empty string the same as null so test substitutes that return
+            // string.Empty by default still trigger the fallback correctly.
+            var notificationEmail = await _userEmailService
+                .GetNotificationEmailAsync(user.Id, cancellationToken);
+            var recipientEmail = !string.IsNullOrEmpty(notificationEmail)
+                ? notificationEmail
+                : user.Email;
             if (!string.IsNullOrWhiteSpace(recipientEmail))
             {
                 await _emailService.SendFeedbackResponseAsync(

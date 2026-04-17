@@ -33,7 +33,7 @@ public class MembershipCalculatorTests : IDisposable
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(IConsentService)).Returns(_consentService);
 
-        _service = new MembershipCalculator(_dbContext, serviceProvider, _legalDocumentSyncService, _clock);
+        _service = new MembershipCalculator(_dbContext, serviceProvider, _legalDocumentSyncService, Substitute.For<IProfileService>(), _clock);
 
         // Delegate to in-memory DB so seeded data is returned
         _legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(

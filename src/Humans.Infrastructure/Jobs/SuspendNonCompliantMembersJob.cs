@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Infrastructure.Data;
@@ -23,7 +24,9 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly IGoogleSyncService _googleSyncService;
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
+    private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
+    private readonly IUserService _userService;
     private readonly IMemoryCache _cache;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<SuspendNonCompliantMembersJob> _logger;
@@ -37,7 +40,9 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         IGoogleSyncService googleSyncService,
         IAuditLogService auditLogService,
         IProfileService profileService,
+        IUserEmailService userEmailService,
         ITeamService teamService,
+        IUserService userService,
         IMemoryCache cache,
         IHumansMetrics metrics,
         ILogger<SuspendNonCompliantMembersJob> logger,
@@ -50,7 +55,9 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         _googleSyncService = googleSyncService;
         _auditLogService = auditLogService;
         _profileService = profileService;
+        _userEmailService = userEmailService;
         _teamService = teamService;
+        _userService = userService;
         _cache = cache;
         _metrics = metrics;
         _logger = logger;
@@ -78,38 +85,44 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 return;
             }
 
-            // Batch load all users with profiles and their team memberships (tracked for persistence)
-            var users = await _dbContext.Users
-                .Include(u => u.Profile)
-                    .ThenInclude(p => p!.VolunteerHistory)
-                .Include(u => u.UserEmails)
-                .Include(u => u.TeamMemberships.Where(tm => tm.LeftAt == null))
-                .Where(u => usersToSuspend.Contains(u.Id))
-                .ToListAsync(cancellationToken);
-
             var now = _clock.GetCurrentInstant();
             var suspendedCount = 0;
             var suspendedUserIds = new List<Guid>();
 
-            foreach (var user in users)
+            foreach (var userId in usersToSuspend)
             {
-                if (user.Profile is null)
+                // Load identity slice via IUserService
+                var user = await _userService.GetByIdAsync(userId, cancellationToken);
+                if (user is null)
+                {
+                    continue;
+                }
+
+                // Load profile directly via DbContext (tracked, so IsSuspended/UpdatedAt
+                // mutations below persist on SaveChangesAsync).
+                // §2c violation: Profile section is migrated but no Suspend/Unsuspend
+                // method exists on IProfileService yet. Acceptable transitional per §15c.
+                var profile = await _dbContext.Profiles
+                    .Include(p => p.VolunteerHistory)
+                    .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+                if (profile is null)
                 {
                     continue;
                 }
 
                 // Skip users who are already suspended — avoids re-sending notifications
-                if (user.Profile.IsSuspended)
+                if (profile.IsSuspended)
                 {
                     continue;
                 }
 
                 // 1. Set suspended flag on profile
-                user.Profile.IsSuspended = true;
-                user.Profile.UpdatedAt = now;
+                profile.IsSuspended = true;
+                profile.UpdatedAt = now;
 
                 // 2. Send email notification
-                var effectiveEmail = user.GetEffectiveEmail();
+                var effectiveEmail = await _userEmailService
+                    .GetNotificationEmailAsync(userId, cancellationToken);
                 if (effectiveEmail is not null)
                 {
                     await _emailService.SendAccessSuspendedAsync(
@@ -128,7 +141,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                         NotificationClass.Actionable,
                         NotificationPriority.Critical,
                         "Your access has been suspended",
-                        [user.Id],
+                        [userId],
                         body: "Your access has been suspended because required document consent is missing. Please review and sign the required documents to restore access.",
                         actionUrl: "/Legal/Consent",
                         actionLabel: "Review documents",
@@ -136,51 +149,56 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", user.Id);
+                    _logger.LogError(ex, "Failed to dispatch AccessSuspended notification for user {UserId}", userId);
                 }
 
-                // 3. Remove from all team resources (Google Drive/Groups)
-                foreach (var membership in user.TeamMemberships)
+                // 3. Remove from all team resources (Google Drive/Groups).
+                // GetUserTeamsAsync returns active memberships only.
+                var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
+                foreach (var membership in memberships)
                 {
                     try
                     {
                         await _googleSyncService.RemoveUserFromTeamResourcesAsync(
                             membership.TeamId,
-                            user.Id,
+                            userId,
                             cancellationToken);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to remove user {UserId} from team {TeamId} resources during suspension",
-                            user.Id, membership.TeamId);
+                            userId, membership.TeamId);
                     }
                 }
 
                 await _auditLogService.LogAsync(
-                    AuditAction.MemberSuspended, nameof(User), user.Id,
+                    AuditAction.MemberSuspended, nameof(User), userId,
                     $"{user.DisplayName} suspended for missing required document consent (grace period expired)",
                     nameof(SuspendNonCompliantMembersJob));
 
                 _logger.LogWarning(
                     "User {UserId} ({Email}) suspended and removed from {Count} teams",
-                    user.Id, effectiveEmail, user.TeamMemberships.Count);
+                    userId, effectiveEmail, memberships.Count);
+
+                // Refresh profile store cache with suspended state
+                _cache.UpdateProfile(userId, CachedProfile.Create(profile, user));
 
                 _metrics.RecordMemberSuspended("job");
                 suspendedCount++;
-                suspendedUserIds.Add(user.Id);
+                suspendedUserIds.Add(userId);
             }
 
             if (suspendedCount > 0)
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
 
-                foreach (var suspendedUser in users.Where(u => suspendedUserIds.Contains(u.Id)))
+                foreach (var suspendedUserId in suspendedUserIds)
                 {
-                    await _profileService.InvalidateCacheAsync(suspendedUser.Id, cancellationToken);
-                    _cache.InvalidateUserProfile(suspendedUser.Id);
-                    _cache.InvalidateRoleAssignmentClaims(suspendedUser.Id);
-                    _cache.InvalidateShiftAuthorization(suspendedUser.Id);
-                    _teamService.RemoveMemberFromAllTeamsCache(suspendedUser.Id);
+                    await _profileService.InvalidateCacheAsync(suspendedUserId, cancellationToken);
+                    _cache.InvalidateUserProfile(suspendedUserId);
+                    _cache.InvalidateRoleAssignmentClaims(suspendedUserId);
+                    _cache.InvalidateShiftAuthorization(suspendedUserId);
+                    _teamService.RemoveMemberFromAllTeamsCache(suspendedUserId);
                 }
             }
 

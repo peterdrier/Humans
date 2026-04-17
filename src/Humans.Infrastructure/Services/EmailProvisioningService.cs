@@ -21,6 +21,7 @@ public class EmailProvisioningService : IEmailProvisioningService
     private readonly UserManager<User> _userManager;
     private readonly IGoogleWorkspaceUserService _workspaceUserService;
     private readonly IUserEmailService _userEmailService;
+    private readonly IProfileService _profileService;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
     private readonly IAuditLogService _auditLogService;
@@ -31,6 +32,7 @@ public class EmailProvisioningService : IEmailProvisioningService
         UserManager<User> userManager,
         IGoogleWorkspaceUserService workspaceUserService,
         IUserEmailService userEmailService,
+        IProfileService profileService,
         IEmailService emailService,
         INotificationService notificationService,
         IAuditLogService auditLogService,
@@ -40,6 +42,7 @@ public class EmailProvisioningService : IEmailProvisioningService
         _userManager = userManager;
         _workspaceUserService = workspaceUserService;
         _userEmailService = userEmailService;
+        _profileService = profileService;
         _emailService = emailService;
         _notificationService = notificationService;
         _auditLogService = auditLogService;
@@ -52,8 +55,6 @@ public class EmailProvisioningService : IEmailProvisioningService
         Guid provisionedByUserId)
     {
         var user = await _dbContext.Users
-            .Include(u => u.UserEmails)
-            .Include(u => u.Profile)
             .FirstOrDefaultAsync(u => u.Id == userId);
 
         if (user is null)
@@ -73,8 +74,9 @@ public class EmailProvisioningService : IEmailProvisioningService
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: $"Account {fullEmail} already exists in Google Workspace.");
 
             // Use real name from profile, not display/burner name
-            var firstName = user.Profile?.FirstName;
-            var lastName = user.Profile?.LastName;
+            var profile = await _profileService.GetProfileAsync(userId);
+            var firstName = profile?.FirstName;
+            var lastName = profile?.LastName;
             if (string.IsNullOrWhiteSpace(firstName) || string.IsNullOrWhiteSpace(lastName))
                 return new EmailProvisioningResult(false, fullEmail, ErrorMessage: "Cannot provision account: the human must have a first and last name in their profile.");
 
@@ -98,7 +100,7 @@ public class EmailProvisioningService : IEmailProvisioningService
             // ──────────────────────────────────────────────────────────────
 
             // Step 1: Capture recovery email BEFORE the notification target changes.
-            var recoveryEmail = user.GetEffectiveEmail();
+            var recoveryEmail = await _userEmailService.GetNotificationEmailAsync(userId);
             if (recoveryEmail?.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase) == true)
                 recoveryEmail = user.Email; // fall back to OAuth email
 

@@ -87,6 +87,28 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Updates the email address of the OAuth-sourced UserEmail record
+    /// for the given user, if one exists. No-op if the user has no OAuth
+    /// UserEmail record.
+    /// </summary>
+    Task UpdateOAuthEmailAsync(
+        Guid userId,
+        string newEmail,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates the email address of the UserEmail record matching
+    /// <paramref name="oldEmail"/> for the given user (case-insensitive
+    /// match). Also refreshes <c>UpdatedAt</c>. No-op if no matching
+    /// record exists.
+    /// </summary>
+    Task UpdateUserEmailAddressAsync(
+        Guid userId,
+        string oldEmail,
+        string newEmail,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds a verified email directly (admin provisioning/linking — no verification flow needed).
     /// If the email is @nobodies.team, it's automatically set as the notification target.
     /// Skips if the email already exists for this user.

@@ -280,6 +280,34 @@ public sealed class UserEmailService : IUserEmailService
         await _repository.AddAsync(userEmail, cancellationToken);
     }
 
+    public async Task UpdateOAuthEmailAsync(
+        Guid userId, string newEmail, CancellationToken cancellationToken = default)
+    {
+        var emails = await _repository.GetByUserIdTrackedAsync(userId, cancellationToken);
+        var oauthEmail = emails.FirstOrDefault(e => e.IsOAuth);
+        if (oauthEmail is null)
+            return;
+
+        oauthEmail.Email = newEmail;
+        oauthEmail.UpdatedAt = _clock.GetCurrentInstant();
+        await _repository.UpdateAsync(oauthEmail, cancellationToken);
+    }
+
+    public async Task UpdateUserEmailAddressAsync(
+        Guid userId, string oldEmail, string newEmail,
+        CancellationToken cancellationToken = default)
+    {
+        var emails = await _repository.GetByUserIdTrackedAsync(userId, cancellationToken);
+        var match = emails.FirstOrDefault(e =>
+            string.Equals(e.Email, oldEmail, StringComparison.OrdinalIgnoreCase));
+        if (match is null)
+            return;
+
+        match.Email = newEmail;
+        match.UpdatedAt = _clock.GetCurrentInstant();
+        await _repository.UpdateAsync(match, cancellationToken);
+    }
+
     public async Task AddVerifiedEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
     {

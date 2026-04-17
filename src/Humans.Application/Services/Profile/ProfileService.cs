@@ -112,6 +112,58 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         // Store update handled by CachingProfileService decorator
     }
 
+    public async Task ApproveVolunteerAsync(Guid userId, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+        {
+            _logger.LogWarning(
+                "Cannot approve volunteer for user {UserId} — no profile exists", userId);
+            return;
+        }
+
+        profile.IsApproved = true;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        await _profileRepository.UpdateAsync(ct);
+
+        // Store update handled by CachingProfileService decorator
+    }
+
+    public async Task SuspendAsync(Guid userId, string? notes, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+        {
+            _logger.LogWarning(
+                "Cannot suspend user {UserId} — no profile exists", userId);
+            return;
+        }
+
+        profile.IsSuspended = true;
+        profile.AdminNotes = notes;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        await _profileRepository.UpdateAsync(ct);
+
+        // Store update handled by CachingProfileService decorator
+    }
+
+    public async Task UnsuspendAsync(Guid userId, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+        {
+            _logger.LogWarning(
+                "Cannot unsuspend user {UserId} — no profile exists", userId);
+            return;
+        }
+
+        profile.IsSuspended = false;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+        await _profileRepository.UpdateAsync(ct);
+
+        // Store update handled by CachingProfileService decorator
+    }
+
     public async Task<(Domain.Entities.Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
         GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default)
     {

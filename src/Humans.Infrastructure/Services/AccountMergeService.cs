@@ -22,6 +22,8 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly IUserEmailService _userEmailService;
     private readonly ILogger<AccountMergeService> _logger;
     private readonly IClock _clock;
 
@@ -30,6 +32,8 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         IAuditLogService auditLogService,
         IProfileService profileService,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
+        IUserEmailService userEmailService,
         ILogger<AccountMergeService> logger,
         IClock clock)
     {
@@ -37,6 +41,8 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         _auditLogService = auditLogService;
         _profileService = profileService;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
+        _userEmailService = userEmailService;
         _logger = logger;
         _clock = clock;
     }
@@ -68,7 +74,6 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         var request = await _dbContext.AccountMergeRequests
             .Include(r => r.TargetUser)
             .Include(r => r.SourceUser)
-                .ThenInclude(u => u.RoleAssignments)
             .FirstOrDefaultAsync(r => r.Id == requestId, ct)
             ?? throw new InvalidOperationException("Merge request not found.");
 
@@ -104,10 +109,7 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         }
 
         // 3. End duplicate's active role assignments (system sync will re-evaluate)
-        foreach (var role in sourceUser.RoleAssignments.Where(r => r.ValidTo == null))
-        {
-            role.ValidTo = now;
-        }
+        await _roleAssignmentService.RevokeAllActiveAsync(sourceUser.Id, ct);
 
         // 4. Remove duplicate's external logins (prevents lockout when logging in
         //    with a secondary email that was on the source account)
@@ -118,10 +120,7 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
 
         // 5. Delete duplicate's email rows (must happen before verifying
         //    the pending email to avoid unique constraint violation)
-        var sourceEmails = await _dbContext.UserEmails
-            .Where(e => e.UserId == sourceUser.Id)
-            .ToListAsync(ct);
-        _dbContext.UserEmails.RemoveRange(sourceEmails);
+        await _userEmailService.RemoveAllEmailsAsync(sourceUser.Id, ct);
         await _dbContext.SaveChangesAsync(ct);
 
         // 6. Verify the pending email on the primary account

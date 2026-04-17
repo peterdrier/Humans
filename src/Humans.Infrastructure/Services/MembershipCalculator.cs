@@ -17,17 +17,20 @@ public class MembershipCalculator : IMembershipCalculator
     private readonly HumansDbContext _dbContext;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILegalDocumentSyncService _legalDocumentSyncService;
+    private readonly IProfileService _profileService;
     private readonly IClock _clock;
 
     public MembershipCalculator(
         HumansDbContext dbContext,
         IServiceProvider serviceProvider,
         ILegalDocumentSyncService legalDocumentSyncService,
+        IProfileService profileService,
         IClock clock)
     {
         _dbContext = dbContext;
         _serviceProvider = serviceProvider;
         _legalDocumentSyncService = legalDocumentSyncService;
+        _profileService = profileService;
         _clock = clock;
     }
 
@@ -362,14 +365,11 @@ public class MembershipCalculator : IMembershipCalculator
             .ToListAsync(ct);
         var pendingDeletion = pendingDeletionIds.ToHashSet();
 
-        // 2. Load remaining users with profiles
+        // 2. Load profiles for remaining users via IProfileService
+        // (missing users are absent from the returned dict — matches prior
+        // semantics where User with no Profile produced a null entry).
         var remaining = allIds.Where(id => !pendingDeletion.Contains(id)).ToList();
-        var usersWithProfiles = await _dbContext.Users
-            .AsNoTracking()
-            .Include(u => u.Profile)
-            .Where(u => remaining.Contains(u.Id))
-            .ToListAsync(ct);
-        var profileByUserId = usersWithProfiles.ToDictionary(u => u.Id, u => u.Profile);
+        var profileByUserId = await _profileService.GetByUserIdsAsync(remaining, ct);
 
         // 3. IncompleteSignup — no Profile entity
         var incompleteSignup = new HashSet<Guid>();

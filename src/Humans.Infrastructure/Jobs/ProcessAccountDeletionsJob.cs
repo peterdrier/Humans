@@ -20,7 +20,9 @@ public class ProcessAccountDeletionsJob : IRecurringJob
     private readonly IEmailService _emailService;
     private readonly IAuditLogService _auditLogService;
     private readonly IProfileService _profileService;
+    private readonly IUserEmailService _userEmailService;
     private readonly ITeamService _teamService;
+    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IMemoryCache _cache;
     private readonly IHumansMetrics _metrics;
     private readonly ILogger<ProcessAccountDeletionsJob> _logger;
@@ -31,7 +33,9 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         IEmailService emailService,
         IAuditLogService auditLogService,
         IProfileService profileService,
+        IUserEmailService userEmailService,
         ITeamService teamService,
+        IRoleAssignmentService roleAssignmentService,
         IMemoryCache cache,
         IHumansMetrics metrics,
         ILogger<ProcessAccountDeletionsJob> logger,
@@ -41,7 +45,9 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         _emailService = emailService;
         _auditLogService = auditLogService;
         _profileService = profileService;
+        _userEmailService = userEmailService;
         _teamService = teamService;
+        _roleAssignmentService = roleAssignmentService;
         _cache = cache;
         _metrics = metrics;
         _logger = logger;
@@ -61,12 +67,10 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         try
         {
             // Find accounts where deletion is scheduled and both the grace period
-            // and any event hold (DeletionEligibleAfter) have passed
+            // and any event hold (DeletionEligibleAfter) have passed.
+            // Tracked load required for inline mutation of identity fields
+            // (DisplayName, Email, LockoutEnd, etc.).
             var usersToDelete = await _dbContext.Users
-                .Include(u => u.Profile)
-                .Include(u => u.UserEmails)
-                .Include(u => u.TeamMemberships)
-                .Include(u => u.RoleAssignments)
                 .Where(u => u.DeletionScheduledFor != null && u.DeletionScheduledFor <= now
                     && (u.DeletionEligibleAfter == null || u.DeletionEligibleAfter <= now))
                 .ToListAsync(cancellationToken);
@@ -88,8 +92,10 @@ public class ProcessAccountDeletionsJob : IRecurringJob
             {
                 try
                 {
-                    // Capture email before anonymization for notification
-                    var originalEmail = user.GetEffectiveEmail();
+                    // Capture email before anonymization for notification.
+                    // MUST happen before RemoveAllEmailsAsync below.
+                    var originalEmail = await _userEmailService
+                        .GetNotificationEmailAsync(user.Id, cancellationToken);
                     var originalName = user.DisplayName;
 
                     await AnonymizeUserAsync(user, now, cancellationToken);
@@ -175,8 +181,8 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         user.PhoneNumber = null;
         user.PhoneNumberConfirmed = false;
 
-        // Remove all email addresses
-        _dbContext.UserEmails.RemoveRange(user.UserEmails);
+        // Remove all email addresses via the owning service
+        await _userEmailService.RemoveAllEmailsAsync(user.Id, cancellationToken);
 
         // Clear deletion request fields (deletion is now complete)
         user.DeletionRequestedAt = null;
@@ -188,65 +194,15 @@ public class ProcessAccountDeletionsJob : IRecurringJob
         user.LockoutEnd = DateTimeOffset.MaxValue;
         user.SecurityStamp = Guid.NewGuid().ToString();
 
-        // Anonymize profile if exists
-        if (user.Profile is not null)
-        {
-            user.Profile.FirstName = "Deleted";
-            user.Profile.LastName = "User";
-            user.Profile.BurnerName = string.Empty;
-            user.Profile.Bio = null;
-            user.Profile.City = null;
-            user.Profile.CountryCode = null;
-            user.Profile.Latitude = null;
-            user.Profile.Longitude = null;
-            user.Profile.PlaceId = null;
-            user.Profile.AdminNotes = null;
-            user.Profile.Pronouns = null;
-            user.Profile.DateOfBirth = null;
-            user.Profile.ProfilePictureData = null;
-            user.Profile.ProfilePictureContentType = null;
-            user.Profile.EmergencyContactName = null;
-            user.Profile.EmergencyContactPhone = null;
-            user.Profile.EmergencyContactRelationship = null;
-            user.Profile.ContributionInterests = null;
-            user.Profile.BoardNotes = null;
-        }
+        // GDPR-blank profile fields + remove ContactFields and VolunteerHistory
+        // (handled entirely by IProfileService.GdprBlankAsync)
+        await _profileService.GdprBlankAsync(user.Id, cancellationToken);
 
-        // Remove contact fields and volunteer history
-        if (user.Profile is not null)
-        {
-            var contactFields = await _dbContext.ContactFields
-                .Where(cf => cf.ProfileId == user.Profile.Id)
-                .ToListAsync(cancellationToken);
-            _dbContext.ContactFields.RemoveRange(contactFields);
+        // End team memberships (also removes team role slot assignments + invalidates cache)
+        await _teamService.RevokeAllMembershipsAsync(user.Id, cancellationToken);
 
-            var volunteerHistory = await _dbContext.VolunteerHistoryEntries
-                .Where(vh => vh.ProfileId == user.Profile.Id)
-                .ToListAsync(cancellationToken);
-            _dbContext.VolunteerHistoryEntries.RemoveRange(volunteerHistory);
-        }
-
-        // Remove role slot assignments for active memberships
-        var activeMemberIds = user.TeamMemberships.Where(m => m.LeftAt is null).Select(m => m.Id).ToList();
-        if (activeMemberIds.Count > 0)
-        {
-            var roleSlotAssignments = await _dbContext.Set<TeamRoleAssignment>()
-                .Where(a => activeMemberIds.Contains(a.TeamMemberId))
-                .ToListAsync(cancellationToken);
-            _dbContext.Set<TeamRoleAssignment>().RemoveRange(roleSlotAssignments);
-        }
-
-        // End team memberships (only active ones — may already be ended by RequestDeletion)
-        foreach (var membership in user.TeamMemberships.Where(m => m.LeftAt is null))
-        {
-            membership.LeftAt = now;
-        }
-
-        // End role assignments
-        foreach (var role in user.RoleAssignments.Where(r => r.ValidTo is null))
-        {
-            role.ValidTo = now;
-        }
+        // End active role assignments
+        await _roleAssignmentService.RevokeAllActiveAsync(user.Id, cancellationToken);
 
         // Cancel active duty signups
         var activeSignups = await _dbContext.ShiftSignups
