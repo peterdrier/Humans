@@ -54,4 +54,14 @@ public sealed class ContactFieldRepository : IContactFieldRepository
         _dbContext.ContactFields.AddRange(toAdd);
         await _dbContext.SaveChangesAsync(ct);
     }
+
+    public async Task DeleteAllForProfileAsync(Guid profileId, CancellationToken ct = default)
+    {
+        // Load-then-RemoveRange for EF InMemory provider compatibility (used in unit tests).
+        var fields = await _dbContext.ContactFields
+            .Where(cf => cf.ProfileId == profileId)
+            .ToListAsync(ct);
+        _dbContext.ContactFields.RemoveRange(fields);
+        await _dbContext.SaveChangesAsync(ct);
+    }
 }

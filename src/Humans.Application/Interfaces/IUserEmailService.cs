@@ -151,4 +151,24 @@ public interface IUserEmailService
     Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
         IEnumerable<Guid> userIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the effective notification email for a user: the verified
+    /// notification-target email if one exists, otherwise the user's primary
+    /// <c>User.Email</c>. Returns <c>null</c> if the user does not exist or
+    /// has no email at all.
+    /// </summary>
+    Task<string?> GetNotificationEmailAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Batch equivalent of <see cref="GetNotificationEmailAsync"/>. Returns
+    /// a dictionary of <c>userId</c> → effective notification email for the
+    /// given user ids. Users not found, or found but without any email at
+    /// all, are absent from the returned dictionary.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default);
 }

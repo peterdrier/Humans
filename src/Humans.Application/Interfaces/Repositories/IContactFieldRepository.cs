@@ -40,4 +40,10 @@ public interface IContactFieldRepository
         IReadOnlyList<ContactField> toAdd,
         IReadOnlyList<ContactField> toRemove,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes all contact fields owned by the given profile. Used by
+    /// GDPR right-to-deletion flows.
+    /// </summary>
+    Task DeleteAllForProfileAsync(Guid profileId, CancellationToken ct = default);
 }

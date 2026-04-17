@@ -80,6 +80,15 @@ public interface IProfileService
     Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
+    /// Blanks/nullifies all PII fields on the profile (GDPR right-to-deletion)
+    /// and removes all <see cref="Humans.Domain.Entities.ContactField"/> and
+    /// <see cref="Humans.Domain.Entities.VolunteerHistoryEntry"/> rows owned
+    /// by the profile. No-op if the user has no profile. Does NOT delete the
+    /// profile row itself.
+    /// </summary>
+    Task GdprBlankAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Gets the languages associated with a profile, ordered by proficiency (descending) then language code.
     /// Returns an empty list if the profile does not exist.
     /// </summary>

@@ -398,6 +398,42 @@ public sealed class UserEmailService : IUserEmailService
         return await _repository.FindVerifiedWithUserAsync(normalizedEmail, alternateEmail, cancellationToken);
     }
 
+    public async Task<string?> GetNotificationEmailAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userService.GetByIdAsync(userId, cancellationToken);
+        if (user is null)
+            return null;
+
+        var notificationTargets = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+        // Fall back to user.Email if no notification target is set.
+        return notificationTargets.GetValueOrDefault(userId) ?? user.Email;
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> GetNotificationEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        var userIdList = userIds.ToList();
+        if (userIdList.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        var users = await _userService.GetByIdsAsync(userIdList, cancellationToken);
+        var notificationTargets = await _repository.GetAllNotificationTargetEmailsAsync(cancellationToken);
+
+        var result = new Dictionary<Guid, string>();
+        foreach (var userId in userIdList)
+        {
+            if (!users.TryGetValue(userId, out var user))
+                continue;
+
+            var effective = notificationTargets.GetValueOrDefault(userId) ?? user.Email;
+            if (effective is not null)
+                result[userId] = effective;
+        }
+
+        return result;
+    }
+
     private static List<ContactFieldVisibility> GetAllowedVisibilities(ContactFieldVisibility accessLevel) =>
         accessLevel switch
         {

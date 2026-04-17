@@ -45,4 +45,14 @@ public sealed class VolunteerHistoryRepository : IVolunteerHistoryRepository
         // in-place are automatically detected by the change tracker.
         await _dbContext.SaveChangesAsync(ct);
     }
+
+    public async Task DeleteAllForProfileAsync(Guid profileId, CancellationToken ct = default)
+    {
+        // Load-then-RemoveRange for EF InMemory provider compatibility (used in unit tests).
+        var entries = await _dbContext.VolunteerHistoryEntries
+            .Where(v => v.ProfileId == profileId)
+            .ToListAsync(ct);
+        _dbContext.VolunteerHistoryEntries.RemoveRange(entries);
+        await _dbContext.SaveChangesAsync(ct);
+    }
 }

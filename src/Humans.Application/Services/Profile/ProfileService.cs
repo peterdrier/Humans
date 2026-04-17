@@ -577,6 +577,58 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return Task.CompletedTask;
     }
 
+    public async Task GdprBlankAsync(Guid userId, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null)
+        {
+            _logger.LogWarning(
+                "Cannot GDPR-blank profile for user {UserId} — no profile exists", userId);
+            return;
+        }
+
+        // Mirror the 19-field GDPR blanking block from
+        // ProcessAccountDeletionsJob.AnonymizeUserAsync (pre-migration inline code).
+        profile.FirstName = "Deleted";
+        profile.LastName = "User";
+        profile.BurnerName = string.Empty;
+        profile.Bio = null;
+        profile.City = null;
+        profile.CountryCode = null;
+        profile.Latitude = null;
+        profile.Longitude = null;
+        profile.PlaceId = null;
+        profile.AdminNotes = null;
+        profile.Pronouns = null;
+        profile.DateOfBirth = null;
+        profile.ProfilePictureData = null;
+        profile.ProfilePictureContentType = null;
+        profile.EmergencyContactName = null;
+        profile.EmergencyContactPhone = null;
+        profile.EmergencyContactRelationship = null;
+        profile.ContributionInterests = null;
+        profile.BoardNotes = null;
+        profile.UpdatedAt = _clock.GetCurrentInstant();
+
+        await _profileRepository.UpdateAsync(ct);
+
+        // Remove owned ContactFields and VolunteerHistory rows.
+        await _contactFieldRepository.DeleteAllForProfileAsync(profile.Id, ct);
+        await _volunteerHistoryRepository.DeleteAllForProfileAsync(profile.Id, ct);
+
+        // Update store so downstream cached views (search, lists) see the blanked state.
+        var user = await _userService.GetByIdAsync(userId, ct);
+        if (user is not null)
+        {
+            var notificationEmails = await _userEmailRepository
+                .GetAllNotificationTargetEmailsAsync(ct);
+            var notificationEmail = notificationEmails.GetValueOrDefault(userId);
+            _store.Upsert(userId, CachedProfile.Create(profile, user, notificationEmail));
+        }
+
+        // Store update and cache invalidation also handled by CachingProfileService decorator.
+    }
+
     public Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
         Guid profileId, CancellationToken ct = default) =>
         _profileRepository.GetLanguagesAsync(profileId, ct);

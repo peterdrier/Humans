@@ -32,4 +32,10 @@ public interface IVolunteerHistoryRepository
         IReadOnlyList<VolunteerHistoryEntry> toAdd,
         IReadOnlyList<VolunteerHistoryEntry> toRemove,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes all volunteer history entries owned by the given profile.
+    /// Used by GDPR right-to-deletion flows.
+    /// </summary>
+    Task DeleteAllForProfileAsync(Guid profileId, CancellationToken ct = default);
 }

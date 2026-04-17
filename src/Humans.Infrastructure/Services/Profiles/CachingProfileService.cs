@@ -192,6 +192,14 @@ public sealed class CachingProfileService : IProfileService
         return result;
     }
 
+    public async Task GdprBlankAsync(Guid userId, CancellationToken ct = default)
+    {
+        await _inner.GdprBlankAsync(userId, ct);
+        // Mirror the cache invalidation that other Profile mutations do.
+        InvalidateUserCaches(userId);
+        await RefreshStoreEntryAsync(userId, ct);
+    }
+
     // ==========================================================================
     // GDPR export pass-through
     // ==========================================================================
