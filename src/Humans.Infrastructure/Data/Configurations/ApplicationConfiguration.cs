@@ -43,9 +43,16 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<MemberApplicati
         builder.Property(a => a.UpdatedAt)
             .IsRequired();
 
-        // FK-only relationship to User — the cross-domain nav property was
-        // stripped in the Governance migration (design-rules §6). The FK
-        // column stays in the schema; only the in-memory nav is removed.
+        // FK-only relationships to User — the cross-domain nav properties
+        // were stripped in the Governance migration (design-rules §6) and
+        // the User-side User.Applications collection was stripped in the
+        // User section migration Phase C3. The FK columns stay in the
+        // schema; only the in-memory navs are removed.
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(a => a.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasOne<User>()
             .WithMany()
             .HasForeignKey(a => a.ReviewedByUserId)

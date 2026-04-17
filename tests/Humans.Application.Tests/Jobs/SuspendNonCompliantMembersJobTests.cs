@@ -303,20 +303,20 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             Email = "test@example.com",
             NormalizedEmail = "TEST@EXAMPLE.COM",
             DisplayName = "Test User",
-            PreferredLanguage = "en",
-            Profile = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                FirstName = "Test",
-                LastName = "User",
-                BurnerName = "Tester",
-                IsSuspended = isSuspended,
-                UpdatedAt = Now - Duration.FromDays(10)
-            }
+            PreferredLanguage = "en"
         };
 
         _dbContext.Users.Add(user);
+        _dbContext.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            FirstName = "Test",
+            LastName = "User",
+            BurnerName = "Tester",
+            IsSuspended = isSuspended,
+            UpdatedAt = Now - Duration.FromDays(10)
+        });
         await _dbContext.SaveChangesAsync();
 
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);

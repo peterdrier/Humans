@@ -33,46 +33,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 
-        builder.HasOne(u => u.Profile)
-            .WithOne()
-            .HasForeignKey<Profile>(p => p.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(u => u.RoleAssignments)
-            .WithOne(ra => ra.User)
-            .HasForeignKey(ra => ra.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(u => u.ConsentRecords)
-            .WithOne(cr => cr.User)
-            .HasForeignKey(cr => cr.UserId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // One-way relationship: User.Applications collection nav is
-        // preserved (still used by ProfileService's admin flow — tracked as
-        // a known incoming violation in Governance.md that the Profile
-        // migration will clean up) but the back-nav Application.User has
-        // been stripped per §6. EF configures the relationship without a
-        // back-reference expression.
-        builder.HasMany(u => u.Applications)
-            .WithOne()
-            .HasForeignKey(a => a.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(u => u.TeamMemberships)
-            .WithOne(tm => tm.User)
-            .HasForeignKey(tm => tm.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(u => u.UserEmails)
-            .WithOne()
-            .HasForeignKey(e => e.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasMany(u => u.CommunicationPreferences)
-            .WithOne()
-            .HasForeignKey(cp => cp.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // Cross-domain navs from User have been stripped (Phase C3 of User
+        // section migration). Relationships are now configured from the
+        // other side in their respective *Configuration.cs files, or
+        // inferred by EF from the UserId FK convention.
 
         builder.HasIndex(u => u.Email);
 
@@ -86,7 +50,5 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.HasIndex(u => new { u.ContactSource, u.ExternalSourceId })
             .HasFilter("\"ExternalSourceId\" IS NOT NULL");
-
-        // Ignore GetEffectiveEmail (method, not property - EF won't map it, but defensive)
     }
 }

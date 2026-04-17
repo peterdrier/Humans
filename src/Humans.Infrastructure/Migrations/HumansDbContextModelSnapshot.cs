@@ -3571,7 +3571,7 @@ namespace Humans.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Humans.Domain.Entities.User", null)
-                        .WithMany("Applications")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -3853,13 +3853,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.CommunicationPreference", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany("CommunicationPreferences")
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ConsentRecord", b =>
@@ -3871,7 +3869,7 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany("ConsentRecords")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -4075,13 +4073,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.Profile", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithOne("Profile")
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithOne()
                         .HasForeignKey("Humans.Domain.Entities.Profile", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.ProfileLanguage", b =>
@@ -4104,7 +4100,7 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany("RoleAssignments")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -4251,7 +4247,7 @@ namespace Humans.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany("TeamMemberships")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -4340,13 +4336,11 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.UserEmail", b =>
                 {
-                    b.HasOne("Humans.Domain.Entities.User", "User")
-                        .WithMany("UserEmails")
+                    b.HasOne("Humans.Domain.Entities.User", null)
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Humans.Domain.Entities.VolunteerEventProfile", b =>
@@ -4594,21 +4588,7 @@ namespace Humans.Infrastructure.Migrations
 
             modelBuilder.Entity("Humans.Domain.Entities.User", b =>
                 {
-                    b.Navigation("Applications");
-
-                    b.Navigation("CommunicationPreferences");
-
-                    b.Navigation("ConsentRecords");
-
                     b.Navigation("EventParticipations");
-
-                    b.Navigation("Profile");
-
-                    b.Navigation("RoleAssignments");
-
-                    b.Navigation("TeamMemberships");
-
-                    b.Navigation("UserEmails");
                 });
 #pragma warning restore 612, 618
         }

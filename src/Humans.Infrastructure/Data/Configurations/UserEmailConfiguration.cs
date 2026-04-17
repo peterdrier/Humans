@@ -39,7 +39,7 @@ public class UserEmailConfiguration : IEntityTypeConfiguration<UserEmail>
             .IsRequired();
 
         builder.HasOne<User>()
-            .WithMany(u => u.UserEmails)
+            .WithMany()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 

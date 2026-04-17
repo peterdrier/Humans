@@ -281,17 +281,17 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             DisplayName = "User Two",
             DeletionRequestedAt = Now - Duration.FromDays(31),
             DeletionScheduledFor = Now - Duration.FromDays(1),
-            PreferredLanguage = "en",
-            Profile = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = user2Id,
-                FirstName = "User",
-                LastName = "Two",
-                BurnerName = "UTwo"
-            }
+            PreferredLanguage = "en"
         };
         _dbContext.Users.Add(user2);
+        _dbContext.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = user2Id,
+            FirstName = "User",
+            LastName = "Two",
+            BurnerName = "UTwo"
+        });
         await _dbContext.SaveChangesAsync();
 
         // Throw for user1's entity ID, succeed for everything else
@@ -331,20 +331,20 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             DeletionRequestedAt = deletionScheduledFor - Duration.FromDays(30),
             DeletionScheduledFor = deletionScheduledFor,
             DeletionEligibleAfter = deletionEligibleAfter,
-            PreferredLanguage = "en",
-            Profile = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                FirstName = "Test",
-                LastName = "User",
-                BurnerName = "Tester",
-                Bio = "A test bio",
-                City = "Madrid"
-            }
+            PreferredLanguage = "en"
         };
 
         _dbContext.Users.Add(user);
+        _dbContext.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            FirstName = "Test",
+            LastName = "User",
+            BurnerName = "Tester",
+            Bio = "A test bio",
+            City = "Madrid"
+        });
         await _dbContext.SaveChangesAsync();
         return user;
     }

@@ -32,6 +32,11 @@ public class CommunicationPreferenceConfiguration : IEntityTypeConfiguration<Com
             .HasMaxLength(100)
             .IsRequired();
 
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(cp => cp.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // One preference per user per category
         builder.HasIndex(cp => new { cp.UserId, cp.Category })
             .IsUnique();

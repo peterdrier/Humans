@@ -39,48 +39,6 @@ public class User : IdentityUser<Guid>
     public Instant? LastLoginAt { get; set; }
 
     /// <summary>
-    /// Navigation property to the member profile.
-    /// </summary>
-    public Profile? Profile { get; set; }
-
-    /// <summary>
-    /// Navigation property to role assignments.
-    /// </summary>
-    public ICollection<RoleAssignment> RoleAssignments { get; } = new List<RoleAssignment>();
-
-    /// <summary>
-    /// Navigation property to consent records.
-    /// </summary>
-    public ICollection<ConsentRecord> ConsentRecords { get; } = new List<ConsentRecord>();
-
-    /// <summary>
-    /// Navigation property to applications.
-    /// </summary>
-    public ICollection<Application> Applications { get; } = new List<Application>();
-
-    /// <summary>
-    /// Navigation property to team memberships.
-    /// </summary>
-    public ICollection<TeamMember> TeamMemberships { get; } = new List<TeamMember>();
-
-    /// <summary>
-    /// Navigation property to email addresses.
-    /// </summary>
-    public ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();
-
-    /// <summary>
-    /// Gets the effective email address for system notifications.
-    /// Returns the verified notification-target email if available, otherwise the OAuth email.
-    /// Requires UserEmails to be loaded (Include).
-    /// </summary>
-    public string? GetEffectiveEmail()
-    {
-        var notificationEmail = UserEmails
-            .FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified);
-        return notificationEmail?.Email ?? Email;
-    }
-
-    /// <summary>
     /// When the last re-consent reminder email was sent (for rate limiting).
     /// </summary>
     public Instant? LastConsentReminderSentAt { get; set; }
@@ -158,11 +116,6 @@ public class User : IdentityUser<Guid>
     /// ID in the external source system (e.g., MailerLite subscriber ID).
     /// </summary>
     public string? ExternalSourceId { get; set; }
-
-    /// <summary>
-    /// Navigation property to communication preferences.
-    /// </summary>
-    public ICollection<CommunicationPreference> CommunicationPreferences { get; } = new List<CommunicationPreference>();
 
     /// <summary>
     /// Navigation property to event participation records.

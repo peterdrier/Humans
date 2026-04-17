@@ -35,6 +35,11 @@ public class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord
         builder.Property(cr => cr.ExplicitConsent)
             .IsRequired();
 
+        builder.HasOne(cr => cr.User)
+            .WithMany()
+            .HasForeignKey(cr => cr.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Create unique index to prevent duplicate consents for same user/version
         builder.HasIndex(cr => new { cr.UserId, cr.DocumentVersionId })
             .IsUnique();

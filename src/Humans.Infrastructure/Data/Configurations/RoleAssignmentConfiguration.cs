@@ -30,6 +30,11 @@ public class RoleAssignmentConfiguration : IEntityTypeConfiguration<RoleAssignme
         builder.Property(ra => ra.CreatedAt)
             .IsRequired();
 
+        builder.HasOne(ra => ra.User)
+            .WithMany()
+            .HasForeignKey(ra => ra.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasOne(ra => ra.CreatedByUser)
             .WithMany()
             .HasForeignKey(ra => ra.CreatedByUserId)

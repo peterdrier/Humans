@@ -83,6 +83,11 @@ public class ProfileConfiguration : IEntityTypeConfiguration<Profile>
         builder.Property(p => p.UpdatedAt)
             .IsRequired();
 
+        builder.HasOne<User>()
+            .WithOne()
+            .HasForeignKey<Profile>(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasIndex(p => p.UserId)
             .IsUnique();
 

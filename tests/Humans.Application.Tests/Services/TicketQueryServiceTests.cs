@@ -485,7 +485,7 @@ public class TicketQueryServiceTests : IDisposable
     // Helpers
     // ====================================================================
 
-    private static User CreateUser(string name, string email)
+    private User CreateUser(string name, string email)
     {
         var userId = Guid.NewGuid();
         var user = new User
@@ -495,15 +495,15 @@ public class TicketQueryServiceTests : IDisposable
             Email = email,
             UserName = email,
             NormalizedEmail = email.ToUpperInvariant(),
-            NormalizedUserName = email.ToUpperInvariant(),
-            Profile = new Profile
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                MembershipTier = MembershipTier.Volunteer
-            }
+            NormalizedUserName = email.ToUpperInvariant()
         };
-        user.UserEmails.Add(new UserEmail
+        _dbContext.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            MembershipTier = MembershipTier.Volunteer
+        });
+        _dbContext.UserEmails.Add(new UserEmail
         {
             Id = Guid.NewGuid(),
             UserId = userId,
