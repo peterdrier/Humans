@@ -28,6 +28,7 @@ public sealed class ProfileRepository : IProfileRepository
         _dbContext.Profiles
             .AsNoTracking()
             .Include(p => p.User)
+            .Include(p => p.VolunteerHistory)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
     public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
