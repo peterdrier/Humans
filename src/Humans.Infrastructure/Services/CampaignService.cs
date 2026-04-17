@@ -497,8 +497,12 @@ public class CampaignService : ICampaignService, IUserDataContributor
 
         await _dbContext.SaveChangesAsync(ct);
 
-        var recipientEmail = await _userEmailService.GetNotificationEmailAsync(grant.User.Id, ct)
-            ?? grant.User.Email!;
+        // Treat empty string the same as null so test substitutes that return
+        // string.Empty by default still trigger the fallback correctly.
+        var notificationEmail = await _userEmailService.GetNotificationEmailAsync(grant.User.Id, ct);
+        var recipientEmail = !string.IsNullOrEmpty(notificationEmail)
+            ? notificationEmail
+            : grant.User.Email!;
 
         await _emailService.SendCampaignCodeAsync(
             BuildCampaignCodeRequest(grant.Campaign, grant.User, recipientEmail, grant.Code.Code, grant.Id),

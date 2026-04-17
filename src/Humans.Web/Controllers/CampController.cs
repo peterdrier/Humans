@@ -186,8 +186,12 @@ public class CampController : HumansCampControllerBase
         var campDisplayName = camp.Seasons
             .OrderByDescending(s => s.Year)
             .FirstOrDefault()?.Name ?? slug;
-        var senderEmail = (await _userEmailService.GetNotificationEmailAsync(currentUser.Id))
-            ?? currentUser.Email!;
+        // Treat empty string the same as null so test substitutes that return
+        // string.Empty by default still trigger the fallback correctly.
+        var notificationEmail = await _userEmailService.GetNotificationEmailAsync(currentUser.Id);
+        var senderEmail = !string.IsNullOrEmpty(notificationEmail)
+            ? notificationEmail
+            : currentUser.Email!;
 
         try
         {
