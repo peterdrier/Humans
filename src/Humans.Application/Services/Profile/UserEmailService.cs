@@ -335,32 +335,60 @@ public sealed class UserEmailService : IUserEmailService
         if (user?.GoogleEmail is not null)
             return false;
 
-        var nobodiesEmail = await _repository.GetNobodiesTeamEmailAsync(userId, cancellationToken);
+        var allNobodies = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
+        var nobodiesEmail = allNobodies.FirstOrDefault(e => e.UserId == userId)?.Email;
         if (nobodiesEmail is null)
             return false;
 
         return await _userService.TrySetGoogleEmailAsync(userId, nobodiesEmail, cancellationToken);
     }
 
-    public Task<string?> GetNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        _repository.GetNobodiesTeamEmailAsync(userId, cancellationToken);
+    public async Task<string?> GetNobodiesTeamEmailAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
+        return all.FirstOrDefault(e => e.UserId == userId)?.Email;
+    }
 
-    public Task<bool> HasNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken cancellationToken = default) =>
-        _repository.HasNobodiesTeamEmailAsync(userId, cancellationToken);
+    public async Task<bool> HasNobodiesTeamEmailAsync(
+        Guid userId, CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
+        return all.Any(e => e.UserId == userId);
+    }
 
     public Task<string?> GetVerifiedEmailAddressAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default) =>
         _repository.GetVerifiedEmailAddressAsync(userId, emailId, cancellationToken);
 
-    public Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
-        CancellationToken cancellationToken = default) =>
-        _repository.GetNobodiesTeamEmailStatusByUserAsync(cancellationToken);
+    public async Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
+        return all
+            .GroupBy(e => e.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Any(e => e.IsNotificationTarget));
+    }
 
-    public Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
-        IEnumerable<Guid> userIds, CancellationToken cancellationToken = default) =>
-        _repository.GetNobodiesTeamEmailsByUserIdsAsync(userIds, cancellationToken);
+    public async Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        var userIdSet = userIds.ToHashSet();
+        if (userIdSet.Count == 0)
+            return new Dictionary<Guid, string>();
+
+        var all = await _repository.GetAllVerifiedNobodiesTeamEmailsAsync(cancellationToken);
+        return all
+            .Where(e => userIdSet.Contains(e.UserId))
+            .GroupBy(e => e.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderByDescending(e => e.IsNotificationTarget)
+                    .ThenBy(e => e.CreatedAt)
+                    .First().Email);
+    }
 
     public async Task<UserEmailWithUser?> FindVerifiedEmailWithUserAsync(
         string email, CancellationToken cancellationToken = default)

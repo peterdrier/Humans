@@ -127,7 +127,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
             pref.OptedOut = optedOut;
             pref.UpdatedAt = now;
             pref.UpdateSource = source;
-            await _repository.SaveChangesAsync(cancellationToken);
+            await _repository.UpdateAsync(pref, cancellationToken);
         }
 
         var description = optedOut
@@ -180,7 +180,7 @@ public sealed class CommunicationPreferenceService : ICommunicationPreferenceSer
             pref.InboxEnabled = inboxEnabled;
             pref.UpdatedAt = now;
             pref.UpdateSource = source;
-            await _repository.SaveChangesAsync(cancellationToken);
+            await _repository.UpdateAsync(pref, cancellationToken);
         }
 
         var description = $"{category} set to OptedOut={optedOut}, InboxEnabled={inboxEnabled} via {source}";

@@ -86,59 +86,12 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .Where(e => e.UserId == userId)
             .MaxAsync(e => (int?)e.DisplayOrder, ct) ?? -1;
 
-    public async Task<string?> GetNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken ct = default) =>
+    public async Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(
+        CancellationToken ct = default) =>
         await _dbContext.UserEmails
-            .Where(ue => ue.UserId == userId && ue.IsVerified
-                && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
-            .Select(ue => ue.Email)
-            .FirstOrDefaultAsync(ct);
-
-    public async Task<bool> HasNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken ct = default) =>
-        await _dbContext.UserEmails
-            .AnyAsync(ue => ue.UserId == userId && ue.IsVerified
-                && EF.Functions.ILike(ue.Email, "%@nobodies.team"), ct);
-
-    public async Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
-        CancellationToken ct = default)
-    {
-        var nobodiesTeamEmails = await _dbContext.UserEmails
             .AsNoTracking()
             .Where(ue => ue.IsVerified && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
-            .Select(ue => new { ue.UserId, ue.IsNotificationTarget })
             .ToListAsync(ct);
-
-        return nobodiesTeamEmails
-            .GroupBy(e => e.UserId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Any(e => e.IsNotificationTarget));
-    }
-
-    public async Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
-        IEnumerable<Guid> userIds, CancellationToken ct = default)
-    {
-        var userIdList = userIds.ToList();
-        if (userIdList.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        return await _dbContext.UserEmails
-            .AsNoTracking()
-            .Where(ue => userIdList.Contains(ue.UserId)
-                && ue.IsVerified
-                && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
-            .GroupBy(ue => ue.UserId)
-            .Select(g => new
-            {
-                UserId = g.Key,
-                Email = g.OrderByDescending(ue => ue.IsNotificationTarget)
-                    .ThenBy(ue => ue.CreatedAt)
-                    .Select(ue => ue.Email)
-                    .First()
-            })
-            .ToDictionaryAsync(x => x.UserId, x => x.Email, ct);
-    }
 
     public async Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
         CancellationToken ct = default)
@@ -191,7 +144,6 @@ public sealed class UserEmailRepository : IUserEmailRepository
     {
         var query = _dbContext.UserEmails
             .AsNoTracking()
-            .Include(ue => ue.User)
             .Where(ue => ue.IsVerified);
 
         UserEmail? match;
@@ -210,11 +162,18 @@ public sealed class UserEmailRepository : IUserEmailRepository
         if (match is null)
             return null;
 
+        var user = await _dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == match.UserId, ct);
+
+        if (user is null)
+            return null;
+
         return new UserEmailWithUser(
-            match.User.Id,
+            user.Id,
             match.Email,
-            match.User.ContactSource,
-            match.User.LastLoginAt);
+            user.ContactSource,
+            user.LastLoginAt);
     }
 
     public Task UpdateAsync(UserEmail email, CancellationToken ct = default) =>

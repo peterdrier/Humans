@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using Humans.Application;
+using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;

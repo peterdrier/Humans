@@ -1,20 +1,10 @@
+using Humans.Application.DTOs;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Application.Interfaces;
-
-public record ProfileSaveRequest(
-    string BurnerName, string FirstName, string LastName,
-    string? City, string? CountryCode, double? Latitude, double? Longitude, string? PlaceId,
-    string? Bio, string? Pronouns, string? ContributionInterests, string? BoardNotes,
-    int? BirthdayMonth, int? BirthdayDay,
-    string? EmergencyContactName, string? EmergencyContactPhone, string? EmergencyContactRelationship,
-    bool NoPriorBurnExperience,
-    byte[]? ProfilePictureData, string? ProfilePictureContentType, bool RemoveProfilePicture,
-    MembershipTier? SelectedTier, string? ApplicationMotivation, string? ApplicationAdditionalInfo,
-    string? ApplicationSignificantContribution, string? ApplicationRoleUnderstanding);
 
 public interface IProfileService
 {
@@ -101,19 +91,3 @@ public interface IProfileService
     Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
 
 }
-
-public record UserSearchResult(Guid UserId, string DisplayName, string Email);
-
-public record HumanSearchResult(
-    Guid UserId,
-    string DisplayName,
-    string? BurnerName,
-    string? City,
-    string? Bio,
-    string? ContributionInterests,
-    string? ProfilePictureUrl,
-    bool HasCustomPicture,
-    Guid ProfileId,
-    long UpdatedAtTicks,
-    string? MatchField,
-    string? MatchSnippet);

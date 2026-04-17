@@ -64,30 +64,11 @@ public interface IUserEmailRepository
     Task<int> GetMaxDisplayOrderAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns the @nobodies.team email for a user, or null.
+    /// Returns all verified @nobodies.team emails across all users.
+    /// Used as a bulk load to support in-memory filtering by callers.
     /// </summary>
-    Task<string?> GetNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns whether a user has any verified @nobodies.team email.
-    /// </summary>
-    Task<bool> HasNobodiesTeamEmailAsync(
-        Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns a mapping of userId → isNotificationTarget for all users
-    /// with verified @nobodies.team emails.
-    /// </summary>
-    Task<Dictionary<Guid, bool>> GetNobodiesTeamEmailStatusByUserAsync(
+    Task<IReadOnlyList<UserEmail>> GetAllVerifiedNobodiesTeamEmailsAsync(
         CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns a mapping of userId → email for the given users' @nobodies.team
-    /// addresses. Prefers notification target, then earliest created.
-    /// </summary>
-    Task<Dictionary<Guid, string>> GetNobodiesTeamEmailsByUserIdsAsync(
-        IEnumerable<Guid> userIds, CancellationToken ct = default);
 
     /// <summary>
     /// Returns a mapping of userId → verified notification-target email for all users

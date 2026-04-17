@@ -58,8 +58,8 @@ public interface ICommunicationPreferenceRepository
         Guid userId, IReadOnlyList<CommunicationPreference> defaults, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists changes to tracked entities. Used after in-place mutations on
-    /// entities returned by the tracked query methods.
+    /// Persists changes to a single tracked <see cref="CommunicationPreference"/> entity.
+    /// The caller must have obtained the entity via a tracked query method in the same scope.
     /// </summary>
-    Task SaveChangesAsync(CancellationToken ct = default);
+    Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default);
 }

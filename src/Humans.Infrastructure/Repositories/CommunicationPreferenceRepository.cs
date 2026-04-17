@@ -105,6 +105,9 @@ public sealed class CommunicationPreferenceRepository : ICommunicationPreference
         }
     }
 
-    public Task SaveChangesAsync(CancellationToken ct = default) =>
-        _dbContext.SaveChangesAsync(ct);
+    public async Task UpdateAsync(CommunicationPreference preference, CancellationToken ct = default)
+    {
+        _dbContext.CommunicationPreferences.Update(preference);
+        await _dbContext.SaveChangesAsync(ct);
+    }
 }
