@@ -34,7 +34,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired();
 
         builder.HasOne(u => u.Profile)
-            .WithOne(p => p.User)
+            .WithOne()
             .HasForeignKey<Profile>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
@@ -65,12 +65,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(u => u.UserEmails)
-            .WithOne(e => e.User)
+            .WithOne()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(u => u.CommunicationPreferences)
-            .WithOne(cp => cp.User)
+            .WithOne()
             .HasForeignKey(cp => cp.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 

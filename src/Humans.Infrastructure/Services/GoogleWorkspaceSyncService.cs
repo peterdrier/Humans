@@ -2554,9 +2554,15 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         var ctx = dbContext ?? _dbContext;
         var matches = await ctx.UserEmails
             .AsNoTracking()
-            .Include(ue => ue.User)
             .Where(ue => emailList.Contains(ue.Email))
             .ToListAsync(cancellationToken);
+
+        // Batch-load users for matched emails
+        var userIds = matches.Select(m => m.UserId).Distinct().ToList();
+        var usersById = await ctx.Users
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, cancellationToken);
 
         var result = new Dictionary<string, (string DisplayName, Guid UserId, string? ProfilePictureUrl)>(
             NormalizingEmailComparer.Instance);
@@ -2564,7 +2570,10 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         foreach (var match in matches)
         {
             // First match wins (a user might have multiple matching emails)
-            result.TryAdd(match.Email, (match.User.DisplayName, match.UserId, match.User.ProfilePictureUrl));
+            if (usersById.TryGetValue(match.UserId, out var user))
+            {
+                result.TryAdd(match.Email, (user.DisplayName, match.UserId, user.ProfilePictureUrl));
+            }
         }
 
         return result;

@@ -27,7 +27,6 @@ public sealed class ProfileRepository : IProfileRepository
     public Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default) =>
         _dbContext.Profiles
             .AsNoTracking()
-            .Include(p => p.User)
             .Include(p => p.VolunteerHistory)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 

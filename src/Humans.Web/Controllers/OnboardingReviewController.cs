@@ -24,6 +24,7 @@ public class OnboardingReviewController : HumansControllerBase
 {
     private readonly IOnboardingService _onboardingService;
     private readonly IApplicationDecisionService _applicationDecisionService;
+    private readonly IUserService _userService;
     private readonly ILogger<OnboardingReviewController> _logger;
     private readonly IStringLocalizer<SharedResource> _localizer;
 
@@ -31,12 +32,14 @@ public class OnboardingReviewController : HumansControllerBase
         UserManager<User> userManager,
         IOnboardingService onboardingService,
         IApplicationDecisionService applicationDecisionService,
+        IUserService userService,
         ILogger<OnboardingReviewController> logger,
         IStringLocalizer<SharedResource> localizer)
         : base(userManager)
     {
         _onboardingService = onboardingService;
         _applicationDecisionService = applicationDecisionService;
+        _userService = userService;
         _logger = logger;
         _localizer = localizer;
     }
@@ -46,10 +49,14 @@ public class OnboardingReviewController : HumansControllerBase
     {
         var data = await _onboardingService.GetReviewQueueAsync(ct);
 
+        // Batch-load users for all profiles (nav property stripped)
+        var allUserIds = data.Pending.Concat(data.Flagged).Select(p => p.UserId).Distinct().ToList();
+        var usersById = await _userService.GetByIdsAsync(allUserIds, ct);
+
         var viewModel = new OnboardingReviewIndexViewModel
         {
-            PendingReviews = data.Pending.Select(p => MapToItem(p, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
-            FlaggedReviews = data.Flagged.Select(p => MapToItem(p, data.PendingAppUserIds, data.ConsentProgress)).ToList()
+            PendingReviews = data.Pending.Select(p => MapToItem(p, usersById, data.PendingAppUserIds, data.ConsentProgress)).ToList(),
+            FlaggedReviews = data.Flagged.Select(p => MapToItem(p, usersById, data.PendingAppUserIds, data.ConsentProgress)).ToList()
         };
 
         return View(viewModel);
@@ -65,12 +72,14 @@ public class OnboardingReviewController : HumansControllerBase
         if (profile is null)
             return NotFound();
 
+        var detailUser = await _userService.GetByIdAsync(userId, ct);
+
         var viewModel = new OnboardingReviewDetailViewModel
         {
             UserId = userId,
-            DisplayName = profile.User.DisplayName,
-            ProfilePictureUrl = profile.User.ProfilePictureUrl,
-            Email = profile.User.Email ?? string.Empty,
+            DisplayName = detailUser?.DisplayName ?? "Unknown",
+            ProfilePictureUrl = detailUser?.ProfilePictureUrl,
+            Email = detailUser?.Email ?? string.Empty,
             FirstName = profile.FirstName,
             LastName = profile.LastName,
             City = profile.City,
@@ -389,16 +398,18 @@ public class OnboardingReviewController : HumansControllerBase
     }
 
     private static OnboardingReviewItemViewModel MapToItem(
-        Profile profile, HashSet<Guid> pendingAppUserIds,
+        Profile profile, IReadOnlyDictionary<Guid, User> usersById,
+        HashSet<Guid> pendingAppUserIds,
         Dictionary<Guid, ConsentProgressInfo> consentProgress)
     {
         var progress = consentProgress.GetValueOrDefault(profile.UserId);
+        var itemUser = usersById.GetValueOrDefault(profile.UserId);
         return new OnboardingReviewItemViewModel
         {
             UserId = profile.UserId,
-            DisplayName = profile.User.DisplayName,
-            ProfilePictureUrl = profile.User.ProfilePictureUrl,
-            Email = profile.User.Email ?? string.Empty,
+            DisplayName = itemUser?.DisplayName ?? "Unknown",
+            ProfilePictureUrl = itemUser?.ProfilePictureUrl,
+            Email = itemUser?.Email ?? string.Empty,
             ConsentCheckStatus = profile.ConsentCheckStatus,
             MembershipTier = profile.MembershipTier,
             ProfileCreatedAt = profile.CreatedAt.ToDateTimeUtc(),

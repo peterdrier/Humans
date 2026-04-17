@@ -94,6 +94,7 @@ public class MagicLinkServiceTests : IDisposable
         });
         await _dbContext.SaveChangesAsync();
 
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         // Act — search by a secondary verified email
@@ -136,6 +137,7 @@ public class MagicLinkServiceTests : IDisposable
         });
         await _dbContext.SaveChangesAsync();
 
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
         // Act
@@ -193,6 +195,8 @@ public class MagicLinkServiceTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant()
         });
         await _dbContext.SaveChangesAsync();
+
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
         // Act
         await _service.SendMagicLinkAsync("alice@gmail.com", null);
@@ -311,6 +315,8 @@ public class MagicLinkServiceTests : IDisposable
             UpdatedAt = _clock.GetCurrentInstant()
         });
         await _dbContext.SaveChangesAsync();
+
+        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
 
         // Act
         var result = await _service.FindUserByVerifiedEmailAsync("alice@work.com");

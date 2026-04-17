@@ -58,8 +58,14 @@ public class GoogleAdminService : IGoogleAdminService
             // Load all user emails to match accounts to humans
             var allUserEmails = await _dbContext.UserEmails
                 .AsNoTracking()
-                .Include(ue => ue.User)
                 .ToListAsync(ct);
+
+            // Batch-load users for matched emails
+            var matchedUserIds = allUserEmails.Select(ue => ue.UserId).Distinct().ToList();
+            var usersById = await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => matchedUserIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, ct);
 
             var accountInfos = new List<WorkspaceAccountInfo>();
             var notPrimaryCount = 0;
@@ -77,6 +83,10 @@ public class GoogleAdminService : IGoogleAdminService
                     notPrimaryCount++;
                 }
 
+                var matchedUser = matchedEmail is not null
+                    ? usersById.GetValueOrDefault(matchedEmail.UserId)
+                    : null;
+
                 accountInfos.Add(new WorkspaceAccountInfo(
                     PrimaryEmail: account.PrimaryEmail,
                     FirstName: account.FirstName,
@@ -85,7 +95,7 @@ public class GoogleAdminService : IGoogleAdminService
                     CreationTime: account.CreationTime,
                     LastLoginTime: account.LastLoginTime,
                     MatchedUserId: matchedEmail?.UserId,
-                    MatchedDisplayName: matchedEmail?.User?.DisplayName,
+                    MatchedDisplayName: matchedUser?.DisplayName,
                     IsUsedAsPrimary: isUsedAsPrimary));
             }
 

@@ -17,13 +17,16 @@ namespace Humans.Web.ViewComponents;
 public class UserAvatarViewComponent : ViewComponent
 {
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IUrlHelperFactory _urlHelperFactory;
 
     public UserAvatarViewComponent(
         IProfileService profileService,
+        IUserService userService,
         IUrlHelperFactory urlHelperFactory)
     {
         _profileService = profileService;
+        _userService = userService;
         _urlHelperFactory = urlHelperFactory;
     }
 
@@ -39,11 +42,12 @@ public class UserAvatarViewComponent : ViewComponent
         if (userId != Guid.Empty)
         {
             var profile = await _profileService.GetProfileAsync(userId);
+            var user = await _userService.GetByIdAsync(userId);
 
-            if (profile is not null)
+            if (profile is not null && user is not null)
             {
-                displayName = profile.User.DisplayName;
-                profilePictureUrl = ResolveAvatarUrl(profile);
+                displayName = user.DisplayName;
+                profilePictureUrl = ResolveAvatarUrl(profile, user);
             }
             else if (IsCurrentUser(userId))
             {
@@ -71,7 +75,7 @@ public class UserAvatarViewComponent : ViewComponent
         return View();
     }
 
-    private string? ResolveAvatarUrl(Profile profile)
+    private string? ResolveAvatarUrl(Profile profile, User user)
     {
         if (profile.HasCustomProfilePicture && profile.Id != Guid.Empty)
         {
@@ -82,7 +86,7 @@ public class UserAvatarViewComponent : ViewComponent
                 values: new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() });
         }
 
-        return profile.User.ProfilePictureUrl;
+        return user.ProfilePictureUrl;
     }
 
     private bool IsCurrentUser(Guid userId)

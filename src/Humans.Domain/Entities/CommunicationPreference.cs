@@ -40,12 +40,4 @@ public class CommunicationPreference
     /// </summary>
     public string UpdateSource { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Navigation to the user.
-    /// </summary>
-    /// <summary>
-    /// Navigation property to the user.
-    /// QUARANTINE: This cross-domain nav will be stripped in §15 Step 1.
-    /// </summary>
-    public User User { get; init; } = null!;
 }

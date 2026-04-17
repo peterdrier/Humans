@@ -61,7 +61,6 @@ public class OnboardingService : IOnboardingService
         GetReviewQueueAsync(CancellationToken ct = default)
     {
         var reviewableProfiles = await _dbContext.Profiles
-            .Include(p => p.User)
             .Where(p => !p.IsApproved && p.RejectedAt == null)
             .OrderBy(p => p.CreatedAt)
             .ToListAsync(ct);
@@ -94,7 +93,6 @@ public class OnboardingService : IOnboardingService
         GetReviewDetailAsync(Guid userId, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
-            .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
         if (profile is null)
@@ -232,7 +230,6 @@ public class OnboardingService : IOnboardingService
         Guid userId, Guid reviewerId, string? notes, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
-            .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
         if (profile is null)
@@ -261,8 +258,9 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateUserProfile(userId);
 
         // Update profile cache (profile is now approved)
+        var user = await _userService.GetByIdAsync(userId, ct);
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(profile, profile.User));
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, user!));
 
         // Sync Volunteers team membership (adds to team if consents are also complete)
         await _syncJob.SyncVolunteersMembershipForUserAsync(userId, CancellationToken.None);
@@ -316,9 +314,9 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateUserProfile(userId);
 
         // Update profile cache with current state
-        await _dbContext.Entry(profile).Reference(p => p.User).LoadAsync(ct);
+        var flagUser = await _userService.GetByIdAsync(userId, ct);
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(profile, profile.User));
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, flagUser!));
 
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
 
@@ -382,7 +380,6 @@ public class OnboardingService : IOnboardingService
         Guid userId, Guid reviewerId, string? reason, CancellationToken ct = default)
     {
         var profile = await _dbContext.Profiles
-            .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
 
         if (profile is null)
@@ -410,8 +407,9 @@ public class OnboardingService : IOnboardingService
         _cache.InvalidateUserProfile(userId);
 
         // Update profile cache with current state
+        var rejectUser = await _userService.GetByIdAsync(userId, ct);
         await _dbContext.Entry(profile).Collection(p => p.VolunteerHistory).LoadAsync(ct);
-        _cache.UpdateProfile(userId, CachedProfile.Create(profile, profile.User));
+        _cache.UpdateProfile(userId, CachedProfile.Create(profile, rejectUser!));
 
         // FIX: Both Admin and OnboardingReview paths now deprovision
         await DeprovisionApprovalGatedSystemTeamsAsync(userId);
@@ -419,10 +417,10 @@ public class OnboardingService : IOnboardingService
         try
         {
             await _emailService.SendSignupRejectedAsync(
-                profile.User.Email ?? string.Empty,
-                profile.User.DisplayName,
+                rejectUser?.Email ?? string.Empty,
+                rejectUser?.DisplayName ?? string.Empty,
                 reason,
-                profile.User.PreferredLanguage);
+                rejectUser?.PreferredLanguage ?? "en");
         }
         catch (Exception ex)
         {

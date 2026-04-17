@@ -329,9 +329,16 @@ public class SystemTeamSyncJob : ISystemTeamSync
             .ToDictionary(g => g.Key, g => g.First().MembershipTier);
 
         var toDowngrade = await _dbContext.Profiles
-            .Include(p => p.User)
             .Where(p => p.MembershipTier == tier && !applicationUserIds.Contains(p.UserId))
             .ToListAsync(cancellationToken);
+
+        // Batch-load users for display names in audit log
+        var downgradeUserIds = toDowngrade.Select(p => p.UserId).ToList();
+        var downgradeUsersById = downgradeUserIds.Count > 0
+            ? await _dbContext.Users.AsNoTracking()
+                .Where(u => downgradeUserIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, cancellationToken)
+            : new Dictionary<Guid, User>();
 
         foreach (var profile in toDowngrade)
         {
@@ -341,9 +348,11 @@ public class SystemTeamSyncJob : ISystemTeamSync
             profile.MembershipTier = newTier;
             profile.UpdatedAt = todayInstant;
 
+            var displayName = downgradeUsersById.TryGetValue(profile.UserId, out var u)
+                ? u.DisplayName : "Unknown";
             await _auditLogService.LogAsync(
                 AuditAction.TierDowngraded, nameof(Profile), profile.UserId,
-                $"Membership tier changed to {newTier} for {profile.User?.DisplayName ?? "Unknown"} due to {tier} term expiry",
+                $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
                 nameof(SystemTeamSyncJob),
                 relatedEntityId: profile.UserId, relatedEntityType: nameof(User));
         }

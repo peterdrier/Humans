@@ -45,7 +45,7 @@ public class AccountProvisioningService : IAccountProvisioningService
 
         // 1. Check UserEmail records (includes OAuth, verified, and unverified emails)
         var allUserEmails = await _dbContext.UserEmails
-            .Include(ue => ue.User)
+            .AsNoTracking()
             .ToListAsync(ct);
 
         var matchingUserEmail = allUserEmails
@@ -53,7 +53,8 @@ public class AccountProvisioningService : IAccountProvisioningService
 
         if (matchingUserEmail is not null)
         {
-            var existingUser = matchingUserEmail.User;
+            var existingUser = await _dbContext.Users
+                .FirstAsync(u => u.Id == matchingUserEmail.UserId, ct);
             _logger.LogDebug(
                 "Found existing account {UserId} via UserEmail match for {Email} (source: {Source})",
                 existingUser.Id, email, source);

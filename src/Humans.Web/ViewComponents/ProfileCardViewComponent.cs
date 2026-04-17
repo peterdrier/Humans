@@ -20,6 +20,7 @@ public class ProfileCardViewComponent : ViewComponent
 {
     private readonly UserManager<User> _userManager;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
     private readonly IContactFieldService _contactFieldService;
     private readonly IUserEmailService _userEmailService;
     private readonly IVolunteerHistoryService _volunteerHistoryService;
@@ -31,6 +32,7 @@ public class ProfileCardViewComponent : ViewComponent
     public ProfileCardViewComponent(
         UserManager<User> userManager,
         IProfileService profileService,
+        IUserService userService,
         IContactFieldService contactFieldService,
         IUserEmailService userEmailService,
         IVolunteerHistoryService volunteerHistoryService,
@@ -41,6 +43,7 @@ public class ProfileCardViewComponent : ViewComponent
     {
         _userManager = userManager;
         _profileService = profileService;
+        _userService = userService;
         _contactFieldService = contactFieldService;
         _userEmailService = userEmailService;
         _volunteerHistoryService = volunteerHistoryService;
@@ -52,9 +55,10 @@ public class ProfileCardViewComponent : ViewComponent
 
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
-        // Single cached call replaces two separate DB queries for User and Profile
+        // Load profile and user independently (nav property stripped)
         var profile = await _profileService.GetProfileAsync(userId);
-        var user = profile?.User ?? await _userManager.FindByIdAsync(userId.ToString());
+        var user = await _userService.GetByIdAsync(userId)
+            ?? await _userManager.FindByIdAsync(userId.ToString());
 
         if (user is null)
         {

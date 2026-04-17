@@ -21,14 +21,6 @@ public class Profile
     public Guid UserId { get; init; }
 
     /// <summary>
-    /// Navigation property to the user.
-    /// QUARANTINE: This cross-domain nav will be stripped in §15 Step 1 when
-    /// all ~15 consumer services are migrated to use IUserService.GetByIdAsync().
-    /// Profile-section services (Application layer) already ignore this property.
-    /// </summary>
-    public User User { get; set; } = null!;
-
-    /// <summary>
     /// The name the member goes by (e.g., burner name, nickname).
     /// This is the primary display name visible to everyone.
     /// </summary>

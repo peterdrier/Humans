@@ -53,6 +53,7 @@ public class ProfileController : HumansControllerBase
     private readonly IMemoryCache _cache;
     private readonly IClock _clock;
     private readonly IAuthorizationService _authorizationService;
+    private readonly IUserService _userService;
 
     private const int MaxProfilePictureUploadBytes = 20 * 1024 * 1024; // 20MB upload limit
     private static readonly HashSet<string> AllowedImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
@@ -101,7 +102,8 @@ public class ProfileController : HumansControllerBase
         IEmailOutboxService emailOutboxService,
         IMemoryCache cache,
         IClock clock,
-        IAuthorizationService authorizationService)
+        IAuthorizationService authorizationService,
+        IUserService userService)
         : base(userManager)
     {
         _userManager = userManager;
@@ -128,6 +130,7 @@ public class ProfileController : HumansControllerBase
         _cache = cache;
         _clock = clock;
         _authorizationService = authorizationService;
+        _userService = userService;
     }
 
     // ─── Own Profile (Me) ────────────────────────────────────────────
@@ -1055,11 +1058,12 @@ public class ProfileController : HumansControllerBase
         }
 
         // The ProfileCard ViewComponent handles all data fetching and permission checks.
+        var profileUser = await _userService.GetByIdAsync(id, ct);
         var viewModel = new ProfileViewModel
         {
             Id = profile.Id,
             UserId = id,
-            DisplayName = profile.User.DisplayName,
+            DisplayName = profileUser?.DisplayName ?? "Unknown",
             IsOwnProfile = isOwnProfile,
             IsApproved = profile.IsApproved,
             NoShowHistory = noShowHistory,
@@ -1075,18 +1079,19 @@ public class ProfileController : HumansControllerBase
         var profile = await _profileService.GetProfileAsync(id, ct);
         if (profile is null) return NotFound();
 
+        var popoverUser = await _userService.GetByIdAsync(id, ct);
         var teams = await _teamService.GetActiveTeamNamesForUserAsync(id, ct);
 
         var effectivePictureUrl = profile.HasCustomProfilePicture
             ? Url.Action(nameof(Picture), "Profile",
                 new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() })
-            : profile.User.ProfilePictureUrl;
+            : popoverUser?.ProfilePictureUrl;
 
         var vm = new ProfileSummaryViewModel
         {
             UserId = id,
-            DisplayName = profile.User.DisplayName,
-            Email = profile.User.Email,
+            DisplayName = popoverUser?.DisplayName ?? "Unknown",
+            Email = popoverUser?.Email,
             ProfilePictureUrl = effectivePictureUrl,
             MembershipTier = profile.MembershipTier.ToString(),
             MembershipStatus = profile.IsSuspended ? "Suspended"

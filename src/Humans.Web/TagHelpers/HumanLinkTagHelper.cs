@@ -17,11 +17,13 @@ public class HumanLinkTagHelper : TagHelper
 {
     private readonly IUrlHelperFactory _urlHelperFactory;
     private readonly IProfileService _profileService;
+    private readonly IUserService _userService;
 
-    public HumanLinkTagHelper(IUrlHelperFactory urlHelperFactory, IProfileService profileService)
+    public HumanLinkTagHelper(IUrlHelperFactory urlHelperFactory, IProfileService profileService, IUserService userService)
     {
         _urlHelperFactory = urlHelperFactory;
         _profileService = profileService;
+        _userService = userService;
     }
 
     [HtmlAttributeNotBound]
@@ -75,11 +77,11 @@ public class HumanLinkTagHelper : TagHelper
         // Resolve display name and profile picture from cache when not explicitly provided
         if (string.IsNullOrEmpty(DisplayName) && UserId != Guid.Empty)
         {
-            var profile = await _profileService.GetProfileAsync(UserId);
-            if (profile?.User is not null)
+            var user = await _userService.GetByIdAsync(UserId);
+            if (user is not null)
             {
-                DisplayName = profile.User.DisplayName;
-                ProfilePictureUrl ??= profile.User.ProfilePictureUrl;
+                DisplayName = user.DisplayName;
+                ProfilePictureUrl ??= user.ProfilePictureUrl;
             }
             else
             {

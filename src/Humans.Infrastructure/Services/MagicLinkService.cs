@@ -62,15 +62,18 @@ public class MagicLinkService : IMagicLinkService
         // 1. Look up by verified UserEmail first (supports all verified addresses)
 #pragma warning disable MA0011, RCS1155 // EF Core can only translate parameterless ToUpper()
         var userEmail = await _dbContext.UserEmails
-            .Include(ue => ue.User)
             .FirstOrDefaultAsync(ue => ue.IsVerified &&
                 ue.Email.ToUpper() == email.ToUpper(), ct);
 #pragma warning restore MA0011, RCS1155
 
         if (userEmail is not null)
         {
-            await SendLoginLinkAsync(userEmail.User, userEmail.Email, returnUrl, ct);
-            return;
+            var ownerUser = await _userManager.FindByIdAsync(userEmail.UserId.ToString());
+            if (ownerUser is not null)
+            {
+                await SendLoginLinkAsync(ownerUser, userEmail.Email, returnUrl, ct);
+                return;
+            }
         }
 
         // 2. Fallback: check User.NormalizedEmail (edge case: user exists but UserEmail row missing)
@@ -142,14 +145,14 @@ public class MagicLinkService : IMagicLinkService
     {
 #pragma warning disable MA0011, RCS1155 // EF Core can only translate parameterless ToUpper()
         var userEmail = await _dbContext.UserEmails
-            .Include(ue => ue.User)
+            .AsNoTracking()
             .FirstOrDefaultAsync(ue => ue.IsVerified &&
                 ue.Email.ToUpper() == email.ToUpper(), ct);
 #pragma warning restore MA0011, RCS1155
 
         if (userEmail is not null)
         {
-            return userEmail.User;
+            return await _userManager.FindByIdAsync(userEmail.UserId.ToString());
         }
 
         return await _userManager.FindByEmailAsync(email);
