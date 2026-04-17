@@ -1,7 +1,6 @@
 using Humans.Application;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Microsoft.Extensions.Caching.Memory;
@@ -39,15 +38,13 @@ namespace Humans.Infrastructure.Services.Users;
 public sealed class CachingUserService : IUserService
 {
     private readonly IUserService _inner;
-    private readonly IUserStore _store;
     private readonly IMemoryCache _cache;
 
     private static readonly TimeSpan UserCacheTtl = TimeSpan.FromMinutes(2);
 
-    public CachingUserService(IUserService inner, IUserStore store, IMemoryCache cache)
+    public CachingUserService(IUserService inner, IMemoryCache cache)
     {
         _inner = inner;
-        _store = store;
         _cache = cache;
     }
 

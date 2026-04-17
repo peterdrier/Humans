@@ -87,7 +87,7 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
 
             var now = _clock.GetCurrentInstant();
             var suspendedCount = 0;
-            var suspendedUserIds = new List<Guid>();
+            var suspendedUsers = new List<(Guid UserId, Profile Profile, User User)>();
 
             foreach (var userId in usersToSuspend)
             {
@@ -180,20 +180,20 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     "User {UserId} ({Email}) suspended and removed from {Count} teams",
                     userId, effectiveEmail, memberships.Count);
 
-                // Refresh profile store cache with suspended state
-                _cache.UpdateProfile(userId, CachedProfile.Create(profile, user));
-
                 _metrics.RecordMemberSuspended("job");
                 suspendedCount++;
-                suspendedUserIds.Add(userId);
+                suspendedUsers.Add((userId, profile, user));
             }
 
             if (suspendedCount > 0)
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
 
-                foreach (var suspendedUserId in suspendedUserIds)
+                foreach (var (suspendedUserId, profile, user) in suspendedUsers)
                 {
+                    // Refresh profile store cache only AFTER a successful save so a
+                    // mid-loop failure cannot leave the cache with phantom-suspended state.
+                    _cache.UpdateProfile(suspendedUserId, CachedProfile.Create(profile, user));
                     await _profileService.InvalidateCacheAsync(suspendedUserId, cancellationToken);
                     _cache.InvalidateUserProfile(suspendedUserId);
                     _cache.InvalidateRoleAssignmentClaims(suspendedUserId);
