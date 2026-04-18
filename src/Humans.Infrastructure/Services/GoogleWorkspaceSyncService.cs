@@ -35,12 +35,6 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
-    // Lazy to avoid pulling ITeamService's full dependency chain eagerly,
-    // and to keep clear of any DI cycles with services that themselves
-    // depend on Google sync.
-    private ITeamService TeamService =>
-        _serviceProvider.GetRequiredService<ITeamService>();
-
     /// <summary>
     /// Throttles concurrent DB access during parallel sync operations.
     /// </summary>
@@ -1887,10 +1881,19 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        // Fetch active team memberships via ITeamService — replaces the
-        // cross-domain .Include(u => u.TeamMemberships) nav-read.
-        var allMemberships = await TeamService.GetUserTeamsAsync(userId, cancellationToken);
-        var activeMemberships = allMemberships.Where(tm => tm.LeftAt == null);
+        // Read active team memberships directly from DbContext. Earlier we
+        // routed this through ITeamService via IServiceProvider lazy resolution,
+        // but that reintroduces the documented Google ↔ Teams DI cycle
+        // (GoogleWorkspaceSyncService → TeamService → ISystemTeamSync →
+        // SystemTeamSyncJob → IGoogleSyncService → GoogleWorkspaceSyncService).
+        // GWS already queries DbContext.TeamMembers directly in several other
+        // places (lines 204, 227, 685) — this single added read is consistent
+        // with that pattern and stays a transitional §2c violation until the
+        // Google integration section is itself migrated.
+        var activeMemberships = await _dbContext.TeamMembers
+            .AsNoTracking()
+            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
+            .ToListAsync(cancellationToken);
 
         foreach (var membership in activeMemberships)
         {
