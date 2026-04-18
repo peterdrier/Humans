@@ -171,13 +171,8 @@ public class AccountMergeService : IAccountMergeService, IUserDataContributor
         var now = _clock.GetCurrentInstant();
 
         // Remove the pending (unverified) email from the target user's account
-        var pendingEmail = await _dbContext.UserEmails
-            .FirstOrDefaultAsync(e => e.Id == request.PendingEmailId, ct);
-
-        if (pendingEmail != null)
-        {
-            _dbContext.UserEmails.Remove(pendingEmail);
-        }
+        // via the owning service. No-op if the email was cleaned up elsewhere.
+        await _userEmailService.RemoveUnverifiedEmailAsync(request.PendingEmailId, ct);
 
         request.Status = AccountMergeRequestStatus.Rejected;
         request.ResolvedAt = now;

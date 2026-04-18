@@ -258,6 +258,17 @@ public sealed class UserEmailService : IUserEmailService
         Guid userId, CancellationToken cancellationToken = default) =>
         _repository.RemoveAllForUserAsync(userId, cancellationToken);
 
+    public async Task RemoveUnverifiedEmailAsync(
+        Guid emailId, CancellationToken cancellationToken = default)
+    {
+        var email = await _repository.GetByIdReadOnlyAsync(emailId, cancellationToken);
+        if (email is null || email.IsVerified)
+        {
+            return;
+        }
+        await _repository.RemoveAsync(email, cancellationToken);
+    }
+
     public async Task AddOAuthEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default)
     {

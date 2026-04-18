@@ -78,6 +78,18 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Removes an unverified email record by id. No-op if the email does not
+    /// exist or has been verified. Narrower than <see cref="DeleteEmailAsync"/>
+    /// — does not block OAuth emails (which are always verified, so cannot
+    /// reach this path) and does not reassign notification target (pending
+    /// emails cannot be notification targets). Used by the account-merge
+    /// rejection flow.
+    /// </summary>
+    Task RemoveUnverifiedEmailAsync(
+        Guid emailId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds an OAuth-sourced email (already verified, no token needed).
     /// Used during first-time OAuth login to record the provider email.
     /// </summary>
