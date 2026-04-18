@@ -1,13 +1,10 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
-using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Data;
 
 namespace Humans.Infrastructure.Jobs;
 
@@ -17,7 +14,6 @@ namespace Humans.Infrastructure.Jobs;
 /// </summary>
 public class SuspendNonCompliantMembersJob : IRecurringJob
 {
-    private readonly HumansDbContext _dbContext;
     private readonly IMembershipCalculator _membershipCalculator;
     private readonly IEmailService _emailService;
     private readonly INotificationService _notificationService;
@@ -33,7 +29,6 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
     private readonly IClock _clock;
 
     public SuspendNonCompliantMembersJob(
-        HumansDbContext dbContext,
         IMembershipCalculator membershipCalculator,
         IEmailService emailService,
         INotificationService notificationService,
@@ -48,7 +43,6 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
         ILogger<SuspendNonCompliantMembersJob> logger,
         IClock clock)
     {
-        _dbContext = dbContext;
         _membershipCalculator = membershipCalculator;
         _emailService = emailService;
         _notificationService = notificationService;
@@ -75,7 +69,6 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
 
         try
         {
-            // Get users who are now Inactive (missing consents + grace period expired)
             var usersToSuspend = await _membershipCalculator
                 .GetUsersRequiringStatusUpdateAsync(cancellationToken);
 
@@ -85,26 +78,17 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 return;
             }
 
-            var now = _clock.GetCurrentInstant();
             var suspendedCount = 0;
-            var suspendedUsers = new List<(Guid UserId, Profile Profile, User User)>();
 
             foreach (var userId in usersToSuspend)
             {
-                // Load identity slice via IUserService
                 var user = await _userService.GetByIdAsync(userId, cancellationToken);
                 if (user is null)
                 {
                     continue;
                 }
 
-                // Load profile directly via DbContext (tracked, so IsSuspended/UpdatedAt
-                // mutations below persist on SaveChangesAsync).
-                // §2c violation: Profile section is migrated but no Suspend/Unsuspend
-                // method exists on IProfileService yet. Acceptable transitional per §15c.
-                var profile = await _dbContext.Profiles
-                    .Include(p => p.VolunteerHistory)
-                    .FirstOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+                var profile = await _profileService.GetProfileAsync(userId, cancellationToken);
                 if (profile is null)
                 {
                     continue;
@@ -116,9 +100,10 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     continue;
                 }
 
-                // 1. Set suspended flag on profile
-                profile.IsSuspended = true;
-                profile.UpdatedAt = now;
+                // 1. Suspend via IProfileService. The decorator persists the write, refreshes
+                //    the Profile store, invalidates UserProfile / RoleAssignmentClaims / ActiveTeams
+                //    caches, and any other cross-cutting Profile-section state.
+                await _profileService.SuspendAsync(userId, notes: null, cancellationToken);
 
                 // 2. Send email notification
                 var effectiveEmail = await _userEmailService
@@ -153,7 +138,6 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 }
 
                 // 3. Remove from all team resources (Google Drive/Groups).
-                // GetUserTeamsAsync returns active memberships only.
                 var memberships = await _teamService.GetUserTeamsAsync(userId, cancellationToken);
                 foreach (var membership in memberships)
                 {
@@ -180,26 +164,12 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                     "User {UserId} ({Email}) suspended and removed from {Count} teams",
                     userId, effectiveEmail, memberships.Count);
 
+                // Additional cross-cutting invalidations not covered by IProfileService.SuspendAsync:
+                _cache.InvalidateShiftAuthorization(userId);
+                _teamService.RemoveMemberFromAllTeamsCache(userId);
+
                 _metrics.RecordMemberSuspended("job");
                 suspendedCount++;
-                suspendedUsers.Add((userId, profile, user));
-            }
-
-            if (suspendedCount > 0)
-            {
-                await _dbContext.SaveChangesAsync(cancellationToken);
-
-                foreach (var (suspendedUserId, profile, user) in suspendedUsers)
-                {
-                    // Refresh profile store cache only AFTER a successful save so a
-                    // mid-loop failure cannot leave the cache with phantom-suspended state.
-                    _cache.UpdateProfile(suspendedUserId, CachedProfile.Create(profile, user));
-                    await _profileService.InvalidateCacheAsync(suspendedUserId, cancellationToken);
-                    _cache.InvalidateUserProfile(suspendedUserId);
-                    _cache.InvalidateRoleAssignmentClaims(suspendedUserId);
-                    _cache.InvalidateShiftAuthorization(suspendedUserId);
-                    _teamService.RemoveMemberFromAllTeamsCache(suspendedUserId);
-                }
             }
 
             _metrics.RecordJobRun("suspend_noncompliant_members", "success");

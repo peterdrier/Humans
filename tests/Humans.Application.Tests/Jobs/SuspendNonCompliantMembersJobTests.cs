@@ -62,7 +62,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             .Returns(Array.Empty<TeamMember>());
 
         _job = new SuspendNonCompliantMembersJob(
-            _dbContext, _membershipCalculator, _emailService,
+            _membershipCalculator, _emailService,
             _notificationService, _googleSyncService, _auditLogService,
             _profileService, _userEmailService, _teamService, _userService,
             _cache, _metrics, logger, _clock);
@@ -85,9 +85,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        var updatedProfile = await _dbContext.Profiles.SingleAsync();
-        updatedProfile.IsSuspended.Should().BeTrue();
-        updatedProfile.UpdatedAt.Should().Be(Now);
+        await _profileService.Received(1).SuspendAsync(user.Id, null, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -247,7 +245,9 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
 
         await _job.ExecuteAsync();
 
-        await _profileService.Received(1).InvalidateCacheAsync(user.Id, Arg.Any<CancellationToken>());
+        // The IProfileService decorator handles profile/user-profile/role-claims/active-teams
+        // invalidation internally during SuspendAsync. The job only invalidates the
+        // cross-cutting caches the decorator doesn't touch.
         _teamService.Received(1).RemoveMemberFromAllTeamsCache(user.Id);
     }
 
@@ -288,8 +288,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
         await _job.ExecuteAsync();
 
         // User should still be suspended despite Google sync failure
-        var updatedProfile = await _dbContext.Profiles.SingleAsync();
-        updatedProfile.IsSuspended.Should().BeTrue();
+        await _profileService.Received(1).SuspendAsync(user.Id, null, Arg.Any<CancellationToken>());
     }
 
     private async Task<User> SeedUserWithProfile(bool isSuspended = false)
@@ -306,8 +305,7 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             PreferredLanguage = "en"
         };
 
-        _dbContext.Users.Add(user);
-        _dbContext.Profiles.Add(new Profile
+        var profile = new Profile
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -316,12 +314,16 @@ public class SuspendNonCompliantMembersJobTests : IDisposable
             BurnerName = "Tester",
             IsSuspended = isSuspended,
             UpdatedAt = Now - Duration.FromDays(10)
-        });
+        };
+
+        _dbContext.Users.Add(user);
+        _dbContext.Profiles.Add(profile);
         await _dbContext.SaveChangesAsync();
 
         _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
         _userEmailService.GetNotificationEmailAsync(userId, Arg.Any<CancellationToken>())
             .Returns("test@example.com");
+        _profileService.GetProfileAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
 
         return user;
     }
