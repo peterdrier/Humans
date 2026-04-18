@@ -71,6 +71,14 @@ public interface IUserEmailRepository
         CancellationToken ct = default);
 
     /// <summary>
+    /// Batch lookup of every <see cref="UserEmail"/> row (any verification
+    /// state) for the given user ids. Returned read-only. Callers group by
+    /// <see cref="UserEmail.UserId"/> as needed.
+    /// </summary>
+    Task<IReadOnlyList<UserEmail>> GetByUserIdsAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default);
+
+    /// <summary>
     /// Returns a mapping of userId → verified notification-target email for all users
     /// that have one. If a user has multiple verified notification-target emails,
     /// one is picked arbitrarily.

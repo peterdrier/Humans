@@ -90,6 +90,25 @@ public interface IUserEmailService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Returns all verified email addresses for a user. Used by consumers that
+    /// need to match a user against attendee records or similar external
+    /// verification flows (e.g., ticket attendee email matching).
+    /// </summary>
+    Task<IReadOnlyList<string>> GetVerifiedEmailAddressesAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns all email addresses (any verification state) for the given
+    /// users, keyed by user id. Used by admin search flows that need to match
+    /// a search term against any of a user's emails. Users with no emails are
+    /// absent from the result.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<string>>> GetAllEmailsByUserIdsAsync(
+        IEnumerable<Guid> userIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Adds an OAuth-sourced email (already verified, no token needed).
     /// Used during first-time OAuth login to record the provider email.
     /// </summary>

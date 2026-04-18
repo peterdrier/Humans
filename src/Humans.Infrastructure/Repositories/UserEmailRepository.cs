@@ -93,6 +93,19 @@ public sealed class UserEmailRepository : IUserEmailRepository
             .Where(ue => ue.IsVerified && EF.Functions.ILike(ue.Email, "%@nobodies.team"))
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<UserEmail>> GetByUserIdsAsync(
+        IEnumerable<Guid> userIds, CancellationToken ct = default)
+    {
+        var ids = userIds.ToList();
+        if (ids.Count == 0)
+            return [];
+
+        return await _dbContext.UserEmails
+            .AsNoTracking()
+            .Where(e => ids.Contains(e.UserId))
+            .ToListAsync(ct);
+    }
+
     public async Task<Dictionary<Guid, string>> GetAllNotificationTargetEmailsAsync(
         CancellationToken ct = default)
     {

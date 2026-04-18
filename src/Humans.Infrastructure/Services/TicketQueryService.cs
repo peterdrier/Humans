@@ -70,20 +70,18 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
         if (attendeeCount > 0)
             return attendeeCount;
 
-        // Fallback: check all verified user emails against attendee emails (case-insensitive)
+        // Fallback: check all verified user emails against attendee emails (case-insensitive).
+        var verifiedEmails = await _userEmailService.GetVerifiedEmailAddressesAsync(userId);
+        if (verifiedEmails.Count == 0)
+            return 0;
+
         // ToUpper() translates to SQL UPPER() in EF/Npgsql — analyzer MA0011 is a false positive here
 #pragma warning disable MA0011
-        var userEmails = await _dbContext.Set<UserEmail>()
-            .Where(e => e.UserId == userId && e.IsVerified)
-            .Select(e => e.Email.ToUpper())
-            .ToListAsync();
-
-        if (userEmails.Count == 0)
-            return 0;
+        var normalizedEmails = verifiedEmails.Select(e => e.ToUpper()).ToList();
 
         attendeeCount = await _dbContext.TicketAttendees.CountAsync(a =>
             a.AttendeeEmail != null &&
-            userEmails.Contains(a.AttendeeEmail.ToUpper()) &&
+            normalizedEmails.Contains(a.AttendeeEmail.ToUpper()) &&
             (a.Status == TicketAttendeeStatus.Valid || a.Status == TicketAttendeeStatus.CheckedIn));
 #pragma warning restore MA0011
 
@@ -597,19 +595,8 @@ public class TicketQueryService : ITicketQueryService, IUserDataContributor
         var notificationEmailsByUserId = await _userEmailService
             .GetNotificationEmailsByUserIdsAsync(allUserIds);
 
-        // §2c transitional: direct DbContext.UserEmails read needed so the search
-        // predicate can match ANY of a user's emails (not just the notification
-        // target). IUserEmailService does not currently expose a batch "all emails
-        // by userIds" API; add one in a follow-up pass and swap this out.
-        var allEmailsByUserId = (await _dbContext.Set<UserEmail>()
-                .AsNoTracking()
-                .Where(e => allUserIds.Contains(e.UserId))
-                .Select(e => new { e.UserId, e.Email })
-                .ToListAsync())
-            .GroupBy(e => e.UserId)
-            .ToDictionary(
-                g => g.Key,
-                g => (IReadOnlyList<string>)g.Select(x => x.Email).ToList());
+        var allEmailsByUserId = await _userEmailService
+            .GetAllEmailsByUserIdsAsync(allUserIds);
 
         var volunteersTeamId = SystemTeamIds.Volunteers;
 
