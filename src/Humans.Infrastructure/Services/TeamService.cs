@@ -28,21 +28,16 @@ public class TeamService : ITeamService, IUserDataContributor
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IShiftManagementService _shiftManagementService;
     private readonly ISystemTeamSync _systemTeamSync;
+    private readonly IUserEmailService _userEmailService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IClock _clock;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TeamService> _logger;
 
     // Lazy to break the DI cycle with ITeamResourceService, which also needs ITeamService
-    // for user-membership lookups when resolving resources.
+    // for user-membership lookups when resolving resources. (Pre-existing — tracked in §15c.)
     private ITeamResourceService TeamResourceService
         => _serviceProvider.GetRequiredService<ITeamResourceService>();
-
-    // Lazy to avoid pulling IUserEmailService's dependency chain eagerly and
-    // to stay clear of any potential cycles with services that depend on
-    // ITeamService.
-    private IUserEmailService UserEmailService
-        => _serviceProvider.GetRequiredService<IUserEmailService>();
 
     public TeamService(
         HumansDbContext dbContext,
@@ -52,6 +47,7 @@ public class TeamService : ITeamService, IUserDataContributor
         IRoleAssignmentService roleAssignmentService,
         IShiftManagementService shiftManagementService,
         ISystemTeamSync systemTeamSync,
+        IUserEmailService userEmailService,
         IServiceProvider serviceProvider,
         IClock clock,
         IMemoryCache cache,
@@ -64,6 +60,7 @@ public class TeamService : ITeamService, IUserDataContributor
         _roleAssignmentService = roleAssignmentService;
         _shiftManagementService = shiftManagementService;
         _systemTeamSync = systemTeamSync;
+        _userEmailService = userEmailService;
         _serviceProvider = serviceProvider;
         _clock = clock;
         _cache = cache;
@@ -1962,7 +1959,7 @@ public class TeamService : ITeamService, IUserDataContributor
 
             // Treat empty string the same as null so test substitutes that return
             // string.Empty by default still trigger the fallback correctly.
-            var notificationEmail = await UserEmailService
+            var notificationEmail = await _userEmailService
                 .GetNotificationEmailAsync(user.Id, cancellationToken);
             var email = !string.IsNullOrEmpty(notificationEmail)
                 ? notificationEmail

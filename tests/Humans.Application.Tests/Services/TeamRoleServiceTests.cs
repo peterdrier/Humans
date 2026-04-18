@@ -60,6 +60,7 @@ public class TeamRoleServiceTests : IDisposable
             roleAssignmentService,
             shiftManagementService,
             Substitute.For<ISystemTeamSync>(),
+            Substitute.For<IUserEmailService>(),
             serviceProvider,
             _clock,
             cache,

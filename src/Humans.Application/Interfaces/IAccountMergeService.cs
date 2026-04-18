@@ -26,32 +26,4 @@ public interface IAccountMergeService
     /// Rejects a merge request: removes the pending email, no changes to accounts.
     /// </summary>
     Task RejectAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
-
-    // ---- Methods added for Profile-section migration (§15 Step 0) ----
-    // Previously, UserEmailService read AccountMergeRequests via direct DbContext.
-    // These methods route those reads through the owning service.
-
-    /// <summary>
-    /// Returns the subset of email IDs that have a pending merge request.
-    /// </summary>
-    Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
-        IReadOnlyList<Guid> emailIds, CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns true if the target user already has a pending merge request
-    /// for the given email (case-insensitive, including gmail/googlemail alternates).
-    /// </summary>
-    Task<bool> HasPendingForUserAndEmailAsync(
-        Guid targetUserId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default);
-
-    /// <summary>
-    /// Returns true if there is a pending merge request for the given pending email ID.
-    /// </summary>
-    Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Creates a new merge request.
-    /// </summary>
-    Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default);
 }

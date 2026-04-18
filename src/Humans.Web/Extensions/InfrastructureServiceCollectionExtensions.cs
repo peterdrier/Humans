@@ -208,6 +208,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAccountMergeService>(sp => sp.GetRequiredService<AccountMergeService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AccountMergeService>());
 
+        services.AddScoped<IAccountMergeRequestRepository, AccountMergeRequestRepository>();
+
         services.AddScoped<IDuplicateAccountService, DuplicateAccountService>();
         services.AddScoped<IContactService, ProfilesContactService>();
         services.AddScoped<IAccountProvisioningService, AccountProvisioningService>();
