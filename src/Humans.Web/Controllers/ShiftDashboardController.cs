@@ -1,3 +1,4 @@
+using Humans.Application.Enums;
 using Humans.Application.Interfaces;
 using Humans.Domain.Constants;
 using Humans.Domain.Entities;
@@ -21,6 +22,7 @@ public class ShiftDashboardController : HumansControllerBase
     private readonly IShiftSignupService _signupService;
     private readonly IGeneralAvailabilityService _availabilityService;
     private readonly UserManager<User> _userManager;
+    private readonly IWebHostEnvironment _environment;
     private readonly ILogger<ShiftDashboardController> _logger;
 
     public ShiftDashboardController(
@@ -28,6 +30,7 @@ public class ShiftDashboardController : HumansControllerBase
         IShiftSignupService signupService,
         IGeneralAvailabilityService availabilityService,
         UserManager<User> userManager,
+        IWebHostEnvironment environment,
         ILogger<ShiftDashboardController> logger)
         : base(userManager)
     {
@@ -35,11 +38,12 @@ public class ShiftDashboardController : HumansControllerBase
         _signupService = signupService;
         _availabilityService = availabilityService;
         _userManager = userManager;
+        _environment = environment;
         _logger = logger;
     }
 
     [HttpGet("")]
-    public async Task<IActionResult> Index(Guid? departmentId, Guid? rotaId, string? date)
+    public async Task<IActionResult> Index(Guid? departmentId, Guid? rotaId, string? date, TrendWindow? trendWindow)
     {
         var es = await _shiftMgmt.GetActiveAsync();
         if (es is null)
@@ -56,11 +60,17 @@ public class ShiftDashboardController : HumansControllerBase
                 filterDate = parseResult.Value;
         }
 
+        var window = trendWindow ?? TrendWindow.Last30Days;
+
+        // Sequential awaits — shared scoped DbContext is not safe for concurrent queries.
         var shifts = await _shiftMgmt.GetUrgentShiftsAsync(es.Id, limit: null, departmentId, filterDate);
         var staffingData = await _shiftMgmt.GetStaffingDataAsync(es.Id, departmentId);
         var staffingHours = await _shiftMgmt.GetStaffingHoursAsync(es.Id, departmentId);
-
+        var overview = await _shiftMgmt.GetDashboardOverviewAsync(es.Id);
+        var coordinatorActivity = await _shiftMgmt.GetCoordinatorActivityAsync(es.Id);
+        var trends = await _shiftMgmt.GetDashboardTrendsAsync(es.Id, window);
         var deptTuples = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
+
         var departments = deptTuples.Select(d => new DepartmentOption
         {
             TeamId = d.TeamId,
@@ -76,7 +86,12 @@ public class ShiftDashboardController : HumansControllerBase
             SelectedDate = date,
             EventSettings = es,
             StaffingData = staffingData.ToList(),
-            StaffingHours = staffingHours.ToList()
+            StaffingHours = staffingHours.ToList(),
+            Overview = overview,
+            CoordinatorActivity = coordinatorActivity,
+            Trends = trends,
+            TrendWindow = window,
+            IsDevelopment = _environment.IsDevelopment(),
         };
 
         return View(model);

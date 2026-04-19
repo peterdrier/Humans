@@ -1,0 +1,120 @@
+@using Humans.Application.DTOs
+@model IReadOnlyList<DepartmentStaffingRow>
+
+@{
+    static string PctClass(double pct) =>
+        pct >= 80 ? "bg-success" : pct >= 60 ? "bg-warning text-dark" : "bg-danger";
+
+    static double Pct(int filled, int total) => total == 0 ? 0 : 100.0 * filled / total;
+}
+
+@if (Model.Count == 0)
+{
+    return;
+}
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Departments</strong>
+        <span class="text-muted small">sorted by lowest fill % first</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th></th>
+                    <th>Department</th>
+                    <th class="text-end">Total</th>
+                    <th class="text-end">Filled</th>
+                    <th class="text-end">%</th>
+                    <th class="text-end">Slots remaining</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model)
+                {
+                    var rowId = "dept-" + row.DepartmentId.ToString("N");
+                    var pct = Pct(row.FilledShifts, row.TotalShifts);
+                    <tr role="button" data-bs-toggle="collapse" data-bs-target="#@rowId" aria-expanded="false">
+                        <td class="text-muted"><i class="bi bi-chevron-right"></i></td>
+                        <td>@row.DepartmentName</td>
+                        <td class="text-end">@row.TotalShifts</td>
+                        <td class="text-end">@row.FilledShifts</td>
+                        <td class="text-end"><span class="badge @PctClass(pct)">@pct.ToString("0")%</span></td>
+                        <td class="text-end">@row.SlotsRemaining</td>
+                    </tr>
+                    <tr class="collapse" id="@rowId">
+                        <td colspan="6" class="bg-light">
+                            @if (row.Subgroups.Count > 0)
+                            {
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th class="text-end">Total</th>
+                                            <th class="text-end">Filled</th>
+                                            <th class="text-end">%</th>
+                                            <th class="text-end">Slots remaining</th>
+                                            <th class="text-end">Build</th>
+                                            <th class="text-end">Event</th>
+                                            <th class="text-end">Strike</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var sub in row.Subgroups)
+                                        {
+                                            var sPct = Pct(sub.FilledShifts, sub.TotalShifts);
+                                            <tr>
+                                                <td>
+                                                    @if (sub.IsDirect)
+                                                    {
+                                                        <span class="badge bg-secondary me-1">Direct</span>
+                                                    }
+                                                    @sub.Name
+                                                </td>
+                                                <td class="text-end">@sub.TotalShifts</td>
+                                                <td class="text-end">@sub.FilledShifts</td>
+                                                <td class="text-end"><span class="badge @PctClass(sPct)">@sPct.ToString("0")%</span></td>
+                                                <td class="text-end">@sub.SlotsRemaining</td>
+                                                <td class="text-end"><span class="badge @PctClass(Pct(sub.Build.Filled, sub.Build.Total))">@Pct(sub.Build.Filled, sub.Build.Total).ToString("0")%</span></td>
+                                                <td class="text-end"><span class="badge @PctClass(Pct(sub.Event.Filled, sub.Event.Total))">@Pct(sub.Event.Filled, sub.Event.Total).ToString("0")%</span></td>
+                                                <td class="text-end"><span class="badge @PctClass(Pct(sub.Strike.Filled, sub.Strike.Total))">@Pct(sub.Strike.Filled, sub.Strike.Total).ToString("0")%</span></td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                            else
+                            {
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Period</th>
+                                            <th class="text-end">Total</th>
+                                            <th class="text-end">Filled</th>
+                                            <th class="text-end">%</th>
+                                            <th class="text-end">Slots remaining</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var (label, p) in new[] { ("Build", row.Build), ("Event", row.Event), ("Strike", row.Strike) })
+                                        {
+                                            var pPct = Pct(p.Filled, p.Total);
+                                            <tr>
+                                                <td>@label</td>
+                                                <td class="text-end">@p.Total</td>
+                                                <td class="text-end">@p.Filled</td>
+                                                <td class="text-end"><span class="badge @PctClass(pPct)">@pPct.ToString("0")%</span></td>
+                                                <td class="text-end">@p.SlotsRemaining</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

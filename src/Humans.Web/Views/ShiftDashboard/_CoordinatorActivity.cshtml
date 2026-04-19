@@ -1,0 +1,69 @@
+@using Humans.Application.DTOs
+@using NodaTime
+@model IReadOnlyList<CoordinatorActivityRow>
+@inject IClock Clock
+
+@{
+    var now = Clock.GetCurrentInstant();
+
+    static string RelativeTime(Instant? t, Instant now)
+    {
+        if (t is null) return "never";
+        var diff = now - t.Value;
+        if (diff.TotalDays < 1) return diff.TotalHours < 1
+            ? $"{(int)Math.Max(1, diff.TotalMinutes)} min ago"
+            : $"{(int)diff.TotalHours} h ago";
+        return $"{(int)diff.TotalDays} d ago";
+    }
+}
+
+@if (Model.Count == 0)
+{
+    return;
+}
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>Coordinator activity</strong>
+        <span class="text-muted small">teams with pending signups, oldest login first</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Team</th>
+                    <th>Coordinators</th>
+                    <th>Oldest login</th>
+                    <th class="text-end">Pending</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in Model)
+                {
+                    var oldest = row.Coordinators.Count == 0
+                        ? (Instant?)null
+                        : row.Coordinators.Min(c => c.LastLoginAt ?? Instant.MinValue);
+                    if (oldest == Instant.MinValue) oldest = null;
+                    var stale = oldest is null || (now - oldest.Value).TotalDays > 7;
+                    <tr>
+                        <td>@row.TeamName</td>
+                        <td>
+                            @if (row.Coordinators.Count == 0)
+                            {
+                                <span class="text-muted fst-italic">no coordinators</span>
+                            }
+                            else
+                            {
+                                @string.Join(", ", row.Coordinators.Select(c => c.DisplayName))
+                            }
+                        </td>
+                        <td class="@(stale ? "text-danger fw-semibold" : "")">
+                            @RelativeTime(oldest, now)
+                        </td>
+                        <td class="text-end"><span class="badge bg-warning text-dark">@row.PendingSignupCount</span></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

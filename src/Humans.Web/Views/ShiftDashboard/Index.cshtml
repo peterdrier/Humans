@@ -17,10 +17,27 @@
 
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>@Localizer["ShiftDash_Title"]</h2>
-        <span class="badge bg-secondary fs-6">@string.Format(Localizer["ShiftDash_ShiftsCount"].Value, Model.Shifts.Count)</span>
+        <div class="d-flex gap-2 align-items-center">
+            @if (Model.IsDevelopment)
+            {
+                <form method="post" action="/dev/seed/dashboard" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-sm btn-outline-warning">Seed dashboard (dev)</button>
+                </form>
+            }
+            <span class="badge bg-secondary fs-6">@string.Format(Localizer["ShiftDash_ShiftsCount"].Value, Model.Shifts.Count)</span>
+        </div>
     </div>
 
     <vc:temp-data-alerts />
+
+    @if (Model.Overview is not null)
+    {
+        @await Html.PartialAsync("_OverviewCounters", Model.Overview)
+        @await Html.PartialAsync("_DepartmentsTable", Model.Overview.Departments)
+    }
+    @await Html.PartialAsync("_CoordinatorActivity", Model.CoordinatorActivity)
+    @await Html.PartialAsync("_TrendsChart", (Model.Trends, Model.TrendWindow))
 
     @* Filter bar *@
     <div class="card mb-4">
