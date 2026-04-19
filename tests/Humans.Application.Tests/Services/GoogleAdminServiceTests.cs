@@ -47,7 +47,6 @@ public class GoogleAdminServiceTests : IDisposable
             _googleSyncService,
             teamResourceService,
             _userEmailService,
-            Substitute.For<IUserEmailRepository>(),
             _auditLogService,
             new FakeClock(Instant.FromUtc(2026, 1, 1, 0, 0)),
             NullLogger<GoogleAdminService>.Instance);

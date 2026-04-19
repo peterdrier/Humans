@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
+using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using Humans.Domain.Helpers;
@@ -32,6 +33,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
     private readonly IClock _clock;
     private readonly IAuditLogService _auditLogService;
     private readonly ISyncSettingsService _syncSettingsService;
+    private readonly ITeamMembershipRepository _teamMembershipRepository;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<GoogleWorkspaceSyncService> _logger;
 
@@ -53,6 +55,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         IClock clock,
         IAuditLogService auditLogService,
         ISyncSettingsService syncSettingsService,
+        ITeamMembershipRepository teamMembershipRepository,
         IServiceProvider serviceProvider,
         ILogger<GoogleWorkspaceSyncService> logger)
     {
@@ -62,6 +65,7 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
         _clock = clock;
         _auditLogService = auditLogService;
         _syncSettingsService = syncSettingsService;
+        _teamMembershipRepository = teamMembershipRepository;
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
@@ -1881,19 +1885,13 @@ public class GoogleWorkspaceSyncService : IGoogleSyncService
             return;
         }
 
-        // Read active team memberships directly from DbContext. Earlier we
-        // routed this through ITeamService via IServiceProvider lazy resolution,
-        // but that reintroduces the documented Google ↔ Teams DI cycle
-        // (GoogleWorkspaceSyncService → TeamService → ISystemTeamSync →
+        // Fetch active team memberships via the narrow ITeamMembershipRepository
+        // interface. We cannot inject ITeamService directly because that closes
+        // a DI cycle (GoogleWorkspaceSyncService → TeamService → ISystemTeamSync →
         // SystemTeamSyncJob → IGoogleSyncService → GoogleWorkspaceSyncService).
-        // GWS already queries DbContext.TeamMembers directly in several other
-        // places (lines 204, 227, 685) — this single added read is consistent
-        // with that pattern and stays a transitional §2c violation until the
-        // Google integration section is itself migrated.
-        var activeMemberships = await _dbContext.TeamMembers
-            .AsNoTracking()
-            .Where(tm => tm.UserId == userId && tm.LeftAt == null)
-            .ToListAsync(cancellationToken);
+        // The narrow repository has no dependencies beyond DbContext, so no cycle.
+        var activeMemberships = await _teamMembershipRepository
+            .GetActiveByUserIdAsync(userId, cancellationToken);
 
         foreach (var membership in activeMemberships)
         {

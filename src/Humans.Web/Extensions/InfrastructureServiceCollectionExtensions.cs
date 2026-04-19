@@ -209,6 +209,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AccountMergeService>());
 
         services.AddScoped<IAccountMergeRequestRepository, AccountMergeRequestRepository>();
+        services.AddScoped<ITeamMembershipRepository, TeamMembershipRepository>();
 
         services.AddScoped<IDuplicateAccountService, DuplicateAccountService>();
         services.AddScoped<IContactService, ProfilesContactService>();

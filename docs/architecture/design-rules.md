@@ -439,7 +439,12 @@ This is the target. Existing code violates most of it. Migration is **per-domain
 - **Transitional §2c violations from #511 (User migration):**
   - `OnboardingService.ApproveVolunteerAsync`/`SuspendAsync`/`UnsuspendAsync` read/write `DbContext.Profiles` directly because calling `IProfileService.{ApproveVolunteer,Suspend,Unsuspend}Async` from OnboardingService would create a DI cycle (ProfileService already depends on IOnboardingService). Fixed when OnboardingService itself migrates.
   - `GoogleWorkspaceSyncService` has several remaining direct `DbContext.TeamMembers` reads (plus `DbContext.Users` existence checks) as pre-existing transitional violations. GWS is itself an Infrastructure-layer service slated for migration in a future sprint.
-  - All four shortcuts originally introduced by the User migration have been cleaned up: `SuspendNonCompliantMembersJob` now goes through `IProfileService.SuspendAsync`; `TeamService` → `IUserEmailService` cycle broken by extracting `IAccountMergeRequestRepository`; `GoogleWorkspaceSyncService` → `ITeamService` lazy resolution dropped; `AccountMergeService.RejectAsync` now uses `IUserEmailService.RemoveUnverifiedEmailAsync`. `GoogleAdminService` and `TicketQueryService` direct `DbContext.UserEmails` reads replaced with new narrow service methods (`UpdateOAuthEmailAsync`, `UpdateUserEmailAddressAsync`, `GetVerifiedEmailAddressesAsync`, `GetAllEmailsByUserIdsAsync`).
+  - All shortcuts originally introduced by the User migration have been cleaned up:
+    - `SuspendNonCompliantMembersJob` now goes through `IProfileService.SuspendAsync`.
+    - `TeamService` → `IUserEmailService` cycle broken by extracting `IAccountMergeRequestRepository`.
+    - `GoogleWorkspaceSyncService` → `ITeamService` lazy resolution replaced with a narrow `ITeamMembershipRepository` (no cycle, no §2c violation — the repo is the sanctioned cross-section read surface).
+    - `AccountMergeService.RejectAsync` now uses `IUserEmailService.RemoveUnverifiedEmailAsync`.
+    - `GoogleAdminService` and `TicketQueryService` direct `DbContext.UserEmails` reads replaced with new narrow service methods (`UpdateOAuthEmailAsync`, `UpdateUserEmailAddressAsync`, `GetVerifiedEmailAddressesAsync`, `GetAllEmailsByUserIdsAsync`).
 
 Controllers with direct DbContext access (violation of §2a, tracked separately):
 - `AdminController`, `ProfileController`, `GoogleController`, `DevLoginController` (dev-only, low priority).
