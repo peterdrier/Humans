@@ -77,4 +77,44 @@ public class DevSeedController : HumansControllerBase
         return _configuration.GetSettingValue(
             _configRegistry, "DevAuth:Enabled", "Development", defaultValue: false);
     }
+
+    [Authorize(Policy = PolicyNames.ShiftDashboardAccess)]
+    [HttpPost("dashboard")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SeedDashboard(CancellationToken cancellationToken)
+    {
+        // Stricter than IsDevSeedEnabled: dashboard seed runs only on local Development
+        // (ASPNETCORE_ENVIRONMENT=Development), never on QA / preview / prod.
+        if (!_environment.IsDevelopment() || !IsDevSeedEnabled())
+        {
+            return NotFound();
+        }
+
+        var (errorResult, _) = await RequireCurrentUserAsync();
+        if (errorResult is not null)
+        {
+            return errorResult;
+        }
+
+        try
+        {
+            var seeder = _serviceProvider.GetRequiredService<DevelopmentDashboardSeeder>();
+            var result = await seeder.SeedAsync(cancellationToken);
+            if (result.AlreadySeeded)
+            {
+                SetSuccess("Dashboard demo data already present — no changes.");
+            }
+            else
+            {
+                SetSuccess($"Dashboard demo seeded: {result.TeamsCreated} teams, {result.UsersCreated} humans, {result.ShiftsCreated} shifts, {result.SignupsCreated} signups, {result.TicketOrdersCreated} ticket orders.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to seed dashboard demo data.");
+            SetError("Dashboard seeding failed. Check logs for details.");
+        }
+
+        return Redirect("/Shifts/Dashboard");
+    }
 }
