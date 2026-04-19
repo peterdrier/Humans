@@ -1,3 +1,5 @@
+using Humans.Application.DTOs;
+using Humans.Application.Enums;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
 using NodaTime;
@@ -198,6 +200,23 @@ public interface IShiftManagementService
     /// </summary>
     Task<IReadOnlyList<(Guid TeamId, string TeamName)>> GetDepartmentsWithRotasAsync(
         Guid eventSettingsId);
+
+    // === Coordinator Dashboard ===
+
+    /// <summary>
+    /// Gets the full coordinator-dashboard overview (counters + per-department staffing rows with subgroup drill-down).
+    /// </summary>
+    Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId);
+
+    /// <summary>
+    /// Gets per-team coordinator activity, scoped to teams with at least one pending signup.
+    /// </summary>
+    Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId);
+
+    /// <summary>
+    /// Gets daily trend points (signups, ticket sales, distinct logins) for the window.
+    /// </summary>
+    Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(Guid eventSettingsId, TrendWindow window);
 
     // === Shift Tags ===
 

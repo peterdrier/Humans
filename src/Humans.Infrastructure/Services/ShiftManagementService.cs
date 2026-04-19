@@ -1,3 +1,5 @@
+using Humans.Application.DTOs;
+using Humans.Application.Enums;
 using Humans.Application.Interfaces;
 using Humans.Application;
 using Humans.Domain.Constants;
@@ -867,6 +869,345 @@ public class ShiftManagementService : IShiftManagementService
             .ToListAsync();
 
         return teams.Select(x => (x.Id, x.Name)).ToList();
+    }
+
+    // ============================================================
+    // Coordinator Dashboard
+    // ============================================================
+
+    private static readonly TimeSpan DashboardCacheTtl = TimeSpan.FromMinutes(5);
+
+    internal static string OverviewCacheKey(Guid eventId) => $"dashboard-overview:{eventId}";
+    internal static string CoordinatorActivityCacheKey(Guid eventId) => $"dashboard-coordinator-activity:{eventId}";
+    internal static string TrendsCacheKey(Guid eventId, TrendWindow window) => $"dashboard-trends:{eventId}:{window}";
+
+    public async Task<DashboardOverview> GetDashboardOverviewAsync(Guid eventSettingsId)
+    {
+        var cached = await _cache.GetOrCreateAsync(OverviewCacheKey(eventSettingsId), async entry =>
+        {
+            entry.SlidingExpiration = DashboardCacheTtl;
+            return await ComputeDashboardOverviewAsync(eventSettingsId);
+        });
+        return cached!;
+    }
+
+    private async Task<DashboardOverview> ComputeDashboardOverviewAsync(Guid eventSettingsId)
+    {
+        var es = await _dbContext.EventSettings.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
+        if (es is null)
+            return EmptyOverview();
+
+        var shifts = await _dbContext.Shifts.AsNoTracking()
+            .Include(s => s.Rota).ThenInclude(r => r.Team).ThenInclude(t => t.ParentTeam)
+            .Where(s => s.Rota.EventSettingsId == eventSettingsId
+                        && !s.AdminOnly
+                        && s.Rota.IsVisibleToVolunteers)
+            .ToListAsync();
+
+        var shiftIds = shifts.Select(s => s.Id).ToList();
+
+        var confirmedCounts = await _dbContext.ShiftSignups.AsNoTracking()
+            .Where(su => shiftIds.Contains(su.ShiftId) && su.Status == SignupStatus.Confirmed)
+            .GroupBy(su => su.ShiftId)
+            .Select(g => new { ShiftId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ShiftId, x => x.Count);
+
+        int ConfirmedOn(Guid shiftId) => confirmedCounts.TryGetValue(shiftId, out var c) ? c : 0;
+        bool IsFilled(Shift s) => ConfirmedOn(s.Id) >= s.MinVolunteers;
+
+        var totalShifts = shifts.Count;
+        var filledShifts = shifts.Count(IsFilled);
+
+        PeriodBreakdown periodFillRates;
+        {
+            var perPeriod = shifts
+                .GroupBy(s => s.GetShiftPeriod(es))
+                .ToDictionary(g => g.Key, g => (Total: g.Count(), Filled: g.Count(IsFilled)));
+            periodFillRates = new PeriodBreakdown(
+                Pct(perPeriod, ShiftPeriod.Build),
+                Pct(perPeriod, ShiftPeriod.Event),
+                Pct(perPeriod, ShiftPeriod.Strike));
+        }
+
+        var ticketHolderIds = await _dbContext.TicketOrders.AsNoTracking()
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid && o.MatchedUserId != null)
+            .Select(o => o.MatchedUserId!.Value)
+            .Distinct()
+            .ToListAsync();
+        var ticketHolders = ticketHolderIds.ToHashSet();
+
+        var engagedUserIds = await _dbContext.ShiftSignups.AsNoTracking()
+            .Where(su => shiftIds.Contains(su.ShiftId) && su.Status != SignupStatus.Cancelled)
+            .Select(su => su.UserId)
+            .Distinct()
+            .ToListAsync();
+        var engaged = engagedUserIds.ToHashSet();
+
+        var ticketHoldersEngaged = engaged.Count(u => ticketHolders.Contains(u));
+        var nonTicketSignups = engaged.Count(u => !ticketHolders.Contains(u));
+
+        var staleThreshold = _clock.GetCurrentInstant().Minus(Duration.FromDays(3));
+        var stalePendingCount = await _dbContext.ShiftSignups.AsNoTracking()
+            .CountAsync(su => shiftIds.Contains(su.ShiftId)
+                              && su.Status == SignupStatus.Pending
+                              && su.CreatedAt < staleThreshold);
+
+        var departments = BuildDepartmentRows(shifts, confirmedCounts, es);
+
+        return new DashboardOverview(
+            totalShifts, filledShifts, periodFillRates,
+            ticketHolders.Count, ticketHoldersEngaged, nonTicketSignups, stalePendingCount,
+            departments);
+
+        static double Pct(Dictionary<ShiftPeriod, (int Total, int Filled)> perPeriod, ShiftPeriod p) =>
+            perPeriod.TryGetValue(p, out var v) && v.Total > 0
+                ? 100.0 * v.Filled / v.Total
+                : 0d;
+    }
+
+    private static DashboardOverview EmptyOverview() => new(
+        0, 0, new PeriodBreakdown(0, 0, 0), 0, 0, 0, 0, Array.Empty<DepartmentStaffingRow>());
+
+    private static List<DepartmentStaffingRow> BuildDepartmentRows(
+        List<Shift> shifts,
+        Dictionary<Guid, int> confirmedCounts,
+        EventSettings es)
+    {
+        // Group by department (parent team if exists, else own team).
+        var groups = shifts
+            .GroupBy(s => s.Rota.Team.ParentTeam ?? s.Rota.Team)
+            .ToList();
+
+        var rows = new List<DepartmentStaffingRow>();
+        foreach (var g in groups)
+        {
+            var dept = g.Key;
+            var deptShifts = g.ToList();
+            var agg = AggregateShifts(deptShifts, confirmedCounts, es);
+
+            // Subgroups: any shift belongs to a subteam?
+            var subgroups = new List<SubgroupStaffingRow>();
+            var anySubteam = deptShifts.Any(s => s.Rota.Team.ParentTeamId != null);
+            if (anySubteam)
+            {
+                // Per-subteam subgroups.
+                var subteamGroups = deptShifts
+                    .Where(s => s.Rota.Team.ParentTeamId != null)
+                    .GroupBy(s => s.Rota.Team);
+                foreach (var sg in subteamGroups)
+                {
+                    var sAgg = AggregateShifts(sg.ToList(), confirmedCounts, es);
+                    subgroups.Add(new SubgroupStaffingRow(
+                        sg.Key.Id, sg.Key.Name, IsDirect: false,
+                        sAgg.Total, sAgg.Filled, sAgg.Remaining,
+                        sAgg.Build, sAgg.Event, sAgg.Strike));
+                }
+
+                // "Direct" row for department's own rotas (if any).
+                var directShifts = deptShifts.Where(s => s.Rota.TeamId == dept.Id).ToList();
+                if (directShifts.Count > 0)
+                {
+                    var dAgg = AggregateShifts(directShifts, confirmedCounts, es);
+                    subgroups.Insert(0, new SubgroupStaffingRow(
+                        dept.Id, "Direct", IsDirect: true,
+                        dAgg.Total, dAgg.Filled, dAgg.Remaining,
+                        dAgg.Build, dAgg.Event, dAgg.Strike));
+                }
+
+                // Sort: Direct pinned top; rest by fill % ascending, ties by name.
+                subgroups = subgroups
+                    .OrderByDescending(r => r.IsDirect)
+                    .ThenBy(r => r.TotalShifts == 0 ? 0 : 100.0 * r.FilledShifts / r.TotalShifts)
+                    .ThenBy(r => r.Name, StringComparer.Ordinal)
+                    .ToList();
+            }
+
+            rows.Add(new DepartmentStaffingRow(
+                dept.Id, dept.Name,
+                agg.Total, agg.Filled, agg.Remaining,
+                agg.Build, agg.Event, agg.Strike,
+                subgroups));
+        }
+
+        return rows
+            .OrderBy(r => r.TotalShifts == 0 ? 0 : 100.0 * r.FilledShifts / r.TotalShifts)
+            .ThenBy(r => r.DepartmentName, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static (int Total, int Filled, int Remaining, PeriodStaffing Build, PeriodStaffing Event, PeriodStaffing Strike)
+        AggregateShifts(List<Shift> shifts, Dictionary<Guid, int> confirmedCounts, EventSettings es)
+    {
+        int total = shifts.Count;
+        int filled = 0;
+        int remaining = 0;
+        var periodAgg = new Dictionary<ShiftPeriod, (int Total, int Filled, int Remaining)>
+        {
+            [ShiftPeriod.Build] = (0, 0, 0),
+            [ShiftPeriod.Event] = (0, 0, 0),
+            [ShiftPeriod.Strike] = (0, 0, 0),
+        };
+
+        foreach (var s in shifts)
+        {
+            var confirmed = confirmedCounts.TryGetValue(s.Id, out var c) ? c : 0;
+            var isFilled = confirmed >= s.MinVolunteers;
+            var slotsLeft = Math.Max(0, s.MaxVolunteers - confirmed);
+
+            if (isFilled) filled++;
+            remaining += slotsLeft;
+
+            var p = s.GetShiftPeriod(es);
+            var cur = periodAgg[p];
+            periodAgg[p] = (cur.Total + 1, cur.Filled + (isFilled ? 1 : 0), cur.Remaining + slotsLeft);
+        }
+
+        PeriodStaffing ToStaffing(ShiftPeriod p)
+        {
+            var v = periodAgg[p];
+            return new PeriodStaffing(v.Total, v.Filled, v.Remaining);
+        }
+
+        return (total, filled, remaining, ToStaffing(ShiftPeriod.Build), ToStaffing(ShiftPeriod.Event), ToStaffing(ShiftPeriod.Strike));
+    }
+
+    public async Task<IReadOnlyList<CoordinatorActivityRow>> GetCoordinatorActivityAsync(Guid eventSettingsId)
+    {
+        var cached = await _cache.GetOrCreateAsync(CoordinatorActivityCacheKey(eventSettingsId), async entry =>
+        {
+            entry.SlidingExpiration = DashboardCacheTtl;
+            return await ComputeCoordinatorActivityAsync(eventSettingsId);
+        });
+        return cached!;
+    }
+
+    private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId)
+    {
+        // Pending signup counts per team (via rota.TeamId). We intentionally don't dedupe by SignupBlockId here —
+        // this count is the raw number of pending shift-signups that need attention, which matches the UX.
+        var pendingCounts = await (
+            from rota in _dbContext.Rotas
+            where rota.EventSettingsId == eventSettingsId
+            join shift in _dbContext.Shifts on rota.Id equals shift.RotaId
+            join signup in _dbContext.ShiftSignups on shift.Id equals signup.ShiftId
+            where signup.Status == SignupStatus.Pending
+            group signup by rota.TeamId into g
+            select new { TeamId = g.Key, Count = g.Count() }
+        ).ToDictionaryAsync(x => x.TeamId, x => x.Count);
+
+        if (pendingCounts.Count == 0)
+            return Array.Empty<CoordinatorActivityRow>();
+
+        var teamIds = pendingCounts.Keys.ToList();
+
+        var rawRows = await _dbContext.Teams.AsNoTracking()
+            .Where(t => teamIds.Contains(t.Id))
+            .Select(t => new
+            {
+                t.Id,
+                t.Name,
+                Coordinators = t.Members
+                    .Where(m => m.LeftAt == null && m.Role == TeamMemberRole.Coordinator)
+                    .Select(m => new { m.UserId, m.User.DisplayName, m.User.LastLoginAt })
+                    .ToList()
+            })
+            .ToListAsync();
+
+        return rawRows
+            .Select(t =>
+            {
+                var coords = t.Coordinators
+                    .Select(c => new CoordinatorLogin(c.UserId, c.DisplayName, c.LastLoginAt))
+                    .OrderBy(c => c.LastLoginAt ?? Instant.MinValue)
+                    .ToList();
+                return new CoordinatorActivityRow(
+                    t.Id, t.Name, coords, pendingCounts[t.Id]);
+            })
+            .OrderBy(r => r.Coordinators.Select(c => c.LastLoginAt ?? Instant.MinValue).DefaultIfEmpty(Instant.MinValue).Min())
+            .ThenBy(r => r.TeamName, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(Guid eventSettingsId, TrendWindow window)
+    {
+        var cached = await _cache.GetOrCreateAsync(TrendsCacheKey(eventSettingsId, window), async entry =>
+        {
+            entry.SlidingExpiration = DashboardCacheTtl;
+            return await ComputeDashboardTrendsAsync(eventSettingsId, window);
+        });
+        return cached!;
+    }
+
+    private async Task<IReadOnlyList<DashboardTrendPoint>> ComputeDashboardTrendsAsync(Guid eventSettingsId, TrendWindow window)
+    {
+        var es = await _dbContext.EventSettings.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == eventSettingsId);
+        if (es is null) return Array.Empty<DashboardTrendPoint>();
+
+        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(es.TimeZoneId) ?? DateTimeZone.Utc;
+        var now = _clock.GetCurrentInstant();
+        var today = now.InZone(tz).Date;
+
+        LocalDate start = window switch
+        {
+            TrendWindow.Last7Days => today.PlusDays(-6),
+            TrendWindow.Last30Days => today.PlusDays(-29),
+            TrendWindow.Last90Days => today.PlusDays(-89),
+            TrendWindow.All => es.CreatedAt.InZone(tz).Date,
+            _ => today.PlusDays(-29),
+        };
+
+        if (start > today) start = today;
+
+        var startInstant = start.AtStartOfDayInZone(tz).ToInstant();
+        var endInstant = today.PlusDays(1).AtStartOfDayInZone(tz).ToInstant();
+
+        // Signups created in window, scoped to this event's shifts.
+        var signupsInWindow = await (
+            from su in _dbContext.ShiftSignups.AsNoTracking()
+            join sh in _dbContext.Shifts.AsNoTracking() on su.ShiftId equals sh.Id
+            join r in _dbContext.Rotas.AsNoTracking() on sh.RotaId equals r.Id
+            where r.EventSettingsId == eventSettingsId
+                  && su.CreatedAt >= startInstant
+                  && su.CreatedAt < endInstant
+            select su.CreatedAt
+        ).ToListAsync();
+
+        var ticketsInWindow = await _dbContext.TicketOrders.AsNoTracking()
+            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid
+                        && o.PurchasedAt >= startInstant
+                        && o.PurchasedAt < endInstant)
+            .Select(o => o.PurchasedAt)
+            .ToListAsync();
+
+        var loginsInWindow = await _dbContext.Users.AsNoTracking()
+            .Where(u => u.LastLoginAt != null
+                        && u.LastLoginAt >= startInstant
+                        && u.LastLoginAt < endInstant)
+            .Select(u => u.LastLoginAt!.Value)
+            .ToListAsync();
+
+        LocalDate ToLocalDate(Instant i) => i.InZone(tz).Date;
+
+        var signupsByDay = signupsInWindow.GroupBy(ToLocalDate).ToDictionary(g => g.Key, g => g.Count());
+        var ticketsByDay = ticketsInWindow.GroupBy(ToLocalDate).ToDictionary(g => g.Key, g => g.Count());
+        var loginsByDay = loginsInWindow.Select(ToLocalDate).Distinct().ToHashSet();
+        // DistinctLogins as daily count = each user counted at most once on their LastLoginAt day; that's what we have.
+        var loginCountsByDay = loginsInWindow
+            .GroupBy(i => ToLocalDate(i))
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var points = new List<DashboardTrendPoint>();
+        for (var d = start; d <= today; d = d.PlusDays(1))
+        {
+            points.Add(new DashboardTrendPoint(
+                d,
+                signupsByDay.TryGetValue(d, out var s) ? s : 0,
+                ticketsByDay.TryGetValue(d, out var t) ? t : 0,
+                loginCountsByDay.TryGetValue(d, out var l) ? l : 0));
+        }
+        return points;
     }
 
     // ============================================================
