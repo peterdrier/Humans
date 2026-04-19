@@ -201,7 +201,7 @@ public sealed class DevelopmentDashboardSeeder
             var display = $"Dev Human {i:D3}";
             var email = $"dev-human-{i:D3}@seed.local";
             var createdAt = now.Minus(Duration.FromDays(_rng.Next(30, 400)));
-            var lastLoginDaysAgo = _rng.Next(0, 30);
+            var lastLoginDaysAgo = _rng.Next(0, 85);
             var user = new User
             {
                 Id = Guid.NewGuid(),
@@ -231,7 +231,7 @@ public sealed class DevelopmentDashboardSeeder
                     Currency = "EUR",
                     PaymentStatus = TicketPaymentStatus.Paid,
                     VendorEventId = "dev-vendor-event",
-                    PurchasedAt = now.Minus(Duration.FromDays(_rng.Next(0, 45))),
+                    PurchasedAt = now.Minus(Duration.FromDays(_rng.Next(0, 85))),
                     SyncedAt = now,
                 });
                 ticketOrdersCreated++;
@@ -278,7 +278,7 @@ public sealed class DevelopmentDashboardSeeder
                     ShiftId = shift.Id,
                     UserId = user.Id,
                     Status = SignupStatus.Confirmed,
-                    CreatedAt = now.Minus(Duration.FromDays(_rng.Next(0, 20))),
+                    CreatedAt = now.Minus(Duration.FromDays(_rng.Next(0, 85))),
                     UpdatedAt = now,
                 });
                 signupsCreated++;

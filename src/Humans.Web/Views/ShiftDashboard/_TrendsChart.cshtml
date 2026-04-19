@@ -44,44 +44,67 @@
 
 <script>
 (function () {
-    const labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(labels));
-    const signups = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(signups));
-    const tickets = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(tickets));
-    const logins = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(logins));
+    var labels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(labels));
+    var signups = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(signups));
+    var tickets = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(tickets));
+    var logins = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(logins));
 
-    const ctx = document.getElementById('dashboardTrendsChart');
-    if (!ctx || typeof Chart === 'undefined') return;
-
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels,
-            datasets: [
-                { label: 'New signups', data: signups, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.25 },
-                { label: 'New ticket sales', data: tickets, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', tension: 0.25 },
-                { label: 'Distinct logins (DAU)', data: logins, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.1)', tension: 0.25, borderDash: [4, 4] },
-            ]
-        },
-        options: {
-            responsive: true,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { position: 'bottom' },
-                tooltip: {
-                    callbacks: {
-                        afterLabel: function (ctx) {
-                            if (ctx.dataset.label === 'Distinct logins (DAU)') {
-                                return 'Only last login per human is stored — older buckets undercount.';
+    function renderDashboardTrendsChart() {
+        var ctx = document.getElementById('dashboardTrendsChart');
+        if (!ctx || typeof Chart === 'undefined') return;
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'New signups', data: signups, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.25 },
+                    { label: 'New ticket sales', data: tickets, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', tension: 0.25 },
+                    { label: 'Distinct logins (DAU)', data: logins, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.1)', tension: 0.25, borderDash: [4, 4] }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function (c) {
+                                if (c.dataset.label === 'Distinct logins (DAU)') {
+                                    return 'Only last login per human is stored — older buckets undercount.';
+                                }
+                                return null;
                             }
-                            return null;
                         }
                     }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
                 }
-            },
-            scales: {
-                y: { beginAtZero: true, ticks: { precision: 0 } }
             }
-        }
-    });
+        });
+    }
+
+    if (typeof Chart === 'undefined') {
+        // Chart.js may already be getting loaded by sibling partials.
+        // Poll briefly, otherwise inject our own script tag.
+        var tries = 0;
+        var iv = setInterval(function () {
+            if (typeof Chart !== 'undefined') {
+                clearInterval(iv);
+                renderDashboardTrendsChart();
+            } else if (++tries > 50) {
+                clearInterval(iv);
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js';
+                s.integrity = 'sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ';
+                s.crossOrigin = 'anonymous';
+                s.onload = renderDashboardTrendsChart;
+                document.head.appendChild(s);
+            }
+        }, 100);
+    } else {
+        renderDashboardTrendsChart();
+    }
 })();
 </script>
