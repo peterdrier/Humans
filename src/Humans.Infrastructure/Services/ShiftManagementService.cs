@@ -974,16 +974,19 @@ public class ShiftManagementService : IShiftManagementService
         Dictionary<Guid, int> confirmedCounts,
         EventSettings es)
     {
-        // Group by department (parent team if exists, else own team).
+        // Helper: resolve department (parent team if any, else own team) from a shift.
+        static Team DeptOf(Shift s) => s.Rota.Team.ParentTeam ?? s.Rota.Team;
+
+        // Group by department ID (Team instances may differ across includes; grouping by identity is incorrect).
         var groups = shifts
-            .GroupBy(s => s.Rota.Team.ParentTeam ?? s.Rota.Team)
+            .GroupBy(s => DeptOf(s).Id)
             .ToList();
 
         var rows = new List<DepartmentStaffingRow>();
         foreach (var g in groups)
         {
-            var dept = g.Key;
             var deptShifts = g.ToList();
+            var dept = DeptOf(deptShifts[0]);
             var agg = AggregateShifts(deptShifts, confirmedCounts, es);
 
             // Subgroups: any shift belongs to a subteam?
@@ -991,15 +994,16 @@ public class ShiftManagementService : IShiftManagementService
             var anySubteam = deptShifts.Any(s => s.Rota.Team.ParentTeamId != null);
             if (anySubteam)
             {
-                // Per-subteam subgroups.
+                // Per-subteam subgroups (group by team ID for stable identity across EF-include instances).
                 var subteamGroups = deptShifts
                     .Where(s => s.Rota.Team.ParentTeamId != null)
-                    .GroupBy(s => s.Rota.Team);
+                    .GroupBy(s => s.Rota.Team.Id);
                 foreach (var sg in subteamGroups)
                 {
+                    var sTeam = sg.First().Rota.Team;
                     var sAgg = AggregateShifts(sg.ToList(), confirmedCounts, es);
                     subgroups.Add(new SubgroupStaffingRow(
-                        sg.Key.Id, sg.Key.Name, IsDirect: false,
+                        sTeam.Id, sTeam.Name, IsDirect: false,
                         sAgg.Total, sAgg.Filled, sAgg.Remaining,
                         sAgg.Build, sAgg.Event, sAgg.Strike));
                 }
