@@ -187,7 +187,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 **Panels:**
 
-- **Overview counters** — five cards: shifts filled (with per-period Build/Event/Strike fill chips coloured ≥80% green / 60–79% amber / <60% red), ticket holders, ticket holders engaged (primary-bordered emphasis card; sub-line shows how many humans haven't signed up), non-ticket signups, stale pending (warning-bordered when > 0).
+- **Overview counters** — five cards: shifts filled (with per-period Build/Event/Strike fill chips coloured ≥80% green / 60–79% amber / <60% red), ticket holders, ticket holding volunteers (primary-bordered emphasis card; sub-line shows how many ticket-holding humans haven't signed up), non-ticket signups, stale pending (warning-bordered when > 0).
 - **Departments table** — one row per parent team, sorted by ascending fill %. Clicking a row expands to either three period sub-rows (Build/Event/Strike) when the department has no subteams, or a subgroup table showing each subteam (plus a "Direct" row for rotas attached to the parent itself) with per-period fill % chips.
 - **Coordinator activity** — teams that have ≥1 pending signup, one row each listing coordinator names, oldest login across that team's coordinators (rendered red if > 7 days or never), and pending signup count. Hidden entirely if no team has pending signups.
 - **Trends chart** — line chart with three series (new signups, new ticket sales, distinct logins / DAU) over a selectable window (7/30/90 days, All). Window toggle re-renders via `asp-route-trendWindow=`. DAU series is dashed with a tooltip noting that only the last login per human is stored (older buckets undercount).
@@ -197,7 +197,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 - **Shift filled** — confirmed signup count ≥ `MinVolunteers`.
 - **Period fill rate** — filled shifts in the period / total shifts in the period, expressed as a percentage. Aggregates ignore AdminOnly shifts' visibility.
 - **Ticket holder** — a human with an active ticket for the event.
-- **Ticket holder engaged** — a ticket holder with at least one non-bailed/non-refused/non-cancelled signup on an event-period shift.
+- **Ticket holding volunteer** — a ticket holder who has at least one shift signup on a visible, non-AdminOnly shift of this event, with any status other than `Cancelled`. Pending, Refused, Bailed, and NoShow all count as "engaged with the shift system", so the metric is "ticket holders we've gotten in front of", not "currently committed to work a shift".
 - **Non-ticket signup** — distinct humans who have ≥1 non-bailed/non-refused/non-cancelled signup but no active ticket.
 - **Stale pending** — a pending signup whose `CreatedAt` is more than 3 days ago.
 - **Subgroup aggregate invariant** — department totals equal the sum of subgroup totals (including the synthetic "Direct" row for rotas whose team is the parent itself).

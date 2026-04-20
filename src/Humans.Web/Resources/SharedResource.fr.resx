@@ -1692,7 +1692,7 @@
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Quarts remplis</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Détenteurs de billets</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans qui ont payé</value></data>
-  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Détenteurs de billets engagés</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Bénévoles avec billet</value></data>
   <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans ne se sont pas inscrits</value><comment>{0} = count</comment></data>
   <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Inscriptions sans billet</value></data>
   <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>inscrits sans billet (pour l'instant)</value></data>

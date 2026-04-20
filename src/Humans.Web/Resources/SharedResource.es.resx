@@ -1694,7 +1694,7 @@
   <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Turnos cubiertos</value></data>
   <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Con entrada</value></data>
   <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans que han pagado</value></data>
-  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Con entrada y apuntados</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Voluntarios con entrada</value></data>
   <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans no se han apuntado</value><comment>{0} = count</comment></data>
   <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Apuntados sin entrada</value></data>
   <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>apuntados sin entrada (aún)</value></data>
