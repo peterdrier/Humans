@@ -5,7 +5,6 @@ using Humans.Application.DTOs;
 using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
-using Humans.Application.Interfaces.Gdpr;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
@@ -134,8 +133,21 @@ public sealed class CachingProfileService : IProfileService
         Guid profileId, CancellationToken ct = default) =>
         _inner.GetProfileLanguagesAsync(profileId, ct);
 
-    public Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
-        _inner.SaveProfileLanguagesAsync(profileId, languages, ct);
+    public async Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
+    {
+        await _inner.SaveProfileLanguagesAsync(profileId, languages, ct);
+
+        // CachedProfile does not include languages today, so no store refresh is needed —
+        // but we still invalidate user caches for consistency with the write-path pattern.
+        // If languages are ever added to CachedProfile, add RefreshStoreEntryAsync here
+        // (see SaveProfileAsync for the full pattern).
+        var userId = _store.GetUserIdByProfileId(profileId);
+        if (userId is not null)
+        {
+            InvalidateUserCaches(userId.Value);
+            await RefreshStoreEntryAsync(userId.Value, ct);
+        }
+    }
 
     public async Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
     {
@@ -152,6 +164,7 @@ public sealed class CachingProfileService : IProfileService
     {
         await _inner.SetMembershipTierAsync(userId, tier, ct);
         InvalidateUserCaches(userId);
+        _navBadge.Invalidate();
         await RefreshStoreEntryAsync(userId, ct);
     }
 
@@ -191,13 +204,6 @@ public sealed class CachingProfileService : IProfileService
         }
         return result;
     }
-
-    // ==========================================================================
-    // GDPR export pass-through
-    // ==========================================================================
-
-    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        ((IUserDataContributor)_inner).ContributeForUserAsync(userId, ct);
 
     // ==========================================================================
     // Helpers

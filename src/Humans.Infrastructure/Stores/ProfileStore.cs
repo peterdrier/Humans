@@ -12,16 +12,32 @@ namespace Humans.Infrastructure.Stores;
 public sealed class ProfileStore : IProfileStore
 {
     private readonly ConcurrentDictionary<Guid, CachedProfile> _byUserId = new();
+    private readonly ConcurrentDictionary<Guid, Guid> _userIdByProfileId = new();
 
     public CachedProfile? GetByUserId(Guid userId) =>
         _byUserId.TryGetValue(userId, out var profile) ? profile : null;
 
     public IReadOnlyList<CachedProfile> GetAll() => _byUserId.Values.ToList();
 
-    public void Upsert(Guid userId, CachedProfile profile) =>
-        _byUserId[userId] = profile;
+    public void Upsert(Guid userId, CachedProfile profile)
+    {
+        // Remove stale reverse index entry if this userId previously had a different profileId
+        if (_byUserId.TryGetValue(userId, out var existing))
+            _userIdByProfileId.TryRemove(existing.ProfileId, out _);
 
-    public void Remove(Guid userId) => _byUserId.TryRemove(userId, out _);
+        _byUserId[userId] = profile;
+        _userIdByProfileId[profile.ProfileId] = userId;
+    }
+
+    public void Remove(Guid userId)
+    {
+        if (_byUserId.TryRemove(userId, out var profile))
+            _userIdByProfileId.TryRemove(profile.ProfileId, out _);
+    }
+
+    /// <inheritdoc/>
+    public Guid? GetUserIdByProfileId(Guid profileId) =>
+        _userIdByProfileId.TryGetValue(profileId, out var userId) ? userId : null;
 
     /// <summary>
     /// Replaces the entire store with <paramref name="profiles"/>. There is
@@ -33,9 +49,11 @@ public sealed class ProfileStore : IProfileStore
     public void LoadAll(IReadOnlyDictionary<Guid, CachedProfile> profiles)
     {
         _byUserId.Clear();
+        _userIdByProfileId.Clear();
         foreach (var (userId, profile) in profiles)
         {
             _byUserId[userId] = profile;
+            _userIdByProfileId[profile.ProfileId] = userId;
         }
     }
 }

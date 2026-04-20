@@ -520,31 +520,20 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return (true, 0, null);
     }
 
-    public async Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default)
+    public Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(string query, CancellationToken ct = default)
     {
-        // Search through the store + user data (instead of cross-domain DB query)
-        var approved = _store.GetAll()
+        // CachedProfile already carries DisplayName and NotificationEmail — no user service call needed.
+        IReadOnlyList<UserSearchResult> results = _store.GetAll()
             .Where(p => p.IsApproved && !p.IsSuspended)
-            .ToList();
-
-        var userIds = approved.Select(p => p.UserId).ToList();
-        var users = await _userService.GetByIdsAsync(userIds, ct);
-
-        return approved
             .Where(p =>
-            {
-                if (!users.TryGetValue(p.UserId, out var user)) return false;
-                return user.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                       (user.Email?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false);
-            })
+                p.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                (p.NotificationEmail?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
             .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
             .Take(20)
-            .Select(p =>
-            {
-                var user = users[p.UserId];
-                return new UserSearchResult(p.UserId, user.DisplayName, user.Email ?? "");
-            })
+            .Select(p => new UserSearchResult(p.UserId, p.DisplayName, p.NotificationEmail ?? ""))
             .ToList();
+
+        return Task.FromResult(results);
     }
 
     public Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default)

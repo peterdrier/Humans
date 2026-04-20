@@ -48,8 +48,6 @@ public sealed class ProfileRepository : IProfileRepository
         await _dbContext.Profiles
             .AsNoTracking()
             .Include(p => p.VolunteerHistory)
-            .Include(p => p.Languages)
-            .AsSplitQuery()
             .ToListAsync(ct);
 
     public async Task<(byte[]? Data, string? ContentType)> GetProfilePictureDataAsync(

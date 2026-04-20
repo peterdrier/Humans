@@ -18,6 +18,38 @@ public record CachedProfile(
     IReadOnlyList<CachedVolunteerEntry> VolunteerHistory,
     string? NotificationEmail = null)
 {
+    /// <summary>
+    /// Overload that accepts an explicit volunteer-history list, for callers that
+    /// already have the history loaded separately and must not mutate the profile entity.
+    /// </summary>
+    public static CachedProfile Create(
+        Profile profile,
+        User user,
+        IReadOnlyList<VolunteerHistoryEntry> volunteerHistory,
+        string? notificationEmail = null) => new(
+            UserId: user.Id,
+            DisplayName: user.DisplayName,
+            ProfilePictureUrl: user.ProfilePictureUrl,
+            HasCustomPicture: profile.ProfilePictureData is not null,
+            ProfileId: profile.Id,
+            UpdatedAtTicks: profile.UpdatedAt.ToUnixTimeTicks(),
+            BurnerName: profile.BurnerName,
+            Bio: profile.Bio,
+            Pronouns: profile.Pronouns,
+            ContributionInterests: profile.ContributionInterests,
+            City: profile.City,
+            CountryCode: profile.CountryCode,
+            Latitude: profile.Latitude,
+            Longitude: profile.Longitude,
+            BirthdayDay: profile.DateOfBirth?.Day,
+            BirthdayMonth: profile.DateOfBirth?.Month,
+            IsApproved: profile.IsApproved,
+            IsSuspended: profile.IsSuspended,
+            VolunteerHistory: volunteerHistory
+                .Select(v => new CachedVolunteerEntry(v.EventName, v.Description))
+                .ToList(),
+            NotificationEmail: notificationEmail);
+
     public static CachedProfile Create(Profile profile, User user, string? notificationEmail = null) => new(
         UserId: user.Id,
         DisplayName: user.DisplayName,
@@ -74,6 +106,16 @@ public interface IProfileStore
     /// Removes a cached profile by user id. No-op if not present.
     /// </summary>
     void Remove(Guid userId);
+
+    /// <summary>
+    /// Reverse lookup: returns the userId for a given profileId, or null if not found.
+    /// </summary>
+    /// <remarks>
+    /// TODO: this index exists to avoid O(n) scans for profileId → userId lookups.
+    /// Issues #515 and #516 plan to eliminate the need for this index entirely by
+    /// making Profile.Id == User.Id. Remove this method when that lands.
+    /// </remarks>
+    Guid? GetUserIdByProfileId(Guid profileId);
 
     /// <summary>
     /// Replaces the entire contents of the store. Used by the startup

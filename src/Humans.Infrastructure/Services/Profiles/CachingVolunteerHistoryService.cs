@@ -48,28 +48,22 @@ public sealed class CachingVolunteerHistoryService : IVolunteerHistoryService
         await _inner.SaveAsync(profileId, entries, cancellationToken);
 
         // Refresh the store entry for this profile's owner
-        // Find the userId from existing store entries (profileId → userId mapping)
-        var entry = _store.GetAll().FirstOrDefault(p => p.ProfileId == profileId);
-        if (entry is null)
+        var userId = _store.GetUserIdByProfileId(profileId);
+        if (userId is null)
             return;
 
-        var userId = entry.UserId;
-        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
-        var user = await _userService.GetByIdAsync(userId, cancellationToken);
+        var userIdValue = userId.Value;
+        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userIdValue, cancellationToken);
+        var user = await _userService.GetByIdAsync(userIdValue, cancellationToken);
 
         if (profile is not null && user is not null)
         {
             var history = await _volunteerHistoryRepository.GetByProfileIdReadOnlyAsync(profileId, cancellationToken);
-            var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, cancellationToken);
+            var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userIdValue, cancellationToken);
             var notificationEmail = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email;
 
-            // Populate the navigation property so CachedProfile.Create can read it
-            profile.VolunteerHistory.Clear();
-            foreach (var h in history)
-                profile.VolunteerHistory.Add(h);
-
-            var cached = CachedProfile.Create(profile, user, notificationEmail);
-            _store.Upsert(userId, cached);
+            var cached = CachedProfile.Create(profile, user, history, notificationEmail);
+            _store.Upsert(userIdValue, cached);
         }
     }
 }
