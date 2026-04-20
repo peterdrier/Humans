@@ -177,7 +177,6 @@ public class SuspendNonCompliantMembersJob : IRecurringJob
                 foreach (var suspendedUser in users.Where(u => suspendedUserIds.Contains(u.Id)))
                 {
                     await _fullProfileInvalidator.InvalidateAsync(suspendedUser.Id, cancellationToken);
-                    _cache.InvalidateUserProfile(suspendedUser.Id);
                     _cache.InvalidateRoleAssignmentClaims(suspendedUser.Id);
                     _cache.InvalidateShiftAuthorization(suspendedUser.Id);
                     _teamService.RemoveMemberFromAllTeamsCache(suspendedUser.Id);

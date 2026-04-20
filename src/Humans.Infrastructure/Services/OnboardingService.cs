@@ -258,7 +258,6 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
-        _cache.InvalidateUserProfile(userId);
 
         // Refresh FullProfile dict entry (profile is now approved)
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);
@@ -312,7 +311,6 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
-        _cache.InvalidateUserProfile(userId);
 
         // Refresh FullProfile dict entry with current state
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);
@@ -403,7 +401,6 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
-        _cache.InvalidateUserProfile(userId);
 
         // Refresh FullProfile dict entry with current state
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);
@@ -477,7 +474,6 @@ public class OnboardingService : IOnboardingService
         // FIX: cache eviction was missing in AdminController
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
-        _cache.InvalidateUserProfile(userId);
 
         // Refresh FullProfile dict entry
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);
@@ -531,7 +527,6 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
 
-        _cache.InvalidateUserProfile(userId);
         // Refresh FullProfile dict entry with suspended state
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);
 
@@ -581,7 +576,6 @@ public class OnboardingService : IOnboardingService
             adminId);
 
         await _dbContext.SaveChangesAsync(ct);
-        _cache.InvalidateUserProfile(userId);
 
         // Refresh FullProfile dict entry with unsuspended state
         await _fullProfileInvalidator.InvalidateAsync(userId, ct);
@@ -617,7 +611,6 @@ public class OnboardingService : IOnboardingService
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateNavBadgeCounts();
         _cache.InvalidateNotificationMeters();
-        _cache.InvalidateUserProfile(userId);
         _logger.LogInformation("User {UserId} has all consents signed, consent check set to Pending", userId);
 
         // Dispatch in-app notification to Consent Coordinators
@@ -732,8 +725,6 @@ public class OnboardingService : IOnboardingService
 
         await _dbContext.SaveChangesAsync(ct);
         _cache.InvalidateActiveTeams();
-        _cache.InvalidateProfiles();
-        _cache.InvalidateUserProfile(userId);
 
         _logger.LogWarning("Purged human {DisplayName} ({HumanId})", displayName, userId);
 

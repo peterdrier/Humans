@@ -319,7 +319,6 @@ public class DevLoginController : Controller
         }
 
         await _db.SaveChangesAsync();
-        _cache.InvalidateProfiles();
         _cache.InvalidateUserAccess(id);
 
         _logger.LogInformation("DEV: seeded persona {Email} with roles [{Roles}] and teams [{Teams}]",

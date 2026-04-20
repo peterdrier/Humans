@@ -92,7 +92,10 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         var user = await _userService.GetByIdAsync(userId, ct);
         if (user is null) return null;
 
-        return FullProfile.Create(profile, user);
+        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var notificationEmail = userEmails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email ?? user.Email;
+
+        return FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
     }
 
     public async Task<IReadOnlyDictionary<Guid, Domain.Entities.Profile>> GetByUserIdsAsync(

@@ -58,9 +58,6 @@ public static class MemoryCacheExtensions
     public static void InvalidateNotificationMeters(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NotificationMeters);
 
-    public static void InvalidateProfiles(this IMemoryCache cache) =>
-        cache.Remove(CacheKeys.Profiles);
-
     public static void InvalidateActiveTeams(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.ActiveTeams);
 
@@ -90,9 +87,6 @@ public static class MemoryCacheExtensions
         cache.InvalidateTicketDashboardStats();
         cache.InvalidateUserIdsWithTickets();
     }
-
-    public static void InvalidateUserProfile(this IMemoryCache cache, Guid userId) =>
-        cache.Remove(CacheKeys.UserProfile(userId));
 
     public static void InvalidateNobodiesTeamEmails(this IMemoryCache cache) =>
         cache.Remove(CacheKeys.NobodiesTeamEmails);

@@ -40,7 +40,7 @@ Repository **implementations** (the classes that talk to `DbContext`) live in `H
 
 ### 2c. Table Ownership Is Strict and Sectional
 
-Each domain's tables are owned by exactly one service (and that service's repository). **No other service may query, insert, update, or delete rows in tables it does not own.** If `CampService` needs a profile, it calls `IProfileService` — it does not query the `profiles` table, does not instantiate `IProfileRepository`, does not read from `IProfileStore`.
+Each domain's tables are owned by exactly one service (and that service's repository). **No other service may query, insert, update, or delete rows in tables it does not own.** If `CampService` needs a profile, it calls `IProfileService` — it does not query the `profiles` table, does not instantiate `IProfileRepository`, does not access the Profile section's in-memory cache directly.
 
 ### 2d. Cache Ownership Follows Data Ownership
 
@@ -83,19 +83,21 @@ public interface IProfileRepository
 
 ## 4. Store Pattern (In-Memory Entity Cache)
 
+> **Note:** §4–§5 describe the original store + warmup + decorator pattern. This pattern is still used by the **Governance** section (`ApplicationStore`, `ApplicationStoreWarmupHostedService`). **Profile** has migrated to the corrected pattern in §15, where the decorator owns the `ConcurrentDictionary` directly — no separate store or warmup service. New section migrations follow §15. Governance is tracked for §15 alignment on upstream issue #533.
+
 Every cached domain has a **store** — a dedicated class that owns an in-memory canonical copy of its entities. The store is the *data shape* of the cache; it is separate from the decorator that makes reads transparent.
 
 ### 4a. Store Rules
 
-1. **One store per domain.** `IProfileStore` holds the Profile world. `ITeamStore` holds the Team world. Stores do not share state.
-2. **Canonical storage is a dictionary keyed by primary id** (`Dictionary<Guid, Profile>`). Secondary indexes (e.g., `Dictionary<string, Guid>` for email → id) are allowed when a specific lookup pattern justifies them; the store keeps them consistent because only the store writes.
+1. **One store per domain.** `IApplicationStore` holds the Governance world. `ITeamStore` holds the Team world. Stores do not share state.
+2. **Canonical storage is a dictionary keyed by primary id** (`Dictionary<Guid, Application>`). Secondary indexes are allowed when a specific lookup pattern justifies them; the store keeps them consistent because only the store writes.
 3. **Single writer.** Only the owning service writes to the store, and only as part of a successful DB write. The store interface exposes `Upsert(entity)` and `Remove(id)`; the owning service calls these immediately after its repository write returns successfully.
-4. **Startup warmup.** Each store loads its full domain on startup via `IProfileRepository.GetAllAsync()`. At ~500 users this is trivial memory and query cost; it eliminates cache-miss reasoning entirely.
+4. **Startup warmup.** Each store loads its full domain on startup via `GetAllAsync()`. At ~500 users this is trivial memory and query cost; it eliminates cache-miss reasoning entirely.
 5. **Stores are Infrastructure.** The interface lives in `Humans.Application/Interfaces/Stores/`, the implementation lives in `Humans.Infrastructure/Stores/`.
 
 ### 4b. Why a Store, Not Inline `IMemoryCache.GetOrCreateAsync`
 
-The old pattern (`_cache.GetOrCreateAsync($"profile:{id}", ...)` inside a service method) caches *query results*, not entities. `GetById`, `GetByEmail`, and `GetByIds` become three independent cache entries for overlapping data, with three independent invalidation paths and three opportunities for staleness. Under the store pattern, all three are dict lookups over the same canonical `Profile` object, and invalidation is a single `Upsert` call in one place: the owning service's write method.
+The old pattern (`_cache.GetOrCreateAsync($"entity:{id}", ...)` inside a service method) caches *query results*, not entities. `GetById`, `GetByEmail`, and `GetByIds` become three independent cache entries for overlapping data, with three independent invalidation paths and three opportunities for staleness. Under the store pattern, all three are dict lookups over the same canonical entity object, and invalidation is a single `Upsert` call in one place: the owning service's write method.
 
 ## 5. Decorator Caching
 
@@ -104,7 +106,7 @@ Services are cached by **wrapping them in a decorator**, not by inlining `IMemor
 ### 5a. Decorator Rules
 
 1. **One decorator per service.** `CachingProfileService : IProfileService` wraps the real `ProfileService`.
-2. **Reads go through the store.** The decorator asks `IProfileStore` first. With startup warmup, every read is a hit at our scale.
+2. **Reads go through the store.** The decorator asks the store first. With startup warmup, every read is a hit at our scale.
 3. **Writes pass through to the inner service.** The inner service writes to the repository and then updates the store. The decorator does not update the store itself — the service does, because only the service knows what the final entity state is after business rules run.
 4. **Decorators contain zero business logic.** If the decorator needs to decide anything beyond "is it in the store?", that decision belongs in the service, not the wrapper.
 
@@ -112,14 +114,14 @@ Services are cached by **wrapping them in a decorator**, not by inlining `IMemor
 
 ```
 Controllers / other services
-          ↓ IProfileService
-CachingProfileService (decorator)       [Infrastructure]
-          ↓ IProfileService
-ProfileService (business logic)         [Application]
-          ↓ IProfileRepository, IProfileStore
-ProfileRepository, ProfileStore         [Infrastructure]
+          ↓ IApplicationDecisionService
+CachingApplicationDecisionService (decorator)   [Infrastructure]
+          ↓ IApplicationDecisionService
+ApplicationDecisionService (business logic)     [Application]
+          ↓ IApplicationRepository, IApplicationStore
+ApplicationRepository, ApplicationStore         [Infrastructure]
           ↓ DbContext
-HumansDbContext                         [Infrastructure]
+HumansDbContext                                 [Infrastructure]
 ```
 
 Three roles, cleanly separated:
@@ -406,36 +408,169 @@ All Google Drive resources are on **Shared Drives** (never My Drive). Google int
 - **Domain entities should not leak into Razor views** when a DTO would provide better separation. Simple 1:1 cases are acceptable; anything that would have required `.Include` for navigation in the old model is not.
 - **View components** are part of Web. They call services, not repositories or stores.
 
-## 15. Migration Strategy
+## 15. Profile Section Pattern — Canonical Cache-Collapse Architecture
 
-This is the target. Existing code violates most of it. Migration is **per-domain, one at a time** — no big-bang rewrite.
+The Profile section is the **reference implementation** for the target caching architecture (completed in PR #235, 2026-04-20). All future section migrations follow this pattern. The original §4/§5 store-and-decorator spec was superseded during Profile migration; §15 documents the final, code-verified shape.
 
-### 15a. Migration Phases
+> **Governance** (`ApplicationDecisionService`) still uses the **old** pattern (Singleton store + `ApplicationStoreWarmupHostedService` + `CachedApplication` entity). It is tracked for alignment on `nobodies-collective/Humans` issue #533. Do **not** start §15 Phase 4 (Google integration, issue #473) until Governance is migrated.
 
-> **Practice spike completed 2026-04-15:** **Governance** (`ApplicationDecisionService`) is the first section to land the full repo/store/decorator pattern end-to-end — see PR #503 and [`docs/superpowers/plans/2026-04-15-governance-migration.md`](../superpowers/plans/2026-04-15-governance-migration.md). Use that PR as the **reference template** for every subsequent section migration. Profile remains Step 0 in the original migration sequence (below) but the mechanics are now proven on a smaller target.
+### 15a. Four-Layer Stack
 
-1. **Step 0 — Spike on Profile.** Land the full pattern on one domain to validate the shape: create `IProfileRepository` + `ProfileRepository`, create `IProfileStore` + `ProfileStore`, move `ProfileService` from `Humans.Infrastructure` to `Humans.Application`, create `CachingProfileService` decorator, wire DI. Verify build and smoke test. This is the architectural proof — if it feels wrong, bail before touching more domains.
-2. **Step 1 — Quarantine direct access to the spiked domain.** Replace every `_dbContext.Profiles.*` call in other services with `IProfileService` calls. Delete every `.Include(x => x.Profile)` / `.Include(x => x.User)` in other domains; replace with in-memory stitching per §6b. At the end of this step, `DbContext.Profiles` is referenced in exactly one file: `ProfileRepository.cs`.
-3. **Step 2 — Repeat per domain, highest-blast-radius first.** Priority order (driven by cross-domain `.Include` count and fan-in, not alphabet): User, Team, RoleAssignment, then Campaign, Application, Consent, then the long tail.
-4. **Step 3 — Tail domains.** Audit log, outbox, sync settings, and other low-traffic domains get the full pattern for consistency. These are mechanical and low-risk.
-5. **Step 4 — Structural enforcement.** Architecture test or CI grep that fails if (a) any service lives in `Humans.Infrastructure/Services/`, or (b) any file outside a `*Repository.cs` references `DbContext.<tablename>`, or (c) any `.Include()` navigates across domain boundaries.
+```
+Controller / View Component
+  ↓ I<Section>Service                               [Application interface]
+Caching<Section>Service   (optional decorator)      [Infrastructure — Singleton]
+  ↓ keyed resolve via IServiceScopeFactory
+<Section>Service          (inner, keyed)            [Application — Scoped]
+  ↓ repositories + cross-section service interfaces
+<Section>Repository                                 [Infrastructure — Singleton via IDbContextFactory]
+  ↓ IDbContextFactory<HumansDbContext>              [Singleton — creates short-lived contexts per method]
+```
 
-### 15b. Migration Rules During the Transition
+The decorator is "optional" in the sense that removing it leaves the system fully functional — the inner service implements every method against the DB. The decorator is a pure performance optimization layered on top.
 
-1. **New code must comply.** New features use the target pattern from day one, even in domains that have not been migrated yet. That means creating the repository + store + decorator for a new domain the same day you create its service.
-2. **Touch-and-clean within scope.** When modifying an existing service for unrelated reasons, don't scope-creep into a full repository migration. Fix the immediate bug; migrate the domain in a dedicated session.
-3. **Don't half-migrate a domain.** If you start extracting `IProfileRepository`, finish the full stack (repo + store + decorator + caller updates) in one session. A half-migrated domain where some callers use the new service and others still `.Include()` directly is worse than either extreme.
-4. **EF migration review still applies.** Schema changes still go through the EF migration reviewer agent — the repository layer does not change what migrations look like, just who calls them.
+### 15b. Repository Rules
 
-### 15c. Known Current Violations (as of 2026-04-16)
+Repositories are registered as **Singleton** because they inject `IDbContextFactory<HumansDbContext>` rather than `HumansDbContext` directly. Every method creates and disposes its own short-lived context:
 
-- **36 services** live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0 (all business services move to `Humans.Application`). **Governance:** migrated 2026-04-15 in PR #503. **Profiles:** migrated 2026-04-16 in #504 — 6 services (`ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService`, `VolunteerHistoryService`) now live in `Humans.Application.Services.Profile`.
-- **~28 cross-domain `.Include()` calls** across **~16 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4), `FeedbackService` (4). The 12 Profile-section includes and 8 Governance includes are gone. Target: 0.
-- **6 repositories** exist today (`ApplicationRepository`, `ProfileRepository`, `ContactFieldRepository`, `UserEmailRepository`, `CommunicationPreferenceRepository`, `VolunteerHistoryRepository`). Target: one per domain (~20 total).
-- **2 stores** exist today (`ApplicationStore`, `ProfileStore`). Target: one per cached domain (~15–20).
-- **2 caching decorators** exist today (`CachingApplicationDecisionService`, `CachingProfileService`). Target: one per migrated service.
-- **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services. Governance and Profiles extracted invalidations to cross-cutting interfaces and the decorator pattern. Target: replaced by decorator + store pattern everywhere.
-- **Cross-domain navigation properties** (`TeamMember.User`, `CampLead.User`, etc.) are used freely today. **Governance entities** and **Profile-section entities** (`Profile.User`, `UserEmail.User`, `CommunicationPreference.User`) have been stripped. Target: stripped at the entity boundary, FK-only.
+```csharp
+public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)
+{
+    await using var ctx = await _factory.CreateDbContextAsync(ct);
+    return await ctx.Profiles
+        .AsNoTracking()
+        .Include(p => p.VolunteerHistory)
+        // ...
+        .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+}
+```
 
-Controllers with direct DbContext access (violation of §2a, tracked separately):
+This is the Microsoft-endorsed pattern for Singleton services that need DB access: `DbContext` is not thread-safe, holds a live connection, and accumulates tracked entities — it must be short-lived. `IDbContextFactory` creates lightweight, isolated contexts on demand without the overhead of scope-factory indirection.
+
+**Read method naming convention:**
+- `*ReadOnlyAsync` — `AsNoTracking()`, returns detached entities; used for reads that don't need to mutate.
+- `*ForMutationAsync` — tracking enabled, returns attached entities; used when the caller will mutate the entity and call `UpdateAsync` on the same repository in the same method.
+
+### 15c. Application Service (Inner) Rules
+
+The application service (`ProfileService`, `ContactFieldService`, etc.) lives in `Humans.Application.Services.Profile`. It:
+
+- Injects repository interfaces, never `DbContext`.
+- Never imports `IMemoryCache` or any caching abstraction — it is completely cache-unaware.
+- Is registered as **Scoped** and **keyed** under `CachingProfileService.InnerServiceKey` (`"profile-inner"`) so the Singleton decorator can resolve fresh instances per-call without self-resolution.
+- Implements **every** read method against the DB, including snapshot-based search/filter methods that the decorator may accelerate from its dict. Removing the decorator must leave the system fully functional. The base service must **never** return empty results for a method "so the decorator can override" — that would make correctness depend on the decorator being present.
+- Shared filter/search logic lives as **`public static`** helpers on the service class (e.g., `ProfileService.SearchApprovedUsersFromSnapshot`, `ProfileService.GetFilteredHumansFromSnapshotAsync`). The base service builds its snapshot from the repository; the decorator passes `_byUserId.Values`. Same output, two speeds.
+- Sub-aggregates belong to the parent section. CV entries are in `FullProfile.CVEntries` and are written through `IProfileService.SaveCVEntriesAsync`. There is no separate `IVolunteerHistoryService`. The parent repository owns the reconcile logic (`IProfileRepository.ReconcileCVEntriesAsync`).
+
+DI registration for the inner service:
+
+```csharp
+// Inner: Scoped + keyed, so the Singleton decorator can resolve it per-call.
+services.AddKeyedScoped<IProfileService, ProfileService>(CachingProfileService.InnerServiceKey);
+
+// Forward the concrete type for IUserDataContributor resolution.
+services.AddScoped<ProfileService>(sp =>
+    (ProfileService)sp.GetRequiredKeyedService<IProfileService>(CachingProfileService.InnerServiceKey));
+services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfileService>());
+```
+
+### 15d. Caching Decorator Rules
+
+`CachingProfileService` is a **Singleton** that owns a private `ConcurrentDictionary<Guid, FullProfile> _byUserId`. The dict persists across HTTP requests. There is no separate `IProfileStore` interface, no store class, no warmup hosted service, no `IMemoryCache` for canonical domain data.
+
+**Constructor:**
+
+```csharp
+public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator
+{
+    public const string InnerServiceKey = "profile-inner";
+
+    private readonly IProfileRepository _profileRepository;
+    private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
+
+    public CachingProfileService(
+        IProfileRepository profileRepository,
+        IUserEmailRepository userEmailRepository,
+        IServiceScopeFactory scopeFactory) { ... }
+}
+```
+
+`IProfileRepository` and `IUserEmailRepository` are injected directly because they are also Singleton (`IDbContextFactory`-based). All Scoped dependencies (inner `IProfileService`, `IUserService`, `INavBadgeCacheInvalidator`, `INotificationMeterCacheInvalidator`) are resolved per-call via `IServiceScopeFactory` to avoid the captured-scoped-dependency anti-pattern:
+
+```csharp
+await using var scope = _scopeFactory.CreateAsyncScope();
+var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+```
+
+**Reads:** `ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)`. Dict hit completes synchronously with zero allocation; cold path wraps the inner call and populates the dict.
+
+**Writes:** delegate to the inner service, then call `RefreshEntryAsync(userId, ct)`. `RefreshEntryAsync` reloads directly from repositories, re-stitches the `FullProfile`, and upserts the dict. If the profile or user no longer exists, the dict entry is removed.
+
+**Warming:** lazy, on-demand. There is no startup warmup hosted service. The dict fills as individual users are accessed. If a future bulk-read path emerges, the decorator is the appropriate place to add a `_fullyWarm` flag tracking whether the full dataset has been loaded. No such flag exists today.
+
+**Static helpers:** methods like `GetBirthdayProfilesAsync` and `SearchApprovedUsersAsync` are served synchronously from `_byUserId.Values` via `ProfileService.GetBirthdayProfilesFromSnapshot` / `ProfileService.SearchApprovedUsersFromSnapshot` — no inner call, no scope.
+
+DI registration for the decorator:
+
+```csharp
+// Singleton decorator — dict persists across requests.
+services.AddSingleton<CachingProfileService>();
+services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<CachingProfileService>());
+
+// CRITICAL: IFullProfileInvalidator must alias the same Singleton instance.
+// Two separate instances would split the dict and cause divergence.
+services.AddSingleton<IFullProfileInvalidator>(sp =>
+    sp.GetRequiredService<CachingProfileService>());
+```
+
+### 15e. IFullProfileInvalidator — One-Way Cross-Section Signal
+
+`IFullProfileInvalidator` (defined in `Humans.Application/Interfaces/`) exposes a single method:
+
+```csharp
+Task InvalidateAsync(Guid userId, CancellationToken ct = default);
+```
+
+Implemented by `CachingProfileService`. External sections inject `IFullProfileInvalidator` when their writes make the cached FullProfile view stale. The decorator reloads-or-removes the entry via `RefreshEntryAsync`. External code never mutates the dict directly.
+
+**CRITICAL:** `IFullProfileInvalidator` must resolve to the **same Singleton instance** as `IProfileService`. Both registrations point to the single `CachingProfileService` instance. If two instances were created, the dict would diverge and invalidations would be silently lost.
+
+### 15f. Projection DTO Naming
+
+| Type | Name |
+|------|------|
+| Projection DTO | `Full<Section>` (e.g., `FullProfile`) |
+| Read method | `GetFull<Section>Async` (e.g., `GetFullProfileAsync`) |
+| Invalidator interface | `IFull<Section>Invalidator` (e.g., `IFullProfileInvalidator`) |
+| Sub-aggregate collections | Natural plural on the DTO (e.g., `CVEntries` — not `VolunteerHistory`) |
+
+Old names that no longer exist: `CachedProfile`, `IProfileStore`, `ProfileStore`, `ProfileStoreWarmupHostedService`, `IVolunteerHistoryService`, `VolunteerHistoryService`.
+
+### 15g. Known Deferrals
+
+**§15 NEW-B — Cross-section ShiftAuthorization cache staleness.** `RequestDeletionAsync` on Profile no longer invalidates the `ShiftAuthorization` cache (`shift-auth:{userId}`, 60s TTL) that the old `InvalidateUserCaches(userId)` bundle covered. This is tolerable at ~500-user scale given the short TTL and the context (the user is being deleted). Resolution: when Shifts migrates to the §15 pattern, it should subscribe to `IFullProfileInvalidator` (or an equivalent `IShiftAuthorizationInvalidator`) to clear its own cache on profile changes.
+
+**`OnboardingService.SetConsentCheckPendingIfEligibleAsync` / `PurgeHumanAsync`** do not invalidate the `FullProfile` dict. Pre-existing behavior (they did not invalidate the old cache either). To be addressed after the §15 migration settles.
+
+### 15h. Migration Rules During the Transition
+
+1. **New sections must comply.** New features use the §15 pattern from day one. Create the repository and decorator the same day you create the service — do not accrue "migrate later" debt.
+2. **Touch-and-clean within scope.** When modifying an existing service for unrelated reasons, don't scope-creep into a full §15 migration. Fix the immediate issue; migrate the section in a dedicated session.
+3. **Don't half-migrate a section.** If you start extracting a repository, finish the full stack in one session. A half-migrated section is worse than either extreme.
+4. **EF migration review still applies.** Schema changes still go through the EF migration reviewer agent — the repository layer does not change what migrations look like.
+
+### 15i. Known Current Violations (as of 2026-04-20)
+
+- **~34 services** still live in `Humans.Infrastructure/Services/` and inject `HumansDbContext` directly. Target: 0. **Governance:** migrated 2026-04-15 in PR #503. **Profiles:** fully migrated 2026-04-20 in PR #235 — `ProfileService`, `ContactFieldService`, `ContactService`, `UserEmailService`, `CommunicationPreferenceService` now live in `Humans.Application.Services.Profile`. (`VolunteerHistoryService` was folded into `ProfileService`/`IProfileRepository`; it no longer exists as a separate service.)
+- **~28 cross-domain `.Include()` calls** across **~16 services**. Biggest offenders: `OnboardingService` (7), `GoogleWorkspaceSyncService` (4), `FeedbackService` (4). The Profile-section and Governance includes are gone. Target: 0.
+- **5 repositories** exist today (`ApplicationRepository`, `ProfileRepository`, `ContactFieldRepository`, `UserEmailRepository`, `CommunicationPreferenceRepository`). Target: one per domain (~20 total).
+- **1 store** exists today (`ApplicationStore` — Governance only, old pattern, tracked on #533). Target: replaced by §15 ConcurrentDict decorator pattern everywhere; `IApplicationStore` to be retired when Governance migrates.
+- **2 caching decorators** exist today (`CachingApplicationDecisionService` — old pattern; `CachingProfileService` — §15 pattern). Target: every migrated section uses the §15 `ConcurrentDictionary`-in-decorator pattern.
+- **Inline `IMemoryCache.GetOrCreateAsync`** still scattered across services for non-profile caches (nav badge, notification meter, role-assignment claims, shift auth). These are short-TTL request-acceleration caches, not canonical domain data caches, and are appropriate for `IMemoryCache`. Canonical domain data caches (full entity projections) must use the §15 pattern.
+- **Cross-domain navigation properties** (`TeamMember.User`, `CampLead.User`, etc.) are used freely today. Profile-section and Governance entities have been stripped (`Profile.User`, `UserEmail.User`, `CommunicationPreference.User`). Target: stripped at the entity boundary, FK-only everywhere.
+
+Controllers with direct `DbContext` access (violation of §2a, tracked separately):
 - `AdminController`, `ProfileController`, `GoogleController`, `DevLoginController` (dev-only, low priority).

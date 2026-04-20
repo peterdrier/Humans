@@ -1359,6 +1359,39 @@ public class ProfileServiceTests : IDisposable
         result.Should().BeNull();
     }
 
+    [Fact]
+    public async Task GetFullProfileAsync_PopulatesNotificationEmail_WhenVerifiedTargetExists()
+    {
+        var userId = Guid.NewGuid();
+        var user = await SeedUserAsync(userId);
+        user.Email = "primary@example.com";
+        _dbContext.Profiles.Add(new Profile
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            IsApproved = true,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant(),
+        });
+        _dbContext.UserEmails.Add(new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            Email = "notify@example.com",
+            IsVerified = true,
+            IsNotificationTarget = true,
+            DisplayOrder = 0
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+
+        var result = await _service.GetFullProfileAsync(userId);
+
+        result.Should().NotBeNull();
+        result!.NotificationEmail.Should().Be("notify@example.com");
+    }
+
     // --- SaveCVEntriesAsync ---
 
     [Fact]

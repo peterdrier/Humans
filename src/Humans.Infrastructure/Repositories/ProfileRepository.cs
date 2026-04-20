@@ -181,7 +181,7 @@ public sealed class ProfileRepository : IProfileRepository
         // consequence of the key switch; CVEntry has no Id field and the UI no
         // longer posts one.
         //
-        // NOTE: This differs from IVolunteerHistoryService.SaveAsync which keys
+        // NOTE: This differs from IProfileService.SaveCVEntriesAsync which keys
         // by client-supplied Guid. CVEntry is a read projection without an Id,
         // so (Date, EventName) is the natural identity key here.
         var groups = existing.GroupBy(v => (v.Date, v.EventName)).ToList();
