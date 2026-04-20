@@ -218,9 +218,22 @@ Assumes ~5 sessions/day × ~4 turns/session = ~20 messages/day. Cache TTL (5 min
 | Haiku 4.5 | ~45K | $0.05 | $0.01 | **~$7** |
 | Haiku 4.5 | full ~130K | $0.16 | $0.01 | ~$24 |
 
-Rates used (January 2026): Sonnet 4.6 input $3 / Mtok, cache write 1.25× base, cache read 0.1× base; Haiku 4.5 roughly 1/3 of Sonnet. All numbers confirmed against prototype before Phase 1 build.
+Rates used (January 2026): Sonnet 4.6 input $3 / Mtok, cache write 1.25× base, cache read 0.1× base; Haiku 4.5 roughly 1/3 of Sonnet. Phase 0 prototype confirmed these numbers against real usage (see [`2026-04-20-agent-section-prototype-notes.md`](2026-04-20-agent-section-prototype-notes.md)).
 
-**Default: Sonnet 4.6 with ~45K preload.** Prototype benchmarks both models on the same 20-question test set to confirm Sonnet is worth the quality premium or flag Haiku as adequate.
+**Default: Sonnet 4.6 with ~45K preload.** Phase 0 prototype validated Sonnet as worth the ~3× cost premium over Haiku — both are production-viable, but Sonnet is more concise, more confidently grounded, and requires less hedging in answers.
+
+## Anthropic Provider Rate Limits (ITPM)
+
+**Critical constraint**, not covered in the initial design. Anthropic enforces input-tokens-per-minute (ITPM) per org per model, and **cache reads count toward ITPM** (they save cost, not throughput). Default Tier 1 limits: 30K ITPM Sonnet, 50K ITPM Haiku. At Tier 1, the proposed ~45K preload would 429 every request.
+
+**Required before Phase 1 enable:**
+
+- Verify the production Anthropic org is on **Tier 2 or higher** (Sonnet 450K ITPM, Haiku 1M). Tier 2 auto-promotes after $40 lifetime spend + 7 days — typically already satisfied if the org has built with Claude before.
+- If still Tier 1: either wait for auto-promotion after enabling, or cap preload at ~25K (drop feature spec glossaries and the lower-priority half of section invariants from the static preload; they remain available via dynamic fetch).
+
+**Runtime guard:** `AgentService` catches 429 responses and surfaces a friendly "I'm rate-limited right now, try again in a minute" message rather than a hard error. Errors logged with `RefusalReason = "provider_rate_limit"` for monitoring.
+
+**Admin visibility:** `/Admin/Agent/Settings` displays the current org tier (fetched from the Anthropic API at page load) and the safe preload budget at that tier. Prevents deploying a preload config that will 429.
 
 ## GDPR / Privacy
 
@@ -289,11 +302,11 @@ Rates used (January 2026): Sonnet 4.6 input $3 / Mtok, cache write 1.25× base, 
 ## Acceptance Criteria (mapping to #526)
 
 - [x] Architecture, retrieval strategy, provider choice, prompt scaffolding, personalization sources, guardrails, logging, UI surface, rollout plan — all in this doc.
-- [ ] Cost estimate with stated assumptions — cost table above; numbers to be confirmed by prototype.
+- [x] Cost estimate with stated assumptions — cost table above, confirmed by Phase 0 prototype.
 - [x] GDPR / privacy note — § GDPR / Privacy above.
-- [ ] Prototype transcript (20 questions × 2 models) with notes — Phase 0 deliverable.
-- [ ] Recommendation (go / no-go / later) — Phase 0 deliverable.
-- [ ] Follow-up implementation issues filed on go — to be filed after spike: `agent-v1-base-build`, `agent-v2-faq-kb`, `agent-gdpr-legal-doc`.
+- [x] Prototype transcript (20 questions × 2 models) with notes — `tools/agent-spike/transcripts/` and [`2026-04-20-agent-section-prototype-notes.md`](2026-04-20-agent-section-prototype-notes.md).
+- [x] Recommendation (go / no-go / later) — **GO**, see prototype notes.
+- [ ] Follow-up implementation issues filed on go — `agent-v1-base-build`, `agent-v1-legal-doc`, `agent-v2-faq-kb` (to file after PR review).
 
 ## Out of Scope
 

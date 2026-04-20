@@ -31,7 +31,9 @@ Expected total API spend: **~$4** (20 questions × 2 models, full-corpus preload
 
 ## Notes
 
-- Everything under `transcripts/` is gitignored by default (see `.gitignore`). Commit selectively if you want specific transcripts on the record.
-- The spike preloads the **entire** corpus to validate the quality ceiling. The production design uses a hybrid preload + dynamic-fetch architecture; the spike demonstrates that even the most-expensive configuration is affordable.
+- Transcript artifacts (both `transcripts/` and `transcripts-full-corpus/`) are committed so PR reviewers can read the answers inline.
+- `transcripts-full-corpus/` holds the initial two-question run with the entire 126K-token corpus preloaded — establishes the quality ceiling but hit Anthropic Tier-1 ITPM rate limits (30K/min for Sonnet, 50K for Haiku), forcing a smaller preload.
+- `transcripts/` holds the full 20-question run with a ~24K-token rate-limit-friendly preload (7 high-signal section invariants + access matrix), throttled to stay under ITPM.
+- The production design uses hybrid preload + dynamic fetch; the spike demonstrates quality on both the ceiling and the tier-1-feasible configuration.
 - Haiku 4.5 uses the dated model id `claude-haiku-4-5-20251001` per Anthropic's current naming.
 - Corpus is assembled at run time from the worktree — re-run after spec/feature doc edits to see the effect.

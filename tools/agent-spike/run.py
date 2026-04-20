@@ -22,13 +22,14 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import sys
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
 import yaml
-from anthropic import Anthropic
+from anthropic import Anthropic, APIStatusError
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SPIKE_DIR = Path(__file__).resolve().parent
@@ -52,6 +53,24 @@ MODELS = {
     },
 }
 
+# Tier-1 ITPM limits on the user's Anthropic org are 30K (Sonnet) / 50K (Haiku).
+# Keep preload small enough to fit both with headroom — see prototype-notes.md.
+PRELOAD_SECTIONS = [
+    "Onboarding",
+    "Teams",
+    "LegalAndConsent",
+    "Governance",
+    "Shifts",
+    "Tickets",
+    "Profiles",
+    "Admin",
+]
+
+# Throttle between calls so we don't blow the per-minute input-token budget.
+# With ~22K tokens per call and 30K ITPM Sonnet, one call per ~50s is safe.
+SECONDS_BETWEEN_CALLS = 25
+MAX_RETRIES = 5
+
 
 @dataclass
 class Turn:
@@ -70,31 +89,25 @@ class Turn:
 
 
 def load_corpus() -> str:
-    """Build the full preload corpus. For the spike we preload everything —
-    validates the quality ceiling without tool-use complexity."""
+    """Build a rate-limit-friendly preload corpus: high-signal section invariants
+    plus the access matrix. Dropped feature specs and section help — those would
+    be dynamic fetches in the production hybrid design.
+
+    See prototype-notes.md for why the full-corpus preload doesn't fit Tier-1 ITPM."""
     parts: list[str] = []
 
     def add(title: str, path: Path):
         parts.append(f"\n\n<!-- ==== {title}: {path.relative_to(REPO_ROOT)} ==== -->\n\n")
         parts.append(path.read_text(encoding="utf-8"))
 
-    # Section invariants — the highest-signal source per the spec
-    for p in sorted((REPO_ROOT / "docs" / "sections").glob("*.md")):
-        add("SECTION INVARIANT", p)
-
-    # Feature specs — deep dives
-    for p in sorted((REPO_ROOT / "docs" / "features").glob("*.md")):
-        add("FEATURE SPEC", p)
-
-    # Raw C# files with access matrix + section help content.
-    # Models handle structured code fine; avoids a brittle parser in the spike.
-    for rel in (
-        "src/Humans.Web/Models/AccessMatrixDefinitions.cs",
-        "src/Humans.Web/Models/SectionHelpContent.cs",
-    ):
-        p = REPO_ROOT / rel
+    for section in PRELOAD_SECTIONS:
+        p = REPO_ROOT / "docs" / "sections" / f"{section}.md"
         if p.exists():
-            add("CODE CONFIG", p)
+            add("SECTION INVARIANT", p)
+
+    matrix = REPO_ROOT / "src" / "Humans.Web" / "Models" / "AccessMatrixDefinitions.cs"
+    if matrix.exists():
+        add("ACCESS MATRIX", matrix)
 
     return "".join(parts)
 
@@ -149,12 +162,29 @@ def cost_for(model_key: str, usage) -> float:
     return round(cost, 6)
 
 
+def call_with_retry(client: Anthropic, **kwargs):
+    """Retry 429s with backoff. Anthropic's retry-after header, when present,
+    tells us how long the token bucket needs to recover."""
+    for attempt in range(MAX_RETRIES):
+        try:
+            return client.messages.create(**kwargs)
+        except APIStatusError as exc:
+            if exc.status_code != 429 or attempt == MAX_RETRIES - 1:
+                raise
+            retry_after = int(exc.response.headers.get("retry-after", "0") or "0")
+            delay = max(retry_after, 30) + random.uniform(0, 3)
+            print(f" 429 (attempt {attempt + 1}, sleeping {delay:.1f}s)...", end="", flush=True)
+            time.sleep(delay)
+    raise RuntimeError("unreachable")
+
+
 def ask(client: Anthropic, model_key: str, corpus: str, question: dict) -> Turn:
     model = MODELS[model_key]
     user_block = render_user_context(question["user"]) + "\n" + question["question"]
 
     t0 = time.monotonic()
-    response = client.messages.create(
+    response = call_with_retry(
+        client,
         model=model["id"],
         max_tokens=1024,
         system=[
@@ -254,9 +284,13 @@ def main() -> int:
     client = Anthropic()
     all_turns: list[Turn] = []
     summary_path = TRANSCRIPTS_DIR / "summary.jsonl"
+    is_first = True
     with summary_path.open("w", encoding="utf-8") as summary_file:
         for question in questions:
             for model_key in MODELS:
+                if not is_first:
+                    time.sleep(SECONDS_BETWEEN_CALLS)
+                is_first = False
                 print(f"  [{model_key}] {question['id']} ...", end="", flush=True)
                 try:
                     turn = ask(client, model_key, corpus, question)
