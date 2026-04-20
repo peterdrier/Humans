@@ -1698,6 +1698,8 @@
   <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>eingetragen, noch ohne Ticket</value></data>
   <data name="ShiftDash_Overview_StalePending" xml:space="preserve"><value>Alte offene</value></data>
   <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>offen &gt; 3 Tage</value></data>
+  <data name="Common_NotAvailable" xml:space="preserve"><value>k. A.</value></data>
+  <data name="ShiftDash_Overview_TicketData_Hidden" xml:space="preserve"><value>Ticketdaten noch nicht freigegeben</value></data>
 
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Anzeige:</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Alle</value></data>

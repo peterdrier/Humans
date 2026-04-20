@@ -32,6 +32,10 @@
     var newTicketsLabel = Localizer["ShiftDash_Trends_NewTicketSales"].Value;
     var dauLabel = Localizer["ShiftDash_Trends_DAU"].Value;
     var dauNote = Localizer["ShiftDash_Trends_DAUNote"].Value;
+
+    // TEMP: ticket figures are not shareable yet. Flip to true once ticket data is publishable.
+    // The underlying trend series still computes new-ticket-sales in ShiftManagementService.
+    var showTicketData = false;
 }
 
 <div class="card mb-4">
@@ -61,6 +65,7 @@
     var dauLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dauLabel));
     var dauNote = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dauNote));
     var initialWindow = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(initialWindow.ToString()));
+    var showTicketData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(showTicketData));
 
     var chartInstance = null;
 
@@ -86,20 +91,28 @@
         if (chartInstance) {
             chartInstance.data.labels = sliced.labels;
             chartInstance.data.datasets[0].data = sliced.signups;
-            chartInstance.data.datasets[1].data = sliced.tickets;
-            chartInstance.data.datasets[2].data = sliced.logins;
+            if (showTicketData) {
+                chartInstance.data.datasets[1].data = sliced.tickets;
+                chartInstance.data.datasets[2].data = sliced.logins;
+            } else {
+                chartInstance.data.datasets[1].data = sliced.logins;
+            }
             chartInstance.update();
             return;
+        }
+        var datasets = [
+            { label: newSignupsLabel, data: sliced.signups, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.25 },
+            { label: dauLabel, data: sliced.logins, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.1)', tension: 0.25, borderDash: [4, 4] }
+        ];
+        if (showTicketData) {
+            // Keep the tickets series wiring in place for when ticket data is shareable again.
+            datasets.splice(1, 0, { label: newTicketsLabel, data: sliced.tickets, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', tension: 0.25 });
         }
         chartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: sliced.labels,
-                datasets: [
-                    { label: newSignupsLabel, data: sliced.signups, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.25 },
-                    { label: newTicketsLabel, data: sliced.tickets, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', tension: 0.25 },
-                    { label: dauLabel, data: sliced.logins, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.1)', tension: 0.25, borderDash: [4, 4] }
-                ]
+                datasets: datasets
             },
             options: {
                 responsive: true,

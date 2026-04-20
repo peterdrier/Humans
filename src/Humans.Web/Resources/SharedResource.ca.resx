@@ -1700,6 +1700,8 @@
   <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>apuntats sense entrada (encara)</value></data>
   <data name="ShiftDash_Overview_StalePending" xml:space="preserve"><value>Pendents antics</value></data>
   <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>pendents &gt; 3 dies</value></data>
+  <data name="Common_NotAvailable" xml:space="preserve"><value>N/D</value></data>
+  <data name="ShiftDash_Overview_TicketData_Hidden" xml:space="preserve"><value>dades d'entrades encara no compartides</value></data>
 
   <data name="ShiftDash_PeriodFilter_Label" xml:space="preserve"><value>Mostrant:</value></data>
   <data name="ShiftDash_PeriodFilter_All" xml:space="preserve"><value>Tot</value></data>
