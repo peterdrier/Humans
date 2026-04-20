@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Caching.Memory;
+using System.Collections.Concurrent;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
@@ -6,10 +6,8 @@ using Humans.Application.Extensions;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
-using Humans.Application.Interfaces.Stores;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
-using Humans.Infrastructure.Caching;
 using MemberApplication = Humans.Domain.Entities.Application;
 
 namespace Humans.Infrastructure.Services.Profiles;
@@ -17,62 +15,95 @@ namespace Humans.Infrastructure.Services.Profiles;
 /// <summary>
 /// Caching decorator for <see cref="IProfileService"/>. Handles:
 /// <list type="bullet">
-/// <item>Per-user profile cache (2-min TTL, replacing old CacheKeys.UserProfile)</item>
+/// <item>Per-user FullProfile dict (ConcurrentDictionary, no TTL, replacing IMemoryCache + IProfileStore)</item>
 /// <item>Cross-cutting cache invalidation on writes (nav badge, notification meter, etc.)</item>
-/// <item>Profile store updates after mutations</item>
 /// </list>
 /// All read methods pass through to the inner service.
 /// All write methods delegate, then invalidate caches.
+/// Write-through dict refresh lands in Phase 5.
 /// </summary>
 public sealed class CachingProfileService : IProfileService
 {
+    // Phase 3 cache-collapse note:
+    //
+    // The prior CachingProfileService called a local InvalidateUserCaches(userId)
+    // helper on every write path, which invalidated three IMemoryCache entries:
+    //
+    //   - CacheKeys.UserProfile(userId)        : per-user Profile cache (2-min TTL)
+    //   - CacheKeys.RoleAssignmentClaims(userId): role-claims cache
+    //   - CacheKeys.ActiveTeams                : shared active-teams list
+    //
+    // None of these survive Phase 3 of the cache-collapse rework:
+    //
+    //   * UserProfile cache is gone entirely — GetProfileAsync is now a pure
+    //     pass-through (the FullProfile dict is the canonical Profile cache).
+    //   * RoleAssignmentClaims is owned by RoleAssignmentService; profile writes
+    //     do not change role assignments, so the old call was defensive. Actual
+    //     invalidation triggers (assign/end/revoke) are already handled by that
+    //     service. Confirmed safe to drop at ~500-user scale.
+    //   * ActiveTeams is owned by TeamService; profile writes do not change team
+    //     membership. Same rationale — defensive call, real triggers covered by
+    //     TeamService on membership mutations.
+    //
+    // The one genuine regression is documented inline on RequestDeletionAsync
+    // (ShiftAuthorization, §15 NEW-B).
+
     private readonly IProfileService _inner;
-    private readonly IProfileStore _store;
+
+    // Staged for Phase 5 write-through refresh.
+    private readonly IProfileRepository _profileRepository;
+
+    // Staged for Phase 5 write-through refresh.
     private readonly IUserService _userService;
+
+    // Staged for Phase 5 write-through refresh.
     private readonly IUserEmailRepository _userEmailRepository;
-    private readonly IMemoryCache _cache;
+
     private readonly INavBadgeCacheInvalidator _navBadge;
     private readonly INotificationMeterCacheInvalidator _notificationMeter;
 
-    private static readonly TimeSpan ProfileCacheTtl = TimeSpan.FromMinutes(2);
+    private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
 
     public CachingProfileService(
         IProfileService inner,
-        IProfileStore store,
+        IProfileRepository profileRepository,
         IUserService userService,
         IUserEmailRepository userEmailRepository,
-        IMemoryCache cache,
         INavBadgeCacheInvalidator navBadge,
         INotificationMeterCacheInvalidator notificationMeter)
     {
         _inner = inner;
-        _store = store;
+        _profileRepository = profileRepository;
         _userService = userService;
         _userEmailRepository = userEmailRepository;
-        _cache = cache;
         _navBadge = navBadge;
         _notificationMeter = notificationMeter;
     }
 
     // ==========================================================================
-    // Reads — per-user cache + pass-through
+    // Reads — dict cache + pass-through
     // ==========================================================================
 
-    public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
+    // Pure pass-through: FullProfile dict (_byUserId) is the Profile cache now.
+    // No separate IMemoryCache layer for raw Profile entities.
+    public Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default) =>
+        _inner.GetProfileAsync(userId, ct);
+
+    public ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.UserProfile(userId);
-        if (_cache.TryGetExistingValue<Profile>(cacheKey, out var cached))
-            return cached;
+        if (_byUserId.TryGetValue(userId, out var hit))
+            return new ValueTask<FullProfile?>(hit);
 
-        var profile = await _inner.GetProfileAsync(userId, ct);
-        if (profile is not null)
-            _cache.Set(cacheKey, profile, ProfileCacheTtl);
-
-        return profile;
+        return new ValueTask<FullProfile?>(LoadAndCacheAsync(userId, ct));
     }
 
-    public ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default) =>
-        _inner.GetFullProfileAsync(userId, ct);
+    private async Task<FullProfile?> LoadAndCacheAsync(Guid userId, CancellationToken ct)
+    {
+        var result = await _inner.GetFullProfileAsync(userId, ct);
+        if (result is not null)
+            _byUserId[userId] = result;
+        return result;
+    }
 
     public Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
@@ -139,23 +170,14 @@ public sealed class CachingProfileService : IProfileService
     public async Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
     {
         await _inner.SaveProfileLanguagesAsync(profileId, languages, ct);
-
-        // CachedProfile does not include languages today, so no store refresh is needed —
-        // but we still invalidate user caches for consistency with the write-path pattern.
-        // If languages are ever added to CachedProfile, add RefreshStoreEntryAsync here
-        // (see SaveProfileAsync for the full pattern).
-        var userId = _store.GetUserIdByProfileId(profileId);
-        if (userId is not null)
-        {
-            InvalidateUserCaches(userId.Value);
-            await RefreshStoreEntryAsync(userId.Value, ct);
-        }
+        // Write-through dict refresh (Phase 5) will handle dict invalidation here.
+        // Nav-badge and notification-meter are unaffected by language changes.
     }
 
-    public async Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
+    public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
     {
-        InvalidateUserCaches(userId);
-        await RefreshStoreEntryAsync(userId, ct);
+        _byUserId.TryRemove(userId, out _);
+        return Task.CompletedTask;
     }
 
     // ==========================================================================
@@ -166,9 +188,8 @@ public sealed class CachingProfileService : IProfileService
         Guid userId, MembershipTier tier, CancellationToken ct = default)
     {
         await _inner.SetMembershipTierAsync(userId, tier, ct);
-        InvalidateUserCaches(userId);
+        _byUserId.TryRemove(userId, out _);
         _navBadge.Invalidate();
-        await RefreshStoreEntryAsync(userId, ct);
     }
 
     public async Task<Guid> SaveProfileAsync(
@@ -179,8 +200,7 @@ public sealed class CachingProfileService : IProfileService
 
         _navBadge.Invalidate();
         _notificationMeter.Invalidate();
-        InvalidateUserCaches(userId);
-        await RefreshStoreEntryAsync(userId, ct);
+        _byUserId.TryRemove(userId, out _);
 
         return result;
     }
@@ -190,9 +210,12 @@ public sealed class CachingProfileService : IProfileService
         var result = await _inner.RequestDeletionAsync(userId, ct);
         if (result.Success)
         {
-            _store.Remove(userId);
-            _cache.InvalidateUserAccess(userId);
-            InvalidateUserCaches(userId);
+            _byUserId.TryRemove(userId, out _);
+            // TODO(§15 NEW-B): ShiftAuthorization cache (shift-auth:{userId}, 60s TTL) is
+            // no longer invalidated here. Tolerable at ~500-user scale given the short TTL
+            // and that the user is being deleted. When Shifts migrates to the §15 pattern,
+            // it should subscribe to IFullProfileInvalidator or equivalent to clear its
+            // own cache on deletion.
         }
         return result;
     }
@@ -201,43 +224,7 @@ public sealed class CachingProfileService : IProfileService
     {
         var result = await _inner.CancelDeletionAsync(userId, ct);
         if (result.Success)
-        {
-            InvalidateUserCaches(userId);
-            await RefreshStoreEntryAsync(userId, ct);
-        }
+            _byUserId.TryRemove(userId, out _);
         return result;
-    }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
-    private void InvalidateUserCaches(Guid userId)
-    {
-        _cache.InvalidateUserProfile(userId);
-        _cache.InvalidateRoleAssignmentClaims(userId);
-        _cache.InvalidateActiveTeams();
-    }
-
-    private async Task RefreshStoreEntryAsync(Guid userId, CancellationToken ct)
-    {
-        var profile = await _inner.GetProfileAsync(userId, ct);
-        if (profile is null)
-        {
-            _store.Remove(userId);
-            return;
-        }
-
-        var user = await _userService.GetByIdAsync(userId, ct);
-        if (user is null)
-        {
-            _store.Remove(userId);
-            return;
-        }
-
-        var emails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
-        var notificationEmail = emails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email;
-
-        _store.Upsert(userId, CachedProfile.Create(profile, user, notificationEmail));
     }
 }
