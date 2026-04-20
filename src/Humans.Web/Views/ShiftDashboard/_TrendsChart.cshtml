@@ -19,17 +19,22 @@
 
     string Label(TrendWindow w) => w switch
     {
-        TrendWindow.Last7Days => "7d",
-        TrendWindow.Last30Days => "30d",
-        TrendWindow.Last90Days => "90d",
-        TrendWindow.All => "All",
+        TrendWindow.Last7Days => Localizer["ShiftDash_Trends_Window_7d"].Value,
+        TrendWindow.Last30Days => Localizer["ShiftDash_Trends_Window_30d"].Value,
+        TrendWindow.Last90Days => Localizer["ShiftDash_Trends_Window_90d"].Value,
+        TrendWindow.All => Localizer["ShiftDash_Trends_Window_All"].Value,
         _ => w.ToString(),
     };
+
+    var newSignupsLabel = Localizer["ShiftDash_Trends_NewSignups"].Value;
+    var newTicketsLabel = Localizer["ShiftDash_Trends_NewTicketSales"].Value;
+    var dauLabel = Localizer["ShiftDash_Trends_DAU"].Value;
+    var dauNote = Localizer["ShiftDash_Trends_DAUNote"].Value;
 }
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>Trends</strong>
+        <strong>@Localizer["ShiftDash_Trends_Title"]</strong>
         <div class="btn-group btn-group-sm" role="group">
             @foreach (var w in new[] { TrendWindow.Last7Days, TrendWindow.Last30Days, TrendWindow.Last90Days, TrendWindow.All })
             {
@@ -48,6 +53,10 @@
     var signups = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(signups));
     var tickets = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(tickets));
     var logins = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(logins));
+    var newSignupsLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(newSignupsLabel));
+    var newTicketsLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(newTicketsLabel));
+    var dauLabel = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dauLabel));
+    var dauNote = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(dauNote));
 
     function renderDashboardTrendsChart() {
         var ctx = document.getElementById('dashboardTrendsChart');
@@ -57,9 +66,9 @@
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'New signups', data: signups, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.25 },
-                    { label: 'New ticket sales', data: tickets, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', tension: 0.25 },
-                    { label: 'Distinct logins (DAU)', data: logins, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.1)', tension: 0.25, borderDash: [4, 4] }
+                    { label: newSignupsLabel, data: signups, borderColor: '#0d6efd', backgroundColor: 'rgba(13,110,253,0.1)', tension: 0.25 },
+                    { label: newTicketsLabel, data: tickets, borderColor: '#198754', backgroundColor: 'rgba(25,135,84,0.1)', tension: 0.25 },
+                    { label: dauLabel, data: logins, borderColor: '#6c757d', backgroundColor: 'rgba(108,117,125,0.1)', tension: 0.25, borderDash: [4, 4] }
                 ]
             },
             options: {
@@ -70,8 +79,8 @@
                     tooltip: {
                         callbacks: {
                             afterLabel: function (c) {
-                                if (c.dataset.label === 'Distinct logins (DAU)') {
-                                    return 'Only last login per human is stored — older buckets undercount.';
+                                if (c.dataset.label === dauLabel) {
+                                    return dauNote;
                                 }
                                 return null;
                             }

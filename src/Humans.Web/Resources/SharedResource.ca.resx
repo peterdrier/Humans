@@ -1691,4 +1691,46 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Si no estàs satisfet amb la nostra resposta, tens dret a presentar una reclamació davant l'Agència Espanyola de Protecció de Dades (AEPD) a {0}.</value><comment>{0} = AEPD URL</comment></data>
 
 
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Torns coberts</value></data>
+  <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Amb entrada</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans que han pagat</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Amb entrada i apuntats</value></data>
+  <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans no s'han apuntat</value><comment>{0} = count</comment></data>
+  <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Apuntats sense entrada</value></data>
+  <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>apuntats sense entrada (encara)</value></data>
+  <data name="ShiftDash_Overview_StalePending" xml:space="preserve"><value>Pendents antics</value></data>
+  <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>pendents &gt; 3 dies</value></data>
+
+  <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Departaments</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>ordenats pel % més baix cobert primer</value></data>
+  <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Departament</value></data>
+  <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Total</value></data>
+  <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Coberts</value></data>
+  <data name="ShiftDash_Departments_Col_Pct" xml:space="preserve"><value>%</value></data>
+  <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Places lliures</value></data>
+  <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Període</value></data>
+  <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Directe</value></data>
+
+  <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Activitat dels coordinadors</value></data>
+  <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>equips amb pendents, inici de sessió més antic primer</value></data>
+  <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve"><value>Equip</value></data>
+  <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve"><value>Coordinadors</value></data>
+  <data name="ShiftDash_Coordinators_Col_OldestLogin" xml:space="preserve"><value>Inici més antic</value></data>
+  <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve"><value>Pendents</value></data>
+  <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve"><value>sense coordinadors</value></data>
+  <data name="ShiftDash_Coordinators_Never" xml:space="preserve"><value>mai</value></data>
+  <data name="ShiftDash_Coordinators_MinutesAgo" xml:space="preserve"><value>fa {0} min</value><comment>{0} = minutes</comment></data>
+  <data name="ShiftDash_Coordinators_HoursAgo" xml:space="preserve"><value>fa {0} h</value><comment>{0} = hours</comment></data>
+  <data name="ShiftDash_Coordinators_DaysAgo" xml:space="preserve"><value>fa {0} d</value><comment>{0} = days</comment></data>
+
+  <data name="ShiftDash_Trends_Title" xml:space="preserve"><value>Tendències</value></data>
+  <data name="ShiftDash_Trends_Window_7d" xml:space="preserve"><value>7d</value></data>
+  <data name="ShiftDash_Trends_Window_30d" xml:space="preserve"><value>30d</value></data>
+  <data name="ShiftDash_Trends_Window_90d" xml:space="preserve"><value>90d</value></data>
+  <data name="ShiftDash_Trends_Window_All" xml:space="preserve"><value>Tot</value></data>
+  <data name="ShiftDash_Trends_NewSignups" xml:space="preserve"><value>Noves inscripcions</value></data>
+  <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve"><value>Noves entrades venudes</value></data>
+  <data name="ShiftDash_Trends_DAU" xml:space="preserve"><value>Inicis de sessió únics (DAU)</value></data>
+  <data name="ShiftDash_Trends_DAUNote" xml:space="preserve"><value>Només es desa l'últim inici per human — els períodes antics estan infrarrepresentats.</value></data>
+
 </root>

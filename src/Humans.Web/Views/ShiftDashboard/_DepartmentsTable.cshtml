@@ -15,19 +15,19 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>Departments</strong>
-        <span class="text-muted small">sorted by lowest fill % first</span>
+        <strong>@Localizer["ShiftDash_Departments_Title"]</strong>
+        <span class="text-muted small">@Localizer["ShiftDash_Departments_SortNote"]</span>
     </div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
             <thead class="table-light">
                 <tr>
                     <th></th>
-                    <th>Department</th>
-                    <th class="text-end">Total</th>
-                    <th class="text-end">Filled</th>
-                    <th class="text-end">%</th>
-                    <th class="text-end">Slots remaining</th>
+                    <th>@Localizer["ShiftDash_Departments_Col_Department"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_Total"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -51,13 +51,13 @@
                                     <thead>
                                         <tr>
                                             <th></th>
-                                            <th class="text-end">Total</th>
-                                            <th class="text-end">Filled</th>
-                                            <th class="text-end">%</th>
-                                            <th class="text-end">Slots remaining</th>
-                                            <th class="text-end">Build</th>
-                                            <th class="text-end">Event</th>
-                                            <th class="text-end">Strike</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Total"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
+                                            <th class="text-end">@Localizer["Shifts_SetUp"]</th>
+                                            <th class="text-end">@Localizer["Shifts_Event"]</th>
+                                            <th class="text-end">@Localizer["Shifts_Strike"]</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -68,7 +68,7 @@
                                                 <td>
                                                     @if (sub.IsDirect)
                                                     {
-                                                        <span class="badge bg-secondary me-1">Direct</span>
+                                                        <span class="badge bg-secondary me-1">@Localizer["ShiftDash_Departments_Direct"]</span>
                                                     }
                                                     @sub.Name
                                                 </td>
@@ -89,15 +89,18 @@
                                 <table class="table table-sm mb-0">
                                     <thead>
                                         <tr>
-                                            <th>Period</th>
-                                            <th class="text-end">Total</th>
-                                            <th class="text-end">Filled</th>
-                                            <th class="text-end">%</th>
-                                            <th class="text-end">Slots remaining</th>
+                                            <th>@Localizer["ShiftDash_Departments_Col_Period"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Total"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Filled"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_Pct"]</th>
+                                            <th class="text-end">@Localizer["ShiftDash_Departments_Col_SlotsRemaining"]</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var (label, p) in new[] { ("Build", row.Build), ("Event", row.Event), ("Strike", row.Strike) })
+                                        @foreach (var (label, p) in new[] {
+                                            (Localizer["Shifts_SetUp"].Value, row.Build),
+                                            (Localizer["Shifts_Event"].Value, row.Event),
+                                            (Localizer["Shifts_Strike"].Value, row.Strike) })
                                         {
                                             var pPct = Pct(p.Filled, p.Total);
                                             <tr>

@@ -6,14 +6,14 @@
 @{
     var now = Clock.GetCurrentInstant();
 
-    static string RelativeTime(Instant? t, Instant now)
+    string RelativeTime(Instant? t)
     {
-        if (t is null) return "never";
+        if (t is null) return Localizer["ShiftDash_Coordinators_Never"].Value;
         var diff = now - t.Value;
         if (diff.TotalDays < 1) return diff.TotalHours < 1
-            ? $"{(int)Math.Max(1, diff.TotalMinutes)} min ago"
-            : $"{(int)diff.TotalHours} h ago";
-        return $"{(int)diff.TotalDays} d ago";
+            ? string.Format(Localizer["ShiftDash_Coordinators_MinutesAgo"].Value, (int)Math.Max(1, diff.TotalMinutes))
+            : string.Format(Localizer["ShiftDash_Coordinators_HoursAgo"].Value, (int)diff.TotalHours);
+        return string.Format(Localizer["ShiftDash_Coordinators_DaysAgo"].Value, (int)diff.TotalDays);
     }
 }
 
@@ -24,17 +24,17 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <strong>Coordinator activity</strong>
-        <span class="text-muted small">teams with pending signups, oldest login first</span>
+        <strong>@Localizer["ShiftDash_Coordinators_Title"]</strong>
+        <span class="text-muted small">@Localizer["ShiftDash_Coordinators_Subtitle"]</span>
     </div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th>Team</th>
-                    <th>Coordinators</th>
-                    <th>Oldest login</th>
-                    <th class="text-end">Pending</th>
+                    <th>@Localizer["ShiftDash_Coordinators_Col_Team"]</th>
+                    <th>@Localizer["ShiftDash_Coordinators_Col_Coordinators"]</th>
+                    <th>@Localizer["ShiftDash_Coordinators_Col_OldestLogin"]</th>
+                    <th class="text-end">@Localizer["ShiftDash_Coordinators_Col_Pending"]</th>
                 </tr>
             </thead>
             <tbody>
@@ -50,7 +50,7 @@
                         <td>
                             @if (row.Coordinators.Count == 0)
                             {
-                                <span class="text-muted fst-italic">no coordinators</span>
+                                <span class="text-muted fst-italic">@Localizer["ShiftDash_Coordinators_NoCoordinators"]</span>
                             }
                             else
                             {
@@ -58,7 +58,7 @@
                             }
                         </td>
                         <td class="@(stale ? "text-danger fw-semibold" : "")">
-                            @RelativeTime(oldest, now)
+                            @RelativeTime(oldest)
                         </td>
                         <td class="text-end"><span class="badge bg-warning text-dark">@row.PendingSignupCount</span></td>
                     </tr>

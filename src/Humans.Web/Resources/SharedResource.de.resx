@@ -1689,4 +1689,46 @@
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>Wenn du mit unserer Antwort nicht zufrieden bist, hast du das Recht, eine Beschwerde bei der Spanischen Datenschutzbehörde (AEPD) unter {0} einzureichen.</value><comment>{0} = AEPD URL</comment></data>
 
 
+  <data name="ShiftDash_Overview_ShiftsFilled" xml:space="preserve"><value>Besetzte Schichten</value></data>
+  <data name="ShiftDash_Overview_TicketHolders" xml:space="preserve"><value>Ticketinhaber</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersSubline" xml:space="preserve"><value>humans, die bezahlt haben</value></data>
+  <data name="ShiftDash_Overview_TicketHoldersEngaged" xml:space="preserve"><value>Ticketinhaber engagiert</value></data>
+  <data name="ShiftDash_Overview_EngagedSubline" xml:space="preserve"><value>{0} humans haben sich noch nicht eingetragen</value><comment>{0} = count</comment></data>
+  <data name="ShiftDash_Overview_NonTicketSignups" xml:space="preserve"><value>Eintragungen ohne Ticket</value></data>
+  <data name="ShiftDash_Overview_NonTicketSubline" xml:space="preserve"><value>eingetragen, noch ohne Ticket</value></data>
+  <data name="ShiftDash_Overview_StalePending" xml:space="preserve"><value>Alte offene</value></data>
+  <data name="ShiftDash_Overview_StaleSubline" xml:space="preserve"><value>offen &gt; 3 Tage</value></data>
+
+  <data name="ShiftDash_Departments_Title" xml:space="preserve"><value>Abteilungen</value></data>
+  <data name="ShiftDash_Departments_SortNote" xml:space="preserve"><value>sortiert nach niedrigster Füllquote zuerst</value></data>
+  <data name="ShiftDash_Departments_Col_Department" xml:space="preserve"><value>Abteilung</value></data>
+  <data name="ShiftDash_Departments_Col_Total" xml:space="preserve"><value>Gesamt</value></data>
+  <data name="ShiftDash_Departments_Col_Filled" xml:space="preserve"><value>Besetzt</value></data>
+  <data name="ShiftDash_Departments_Col_Pct" xml:space="preserve"><value>%</value></data>
+  <data name="ShiftDash_Departments_Col_SlotsRemaining" xml:space="preserve"><value>Freie Plätze</value></data>
+  <data name="ShiftDash_Departments_Col_Period" xml:space="preserve"><value>Phase</value></data>
+  <data name="ShiftDash_Departments_Direct" xml:space="preserve"><value>Direkt</value></data>
+
+  <data name="ShiftDash_Coordinators_Title" xml:space="preserve"><value>Koordinator-Aktivität</value></data>
+  <data name="ShiftDash_Coordinators_Subtitle" xml:space="preserve"><value>Teams mit offenen Eintragungen, ältester Login zuerst</value></data>
+  <data name="ShiftDash_Coordinators_Col_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="ShiftDash_Coordinators_Col_Coordinators" xml:space="preserve"><value>Koordinatoren</value></data>
+  <data name="ShiftDash_Coordinators_Col_OldestLogin" xml:space="preserve"><value>Ältester Login</value></data>
+  <data name="ShiftDash_Coordinators_Col_Pending" xml:space="preserve"><value>Offen</value></data>
+  <data name="ShiftDash_Coordinators_NoCoordinators" xml:space="preserve"><value>keine Koordinatoren</value></data>
+  <data name="ShiftDash_Coordinators_Never" xml:space="preserve"><value>nie</value></data>
+  <data name="ShiftDash_Coordinators_MinutesAgo" xml:space="preserve"><value>vor {0} Min.</value><comment>{0} = minutes</comment></data>
+  <data name="ShiftDash_Coordinators_HoursAgo" xml:space="preserve"><value>vor {0} Std.</value><comment>{0} = hours</comment></data>
+  <data name="ShiftDash_Coordinators_DaysAgo" xml:space="preserve"><value>vor {0} T.</value><comment>{0} = days</comment></data>
+
+  <data name="ShiftDash_Trends_Title" xml:space="preserve"><value>Trends</value></data>
+  <data name="ShiftDash_Trends_Window_7d" xml:space="preserve"><value>7T</value></data>
+  <data name="ShiftDash_Trends_Window_30d" xml:space="preserve"><value>30T</value></data>
+  <data name="ShiftDash_Trends_Window_90d" xml:space="preserve"><value>90T</value></data>
+  <data name="ShiftDash_Trends_Window_All" xml:space="preserve"><value>Alle</value></data>
+  <data name="ShiftDash_Trends_NewSignups" xml:space="preserve"><value>Neue Eintragungen</value></data>
+  <data name="ShiftDash_Trends_NewTicketSales" xml:space="preserve"><value>Neue Ticketverkäufe</value></data>
+  <data name="ShiftDash_Trends_DAU" xml:space="preserve"><value>Einzigartige Logins (DAU)</value></data>
+  <data name="ShiftDash_Trends_DAUNote" xml:space="preserve"><value>Nur der letzte Login pro human wird gespeichert — ältere Zeiträume sind untererfasst.</value></data>
+
 </root>

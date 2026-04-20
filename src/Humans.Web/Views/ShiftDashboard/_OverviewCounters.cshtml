@@ -14,12 +14,12 @@
     <div class="col-md-4 col-lg">
         <div class="card h-100">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">Shifts filled</div>
+                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_ShiftsFilled"]</div>
                 <div class="fs-3 fw-bold">@Model.FilledShifts <span class="text-muted fs-6">/ @Model.TotalShifts (@filledPct.ToString("0")%)</span></div>
                 <div class="mt-2">
-                    <span class="badge @PctClass(Model.PeriodFillRates.BuildPct) me-1">Build @Model.PeriodFillRates.BuildPct.ToString("0")%</span>
-                    <span class="badge @PctClass(Model.PeriodFillRates.EventPct) me-1">Event @Model.PeriodFillRates.EventPct.ToString("0")%</span>
-                    <span class="badge @PctClass(Model.PeriodFillRates.StrikePct)">Strike @Model.PeriodFillRates.StrikePct.ToString("0")%</span>
+                    <span class="badge @PctClass(Model.PeriodFillRates.BuildPct) me-1">@Localizer["Shifts_SetUp"] @Model.PeriodFillRates.BuildPct.ToString("0")%</span>
+                    <span class="badge @PctClass(Model.PeriodFillRates.EventPct) me-1">@Localizer["Shifts_Event"] @Model.PeriodFillRates.EventPct.ToString("0")%</span>
+                    <span class="badge @PctClass(Model.PeriodFillRates.StrikePct)">@Localizer["Shifts_Strike"] @Model.PeriodFillRates.StrikePct.ToString("0")%</span>
                 </div>
             </div>
         </div>
@@ -27,36 +27,36 @@
     <div class="col-md-4 col-lg">
         <div class="card h-100">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">Ticket holders</div>
+                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_TicketHolders"]</div>
                 <div class="fs-3 fw-bold">@Model.TicketHolderCount</div>
-                <div class="text-muted small">humans who have paid</div>
+                <div class="text-muted small">@Localizer["ShiftDash_Overview_TicketHoldersSubline"]</div>
             </div>
         </div>
     </div>
     <div class="col-md-4 col-lg">
         <div class="card h-100 border-primary">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">Ticket holders engaged</div>
+                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_TicketHoldersEngaged"]</div>
                 <div class="fs-3 fw-bold">@Model.TicketHoldersEngaged <span class="text-muted fs-6">/ @Model.TicketHolderCount (@engagedPct.ToString("0")%)</span></div>
-                <div class="text-muted small">@unreached humans haven't signed up</div>
+                <div class="text-muted small">@string.Format(Localizer["ShiftDash_Overview_EngagedSubline"].Value, unreached)</div>
             </div>
         </div>
     </div>
     <div class="col-md-4 col-lg">
         <div class="card h-100">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">Non-ticket signups</div>
+                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_NonTicketSignups"]</div>
                 <div class="fs-3 fw-bold">@Model.NonTicketSignups</div>
-                <div class="text-muted small">signed up without a ticket (yet)</div>
+                <div class="text-muted small">@Localizer["ShiftDash_Overview_NonTicketSubline"]</div>
             </div>
         </div>
     </div>
     <div class="col-md-4 col-lg">
         <div class="card h-100 @(Model.StalePendingCount > 0 ? "border-warning" : "")">
             <div class="card-body">
-                <div class="text-muted small text-uppercase">Stale pending</div>
+                <div class="text-muted small text-uppercase">@Localizer["ShiftDash_Overview_StalePending"]</div>
                 <div class="fs-3 fw-bold">@Model.StalePendingCount</div>
-                <div class="text-muted small">pending &gt; 3 days</div>
+                <div class="text-muted small">@Localizer["ShiftDash_Overview_StaleSubline"]</div>
             </div>
         </div>
     </div>
