@@ -20,3 +20,5 @@ Tracks when recurring maintenance processes were last run.
 | GitHub issue triage | 2026-03-08 | 2026-03-15 | Weekly | — | Sync issues vs todos.md |
 | Access matrix verification | 2026-03-18 | 2026-03-25 | Weekly | — | Compare `AccessMatrixDefinitions.cs` against actual controller auth checks |
 | Service ownership migration | 2026-04-15 | As needed | Per-section | — | Governance landed as first full end-to-end spike in PR #503. Profile is §15a Step 0 next. |
+| User guide created | 2026-04-20 | — | One-time | — | `docs/guide/` with 14 section guides + README, GettingStarted, Glossary. Plan: `docs/superpowers/plans/2026-04-20-user-guide.md`. |
+| Screenshot review | 2026-04-20 | 2026-05-20 | Monthly | — | Review outstanding `TODO: screenshot` placeholders in `docs/guide/` and spot-check existing screenshots against the live UI at `nuc.home`. Process: `docs/architecture/screenshot-maintenance.md`. |
