@@ -74,7 +74,9 @@ public class ShiftDashboardController : HumansControllerBase
         var staffingHours = await _shiftMgmt.GetStaffingHoursAsync(es.Id, departmentId, period);
         var overview = await _shiftMgmt.GetDashboardOverviewAsync(es.Id, period);
         var coordinatorActivity = await _shiftMgmt.GetCoordinatorActivityAsync(es.Id, period);
-        var trends = await _shiftMgmt.GetDashboardTrendsAsync(es.Id, window, period);
+        // Always fetch the full history; the partial slices client-side on window toggle
+        // so the user doesn't incur a full page reload to change the trend range.
+        var trends = await _shiftMgmt.GetDashboardTrendsAsync(es.Id, TrendWindow.All, period);
         var deptTuples = await _shiftMgmt.GetDepartmentsWithRotasAsync(es.Id);
 
         var departments = deptTuples.Select(d => new DepartmentOption
