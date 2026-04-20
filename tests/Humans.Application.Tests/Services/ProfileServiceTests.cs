@@ -52,11 +52,12 @@ public class ProfileServiceTests : IDisposable
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
-        // Real repositories backed by in-memory DbContext
-        _profileRepository = new ProfileRepository(_dbContext, _clock);
-        _userEmailRepository = new UserEmailRepository(_dbContext);
-        _volunteerHistoryRepository = new VolunteerHistoryRepository(_dbContext);
-        _contactFieldRepository = new ContactFieldRepository(_dbContext);
+        // Real repositories backed by an IDbContextFactory wrapping the in-memory store.
+        var factory = new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options);
+        _profileRepository = new ProfileRepository(factory, _clock);
+        _userEmailRepository = new UserEmailRepository(factory);
+        _volunteerHistoryRepository = new VolunteerHistoryRepository(factory);
+        _contactFieldRepository = new ContactFieldRepository(factory);
         _store = new ProfileStore();
 
         _service = new ProfileService(
@@ -111,7 +112,7 @@ public class ProfileServiceTests : IDisposable
         var profileId = await _service.SaveProfileAsync(userId, "Jane Doe", request, "en");
 
         profileId.Should().NotBe(Guid.Empty);
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.BurnerName.Should().Be("Flame");
         profile.FirstName.Should().Be("Jane");
         profile.LastName.Should().Be("Doe");
@@ -126,7 +127,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Updated Person", request, "en");
 
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.BurnerName.Should().Be("NewName");
         profile.FirstName.Should().Be("Updated");
         profile.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
@@ -153,7 +154,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().Be(new LocalDate(4, 2, 14));
     }
 
@@ -166,7 +167,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.DateOfBirth.Should().BeNull();
     }
 
@@ -179,7 +180,7 @@ public class ProfileServiceTests : IDisposable
 
         await _service.SaveProfileAsync(userId, "Test", request, "en");
 
-        var profile = await _dbContext.Profiles.FirstAsync(p => p.UserId == userId);
+        var profile = await _dbContext.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId);
         profile.ProfilePictureData.Should().BeNull();
         profile.ProfilePictureContentType.Should().BeNull();
     }

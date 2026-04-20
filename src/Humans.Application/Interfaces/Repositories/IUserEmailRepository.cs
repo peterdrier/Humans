@@ -18,9 +18,12 @@ public interface IUserEmailRepository
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all emails for a user as tracked entities for modification.
+    /// Returns detached entities intended to be mutated in-memory and passed back
+    /// to <see cref="UpdateAsync"/> or <see cref="UpdateBatchAsync"/>. The returned
+    /// entities are NOT tracked — callers must explicitly hand mutated entities
+    /// back to a write method for persistence.
     /// </summary>
-    Task<IReadOnlyList<UserEmail>> GetByUserIdTrackedAsync(
+    Task<IReadOnlyList<UserEmail>> GetByUserIdForMutationAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>
@@ -98,16 +101,14 @@ public interface IUserEmailRepository
     Task RemoveAllForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists changes to a single tracked <see cref="UserEmail"/> entity.
-    /// The caller must have obtained the entity via a tracked query method
-    /// in the same scope.
+    /// Persists changes to a single <see cref="UserEmail"/> entity by attaching it
+    /// to a fresh context and marking it as Modified.
     /// </summary>
     Task UpdateAsync(UserEmail email, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists changes to multiple tracked <see cref="UserEmail"/> entities
-    /// in one SaveChanges call. Used by batch operations (e.g., setting
-    /// notification target across all emails for a user).
+    /// Persists changes to multiple <see cref="UserEmail"/> entities in one
+    /// SaveChanges call. Each entity is attached and marked as Modified.
     /// </summary>
     Task UpdateBatchAsync(IReadOnlyList<UserEmail> emails, CancellationToken ct = default);
 }

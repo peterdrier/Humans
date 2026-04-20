@@ -119,7 +119,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
 
         profile.MembershipTier = tier;
         profile.UpdatedAt = _clock.GetCurrentInstant();
-        await _profileRepository.UpdateAsync(ct);
+        await _profileRepository.UpdateAsync(profile, ct);
 
         // Store update handled by CachingProfileService decorator
     }
@@ -280,7 +280,7 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
             }
         }
 
-        await _profileRepository.UpdateAsync(ct);
+        await _profileRepository.UpdateAsync(profile, ct);
 
         // Update display name on user (cross-section → IUserService)
         await _userService.UpdateDisplayNameAsync(userId, displayName, ct);

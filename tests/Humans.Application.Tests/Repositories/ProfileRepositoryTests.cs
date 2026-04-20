@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using Humans.Application;
+using Humans.Application.Tests.Infrastructure;
 using Humans.Domain.Entities;
 using Humans.Infrastructure.Data;
 using Humans.Infrastructure.Repositories;
@@ -23,7 +24,7 @@ public sealed class ProfileRepositoryTests : IDisposable
             .Options;
         _dbContext = new HumansDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
-        _repo = new ProfileRepository(_dbContext, _clock);
+        _repo = new ProfileRepository(new TestDbContextFactory(options), _clock);
     }
 
     public void Dispose()
@@ -74,8 +75,10 @@ public sealed class ProfileRepositoryTests : IDisposable
         };
         await _repo.ReconcileCVEntriesAsync(profileId, newEntries, default);
 
-        // Assert: exactly two rows remain
+        // Assert: exactly two rows remain. Use AsNoTracking so the query hits the in-memory
+        // store directly rather than returning stale entities from _dbContext's identity map.
         var persisted = await _dbContext.VolunteerHistoryEntries
+            .AsNoTracking()
             .Where(v => v.ProfileId == profileId)
             .OrderBy(v => v.Date)
             .ToListAsync();
@@ -122,6 +125,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         await _repo.ReconcileCVEntriesAsync(profileId, entries, default);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
+            .AsNoTracking()
             .Where(v => v.ProfileId == profileId)
             .SingleAsync();
         persisted.UpdatedAt.Should().Be(seededAt);
@@ -168,6 +172,7 @@ public sealed class ProfileRepositoryTests : IDisposable
         await _repo.ReconcileCVEntriesAsync(profileId, entries, default);
 
         var persisted = await _dbContext.VolunteerHistoryEntries
+            .AsNoTracking()
             .Where(v => v.ProfileId == profileId)
             .ToListAsync();
         persisted.Should().ContainSingle();

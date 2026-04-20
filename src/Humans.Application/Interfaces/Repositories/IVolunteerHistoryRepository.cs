@@ -16,20 +16,23 @@ public interface IVolunteerHistoryRepository
         Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Returns all entries for a profile as tracked entities for
-    /// in-place modification. Used by the batch save flow.
+    /// Returns detached entities intended to be mutated in-memory and passed back
+    /// to <see cref="BatchSaveAsync"/> in the <c>toUpdate</c> list. The returned
+    /// entities are NOT tracked — callers must explicitly hand mutated entities
+    /// back to the batch save flow for persistence.
     /// </summary>
-    Task<IReadOnlyList<VolunteerHistoryEntry>> GetByProfileIdTrackedAsync(
+    Task<IReadOnlyList<VolunteerHistoryEntry>> GetByProfileIdForMutationAsync(
         Guid profileId, CancellationToken ct = default);
 
     /// <summary>
-    /// Atomic batch write: adds new entries, removes deleted entries, and
-    /// persists all changes (including mutations on tracked entities loaded
-    /// via <see cref="GetByProfileIdTrackedAsync"/>) in one
-    /// <c>SaveChangesAsync</c> call.
+    /// Atomic batch write: adds new entries, updates mutated entries, removes
+    /// deleted entries, and persists all changes in one <c>SaveChangesAsync</c> call.
+    /// Callers that previously relied on EF change-tracking for in-place mutations
+    /// should pass the mutated entities in <paramref name="toUpdate"/>.
     /// </summary>
     Task BatchSaveAsync(
         IReadOnlyList<VolunteerHistoryEntry> toAdd,
+        IReadOnlyList<VolunteerHistoryEntry> toUpdate,
         IReadOnlyList<VolunteerHistoryEntry> toRemove,
         CancellationToken ct = default);
 }

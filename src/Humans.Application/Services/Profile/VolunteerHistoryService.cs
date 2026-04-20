@@ -45,8 +45,10 @@ public sealed class VolunteerHistoryService : IVolunteerHistoryService
     {
         var now = _clock.GetCurrentInstant();
 
-        // Get existing entries (tracked for in-place mutation)
-        var existingEntries = await _repository.GetByProfileIdTrackedAsync(profileId, cancellationToken);
+        // Load existing entries. With IDbContextFactory the repo context is
+        // short-lived, so entities are detached after the call — mutations must
+        // be passed explicitly to BatchSaveAsync rather than relying on tracking.
+        var existingEntries = await _repository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
 
         var existingById = existingEntries.ToDictionary(v => v.Id);
         var incomingIds = entries.Where(e => e.Id.HasValue).Select(e => e.Id!.Value).ToHashSet();
@@ -54,18 +56,20 @@ public sealed class VolunteerHistoryService : IVolunteerHistoryService
         // Entries to delete (no longer in incoming set)
         var toDelete = existingEntries.Where(v => !incomingIds.Contains(v.Id)).ToList();
 
-        // Entries to add (new, no existing ID)
+        // Entries to add (new, no existing ID); collect mutated existing as toUpdate
         var toAdd = new List<VolunteerHistoryEntry>();
+        var toUpdate = new List<VolunteerHistoryEntry>();
 
         foreach (var dto in entries)
         {
             if (dto.Id.HasValue && existingById.TryGetValue(dto.Id.Value, out var existing))
             {
-                // Update existing (in-place mutation on tracked entity)
+                // Mutate the detached entity and add to toUpdate
                 existing.Date = dto.Date;
                 existing.EventName = dto.EventName;
                 existing.Description = dto.Description;
                 existing.UpdatedAt = now;
+                toUpdate.Add(existing);
             }
             else
             {
@@ -83,6 +87,6 @@ public sealed class VolunteerHistoryService : IVolunteerHistoryService
             }
         }
 
-        await _repository.BatchSaveAsync(toAdd, toDelete, cancellationToken);
+        await _repository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
     }
 }

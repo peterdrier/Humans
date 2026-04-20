@@ -121,11 +121,13 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICityPlanningService, CityPlanningService>();
         services.AddScoped<ICampContactService, CampContactService>();
         // Profile section — repository/store/decorator pattern (§15 Step 0, PR #504)
-        services.AddScoped<IProfileRepository, ProfileRepository>();
-        services.AddScoped<IContactFieldRepository, ContactFieldRepository>();
-        services.AddScoped<IUserEmailRepository, UserEmailRepository>();
-        services.AddScoped<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
-        services.AddScoped<IVolunteerHistoryRepository, VolunteerHistoryRepository>();
+        // Repositories use IDbContextFactory and are registered as Singleton so the
+        // CachingProfileService Singleton can inject them directly without scope-factory indirection.
+        services.AddSingleton<IProfileRepository, ProfileRepository>();
+        services.AddSingleton<IContactFieldRepository, ContactFieldRepository>();
+        services.AddSingleton<IUserEmailRepository, UserEmailRepository>();
+        services.AddSingleton<ICommunicationPreferenceRepository, CommunicationPreferenceRepository>();
+        services.AddSingleton<IVolunteerHistoryRepository, VolunteerHistoryRepository>();
 
         services.AddSingleton<IProfileStore, ProfileStore>();
 
@@ -250,22 +252,30 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IConsentService>(sp => sp.GetRequiredService<ConsentService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ConsentService>());
 
-        services.AddScoped<ProfilesProfileService>();
-        services.AddScoped<IProfileService>(sp => sp.GetRequiredService<ProfilesProfileService>());
+        // ProfileService (inner): Scoped — has many Scoped cross-section deps.
+        // Registered under the keyed "profile-inner" key so CachingProfileService can
+        // resolve it from a scope without triggering self-resolution on the unkeyed
+        // IProfileService registration (which maps to the Singleton decorator).
+        services.AddKeyedScoped<IProfileService, ProfilesProfileService>(CachingProfileService.InnerServiceKey);
+        services.AddScoped<ProfilesProfileService>(sp =>
+            (ProfilesProfileService)sp.GetRequiredKeyedService<IProfileService>(CachingProfileService.InnerServiceKey));
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ProfilesProfileService>());
 
-        // Wrap IProfileService with caching decorator via Scrutor
-        services.Decorate<IProfileService, CachingProfileService>();
+        // CachingProfileService: Singleton so the _byUserId ConcurrentDictionary persists
+        // across requests. Resolves the Scoped inner IProfileService (keyed "profile-inner")
+        // and other Scoped deps (IUserService, INavBadgeCacheInvalidator,
+        // INotificationMeterCacheInvalidator) per-call via IServiceScopeFactory to avoid
+        // the captured-scoped-dep anti-pattern.
+        // IProfileRepository and IUserEmailRepository are injected directly because they
+        // are also Singleton (IDbContextFactory-based).
+        services.AddSingleton<CachingProfileService>();
+        services.AddSingleton<IProfileService>(sp => sp.GetRequiredService<CachingProfileService>());
 
-        // CRITICAL: IFullProfileInvalidator must resolve to the same decorator instance
-        // that backs IProfileService. This factory delegates to the decorated
-        // IProfileService registration (above) — do not register a fresh
-        // CachingProfileService here, because the decorator holds cache state in a
-        // private ConcurrentDictionary that would otherwise diverge.
-        // Note: CachingProfileService is Scoped (same lifetime as IProfileService).
-        // Within a request scope both interfaces share the same instance.
-        services.AddScoped<IFullProfileInvalidator>(sp =>
-            (IFullProfileInvalidator)sp.GetRequiredService<IProfileService>());
+        // CRITICAL: IFullProfileInvalidator must resolve to the same Singleton decorator instance
+        // that backs IProfileService. Both interfaces share the single CachingProfileService
+        // instance, so the _byUserId dict is never split.
+        services.AddSingleton<IFullProfileInvalidator>(sp =>
+            sp.GetRequiredService<CachingProfileService>());
 
         // Startup warmup: load profiles into the store before serving requests
         services.AddHostedService<ProfileStoreWarmupHostedService>();

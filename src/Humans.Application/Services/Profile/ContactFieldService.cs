@@ -87,8 +87,10 @@ public sealed class ContactFieldService : IContactFieldService
     {
         var now = _clock.GetCurrentInstant();
 
-        // Get existing fields (tracked)
-        var existingFields = await _repository.GetByProfileIdTrackedAsync(profileId, cancellationToken);
+        // Load existing fields. With IDbContextFactory the repo context is
+        // short-lived, so entities are detached after the call — mutations must
+        // be passed explicitly to BatchSaveAsync rather than relying on tracking.
+        var existingFields = await _repository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
@@ -96,20 +98,22 @@ public sealed class ContactFieldService : IContactFieldService
         // Delete fields no longer present
         var toDelete = existingFields.Where(cf => !incomingIds.Contains(cf.Id)).ToList();
 
-        // Add new fields
+        // Add new fields; collect mutated existing fields as toUpdate
         var toAdd = new List<ContactField>();
+        var toUpdate = new List<ContactField>();
 
         foreach (var dto in fields)
         {
             if (dto.Id.HasValue && existingById.TryGetValue(dto.Id.Value, out var existing))
             {
-                // Update existing (in-place on tracked entity)
+                // Mutate the detached entity and add to toUpdate
                 existing.FieldType = dto.FieldType;
                 existing.CustomLabel = dto.CustomLabel;
                 existing.Value = dto.Value;
                 existing.Visibility = dto.Visibility;
                 existing.DisplayOrder = dto.DisplayOrder;
                 existing.UpdatedAt = now;
+                toUpdate.Add(existing);
             }
             else
             {
@@ -128,7 +132,7 @@ public sealed class ContactFieldService : IContactFieldService
             }
         }
 
-        await _repository.BatchSaveAsync(toAdd, toDelete, cancellationToken);
+        await _repository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
     }
 
     public async Task<ContactFieldVisibility> GetViewerAccessLevelAsync(

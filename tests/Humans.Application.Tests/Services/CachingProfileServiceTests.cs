@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Application;
 using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
@@ -14,6 +15,16 @@ namespace Humans.Application.Tests.Services;
 
 public class CachingProfileServiceTests
 {
+    // CachingProfileService (Phase 5.5) is Singleton and resolves Scoped deps
+    // (inner IProfileService keyed "profile-inner", IUserService,
+    // INavBadgeCacheInvalidator, INotificationMeterCacheInvalidator) per-call
+    // via IServiceScopeFactory.
+    //
+    // Test strategy: build a real ServiceCollection with NSubstitute substitutes
+    // registered for the Scoped deps under the same keys used in production, then
+    // build a ServiceProvider from which CachingProfileService can resolve them via
+    // scope. This avoids scope-factory mocking boilerplate while keeping tests concise.
+
     private readonly IProfileService _inner = Substitute.For<IProfileService>();
     private readonly IProfileRepository _profileRepository = Substitute.For<IProfileRepository>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
@@ -21,8 +32,17 @@ public class CachingProfileServiceTests
     private readonly INavBadgeCacheInvalidator _navBadge = Substitute.For<INavBadgeCacheInvalidator>();
     private readonly INotificationMeterCacheInvalidator _notificationMeter = Substitute.For<INotificationMeterCacheInvalidator>();
 
-    private CachingProfileService CreateSut() => new(
-        _inner, _profileRepository, _userService, _userEmailRepository, _navBadge, _notificationMeter);
+    private CachingProfileService CreateSut()
+    {
+        var services = new ServiceCollection();
+        // Register the inner service under the same keyed key used in production
+        services.AddKeyedScoped<IProfileService>(CachingProfileService.InnerServiceKey, (_, _) => _inner);
+        services.AddScoped(_ => _userService);
+        services.AddScoped(_ => _navBadge);
+        services.AddScoped(_ => _notificationMeter);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        return new CachingProfileService(_profileRepository, _userEmailRepository, scopeFactory);
+    }
 
     [Fact]
     public async Task GetFullProfileAsync_DictMiss_DelegatesToInnerAndPopulatesDict()

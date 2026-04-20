@@ -146,7 +146,7 @@ public sealed class UserEmailService : IUserEmailService
         var user = await _userService.GetByIdAsync(userId, cancellationToken)
             ?? throw new InvalidOperationException("User not found.");
 
-        var userEmails = await _repository.GetByUserIdTrackedAsync(userId, cancellationToken);
+        var userEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
         var pendingEmail = userEmails.FirstOrDefault(e => !e.IsVerified && !e.IsOAuth)
             ?? throw new ValidationException("No email pending verification.");
 
@@ -200,7 +200,7 @@ public sealed class UserEmailService : IUserEmailService
     public async Task SetNotificationTargetAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default)
     {
-        var emails = await _repository.GetByUserIdTrackedAsync(userId, cancellationToken);
+        var emails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
 
         var target = emails.FirstOrDefault(e => e.Id == emailId)
             ?? throw new InvalidOperationException("Email not found.");
@@ -242,12 +242,14 @@ public sealed class UserEmailService : IUserEmailService
         // If this was the notification target, reassign to OAuth email
         if (email.IsNotificationTarget)
         {
-            var allEmails = await _repository.GetByUserIdTrackedAsync(userId, cancellationToken);
+            var allEmails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
             var oauthEmail = allEmails.FirstOrDefault(e => e.IsOAuth);
             if (oauthEmail is not null)
             {
                 oauthEmail.IsNotificationTarget = true;
                 oauthEmail.UpdatedAt = _clock.GetCurrentInstant();
+                // Persist reassignment before the delete so both changes are durable
+                await _repository.UpdateAsync(oauthEmail, cancellationToken);
             }
         }
 
@@ -295,12 +297,13 @@ public sealed class UserEmailService : IUserEmailService
         // If @nobodies.team, clear existing notification target
         if (isNobodiesTeam)
         {
-            var emails = await _repository.GetByUserIdTrackedAsync(userId, cancellationToken);
+            var emails = await _repository.GetByUserIdForMutationAsync(userId, cancellationToken);
             var currentTarget = emails.FirstOrDefault(e => e.IsNotificationTarget);
             if (currentTarget is not null)
             {
                 currentTarget.IsNotificationTarget = false;
                 currentTarget.UpdatedAt = now;
+                await _repository.UpdateAsync(currentTarget, cancellationToken);
             }
         }
 

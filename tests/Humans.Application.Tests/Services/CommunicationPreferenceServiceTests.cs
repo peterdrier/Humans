@@ -95,7 +95,8 @@ public class CommunicationPreferenceServiceTests : IDisposable
             BaseUrl = "https://test.example.com"
         });
 
-        var repository = new CommunicationPreferenceRepository(_dbContext);
+        var repository = new CommunicationPreferenceRepository(
+            new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options));
 
         var tokenProvider = new UnsubscribeTokenProvider(
             dataProtectionProvider, emailSettings,

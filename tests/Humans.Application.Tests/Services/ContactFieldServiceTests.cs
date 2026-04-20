@@ -37,7 +37,8 @@ public class ContactFieldServiceTests : IDisposable
         _store = new ProfileStore();
         _clock = new FakeClock(Instant.FromUtc(2024, 1, 15, 12, 0, 0));
 
-        var repository = new ContactFieldRepository(_dbContext);
+        var repository = new ContactFieldRepository(
+            new Humans.Application.Tests.Infrastructure.TestDbContextFactory(options));
 
         _service = new ContactFieldService(
             repository, _store, _teamService, _roleAssignmentService, _clock);
@@ -302,7 +303,8 @@ public class ContactFieldServiceTests : IDisposable
         await _service.SaveContactFieldsAsync(profile.Id, fields);
 
         // Assert
-        var savedField = await _dbContext.ContactFields.FindAsync(existingField.Id);
+        var savedField = await _dbContext.ContactFields.AsNoTracking()
+            .FirstOrDefaultAsync(cf => cf.Id == existingField.Id);
         savedField!.Value.Should().Be("+34 698765432");
         savedField.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
     }

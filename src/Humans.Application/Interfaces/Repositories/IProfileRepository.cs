@@ -82,10 +82,11 @@ public interface IProfileRepository
     Task AddAsync(Profile profile, CancellationToken ct = default);
 
     /// <summary>
-    /// Persists changes to an existing (tracked) profile. The caller must have
-    /// obtained the entity via <see cref="GetByUserIdAsync"/> in the same scope.
+    /// Persists changes to an existing profile. The provided entity is attached
+    /// to a fresh context and saved. Use after mutating an entity obtained from
+    /// <see cref="GetByUserIdAsync"/>.
     /// </summary>
-    Task UpdateAsync(CancellationToken ct = default);
+    Task UpdateAsync(Profile profile, CancellationToken ct = default);
 
     /// <summary>
     /// Reconciles the CV-entry collection for the given profile with the

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Application;
 using Humans.Application.DTOs;
@@ -13,11 +14,25 @@ using MemberApplication = Humans.Domain.Entities.Application;
 namespace Humans.Infrastructure.Services.Profiles;
 
 /// <summary>
-/// Caching decorator for <see cref="IProfileService"/>. Owns a private
+/// Singleton caching decorator for <see cref="IProfileService"/>. Owns a private
 /// <see cref="ConcurrentDictionary{TKey,TValue}"/> of <see cref="FullProfile"/>
 /// entries keyed by userId. Reads serve dict hits synchronously via
 /// <see cref="ValueTask{TResult}"/>; writes reload the affected entry from
 /// repositories via <c>RefreshEntryAsync</c>.
+///
+/// <para>
+/// Registered as Singleton so the dict persists across requests. Dependencies
+/// that are themselves Scoped (<see cref="IProfileService"/> inner service,
+/// <see cref="IUserService"/>, <see cref="INavBadgeCacheInvalidator"/>,
+/// <see cref="INotificationMeterCacheInvalidator"/>) are resolved per-call via
+/// <see cref="IServiceScopeFactory"/> to avoid the captured-scoped-dependency
+/// anti-pattern.
+/// </para>
+///
+/// <para>
+/// <see cref="IProfileRepository"/> and <see cref="IUserEmailRepository"/> are
+/// injected directly because they are also Singleton (IDbContextFactory-based).
+/// </para>
 /// </summary>
 public sealed class CachingProfileService : IProfileService, IFullProfileInvalidator
 {
@@ -45,30 +60,28 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     // The one genuine regression is documented inline on RequestDeletionAsync
     // (ShiftAuthorization, §15 NEW-B).
 
-    private readonly IProfileService _inner;
-    private readonly IProfileRepository _profileRepository;
-    private readonly IUserService _userService;
-    private readonly IUserEmailRepository _userEmailRepository;
+    /// <summary>
+    /// DI service key under which the undecorated (inner) <see cref="IProfileService"/>
+    /// is registered. Used by the Singleton decorator to resolve the Scoped inner
+    /// service per-call without triggering self-resolution on the unkeyed
+    /// <see cref="IProfileService"/> registration (which maps to this Singleton).
+    /// </summary>
+    public const string InnerServiceKey = "profile-inner";
 
-    private readonly INavBadgeCacheInvalidator _navBadge;
-    private readonly INotificationMeterCacheInvalidator _notificationMeter;
+    private readonly IProfileRepository _profileRepository;
+    private readonly IUserEmailRepository _userEmailRepository;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     private readonly ConcurrentDictionary<Guid, FullProfile> _byUserId = new();
 
     public CachingProfileService(
-        IProfileService inner,
         IProfileRepository profileRepository,
-        IUserService userService,
         IUserEmailRepository userEmailRepository,
-        INavBadgeCacheInvalidator navBadge,
-        INotificationMeterCacheInvalidator notificationMeter)
+        IServiceScopeFactory scopeFactory)
     {
-        _inner = inner;
         _profileRepository = profileRepository;
-        _userService = userService;
         _userEmailRepository = userEmailRepository;
-        _navBadge = navBadge;
-        _notificationMeter = notificationMeter;
+        _scopeFactory = scopeFactory;
     }
 
     // ==========================================================================
@@ -77,8 +90,12 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     // Pure pass-through: FullProfile dict (_byUserId) is the Profile cache now.
     // No separate IMemoryCache layer for raw Profile entities.
-    public Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default) =>
-        _inner.GetProfileAsync(userId, ct);
+    public async Task<Profile?> GetProfileAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetProfileAsync(userId, ct);
+    }
 
     public ValueTask<FullProfile?> GetFullProfileAsync(Guid userId, CancellationToken ct = default)
     {
@@ -90,7 +107,9 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     private async Task<FullProfile?> LoadAndCacheAsync(Guid userId, CancellationToken ct)
     {
-        var result = await _inner.GetFullProfileAsync(userId, ct);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var result = await inner.GetFullProfileAsync(userId, ct);
         if (result is not null)
             _byUserId[userId] = result;
         return result;
@@ -119,7 +138,10 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
             return;
         }
 
-        var user = await _userService.GetByIdAsync(userId, ct);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+
+        var user = await userService.GetByIdAsync(userId, ct);
         if (user is null)
         {
             _byUserId.TryRemove(userId, out _);
@@ -133,71 +155,138 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
     }
 
-    public Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        _inner.GetByUserIdsAsync(userIds, ct);
+    public async Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
+        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetByUserIdsAsync(userIds, ct);
+    }
 
-    public Task<(Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
-        GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default) =>
-        _inner.GetProfileIndexDataAsync(userId, ct);
+    public async Task<(Profile? Profile, MemberApplication? LatestApplication, int PendingConsentCount)>
+        GetProfileIndexDataAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetProfileIndexDataAsync(userId, ct);
+    }
 
-    public Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _inner.GetActiveOrCompletedCampaignGrantsAsync(userId, ct);
+    public async Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedCampaignGrantsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetActiveOrCompletedCampaignGrantsAsync(userId, ct);
+    }
 
-    public Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
-        GetProfileEditDataAsync(Guid userId, CancellationToken ct = default) =>
-        _inner.GetProfileEditDataAsync(userId, ct);
+    public async Task<(Profile? Profile, bool IsTierLocked, MemberApplication? PendingApplication)>
+        GetProfileEditDataAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetProfileEditDataAsync(userId, ct);
+    }
 
-    public Task<(byte[]? Data, string? ContentType)> GetProfilePictureAsync(
-        Guid profileId, CancellationToken ct = default) =>
-        _inner.GetProfilePictureAsync(profileId, ct);
+    public async Task<(byte[]? Data, string? ContentType)> GetProfilePictureAsync(
+        Guid profileId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetProfilePictureAsync(profileId, ct);
+    }
 
-    public Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default) =>
-        _inner.GetEventHoldDateAsync(userId, ct);
+    public async Task<Instant?> GetEventHoldDateAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetEventHoldDateAsync(userId, ct);
+    }
 
-    public Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default) =>
-        _inner.GetTierCountsAsync(ct);
+    public async Task<(int ColaboradorCount, int AsociadoCount)> GetTierCountsAsync(CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetTierCountsAsync(ct);
+    }
 
-    public Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
-        GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default) =>
-        _inner.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
+    public async Task<IReadOnlyList<(Guid ProfileId, Guid UserId, long UpdatedAtTicks)>>
+        GetCustomPictureInfoByUserIdsAsync(IEnumerable<Guid> userIds, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetCustomPictureInfoByUserIdsAsync(userIds, ct);
+    }
 
-    public Task<IReadOnlyList<Application.DTOs.BirthdayProfileInfo>>
-        GetBirthdayProfilesAsync(int month, CancellationToken ct = default) =>
-        _inner.GetBirthdayProfilesAsync(month, ct);
+    public async Task<IReadOnlyList<Application.DTOs.BirthdayProfileInfo>>
+        GetBirthdayProfilesAsync(int month, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetBirthdayProfilesAsync(month, ct);
+    }
 
-    public Task<IReadOnlyList<Application.DTOs.LocationProfileInfo>>
-        GetApprovedProfilesWithLocationAsync(CancellationToken ct = default) =>
-        _inner.GetApprovedProfilesWithLocationAsync(ct);
+    public async Task<IReadOnlyList<Application.DTOs.LocationProfileInfo>>
+        GetApprovedProfilesWithLocationAsync(CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetApprovedProfilesWithLocationAsync(ct);
+    }
 
-    public Task<IReadOnlyList<Application.DTOs.AdminHumanRow>> GetFilteredHumansAsync(
-        string? search, string? statusFilter, CancellationToken ct = default) =>
-        _inner.GetFilteredHumansAsync(search, statusFilter, ct);
+    public async Task<IReadOnlyList<Application.DTOs.AdminHumanRow>> GetFilteredHumansAsync(
+        string? search, string? statusFilter, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetFilteredHumansAsync(search, statusFilter, ct);
+    }
 
-    public Task<Application.DTOs.AdminHumanDetailData?> GetAdminHumanDetailAsync(
-        Guid userId, CancellationToken ct = default) =>
-        _inner.GetAdminHumanDetailAsync(userId, ct);
+    public async Task<Application.DTOs.AdminHumanDetailData?> GetAdminHumanDetailAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetAdminHumanDetailAsync(userId, ct);
+    }
 
-    public Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
-        GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default) =>
-        _inner.GetEmailCooldownInfoAsync(pendingEmailId, ct);
+    public async Task<(bool CanAdd, int MinutesUntilResend, Guid? PendingEmailId)>
+        GetEmailCooldownInfoAsync(Guid pendingEmailId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetEmailCooldownInfoAsync(pendingEmailId, ct);
+    }
 
-    public Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(
-        string query, CancellationToken ct = default) =>
-        _inner.SearchApprovedUsersAsync(query, ct);
+    public async Task<IReadOnlyList<UserSearchResult>> SearchApprovedUsersAsync(
+        string query, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.SearchApprovedUsersAsync(query, ct);
+    }
 
-    public Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
-        string query, CancellationToken ct = default) =>
-        _inner.SearchHumansAsync(query, ct);
+    public async Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(
+        string query, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.SearchHumansAsync(query, ct);
+    }
 
-    public Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
-        Guid profileId, CancellationToken ct = default) =>
-        _inner.GetProfileLanguagesAsync(profileId, ct);
+    public async Task<IReadOnlyList<ProfileLanguage>> GetProfileLanguagesAsync(
+        Guid profileId, CancellationToken ct = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        return await inner.GetProfileLanguagesAsync(profileId, ct);
+    }
 
     public async Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
     {
-        await _inner.SaveProfileLanguagesAsync(profileId, languages, ct);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        await inner.SaveProfileLanguagesAsync(profileId, languages, ct);
+
         // SaveProfileLanguagesAsync takes profileId, not userId; resolve via the dict.
         // At ~500-user scale an O(n) scan over dict values is negligible.
         // _byUserId.Values is a ConcurrentDictionary snapshot — safe against concurrent
@@ -225,8 +314,11 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
     public async Task SetMembershipTierAsync(
         Guid userId, MembershipTier tier, CancellationToken ct = default)
     {
-        await _inner.SetMembershipTierAsync(userId, tier, ct);
-        _navBadge.Invalidate();
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
+        await inner.SetMembershipTierAsync(userId, tier, ct);
+        navBadge.Invalidate();
         await RefreshEntryAsync(userId, ct);
     }
 
@@ -234,10 +326,14 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
         Guid userId, string displayName, ProfileSaveRequest request, string language,
         CancellationToken ct = default)
     {
-        var result = await _inner.SaveProfileAsync(userId, displayName, request, language, ct);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var navBadge = scope.ServiceProvider.GetRequiredService<INavBadgeCacheInvalidator>();
+        var notificationMeter = scope.ServiceProvider.GetRequiredService<INotificationMeterCacheInvalidator>();
+        var result = await inner.SaveProfileAsync(userId, displayName, request, language, ct);
 
-        _navBadge.Invalidate();
-        _notificationMeter.Invalidate();
+        navBadge.Invalidate();
+        notificationMeter.Invalidate();
         await RefreshEntryAsync(userId, ct);
 
         return result;
@@ -245,7 +341,9 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     public async Task<OnboardingResult> RequestDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var result = await _inner.RequestDeletionAsync(userId, ct);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var result = await inner.RequestDeletionAsync(userId, ct);
         if (result.Success)
         {
             await RefreshEntryAsync(userId, ct);
@@ -260,7 +358,9 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     public async Task<OnboardingResult> CancelDeletionAsync(Guid userId, CancellationToken ct = default)
     {
-        var result = await _inner.CancelDeletionAsync(userId, ct);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        var result = await inner.CancelDeletionAsync(userId, ct);
         if (result.Success)
             await RefreshEntryAsync(userId, ct);
         return result;
@@ -268,7 +368,9 @@ public sealed class CachingProfileService : IProfileService, IFullProfileInvalid
 
     public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
     {
-        await _inner.SaveCVEntriesAsync(userId, entries, ct);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var inner = scope.ServiceProvider.GetRequiredKeyedService<IProfileService>(InnerServiceKey);
+        await inner.SaveCVEntriesAsync(userId, entries, ct);
         await RefreshEntryAsync(userId, ct);
     }
 }
