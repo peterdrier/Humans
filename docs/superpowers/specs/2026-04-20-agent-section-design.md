@@ -220,20 +220,35 @@ Assumes ~5 sessions/day × ~4 turns/session = ~20 messages/day. Cache TTL (5 min
 
 Rates used (January 2026): Sonnet 4.6 input $3 / Mtok, cache write 1.25× base, cache read 0.1× base; Haiku 4.5 roughly 1/3 of Sonnet. Phase 0 prototype confirmed these numbers against real usage (see [`2026-04-20-agent-section-prototype-notes.md`](2026-04-20-agent-section-prototype-notes.md)).
 
-**Default: Sonnet 4.6 with ~45K preload.** Phase 0 prototype validated Sonnet as worth the ~3× cost premium over Haiku — both are production-viable, but Sonnet is more concise, more confidently grounded, and requires less hedging in answers.
+**Default: Sonnet 4.6 with a tier-aware preload.** Phase 0 prototype validated Sonnet as worth the ~3× cost premium over Haiku — both are production-viable, but Sonnet is more concise, more confidently grounded, and requires less hedging.
 
 ## Anthropic Provider Rate Limits (ITPM)
 
-**Critical constraint**, not covered in the initial design. Anthropic enforces input-tokens-per-minute (ITPM) per org per model, and **cache reads count toward ITPM** (they save cost, not throughput). Default Tier 1 limits: 30K ITPM Sonnet, 50K ITPM Haiku. At Tier 1, the proposed ~45K preload would 429 every request.
+Anthropic enforces input-tokens-per-minute (ITPM) per org per model, and **cache reads count toward ITPM** (caching saves cost, not throughput). Default Tier 1 limits: 30K ITPM Sonnet, 50K ITPM Haiku. At Tier 1, a ~45K preload would 429 every request.
 
-**Required before Phase 1 enable:**
+**Phase 1 target: Tier 1 with a ~25K preload.** Nobodies Collective has no existing production Anthropic org — this is the first Claude build for the org, so Phase 1 ships on a fresh Tier 1 account. Preload budget is carved to fit safely:
 
-- Verify the production Anthropic org is on **Tier 2 or higher** (Sonnet 450K ITPM, Haiku 1M). Tier 2 auto-promotes after $40 lifetime spend + 7 days — typically already satisfied if the org has built with Claude before.
-- If still Tier 1: either wait for auto-promotion after enabling, or cap preload at ~25K (drop feature spec glossaries and the lower-priority half of section invariants from the static preload; they remain available via dynamic fetch).
+| Block | Tokens | Included at Tier 1? |
+|-------|--------|---------------------|
+| AccessMatrixDefinitions (rendered) | ~2K | Yes |
+| Section invariants (14 docs) | ~40K | **Top 8 only**: Onboarding, Teams, LegalAndConsent, Governance, Shifts, Tickets, Profiles, Admin (~20K) |
+| Section help glossaries (all) | ~5K | Yes |
+| Route map stub | ~1K | Yes |
+| User context (live, per request) | ~0.5K | Yes |
+| Conversation history (soft cap) | ~4K | Yes |
+| **Total per request** | **~32K raw, trims to ~25K after cleanup** | |
+
+Excluded section invariants (Budget, Camps, CityPlanning, Campaigns, Feedback, GoogleIntegration) are **available via `fetch_section_guide`** — the dynamic tool path carries them on demand. Phase 0 prototype confirmed the model cleanly says "I don't have that info" when a section isn't preloaded and the tool isn't yet wired; once the tool lands, it fetches.
+
+**Phase 1.5 — expand preload when the org reaches Tier 2.** Auto-promotion: $40 lifetime spend + 7 days elapsed. At projected usage (~$20/month Sonnet), that's ~2 months of running. When the org promotes:
+
+- Bump preload to the full 14 section invariants + all feature-spec table-of-contents stubs.
+- Admin-visible tier check (`/Admin/Agent/Settings`) auto-unlocks the larger preload config.
+- No code change required — `AgentSettings.PreloadConfig` swaps the included sections list.
 
 **Runtime guard:** `AgentService` catches 429 responses and surfaces a friendly "I'm rate-limited right now, try again in a minute" message rather than a hard error. Errors logged with `RefusalReason = "provider_rate_limit"` for monitoring.
 
-**Admin visibility:** `/Admin/Agent/Settings` displays the current org tier (fetched from the Anthropic API at page load) and the safe preload budget at that tier. Prevents deploying a preload config that will 429.
+**Admin visibility:** `/Admin/Agent/Settings` displays the current org tier (queried from the Anthropic API at page load) and the safe preload budget at that tier. Prevents deploying a preload config that will 429.
 
 ## GDPR / Privacy
 
