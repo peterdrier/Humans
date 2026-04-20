@@ -4,6 +4,11 @@ Hard rules for code review. Every item here is a **reject** — if any of these 
 
 Rules are ordered by historical frequency — the patterns that have caused the most bugs in this codebase appear first.
 
+## PR Scope
+
+- **Review the full PR, not just the diff.** A PR review must include the PR description, existing review comments, inline comments, prior findings, and release context. Do not post an approval or release verdict until those have been read and reconciled.
+- **Do not contradict unresolved credible findings without addressing them explicitly.** If an earlier review comment raises a real issue, either agree with it or explain precisely why it is not valid before approving the PR.
+
 ## Razor Boolean Attributes *(8+ historical fixes)*
 
 - **Never use `disabled="@boolValue"` or `readonly="@boolValue"`.** HTML boolean attributes are active when *present*, regardless of value. `disabled="False"` still disables the element. Use Razor conditionals: `@if (condition) { <input disabled /> }` or the tag helper `asp-for` with conditional attributes.
