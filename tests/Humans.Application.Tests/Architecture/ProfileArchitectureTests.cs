@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Infrastructure.Services.Profiles;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +64,18 @@ public class ProfileArchitectureTests
         paramTypes.Should().Contain(typeof(IProfileRepository));
     }
 
+    [Fact]
+    public void ProfileService_ConstructorTakesNoStoreType()
+    {
+        var ctor = typeof(ProfileService).GetConstructors().Single();
+        var storeParam = ctor.GetParameters()
+            .FirstOrDefault(p => (p.ParameterType.Namespace ?? string.Empty)
+                .StartsWith("Humans.Application.Interfaces.Stores", StringComparison.Ordinal));
+
+        storeParam.Should().BeNull(
+            because: "Application services must not depend on store abstractions (design-rules §15)");
+    }
+
     // ── IProfileRepository ────────────────────────────────────────────────────
 
     [Fact]
@@ -81,6 +94,13 @@ public class ProfileArchitectureTests
         typeof(CachingProfileService).Namespace
             .Should().Be("Humans.Infrastructure.Services.Profiles",
                 because: "caching decorators live in Humans.Infrastructure.Services.{Section} alongside the IMemoryCache-backed invalidators they wrap (design-rules §5)");
+    }
+
+    [Fact]
+    public void CachingProfileService_ImplementsBothInterfaces()
+    {
+        typeof(CachingProfileService).Should().BeAssignableTo<IProfileService>();
+        typeof(CachingProfileService).Should().BeAssignableTo<IFullProfileInvalidator>();
     }
 
     // ── ContactFieldService ───────────────────────────────────────────────────
