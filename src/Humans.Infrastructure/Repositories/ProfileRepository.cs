@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using Humans.Application;
 using Humans.Application.Interfaces.Repositories;
 using Humans.Domain.Entities;
 using Humans.Domain.Enums;
@@ -14,10 +16,12 @@ namespace Humans.Infrastructure.Repositories;
 public sealed class ProfileRepository : IProfileRepository
 {
     private readonly HumansDbContext _dbContext;
+    private readonly IClock _clock;
 
-    public ProfileRepository(HumansDbContext dbContext)
+    public ProfileRepository(HumansDbContext dbContext, IClock clock)
     {
         _dbContext = dbContext;
+        _clock = clock;
     }
 
     public Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default) =>
@@ -119,4 +123,70 @@ public sealed class ProfileRepository : IProfileRepository
 
     public Task UpdateAsync(CancellationToken ct = default) =>
         _dbContext.SaveChangesAsync(ct);
+
+    public async Task ReconcileCVEntriesAsync(
+        Guid profileId,
+        IReadOnlyList<CVEntry> entries,
+        CancellationToken ct = default)
+    {
+        // Load tracked entities so the change tracker can detect in-place mutations.
+        var existing = await _dbContext.VolunteerHistoryEntries
+            .Where(v => v.ProfileId == profileId)
+            .ToListAsync(ct);
+
+        // Dedup existing rows by (Date, EventName) — first row per group wins.
+        // Extra duplicates from pre-Phase-10 Guid-keyed writes are removed as
+        // part of this reconcile. See Phase 10 plan: this is a one-time cleanup
+        // consequence of the key switch; CVEntry has no Id field and the UI no
+        // longer posts one.
+        //
+        // NOTE: This differs from IVolunteerHistoryService.SaveAsync which keys
+        // by client-supplied Guid. CVEntry is a read projection without an Id,
+        // so (Date, EventName) is the natural identity key here.
+        var groups = existing.GroupBy(v => (v.Date, v.EventName)).ToList();
+        var extraDuplicates = groups.SelectMany(g => g.Skip(1)).ToList();
+        if (extraDuplicates.Count > 0)
+            _dbContext.VolunteerHistoryEntries.RemoveRange(extraDuplicates);
+
+        var existingLookup = groups.ToDictionary(g => g.Key, g => g.First());
+        var incomingKeys = entries.Select(e => (e.Date, e.EventName)).ToHashSet();
+        var now = _clock.GetCurrentInstant();
+
+        // Remove entries not present in the incoming set
+        var toRemove = existingLookup
+            .Where(kvp => !incomingKeys.Contains(kvp.Key))
+            .Select(kvp => kvp.Value)
+            .ToList();
+        if (toRemove.Count > 0)
+            _dbContext.VolunteerHistoryEntries.RemoveRange(toRemove);
+
+        // Update matched, add new
+        foreach (var entry in entries)
+        {
+            if (existingLookup.TryGetValue((entry.Date, entry.EventName), out var match))
+            {
+                // Only touch UpdatedAt when the description actually changed.
+                if (!string.Equals(match.Description, entry.Description, StringComparison.Ordinal))
+                {
+                    match.Description = entry.Description;
+                    match.UpdatedAt = now;
+                }
+            }
+            else
+            {
+                _dbContext.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
+                {
+                    Id = Guid.NewGuid(),
+                    ProfileId = profileId,
+                    Date = entry.Date,
+                    EventName = entry.EventName,
+                    Description = entry.Description,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                });
+            }
+        }
+
+        await _dbContext.SaveChangesAsync(ct);
+    }
 }

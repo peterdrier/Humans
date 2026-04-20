@@ -81,6 +81,12 @@ public interface IProfileService
     Task<IReadOnlyList<HumanSearchResult>> SearchHumansAsync(string query, CancellationToken ct = default);
 
     /// <summary>
+    /// Reconciles the user's CV entries (volunteer history) with the provided set.
+    /// No-op if the user has no profile.
+    /// </summary>
+    Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default);
+
+    /// <summary>
     /// Invalidates any cached profile data for the given user. Used by
     /// cross-section services that modify profile-related data and need
     /// to ensure the next read returns fresh results.

@@ -1,4 +1,5 @@
 using Humans.Domain.Entities;
+using Humans.Application;
 
 namespace Humans.Application.Interfaces.Repositories;
 
@@ -84,4 +85,14 @@ public interface IProfileRepository
     /// obtained the entity via <see cref="GetByUserIdAsync"/> in the same scope.
     /// </summary>
     Task UpdateAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Reconciles the CV-entry collection for the given profile with the
+    /// provided set. Adds new entries, updates matched entries, and removes
+    /// entries not present in the new set. Persists in a single SaveChanges.
+    /// </summary>
+    Task ReconcileCVEntriesAsync(
+        Guid profileId,
+        IReadOnlyList<CVEntry> entries,
+        CancellationToken ct = default);
 }

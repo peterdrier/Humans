@@ -227,4 +227,10 @@ public sealed class CachingProfileService : IProfileService
             _byUserId.TryRemove(userId, out _);
         return result;
     }
+
+    public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
+    {
+        await _inner.SaveCVEntriesAsync(userId, entries, ct);
+        _byUserId.TryRemove(userId, out _);
+    }
 }

@@ -53,7 +53,7 @@ public class ProfileServiceTests : IDisposable
         _clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
 
         // Real repositories backed by in-memory DbContext
-        _profileRepository = new ProfileRepository(_dbContext);
+        _profileRepository = new ProfileRepository(_dbContext, _clock);
         _userEmailRepository = new UserEmailRepository(_dbContext);
         _volunteerHistoryRepository = new VolunteerHistoryRepository(_dbContext);
         _contactFieldRepository = new ContactFieldRepository(_dbContext);
@@ -1240,6 +1240,75 @@ public class ProfileServiceTests : IDisposable
         // Inner service is a no-op — should not throw
         await _service.InvalidateCacheAsync(userId);
     }
+
+    // --- SaveCVEntriesAsync ---
+
+    [Fact]
+    public async Task SaveCVEntriesAsync_DelegatesToRepository()
+    {
+        // Arrange: mock repository that knows about a seeded profile
+        var userId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+
+        var mockRepo = Substitute.For<IProfileRepository>();
+        var profile = new Profile
+        {
+            Id = profileId,
+            UserId = userId,
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
+        };
+        mockRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
+
+        var service = BuildServiceWith(mockRepo);
+
+        var entries = new List<CVEntry>
+        {
+            new(new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew"),
+        };
+
+        // Act
+        await service.SaveCVEntriesAsync(userId, entries);
+
+        // Assert: delegates to the repository with the profile's Id
+        await mockRepo.Received(1)
+            .ReconcileCVEntriesAsync(profileId, entries, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SaveCVEntriesAsync_NoOp_WhenUserHasNoProfile()
+    {
+        // Arrange: mock repository that returns null (no profile)
+        var userId = Guid.NewGuid();
+
+        var mockRepo = Substitute.For<IProfileRepository>();
+        mockRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((Profile?)null);
+
+        var service = BuildServiceWith(mockRepo);
+
+        // Act
+        await service.SaveCVEntriesAsync(userId, new List<CVEntry>());
+
+        // Assert: reconcile is never called
+        await mockRepo.DidNotReceive()
+            .ReconcileCVEntriesAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyList<CVEntry>>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Builds a <see cref="ProfileService"/> with a custom <see cref="IProfileRepository"/>
+    /// while keeping all other dependencies wired to the same test-class fields.
+    /// </summary>
+    private ProfileService BuildServiceWith(IProfileRepository profileRepository) => new(
+        profileRepository, _store, _userService,
+        _userEmailRepository, _volunteerHistoryRepository,
+        _contactFieldRepository, _communicationPreferenceRepository,
+        _onboardingService, _emailService, _auditLogService,
+        _membershipCalculator, _consentService, _ticketQueryService,
+        _applicationDecisionService, _campaignService,
+        _teamService, _roleAssignmentService,
+        _clock,
+        NullLogger<ProfileService>.Instance);
 
     // --- Helpers ---
 

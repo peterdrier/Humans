@@ -571,6 +571,14 @@ public sealed class ProfileService : IProfileService, IUserDataContributor
         return Task.FromResult<IReadOnlyList<HumanSearchResult>>(ordered);
     }
 
+    public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
+    {
+        var profile = await _profileRepository.GetByUserIdAsync(userId, ct);
+        if (profile is null) return;
+
+        await _profileRepository.ReconcileCVEntriesAsync(profile.Id, entries, ct);
+    }
+
     public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
     {
         // No-op in the inner service — cache invalidation is handled
