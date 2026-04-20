@@ -23,10 +23,29 @@ public sealed class DevelopmentDashboardSeeder
 {
     private const string SeededEventName = "Seeded Nowhere 2026 (dev)";
 
+    // Match real, non-hidden parent departments from the production Teams list
+    // so the dashboard seed reflects terminology the coordinators actually use.
     private static readonly string[] ParentTeamNames =
-        ["Gate", "Infrastructure", "Kitchen", "Medics", "Rangers", "DPW"];
+    [
+        "Gate",
+        "Infrastructure",
+        "Participant Wellness",
+        "Ice and Water",
+        "Site Operations",
+        "Production & Logistics",
+        "Werkhaus/Barrio",
+        "Power",
+    ];
 
-    private static readonly string[] InfrastructureSubteamNames = ["Power", "Plumbing"];
+    // Subteams chosen to exercise the department-expand UI:
+    //   - Participant Wellness has 3 subteams + "Direct" row (wide expand).
+    //   - Ice and Water has 2 subteams.
+    //   - Other parents have none (exercise the per-period row path).
+    private static readonly (string Parent, string[] Subteams)[] Subteams =
+    [
+        ("Participant Wellness", ["Consent", "Welfare", "Ohana House"]),
+        ("Ice and Water", ["Ice Ice Baby", "Icemakers"]),
+    ];
 
     // A deterministic RNG so reruns on a clean DB produce the same-ish shape.
     private readonly Random _rng = new(42);
@@ -92,7 +111,7 @@ public sealed class DevelopmentDashboardSeeder
             {
                 Id = Guid.NewGuid(),
                 Name = $"{name} (dev)",
-                Slug = $"dev-{name.ToLowerInvariant()}",
+                Slug = SlugFor(name),
                 IsActive = true,
                 CreatedAt = now,
                 UpdatedAt = now,
@@ -103,35 +122,52 @@ public sealed class DevelopmentDashboardSeeder
         }
 
         var subteams = new Dictionary<string, Team>(StringComparer.Ordinal);
-        foreach (var name in InfrastructureSubteamNames)
+        foreach (var (parentName, subNames) in Subteams)
         {
-            var t = new Team
+            foreach (var subName in subNames)
             {
-                Id = Guid.NewGuid(),
-                Name = $"{name} (dev)",
-                Slug = $"dev-{name.ToLowerInvariant()}",
-                IsActive = true,
-                ParentTeamId = parentTeams["Infrastructure"].Id,
-                CreatedAt = now,
-                UpdatedAt = now,
-            };
-            subteams[name] = t;
-            _dbContext.Teams.Add(t);
-            teamsCreated++;
+                var t = new Team
+                {
+                    Id = Guid.NewGuid(),
+                    Name = $"{subName} (dev)",
+                    Slug = SlugFor(subName),
+                    IsActive = true,
+                    ParentTeamId = parentTeams[parentName].Id,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                };
+                subteams[subName] = t;
+                _dbContext.Teams.Add(t);
+                teamsCreated++;
+            }
         }
 
-        // Rotas: one per period per parent team, plus Event-period rotas on each Infrastructure subteam.
+        // Rotas: one per period per parent team, plus Event-period rotas on each subteam.
+        // Subteam fill rates are tuned to produce a mix of low/mid/high % chips in the expand view.
+        var subteamRates = new Dictionary<string, double>(StringComparer.Ordinal)
+        {
+            // Participant Wellness: one low (drives the red chip), one mid, one high.
+            ["Consent"] = 0.3,
+            ["Welfare"] = 0.6,
+            ["Ohana House"] = 0.85,
+            // Ice and Water: one mid, one high.
+            ["Ice Ice Baby"] = 0.55,
+            ["Icemakers"] = 0.9,
+        };
+
         var rotaConfigs = new List<(Team Team, RotaPeriod Period, string Label, double ConfirmedRate)>();
         foreach (var parent in parentTeams.Values)
         {
             var isWellStaffed = parent.Name.StartsWith("Gate", StringComparison.Ordinal)
-                             || parent.Name.StartsWith("Kitchen", StringComparison.Ordinal);
+                             || parent.Name.StartsWith("Site Operations", StringComparison.Ordinal);
             rotaConfigs.Add((parent, RotaPeriod.Build, "Build", isWellStaffed ? 0.85 : 0.55));
             rotaConfigs.Add((parent, RotaPeriod.Event, "Event", isWellStaffed ? 0.9 : 0.6));
             rotaConfigs.Add((parent, RotaPeriod.Strike, "Strike", 0.2));
         }
-        rotaConfigs.Add((subteams["Power"], RotaPeriod.Event, "Event", 0.85));
-        rotaConfigs.Add((subteams["Plumbing"], RotaPeriod.Event, "Event", 0.4));
+        foreach (var (subName, rate) in subteamRates)
+        {
+            rotaConfigs.Add((subteams[subName], RotaPeriod.Event, "Event", rate));
+        }
 
         var allRotas = new List<(Rota Rota, double ConfirmedRate)>();
         foreach (var (team, period, label, confirmedRate) in rotaConfigs)
@@ -340,5 +376,26 @@ public sealed class DevelopmentDashboardSeeder
             ShiftsCreated: shifts.Count,
             SignupsCreated: signupsCreated,
             TicketOrdersCreated: ticketOrdersCreated);
+    }
+
+    private static string SlugFor(string name)
+    {
+        var lower = name.ToLowerInvariant();
+        var sb = new System.Text.StringBuilder("dev-", lower.Length + 4);
+        var lastDash = true;
+        foreach (var ch in lower)
+        {
+            if (ch is >= 'a' and <= 'z' or >= '0' and <= '9')
+            {
+                sb.Append(ch);
+                lastDash = false;
+            }
+            else if (!lastDash)
+            {
+                sb.Append('-');
+                lastDash = true;
+            }
+        }
+        return sb.ToString().TrimEnd('-');
     }
 }
