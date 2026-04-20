@@ -1088,8 +1088,8 @@ public class ShiftManagementService : IShiftManagementService
 
     private async Task<IReadOnlyList<CoordinatorActivityRow>> ComputeCoordinatorActivityAsync(Guid eventSettingsId)
     {
-        // Pending signup counts per team (via rota.TeamId). We intentionally don't dedupe by SignupBlockId here —
-        // this count is the raw number of pending shift-signups that need attention, which matches the UX.
+        // Pending signup counts per team (via rota.TeamId). Not deduped by SignupBlockId —
+        // this count is the raw number of pending shift-signups that need attention.
         var pendingCounts = await (
             from rota in _dbContext.Rotas
             where rota.EventSettingsId == eventSettingsId
@@ -1103,34 +1103,93 @@ public class ShiftManagementService : IShiftManagementService
         if (pendingCounts.Count == 0)
             return Array.Empty<CoordinatorActivityRow>();
 
-        var teamIds = pendingCounts.Keys.ToList();
+        // Load the full team hierarchy so we can build the tree and include ancestors
+        // of any team that has pending (a parent with no pending of its own but pending
+        // subteams still needs to appear as the top-level row).
+        var teamMeta = await _dbContext.Teams.AsNoTracking()
+            .Select(t => new { t.Id, t.Name, t.ParentTeamId })
+            .ToDictionaryAsync(t => t.Id);
 
-        var rawRows = await _dbContext.Teams.AsNoTracking()
-            .Where(t => teamIds.Contains(t.Id))
-            .Select(t => new
+        var relevantTeamIds = new HashSet<Guid>(pendingCounts.Keys);
+        foreach (var id in pendingCounts.Keys.ToList())
+        {
+            var current = teamMeta.GetValueOrDefault(id);
+            while (current?.ParentTeamId is Guid parentId && teamMeta.ContainsKey(parentId))
             {
-                t.Id,
-                t.Name,
-                Coordinators = t.Members
-                    .Where(m => m.LeftAt == null && m.Role == TeamMemberRole.Coordinator)
-                    .Select(m => new { m.UserId, m.User.DisplayName, m.User.LastLoginAt })
-                    .ToList()
-            })
+                if (!relevantTeamIds.Add(parentId))
+                    break;
+                current = teamMeta[parentId];
+            }
+        }
+
+        // Coordinators per relevant team.
+        var coordsRaw = await _dbContext.TeamMembers.AsNoTracking()
+            .Where(m => relevantTeamIds.Contains(m.TeamId)
+                        && m.LeftAt == null
+                        && m.Role == TeamMemberRole.Coordinator)
+            .Select(m => new { m.TeamId, m.UserId, m.User.DisplayName, m.User.LastLoginAt })
             .ToListAsync();
 
-        return rawRows
-            .Select(t =>
-            {
-                var coords = t.Coordinators
-                    .Select(c => new CoordinatorLogin(c.UserId, c.DisplayName, c.LastLoginAt))
+        var coordsByTeam = coordsRaw
+            .GroupBy(c => c.TeamId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<CoordinatorLogin>)g
+                    .Select(c => new CoordinatorLogin(c.UserId, c.DisplayName ?? string.Empty, c.LastLoginAt))
                     .OrderBy(c => c.LastLoginAt ?? Instant.MinValue)
-                    .ToList();
-                return new CoordinatorActivityRow(
-                    t.Id, t.Name, coords, pendingCounts[t.Id]);
-            })
-            .OrderBy(r => r.Coordinators.Select(c => c.LastLoginAt ?? Instant.MinValue).DefaultIfEmpty(Instant.MinValue).Min())
+                    .ToList());
+
+        // Build recursive rows.
+        CoordinatorActivityRow BuildRow(Guid teamId)
+        {
+            var t = teamMeta[teamId];
+            var ownPending = pendingCounts.GetValueOrDefault(teamId, 0);
+            var coords = coordsByTeam.GetValueOrDefault(teamId, Array.Empty<CoordinatorLogin>());
+
+            var childIds = relevantTeamIds
+                .Where(id => teamMeta[id].ParentTeamId == teamId);
+
+            var subgroups = childIds
+                .Select(BuildRow)
+                .OrderBy(SubtreeOldestLogin)
+                .ThenBy(r => r.TeamName, StringComparer.Ordinal)
+                .ToList();
+
+            var aggregate = ownPending + subgroups.Sum(s => s.AggregatePendingCount);
+            return new CoordinatorActivityRow(teamId, t.Name, coords, ownPending, aggregate, subgroups);
+        }
+
+        // Root teams: no parent, or parent not in the relevant set (defensive — shouldn't happen).
+        var rootIds = relevantTeamIds
+            .Where(id =>
+            {
+                var t = teamMeta[id];
+                return !t.ParentTeamId.HasValue || !relevantTeamIds.Contains(t.ParentTeamId.Value);
+            });
+
+        return rootIds
+            .Select(BuildRow)
+            .Where(r => r.AggregatePendingCount > 0)
+            .OrderBy(SubtreeOldestLogin)
             .ThenBy(r => r.TeamName, StringComparer.Ordinal)
             .ToList();
+
+        static Instant SubtreeOldestLogin(CoordinatorActivityRow row)
+        {
+            var oldest = Instant.MaxValue;
+            var found = false;
+            void Walk(CoordinatorActivityRow r)
+            {
+                foreach (var c in r.Coordinators)
+                {
+                    var lv = c.LastLoginAt ?? Instant.MinValue;
+                    if (!found || lv < oldest) { oldest = lv; found = true; }
+                }
+                foreach (var sub in r.Subgroups) Walk(sub);
+            }
+            Walk(row);
+            return found ? oldest : Instant.MinValue;
+        }
     }
 
     public async Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(Guid eventSettingsId, TrendWindow window)

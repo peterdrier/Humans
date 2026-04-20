@@ -15,6 +15,8 @@
             : string.Format(Localizer["ShiftDash_Coordinators_HoursAgo"].Value, (int)diff.TotalHours);
         return string.Format(Localizer["ShiftDash_Coordinators_DaysAgo"].Value, (int)diff.TotalDays);
     }
+
+    bool IsStale(Instant? t) => t is null || (now - t.Value).TotalDays > 7;
 }
 
 @if (Model.Count == 0)
@@ -31,37 +33,99 @@
         <table class="table table-sm align-middle mb-0">
             <thead class="table-light">
                 <tr>
+                    <th style="width: 2rem;"></th>
                     <th>@Localizer["ShiftDash_Coordinators_Col_Team"]</th>
                     <th>@Localizer["ShiftDash_Coordinators_Col_Coordinators"]</th>
-                    <th>@Localizer["ShiftDash_Coordinators_Col_OldestLogin"]</th>
                     <th class="text-end">@Localizer["ShiftDash_Coordinators_Col_Pending"]</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var row in Model)
                 {
-                    var oldest = row.Coordinators.Count == 0
-                        ? (Instant?)null
-                        : row.Coordinators.Min(c => c.LastLoginAt ?? Instant.MinValue);
-                    if (oldest == Instant.MinValue) oldest = null;
-                    var stale = oldest is null || (now - oldest.Value).TotalDays > 7;
-                    <tr>
-                        <td>@row.TeamName</td>
+                    var rowId = "coord-" + row.TeamId.ToString("N");
+                    var hasSubgroups = row.Subgroups.Count > 0;
+                    <tr role="@(hasSubgroups ? "button" : null)"
+                        data-bs-toggle="@(hasSubgroups ? "collapse" : null)"
+                        data-bs-target="@(hasSubgroups ? "#" + rowId : null)"
+                        aria-expanded="false">
+                        <td class="text-muted">
+                            @if (hasSubgroups)
+                            {
+                                <i class="bi bi-chevron-right"></i>
+                            }
+                        </td>
+                        <td class="fw-semibold">@row.TeamName</td>
                         <td>
                             @if (row.Coordinators.Count == 0)
                             {
-                                <span class="text-muted fst-italic">@Localizer["ShiftDash_Coordinators_NoCoordinators"]</span>
+                                <span class="text-muted fst-italic small">@Localizer["ShiftDash_Coordinators_NoCoordinators"]</span>
                             }
                             else
                             {
-                                @string.Join(", ", row.Coordinators.Select(c => c.DisplayName))
+                                <ul class="list-unstyled mb-0 small">
+                                    @foreach (var c in row.Coordinators)
+                                    {
+                                        var stale = IsStale(c.LastLoginAt);
+                                        <li>
+                                            <span class="fw-semibold">@c.DisplayName</span>
+                                            <span class="text-muted"> · </span>
+                                            <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)</span>
+                                        </li>
+                                    }
+                                </ul>
                             }
                         </td>
-                        <td class="@(stale ? "text-danger fw-semibold" : "")">
-                            @RelativeTime(oldest)
+                        <td class="text-end">
+                            <span class="badge bg-warning text-dark">@row.AggregatePendingCount</span>
+                            @if (hasSubgroups && row.PendingSignupCount != row.AggregatePendingCount)
+                            {
+                                <div class="text-muted small">
+                                    @string.Format(Localizer["ShiftDash_Coordinators_DirectPending"].Value, row.PendingSignupCount)
+                                </div>
+                            }
                         </td>
-                        <td class="text-end"><span class="badge bg-warning text-dark">@row.PendingSignupCount</span></td>
                     </tr>
+                    @if (hasSubgroups)
+                    {
+                        <tr class="collapse" id="@rowId">
+                            <td></td>
+                            <td colspan="3" class="bg-light">
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        @foreach (var sub in row.Subgroups)
+                                        {
+                                            <tr>
+                                                <td style="width: 30%;">@sub.TeamName</td>
+                                                <td>
+                                                    @if (sub.Coordinators.Count == 0)
+                                                    {
+                                                        <span class="text-muted fst-italic small">@Localizer["ShiftDash_Coordinators_NoCoordinators"]</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <ul class="list-unstyled mb-0 small">
+                                                            @foreach (var c in sub.Coordinators)
+                                                            {
+                                                                var stale = IsStale(c.LastLoginAt);
+                                                                <li>
+                                                                    <span class="fw-semibold">@c.DisplayName</span>
+                                                                    <span class="text-muted"> · </span>
+                                                                    <span class="@(stale ? "text-danger fw-semibold" : "text-muted")">@RelativeTime(c.LastLoginAt)</span>
+                                                                </li>
+                                                            }
+                                                        </ul>
+                                                    }
+                                                </td>
+                                                <td class="text-end" style="width: 6rem;">
+                                                    <span class="badge bg-warning text-dark">@sub.AggregatePendingCount</span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                    }
                 }
             </tbody>
         </table>

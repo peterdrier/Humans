@@ -1740,6 +1740,7 @@
   <data name="ShiftDash_Coordinators_MinutesAgo" xml:space="preserve"><value>{0} min ago</value><comment>{0} = minutes</comment></data>
   <data name="ShiftDash_Coordinators_HoursAgo" xml:space="preserve"><value>{0} h ago</value><comment>{0} = hours</comment></data>
   <data name="ShiftDash_Coordinators_DaysAgo" xml:space="preserve"><value>{0} d ago</value><comment>{0} = days</comment></data>
+  <data name="ShiftDash_Coordinators_DirectPending" xml:space="preserve"><value>{0} direct</value><comment>{0} = pending count at this team level only</comment></data>
 
   <data name="ShiftDash_Trends_Title" xml:space="preserve"><value>Trends</value></data>
   <data name="ShiftDash_Trends_Window_7d" xml:space="preserve"><value>7d</value></data>

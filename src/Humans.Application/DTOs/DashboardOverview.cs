@@ -42,7 +42,9 @@ public record CoordinatorActivityRow(
     Guid TeamId,
     string TeamName,
     IReadOnlyList<CoordinatorLogin> Coordinators,
-    int PendingSignupCount);
+    int PendingSignupCount,
+    int AggregatePendingCount,
+    IReadOnlyList<CoordinatorActivityRow> Subgroups);
 
 public record CoordinatorLogin(Guid UserId, string DisplayName, Instant? LastLoginAt);
 
