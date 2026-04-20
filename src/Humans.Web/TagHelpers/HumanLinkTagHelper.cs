@@ -16,13 +16,11 @@ namespace Humans.Web.TagHelpers;
 public class HumanLinkTagHelper : TagHelper
 {
     private readonly IUrlHelperFactory _urlHelperFactory;
-    private readonly IProfileService _profileService;
     private readonly IUserService _userService;
 
-    public HumanLinkTagHelper(IUrlHelperFactory urlHelperFactory, IProfileService profileService, IUserService userService)
+    public HumanLinkTagHelper(IUrlHelperFactory urlHelperFactory, IUserService userService)
     {
         _urlHelperFactory = urlHelperFactory;
-        _profileService = profileService;
         _userService = userService;
     }
 

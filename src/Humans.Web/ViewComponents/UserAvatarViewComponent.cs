@@ -1,7 +1,6 @@
 using System.Security.Claims;
-using Humans.Application.Extensions;
+using Humans.Application;
 using Humans.Application.Interfaces;
-using Humans.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 
@@ -17,16 +16,13 @@ namespace Humans.Web.ViewComponents;
 public class UserAvatarViewComponent : ViewComponent
 {
     private readonly IProfileService _profileService;
-    private readonly IUserService _userService;
     private readonly IUrlHelperFactory _urlHelperFactory;
 
     public UserAvatarViewComponent(
         IProfileService profileService,
-        IUserService userService,
         IUrlHelperFactory urlHelperFactory)
     {
         _profileService = profileService;
-        _userService = userService;
         _urlHelperFactory = urlHelperFactory;
     }
 
@@ -41,13 +37,12 @@ public class UserAvatarViewComponent : ViewComponent
 
         if (userId != Guid.Empty)
         {
-            var profile = await _profileService.GetProfileAsync(userId);
-            var user = await _userService.GetByIdAsync(userId);
+            var fullProfile = await _profileService.GetFullProfileAsync(userId);
 
-            if (profile is not null && user is not null)
+            if (fullProfile is not null)
             {
-                displayName = user.DisplayName;
-                profilePictureUrl = ResolveAvatarUrl(profile, user);
+                displayName = fullProfile.DisplayName;
+                profilePictureUrl = ResolveAvatarUrl(fullProfile);
             }
             else if (IsCurrentUser(userId))
             {
@@ -75,18 +70,18 @@ public class UserAvatarViewComponent : ViewComponent
         return View();
     }
 
-    private string? ResolveAvatarUrl(Profile profile, User user)
+    private string? ResolveAvatarUrl(FullProfile fullProfile)
     {
-        if (profile.HasCustomProfilePicture && profile.Id != Guid.Empty)
+        if (fullProfile.HasCustomPicture && fullProfile.ProfileId != Guid.Empty)
         {
             var urlHelper = _urlHelperFactory.GetUrlHelper(ViewContext);
             return urlHelper.Action(
                 action: "Picture",
                 controller: "Profile",
-                values: new { id = profile.Id, v = profile.UpdatedAt.ToUnixTimeTicks() });
+                values: new { id = fullProfile.ProfileId, v = fullProfile.UpdatedAtTicks });
         }
 
-        return user.ProfilePictureUrl;
+        return fullProfile.ProfilePictureUrl;
     }
 
     private bool IsCurrentUser(Guid userId)
