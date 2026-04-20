@@ -1,0 +1,303 @@
+# Phase 0 prototype question set for issue #526.
+# Each entry has a synthetic user context and a question.
+# Contexts exercise the personalization surface described in the spec.
+
+- id: 01_consent_pending
+  category: onboarding
+  user:
+    display_name: Ana
+    locale: es
+    tier: Volunteer
+    approved: false
+    roles: []
+    teams: []
+    pending_consent_docs: [PrivacyPolicy, MemberContract]
+    open_tickets: []
+    open_feedback: []
+  question: |
+    I signed up last week but I still can't access anything. Why is my consent check pending?
+
+- id: 02_tier_diff
+  category: membership
+  user:
+    display_name: Tomás
+    locale: es
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Build, Kitchen]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    What's the difference between Colaborador and Asociado, and which should I apply for?
+
+- id: 03_leave_team
+  category: teams
+  user:
+    display_name: Sara
+    locale: en
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers, Build, Kitchen]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    How do I leave the Kitchen team?
+
+- id: 04_join_team
+  category: teams
+  user:
+    display_name: Paula
+    locale: en
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    How do I join a team? I don't see a Join button on the Kitchen team page.
+
+- id: 05_coordinator_vs_member
+  category: roles
+  user:
+    display_name: Marco
+    locale: en
+    tier: Colaborador
+    approved: true
+    roles: [Volunteer, Coordinator]
+    teams: [Volunteers, Kitchen]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    I'm the Kitchen coordinator. What can I do in the Shifts section that a regular volunteer can't?
+
+- id: 06_next_onboarding_step
+  category: onboarding
+  user:
+    display_name: Julia
+    locale: ca
+    tier: Volunteer
+    approved: false
+    roles: []
+    teams: []
+    pending_consent_docs: [PrivacyPolicy]
+    open_tickets: []
+    open_feedback: []
+  question: |
+    What do I need to do next to finish onboarding?
+
+- id: 07_which_teams_am_i_in
+  category: personalization
+  user:
+    display_name: David
+    locale: en
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers, Build, Tickets]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    Which teams am I in right now?
+
+- id: 08_what_did_i_agree_to
+  category: legal
+  user:
+    display_name: Lucia
+    locale: es
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    ¿Qué acepté cuando firmé el formulario de consentimiento la semana pasada?
+
+- id: 09_get_ticket
+  category: tickets
+  user:
+    display_name: Rafa
+    locale: es
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers]
+    pending_consent_docs: []
+    open_tickets: [a1b2c3]
+    open_feedback: []
+  question: |
+    How do I get my ticket for the event?
+
+- id: 10_shifts_signup
+  category: shifts
+  user:
+    display_name: Nico
+    locale: en
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers, Build]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    How do I sign up for shifts? I can see the Shifts page but nothing seems clickable.
+
+- id: 11_application_approved_by_whom
+  category: governance
+  user:
+    display_name: Elena
+    locale: en
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    I submitted a Colaborador application. Who approves it and how long does it take?
+
+- id: 12_google_drive_access
+  category: google
+  user:
+    display_name: Marta
+    locale: en
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers, Build]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    I joined the Build team but I don't see the Build shared drive in my Google Drive. What's wrong?
+
+- id: 13_camp_polygon
+  category: camps
+  user:
+    display_name: Pol
+    locale: ca
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers, CityPlanning]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    What's a camp polygon and why does mine show a clash warning?
+
+- id: 14_change_email
+  category: edge
+  user:
+    display_name: Inés
+    locale: es
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    Can you change my email address? I'm moving to a new one.
+
+- id: 15_off_topic
+  category: refusal
+  user:
+    display_name: Jorge
+    locale: es
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    Who's going to win the next Spanish general election?
+
+- id: 16_board_vote_details
+  category: governance
+  user:
+    display_name: Isabel
+    locale: en
+    tier: Asociado
+    approved: true
+    roles: [Volunteer, Board]
+    teams: [Volunteers, Board]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    I'm on the Board. How does voting on a Colaborador application actually work?
+
+- id: 17_feedback_followup
+  category: tickets
+  user:
+    display_name: Claudia
+    locale: en
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: [f1]
+  question: |
+    I submitted feedback two days ago about a broken page. Where can I see the status?
+
+- id: 18_budget_visibility
+  category: budget
+  user:
+    display_name: Ramón
+    locale: en
+    tier: Colaborador
+    approved: true
+    roles: [Volunteer, Coordinator]
+    teams: [Volunteers, Build]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    Can I see the budget for my team as a coordinator? What about adding line items?
+
+- id: 19_delete_account
+  category: gdpr
+  user:
+    display_name: Alba
+    locale: es
+    tier: Volunteer
+    approved: true
+    roles: [Volunteer]
+    teams: [Volunteers]
+    pending_consent_docs: []
+    open_tickets: []
+    open_feedback: []
+  question: |
+    I want to delete my account and all my data. How do I do that?
+
+- id: 20_multi_turn
+  category: personalization
+  user:
+    display_name: Felipe
+    locale: en
+    tier: Volunteer
+    approved: false
+    roles: []
+    teams: []
+    pending_consent_docs: [PrivacyPolicy, MemberContract]
+    open_tickets: []
+    open_feedback: []
+  question: |
+    Walk me through what I have to do next, step by step, so I can actually start volunteering.
