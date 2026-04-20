@@ -23,8 +23,9 @@ public interface IProfileRepository
     Task<Profile?> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
-    /// Loads a read-only single profile by user id. Does NOT eagerly load
-    /// aggregate-local collections.
+    /// Loads a read-only single profile by user id, eagerly including
+    /// <see cref="Profile.VolunteerHistory"/>. Returns null if not found.
+    /// Used by read-through cache paths that need the full projection.
     /// </summary>
     Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default);
 

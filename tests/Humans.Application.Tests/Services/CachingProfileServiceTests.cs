@@ -4,7 +4,9 @@ using Humans.Application.DTOs;
 using Humans.Application.Interfaces;
 using Humans.Application.Interfaces.Caching;
 using Humans.Application.Interfaces.Repositories;
+using Humans.Domain.Entities;
 using Humans.Infrastructure.Services.Profiles;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -59,25 +61,136 @@ public class CachingProfileServiceTests
     }
 
     [Fact]
-    public async Task SaveProfileAsync_EvictsDict_NextGetGoesToInner()
+    public async Task SaveProfileAsync_RefreshesDictEntry_InsteadOfEviction()
     {
         var userId = Guid.NewGuid();
-        var profile = SampleFullProfile(userId);
-        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<FullProfile?>(profile));
+        var profileId = Guid.NewGuid();
+        var profile = new Profile { Id = profileId, UserId = userId, BurnerName = "After save" };
+        var user = new User { Id = userId, DisplayName = "Name" };
+
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Array.Empty<UserEmail>());
 
         var sut = CreateSut();
 
-        // Populate dict
+        // Preload dict with a stale entry via a prior GetFullProfileAsync
+        var stale = SampleFullProfile(userId) with { BurnerName = "Before save" };
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>(stale));
         await sut.GetFullProfileAsync(userId);
-        await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
 
-        // A write evicts the dict entry
+        // Perform the write — RefreshEntryAsync should reload from repositories.
         await sut.SaveProfileAsync(userId, "Name", SampleSaveRequest(), "en");
 
-        // Next read hits inner again
+        // The next read should return the fresh value synchronously from the dict
+        // (not delegate to _inner — _inner.GetFullProfileAsync was only called
+        //  during the pre-write prime).
+        var fresh = await sut.GetFullProfileAsync(userId);
+        fresh.Should().NotBeNull();
+        fresh!.BurnerName.Should().Be("After save");
+        await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task InvalidateAsync_DeletedProfile_RemovesEntryFromDict()
+    {
+        var userId = Guid.NewGuid();
+
+        // _profileRepository is NOT called during GetFullProfileAsync (the dict prime uses _inner).
+        // The first call to _profileRepository happens inside RefreshEntryAsync (called by
+        // InvalidateCacheAsync). Returning null there simulates a deleted profile.
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns((Profile?)null);
+
+        var sut = CreateSut();
+
+        // Populate dict via _inner (does not touch _profileRepository)
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>(SampleFullProfile(userId)));
         await sut.GetFullProfileAsync(userId);
-        await _inner.Received(2).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
+
+        // InvalidateCacheAsync triggers RefreshEntryAsync; profile is null → entry removed
+        await sut.InvalidateCacheAsync(userId);
+
+        // Next read: dict miss (entry was removed); _inner also returns null
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>((FullProfile?)null));
+        var result = await sut.GetFullProfileAsync(userId);
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SaveCVEntriesAsync_RefreshesDictEntry()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var profile = new Profile { Id = profileId, UserId = userId, BurnerName = "Same burner" };
+        profile.VolunteerHistory.Add(new VolunteerHistoryEntry
+        {
+            Id = Guid.NewGuid(), ProfileId = profileId,
+            Date = new LocalDate(2025, 3, 1), EventName = "Nowhere 2025", Description = "Sound crew",
+        });
+        var user = new User { Id = userId, DisplayName = "Name" };
+
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail>());
+
+        var sut = CreateSut();
+
+        // Prime the dict with a stale entry that has no CV entries
+        var stale = SampleFullProfile(userId) with { CVEntries = Array.Empty<CVEntry>() };
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>(stale));
+        await sut.GetFullProfileAsync(userId);
+
+        // Call the write — decorator should refresh dict
+        await sut.SaveCVEntriesAsync(userId,
+            new[] { new CVEntry(new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") });
+
+        // Next read must return the fresh FullProfile from the dict (has CVEntries)
+        var fresh = await sut.GetFullProfileAsync(userId);
+        fresh.Should().NotBeNull();
+        fresh!.CVEntries.Should().ContainSingle(e => e.EventName == "Nowhere 2025");
+        await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SaveProfileLanguagesAsync_RefreshesDictEntry_WhenCached()
+    {
+        var userId = Guid.NewGuid();
+        var profileId = Guid.NewGuid();
+        var seededAt = SystemClock.Instance.GetCurrentInstant();
+        var profile = new Profile { Id = profileId, UserId = userId, UpdatedAt = seededAt };
+        var user = new User { Id = userId, DisplayName = "Name" };
+
+        _profileRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>()).Returns(profile);
+        _userService.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+        _userEmailRepository.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new List<UserEmail>());
+
+        var sut = CreateSut();
+
+        // Prime dict with a stale FullProfile carrying the correct profileId
+        // (so the O(n) scan inside SaveProfileLanguagesAsync can resolve userId)
+        var stale = SampleFullProfile(userId) with { ProfileId = profileId, UpdatedAtTicks = 0 };
+        _inner.GetFullProfileAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<FullProfile?>(stale));
+        await sut.GetFullProfileAsync(userId);
+
+        // Save languages (takes profileId)
+        await sut.SaveProfileLanguagesAsync(profileId, Array.Empty<ProfileLanguage>());
+
+        // Refresh should have run — dict entry has a non-zero UpdatedAtTicks now
+        var fresh = await sut.GetFullProfileAsync(userId);
+        fresh.Should().NotBeNull();
+        fresh!.UpdatedAtTicks.Should().Be(seededAt.ToUnixTimeTicks());
+        await _inner.Received(1).GetFullProfileAsync(userId, Arg.Any<CancellationToken>());
     }
 
     private static ProfileSaveRequest SampleSaveRequest() => new(

@@ -13,14 +13,11 @@ using MemberApplication = Humans.Domain.Entities.Application;
 namespace Humans.Infrastructure.Services.Profiles;
 
 /// <summary>
-/// Caching decorator for <see cref="IProfileService"/>. Handles:
-/// <list type="bullet">
-/// <item>Per-user FullProfile dict (ConcurrentDictionary, no TTL, replacing IMemoryCache + IProfileStore)</item>
-/// <item>Cross-cutting cache invalidation on writes (nav badge, notification meter, etc.)</item>
-/// </list>
-/// All read methods pass through to the inner service.
-/// All write methods delegate, then invalidate caches.
-/// Write-through dict refresh lands in Phase 5.
+/// Caching decorator for <see cref="IProfileService"/>. Owns a private
+/// <see cref="ConcurrentDictionary{TKey,TValue}"/> of <see cref="FullProfile"/>
+/// entries keyed by userId. Reads serve dict hits synchronously via
+/// <see cref="ValueTask{TResult}"/>; writes reload the affected entry from
+/// repositories via <c>RefreshEntryAsync</c>.
 /// </summary>
 public sealed class CachingProfileService : IProfileService
 {
@@ -49,14 +46,8 @@ public sealed class CachingProfileService : IProfileService
     // (ShiftAuthorization, §15 NEW-B).
 
     private readonly IProfileService _inner;
-
-    // Staged for Phase 5 write-through refresh.
     private readonly IProfileRepository _profileRepository;
-
-    // Staged for Phase 5 write-through refresh.
     private readonly IUserService _userService;
-
-    // Staged for Phase 5 write-through refresh.
     private readonly IUserEmailRepository _userEmailRepository;
 
     private readonly INavBadgeCacheInvalidator _navBadge;
@@ -103,6 +94,43 @@ public sealed class CachingProfileService : IProfileService
         if (result is not null)
             _byUserId[userId] = result;
         return result;
+    }
+
+    // ==========================================================================
+    // Helpers
+    // ==========================================================================
+
+    /// <summary>
+    /// Reloads the <see cref="FullProfile"/> for <paramref name="userId"/> directly
+    /// from repositories and upserts it in <see cref="_byUserId"/>.
+    /// If the profile or user no longer exists, the entry is removed instead.
+    /// Called after every mutation so the dict stays consistent without eviction.
+    /// </summary>
+    private async Task RefreshEntryAsync(Guid userId, CancellationToken ct)
+    {
+        // If any repository call throws, the dict retains the pre-mutation entry;
+        // the next cache miss will re-load from the inner service. This is tolerable
+        // at single-server ~500-user scale — the surface area for a divergence
+        // window is a single process' lifetime.
+        var profile = await _profileRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        if (profile is null)
+        {
+            _byUserId.TryRemove(userId, out _);
+            return;
+        }
+
+        var user = await _userService.GetByIdAsync(userId, ct);
+        if (user is null)
+        {
+            _byUserId.TryRemove(userId, out _);
+            return;
+        }
+
+        var userEmails = await _userEmailRepository.GetByUserIdReadOnlyAsync(userId, ct);
+        var notificationEmail = userEmails.FirstOrDefault(e => e.IsNotificationTarget && e.IsVerified)?.Email
+                                ?? user.Email;
+
+        _byUserId[userId] = FullProfile.Create(profile, user, profile.VolunteerHistory.ToList(), notificationEmail);
     }
 
     public Task<IReadOnlyDictionary<Guid, Profile>> GetByUserIdsAsync(
@@ -170,15 +198,17 @@ public sealed class CachingProfileService : IProfileService
     public async Task SaveProfileLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
     {
         await _inner.SaveProfileLanguagesAsync(profileId, languages, ct);
-        // Write-through dict refresh (Phase 5) will handle dict invalidation here.
-        // Nav-badge and notification-meter are unaffected by language changes.
+        // SaveProfileLanguagesAsync takes profileId, not userId; resolve via the dict.
+        // At ~500-user scale an O(n) scan over dict values is negligible.
+        // _byUserId.Values is a ConcurrentDictionary snapshot — safe against concurrent
+        // adds/removes. O(n) at ≤500 users.
+        var userId = _byUserId.Values.FirstOrDefault(p => p.ProfileId == profileId)?.UserId;
+        if (userId.HasValue)
+            await RefreshEntryAsync(userId.Value, ct);
     }
 
-    public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default)
-    {
-        _byUserId.TryRemove(userId, out _);
-        return Task.CompletedTask;
-    }
+    public Task InvalidateCacheAsync(Guid userId, CancellationToken ct = default) =>
+        RefreshEntryAsync(userId, ct);
 
     // ==========================================================================
     // Writes — delegate then invalidate
@@ -188,8 +218,8 @@ public sealed class CachingProfileService : IProfileService
         Guid userId, MembershipTier tier, CancellationToken ct = default)
     {
         await _inner.SetMembershipTierAsync(userId, tier, ct);
-        _byUserId.TryRemove(userId, out _);
         _navBadge.Invalidate();
+        await RefreshEntryAsync(userId, ct);
     }
 
     public async Task<Guid> SaveProfileAsync(
@@ -200,7 +230,7 @@ public sealed class CachingProfileService : IProfileService
 
         _navBadge.Invalidate();
         _notificationMeter.Invalidate();
-        _byUserId.TryRemove(userId, out _);
+        await RefreshEntryAsync(userId, ct);
 
         return result;
     }
@@ -210,7 +240,7 @@ public sealed class CachingProfileService : IProfileService
         var result = await _inner.RequestDeletionAsync(userId, ct);
         if (result.Success)
         {
-            _byUserId.TryRemove(userId, out _);
+            await RefreshEntryAsync(userId, ct);
             // TODO(§15 NEW-B): ShiftAuthorization cache (shift-auth:{userId}, 60s TTL) is
             // no longer invalidated here. Tolerable at ~500-user scale given the short TTL
             // and that the user is being deleted. When Shifts migrates to the §15 pattern,
@@ -224,13 +254,13 @@ public sealed class CachingProfileService : IProfileService
     {
         var result = await _inner.CancelDeletionAsync(userId, ct);
         if (result.Success)
-            _byUserId.TryRemove(userId, out _);
+            await RefreshEntryAsync(userId, ct);
         return result;
     }
 
     public async Task SaveCVEntriesAsync(Guid userId, IReadOnlyList<CVEntry> entries, CancellationToken ct = default)
     {
         await _inner.SaveCVEntriesAsync(userId, entries, ct);
-        _byUserId.TryRemove(userId, out _);
+        await RefreshEntryAsync(userId, ct);
     }
 }
